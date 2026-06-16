@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รายงานสรุปสถานะ · K2 · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="k2-report" data-nav="modules" data-module="k2-report" data-crumb="รายงานสรุปสถานะ">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">รายงานสรุปสถานะ</h1>
+          <p class="page-sub">ค้นหาและออกรายงานสรุปสถานะเอกสารประกันรายได้ · ระบบประกันรายได้ฝั่ง K2</p></div>
+        <div class="page-actions">
+          <button class="btn btn-primary" data-ack="กำลังส่งออกรายงานเป็นไฟล์ Excel..." data-kind="ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Export Excel</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>กรุณาระบุข้อมูลที่ท่านต้องการค้นหา</h2></div>
+        <div class="form-grid">
+          <div class="field"><label>รหัสร้านที่ถูกกระทบ</label>
+            <div style="display:flex;gap:8px;"><input placeholder="เลือกรหัสร้าน" style="flex:1;"><button class="btn btn-soft btn-sm" data-ack="เปิด Pop Up เลือกร้านที่ถูกกระทบ"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg></button></div>
+          </div>
+          <div class="field"><label>ชื่อร้านที่ถูกกระทบ</label><input placeholder="แสดงอัตโนมัติหลังเลือกรหัสร้าน" readonly></div>
+          <div class="field"><label>เดือน/ปี (เริ่มต้น)</label><input class="num" placeholder="ดด/ปปปป"></div>
+          <div class="field"><label>ถึง (สิ้นสุด)</label><input class="num" placeholder="ดด/ปปปป"></div>
+          <div class="field"><label>ประเภทร้าน (เลือกได้มากกว่า 1)</label><select multiple size="4"><option>FR Type A</option><option>FR Type B</option><option>FR Type C</option><option>FR Type พนักงาน</option></select></div>
+          <div class="field"><label>ภาค (เลือกได้มากกว่า 1)</label><select multiple size="4"><option>BE</option><option>BN</option><option>BS</option><option>BW</option><option>RC</option><option>RE</option><option>RN</option><option>RS</option></select></div>
+          <div class="field"><label>สถานะ</label><select><option>ทั้งหมด</option><option>รอตรวจสอบ (STA)</option><option>รอ K2 ยืนยัน</option><option>อนุมัติแล้ว</option><option>ปรับปรุง Adjust</option><option>ข้อมูล &lt; 60 วัน</option><option>ปิดงาน (End)</option></select></div>
+          <div class="field"><label>Period Statement (From – To)</label>
+            <div style="display:flex;gap:8px;"><input class="num" placeholder="ดด/ปปปป" style="flex:1;"><input class="num" placeholder="ดด/ปปปป" style="flex:1;"></div>
+          </div>
+        </div>
+        <div class="toolbar" style="justify-content:flex-end;margin:18px 0 0;">
+          <button class="btn btn-muted btn-sm" data-ack="เคลียร์ค่าเริ่มใหม่">เคลียร์ค่าเริ่มใหม่</button>
+          <button class="btn btn-primary btn-sm" data-ack="ค้นหาข้อมูลตามเงื่อนไข (เฉพาะที่มีเลขที่เอกสาร)" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg> ค้นหาข้อมูล</button>
+        </div>
+      </div>
+
+      <div class="charts-row" style="grid-template-columns:1fr 2fr;">
+        <div class="chart-card">
+          <h3>สรุปตามสถานะ</h3><div class="csub">ผลการค้นหา</div>
+          <div class="donut-wrap">
+            <div data-chart="donut" data-values="1,1,1,1" data-colors="#f59e0b,#7c3aed,#16a34a,#ef4444" data-center="รายการ"></div>
+            <div class="legend-row" style="flex:1;">
+              <div class="lg"><i style="background:#f59e0b"></i> รอตรวจสอบ <b>1</b></div>
+              <div class="lg"><i style="background:#7c3aed"></i> รอ K2 ยืนยัน <b>1</b></div>
+              <div class="lg"><i style="background:#16a34a"></i> อนุมัติแล้ว <b>1</b></div>
+              <div class="lg"><i style="background:#ef4444"></i> ข้อมูล &lt; 60 วัน <b>1</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>ยอดเงินชดเชยตามภาค</h3><div class="csub">หน่วย: พันบาท</div>
+          <div data-chart="bar" data-values="48.2,31.5,66.4,25.65" data-labels="RS,RW,RN,RW"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>ผลการค้นหารายชื่อร้าน</h2><span class="pill info" style="margin-left:auto;">19 คอลัมน์ · Export ได้ทั้งหมด</span></div>
+        <div class="table-wrap"><table class="data" style="min-width:1700px;">
+          <thead><tr>
+            <th>รหัสร้านถูกกระทบ</th><th>ชื่อร้านถูกกระทบ</th><th>ภาค</th><th>ประเภทร้าน</th><th>เดือน/ปีที่ชดเชย</th><th>วันที่โอนเป็นร้าน SP</th><th>Period Statement</th><th>รหัสร้านเปิดใหม่</th><th>ชื่อร้านเปิดใหม่</th><th>ภาค (ร้านใหม่)</th><th>ประเภท (ร้านใหม่)</th><th>ยอดเงินชดเชย</th><th>สถานะ</th><th>ผู้ดำเนินการ</th><th>ผลการพิจารณา</th><th>รอ (วัน)</th><th>ครั้งที่</th><th>วันที่สร้าง</th><th>เลขที่เอกสาร</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="num">00788</td><td>รัตนอุทิศ ซ.13</td><td>RS</td><td>FR Type B</td><td class="num">2569/05</td><td class="num">01/03/2566</td><td class="num">2569/05</td><td class="num">00990</td><td>บิ๊กซี รัตนาธิเบศร์</td><td>RS</td><td>FR Type A</td><td class="num">48,200.00</td><td><span class="pill wait">รอตรวจสอบ (STA)</span></td><td>Somchai J.</td><td>-</td><td class="num">2</td><td class="num">1</td><td class="num">12/06/2569</td><td class="num">2569/00123</td></tr>
+            <tr><td class="num">01045</td><td>บางบัวทอง ก.ม.8</td><td>RW</td><td>FR Type C</td><td class="num">2569/05</td><td class="num">15/07/2565</td><td class="num">2569/05</td><td class="num">01200</td><td>โลตัส บางบัวทอง</td><td>RW</td><td>FR Type A</td><td class="num">31,500.00</td><td><span class="pill fail">ข้อมูล &lt; 60 วัน</span></td><td>Malee S.</td><td>-</td><td class="num">5</td><td class="num">1</td><td class="num">10/06/2569</td><td class="num">2569/00131</td></tr>
+            <tr><td class="num">00256</td><td>ปากเกร็ด สถานี</td><td>RN</td><td>FR Type B</td><td class="num">2569/05</td><td class="num">20/01/2566</td><td class="num">2569/05</td><td class="num">00501</td><td>แม็คโคร แจ้งวัฒนะ</td><td>RN</td><td>FR Type A</td><td class="num">66,400.00</td><td><span class="pill violet">รอ K2 ยืนยัน</span></td><td>Weerapol M.</td><td>อนุมัติ (A)</td><td class="num">1</td><td class="num">2</td><td class="num">11/06/2569</td><td class="num">2569/00140</td></tr>
+            <tr><td class="num">01133</td><td>แคราย พลาซ่า</td><td>RW</td><td>FR Type พนักงาน</td><td class="num">2569/04</td><td class="num">05/09/2564</td><td class="num">2569/04</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="num">25,650.00</td><td><span class="pill ok">อนุมัติแล้ว</span></td><td>Phatcharida P.</td><td>อนุมัติ (A)</td><td class="num">0</td><td class="num">1</td><td class="num">02/06/2569</td><td class="num">2569/00152</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

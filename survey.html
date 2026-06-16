@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แบบสอบถาม / สำรวจ · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="survey" data-nav="modules" data-module="survey" data-crumb="แบบสอบถาม / สำรวจ">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">แบบสอบถาม / สำรวจ</h1>
+          <p class="page-sub">แบบสอบถาม (LimeSurvey) · นำเข้าผู้ตอบ (Participant) · จับคู่แบบสอบถามกับสาขา (Map to Store)</p></div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" data-ack="นำเข้าผู้ตอบแบบสอบถาม (ImportParticipant)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> นำเข้าผู้ตอบ</button>
+          <button class="btn btn-primary" data-add-row="tblSurvey"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มแบบสอบถาม</button>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="si bg-blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17V9M15 17v-5M21 21H3M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/></svg></div><div><div class="sv num">36</div><div class="sl">แบบสอบถามทั้งหมด</div></div></div>
+        <div class="stat"><div class="si bg-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div><div class="sv num">8</div><div class="sl">กำลังเปิดรับ</div></div></div>
+        <div class="stat"><div class="si bg-violet"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8"/></svg></div><div><div class="sv num">9,840</div><div class="sl">ผู้ตอบรวม</div></div></div>
+        <div class="stat"><div class="si bg-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 16l4-4 3 3 5-6"/></svg></div><div><div class="sv num">72%</div><div class="sl">อัตราการตอบกลับ</div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input placeholder="ค้นหารหัส / ชื่อแบบสอบถาม / สาขา"></div>
+          <div class="spacer"></div>
+          <button class="btn btn-muted btn-sm" data-ack="จับคู่แบบสอบถามกับสาขา (MappingSurveyToStore)">Map สำรวจ → สาขา</button>
+        </div>
+        <div class="table-wrap"><table class="data" id="tblSurvey" data-entity="survey" style="min-width:880px;">
+          <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>รหัสแบบสอบถาม</th><th>ชื่อแบบสอบถาม</th><th>สาขา</th><th>ผู้ตอบ</th><th>สถานะ</th><th>วันที่</th><th class="col-action">Action</th></tr></thead>
+          <tbody>
+            <tr><td><input type="checkbox" class="cbx"></td><td class="num">SV-2569-01</td><td>ความพึงพอใจคู่ค้า SBP</td><td>ทุกสาขา</td><td class="num">3,210</td><td><span class="pill ok">เปิดรับ</span></td><td class="num">01/06/2569</td><td class="col-action"><button class="icon-btn icon-view"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td class="num">SV-2569-02</td><td>ประเมินการอบรม OP</td><td>00123 ปากเกร็ด</td><td class="num">120</td><td><span class="pill ok">เปิดรับ</span></td><td class="num">05/06/2569</td><td class="col-action"><button class="icon-btn icon-view"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td class="num">SV-2569-03</td><td>สำรวจทำเลร้านเปิดใหม่</td><td>ภาค RS</td><td class="num">540</td><td><span class="pill muted">ปิดแล้ว</span></td><td class="num">12/05/2569</td><td class="col-action"><button class="icon-btn icon-view"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td class="num">SV-2569-04</td><td>แบบสำรวจพนักงานกะดึก</td><td>ทุกสาขา</td><td class="num">0</td><td><span class="pill info">ร่าง</span></td><td class="num">14/06/2569</td><td class="col-action"><button class="icon-btn icon-view"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

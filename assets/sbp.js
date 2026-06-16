@@ -21,6 +21,11 @@
     flow:'M6 3v6m0 0a3 3 0 1 0 0 0ZM18 9a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm0 0v3a3 3 0 0 1-3 3H9m0 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
     route:'M5 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM19 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 8v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3 3M9 4h8a2 2 0 0 1 2 2v6',
     badge:'M9 12l2 2 4-4M7.5 4.2a2 2 0 0 1 1.4-.6h6.2a2 2 0 0 1 1.4.6l1.3 1.3a2 2 0 0 1 .6 1.4v6.2a2 2 0 0 1-.6 1.4l-1.3 1.3a2 2 0 0 1-1.4.6H8.9a2 2 0 0 1-1.4-.6l-1.3-1.3a2 2 0 0 1-.6-1.4V6.9a2 2 0 0 1 .6-1.4Z',
+    map:'M9 20l-5.5 2.5V6L9 3.5m0 16.5 6-2.5m-6 2.5V3.5m6 16.5 5.5 2.5V6L15 3.5m0 16.5V3.5m-6 0 6 2.5',
+    pin:'M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11ZM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
+    star:'m12 2 3 6.3 6.9 1-5 4.9 1.2 6.8L12 18l-6.1 3 1.2-6.8-5-4.9 6.9-1L12 2Z',
+    poll:'M9 17V9M15 17v-5M21 21H3M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16',
+    alert:'M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z',
     save:'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2ZM17 21v-8H7v8M7 3v5h8',
     plus:'M12 5v14M5 12h14', trash:'M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6',
     edit:'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z',
@@ -41,12 +46,20 @@
   var MODULES = [
     { key:'home',       label:'หน้าหลัก',              href:'index.html',       icon:I.home,      group:'' },
     { key:'recruitment',label:'สรรหา & ใบสมัคร',        href:'recruitment.html', icon:I.recruit,   group:'งานปฏิบัติการ' },
+    { key:'contracts',  label:'สัญญา & ทดลองงาน',       href:'contracts.html',   icon:I.badge,     group:'งานปฏิบัติการ' },
     { key:'statement',  label:'บัญชีแฟรนไชส์',          href:'statement.html',   icon:I.statement, group:'งานปฏิบัติการ' },
+    { key:'evaluation', label:'ประเมินผล / เกรด',        href:'evaluation.html',  icon:I.star,      group:'งานปฏิบัติการ' },
     { key:'manpower',   label:'กำลังคน',                href:'manpower.html',    icon:I.users,     group:'งานปฏิบัติการ' },
     { key:'training',   label:'อบรม',                   href:'training.html',    icon:I.cap,       group:'งานปฏิบัติการ' },
+    { key:'survey',     label:'แบบสอบถาม',              href:'survey.html',      icon:I.poll,      group:'งานปฏิบัติการ' },
     { key:'fgi',        label:'ประกันรายได้ · ภาพรวม',   href:'fgi.html',         icon:I.shield,    group:'ประกันรายได้ (FGI)' },
     { key:'fgi-flow',   label:'ผังกระบวนการ FGI',       href:'fgi-flow.html',    icon:I.route,     group:'ประกันรายได้ (FGI)' },
-    { key:'k2',         label:'ยืนยัน K2 / BPM',        href:'k2.html',          icon:I.badge,     group:'ประกันรายได้ (FGI)' },
+    { key:'k2',          label:'รอดำเนินการ / เอกสาร',    href:'k2.html',           icon:I.badge,     group:'ระบบ K2 / BPM' },
+    { key:'k2-abnormal', label:'ข้อมูลผิดปกติ / แจกงาน',   href:'k2-abnormal.html',  icon:I.alert,     group:'ระบบ K2 / BPM' },
+    { key:'k2-document', label:'เอกสารร้านถูกกระทบ (แผนที่)', href:'k2-document.html', icon:I.map,    group:'ระบบ K2 / BPM' },
+    { key:'k2-report',   label:'รายงานสรุปสถานะ',         href:'k2-report.html',    icon:I.statement, group:'ระบบ K2 / BPM' },
+    { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ระบบ K2 / BPM' },
+    { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ระบบ K2 / BPM' },
     { key:'masterdata', label:'ข้อมูลหลัก',             href:'masterdata.html',  icon:I.db,        group:'ระบบ' },
     { key:'useradmin',  label:'ผู้ใช้ & Active Directory', href:'useradmin.html',icon:I.idcog,    group:'ระบบ' },
     { key:'workflow',   label:'อนุมัติงาน',             href:'workflow.html',    icon:I.flow,      group:'ระบบ' }
@@ -167,32 +180,24 @@
       else document.body.classList.toggle('sidebar-collapsed');
     });
 
-    // delegated clicks
+    // delegated clicks (view / edit / add / nav / actions)
     document.addEventListener('click', function (e) {
-      var el = e.target.closest('[data-toast],[data-href],[data-section],[data-step],[data-add-row],.icon-del,.hide-toggle');
-      if (!el) return;
-
-      if (el.hasAttribute('data-href')) { window.location.href = el.getAttribute('data-href'); return; }
-
-      if (el.hasAttribute('data-section')) {
+      var t = e.target.closest('.icon-view,.icon-edit,.icon-del,[data-add-row],[data-href],[data-section],[data-step],.hide-toggle,[data-toast],[data-ack]');
+      if (!t) return;
+      var tbl, tr;
+      if (t.classList.contains('icon-view')) { e.preventDefault(); tbl = t.closest('table.data'); tr = t.closest('tr'); if (tbl && tr) openView(tbl, tr); return; }
+      if (t.classList.contains('icon-edit')) { e.preventDefault(); tbl = t.closest('table.data'); tr = t.closest('tr'); if (tbl && tr) openEdit(tbl, tr); return; }
+      if (t.classList.contains('icon-del')) { e.preventDefault(); tr = t.closest('tr'); if (tr && confirm('ยืนยันการลบรายการนี้?')) { tr.remove(); toast('ลบรายการแล้ว', 'del'); } return; }
+      if (t.hasAttribute('data-add-row')) { e.preventDefault(); var at = document.getElementById(t.getAttribute('data-add-row')); if (at) openAdd(at); return; }
+      if (t.hasAttribute('data-href')) { window.location.href = t.getAttribute('data-href'); return; }
+      if (t.hasAttribute('data-section')) { e.preventDefault(); switchSection(t.getAttribute('data-section'), t); return; }
+      if (t.hasAttribute('data-step')) { e.preventDefault(); switchStep(t.getAttribute('data-step')); return; }
+      if (t.classList.contains('hide-toggle')) { e.preventDefault(); toggleCard(t); return; }
+      if (t.hasAttribute('data-toast') || t.hasAttribute('data-ack')) {
         e.preventDefault();
-        switchSection(el.getAttribute('data-section'), el);
+        toast(t.getAttribute('data-toast') || t.getAttribute('data-ack'), t.getAttribute('data-kind') || (t.hasAttribute('data-ack') ? 'ok' : ''));
         return;
       }
-      if (el.hasAttribute('data-step')) { e.preventDefault(); switchStep(el.getAttribute('data-step')); return; }
-
-      if (el.hasAttribute('data-add-row')) { e.preventDefault(); addRow(el.getAttribute('data-add-row')); return; }
-
-      if (el.classList.contains('icon-del')) {
-        e.preventDefault();
-        var tr = el.closest('tr');
-        if (tr && confirm('ยืนยันการลบรายการนี้?')) { tr.remove(); toast('ลบรายการแล้ว', 'del'); }
-        return;
-      }
-
-      if (el.classList.contains('hide-toggle')) { e.preventDefault(); toggleCard(el); return; }
-
-      if (el.hasAttribute('data-toast')) { e.preventDefault(); toast(el.getAttribute('data-toast'), el.getAttribute('data-kind') || ''); return; }
     });
 
     // select-all checkboxes per table
@@ -223,10 +228,8 @@
       });
     });
 
-    // generic action buttons that should just acknowledge
-    document.querySelectorAll('[data-ack]').forEach(function (b) {
-      b.addEventListener('click', function () { toast(b.getAttribute('data-ack'), b.getAttribute('data-kind') || 'ok'); });
-    });
+    // [data-ack] / [data-toast] are handled by the delegated click handler above
+    // (so dynamically-created modal buttons work too)
   }
 
   function switchSection(key, link) {
@@ -363,6 +366,277 @@
     var p = el.querySelector('.sparkLine'), L = p.getTotalLength();
     p.style.strokeDasharray = L; p.style.strokeDashoffset = L;
     requestAnimationFrame(function () { p.style.transition = 'stroke-dashoffset 1.3s ease'; p.style.strokeDashoffset = '0'; });
+  }
+
+  /* ============================================================
+     CRUD modal engine — view / edit / add  (fields grounded in fcsJar)
+     ============================================================ */
+  function cre(tag, cls, html) { var n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; }
+  function esc(s) { return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function clean(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
+
+  // grounded entity schemas (key, label, optional col = table header it maps to, type, options, wide)
+  var SCHEMAS = {
+    applicant: [
+      { key: 'code', label: 'รหัสผู้สมัคร', col: 'รหัสผู้สมัคร' },
+      { key: 'title', label: 'คำนำหน้า', type: 'select', options: ['นาย', 'นาง', 'นางสาว'] },
+      { key: 'name', label: 'ชื่อ - สกุล', col: 'ชื่อ-สกุล', wide: true },
+      { key: 'idcard', label: 'เลขบัตรประชาชน', col: 'เลขบัตรประชาชน' },
+      { key: 'stype', label: 'ประเภทร้าน', col: 'ประเภทร้าน', type: 'select', options: ['OP (ลงทุนเอง)', 'SBP (บริษัทร่วมลงทุน)'] },
+      { key: 'region', label: 'ภาค', type: 'select', options: ['RN', 'RS', 'RE', 'RW'] },
+      { key: 'tel', label: 'เบอร์โทรศัพท์' },
+      { key: 'email', label: 'อีเมล' },
+      { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' },
+      { key: 'date', label: 'วันที่สมัคร', col: 'วันที่สมัคร' }
+    ],
+    aduser: [
+      { key: 'empid', label: 'Employee ID (EMP_ID)', col: 'Employee ID' },
+      { key: 'title', label: 'คำนำหน้า (TITLE_NAME_TH)', type: 'select', options: ['นาย', 'นาง', 'นางสาว'] },
+      { key: 'name', label: 'ชื่อ - สกุล (FIRST/LAST_NAME_TH)', col: 'ชื่อ-สกุล', wide: true },
+      { key: 'idcard', label: 'เลขบัตรประชาชน (ID_CARD)' },
+      { key: 'pos', label: 'ตำแหน่ง (POSITION_NAME)', col: 'ตำแหน่ง' },
+      { key: 'store', label: 'รหัสสาขา (STORE_ID)', col: 'สาขา' },
+      { key: 'etype', label: 'ประเภทพนักงาน (EMP_TYPE)', type: 'select', options: ['Full-time', 'Part-time'] },
+      { key: 'domain', label: 'Domain (DOMAIN_AD)', col: 'Domain' },
+      { key: 'status', label: 'สถานะ AD', col: 'สถานะ AD', type: 'status' }
+    ],
+    store: [
+      { key: 'sid', label: 'รหัสร้าน (STORE_ID)', col: 'รหัสร้าน' },
+      { key: 'sname', label: 'ชื่อร้าน (STORE_NAME)', col: 'ชื่อร้าน', wide: true },
+      { key: 'prov', label: 'จังหวัด', col: 'จังหวัด' },
+      { key: 'amphur', label: 'อำเภอ/เขต' },
+      { key: 'stype', label: 'ประเภท (STORE_TYPE)', col: 'ประเภท', type: 'select', options: ['OP', 'SBP'] },
+      { key: 'avg', label: 'ยอดขายเฉลี่ย/เดือน (บาท)', col: 'ยอดขายเฉลี่ย/เดือน (บาท)' },
+      { key: 'qssi', label: 'QSSI', col: 'QSSI' }
+    ],
+    employee: [
+      { key: 'eid', label: 'รหัสพนักงาน (EMP_ID)', col: 'รหัสพนักงาน' },
+      { key: 'name', label: 'ชื่อ - สกุล', col: 'ชื่อ-สกุล', wide: true },
+      { key: 'store', label: 'สาขา (STORE_ID)', col: 'สาขา' },
+      { key: 'pos', label: 'ตำแหน่ง (POSITION_NAME)', col: 'ตำแหน่ง' },
+      { key: 'shift', label: 'กะ', col: 'กะ', type: 'select', options: ['เช้า', 'บ่าย', 'ดึก'] },
+      { key: 'etype', label: 'ประเภทพนักงาน (EMP_TYPE)', type: 'select', options: ['Full-time', 'Part-time (P/T)'] },
+      { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' }
+    ],
+    operator: [
+      { key: 'name', label: 'ชื่อผู้ปฏิบัติงาน (CompenOrgEmpEname)', col: 'ชื่อผู้ปฏิบัติงาน', wide: true },
+      { key: 'email', label: 'E-Mail (CompenOrgEmpMail)', col: 'E-Mail', wide: true },
+      { key: 'position', label: 'ชื่อตำแหน่ง (CompenOrgSectionCode)', col: 'ชื่อตำแหน่ง', type: 'select', options: ['ส่งเสริมธุรกิจพันธมิตรฯ', 'Manager Franchise (SectionCode 06)', 'SBP DSA', 'ผจก.เขต', 'เจ้าหน้าที่บัญชี (FS)'] },
+      { key: 'zone', label: 'ภาคที่รับผิดชอบ (CompenOrgZoneCode)', col: 'ภาคที่รับผิดชอบ', type: 'select', options: ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS', '-'] },
+      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล' }
+    ],
+    factor: [
+      { key: 'code', label: 'รหัสปัจจัยภายนอก (FactorCode)', col: 'รหัสปัจจัย' },
+      { key: 'name', label: 'ชื่อปัจจัยภายนอก (FactorName)', col: 'ชื่อปัจจัย', wide: true },
+      { key: 'remark', label: 'รายละเอียดเพิ่มเติม (FactorRemark)', col: 'รายละเอียดเพิ่มเติม', wide: true },
+      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล' }
+    ],
+    contract: [
+      { key: 'sid', label: 'รหัสสาขา (STORE_ID)', col: 'รหัสสาขา' },
+      { key: 'sname', label: 'ชื่อสาขา / คู่ค้า', col: 'ชื่อสาขา', wide: true },
+      { key: 'ccode', label: 'เลขที่สัญญา (ContractCode)', col: 'เลขที่สัญญา' },
+      { key: 'cstart', label: 'วันเริ่มสัญญา', col: 'วันเริ่มสัญญา' },
+      { key: 'cend', label: 'วันหมดอายุสัญญา (EndContractDate)', col: 'วันหมดอายุ' },
+      { key: 'prob', label: 'สถานะทดลองงาน (Probation)', col: 'ทดลองงาน', type: 'select', options: ['อยู่ระหว่างทดลองงาน', 'ผ่านทดลองงาน', 'ไม่ผ่าน'] },
+      { key: 'invest', label: 'เงินลงทุน/ค่าธรรมเนียม (บาท)', col: 'เงินลงทุน (บาท)' },
+      { key: 'goodwill', label: 'ค่า Goodwill (GoodwillFee)' },
+      { key: 'guarantee', label: 'ค่าประกันความเสียหาย (DamageGuaranteeFee)' },
+      { key: 'status', label: 'สถานะสัญญา', col: 'สถานะ', type: 'status' }
+    ],
+    grade: [
+      { key: 'sid', label: 'รหัสสาขา (STORE_ID)', col: 'รหัสสาขา' },
+      { key: 'sname', label: 'ชื่อสาขา', col: 'ชื่อสาขา', wide: true },
+      { key: 'round', label: 'รอบประเมิน (evalMonth/Year)', col: 'รอบประเมิน' },
+      { key: 'grade', label: 'เกรด (grade)', col: 'เกรด', type: 'select', options: ['A', 'B', 'C', 'D'] },
+      { key: 'point', label: 'คะแนนรวม % (totalPointPercent)', col: 'คะแนน (%)' },
+      { key: 'bank', label: 'เลขบัญชีธนาคาร (bankAccount)', col: 'บัญชีธนาคาร' },
+      { key: 'bankname', label: 'ธนาคาร (bankName)', type: 'select', options: ['ธ.กสิกรไทย', 'ธ.ไทยพาณิชย์', 'ธ.กรุงเทพ', 'ธ.กรุงไทย'] },
+      { key: 'ias', label: 'สถานะส่ง IAS', col: 'สถานะส่ง IAS', type: 'status' }
+    ],
+    survey: [
+      { key: 'sid', label: 'รหัสแบบสอบถาม', col: 'รหัสแบบสอบถาม' },
+      { key: 'sname', label: 'ชื่อแบบสอบถาม', col: 'ชื่อแบบสอบถาม', wide: true },
+      { key: 'store', label: 'สาขา (Map to Store)', col: 'สาขา' },
+      { key: 'resp', label: 'ผู้ตอบ (Participant)', col: 'ผู้ตอบ' },
+      { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' },
+      { key: 'date', label: 'วันที่', col: 'วันที่' }
+    ],
+    abnormal: [
+      { key: 'docno', label: 'เลขที่เอกสาร', col: 'เลขที่เอกสาร' },
+      { key: 'store', label: 'รหัสร้าน', col: 'รหัสร้าน' },
+      { key: 'name', label: 'ชื่อร้านถูกกระทบ', col: 'ชื่อร้าน', wide: true },
+      { key: 'region', label: 'ภาค', col: 'ภาค', type: 'select', options: ['RN', 'RS', 'RE', 'RW', 'BE', 'BN', 'BS', 'BW'] },
+      { key: 'reason', label: 'สาเหตุผิดปกติ', col: 'สาเหตุผิดปกติ', wide: true, type: 'select', options: ['ยอดขายไม่ครบ 60 วัน', 'ข้อมูลร้านไม่ครบ', 'ไม่มีข้อมูลสาขา', 'ระยะห่างผิดปกติ'] },
+      { key: 'assignee', label: 'ผู้รับผิดชอบ (แจกงาน)', col: 'ผู้รับผิดชอบ', type: 'select', options: ['- ยังไม่แจกงาน -', 'นายสมชาย ใจดี', 'นางสาวมาลี ศรีสุข', 'นายวีรพล มั่นคง', 'Phatcharida P.'] },
+      { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' }
+    ]
+  };
+
+  function tableMeta(table) {
+    var ths = [].slice.call(table.querySelectorAll('thead th')), headers = [];
+    var sample = table.querySelector('tbody tr');
+    ths.forEach(function (th, i) {
+      if (th.classList.contains('col-chk') || th.querySelector('input')) return;
+      var label = clean(th.textContent);
+      if (th.classList.contains('col-action') || /^Action$|จัดการ/i.test(label)) return;
+      var h = { label: label, idx: i, status: false, num: false };
+      if (sample && sample.children[i]) { h.status = !!sample.children[i].querySelector('.pill'); h.num = sample.children[i].classList.contains('num'); }
+      headers.push(h);
+    });
+    return { headers: headers };
+  }
+  function resolveFields(table, meta) {
+    var ent = table.getAttribute('data-entity');
+    var base = (ent && SCHEMAS[ent]) ? SCHEMAS[ent].map(function (f) { var o = {}; for (var k in f) o[k] = f[k]; return o; })
+      : meta.headers.map(function (h) { return { key: 'c' + h.idx, label: h.label, col: h.label, type: h.status ? 'status' : 'text' }; });
+    base.forEach(function (f) {
+      f.colIdx = -1;
+      if (f.col) for (var i = 0; i < meta.headers.length; i++) {
+        if (clean(meta.headers[i].label) === clean(f.col)) { f.colIdx = meta.headers[i].idx; if (meta.headers[i].status) f.type = 'status'; break; }
+      }
+    });
+    return base;
+  }
+  function statusMap(table) {
+    var m = {}; table.querySelectorAll('tbody .pill').forEach(function (p) {
+      m[clean(p.textContent)] = [].slice.call(p.classList).filter(function (x) { return x !== 'pill'; }).join(' ');
+    }); return m;
+  }
+  function readVal(row, f) {
+    if (!row) return '';
+    if (f.colIdx >= 0 && row.children[f.colIdx]) { var c = row.children[f.colIdx]; var p = c.querySelector('.pill'); return clean((p || c).textContent); }
+    return row.dataset[f.key] || '';
+  }
+  function writeVal(row, f, val, smap) {
+    if (f.colIdx >= 0 && row.children[f.colIdx]) {
+      var c = row.children[f.colIdx];
+      if (f.type === 'status') c.innerHTML = '<span class="pill ' + (smap[val] || 'info') + '">' + esc(val) + '</span>';
+      else c.textContent = val;
+    } else row.dataset[f.key] = val;
+  }
+  function valByLabel(row, meta, label) {
+    for (var i = 0; i < meta.headers.length; i++) if (clean(meta.headers[i].label) === clean(label)) {
+      var c = row.children[meta.headers[i].idx]; var p = c.querySelector('.pill'); return clean((p || c).textContent);
+    } return '';
+  }
+
+  function buildField(f, value, sopts) {
+    var wrap = cre('div', 'field' + (f.wide ? ' col-2' : ''));
+    wrap.appendChild(cre('label', null, esc(f.label)));
+    var ctrl;
+    if (f.type === 'status' || f.type === 'select') {
+      ctrl = cre('select');
+      var opts = f.type === 'status' ? (sopts && sopts.length ? sopts.slice() : [value]) : (f.options || []).slice();
+      if (value && opts.indexOf(value) < 0) opts.unshift(value);
+      opts.forEach(function (o) { var op = cre('option', null, esc(o)); op.value = o; if (o === value) op.selected = true; ctrl.appendChild(op); });
+    } else { ctrl = cre('input'); ctrl.type = 'text'; ctrl.value = value || ''; }
+    ctrl.setAttribute('data-fk', f.key);
+    wrap.appendChild(ctrl); return wrap;
+  }
+  function renderForm(fields, row, sopts) {
+    var form = cre('div', 'form-grid');
+    fields.forEach(function (f) { form.appendChild(buildField(f, readVal(row, f), sopts)); });
+    return form;
+  }
+  function renderView(fields, row, table) {
+    var smap = statusMap(table), grid = cre('div', 'doc-meta');
+    fields.forEach(function (f) {
+      var v = readVal(row, f);
+      var vh = f.type === 'status' ? '<span class="pill ' + (smap[v] || 'info') + '">' + esc(v || '-') + '</span>' : esc(v || '-');
+      grid.appendChild(cre('div', 'dm', '<span class="k">' + esc(f.label) + '</span><span class="v">' + vh + '</span>'));
+    });
+    return grid;
+  }
+
+  /* modal shell */
+  function ensureOverlay() {
+    var o = document.getElementById('modalOverlay');
+    if (o) return o;
+    o = cre('div', 'modal-overlay'); o.id = 'modalOverlay'; o.innerHTML = '<div class="modal"></div>';
+    document.body.appendChild(o);
+    o.addEventListener('click', function (e) { if (e.target === o) closeModal(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+    return o;
+  }
+  function openModal(opt) {
+    var o = ensureOverlay(), m = o.querySelector('.modal');
+    m.className = 'modal' + (opt.lg ? ' lg' : ''); m.innerHTML = '';
+    var head = cre('div', 'modal-head',
+      '<div class="mh-ic">' + svg(opt.icon || I.eye, '', 20) + '</div>' +
+      '<div style="flex:1"><h3>' + esc(opt.title) + '</h3>' + (opt.sub ? '<div class="mh-sub">' + esc(opt.sub) + '</div>' : '') + '</div>');
+    var x = cre('button', 'modal-close', svg('M18 6 6 18M6 6l12 12', '', 18)); x.onclick = closeModal; head.appendChild(x);
+    m.appendChild(head);
+    var body = cre('div', 'modal-body'); if (opt.body) body.appendChild(opt.body); m.appendChild(body);
+    if (opt.footer && opt.footer.length) { var foot = cre('div', 'modal-foot'); opt.footer.forEach(function (b) { foot.appendChild(b); }); m.appendChild(foot); }
+    o.style.display = 'flex'; requestAnimationFrame(function () { o.classList.add('show'); });
+  }
+  function closeModal() { var o = document.getElementById('modalOverlay'); if (!o) return; o.classList.remove('show'); setTimeout(function () { o.style.display = 'none'; }, 200); }
+  function footBtn(html, cls, fn) { var b = cre('button', 'btn ' + cls); b.innerHTML = html; b.onclick = fn; return b; }
+
+  function subtitleOf(fields, row) {
+    var f = null;
+    for (var i = 0; i < fields.length; i++) if (/ชื่อ|name/i.test(fields[i].label)) { f = fields[i]; break; }
+    return readVal(row, f || fields[1] || fields[0]);
+  }
+  function openView(table, row) {
+    if (table.getAttribute('data-entity') === 'k2doc') return openK2Doc(table, row, tableMeta(table));
+    var meta = tableMeta(table), fields = resolveFields(table, meta);
+    var foot = [footBtn('ปิด', 'btn-ghost', closeModal)];
+    if (table.getAttribute('data-entity') === 'applicant')
+      foot.unshift(footBtn(svg(I.recruit, '', 17) + ' เปิดใบสมัครเต็ม', 'btn-primary', function () { location.href = 'application.html'; }));
+    openModal({ title: 'รายละเอียดข้อมูล', sub: subtitleOf(fields, row), icon: I.eye, body: renderView(fields, row, table), footer: foot });
+  }
+  function openEdit(table, row) {
+    var meta = tableMeta(table), fields = resolveFields(table, meta), sopts = Object.keys(statusMap(table));
+    var body = renderForm(fields, row, sopts);
+    openModal({ title: 'แก้ไขข้อมูล', sub: subtitleOf(fields, row), icon: I.edit, body: body,
+      footer: [footBtn('ยกเลิก', 'btn-ghost', closeModal), footBtn('บันทึก', 'btn-primary', function () { commit(table, row, fields, body, 'edit'); })] });
+  }
+  function openAdd(table) {
+    var meta = tableMeta(table), fields = resolveFields(table, meta), sopts = Object.keys(statusMap(table));
+    var body = renderForm(fields, null, sopts);
+    openModal({ title: 'เพิ่มข้อมูล', icon: I.plus, body: body,
+      footer: [footBtn('ยกเลิก', 'btn-ghost', closeModal), footBtn(svg(I.plus, '', 16) + ' เพิ่มข้อมูล', 'btn-primary', function () { commit(table, null, fields, body, 'add'); })] });
+  }
+  function commit(table, row, fields, form, mode) {
+    var smap = statusMap(table), tb = table.querySelector('tbody'), target = row;
+    if (mode === 'add') {
+      var tmpl = tb.querySelector('tr:last-child'); if (!tmpl) { closeModal(); return; }
+      target = tmpl.cloneNode(true); target.classList.remove('flag-red');
+      target.querySelectorAll('input.cbx').forEach(function (c) { c.checked = false; });
+    }
+    fields.forEach(function (f) { var inp = form.querySelector('[data-fk="' + f.key + '"]'); if (inp) writeVal(target, f, inp.value, smap); });
+    if (mode === 'add') { tb.appendChild(target); target.style.background = '#f0fff7'; setTimeout(function () { target.style.background = ''; }, 1000); toast('เพิ่มข้อมูลใหม่เรียบร้อย', 'ok'); }
+    else toast('บันทึกการแก้ไขเรียบร้อย', 'ok');
+    closeModal();
+  }
+
+  // rich impacted-store document view for the K2 inbox
+  function openK2Doc(table, row, meta) {
+    var g = function (l) { return valByLabel(row, meta, l) || '-'; };
+    var docno = g('เลขที่เอกสาร'), store = g('รหัสร้าน'), name = g('ชื่อร้านถูกกระทบ'), region = g('ภาค'),
+      drop = g('ยอดขายที่ลดลง'), comp = g('จำนวนเงินที่ชดเชย'), status = g('สถานะ'), wait = g('รอ (วัน)');
+    var scls = statusMap(table)[status] || 'info';
+    var pairs = [
+      ['เลขที่เอกสาร', esc(docno)], ['สถานะเอกสาร', '<span class="pill ' + scls + '">' + esc(status) + '</span>'],
+      ['รหัสร้านถูกกระทบ', esc(store)], ['ชื่อร้านถูกกระทบ', esc(name)], ['ภาค', esc(region)], ['ประเภทร้าน', 'FR Type B'],
+      ['เจ้าของร้าน', 'นายวีรพล มั่นคง'], ['นิติบุคคล', 'หจก. ' + esc(name)], ['วันที่โอนร้าน', '01/03/2566'],
+      ['ผู้ดำเนินการ', 'Somchai J., Phatcharida P.'],
+      ['ยอดขายที่ลดลง', '<span style="color:#c0392b">' + esc(drop) + '</span>'],
+      ['จำนวนเงินที่ชดเชย', '<span style="color:#16a34a">' + esc(comp) + ' ฿</span>'], ['รอดำเนินการ', esc(wait) + ' วัน']
+    ];
+    var body = cre('div');
+    body.innerHTML =
+      '<div class="doc-meta">' + pairs.map(function (p) { return '<div class="dm"><span class="k">' + p[0] + '</span><span class="v">' + p[1] + '</span></div>'; }).join('') + '</div>' +
+      '<h3 style="font-size:14px;color:#2b3440;margin:18px 0 10px;">ผลการพิจารณา (Decision)</h3>' +
+      '<div class="decisions">' +
+      '<div class="dec approve" data-ack="อนุมัติ (A) · บันทึกบัญชีส่ง SAP" data-kind="ok"><div class="di">' + svg('M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11', '', 20) + '</div><div class="dt">Approve (A)</div><div class="dd">อนุมัติ + บันทึกบัญชี → SAP</div></div>' +
+      '<div class="dec stop" data-ack="หยุดกระบวนการ (S) · End" data-kind="del"><div class="di">' + svg('M10 9v6m4-6v6M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z', '', 20) + '</div><div class="dt">Stop Flow (S)</div><div class="dd">หยุดกระบวนการ (End)</div></div>' +
+      '<div class="dec initial" data-ack="ตั้ง Flow เริ่มต้นค่าชดเชย (I)"><div class="di">' + svg('M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3', '', 20) + '</div><div class="dt">Initial (I)</div><div class="dd">เริ่มต้นค่าชดเชยใหม่</div></div>' +
+      '</div>' +
+      '<div class="chips" style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;"><span class="chip api">/fgiService/confirmDataFromBPM</span><span class="chip file">RT040035_</span></div>';
+    openModal({ lg: true, title: 'เอกสารข้อมูลร้านถูกกระทบ', sub: 'เลขที่ ' + docno + ' · ' + name, icon: I.badge, body: body,
+      footer: [footBtn('ปิด', 'btn-ghost', closeModal), footBtn(svg(I.map, '', 16) + ' เปิดเอกสารเต็ม (แผนที่ / พิจารณา)', 'btn-soft', function () { location.href = 'k2-document.html'; }), footBtn(svg(I.badge, '', 16) + ' ยืนยัน K2', 'btn-primary', function () { toast('ยืนยันข้อมูลกับ BPM (confirmDataFromBPM) สำเร็จ', 'ok'); closeModal(); })] });
   }
 
   /* ---------- init ---------- */

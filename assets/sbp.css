@@ -328,3 +328,22 @@ tr.flag-red td{color:#c0392b;}
 tr.flag-red td:first-child{box-shadow:inset 3px 0 0 #ef4444;}
 
 @media (max-width:1100px){ .charts-row{grid-template-columns:1fr;} .k2-grid{grid-template-columns:1fr;} .flow-phases{grid-template-columns:1fr;} .decisions{grid-template-columns:1fr;} }
+
+/* ===== modal (view / edit / add) ===== */
+.icon-dl{color:var(--teal);} .icon-dl:hover{background:#e1f7f4;}
+.modal-overlay{position:fixed; inset:0; background:rgba(20,30,48,.46); backdrop-filter:blur(2px); display:none; align-items:flex-start; justify-content:center; padding:42px 16px; z-index:120; opacity:0; transition:opacity .2s; overflow:auto;}
+.modal-overlay.show{opacity:1;}
+.modal{background:#fff; border-radius:16px; box-shadow:0 30px 70px rgba(0,0,0,.32); width:100%; max-width:600px; margin:auto; transform:translateY(14px) scale(.985); transition:transform .22s cubic-bezier(.2,.7,.2,1);}
+.modal-overlay.show .modal{transform:none;}
+.modal.lg{max-width:880px;}
+.modal-head{display:flex; align-items:center; gap:12px; padding:17px 22px; border-bottom:1px solid var(--line);}
+.modal-head .mh-ic{width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; background:linear-gradient(135deg,#3b82f6,#2563eb); flex:0 0 auto;}
+.modal-head h3{margin:0; font-size:17px; font-weight:600; color:#222b36;}
+.modal-head .mh-sub{font-size:12.5px; color:var(--muted); margin-top:1px;}
+.modal-close{border:none; background:#f1f5fb; width:34px; height:34px; border-radius:9px; color:#5d6b7a; display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+.modal-close:hover{background:#fdecec; color:var(--danger);}
+.modal-body{padding:20px 22px; max-height:62vh; overflow:auto;}
+.modal-body .form-grid{gap:14px 20px;}
+.modal-foot{display:flex; justify-content:flex-end; gap:10px; padding:15px 22px; border-top:1px solid var(--line); background:#fafbfd; border-radius:0 0 16px 16px; flex-wrap:wrap;}
+@media (prefers-reduced-motion:reduce){ .modal{transform:none!important;} .modal-overlay{transition:none;} }
+@media (max-width:560px){ .modal-body .doc-meta{grid-template-columns:1fr;} }
