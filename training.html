@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>อบรม · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="training" data-nav="modules" data-module="training" data-crumb="อบรม">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">อบรม</h1>
+          <p class="page-sub">หลักสูตรอบรม AP/OP · ลงทะเบียนผู้เข้าอบรม · นำเข้าผลการอบรม (FTS)</p></div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" data-ack="นำเข้าผลการอบรม..."><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> นำเข้าผลอบรม</button>
+          <button class="btn btn-primary" data-add-row="tblTrain"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เปิดหลักสูตร</button>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="si bg-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5ZM6 12v5c0 1 2.7 3 6 3s6-2 6-3v-5"/></svg></div><div><div class="sv num">48</div><div class="sl">หลักสูตรเปิดอบรม</div></div></div>
+        <div class="stat"><div class="si bg-blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8"/></svg></div><div><div class="sv num">1,860</div><div class="sl">ผู้ลงทะเบียนเดือนนี้</div></div></div>
+        <div class="stat"><div class="si bg-teal"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div><div><div class="sv num">1,512</div><div class="sl">อบรมสำเร็จ</div></div></div>
+        <div class="stat"><div class="si bg-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></div><div><div class="sv num">348</div><div class="sl">รออบรม</div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input placeholder="ค้นหารหัส/ชื่อหลักสูตร"></div>
+          <div class="spacer"></div>
+          <button class="btn btn-soft btn-sm" data-ack="ลงทะเบียนผู้เข้าอบรม" data-kind="ok">ลงทะเบียน</button>
+        </div>
+        <div class="table-wrap"><table class="data" id="tblTrain">
+          <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>รหัสหลักสูตร</th><th>ชื่อหลักสูตร</th><th>ประเภท</th><th>ผู้ลงทะเบียน</th><th>วันที่อบรม</th><th>สถานะ</th><th class="col-action">Action</th></tr></thead>
+          <tbody>
+            <tr><td><input type="checkbox" class="cbx"></td><td class="num">TR-OP101</td><td>การบริหารร้านเบื้องต้น</td><td><span class="pill info">OP</span></td><td class="num">120</td><td class="num">18/6/2568</td><td><span class="pill ok">เปิดรับ</span></td><td class="col-action"><button class="icon-btn icon-view" data-ack="ดูหลักสูตร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" data-ack="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td class="num">TR-AP201</td><td>การวิเคราะห์ยอดขายและสต๊อก</td><td><span class="pill violet">AP</span></td><td class="num">86</td><td class="num">20/6/2568</td><td><span class="pill ok">เปิดรับ</span></td><td class="col-action"><button class="icon-btn icon-view" data-ack="ดูหลักสูตร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" data-ack="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td class="num">TR-OP305</td><td>มาตรฐานความสะอาดและบริการ</td><td><span class="pill info">OP</span></td><td class="num">142</td><td class="num">12/6/2568</td><td><span class="pill muted">ปิดรับแล้ว</span></td><td class="col-action"><button class="icon-btn icon-view" data-ack="ดูหลักสูตร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" data-ack="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

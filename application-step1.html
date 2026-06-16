@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ใบสมัครตัวเต็ม [1/3] · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="application-step1" data-nav="application" data-module="recruitment" data-crumb="ใบสมัครตัวเต็ม">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <h1 class="page-title">ใบสมัครตัวเต็ม <span class="step">[1/3]</span></h1>
+        <div class="page-actions">
+          <button class="btn btn-ghost" data-ack="บันทึกแบบร่างเรียบร้อย" data-kind="ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2ZM17 21v-8H7v8M7 3v5h8"/></svg> บันทึกแบบร่าง</button>
+        </div>
+      </div>
+
+      <div class="stepper">
+        <div class="stp active"><span class="dot">1</span><span class="lab">1 · ข้อมูลส่วนตัว</span></div>
+        <div class="bar"></div>
+        <div class="stp"><span class="dot">2</span><span class="lab">2 · ประวัติการทำงาน &amp; ธุรกิจ</span></div>
+        <div class="bar"></div>
+        <div class="stp"><span class="dot">3</span><span class="lab">3 · เอกสาร &amp; ยืนยัน</span></div>
+      </div>
+
+      <h2 class="section-title">ข้อมูลส่วนตัวผู้สมัคร</h2>
+
+      <div class="card">
+        <div class="card-head"><h2>ข้อมูลทั่วไป</h2></div>
+        <div class="form-grid">
+          <div class="field"><label>คำนำหน้า <span class="req">*</span></label><select><option>นาย</option><option>นาง</option><option>นางสาว</option></select></div>
+          <div class="field"><label>เลขบัตรประชาชน <span class="req">*</span></label><input class="num" placeholder="x xxxx xxxxx xx x"></div>
+          <div class="field"><label>ชื่อ (ไทย) <span class="req">*</span></label><input placeholder="ชื่อจริง"></div>
+          <div class="field"><label>นามสกุล (ไทย) <span class="req">*</span></label><input placeholder="นามสกุล"></div>
+          <div class="field"><label>ชื่อ (อังกฤษ)</label><input placeholder="First name"></div>
+          <div class="field"><label>นามสกุล (อังกฤษ)</label><input placeholder="Last name"></div>
+          <div class="field"><label>เพศ</label><select><option>ชาย</option><option>หญิง</option></select></div>
+          <div class="field"><label>วันเกิด</label><input type="text" class="num" placeholder="วว/ดด/ปปปป"></div>
+          <div class="field"><label>สัญชาติ</label><input value="ไทย"></div>
+          <div class="field"><label>เชื้อชาติ</label><input value="ไทย"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>ที่อยู่ &amp; การติดต่อ</h2></div>
+        <div class="form-grid">
+          <div class="field col-2"><label>ที่อยู่ตามทะเบียนบ้าน</label><input placeholder="บ้านเลขที่ / หมู่ / ถนน"></div>
+          <div class="field"><label>จังหวัด</label><input placeholder="เลือกจังหวัด"></div>
+          <div class="field"><label>อำเภอ/เขต</label><input placeholder="เลือกอำเภอ"></div>
+          <div class="field"><label>เบอร์โทรศัพท์ <span class="req">*</span></label><input class="num" placeholder="08x-xxx-xxxx"></div>
+          <div class="field"><label>อีเมล</label><input placeholder="name@email.com"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>ประวัติการศึกษา</h2>
+          <button class="btn btn-primary btn-sm" style="margin-left:auto;" data-add-row="tblEdu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มข้อมูล</button>
+        </div>
+        <div class="table-wrap"><table class="data" id="tblEdu">
+          <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ระดับการศึกษา</th><th>สถาบัน</th><th>สาขาวิชา</th><th>ปีที่จบ</th><th class="col-action">Action</th></tr></thead>
+          <tbody>
+            <tr><td><input type="checkbox" class="cbx"></td><td>ปริญญาตรี</td><td>มหาวิทยาลัยรามคำแหง</td><td>บริหารธุรกิจ</td><td class="num">2553</td><td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="toolbar" style="justify-content:space-between;margin-top:6px;">
+        <button class="btn btn-ghost" data-href="recruitment.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> ยกเลิก</button>
+        <button class="btn btn-primary" data-href="application.html">ถัดไป (2/3) <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

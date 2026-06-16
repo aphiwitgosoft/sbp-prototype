@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ใบสมัครตัวเต็ม [2/3] · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="application" data-nav="application" data-section="work-cpall" data-module="recruitment" data-crumb="ใบสมัครตัวเต็ม">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <h1 class="page-title">ใบสมัครตัวเต็ม <span class="step">[2/3]</span></h1>
+        <div class="page-actions">
+          <button class="btn btn-ghost" data-ack="บันทึกแบบร่างเรียบร้อย" data-kind="ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2ZM17 21v-8H7v8M7 3v5h8"/></svg> บันทึกแบบร่าง</button>
+          <button class="btn-circle" data-ack="พิมพ์ / แสดงตัวอย่างใบสมัคร" aria-label="เครื่องมือ"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></svg></button>
+        </div>
+      </div>
+
+      <div class="stepper">
+        <div class="stp done"><span class="dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="lab">1 · ข้อมูลส่วนตัว</span></div>
+        <div class="bar done"></div>
+        <div class="stp active"><span class="dot">2</span><span class="lab">2 · ประวัติการทำงาน &amp; ธุรกิจ</span></div>
+        <div class="bar"></div>
+        <div class="stp"><span class="dot">3</span><span class="lab">3 · เอกสาร &amp; ยืนยัน</span></div>
+      </div>
+
+      <h2 class="section-title" id="appSubTitle">ประวัติการทำงานและการดำเนินธุรกิจ</h2>
+
+      <!-- ====== SECTION: ประวัติการทำงาน กับ ซีพี ออลล์ (หน้าหลักตามรูป) ====== -->
+      <section data-app-section="work-cpall" data-app-title="ประวัติการทำงานและการดำเนินธุรกิจ">
+        <div class="card">
+          <div class="card-head">
+            <h2>ประวัติการทำงาน กับบริษัท ซีพี ออลล์ จำกัด (มหาชน) เรียงจากอดีตมาถึงปัจจุบัน</h2>
+            <button class="hide-toggle" data-collapsed="0">Hide <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></button>
+          </div>
+
+          <div class="toolbar" data-hideable style="justify-content:flex-end;">
+            <button class="btn btn-primary btn-sm" data-add-row="tblWork"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มข้อมูล</button>
+            <button class="btn btn-muted btn-sm" data-ack="เลือกแถวที่ต้องการลบก่อน">‌<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg> ลบข้อมูล</button>
+          </div>
+
+          <div class="table-wrap" data-hideable>
+            <table class="data" id="tblWork">
+              <thead>
+                <tr>
+                  <th class="col-chk"><input type="checkbox" class="cbx" aria-label="เลือกทั้งหมด"></th>
+                  <th><span class="th-inner">วันที่เริ่มงานในตำแหน่ง <span class="sort"><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 0 11 7H0z"/></svg><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 7 0 0h11z"/></svg></span></span></th>
+                  <th><span class="th-inner">วันสิ้นสุดงานในตำแหน่ง <span class="sort"><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 0 11 7H0z"/></svg><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 7 0 0h11z"/></svg></span></span></th>
+                  <th><span class="th-inner">อายุงานในตำแหน่ง <span class="sort"><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 0 11 7H0z"/></svg><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 7 0 0h11z"/></svg></span></span></th>
+                  <th><span class="th-inner">ตำแหน่ง <span class="sort"><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 0 11 7H0z"/></svg><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 7 0 0h11z"/></svg></span></span></th>
+                  <th><span class="th-inner">หน้าที่ <span class="sort"><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 0 11 7H0z"/></svg><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 7 0 0h11z"/></svg></span></span></th>
+                  <th><span class="th-inner">ผู้บังคับบัญชา <span class="sort"><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 0 11 7H0z"/></svg><svg width="11" height="7" viewBox="0 0 11 7" fill="currentColor"><path d="M5.5 7 0 0h11z"/></svg></span></span></th>
+                  <th class="col-action">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><input type="checkbox" class="cbx"></td>
+                  <td class="num">5/2/2558</td><td class="num">1/6/2558</td><td class="num">0</td>
+                  <td>พนักงานร้าน (บริษัท/SBP)</td><td>พนง.P/T</td><td>ผู้จัดการ</td>
+                  <td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไขประวัติการทำงาน" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
+                </tr>
+                <tr>
+                  <td><input type="checkbox" class="cbx"></td>
+                  <td class="num">1/6/2558</td><td class="num">25/7/2562</td><td class="num">4</td>
+                  <td>ปริญญาตรี</td><td>ผช.ผจก.ร้าน2</td><td>ผู้จัดการ</td>
+                  <td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไขประวัติการทำงาน" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
+                </tr>
+                <tr>
+                  <td><input type="checkbox" class="cbx"></td>
+                  <td class="num">21/8/2562</td><td class="num">1/10/2566</td><td class="num">4</td>
+                  <td>ปริญญาตรี</td><td>บริหารจัดการร้าน</td><td>FC</td>
+                  <td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไขประวัติการทำงาน" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
+                </tr>
+                <tr>
+                  <td><input type="checkbox" class="cbx"></td>
+                  <td class="num">1/10/2566</td><td class="num">1/8/2568</td><td class="num">2</td>
+                  <td>ปริญญาตรี</td><td>บริหารจัดการ สื่อสาร วาง...</td><td>ผจก.เขต</td>
+                  <td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไขประวัติการทำงาน" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="toolbar" data-hideable style="justify-content:flex-end;margin-top:18px;margin-bottom:0;">
+            <button class="btn btn-primary btn-sm" data-add-row="tblWork"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มข้อมูล</button>
+            <button class="btn btn-muted btn-sm" data-ack="เลือกแถวที่ต้องการลบก่อน"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg> ลบข้อมูล</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== SECTION: ประวัติฐานะทางการเงิน ====== -->
+      <section data-app-section="finance-hist" data-app-title="ประวัติฐานะทางการเงิน" hidden>
+        <div class="card">
+          <div class="card-head"><h2>ประวัติฐานะทางการเงิน</h2></div>
+          <div class="form-grid">
+            <div class="field"><label>รายได้รวมต่อเดือน (บาท)</label><input class="num" placeholder="0.00"></div>
+            <div class="field"><label>รายจ่ายรวมต่อเดือน (บาท)</label><input class="num" placeholder="0.00"></div>
+            <div class="field"><label>เงินออม / เงินฝาก (บาท)</label><input class="num" placeholder="0.00"></div>
+            <div class="field"><label>ภาระหนี้สินคงเหลือ (บาท)</label><input class="num" placeholder="0.00"></div>
+            <div class="field col-2"><label>แหล่งที่มาของเงินลงทุน</label><input placeholder="เช่น เงินออม / กู้ธนาคาร / ผู้สนับสนุน"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== SECTION: ประสบการณ์ทำงานที่ผ่านมา ====== -->
+      <section data-app-section="work-past" data-app-title="ประสบการณ์ทำงานที่ผ่านมา" hidden>
+        <div class="card">
+          <div class="card-head"><h2>ประสบการณ์ทำงานที่ผ่านมา (นอกบริษัท ซีพี ออลล์)</h2>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" data-add-row="tblPast"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มข้อมูล</button>
+          </div>
+          <div class="table-wrap"><table class="data" id="tblPast">
+            <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ชื่อสถานประกอบการ</th><th>ตำแหน่ง</th><th>ระยะเวลา</th><th>เงินเดือน</th><th>สาเหตุที่ออก</th><th class="col-action">Action</th></tr></thead>
+            <tbody>
+              <tr><td><input type="checkbox" class="cbx"></td><td>บจก. ไทยเจริญพาณิชย์</td><td>พนักงานขาย</td><td class="num">2554–2557</td><td class="num">15,000</td><td>เปลี่ยนสายงาน</td><td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <!-- ====== SECTION: ประวัติครอบครัว ====== -->
+      <section data-app-section="family" data-app-title="ประวัติครอบครัว" hidden>
+        <div class="card">
+          <div class="card-head"><h2>ประวัติครอบครัว</h2>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" data-add-row="tblFamily"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มข้อมูล</button>
+          </div>
+          <div class="table-wrap"><table class="data" id="tblFamily">
+            <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ความสัมพันธ์</th><th>ชื่อ-สกุล</th><th>อายุ</th><th>อาชีพ</th><th>เบอร์ติดต่อ</th><th class="col-action">Action</th></tr></thead>
+            <tbody>
+              <tr><td><input type="checkbox" class="cbx"></td><td>คู่สมรส</td><td>นางสาวพิมพ์ใจ ใจดี</td><td class="num">36</td><td>ค้าขาย</td><td class="num">08x-xxx-xxxx</td><td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <!-- ====== SECTION: ประวัติการดำเนินธุรกิจ ====== -->
+      <section data-app-section="business" data-app-title="ประวัติการดำเนินธุรกิจ" hidden>
+        <div class="card">
+          <div class="card-head"><h2>ประวัติการดำเนินธุรกิจ (กิจการที่เคย/กำลังดำเนินการ)</h2>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" data-add-row="tblBiz"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มข้อมูล</button>
+          </div>
+          <div class="table-wrap"><table class="data" id="tblBiz">
+            <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ชื่อกิจการ</th><th>ประเภทธุรกิจ</th><th>ทุนจดทะเบียน</th><th>สถานะ</th><th>ปีที่เริ่ม</th><th class="col-action">Action</th></tr></thead>
+            <tbody>
+              <tr><td><input type="checkbox" class="cbx"></td><td>ร้านสะดวกซื้อ ใจดีมาร์ท</td><td>ค้าปลีก</td><td class="num">500,000</td><td><span class="pill ok">ดำเนินการอยู่</span></td><td class="num">2560</td><td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <!-- ====== SECTION: ประวัติฐานะทางการเงินของผู้สมัคร ====== -->
+      <section data-app-section="finance-app" data-app-title="ประวัติฐานะทางการเงินของผู้สมัคร" hidden>
+        <div class="card">
+          <div class="card-head"><h2>ประวัติฐานะทางการเงินของผู้สมัคร</h2></div>
+          <div class="form-grid">
+            <div class="field"><label>เงินลงทุนที่เตรียมไว้ (บาท)</label><input class="num" placeholder="0.00"></div>
+            <div class="field"><label>วงเงินสินเชื่อที่ได้รับอนุมัติ (บาท)</label><input class="num" placeholder="0.00"></div>
+            <div class="field"><label>ธนาคารหลักที่ใช้บริการ</label><input placeholder="เช่น ธ.กสิกรไทย"></div>
+            <div class="field"><label>ประวัติเครดิต (NCB)</label><select><option>ปกติ</option><option>เคยมีประวัติค้างชำระ</option></select></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== SECTION: ทรัพย์สิน-ภาระค่าใช้จ่ายของผู้สมัคร ====== -->
+      <section data-app-section="asset-app" data-app-title="ทรัพย์สิน-ภาระค่าใช้จ่ายของผู้สมัคร" hidden>
+        <div class="card">
+          <div class="card-head"><h2>ทรัพย์สิน-ภาระค่าใช้จ่ายของผู้สมัคร</h2>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" data-add-row="tblAssetApp"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มข้อมูล</button>
+          </div>
+          <div class="table-wrap"><table class="data" id="tblAssetApp">
+            <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ประเภท</th><th>รายการ</th><th>มูลค่า/ภาระ (บาท)</th><th>หมายเหตุ</th><th class="col-action">Action</th></tr></thead>
+            <tbody>
+              <tr><td><input type="checkbox" class="cbx"></td><td><span class="pill info">ทรัพย์สิน</span></td><td>บ้านพร้อมที่ดิน</td><td class="num">2,800,000</td><td>ปลอดภาระ</td><td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+              <tr><td><input type="checkbox" class="cbx"></td><td><span class="pill wait">ภาระ</span></td><td>สินเชื่อรถยนต์</td><td class="num">380,000</td><td>ผ่อน 18 งวด</td><td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <!-- ====== SECTION: ข้อมูลภาระค่าใช้จ่าย ครอบครัว/ส่วนตัว ====== -->
+      <section data-app-section="expense-family" data-app-title="ข้อมูลภาระค่าใช้จ่าย ครอบครัว/ส่วนตัว" hidden>
+        <div class="card">
+          <div class="card-head"><h2>ข้อมูลภาระค่าใช้จ่าย ครอบครัว / ส่วนตัว (ต่อเดือน)</h2></div>
+          <div class="form-grid">
+            <div class="field"><label>ค่าใช้จ่ายในครัวเรือน</label><input class="num" placeholder="0.00"></div>
+            <div class="field"><label>ค่าเล่าเรียนบุตร</label><input class="num" placeholder="0.00"></div>
+            <div class="field"><label>ค่าผ่อนชำระหนี้</label><input class="num" placeholder="0.00"></div>
+            <div class="field"><label>ค่าใช้จ่ายอื่น ๆ</label><input class="num" placeholder="0.00"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== SECTION: ทรัพย์สิน-ภาระค่าใช้จ่ายของผู้อื่นที่เกี่ยวข้อง ====== -->
+      <section data-app-section="asset-other" data-app-title="ทรัพย์สิน-ภาระค่าใช้จ่ายของผู้อื่นที่เกี่ยวข้อง" hidden>
+        <div class="card">
+          <div class="card-head"><h2>ทรัพย์สิน-ภาระค่าใช้จ่ายของผู้อื่นที่เกี่ยวข้อง (ผู้ค้ำ/ผู้ร่วมลงทุน)</h2>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" data-add-row="tblAssetOther"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มข้อมูล</button>
+          </div>
+          <div class="table-wrap"><table class="data" id="tblAssetOther">
+            <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ชื่อ-สกุล</th><th>ความสัมพันธ์</th><th>ประเภท</th><th>มูลค่า/ภาระ (บาท)</th><th class="col-action">Action</th></tr></thead>
+            <tbody>
+              <tr><td><input type="checkbox" class="cbx"></td><td>นายสมศักดิ์ ใจดี</td><td>บิดา</td><td>ผู้ค้ำประกัน</td><td class="num">1,000,000</td><td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <!-- ====== SECTION: แสดงความคิดเห็น ====== -->
+      <section data-app-section="comment" data-app-title="แสดงความคิดเห็น" hidden>
+        <div class="card">
+          <div class="card-head"><h2>แสดงความคิดเห็น (เจ้าหน้าที่สรรหา)</h2></div>
+          <div class="form-grid">
+            <div class="field col-2"><label>ความเห็นต่อคุณสมบัติผู้สมัคร</label><textarea rows="4" placeholder="บันทึกความคิดเห็น..."></textarea></div>
+            <div class="field"><label>ผลการพิจารณา</label><select><option>ผ่านเกณฑ์เบื้องต้น</option><option>รอข้อมูลเพิ่มเติม</option><option>ไม่ผ่านเกณฑ์</option></select></div>
+            <div class="field"><label>ผู้บันทึก</label><input value="Phatcharida P." readonly></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== STEP NAV ====== -->
+      <div class="toolbar" style="justify-content:space-between;margin-top:6px;">
+        <button class="btn btn-ghost" data-step="1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> ย้อนกลับ (1/3)</button>
+        <button class="btn btn-primary" data-step="3">ถัดไป (3/3) <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

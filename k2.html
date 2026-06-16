@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ยืนยัน K2 / BPM · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="k2" data-nav="modules" data-module="k2" data-crumb="ยืนยัน K2 / BPM">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">ยืนยัน K2 / BPM</h1>
+          <p class="page-sub">ระบบประกันรายได้ฝั่ง K2 · เอกสารข้อมูลร้านถูกกระทบ · ยืนยันและปรับปรุงค่าชดเชย (confirmDataFromBPM)</p></div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" data-href="fgi-flow.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM19 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 8v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3 3"/></svg> ผังกระบวนการ</button>
+          <button class="btn btn-primary" data-ack="ยืนยันข้อมูลกับ BPM (confirmDataFromBPM) สำเร็จ" data-kind="ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3Z"/></svg> ยืนยัน K2</button>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="si bg-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></div><div><div class="sv num">23</div><div class="sl">รอท่านดำเนินการ</div></div></div>
+        <div class="stat"><div class="si bg-blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6H9ZM14 3v6h6"/></svg></div><div><div class="sv num">486</div><div class="sl">เอกสารทั้งหมด (ปีนี้)</div></div></div>
+        <div class="stat"><div class="si bg-violet"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3Z"/></svg></div><div><div class="sv num">58</div><div class="sl">รอ K2 ยืนยัน</div></div></div>
+        <div class="stat"><div class="si bg-rose"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div><div><div class="sv num">4</div><div class="sl">ข้อมูลผิดปกติ (&lt;60 วัน)</div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="tabs" data-tabs>
+          <div class="tab active" data-tab="waiting">รอท่านดำเนินการ</div>
+          <div class="tab" data-tab="related">เอกสารที่เกี่ยวข้องกับท่าน</div>
+          <div class="tab" data-tab="report">รายงานสรุปสถานะ</div>
+        </div>
+
+        <!-- pane: waiting -->
+        <div data-tabpane="waiting">
+          <div class="toolbar">
+            <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input placeholder="ค้นหาเลขที่เอกสาร / รหัสร้าน / ชื่อร้าน"></div>
+            <div class="spacer"></div>
+            <span class="pill fail" style="font-weight:600;">แดง = ยอดขายไม่ครบ 60 วัน</span>
+          </div>
+          <div class="table-wrap"><table class="data" id="tblK2">
+            <thead><tr><th>ครั้งที่</th><th>เลขที่เอกสาร</th><th>รหัสร้าน</th><th>ชื่อร้านถูกกระทบ</th><th>ภาค</th><th>ยอดขายที่ลดลง</th><th>จำนวนเงินที่ชดเชย</th><th>สถานะ</th><th>รอ (วัน)</th><th class="col-action">Action</th></tr></thead>
+            <tbody>
+              <tr><td class="num">1</td><td class="num">2569/00123</td><td class="num">00788</td><td>รัตนอุทิศ ซ.13</td><td>RS</td><td class="num">12.45%</td><td class="num">48,200.00</td><td><span class="pill wait">รอตรวจสอบ (STA)</span></td><td class="num">2</td><td class="col-action"><button class="icon-btn icon-view" data-ack="เปิดเอกสาร 2569/00123"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button></td></tr>
+              <tr class="flag-red"><td class="num">2</td><td class="num">2569/00131</td><td class="num">01045</td><td>บางบัวทอง ก.ม.8</td><td>RW</td><td class="num">9.80%</td><td class="num">31,500.00</td><td><span class="pill fail">ข้อมูล &lt; 60 วัน</span></td><td class="num">5</td><td class="col-action"><button class="icon-btn icon-view" data-ack="เปิดเอกสาร 2569/00131"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button></td></tr>
+              <tr><td class="num">3</td><td class="num">2569/00140</td><td class="num">00256</td><td>ปากเกร็ด สถานี</td><td>RN</td><td class="num">15.02%</td><td class="num">66,400.00</td><td><span class="pill violet">รอ K2 ยืนยัน</span></td><td class="num">1</td><td class="col-action"><button class="icon-btn icon-view" data-ack="เปิดเอกสาร 2569/00140"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button></td></tr>
+              <tr><td class="num">4</td><td class="num">2569/00152</td><td class="num">01133</td><td>แคราย พลาซ่า</td><td>RW</td><td class="num">7.20%</td><td class="num">25,650.00</td><td><span class="pill ok">อนุมัติแล้ว</span></td><td class="num">0</td><td class="col-action"><button class="icon-btn icon-view" data-ack="เปิดเอกสาร 2569/00152"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <!-- pane: related -->
+        <div data-tabpane="related" hidden>
+          <div class="table-wrap"><table class="data">
+            <thead><tr><th>ครั้งที่</th><th>เลขที่เอกสาร</th><th>รหัสร้าน</th><th>ชื่อร้านถูกกระทบ</th><th>ภาค</th><th>จำนวนเงินที่ชดเชย</th><th>สถานะ</th><th class="col-action">Action</th></tr></thead>
+            <tbody>
+              <tr><td class="num">1</td><td class="num">2569/00098</td><td class="num">00512</td><td>นนทบุรี ท่าน้ำ</td><td>RN</td><td class="num">54,300.00</td><td><span class="pill ok">ยืนยัน K2 แล้ว</span></td><td class="col-action"><button class="icon-btn icon-view" data-ack="เปิดเอกสาร 2569/00098"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button></td></tr>
+              <tr><td class="num">2</td><td class="num">2569/00076</td><td class="num">00903</td><td>บางใหญ่ ซิตี้</td><td>RW</td><td class="num">61,800.00</td><td><span class="pill info">ปรับปรุง Adjust</span></td><td class="col-action"><button class="icon-btn icon-view" data-ack="เปิดเอกสาร 2569/00076"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button></td></tr>
+              <tr><td class="num">3</td><td class="num">2569/00041</td><td class="num">00188</td><td>รัตนาธิเบศร์</td><td>RN</td><td class="num">37,050.00</td><td><span class="pill muted">ปิดงาน (End)</span></td><td class="col-action"><button class="icon-btn icon-view" data-ack="เปิดเอกสาร 2569/00041"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <!-- pane: report -->
+        <div data-tabpane="report" hidden>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center;">
+            <div class="donut-wrap"><div data-chart="donut" data-values="58,214,9,52,153" data-colors="#f59e0b,#16a34a,#ef4444,#7c3aed,#94a3b8" data-center="เอกสาร"></div></div>
+            <div class="legend-row">
+              <div class="lg"><i style="background:#f59e0b"></i> รอ K2 ยืนยัน <b>58</b></div>
+              <div class="lg"><i style="background:#16a34a"></i> อนุมัติ/บันทึกบัญชี <b>214</b></div>
+              <div class="lg"><i style="background:#ef4444"></i> ข้อมูลผิดปกติ <b>9</b></div>
+              <div class="lg"><i style="background:#7c3aed"></i> ปรับปรุง Adjust <b>52</b></div>
+              <div class="lg"><i style="background:#94a3b8"></i> ปิดงาน (End) <b>153</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== opened document ===== -->
+      <h2 class="section-title">เอกสารข้อมูลร้านถูกกระทบ · เลขที่ 2569/00123</h2>
+      <div class="k2-grid">
+
+        <div class="card" style="margin:0;">
+          <div class="card-head"><h2>ข้อมูลร้านถูกกระทบ</h2><span class="pill wait" style="margin-left:auto;">รอตรวจสอบ (STA)</span></div>
+          <div class="doc-meta">
+            <div class="dm"><span class="k">เลขที่เอกสาร</span><span class="v num">2569/00123</span></div>
+            <div class="dm"><span class="k">วันที่สร้าง</span><span class="v num">12/06/2569</span></div>
+            <div class="dm"><span class="k">รหัสร้านถูกกระทบ</span><span class="v num">00788</span></div>
+            <div class="dm"><span class="k">ชื่อร้านถูกกระทบ</span><span class="v">รัตนอุทิศ ซ.13</span></div>
+            <div class="dm"><span class="k">ภาค</span><span class="v">RS</span></div>
+            <div class="dm"><span class="k">ประเภทร้าน</span><span class="v">FR Type B</span></div>
+            <div class="dm"><span class="k">เจ้าของร้าน</span><span class="v">นายวีรพล มั่นคง</span></div>
+            <div class="dm"><span class="k">นิติบุคคล</span><span class="v">หจก. รัตนอุทิศพาณิชย์</span></div>
+            <div class="dm"><span class="k">วันที่โอนร้าน</span><span class="v num">01/03/2566</span></div>
+            <div class="dm"><span class="k">ผู้ดำเนินการ</span><span class="v">Somchai J., Phatcharida P.</span></div>
+            <div class="dm"><span class="k">ยอดขายที่ลดลง</span><span class="v num" style="color:#c0392b;">12.45%</span></div>
+            <div class="dm"><span class="k">จำนวนเงินที่ชดเชย</span><span class="v num" style="color:#16a34a;">48,200.00 ฿</span></div>
+          </div>
+
+          <h3 style="font-size:14px;color:#2b3440;margin:20px 0 12px;">ผลการพิจารณา (Decision)</h3>
+          <div class="decisions">
+            <div class="dec approve" data-ack="อนุมัติ (A) · บันทึกบัญชีส่ง SAP" data-kind="ok">
+              <div class="di"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+              <div class="dt">Approve (A)</div><div class="dd">อนุมัติ + บันทึกบัญชี → SAP</div>
+            </div>
+            <div class="dec stop" data-ack="หยุดกระบวนการ (S) · End" data-kind="del">
+              <div class="di"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 9v6m4-6v6M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/></svg></div>
+              <div class="dt">Stop Flow (S)</div><div class="dd">หยุดกระบวนการ (End)</div>
+            </div>
+            <div class="dec initial" data-ack="ตั้ง Flow เริ่มต้นค่าชดเชย (I)">
+              <div class="di"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg></div>
+              <div class="dt">Initial (I)</div><div class="dd">เริ่มต้นค่าชดเชยใหม่</div>
+            </div>
+          </div>
+          <div class="chips" style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+            <span class="chip api">/fgiService/confirmDataFromBPM</span>
+            <span class="chip api">/fgiService/updateCompensateFromFS</span>
+            <span class="chip file">RT040035_</span>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0;">
+          <div class="card-head"><h2>สถานะเอกสาร &amp; การส่งอีเมล</h2><span class="pulse-dot" style="margin-left:auto;margin-top:6px;"></span></div>
+          <div class="timeline">
+            <div class="tl-item done"><span class="tl-dot"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><div class="tl-t">สร้างเอกสารที่ FS</div><div class="tl-meta">11/06/2569 · จากระบบ SBP Statement</div></div>
+            <div class="tl-item done"><span class="tl-dot"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><div class="tl-t">ฝ่าย SBP DSA ดำเนินการ</div><div class="tl-meta">Manager Franchise (SectionCode 06)</div><span class="tl-mail"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4zM22 6l-10 7L2 6"/></svg> ส่งอีเมลแจ้ง Step ถัดไป</span></div>
+            <div class="tl-item active"><span class="tl-dot"></span><div class="tl-t">ตรวจสอบ &amp; อนุมัติ (STA)</div><div class="tl-meta">รอผลการตัดสินใจ A / S / I</div></div>
+            <div class="tl-item"><span class="tl-dot"></span><div class="tl-t">ยืนยัน K2 (confirmDataFromBPM)</div><div class="tl-meta">ดึงข้อมูลจาก BPM + บันทึกสถานะ</div></div>
+            <div class="tl-item"><span class="tl-dot"></span><div class="tl-t">ปรับปรุงค่าชดเชย (Adjust)</div><div class="tl-meta">ขั้นตอนเสริม (Optional)</div></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          <div style="font-size:13.5px;color:#45525f;line-height:1.7;">
+            <b style="color:#2b3440;">หมายเหตุการทำงาน:</b> ระบบรับข้อมูลจากทีม Store Chain Unit เป็น text file รอบ <b>17:00 ของทุกวัน</b> ผ่าน Batch job (ไม่นำเข้าโดยตรงจาก K2) · ร้านที่ยอดขายไม่ครบ 60 วันจะแสดงเป็น<span style="color:#c0392b;font-weight:600;">สีแดง</span> · หลังตัดสินใจ Approve (A) ระบบบันทึกบัญชีส่งไปยัง SAP และยืนยันผ่าน K2 ด้วย <code>confirmDataFromBPM</code>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

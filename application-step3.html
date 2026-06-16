@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ใบสมัครตัวเต็ม [3/3] · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="application-step3" data-nav="application" data-module="recruitment" data-crumb="ใบสมัครตัวเต็ม">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <h1 class="page-title">ใบสมัครตัวเต็ม <span class="step">[3/3]</span></h1>
+        <div class="page-actions">
+          <button class="btn btn-ghost" data-ack="บันทึกแบบร่างเรียบร้อย" data-kind="ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2ZM17 21v-8H7v8M7 3v5h8"/></svg> บันทึกแบบร่าง</button>
+        </div>
+      </div>
+
+      <div class="stepper">
+        <div class="stp done"><span class="dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="lab">1 · ข้อมูลส่วนตัว</span></div>
+        <div class="bar done"></div>
+        <div class="stp done"><span class="dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="lab">2 · ประวัติการทำงาน &amp; ธุรกิจ</span></div>
+        <div class="bar done"></div>
+        <div class="stp active"><span class="dot">3</span><span class="lab">3 · เอกสาร &amp; ยืนยัน</span></div>
+      </div>
+
+      <h2 class="section-title">เอกสารแนบ &amp; ยืนยันการสมัคร</h2>
+
+      <div class="card">
+        <div class="card-head"><h2>เอกสารประกอบการสมัคร</h2><span class="card-head" style="margin:0;"></span></div>
+        <div class="table-wrap"><table class="data" id="tblDocs">
+          <thead><tr><th>เอกสาร</th><th>สถานะ</th><th>ไฟล์</th><th class="col-action">จัดการ</th></tr></thead>
+          <tbody>
+            <tr><td>สำเนาบัตรประชาชน</td><td><span class="pill ok">แนบแล้ว</span></td><td class="num">idcard.pdf</td><td class="col-action"><button class="btn btn-soft btn-sm" data-ack="อัปโหลดไฟล์ (ตัวอย่าง)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> อัปโหลด</button></td></tr>
+            <tr><td>สำเนาทะเบียนบ้าน</td><td><span class="pill ok">แนบแล้ว</span></td><td class="num">house.pdf</td><td class="col-action"><button class="btn btn-soft btn-sm" data-ack="อัปโหลดไฟล์ (ตัวอย่าง)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> อัปโหลด</button></td></tr>
+            <tr><td>หลักฐานการเงิน (Statement ย้อนหลัง 6 เดือน)</td><td><span class="pill wait">รอแนบ</span></td><td class="num">—</td><td class="col-action"><button class="btn btn-soft btn-sm" data-ack="อัปโหลดไฟล์ (ตัวอย่าง)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> อัปโหลด</button></td></tr>
+            <tr><td>รูปถ่ายหน้าตรง</td><td><span class="pill ok">แนบแล้ว</span></td><td class="num">photo.jpg</td><td class="col-action"><button class="btn btn-soft btn-sm" data-ack="อัปโหลดไฟล์ (ตัวอย่าง)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> อัปโหลด</button></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>สรุปการตรวจสอบ</h2></div>
+        <div class="form-grid">
+          <div class="field"><label>ขั้นที่ 1 · ข้อมูลส่วนตัว</label><div><span class="pill ok">ครบถ้วน</span></div></div>
+          <div class="field"><label>ขั้นที่ 2 · ประวัติการทำงาน &amp; ธุรกิจ</label><div><span class="pill ok">ครบถ้วน</span></div></div>
+          <div class="field"><label>เอกสารแนบ</label><div><span class="pill wait">ขาด 1 รายการ</span></div></div>
+          <div class="field"><label>ผลการตรวจ Blacklist/NCB</label><div><span class="pill ok">ผ่าน</span></div></div>
+        </div>
+        <label style="display:flex;gap:10px;align-items:flex-start;margin-top:18px;color:#45525f;font-size:13.5px;cursor:pointer;">
+          <input type="checkbox" class="cbx" style="margin-top:1px;"> ข้าพเจ้าขอรับรองว่าข้อมูลทั้งหมดเป็นความจริง และยินยอมให้บริษัทตรวจสอบข้อมูลตามที่ระบุไว้ในใบสมัคร
+        </label>
+      </div>
+
+      <div class="toolbar" style="justify-content:space-between;margin-top:6px;">
+        <button class="btn btn-ghost" data-href="application.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg> ย้อนกลับ (2/3)</button>
+        <button class="btn btn-primary" data-ack="ส่งใบสมัครเข้าสู่ขั้นตอนพิจารณาเรียบร้อย" data-kind="ok">ส่งใบสมัคร <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

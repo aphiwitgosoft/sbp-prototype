@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สรรหา &amp; ใบสมัคร · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="recruitment" data-nav="modules" data-module="recruitment" data-crumb="สรรหา &amp; ใบสมัคร">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div>
+          <h1 class="page-title">สรรหา &amp; ใบสมัคร</h1>
+          <p class="page-sub">รายชื่อผู้สมัครเป็น Store Business Partner · ใบสมัครออนไลน์และตัวเต็ม (FMS · CRM)</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" data-ack="กำลังสร้างรายงานใบสมัครออนไลน์ (PDF)..."><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> ออกรายงาน</button>
+          <button class="btn btn-primary" data-href="application.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มผู้สมัคร</button>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="si bg-blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6"/></svg></div><div><div class="sv num">128</div><div class="sl">ผู้สมัครใหม่</div></div></div>
+        <div class="stat"><div class="si bg-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></div><div><div class="sv num">46</div><div class="sl">รอสัมภาษณ์</div></div></div>
+        <div class="stat"><div class="si bg-violet"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 11l-3 3-2-2"/></svg></div><div><div class="sv num">73</div><div class="sl">Step Promote</div></div></div>
+        <div class="stat"><div class="si bg-rose"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div><div><div class="sv num">5</div><div class="sl">Blacklist</div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="tabs" data-tabs>
+          <div class="tab active" data-tab="all">ทั้งหมด</div>
+          <div class="tab" data-tab="new">ผู้สมัครใหม่</div>
+          <div class="tab" data-tab="interview">รอสัมภาษณ์</div>
+          <div class="tab" data-tab="promote">Step Promote</div>
+          <div class="tab" data-tab="blacklist">Blacklist</div>
+        </div>
+
+        <div class="toolbar">
+          <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input placeholder="ค้นหาชื่อ / เลขบัตร / รหัสผู้สมัคร"></div>
+          <div class="spacer"></div>
+          <button class="btn btn-muted btn-sm" data-ack="ตัวกรอง (ตัวอย่าง)">ตัวกรอง</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data" id="tblApplicants">
+            <thead>
+              <tr>
+                <th class="col-chk"><input type="checkbox" class="cbx" aria-label="เลือกทั้งหมด"></th>
+                <th>รหัสผู้สมัคร</th>
+                <th>ชื่อ-สกุล</th>
+                <th>เลขบัตรประชาชน</th>
+                <th>ประเภทร้าน</th>
+                <th>สถานะ</th>
+                <th>วันที่สมัคร</th>
+                <th class="col-action">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><input type="checkbox" class="cbx"></td>
+                <td class="num">SBP-680112</td>
+                <td>นายสมชาย ใจดี</td>
+                <td class="num">1 1010 02345 67 8</td>
+                <td>OP (ลงทุนเอง)</td>
+                <td><span class="pill info">ผู้สมัครใหม่</span></td>
+                <td class="num">12/6/2568</td>
+                <td class="col-action">
+                  <button class="icon-btn icon-view" data-href="application.html" aria-label="ดูใบสมัคร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button>
+                  <button class="icon-btn icon-edit" data-href="application.html" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                  <button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="cbx"></td>
+                <td class="num">SBP-680108</td>
+                <td>นางสาวมาลี ศรีสุข</td>
+                <td class="num">3 1099 00112 23 4</td>
+                <td>SBP (บริษัทร่วมลงทุน)</td>
+                <td><span class="pill wait">รอสัมภาษณ์</span></td>
+                <td class="num">10/6/2568</td>
+                <td class="col-action">
+                  <button class="icon-btn icon-view" data-href="application.html" aria-label="ดูใบสมัคร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button>
+                  <button class="icon-btn icon-edit" data-href="application.html" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                  <button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="cbx"></td>
+                <td class="num">SBP-679920</td>
+                <td>นายวีรพล มั่นคง</td>
+                <td class="num">1 5005 01234 56 7</td>
+                <td>OP (ลงทุนเอง)</td>
+                <td><span class="pill ok">ผ่านสัมภาษณ์</span></td>
+                <td class="num">2/6/2568</td>
+                <td class="col-action">
+                  <button class="icon-btn icon-view" data-href="application.html" aria-label="ดูใบสมัคร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button>
+                  <button class="icon-btn icon-edit" data-href="application.html" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                  <button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="cbx"></td>
+                <td class="num">SBP-679845</td>
+                <td>นางกานดา พูนผล</td>
+                <td class="num">3 1020 99887 11 0</td>
+                <td>SBP (บริษัทร่วมลงทุน)</td>
+                <td><span class="pill violet">Step Promote</span></td>
+                <td class="num">28/5/2568</td>
+                <td class="col-action">
+                  <button class="icon-btn icon-view" data-href="application.html" aria-label="ดูใบสมัคร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button>
+                  <button class="icon-btn icon-edit" data-href="application.html" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                  <button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+                </td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="cbx"></td>
+                <td class="num">SBP-679710</td>
+                <td>นายธนกร แสงทอง</td>
+                <td class="num">1 1015 33221 09 8</td>
+                <td>OP (ลงทุนเอง)</td>
+                <td><span class="pill fail">Blacklist</span></td>
+                <td class="num">19/5/2568</td>
+                <td class="col-action">
+                  <button class="icon-btn icon-view" data-href="application.html" aria-label="ดูใบสมัคร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button>
+                  <button class="icon-btn icon-edit" data-href="application.html" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                  <button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

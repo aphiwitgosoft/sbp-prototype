@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>หน้าหลัก · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="home" data-nav="modules" data-module="home">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <section class="hero">
+        <svg class="hero-mark" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.1"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5"/></svg>
+        <h1>สวัสดี, คุณภัชริดา</h1>
+        <p>ระบบบริหารจัดการ Store Business Partner (SBP) — ภาพรวมงานสรรหา บัญชีแฟรนไชส์ ประกันรายได้ กำลังคน และงานอนุมัติ ของบริษัท ซีพี ออลล์ จำกัด (มหาชน)</p>
+        <div class="hero-actions">
+          <button class="btn btn-light" data-href="fgi-flow.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM19 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 8v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3 3"/></svg> ผังกระบวนการ FGI</button>
+          <button class="btn btn-ghost" data-href="k2.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/></svg> งาน K2 / BPM</button>
+        </div>
+      </section>
+
+      <div class="stat-grid">
+        <div class="stat">
+          <div class="si bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6"/></svg></div>
+          <div><div class="sv num">128</div><div class="sl">ใบสมัครรอตรวจสอบ</div></div>
+        </div>
+        <div class="stat">
+          <div class="si bg-teal"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3ZM9 12l2 2 4-4"/></svg></div>
+          <div><div class="sv num">342</div><div class="sl">สาขาประกันรายได้เดือนนี้</div></div>
+        </div>
+        <div class="stat">
+          <div class="si bg-amber"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/></svg></div>
+          <div><div class="sv num">12,480</div><div class="sl">กำลังคนปฏิบัติงาน</div></div>
+        </div>
+        <div class="stat">
+          <div class="si bg-rose"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+          <div><div class="sv num">37</div><div class="sl">งานรออนุมัติ (Workflow)</div></div>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>ยอดชดเชยประกันรายได้รายเดือน</h3>
+          <div class="csub">หน่วย: ล้านบาท · 8 เดือนล่าสุด</div>
+          <div data-chart="bar" data-values="5.2,6.1,5.8,7.4,6.9,8.0,7.6,8.42" data-labels="พ.ย.,ธ.ค.,ม.ค.,ก.พ.,มี.ค.,เม.ย.,พ.ค.,มิ.ย."></div>
+        </div>
+        <div class="chart-card">
+          <h3>สถานะใบสมัคร</h3>
+          <div class="csub">ภาพรวมปีนี้</div>
+          <div class="donut-wrap">
+            <div data-chart="donut" data-values="128,46,73,5" data-colors="#3b82f6,#f59e0b,#7c3aed,#ef4444" data-center="ใบสมัคร"></div>
+            <div class="legend-row" style="flex:1;">
+              <div class="lg"><i style="background:#3b82f6"></i> ใหม่ <b>128</b></div>
+              <div class="lg"><i style="background:#f59e0b"></i> รอสัมภาษณ์ <b>46</b></div>
+              <div class="lg"><i style="background:#7c3aed"></i> Step Promote <b>73</b></div>
+              <div class="lg"><i style="background:#ef4444"></i> Blacklist <b>5</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>ยอดขายเฉลี่ยสาขา</h3>
+          <div class="csub">แนวโน้ม 12 สัปดาห์</div>
+          <div data-chart="spark" data-values="62,58,65,61,68,66,72,70,74,71,78,82"></div>
+          <div class="spark-foot"><span class="big num">1.82M ฿</span><span class="trend-up">▲ 6.4%</span></div>
+        </div>
+      </div>
+
+      <h2 class="section-title">โมดูลระบบ</h2>
+      <div class="mod-grid">
+
+        <a class="mod-card" href="recruitment.html">
+          <div class="mh"><div class="mi bg-blue"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6"/></svg></div>
+            <div><div class="mt">สรรหา &amp; ใบสมัคร</div><div class="mcode">FMS · CRM</div></div></div>
+          <div class="md">ใบสมัครออนไลน์/ตัวเต็ม ตรวจสอบคุณสมบัติ สัมภาษณ์ และเลื่อนสถานะผู้สมัคร (Step Promote)</div>
+          <span class="mgo">เข้าสู่โมดูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+
+        <a class="mod-card" href="statement.html">
+          <div class="mh"><div class="mi bg-violet"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6H9ZM14 3v6h6M8 13h8M8 17h6"/></svg></div>
+            <div><div class="mt">บัญชีแฟรนไชส์</div><div class="mcode">FML · Statement</div></div></div>
+          <div class="md">นำเข้า/ออก Statement แฟรนไชส์ แจ้งยอด (Declare) คะแนน SP และข้อมูลติดต่อบัญชีรายสาขา</div>
+          <span class="mgo">เข้าสู่โมดูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+
+        <a class="mod-card" href="fgi.html">
+          <div class="mh"><div class="mi bg-teal"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3ZM9 12l2 2 4-4"/></svg></div>
+            <div><div class="mt">ประกันรายได้</div><div class="mcode">FGI · SBPGI</div></div></div>
+          <div class="md">ชดเชยรายได้สาขาที่ได้รับผลกระทบ คำนวณยอด นำเข้าจาก IAS และส่งอนุมัติผ่าน K2 / BPM</div>
+          <span class="mgo">เข้าสู่โมดูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+
+        <a class="mod-card" href="fgi-flow.html">
+          <div class="mh"><div class="mi bg-teal"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM19 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 8v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3 3M9 4h8a2 2 0 0 1 2 2v6"/></svg></div>
+            <div><div class="mt">ผังกระบวนการ FGI</div><div class="mcode">End-to-End Flow</div></div></div>
+          <div class="md">ผังการทำงานชดเชยรายได้แบบ End-to-End พร้อมแอนิเมชัน AllMap → SBPGI → MIS → STA → SAP → K2</div>
+          <span class="mgo">ดูผังกระบวนการ <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+
+        <a class="mod-card" href="k2.html">
+          <div class="mh"><div class="mi bg-green"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3Z"/></svg></div>
+            <div><div class="mt">ยืนยัน K2 / BPM</div><div class="mcode">confirmDataFromBPM</div></div></div>
+          <div class="md">เอกสารร้านถูกกระทบ คิวรอดำเนินการ ตัดสินใจ Approve/Stop/Initial ยืนยัน K2 และปรับปรุงค่าชดเชย</div>
+          <span class="mgo">เข้าสู่งาน K2 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+
+        <a class="mod-card" href="manpower.html">
+          <div class="mh"><div class="mi bg-amber"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/></svg></div>
+            <div><div class="mt">กำลังคน</div><div class="mcode">FMP · Manpower</div></div></div>
+          <div class="md">ข้อมูลพนักงานรายวัน เวลาทำงาน/กะดึก Incentive รายงานกำลังคนรายภาค และส่งออกไป HR</div>
+          <span class="mgo">เข้าสู่โมดูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+
+        <a class="mod-card" href="training.html">
+          <div class="mh"><div class="mi bg-green"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5ZM6 12v5c0 1 2.7 3 6 3s6-2 6-3v-5"/></svg></div>
+            <div><div class="mt">อบรม</div><div class="mcode">FTS · Training</div></div></div>
+          <div class="md">หลักสูตรอบรม AP/OP ลงทะเบียนผู้เข้าอบรม นำเข้าผลการอบรม และติดตามสถานะ</div>
+          <span class="mgo">เข้าสู่โมดูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+
+        <a class="mod-card" href="masterdata.html">
+          <div class="mh"><div class="mi bg-blue"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3ZM4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></div>
+            <div><div class="mt">ข้อมูลหลัก</div><div class="mcode">FCS · Master</div></div></div>
+          <div class="md">จังหวัด/อำเภอ ร้านสาขา (Seven Shop) ยอดขายเฉลี่ย QSSI กลุ่มผู้ใช้ และข้อมูลผู้เสียภาษี</div>
+          <span class="mgo">เข้าสู่โมดูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+
+        <a class="mod-card" href="useradmin.html">
+          <div class="mh"><div class="mi bg-violet"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 14v3M19 21v.01"/></svg></div>
+            <div><div class="mt">ผู้ใช้ &amp; Active Directory</div><div class="mcode">AD · LDAP</div></div></div>
+          <div class="md">ส่งออก/นำเข้าผู้ใช้กับ AD (7sbp.store) ส่ง Manager ไป LDAP ตรวจสอบพนักงานซ้ำซ้อน และระดับตำแหน่ง</div>
+          <span class="mgo">เข้าสู่โมดูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+
+        <a class="mod-card" href="workflow.html">
+          <div class="mh"><div class="mi bg-rose"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+            <div><div class="mt">อนุมัติงาน</div><div class="mcode">WF · K2 / BPM</div></div></div>
+          <div class="md">คิวงานรออนุมัติ ติดตามขั้นตอน auto-confirm แจ้งเตือนทางอีเมล และเชื่อม Workflow K2/BPM</div>
+          <span class="mgo">เข้าสู่โมดูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-top:24px;" class="home-bottom">
+        <div class="card" style="margin:0;">
+          <div class="card-head"><h2>กิจกรรมล่าสุด</h2></div>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <div style="display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f8;"><span class="pill ok">สำเร็จ</span><span style="flex:1;color:#45525f;">นำเข้าไฟล์ Statement แฟรนไชส์รอบ 2568/06</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">09:24</span></div>
+            <div style="display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f8;"><span class="pill info">ส่งออก</span><span style="flex:1;color:#45525f;">ส่งออกผู้ใช้ไป Active Directory (7sbp.store) 1,204 ราย</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">08:50</span></div>
+            <div style="display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f8;"><span class="pill violet">K2</span><span style="flex:1;color:#45525f;">อนุมัติชดเชยประกันรายได้ สาขา 00123 ปากเกร็ด</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">08:12</span></div>
+            <div style="display:flex;gap:12px;align-items:center;padding:11px 0;"><span class="pill wait">รอตรวจ</span><span style="flex:1;color:#45525f;">ใบสมัครใหม่ 8 รายการ รอเจ้าหน้าที่ตรวจสอบ</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">07:40</span></div>
+          </div>
+        </div>
+        <div class="card" style="margin:0;">
+          <div class="card-head"><h2>ทางลัด</h2></div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <button class="btn btn-primary" style="justify-content:flex-start;" data-href="application.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> เปิดใบสมัครตัวเต็ม</button>
+            <button class="btn btn-soft" style="justify-content:flex-start;" data-href="workflow.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/></svg> ดูงานรออนุมัติ 37 รายการ</button>
+            <button class="btn btn-ghost" style="justify-content:flex-start;" data-href="fgi.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> นำเข้ายอดผลกระทบจาก IAS</button>
+            <button class="btn btn-ghost" style="justify-content:flex-start;" data-href="statement.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/></svg> ออก Statement รายสาขา</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

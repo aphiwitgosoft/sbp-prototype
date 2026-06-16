@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ข้อมูลหลัก · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="masterdata" data-nav="modules" data-module="masterdata" data-crumb="ข้อมูลหลัก">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">ข้อมูลหลัก</h1>
+          <p class="page-sub">จังหวัด/อำเภอ · ร้านสาขา (Seven Shop) · ยอดขายเฉลี่ย · QSSI · กลุ่มผู้ใช้ · ผู้เสียภาษี (FCS)</p></div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" data-ack="นำเข้าข้อมูลหลัก..."><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> นำเข้าข้อมูล</button>
+          <button class="btn btn-primary" data-ack="กำลังส่งออกเป็นไฟล์ Excel..." data-kind="ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> ส่งออก Excel</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="tabs" data-tabs>
+          <div class="tab active">ร้านสาขา (Seven Shop)</div>
+          <div class="tab">จังหวัด / อำเภอ</div>
+          <div class="tab">ยอดขายเฉลี่ย/เดือน</div>
+          <div class="tab">QSSI</div>
+          <div class="tab">กลุ่มผู้ใช้</div>
+        </div>
+        <div class="toolbar">
+          <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input placeholder="ค้นหารหัสร้าน / ชื่อร้าน / จังหวัด"></div>
+          <div class="spacer"></div>
+          <button class="btn btn-primary btn-sm" data-add-row="tblStore"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มร้าน</button>
+        </div>
+        <div class="table-wrap"><table class="data" id="tblStore">
+          <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>รหัสร้าน</th><th>ชื่อร้าน</th><th>จังหวัด</th><th>ประเภท</th><th>ยอดขายเฉลี่ย/เดือน (บาท)</th><th>QSSI</th><th class="col-action">Action</th></tr></thead>
+          <tbody>
+            <tr><td><input type="checkbox" class="cbx"></td><td class="num">00123</td><td>สาขาปากเกร็ด</td><td>นนทบุรี</td><td>OP</td><td class="num">1,820,000</td><td class="num">8</td><td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไขข้อมูลร้าน"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td class="num">00456</td><td>สาขาบางใหญ่ซิตี้</td><td>นนทบุรี</td><td>SBP</td><td class="num">2,059,000</td><td class="num">9</td><td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไขข้อมูลร้าน"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td class="num">00789</td><td>สาขารัตนาธิเบศร์</td><td>นนทบุรี</td><td>OP</td><td class="num">1,682,000</td><td class="num">1</td><td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไขข้อมูลร้าน"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td class="num">01002</td><td>สาขาแคราย</td><td>นนทบุรี</td><td>OP</td><td class="num">1,476,000</td><td class="num">10</td><td class="col-action"><button class="icon-btn icon-edit" data-ack="แก้ไขข้อมูลร้าน"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>
