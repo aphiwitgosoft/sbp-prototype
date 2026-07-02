@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>กำหนดชื่อผู้ปฏิบัติงาน · K2 · SBP Management System</title>
+<title>กำหนดชื่อผู้ปฏิบัติงาน · SBP Management System</title>
 <link rel="stylesheet" href="assets/sbp.css">
 </head>
 <body data-page="k2-operators" data-nav="modules" data-module="k2-operators" data-crumb="กำหนดชื่อผู้ปฏิบัติงาน">
@@ -13,8 +13,9 @@
 
       <div class="page-head">
         <div><h1 class="page-title">กำหนดชื่อผู้ปฏิบัติงาน</h1>
-          <p class="page-sub">สิทธิ์ผู้ปฏิบัติงานในแต่ละตำแหน่ง · ระบบประกันรายได้ฝั่ง K2 (CompenOrganizeProfile)</p></div>
+          <p class="page-sub">สิทธิ์ผู้ปฏิบัติงานในแต่ละตำแหน่ง · ระบบประกันรายได้ (operator_assignments)</p></div>
         <div class="page-actions">
+          <button class="btn btn-soft" id="btnEmpSearch"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg> ค้นหาพนักงาน (Pop Up)</button>
           <button class="btn btn-primary" data-add-row="tblOperators"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มผู้ปฏิบัติงาน</button>
         </div>
       </div>
@@ -30,7 +31,7 @@
           <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ชื่อผู้ปฏิบัติงาน</th><th>E-Mail</th><th>ชื่อตำแหน่ง</th><th>ภาคที่รับผิดชอบ</th><th class="col-action">Action</th></tr></thead>
           <tbody>
             <tr><td><input type="checkbox" class="cbx"></td><td>นายสมชาย ใจดี</td><td class="num">somchai.j@cpall.co.th</td><td>ส่งเสริมธุรกิจพันธมิตรฯ</td><td>RN</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
-            <tr><td><input type="checkbox" class="cbx"></td><td>นางสาวมาลี ศรีสุข</td><td class="num">malee.s@cpall.co.th</td><td>Manager Franchise (SectionCode 06)</td><td>-</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td>นางสาวมาลี ศรีสุข</td><td class="num">malee.s@cpall.co.th</td><td>Manager Franchise (section_code 06)</td><td>-</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
             <tr><td><input type="checkbox" class="cbx"></td><td>นายวีรพล มั่นคง</td><td class="num">weerapol.m@cpall.co.th</td><td>ผจก.เขต</td><td>RS</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
             <tr><td><input type="checkbox" class="cbx"></td><td>Phatcharida Pra...</td><td class="num">phatcharida.p@cpall.co.th</td><td>SBP DSA</td><td>-</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
           </tbody>
@@ -41,7 +42,7 @@
         <div style="display:flex;gap:12px;align-items:flex-start;">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
           <div style="font-size:13.5px;color:#45525f;line-height:1.7;">
-            <b style="color:#2b3440;">เงื่อนไขตาม SRS:</b> ชื่อพนักงานและชื่อตำแหน่งเป็น require field — เลือกชื่อพนักงานผ่าน Pop Up (ปุ่มแว่นขยาย) · ช่อง<b>ภาค</b>จะแสดงเมื่อเลือกตำแหน่ง “ส่งเสริมธุรกิจพันธมิตรฯ” · การแก้ไขต้องระบุเหตุผล · ระบบบันทึกที่ตาราง <code>CompenOrganizeProfile</code> และเก็บประวัติที่ <code>MaintainMasterHistory</code>
+            <b style="color:#2b3440;">เงื่อนไขตาม SRS:</b> ชื่อพนักงานและชื่อตำแหน่งเป็น require field — เลือกชื่อพนักงานผ่าน Pop Up (ปุ่มแว่นขยาย) · ช่อง<b>ภาค</b>จะแสดงเมื่อเลือกตำแหน่ง “ส่งเสริมธุรกิจพันธมิตรฯ” · การแก้ไขต้องระบุเหตุผล · ระบบบันทึกที่ตาราง <code>operator_assignments</code> และเก็บประวัติที่ <code>audit_logs</code>
           </div>
         </div>
       </div>
@@ -49,6 +50,78 @@
     </main>
   </div>
   <div id="toast-stack"></div>
+
+  <!-- Pop Up ค้นหาชื่อพนักงาน (SRS 3.1.8: กดแว่นขยายเพื่อเลือกชื่อพนักงาน) -->
+  <div class="emp-overlay" id="empPop">
+    <div class="emp-modal">
+      <div class="emp-head"><h3>เลือกชื่อพนักงาน</h3><button class="emp-x" id="empClose" aria-label="ปิด">×</button></div>
+      <div class="emp-search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8a97a5" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input id="empQuery" placeholder="พิมพ์ชื่อ / อีเมล / รหัสพนักงาน"></div>
+      <div class="emp-list" id="empList"></div>
+    </div>
+  </div>
+
+  <style>
+    .emp-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:9999;}
+    .emp-overlay.show{display:flex;}
+    .emp-modal{background:#fff;border-radius:12px;max-width:520px;width:92%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;}
+    .emp-head{display:flex;align-items:center;padding:15px 20px;border-bottom:1px solid var(--line,#e5e9f0);}
+    .emp-head h3{margin:0;font-size:15px;color:#2b3440;flex:1;}
+    .emp-x{border:none;background:none;font-size:24px;line-height:1;color:#8a97a5;cursor:pointer;}
+    .emp-search{padding:13px 20px;border-bottom:1px solid var(--line,#e5e9f0);display:flex;align-items:center;gap:8px;}
+    .emp-search input{flex:1;border:1px solid var(--line,#e5e9f0);border-radius:8px;padding:9px 12px;font:inherit;}
+    .emp-list{overflow:auto;padding:4px 0;}
+    .emp-row{display:flex;flex-direction:column;gap:2px;padding:10px 20px;cursor:pointer;border-bottom:1px solid #f0f3f8;}
+    .emp-row:hover{background:#f7faff;}
+    .emp-row b{font-size:13.5px;color:#37414e;font-weight:600;}
+    .emp-row small{font-size:12px;color:#8a97a5;}
+    .emp-empty{padding:22px;text-align:center;color:#8a97a5;font-size:13px;}
+  </style>
+
   <script src="assets/sbp.js"></script>
+  <script>
+  (function () {
+    var EMP = [
+      { id:'E10231', name:'นายสมชาย ใจดี', mail:'somchai.j@cpall.co.th' },
+      { id:'E10488', name:'นางสาวมาลี ศรีสุข', mail:'malee.s@cpall.co.th' },
+      { id:'E10992', name:'นายวีรพล มั่นคง', mail:'weerapol.m@cpall.co.th' },
+      { id:'E11045', name:'นางสาวภัชริดา ประดิษฐ์ทองใส', mail:'phatcharida.p@cpall.co.th' },
+      { id:'E11220', name:'นายอนันต์ ทวีสุข', mail:'anan.t@cpall.co.th' },
+      { id:'E11337', name:'นางสุดา วงศ์ทอง', mail:'suda.w@cpall.co.th' },
+      { id:'E11402', name:'นายกิตติ ศรีสมบูรณ์', mail:'kitti.s@cpall.co.th' },
+      { id:'E11588', name:'นางสาวจันทพร บุญเชิญ', mail:'chantaporn.b@cpall.co.th' }
+    ];
+    var pop = document.getElementById('empPop'), list = document.getElementById('empList'), q = document.getElementById('empQuery');
+    function esc(s){ return String(s).replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+    function render(f) {
+      f = (f || '').toLowerCase();
+      var items = EMP.filter(function (e) { return (e.name + ' ' + e.mail + ' ' + e.id).toLowerCase().indexOf(f) >= 0; });
+      if (!items.length) { list.innerHTML = '<div class="emp-empty">ไม่พบพนักงานที่ค้นหา</div>'; return; }
+      list.innerHTML = items.map(function (e) {
+        return '<div class="emp-row" data-name="' + esc(e.name) + '" data-mail="' + esc(e.mail) + '"><b>' + esc(e.name) + ' <span style="font-weight:400;color:#8a97a5;">(' + e.id + ')</span></b><small>' + esc(e.mail) + '</small></div>';
+      }).join('');
+    }
+    function open() { pop.classList.add('show'); q.value = ''; render(''); setTimeout(function () { q.focus(); }, 50); }
+    function close() { pop.classList.remove('show'); }
+    document.getElementById('btnEmpSearch').addEventListener('click', open);
+    document.getElementById('empClose').addEventListener('click', close);
+    pop.addEventListener('click', function (e) { if (e.target === pop) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    q.addEventListener('input', function () { render(q.value); });
+    list.addEventListener('click', function (e) {
+      var row = e.target.closest('.emp-row'); if (!row) return;
+      var tb = document.querySelector('#tblOperators tbody'), last = tb.querySelector('tr:last-child');
+      var tr = last.cloneNode(true);
+      tr.querySelectorAll('input.cbx').forEach(function (c) { c.checked = false; });
+      tr.children[1].textContent = row.getAttribute('data-name');
+      tr.children[2].textContent = row.getAttribute('data-mail');
+      tr.children[3].textContent = '— เลือกตำแหน่ง —';
+      tr.children[4].textContent = '-';
+      tb.appendChild(tr);
+      tr.style.background = '#f0fff7'; setTimeout(function () { tr.style.background = ''; }, 1000);
+      close();
+      if (window.SBP && SBP.toast) SBP.toast('เพิ่มพนักงาน ' + row.getAttribute('data-name') + ' — กดแก้ไขเพื่อระบุตำแหน่ง/ภาค', 'ok');
+    });
+  })();
+  </script>
 </body>
 </html>

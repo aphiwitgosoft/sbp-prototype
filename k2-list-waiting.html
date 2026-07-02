@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เอกสารรอดำเนินการ · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  /* stat 8 ใบ + คลิกเป็น filter */
+  .stat-grid.eight{grid-template-columns:repeat(4,1fr);}
+  .stat[data-fstatus]{cursor:pointer; transition:border-color .15s, box-shadow .15s, transform .15s; border:1px solid #e8eef6;}
+  .stat[data-fstatus]:hover{border-color:#c7d7f5; transform:translateY(-1px);}
+  .stat[data-fstatus].active{border-color:var(--primary); box-shadow:0 0 0 3px rgba(47,111,237,.14);}
+  .stat .sl{white-space:nowrap;}
+  .bg-slate{background:linear-gradient(135deg,#94a3b8,#64748b);}
+  .bg-orange{background:linear-gradient(135deg,#fb923c,#ea580c);}
+  .pill.orange{background:#ffedd5; color:#c2410c;}
+  .pill.teal{background:#dcf5f1; color:#0f766e;}
+  .pill.navy{background:#e3e6fb; color:#3730a3;}
+  .bg-navy{background:linear-gradient(135deg,#818cf8,#4f46e5);}
+  /* แถวคลิกได้ */
+  #tblK2 tbody tr[data-href], #tblRelated tbody tr[data-href]{cursor:pointer;}
+  #tblK2 tbody tr[data-href]:hover td, #tblRelated tbody tr[data-href]:hover td{background:#f3f7ff;}
+  #tblK2 tbody tr.flag-red[data-href]:hover td, #tblRelated tbody tr.flag-red[data-href]:hover td{background:#fdeaea;}
+  @media (max-width:1100px){.stat-grid.eight{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:640px){.stat-grid.eight{grid-template-columns:1fr;}}
+</style>
+</head>
+<body data-page="k2-list-waiting" data-nav="modules" data-module="k2-list-waiting" data-crumb="เอกสาร · รอดำเนินการ">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <!-- ตัวสลับบทบาท / ขั้นตอน Workflow (จำลองมุมมองตามผู้ดำเนินการ — เหมือนหน้าเอกสารร้านถูกกระทบ) -->
+      <div class="card" id="roleBar" style="border-left:5px solid var(--primary);">
+        <div style="display:flex;gap:14px 18px;align-items:center;flex-wrap:wrap;">
+          <div style="display:flex;gap:10px;align-items:center;color:#2b3440;font-weight:600;font-size:14px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM19 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 8v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3 3M9 4h8a2 2 0 0 1 2 2v6"/></svg>
+            ขั้นตอน Workflow ตามบทบาท
+          </div>
+          <select id="roleSwitch" style="min-width:360px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;"></select>
+          <span style="color:var(--muted);font-size:12.5px;flex:1;min-width:220px;">งานรอดำเนินการและการ์ดสถานะด้านล่างจะแสดงเฉพาะที่อยู่ในสิทธิ์ของบทบาทนี้</span>
+        </div>
+        <div class="wf-steps" id="wfSteps"></div>
+      </div>
+
+      <div class="page-head">
+        <div><h1 class="page-title" id="pageTitle">เอกสารประกันรายได้ — รอดำเนินการ</h1>
+          <p class="page-sub" id="pageSub">ระบบประกันรายได้ · คลิกรายการเพื่อเปิดเอกสารร้านถูกกระทบ · คลิกการ์ดสถานะด้านล่างเพื่อกรองตาราง</p></div>
+      </div>
+
+      <div class="stat-grid eight" id="statGrid"><!-- การ์ด stat ถูก render ด้วยสคริปต์ตามโหมด/บทบาท --></div>
+
+      <div class="card">
+        <!-- แยกหน้าตามเมนู sidebar: ?tab=waiting | ?tab=related (สคริปต์ท้ายหน้าเลือก pane) -->
+
+        <!-- pane: waiting -->
+        <div data-tabpane="waiting">
+          <div class="fpanel">
+            <div class="fgrid">
+              <div class="ffield wide">
+                <span class="flabel">ค้นหา</span>
+                <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input id="fSearch" placeholder="ค้นหาเลขที่เอกสาร / รหัสร้าน / ชื่อร้าน"></div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">สถานะ</span>
+                <select id="fStatus" aria-label="กรองตามสถานะ">
+                  <option value="">ทุกสถานะ</option>
+                  <option>รอฝ่าย SBP DSA ดำเนินการ</option>
+                  <option>รอเจ้าหน้าที่ SBP DSA ดำเนินการ</option>
+                  <option>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</option>
+                  <option>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</option>
+                  <option>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</option>
+                  <option>รอฝ่ายบัญชี SBP ดำเนินการ</option>
+                  <option>รอบัญชีปฏิบัติการภาคดำเนินการ</option>
+                  <option>เสร็จสิ้นดำเนินการ</option>
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ภาค</span>
+                <select id="fRegion" aria-label="กรองตามภาค">
+                  <option value="">ทุกภาค</option>
+                  <option>BE</option><option>BN</option><option>BS</option><option>BW</option>
+                  <option>RC</option><option>RE</option><option>RN</option><option>RS</option>
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ประเภทร้าน</span>
+                <select id="fType" aria-label="กรองตามประเภทร้าน">
+                  <option value="">ทุกประเภท</option>
+                  <option>FR Type A</option>
+                  <option>FR Type B</option>
+                  <option>FR Type C</option>
+                  <option>FR Type พนักงาน</option>
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">วันที่สร้าง</span>
+                <div class="frange">
+                  <input type="date" id="fDateFrom" min="2026-01-01" max="2026-06-30" aria-label="วันที่สร้าง ตั้งแต่">
+                  <span class="dash">–</span>
+                  <input type="date" id="fDateTo" min="2026-01-01" max="2026-06-30" aria-label="วันที่สร้าง ถึง">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ยอดขายที่ลดลง (%)</span>
+                <div class="frange">
+                  <input type="number" id="fDropMin" placeholder="ต่ำสุด" step="0.01" min="0" aria-label="ยอดขายที่ลดลง ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fDropMax" placeholder="สูงสุด" step="0.01" min="0" aria-label="ยอดขายที่ลดลง สูงสุด">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">เงินชดเชย (บาท)</span>
+                <div class="frange">
+                  <input type="number" id="fCompMin" placeholder="ต่ำสุด" min="0" aria-label="เงินชดเชย ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fCompMax" placeholder="สูงสุด" min="0" aria-label="เงินชดเชย สูงสุด">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">รอ (วัน)</span>
+                <div class="frange">
+                  <input type="number" id="fDayMin" placeholder="ต่ำสุด" min="0" aria-label="รอ (วัน) ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fDayMax" placeholder="สูงสุด" min="0" aria-label="รอ (วัน) สูงสุด">
+                </div>
+              </div>
+            </div>
+            <div class="ffoot">
+              <button class="btn btn-ghost" id="fClear" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg> ล้างตัวกรอง</button>
+            </div>
+          </div>
+          <div class="table-wrap"><table class="data" id="tblK2">
+            <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
+            <tbody><!-- 200 แถว mock ถูก generate ด้วยสคริปต์ท้ายหน้า --></tbody>
+          </table></div>
+          <div class="pager" id="pgK2"></div>
+        </div>
+
+        <!-- pane: related -->
+        <div data-tabpane="related" hidden>
+          <div class="fpanel">
+            <div class="fgrid">
+              <div class="ffield wide">
+                <span class="flabel">ค้นหา</span>
+                <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input id="fSearchR" placeholder="ค้นหาเลขที่เอกสาร / รหัสร้าน / ชื่อร้าน"></div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">สถานะ</span>
+                <select id="fStatusR" aria-label="กรองตามสถานะ">
+                  <option value="">ทุกสถานะ</option>
+                  <option>รอฝ่าย SBP DSA ดำเนินการ</option>
+                  <option>รอเจ้าหน้าที่ SBP DSA ดำเนินการ</option>
+                  <option>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</option>
+                  <option>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</option>
+                  <option>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</option>
+                  <option>รอฝ่ายบัญชี SBP ดำเนินการ</option>
+                  <option>รอบัญชีปฏิบัติการภาคดำเนินการ</option>
+                  <option>เสร็จสิ้นดำเนินการ</option>
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ภาค</span>
+                <select id="fRegionR" aria-label="กรองตามภาค">
+                  <option value="">ทุกภาค</option>
+                  <option>BE</option><option>BN</option><option>BS</option><option>BW</option>
+                  <option>RC</option><option>RE</option><option>RN</option><option>RS</option>
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ประเภทร้าน</span>
+                <select id="fTypeR" aria-label="กรองตามประเภทร้าน">
+                  <option value="">ทุกประเภท</option>
+                  <option>FR Type A</option>
+                  <option>FR Type B</option>
+                  <option>FR Type C</option>
+                  <option>FR Type พนักงาน</option>
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">วันที่สร้าง</span>
+                <div class="frange">
+                  <input type="date" id="fDateFromR" min="2025-07-01" max="2025-12-31" aria-label="วันที่สร้าง ตั้งแต่">
+                  <span class="dash">–</span>
+                  <input type="date" id="fDateToR" min="2025-07-01" max="2025-12-31" aria-label="วันที่สร้าง ถึง">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ยอดขายที่ลดลง (%)</span>
+                <div class="frange">
+                  <input type="number" id="fDropMinR" placeholder="ต่ำสุด" step="0.01" min="0" aria-label="ยอดขายที่ลดลง ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fDropMaxR" placeholder="สูงสุด" step="0.01" min="0" aria-label="ยอดขายที่ลดลง สูงสุด">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">เงินชดเชย (บาท)</span>
+                <div class="frange">
+                  <input type="number" id="fCompMinR" placeholder="ต่ำสุด" min="0" aria-label="เงินชดเชย ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fCompMaxR" placeholder="สูงสุด" min="0" aria-label="เงินชดเชย สูงสุด">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">รอ (วัน)</span>
+                <div class="frange">
+                  <input type="number" id="fDayMinR" placeholder="ต่ำสุด" min="0" aria-label="รอ (วัน) ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fDayMaxR" placeholder="สูงสุด" min="0" aria-label="รอ (วัน) สูงสุด">
+                </div>
+              </div>
+            </div>
+            <div class="ffoot">
+              <button class="btn btn-ghost" id="fClearR" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg> ล้างตัวกรอง</button>
+            </div>
+          </div>
+          <div class="table-wrap"><table class="data" id="tblRelated">
+            <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
+            <tbody><!-- 120 แถว mock ถูก generate ด้วยสคริปต์ท้ายหน้า --></tbody>
+          </table></div>
+          <div class="pager" id="pgRelated"></div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          <div style="font-size:13.5px;color:#45525f;line-height:1.7;">
+            <b style="color:#2b3440;">หมายเหตุการทำงาน:</b> <span class="pill fail" style="font-weight:600;vertical-align:1px;">แดง = ยอดขายไม่ครบ 60 วัน</span> · ระบบรับข้อมูลจากทีม Store Chain Unit เป็น text file รอบ <b>17:00 ของทุกวัน</b> ผ่าน Batch job · คลิกรายการในตารางเพื่อเปิดหน้า<b>เอกสารร้านที่ถูกกระทบ</b> (ดูรายละเอียด ผลการพิจารณา และสถานะเอกสาร) · หลังตัดสินใจ Approve (A) ระบบบันทึกบัญชีส่งไปยัง SAP และยืนยันด้วย <code>confirmDataFromBPM</code>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---- โหมดหน้า: เมนู sidebar แยก "รอดำเนินการ" / "ที่เกี่ยวข้อง" มาที่หน้าเดียวกันด้วย ?tab= ---- */
+    var MODE = 'waiting'; // หน้านี้คือมุมมองรอดำเนินการ (แยกไฟล์จากเดิม k2.html?tab=waiting)
+    document.querySelector('[data-tabpane="waiting"]').hidden = MODE !== 'waiting';
+    document.querySelector('[data-tabpane="related"]').hidden = MODE !== 'related';
+    if (MODE === 'related') {
+      document.getElementById('roleBar').style.display = 'none';
+      // เอา filter สถานะออกจากแผงกรอง — ใช้การ์ด stat ด้านบนกรองสถานะแทน (element ยังอยู่แบบซ่อนให้การ์ดใช้)
+      var fsFieldR = document.getElementById('fStatusR').closest('.ffield');
+      if (fsFieldR) fsFieldR.style.display = 'none';
+      document.getElementById('pageTitle').textContent = 'เอกสารประกันรายได้ — ที่เกี่ยวข้องกับท่าน';
+      document.getElementById('pageSub').textContent = 'ระบบประกันรายได้ · เอกสารที่ท่านเคยดำเนินการหรือมีส่วนเกี่ยวข้อง · คลิกการ์ดสถานะเพื่อกรองตาราง';
+      document.body.setAttribute('data-crumb', 'เอกสาร · ที่เกี่ยวข้อง');
+      document.title = 'เอกสารที่เกี่ยวข้อง · SBP Management System';
+    } else {
+      document.body.setAttribute('data-crumb', 'เอกสาร · รอดำเนินการ');
+      document.title = 'เอกสารรอดำเนินการ · SBP Management System';
+      // inbox ของบทบาท = สถานะ "รอ<role>ดำเนินการ" ค่าเดียว → ไม่ต้องมี filter สถานะ
+      var fsField = document.getElementById('fStatus').closest('.ffield');
+      if (fsField) fsField.style.display = 'none';
+    }
+
+    /* ---- สถานะเอกสาร 8 ค่า ตาม SRS 3.1.6 / workflow_status_document.md (ดู workflow.md) ---- */
+    var STATUSES = [
+      { label: 'รอฝ่าย SBP DSA ดำเนินการ', pill: 'wait' },            // 06
+      { label: 'รอเจ้าหน้าที่ SBP DSA ดำเนินการ', pill: 'violet' },     // 08
+      { label: 'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'info' },    // 01
+      { label: 'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'orange' },  // 02
+      { label: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill: 'navy' },  // 03 (เฉพาะ > 100,000)
+      { label: 'รอฝ่ายบัญชี SBP ดำเนินการ', pill: 'teal' },             // 04
+      { label: 'รอบัญชีปฏิบัติการภาคดำเนินการ', pill: 'muted' },        // 05
+      { label: 'เสร็จสิ้นดำเนินการ', pill: 'ok' }                       // End
+    ];
+    var DONE = 'เสร็จสิ้นดำเนินการ';
+    // ลำดับถ่วงน้ำหนัก 20 ตำแหน่ง — 200 แถว => 06:40 · 08:20 · 01:30 · 02:20 · 03:10 · 04:20 · 05:20 · เสร็จสิ้น:40
+    var PATTERN = [0, 7, 2, 1, 7, 3, 5, 0, 6, 7, 2, 4, 0, 5, 7, 6, 3, 0, 2, 1];
+    var REGIONS = ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS'];       // ตาม SRS 3.1.7 (มี RC ไม่มี RW)
+    var TYPES = ['FR Type A', 'FR Type B', 'FR Type C', 'FR Type พนักงาน']; // ตาม SRS 3.1.7
+    var PLACES = ['รัตนอุทิศ', 'บางบัวทอง', 'ปากเกร็ด', 'แคราย', 'ติวานนท์', 'งามวงศ์วาน', 'ท่าอิฐ', 'สามัคคี', 'ประชาชื่น', 'ลาดปลาดุก',
+      'พิบูลสงคราม', 'บางกรวย', 'สนามบินน้ำ', 'บางพลัด', 'เตาปูน', 'พระราม 5', 'ไทรม้า', 'บางศรีเมือง', 'คลองประปา', 'เลี่ยงเมืองนนท์'];
+    var SUFFIX = ['ซ.13', 'ตลาดใหม่', 'สถานี', 'พลาซ่า', 'ก.ม.8', 'ริเวอร์ไซด์', 'ท่าน้ำ', 'ซ.58', 'วัดชลอ', 'อินเตอร์เชนจ์'];
+
+    var ICO = {
+      doc: 'M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6H9ZM14 3v6h6',
+      clock: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+      shield: 'M9 12l2 2 4-4M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3Z',
+      check: 'M22 11.1V12a10 10 0 1 1-5.93-9.14M22 4 12 14l-3-3',
+      user: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+      warn: 'M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z',
+      archive: 'M21 8v13H3V8M1 3h22v5H1zM10 12h4',
+      money: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'
+    };
+    var STATUS_META = {
+      'รอฝ่าย SBP DSA ดำเนินการ': { bg: 'bg-amber', icon: ICO.clock },
+      'รอเจ้าหน้าที่ SBP DSA ดำเนินการ': { bg: 'bg-violet', icon: ICO.shield },
+      'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ': { bg: 'bg-blue', icon: ICO.user },
+      'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ': { bg: 'bg-orange', icon: ICO.user },
+      'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ': { bg: 'bg-navy', icon: ICO.user },
+      'รอฝ่ายบัญชี SBP ดำเนินการ': { bg: 'bg-teal', icon: ICO.money },
+      'รอบัญชีปฏิบัติการภาคดำเนินการ': { bg: 'bg-slate', icon: ICO.archive },
+      'เสร็จสิ้นดำเนินการ': { bg: 'bg-green', icon: ICO.check }
+    };
+
+    /* ---- บทบาท workflow 7 ขั้น — inbox ของแต่ละบทบาท = สถานะ "รอ<role>ดำเนินการ" ค่าเดียว ---- */
+    var ROLES = [
+      { code: '06', short: 'ฝ่าย SBP DSA', name: 'ฝ่าย SBP DSA (Manager Franchise · section_code 06)', wait: 'รอฝ่าย SBP DSA ดำเนินการ' },
+      { code: '08', short: 'จนท. SBP DSA', name: 'เจ้าหน้าที่ SBP DSA (Officer Franchise · section_code 08)', wait: 'รอเจ้าหน้าที่ SBP DSA ดำเนินการ' },
+      { code: '01', short: 'ฝ่ายส่งเสริมธุรกิจฯ', name: 'ฝ่ายส่งเสริมธุรกิจฯ (Manager OPT · section_code 01)', wait: 'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ' },
+      { code: '02', short: 'GM OPT', name: 'GM ส่งเสริมธุรกิจฯ (GM OPT · section_code 02)', wait: 'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ' },
+      { code: '03', short: 'AVP OPT', name: 'ผู้บริหารสำนักบริหาร SBP (AVP OPT · section_code 03)', wait: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ' },
+      { code: '04', short: 'ฝ่ายบัญชี SBP', name: 'ฝ่ายบัญชี SBP (Manager Account Franchise · section_code 04)', wait: 'รอฝ่ายบัญชี SBP ดำเนินการ' },
+      { code: '05', short: 'บัญชีปฏิบัติการภาค', name: 'บัญชีปฏิบัติการภาค (Operation Account · section_code 05)', wait: 'รอบัญชีปฏิบัติการภาคดำเนินการ' }
+    ];
+    var currentRole = ROLES[0];
+
+    function pad(n, w) { n = String(n); while (n.length < w) n = '0' + n; return n; }
+    function money(n) { return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+    function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function pillText(tr) { var p = tr.querySelector('.pill'); return p ? p.textContent.trim() : ''; }
+    function roleMatch(tr) { return pillText(tr) === currentRole.wait; }
+
+    // เลขหน้าแบบสากล: หน้าแรก/สุดท้ายคงที่ + หน้าต่างรอบหน้าปัจจุบัน + … คั่นช่วงที่ข้าม
+    function pageItems(cur, total) {
+      var items = [], i;
+      if (total <= 7) { for (i = 1; i <= total; i++) items.push(i); return items; }
+      var lo = Math.max(2, cur - 1), hi = Math.min(total - 1, cur + 1);
+      if (cur <= 3) { lo = 2; hi = 4; }
+      if (cur >= total - 2) { lo = total - 3; hi = total - 1; }
+      items.push(1);
+      if (lo > 2) items.push('gap');
+      for (i = lo; i <= hi; i++) items.push(i);
+      if (hi < total - 1) items.push('gap');
+      items.push(total);
+      return items;
+    }
+
+    // ไฮไลต์การ์ด stat: โหมดรอดำเนินการเทียบกับ special filter ที่เลือก · โหมดที่เกี่ยวข้องเทียบกับ dropdown สถานะ
+    var specialKey = '', relatedKey = '';
+    function syncStatActive() {
+      var v = MODE === 'related' ? relatedKey : specialKey;
+      Array.prototype.forEach.call(document.querySelectorAll('#statGrid .stat[data-fstatus]'), function (s) {
+        s.classList.toggle('active', s.getAttribute('data-fstatus') === v);
+      });
+    }
+
+    /*
+     * สร้างตารางแบบครบวงจร: mock rows (deterministic — ไม่สุ่ม) + filter + sort + pagination
+     * cfg: { tableId, pagerId, suffix, total, docPrefix, docStart, dateYear, dateMonth, dateSpan, iOffset,
+     *        extraMatch (กรองระดับสิทธิ์ เช่น role), onApply }
+     * คืน setSpecial(fn) สำหรับ filter พิเศษจากการ์ด stat (flag 60 วัน / รอเกิน 3 วัน / วงเงิน)
+     */
+    function initTable(cfg) {
+      var tbody = document.getElementById(cfg.tableId).querySelector('tbody');
+
+      function docDate(i) {
+        var d = new Date(cfg.dateYear, cfg.dateMonth, 1 + (i * 91) % cfg.dateSpan);
+        return {
+          iso: d.getFullYear() + '-' + pad(d.getMonth() + 1, 2) + '-' + pad(d.getDate(), 2),
+          th: pad(d.getDate(), 2) + '/' + pad(d.getMonth() + 1, 2) + '/' + (d.getFullYear() + 543)
+        };
+      }
+
+      var html = '';
+      for (var i = 0; i < cfg.total; i++) {
+        var j = i + cfg.iOffset;
+        var st = STATUSES[PATTERN[j % PATTERN.length]];
+        var done = st.label === DONE;
+        var drop = 5 + ((j * 53) % 1200) / 100;
+        // เอกสารที่รอ AVP ต้องมียอด > 100,000 เสมอ ตามกฎวงเงิน (SRS)
+        var comp = st.pill === 'navy'
+          ? 100000.01 + ((j * 977) % 80000)
+          : drop * (3000 + (j % 8) * 1000);
+        // "ยอดขายไม่ครบ 60 วัน" เป็น flag ของข้อมูล (แถวแดง) ไม่ใช่สถานะ workflow
+        var flag60 = !done && (j % 13 === 0);
+        var dt = docDate(i);
+        html += '<tr' + (flag60 ? ' class="flag-red"' : '') + ' data-href="k2-document.html"'
+          + ' data-date="' + dt.iso + '" data-type="' + TYPES[(j * 7) % TYPES.length] + '"'
+          + ' data-flag60="' + (flag60 ? 1 : 0) + '"'
+          + ' data-drop="' + drop.toFixed(2) + '" data-comp="' + comp.toFixed(2) + '">'
+          + '<td class="num">' + ((j % 3) + 1) + '</td>'
+          + '<td class="num">' + cfg.docPrefix + pad(cfg.docStart + i, 5) + '</td>'
+          + '<td class="num">' + pad(((j * 37) % 1450) + 120, 5) + '</td>'
+          + '<td>' + PLACES[j % PLACES.length] + ' ' + SUFFIX[Math.floor(j / PLACES.length) % SUFFIX.length] + '</td>'
+          + '<td>' + REGIONS[(j * 3) % REGIONS.length] + '</td>'
+          + '<td class="num">' + drop.toFixed(2) + '%</td>'
+          + '<td class="num">' + money(comp) + '</td>'
+          + '<td><span class="pill ' + st.pill + '">' + esc(st.label) + '</span></td>'
+          + '<td class="num">' + (done ? 0 : (j % 9) + 1) + '</td></tr>';
+      }
+      tbody.innerHTML = html;
+      var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+
+      var emptyRow = document.createElement('tr');
+      emptyRow.innerHTML = '<td colspan="9" style="text-align:center;color:#8493a5;padding:28px 12px;">ไม่พบรายการตามเงื่อนไขที่กรอง</td>';
+      emptyRow.hidden = true;
+      tbody.appendChild(emptyRow);
+
+      function el(id) { return document.getElementById(id + cfg.suffix); }
+      var fSearch = el('fSearch'), fStatus = el('fStatus'), fRegion = el('fRegion'), fType = el('fType');
+      var fDateFrom = el('fDateFrom'), fDateTo = el('fDateTo');
+      var fDropMin = el('fDropMin'), fDropMax = el('fDropMax');
+      var fCompMin = el('fCompMin'), fCompMax = el('fCompMax');
+      var fDayMin = el('fDayMin'), fDayMax = el('fDayMax');
+      var pager = document.getElementById(cfg.pagerId);
+      var page = 1, perPage = 10, special = null;
+
+      function rowType(tr) { return tr.getAttribute('data-type') || ''; }
+      function rowRegion(tr) { return tr.cells[4] ? tr.cells[4].textContent.trim() : ''; }
+      function rowText(tr) {
+        return (tr.cells[1].textContent + ' ' + tr.cells[2].textContent + ' ' + tr.cells[3].textContent).toLowerCase();
+      }
+      function numVal(elm) { var v = parseFloat(elm.value); return isNaN(v) ? null : v; }
+      function baseRows() { return cfg.extraMatch ? rows.filter(cfg.extraMatch) : rows; }
+
+      function matched() {
+        var q = fSearch.value.trim().toLowerCase(), st = fStatus.value, rg = fRegion.value, tp = fType.value;
+        var df = fDateFrom.value, dto = fDateTo.value;
+        var dmin = numVal(fDropMin), dmax = numVal(fDropMax);
+        var cmin = numVal(fCompMin), cmax = numVal(fCompMax);
+        var ymin = numVal(fDayMin), ymax = numVal(fDayMax);
+        return baseRows().filter(function (tr) {
+          if (special && !special(tr)) return false;
+          if (q && rowText(tr).indexOf(q) === -1) return false;
+          if (st && pillText(tr) !== st) return false;
+          if (rg && rowRegion(tr) !== rg) return false;
+          if (tp && rowType(tr) !== tp) return false;
+          var iso = tr.getAttribute('data-date');
+          if (df && iso < df) return false;
+          if (dto && iso > dto) return false;
+          var drop = parseFloat(tr.getAttribute('data-drop'));
+          if (dmin !== null && drop < dmin) return false;
+          if (dmax !== null && drop > dmax) return false;
+          var comp = parseFloat(tr.getAttribute('data-comp'));
+          if (cmin !== null && comp < cmin) return false;
+          if (cmax !== null && comp > cmax) return false;
+          var days = parseFloat(tr.cells[8].textContent);
+          if (ymin !== null && days < ymin) return false;
+          if (ymax !== null && days > ymax) return false;
+          return true;
+        });
+      }
+
+      /* ---- sort หัวตาราง: คลิกสลับ น้อย→มาก / มาก→น้อย ---- */
+      var ths = Array.prototype.slice.call(document.querySelectorAll('#' + cfg.tableId + ' thead th[data-stype]'));
+      var sortTh = null, sortDir = 1;
+      function sortVal(tr, col, type) {
+        if (type === 'drop') return parseFloat(tr.getAttribute('data-drop'));
+        if (type === 'comp') return parseFloat(tr.getAttribute('data-comp'));
+        var t = tr.cells[col].textContent.trim();
+        if (type === 'num') return parseFloat(t.replace(/[,%]/g, '')) || 0;
+        return t;
+      }
+      ths.forEach(function (th) {
+        th.addEventListener('click', function () {
+          if (sortTh === th) sortDir = -sortDir; else { sortTh = th; sortDir = 1; }
+          ths.forEach(function (h) { h.classList.remove('sort-asc', 'sort-desc'); });
+          th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+          var col = th.cellIndex, type = th.getAttribute('data-stype');
+          rows.sort(function (a, b) {
+            var va = sortVal(a, col, type), vb = sortVal(b, col, type);
+            if (va < vb) return -sortDir;
+            if (va > vb) return sortDir;
+            return 0;
+          });
+          rows.forEach(function (tr) { tbody.appendChild(tr); });
+          tbody.appendChild(emptyRow);
+          page = 1;
+          apply();
+        });
+      });
+
+      function pgBtn(label, target, opts) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.innerHTML = label;
+        if (opts && opts.cls) b.className = opts.cls;
+        if (opts && opts.disabled) b.disabled = true;
+        else if (target) b.addEventListener('click', function () { page = target; apply(); });
+        return b;
+      }
+
+      function apply() {
+        var base = baseRows();
+        var list = matched();
+        var pages = Math.max(1, Math.ceil(list.length / perPage));
+        if (page > pages) page = pages;
+        if (page < 1) page = 1;
+        var from = (page - 1) * perPage, to = from + perPage;
+        rows.forEach(function (tr) { tr.hidden = true; });
+        list.slice(from, to).forEach(function (tr) { tr.hidden = false; });
+        emptyRow.hidden = list.length > 0;
+
+        pager.innerHTML = '';
+
+        var pp = document.createElement('select');
+        pp.setAttribute('aria-label', 'จำนวนรายการต่อหน้า');
+        [10, 20, 50, 100].forEach(function (n) {
+          var op = document.createElement('option');
+          op.value = n; op.textContent = n + ' / หน้า';
+          if (n === perPage) op.selected = true;
+          pp.appendChild(op);
+        });
+        pp.addEventListener('change', function () { perPage = +pp.value; page = 1; apply(); });
+        pager.appendChild(pp);
+
+        var info = document.createElement('span');
+        info.className = 'pg-info';
+        info.textContent = list.length
+          ? 'แสดง ' + (from + 1) + '–' + Math.min(to, list.length) + ' จาก ' + list.length + ' รายการ'
+            + (list.length < base.length ? ' (กรองจาก ' + base.length + ')' : '')
+          : 'พบ 0 รายการ (กรองจาก ' + base.length + ')';
+        pager.appendChild(info);
+
+        var nav = document.createElement('div');
+        nav.className = 'pg-group';
+        nav.appendChild(pgBtn('‹', page - 1, { disabled: page === 1 }));
+        pageItems(page, pages).forEach(function (it) {
+          if (it === 'gap') nav.appendChild(pgBtn('…', 0, { cls: 'gap', disabled: true }));
+          else nav.appendChild(pgBtn(String(it), it, it === page ? { cls: 'on' } : null));
+        });
+        nav.appendChild(pgBtn('›', page + 1, { disabled: page === pages }));
+        pager.appendChild(nav);
+
+        var lbl = document.createElement('span');
+        lbl.className = 'pg-label'; lbl.textContent = 'ไปหน้า';
+        pager.appendChild(lbl);
+        var go = document.createElement('input');
+        go.type = 'number'; go.className = 'pg-goto';
+        go.min = 1; go.max = pages; go.placeholder = page + '/' + pages;
+        function jump() {
+          var v = parseInt(go.value, 10);
+          if (!v) return;
+          page = Math.min(pages, Math.max(1, v));
+          apply();
+        }
+        go.addEventListener('keydown', function (e) { if (e.key === 'Enter') jump(); });
+        go.addEventListener('blur', function () { if (go.value) jump(); });
+        pager.appendChild(go);
+
+        if (cfg.onApply) cfg.onApply();
+      }
+
+      function onFilter() { page = 1; apply(); }
+      fSearch.addEventListener('input', onFilter);
+      [fStatus, fRegion, fType, fDateFrom, fDateTo].forEach(function (c) { c.addEventListener('change', onFilter); });
+      [fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax].forEach(function (c) { c.addEventListener('input', onFilter); });
+      el('fClear').addEventListener('click', function () {
+        [fSearch, fStatus, fRegion, fType, fDateFrom, fDateTo, fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax]
+          .forEach(function (c) { c.value = ''; });
+        special = null; specialKey = ''; relatedKey = '';
+        page = 1; apply();
+      });
+
+      apply();
+      return {
+        rows: rows,
+        statusSelect: fStatus,
+        searchInput: fSearch,
+        regionSelect: fRegion,
+        typeSelect: fType,
+        setSpecial: function (fn) { special = fn; page = 1; apply(); },
+        clearFilters: function () {
+          [fSearch, fStatus, fRegion, fType, fDateFrom, fDateTo, fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax]
+            .forEach(function (c) { c.value = ''; });
+        },
+        reset: function () { page = 1; apply(); }
+      };
+    }
+
+    // หน้า "รอดำเนินการ" — เอกสารปีปัจจุบัน 2569 · เห็นเฉพาะสถานะ "รอ<บทบาท>ดำเนินการ" ของตน
+    var waiting = initTable({
+      tableId: 'tblK2', pagerId: 'pgK2', suffix: '',
+      total: 200, docPrefix: '2569/', docStart: 6,
+      dateYear: 2026, dateMonth: 0, dateSpan: 181, iOffset: 0,
+      extraMatch: roleMatch,
+      onApply: syncStatActive
+    });
+
+    // หน้า "ที่เกี่ยวข้อง" — เอกสารปีก่อน 2568 (ก.ค.–ธ.ค.) · เห็นทุกสถานะ
+    var related = initTable({
+      tableId: 'tblRelated', pagerId: 'pgRelated', suffix: 'R',
+      total: 120, docPrefix: '2568/', docStart: 450,
+      dateYear: 2025, dateMonth: 6, dateSpan: 184, iOffset: 11,
+      onApply: syncStatActive
+    });
+
+    /* ---- การ์ด stat ---- */
+    function statCard(c) {
+      var d = document.createElement('div');
+      d.className = 'stat';
+      d.setAttribute('data-fstatus', c.key);
+      if (c.title) d.title = c.title;
+      d.innerHTML = '<div class="si ' + c.bg + '"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="' + c.icon + '"/></svg></div>'
+        + '<div><div class="sv num">' + c.value + '</div><div class="sl">' + esc(c.label) + '</div></div>';
+      return d;
+    }
+
+    // โหมดรอดำเนินการ: การ์ดต่อบทบาท = งานทั้งหมดของบทบาท + มุมมองย่อยที่มีผลจริงกับงาน (คลิกเพื่อกรอง)
+    var SPECIALS = {
+      flag60: function (tr) { return tr.getAttribute('data-flag60') === '1'; },
+      over3: function (tr) { return parseFloat(tr.cells[8].textContent) > 3; },
+      over100k: function (tr) { return parseFloat(tr.getAttribute('data-comp')) > 100000; }
+    };
+    function renderWaitingStats() {
+      var grid = document.getElementById('statGrid');
+      grid.innerHTML = '';
+      var base = waiting.rows.filter(roleMatch);
+      function count(fn) { return base.filter(fn).length; }
+      var cards = [
+        { key: '', bg: 'bg-blue', icon: ICO.doc, value: base.length,
+          label: 'งานรอดำเนินการ · ' + currentRole.short, title: 'ทั้งหมดของบทบาทนี้ (ล้างตัวกรอง)' },
+        { key: 'flag60', bg: 'bg-rose', icon: ICO.warn, value: count(SPECIALS.flag60), label: 'ยอดขายไม่ครบ 60 วัน (แถวแดง)' },
+        { key: 'over3', bg: 'bg-amber', icon: ICO.clock, value: count(SPECIALS.over3), label: 'รอเกิน 3 วัน' },
+        { key: 'over100k', bg: 'bg-navy', icon: ICO.money, value: count(SPECIALS.over100k), label: 'วงเงิน > 100,000 (เข้าเส้น AVP)' }
+      ];
+      cards.forEach(function (c) {
+        var d = statCard(c);
+        d.addEventListener('click', function () {
+          specialKey = c.key;
+          if (!c.key) waiting.clearFilters();
+          waiting.setSpecial(c.key ? SPECIALS[c.key] : null);
+        });
+        grid.appendChild(d);
+      });
+      syncStatActive();
+    }
+
+    // โหมดที่เกี่ยวข้อง: การ์ดครบทุกสถานะ (คลิกกรองตาม dropdown สถานะ)
+    function renderRelatedStats() {
+      var grid = document.getElementById('statGrid');
+      grid.innerHTML = '';
+      function count(fn) { return related.rows.filter(fn).length; }
+      // 12 การ์ด: รวม 1 + สถานะ 8 + มุมมองพิเศษ 3 (คลิกเพื่อกรอง — แทน filter สถานะที่เอาออก)
+      var cards = [{ key: '', bg: 'bg-blue', icon: ICO.doc, value: related.rows.length, label: 'เอกสารที่เกี่ยวข้องทั้งหมด', title: 'แสดงทุกสถานะ (ล้างตัวกรอง)' }];
+      STATUSES.forEach(function (s) {
+        var m = STATUS_META[s.label];
+        cards.push({ key: s.label, bg: m.bg, icon: m.icon, label: s.label,
+          value: count(function (tr) { return pillText(tr) === s.label; }) });
+      });
+      cards.push({ key: 'flag60', bg: 'bg-rose', icon: ICO.warn, value: count(SPECIALS.flag60), label: 'ยอดขายไม่ครบ 60 วัน (แถวแดง)' });
+      cards.push({ key: 'over3', bg: 'bg-orange', icon: ICO.clock, value: count(SPECIALS.over3), label: 'รอเกิน 3 วัน' });
+      cards.push({ key: 'over100k', bg: 'bg-navy', icon: ICO.money, value: count(SPECIALS.over100k), label: 'วงเงิน > 100,000' });
+      cards.forEach(function (c) {
+        var d = statCard(c);
+        d.addEventListener('click', function () {
+          relatedKey = c.key;
+          if (!c.key) { related.clearFilters(); related.setSpecial(null); return; }
+          if (SPECIALS[c.key]) { related.statusSelect.value = ''; related.setSpecial(SPECIALS[c.key]); }
+          else { related.statusSelect.value = c.key; related.setSpecial(null); }
+        });
+        grid.appendChild(d);
+      });
+      syncStatActive();
+    }
+
+    /* ---- ตัวสลับบทบาท + stepper 7 ขั้น (เฉพาะโหมดรอดำเนินการ) ---- */
+    if (MODE === 'waiting') {
+      var roleSel = document.getElementById('roleSwitch');
+      ROLES.forEach(function (r, i) {
+        var o = document.createElement('option');
+        o.value = i; o.textContent = r.code + ' · ' + r.name;
+        roleSel.appendChild(o);
+      });
+
+      var renderSteps = function () {
+        var wrap = document.getElementById('wfSteps');
+        wrap.innerHTML = '';
+        ROLES.forEach(function (r, i) {
+          if (i) { var a = document.createElement('span'); a.className = 'wf-arrow'; a.textContent = '›'; wrap.appendChild(a); }
+          var c = document.createElement('span');
+          c.className = 'wf-step' + (r === currentRole ? ' on' : '');
+          c.innerHTML = '<b>' + r.code + '</b> ' + esc(r.short);
+          c.addEventListener('click', function () { setRole(i); });
+          wrap.appendChild(c);
+        });
+      };
+
+      var setRole = function (i) {
+        currentRole = ROLES[i];
+        roleSel.value = i;
+        specialKey = '';
+        waiting.clearFilters();
+        renderSteps();
+        renderWaitingStats();
+        waiting.setSpecial(null);
+      };
+
+      roleSel.addEventListener('change', function () { setRole(+roleSel.value); });
+      setRole(0);
+    } else {
+      renderRelatedStats();
+    }
+  })();
+  </script>
+</body>
+</html>

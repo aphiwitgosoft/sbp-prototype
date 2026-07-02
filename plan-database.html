@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DB FGI/FCS + K2 · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  .ref{display:inline-flex; align-items:center; font-size:10.5px; font-weight:700; border-radius:12px; padding:2px 9px;
+    font-family:"Sarabun",sans-serif; white-space:nowrap; letter-spacing:.2px; vertical-align:1px;}
+  .ref.fgi{background:#e8f0fe; color:#1d4ed8;} .ref.k2{background:#f1ecfe; color:#6d28d9;}
+  .ref.new{background:#e7f7ee; color:#15803d;} .ref.mix{background:#fff4d6; color:#92670b;}
+  .zone-wrap{background:#fbfcfe; border:1px solid #e8eef6; border-radius:14px; padding:10px; overflow-x:auto;}
+  .zone-wrap svg{display:block; margin:0 auto; min-width:980px;}
+  td.tb{font-family:ui-monospace,Menlo,monospace; font-size:12px; font-weight:600; color:#37414e; white-space:nowrap;}
+  .imp-list li{margin-bottom:9px; line-height:1.75;}
+  .imp-list b{color:#2b3440;}
+  .data-spine{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:8px;}
+  .spine-node{position:relative;min-height:122px;padding:15px 13px;border:1px solid var(--line);border-radius:12px;background:#fff;}
+  .spine-node::after{content:"›";position:absolute;right:-11px;top:38px;z-index:2;width:20px;color:#94a3b8;background:#fff;font-size:28px;text-align:center;}
+  .spine-node:last-child::after{display:none;}
+  .spine-node .zone{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;padding:0 7px;border-radius:7px;color:#fff;background:#2f6fed;font:700 11px ui-monospace,Menlo,monospace;}
+  .spine-node.zb .zone{background:#7c3aed}.spine-node.zc .zone{background:#16a34a}
+  .spine-node code{display:block;margin:9px 0 5px;color:#2f6fed;font:600 11.5px ui-monospace,Menlo,monospace;white-space:normal;overflow-wrap:anywhere;}
+  .spine-node p{margin:0;color:#6b7888;font-size:11.5px;line-height:1.6;}
+  .zone-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px;}
+  .zone-card{padding:14px 16px;border:1px solid var(--line);border-left:5px solid #3b82f6;border-radius:10px;background:#fbfcfe;}
+  .zone-card.zb{border-left-color:#7c3aed}.zone-card.zc{border-left-color:#16a34a}
+  .zone-card b{display:block;color:#2b3440;font-size:13.5px}.zone-card span{display:block;margin-top:4px;color:#687687;font-size:12px;line-height:1.6}
+  .zone-row td{padding:8px 12px!important;color:#fff!important;background:#64748b!important;font-weight:700;}
+  .zone-row.a td{background:#2563eb!important}.zone-row.b td{background:#7c3aed!important}.zone-row.c td{background:#15803d!important}
+  @media(max-width:1100px){.data-spine{grid-template-columns:1fr 1fr}.spine-node::after{display:none}.spine-node:last-child{grid-column:1/-1}}
+  @media(max-width:700px){.data-spine,.zone-summary{grid-template-columns:1fr}.spine-node:last-child{grid-column:auto}}
+</style>
+</head>
+<body data-page="plan-database" data-nav="modules" data-module="plan-database" data-crumb="DB FGI/FCS + K2">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">ฐานข้อมูล FGI/FCS + K2</h1>
+          <p class="page-sub">เริ่มจาก Data Spine แล้วขยายเป็น 3 โซน: Impact Pipeline · เอกสารและ Workflow · Master/Config ใช้ร่วม</p></div>
+        <div class="page-actions"><span class="pill info" style="align-self:center;">Target Schema · 30 ตาราง</span></div>
+      </div>
+
+      <nav class="db-switcher" aria-label="เลือกแบบฐานข้อมูล">
+        <a href="fgi-database.html">FGI/FCS</a>
+        <a href="k2-database.html">K2</a>
+        <a class="active" href="plan-database.html" aria-current="page">FGI/FCS + K2</a>
+      </nav>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="font-size:13px;color:#45525f;line-height:1.9;">
+          <b style="color:#2b3440;">ที่มา:</b>
+          <span class="ref fgi">FGI/FCS</span> = ตารางที่ normalize จากเอกสาร Batch v4.0 (Data Dictionary หน้า 6–10) ·
+          <span class="ref k2">K2</span> = ตารางจากหน้า <a href="k2-database.html" style="color:#2f6fed;">DB K2</a> โดยใช้มาตรฐาน <code>lower_snake_case</code> เดียวกันทั้ง schema ·
+          <span class="ref new">ใหม่</span> = ตารางที่เพิ่มเพื่อรองรับสถาปัตยกรรม BE/FE และแก้ความเสี่ยงที่เอกสารระบุ ·
+          Flow ที่ใช้ตารางเหล่านี้ดูหน้า <a href="plan-flow.html" style="color:#2f6fed;font-weight:600;">Flow FGI/FCS + K2</a>
+        </div>
+      </div>
+
+      <div class="db-stat-grid">
+        <div class="db-stat"><b>30</b><span>ตารางใน Target Schema</span></div>
+        <div class="db-stat"><b>3</b><span>Data Zones</span></div>
+        <div class="db-stat"><b>1</b><span>Schema ใช้ร่วมกัน</span></div>
+        <div class="db-stat"><b>4</b><span>Core IDs ที่ใช้ trace งาน</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Data Spine — เส้นทางข้อมูลหลัก</h2><span class="pill info">เริ่มอ่านตรงนี้</span></div>
+        <p style="margin:0;color:#5d6b7a;font-size:13px;line-height:1.7;">หนึ่งรายการผลกระทบจะเดินผ่าน ID หลักตามลำดับด้านล่าง ตารางอื่นเป็นรายละเอียดหรือ master ที่เกาะกับ spine นี้</p>
+        <div class="data-spine">
+          <div class="spine-node"><span class="zone">A</span><code>impact_process_id</code><p>หนึ่งร้านถูกกระทบ + หนึ่งงวด เป็น hub ของยอดขาย ร้านใหม่ และคู่แข่ง</p></div>
+          <div class="spine-node zb"><span class="zone">B</span><code>doc_no</code><p>เอกสารประกันรายได้รูปแบบ YYYY/xxxxx เชื่อมกลับไปยัง impact process</p></div>
+          <div class="spine-node zb"><span class="zone">B</span><code>instance_id</code><p>Workflow instance หนึ่งชุดต่อเอกสาร ใช้ติดตามตั้งแต่เริ่มถึงจบ</p></div>
+          <div class="spine-node zb"><span class="zone">B</span><code>task_id</code><p>งานของแต่ละ Section และผู้รับผิดชอบ เป็นแหล่งข้อมูลของหน้า inbox</p></div>
+          <div class="spine-node zc"><span class="zone">C</span><code>employee_id / role_code</code><p>ผู้ใช้ สิทธิ์เมนู และผู้ปฏิบัติงานที่อ้างร่วมกันทุกขั้น</p></div>
+        </div>
+        <div class="zone-summary">
+          <div class="zone-card"><b>Zone A · FGI/FCS</b><span>รับข้อมูลภายนอก วิเคราะห์ผลกระทบ ยอดขาย QSSI และ tracking interface</span></div>
+          <div class="zone-card zb"><b>Zone B · K2 Document</b><span>เอกสาร รายละเอียดร้าน ผลพิจารณา ไฟล์แนบ workflow instance และ task</span></div>
+          <div class="zone-card zc"><b>Zone C · Shared</b><span>ร้าน ผู้ใช้ Role เมนู ผู้ปฏิบัติงาน Master และค่ากำหนดกลาง</span></div>
+        </div>
+      </div>
+
+      <!-- ===== zone diagram ===== -->
+      <div class="card">
+        <div class="card-head"><h2>1. แผนภาพโซนข้อมูล (Zone Map)</h2><span class="pill info">A · B · C</span></div>
+        <div class="zone-wrap">
+        <svg viewBox="0 0 1080 596" width="100%" style="max-width:1060px;" font-family="Prompt,Sarabun,sans-serif" role="img" aria-label="โซนฐานข้อมูลระบบใหม่">
+          <defs><marker id="za" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L6.5,3 L0,6 Z" fill="#8493a5"/></marker></defs>
+
+          <!-- zone panels -->
+          <rect x="16" y="14" width="336" height="412" rx="14" fill="#f5f9ff" stroke="#1d4ed8" stroke-width="1.6"/>
+          <text x="32" y="40" font-size="13" font-weight="700" fill="#1d4ed8">โซน A · Batch / Impact Pipeline</text>
+          <rect x="272" y="26" width="64" height="18" rx="9" fill="#e8f0fe"/><text x="304" y="39" text-anchor="middle" font-size="10" font-weight="700" fill="#1d4ed8">FGI/FCS</text>
+
+          <rect x="372" y="14" width="336" height="524" rx="14" fill="#faf7ff" stroke="#6d28d9" stroke-width="1.6"/>
+          <text x="388" y="40" font-size="13" font-weight="700" fill="#6d28d9">โซน B · เอกสาร &amp; Workflow</text>
+          <rect x="656" y="26" width="36" height="18" rx="9" fill="#f1ecfe"/><text x="674" y="39" text-anchor="middle" font-size="10" font-weight="700" fill="#6d28d9">K2</text>
+
+          <rect x="728" y="14" width="336" height="572" rx="14" fill="#f6fbf7" stroke="#15803d" stroke-width="1.6"/>
+          <text x="744" y="40" font-size="13" font-weight="700" fill="#15803d">โซน C · Master / Config ใช้ร่วม</text>
+          <rect x="990" y="26" width="60" height="18" rx="9" fill="#e7f7ee"/><text x="1020" y="39" text-anchor="middle" font-size="10" font-weight="700" fill="#15803d">ใช้ร่วม</text>
+
+          <!-- zone A tables -->
+          <g>
+            <rect x="32" y="56" width="304" height="40" rx="8" fill="#fff" stroke="#96b4f0" stroke-width="1.4"/>
+            <text x="44" y="73" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">fgi_impact_stores</text>
+            <text x="44" y="88" font-size="9.5" fill="#8493a5">คู่ร้านกระทบ–เปิดใหม่ · impact_process_id · verify_status / workflow_generation_status</text>
+
+            <rect x="32" y="106" width="304" height="40" rx="8" fill="#eef4ff" stroke="#1d4ed8" stroke-width="1.8"/>
+            <text x="44" y="123" font-size="11.5" font-weight="700" fill="#1d4ed8" font-family="Menlo,monospace">fgi_impact_processes ★</text>
+            <text x="44" y="138" font-size="9.5" fill="#5d6b7a">hub รอบชดเชย (id) — แม่ของทุกตารางรายรอบ</text>
+
+            <rect x="32" y="156" width="304" height="40" rx="8" fill="#fff" stroke="#96b4f0" stroke-width="1.4"/>
+            <text x="44" y="173" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">fgi_impact_sales_summaries</text>
+            <text x="44" y="188" font-size="9.5" fill="#8493a5">หัวตารางยอดขาย · impact_process_id · growth_rate_diff · total_working_days</text>
+
+            <rect x="32" y="206" width="304" height="40" rx="8" fill="#fff" stroke="#96b4f0" stroke-width="1.4"/>
+            <text x="44" y="223" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">sales_transactions</text>
+            <text x="44" y="238" font-size="9.5" fill="#8493a5">ยอดขายรายวัน 4 หน้าต่าง × 15 วัน · sales_diff/outlier</text>
+
+            <rect x="32" y="256" width="304" height="40" rx="8" fill="#fff" stroke="#96b4f0" stroke-width="1.4"/>
+            <text x="44" y="273" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">fgi_impact_competitors</text>
+            <text x="44" y="288" font-size="9.5" fill="#8493a5">คู่แข่งจาก ALLMAP → กลายเป็น document_competitors (โซน B)</text>
+
+            <rect x="32" y="306" width="304" height="40" rx="8" fill="#fff" stroke="#96b4f0" stroke-width="1.4"/>
+            <text x="44" y="323" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">fcs_qssi_scores</text>
+            <text x="44" y="338" font-size="9.5" fill="#8493a5">คะแนน QSSI 6 หมวด (8,9,12,1,10,16) · เงื่อนไข INIT ของ Job 6</text>
+
+            <rect x="32" y="356" width="304" height="40" rx="8" fill="#f2fbf5" stroke="#15803d" stroke-width="1.4" stroke-dasharray="5 4"/>
+            <text x="44" y="373" font-size="11.5" font-weight="700" fill="#15803d" font-family="Menlo,monospace">interface_transactions</text>
+            <text x="44" y="388" font-size="9.5" fill="#5d6b7a">ใหม่ — แทน FGI_CONFIRM_RECEIVE_DATA · typed FK · purge ใช้งานจริง</text>
+          </g>
+
+          <!-- zone B tables -->
+          <g>
+            <rect x="388" y="56" width="304" height="40" rx="8" fill="#fff" stroke="#c8a2e8" stroke-width="1.8"/>
+            <text x="400" y="73" font-size="11.5" font-weight="700" fill="#6d28d9" font-family="Menlo,monospace">compensation_documents</text>
+            <text x="400" y="88" font-size="9.5" fill="#8493a5">เลขที่ YYYY/xxxxx · status_code · current_section_code · + impact_process_id (ใหม่)</text>
+
+            <rect x="388" y="106" width="304" height="40" rx="8" fill="#fff" stroke="#c8a2e8" stroke-width="1.4"/>
+            <text x="400" y="123" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">document_new_stores</text>
+            <text x="400" y="138" font-size="9.5" fill="#8493a5">ร้านเปิดใหม่ในเอกสาร · %ชดเชยรวมต้อง = 100%</text>
+
+            <rect x="388" y="156" width="304" height="40" rx="8" fill="#fff" stroke="#c8a2e8" stroke-width="1.4"/>
+            <text x="400" y="173" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">document_competitors</text>
+            <text x="400" y="188" font-size="9.5" fill="#8493a5">คู่แข่งในเอกสาร · source_system = ALM (Job 3) / USER</text>
+
+            <rect x="388" y="206" width="304" height="40" rx="8" fill="#fff" stroke="#c8a2e8" stroke-width="1.4"/>
+            <text x="400" y="223" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">document_external_factors</text>
+            <text x="400" y="238" font-size="9.5" fill="#8493a5">ปัจจัยภายนอกที่อ้างในเอกสาร → external_factors (โซน C)</text>
+
+            <rect x="388" y="256" width="304" height="40" rx="8" fill="#fff" stroke="#c8a2e8" stroke-width="1.4"/>
+            <text x="400" y="273" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">consideration_logs</text>
+            <text x="400" y="288" font-size="9.5" fill="#8493a5">ประวัติการพิจารณาทุกขั้น (ใคร/ขั้นไหน/ผลอะไร/เมื่อไร)</text>
+
+            <rect x="388" y="306" width="304" height="40" rx="8" fill="#fff" stroke="#c8a2e8" stroke-width="1.4"/>
+            <text x="400" y="323" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">document_attachments</text>
+            <text x="400" y="338" font-size="9.5" fill="#8493a5">ไฟล์แนบ ≤ 5MB ต่อไฟล์ · แยกตาม Section ที่แนบ</text>
+
+            <rect x="388" y="356" width="304" height="40" rx="8" fill="#fff" stroke="#c8a2e8" stroke-width="1.4"/>
+            <text x="400" y="373" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">compensation_histories</text>
+            <text x="400" y="388" font-size="9.5" fill="#8493a5">ประวัติชดเชยต่อร้าน/รอบ · เดือนส่งบัญชี (→ FRBC0001)</text>
+
+            <rect x="388" y="406" width="304" height="40" rx="8" fill="#f2fbf5" stroke="#15803d" stroke-width="1.4" stroke-dasharray="5 4"/>
+            <text x="400" y="423" font-size="11.5" font-weight="700" fill="#15803d" font-family="Menlo,monospace">workflow_instances</text>
+            <text x="400" y="438" font-size="9.5" fill="#5d6b7a">ใหม่ — instance ของ workflow ภายใน (แทนข้อมูลใน K2 engine)</text>
+
+            <rect x="388" y="456" width="304" height="40" rx="8" fill="#f2fbf5" stroke="#15803d" stroke-width="1.4" stroke-dasharray="5 4"/>
+            <text x="400" y="473" font-size="11.5" font-weight="700" fill="#15803d" font-family="Menlo,monospace">workflow_tasks</text>
+            <text x="400" y="488" font-size="9.5" fill="#5d6b7a">ใหม่ — งานค้างต่อ Section → หน้างานรอดำเนินการ (inbox)</text>
+          </g>
+
+          <!-- zone C tables -->
+          <g>
+            <rect x="744" y="56" width="304" height="40" rx="8" fill="#fff" stroke="#9fd4b0" stroke-width="1.4"/>
+            <text x="756" y="73" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">impacted_stores</text>
+            <text x="756" y="88" font-size="9.5" fill="#8493a5">ร้าน SP master · store_code = impacted_store_code ของโซน A</text>
+
+            <rect x="744" y="106" width="304" height="40" rx="8" fill="#fff" stroke="#9fd4b0" stroke-width="1.4"/>
+            <text x="756" y="123" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">workflow_sections · document_statuses</text>
+            <text x="756" y="138" font-size="9.5" fill="#8493a5">Section 06/08/01/02/03/04/05 · สถานะเอกสาร</text>
+
+            <rect x="744" y="156" width="304" height="40" rx="8" fill="#fff" stroke="#9fd4b0" stroke-width="1.4"/>
+            <text x="756" y="173" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">roles · menus · menu_permissions</text>
+            <text x="756" y="188" font-size="9.5" fill="#8493a5">สิทธิ์ 8 role (00–10) ต่อเมนู · SRS 3.1.1</text>
+
+            <rect x="744" y="206" width="304" height="40" rx="8" fill="#fff" stroke="#9fd4b0" stroke-width="1.4"/>
+            <text x="756" y="223" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">operator_assignments</text>
+            <text x="756" y="238" font-size="9.5" fill="#8493a5">ผู้ปฏิบัติงานต่อ section_code/zone_code · SRS 3.1.8 (เทียบจาก SRS)</text>
+
+            <rect x="744" y="256" width="304" height="40" rx="8" fill="#fff" stroke="#9fd4b0" stroke-width="1.4"/>
+            <text x="756" y="273" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">external_factors</text>
+            <text x="756" y="288" font-size="9.5" fill="#8493a5">ปัจจัยภายนอก master · SRS 3.1.9 (เทียบจาก SRS)</text>
+
+            <rect x="744" y="306" width="304" height="40" rx="8" fill="#fff" stroke="#9fd4b0" stroke-width="1.4"/>
+            <text x="756" y="323" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">competitors</text>
+            <text x="756" y="338" font-size="9.5" fill="#8493a5">ร้านคู่แข่ง 24 ราย (108 Shop, Lotus Express, CJ …)</text>
+
+            <rect x="744" y="356" width="304" height="40" rx="8" fill="#fff" stroke="#9fd4b0" stroke-width="1.4"/>
+            <text x="756" y="373" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">audit_logs</text>
+            <text x="756" y="388" font-size="9.5" fill="#8493a5">ประวัติแก้ master ทุกตาราง · SRS (เทียบจาก SRS)</text>
+
+            <rect x="744" y="406" width="304" height="40" rx="8" fill="#fff" stroke="#9fd4b0" stroke-width="1.4"/>
+            <text x="756" y="423" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">status_email_rules</text>
+            <text x="756" y="438" font-size="9.5" fill="#8493a5">ผู้รับอีเมล TO/CC ต่อสถานะ · SRS 3.1.5</text>
+
+            <rect x="744" y="456" width="304" height="40" rx="8" fill="#f2fbf5" stroke="#15803d" stroke-width="1.4" stroke-dasharray="5 4"/>
+            <text x="756" y="473" font-size="11.5" font-weight="700" fill="#15803d" font-family="Menlo,monospace">user_accounts</text>
+            <text x="756" y="488" font-size="9.5" fill="#5d6b7a">ใหม่ — บัญชีผู้ใช้ + role สำหรับ JWT (แทนการพึ่ง BPM เดิม)</text>
+
+            <rect x="744" y="506" width="304" height="40" rx="8" fill="#f2fbf5" stroke="#15803d" stroke-width="1.4" stroke-dasharray="5 4"/>
+            <text x="756" y="523" font-size="11.5" font-weight="700" fill="#15803d" font-family="Menlo,monospace">job_configs · job_run_histories</text>
+            <text x="756" y="538" font-size="9.5" fill="#5d6b7a">ใหม่ — พารามิเตอร์ 11 jobs + ประวัติรัน (หน้า Batch Monitor)</text>
+          </g>
+
+          <!-- cross arrows A -> B -->
+          <line x1="336" y1="126" x2="388" y2="76" stroke="#8493a5" stroke-width="1.6" marker-end="url(#za)"/>
+          <text x="341" y="96" font-size="9.5" fill="#5d6b7a" transform="rotate(-38 341 96)">1 รอบ : 1 เอกสาร</text>
+          <line x1="336" y1="326" x2="388" y2="120" stroke="#8493a5" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#za)"/>
+        </svg>
+        </div>
+        <div class="flow-legend" style="margin:14px 0 2px;">
+          <div class="lg"><span style="width:14px;height:14px;border-radius:4px;background:#fff;border:1.5px solid #96b4f0;display:inline-block;"></span> ตารางจริงจากเอกสาร Batch v4.0</div>
+          <div class="lg"><span style="width:14px;height:14px;border-radius:4px;background:#fff;border:1.5px solid #c8a2e8;display:inline-block;"></span> ตารางฝั่ง K2 (SRS / ออกแบบตามหน้าจอ)</div>
+          <div class="lg"><span style="width:14px;height:14px;border-radius:4px;background:#f2fbf5;border:1.5px dashed #15803d;display:inline-block;"></span> ตารางใหม่ของระบบใหม่</div>
+          <div class="lg">★ = hub · เส้นทึบ = FK ใหม่ที่เชื่อมสองระบบ · เส้นประ = เงื่อนไขเชิงข้อมูล</div>
+        </div>
+      </div>
+
+      <!-- ===== all tables ===== -->
+      <div class="card">
+        <div class="card-head"><h2>2. Data Dictionary ระดับภาพรวม</h2><span class="pill info">30 ตาราง · 27 รายการกลุ่ม</span></div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>ตาราง</th><th>โซน</th><th>ที่มา</th><th>PK</th><th>FK / ความสัมพันธ์หลัก</th><th>บทบาท</th></tr></thead>
+            <tbody>
+              <tr class="zone-row a"><td colspan="6">Zone A · FGI/FCS — Impact Pipeline และ External Interfaces</td></tr>
+              <tr><td class="tb">fgi_impact_stores</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · impacted_store_code → impacted_stores</td><td>คู่ร้านกระทบ–เปิดใหม่ · verify_status (W/P/Y/N) · workflow_generation_status (W/Y/N)</td></tr>
+              <tr><td class="tb">fgi_impact_processes</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impacted_store_code · แม่ของตารางรายรอบทั้งหมด</td><td>hub รอบชดเชย · action_status (Y/W/N) · last_compensation_amount</td></tr>
+              <tr><td class="tb">fgi_impact_sales_summaries</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · → sales_transactions (1:N)</td><td>หัวยอดขาย · growth_rate_diff · total_working_days (เกณฑ์ 60 วัน)</td></tr>
+              <tr><td class="tb">sales_transactions</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>sales_summary_id → fgi_impact_sales_summaries</td><td>ยอดขายรายวันจาก IAS · sales_diff/outlier ≥ 50 แบบจับคู่</td></tr>
+              <tr><td class="tb">fgi_impact_competitors</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · → document_competitors (นำเข้า)</td><td>คู่แข่งจาก ALLMAP (data_source=ALM) · งวดล่าสุดต่อร้าน</td></tr>
+              <tr><td class="tb">fcs_qssi_scores</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>UK: store_id + category_code + งวด</td><td>คะแนน QSSI 6 หมวด (8,9,12,1,10,16) จาก Job 1</td></tr>
+              <tr><td class="tb">interface_transactions</td><td>A</td><td><span class="ref new">ใหม่</span></td><td class="num">id</td><td>typed FK: impact_process_id / sales_summary_id / doc_no</td><td>แทน FGI_CONFIRM_RECEIVE_DATA — เลิก polymorphic PK + purge ทำงานจริง (แก้ E20)</td></tr>
+              <tr class="zone-row b"><td colspan="6">Zone B · K2 — เอกสารประกันรายได้และ Workflow ภายใน</td></tr>
+              <tr><td class="tb">compensation_documents</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">doc_no (YYYY/xxxxx)</td><td>status_code · current_section_code · impacted_store_code · <b>impact_process_id (ใหม่)</b></td><td>เอกสารประกันรายได้ — หัวใจโซน B · FK ใหม่เชื่อม hub โซน A แทนไฟล์ 48 ฟิลด์</td></tr>
+              <tr><td class="tb">document_new_stores</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no → compensation_documents</td><td>ร้านเปิดใหม่ · distance_km · %ชดเชย (ผลรวมต้อง 100%)</td></tr>
+              <tr><td class="tb">document_competitors</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no · competitor_code → competitors</td><td>คู่แข่งในเอกสาร · source_system ALM/USER</td></tr>
+              <tr><td class="tb">document_external_factors</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no · factor_code → external_factors</td><td>ปัจจัยภายนอกที่ใช้ในเอกสาร + ช่วงวันที่</td></tr>
+              <tr><td class="tb">consideration_logs</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no → compensation_documents</td><td>ประวัติพิจารณา (ผู้พิจารณา · Section · ผล · เวลา)</td></tr>
+              <tr><td class="tb">document_attachments</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no → compensation_documents</td><td>ไฟล์แนบ ≤ 5MB ต่อไฟล์ · Section ที่แนบ</td></tr>
+              <tr><td class="tb">compensation_histories</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>store_code · ref_doc_no</td><td>ประวัติชดเชยต่อร้าน/รอบ · เดือนส่งบัญชี (ผูกไฟล์ FRBC0001 ของ Job 6)</td></tr>
+              <tr><td class="tb">workflow_instances</td><td>B</td><td><span class="ref new">ใหม่</span></td><td class="num">instance_id</td><td>doc_no → compensation_documents</td><td>instance workflow ภายใน (แทน K2 engine) · สถานะแทน workflow_generation_status=Y</td></tr>
+              <tr><td class="tb">workflow_tasks</td><td>B</td><td><span class="ref new">ใหม่</span></td><td class="num">task_id</td><td>instance_id · section_code · assignee_employee_id</td><td>งานค้างต่อ Section — แหล่งข้อมูลหน้างานรอดำเนินการ (inbox)</td></tr>
+              <tr class="zone-row c"><td colspan="6">Zone C · Shared — Master, RBAC, Configuration และ Audit</td></tr>
+              <tr><td class="tb">impacted_stores</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">store_code</td><td>= impacted_store_code ของโซน A (สะพานหลักสองระบบ)</td><td>ข้อมูลร้าน SP master</td></tr>
+              <tr><td class="tb">workflow_sections / document_statuses</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">section_code / status_code</td><td>อ้างโดย compensation_documents · workflow_tasks · status_email_rules</td><td>ขั้นตอน 06/08/01/02/03/04/05 · สถานะเอกสาร</td></tr>
+              <tr><td class="tb">roles / menus / menu_permissions</td><td>C</td><td><span class="ref k2">K2 · 3.1.1</span></td><td class="num">role_code / menu_code (composite)</td><td>menu_permissions = composite PK</td><td>สิทธิ์เมนู 8 role (00–10) — แหล่งข้อมูล RBAC ของ Auth</td></tr>
+              <tr><td class="tb">operator_assignments</td><td>C</td><td><span class="ref k2">K2 · 3.1.8</span></td><td class="num">id</td><td>section_code · zone_code</td><td>ผู้ปฏิบัติงานต่อ section_code/zone_code</td></tr>
+              <tr><td class="tb">external_factors</td><td>C</td><td><span class="ref k2">K2 · 3.1.9</span></td><td class="num">factor_code</td><td>← document_external_factors</td><td>ปัจจัยภายนอก master · รหัสห้ามซ้ำ</td></tr>
+              <tr><td class="tb">competitors</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">competitor_code</td><td>← document_competitors</td><td>ร้านคู่แข่ง 24 ราย</td></tr>
+              <tr><td class="tb">audit_logs</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>table_name + ref_key (generic)</td><td>ประวัติแก้ไข master ทุกตาราง + เหตุผล</td></tr>
+              <tr><td class="tb">status_email_rules</td><td>C</td><td><span class="ref k2">K2 · 3.1.5</span></td><td class="num">status_code</td><td>to_section_code · cc_section_code → workflow_sections</td><td>ผู้รับอีเมลเมื่อเปลี่ยนสถานะ — ใช้โดย Notification Service</td></tr>
+              <tr><td class="tb">user_accounts</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">employee_id</td><td>role_code → roles</td><td>บัญชีผู้ใช้สำหรับ JWT (เดิมพึ่งระบบ BPM)</td></tr>
+              <tr><td class="tb">job_configs</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">job_no</td><td>← job_run_histories</td><td>cron + พารามิเตอร์ที่แก้ได้ของ 11 jobs (หน้า Batch Monitor)</td></tr>
+              <tr><td class="tb">job_run_histories</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">run_id</td><td>job_no → job_configs</td><td>ประวัติรันต่อรอบ (เวลา · แถว · ไฟล์ · ผล) — เดิมอยู่ใน log ไฟล์</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== cross-system keys ===== -->
+      <div class="card">
+        <div class="card-head"><h2>3. กุญแจเชื่อมข้ามระบบ (Cross-System Keys)</h2></div>
+        <ul style="margin:0; padding-left:20px; color:#45525f; font-size:13.5px; line-height:2;">
+          <li><b>impacted_stores.store_code = fgi_impact_stores.impacted_store_code</b> — สะพานหลักระหว่างโซน C (K2) กับโซน A (FGI/FCS) ใช้รหัสร้าน 5 หลักเดียวกันทั้งระบบ <span class="ref mix">ทั้งสอง</span></li>
+          <li><b>*.impact_process_id → fgi_impact_processes.id</b> — hub กลางของคู่ร้าน ยอดขาย และคู่แข่งในหนึ่งรอบชดเชย ลดการ join ด้วย business key หลายคอลัมน์ <span class="ref new">ใหม่</span></li>
+          <li><b>compensation_documents.impact_process_id → fgi_impact_processes</b> — FK ใหม่ 1 รอบชดเชย : 1 เอกสาร แทนการส่งไฟล์ BPM06001O (48 ฟิลด์) ข้ามระบบ <span class="ref new">ใหม่</span></li>
+          <li><b>workflow_instances.doc_no → compensation_documents</b> — เปิด instance เมื่อผ่าน Gen Flow Gate · สถานะ instance ทำหน้าที่แทน workflow_generation_status = Y ของเดิม <span class="ref new">ใหม่</span></li>
+          <li><b>document_competitors.source_system = 'ALM'</b> — แถวที่มาจาก fgi_impact_competitors (Jobs 3/7 เดิม) แยกจากที่ผู้ใช้เพิ่มเอง (USER) <span class="ref fgi">FGI/FCS</span></li>
+          <li><b>compensation_histories.submit_account_month</b> — งวดที่ส่งเข้าไฟล์ FRBC0001 ไป STA (Job 6) · สถานะ I/C/A/N/S/Z ตามเดิม <span class="ref fgi">FGI/FCS</span></li>
+          <li><b>interface_transactions</b> — คอลัมน์ FK แยกประเภท (impact_process_id / sales_summary_id / doc_no) + data_name เป็น enum — เลิก parseInt(impacted_store_code) ที่ทำเลขศูนย์นำหน้าหาย <span class="ref new">ใหม่</span></li>
+        </ul>
+      </div>
+
+      <!-- ===== improvements ===== -->
+      <div class="card">
+        <div class="card-head"><h2>4. ข้อปรับปรุงจากระบบเดิม</h2><span class="pill fail">P0 × 3 · P1 × 4</span></div>
+        <ol class="imp-list" style="margin:0; padding-left:22px; color:#45525f; font-size:13.5px;">
+          <li><b>เลิก polymorphic FK</b> — transaction_key ของ tracking เดิมชี้คนละตารางตาม data_name (P1) → interface_transactions ใช้ typed FK แยกคอลัมน์</li>
+          <li><b>บังคับ status domain ด้วย enum / check constraint</b> — W/P/Y/N · I/C/A/N/S/Z · action_status (Y/W/N) · workflow_generation_status (W/Y/N) ตามที่เอกสารแนะนำ</li>
+          <li><b>ครอบ Job 4 ด้วย transaction (outbox pattern)</b> — เดิม commit W→P ก่อนเขียนไฟล์ rollback ไม่ได้ (P0 อันดับหนึ่งของระบบ)</li>
+          <li><b>แก้บั๊ก purge tracking (E20)</b> — SQL เดิมต่อ data_name สองค่าเป็น string เดียว ทำให้ไม่เคยลบ — ต้องทำพร้อม data migration และ test</li>
+          <li><b>ทบทวน NULL → auto-accept ของ Job 5</b> (P1) — ระบบใหม่ตั้งสถานะ "รอตรวจสอบ" แทนการ accept อัตโนมัติ · ต้องขอ business sign-off ก่อนเปลี่ยน</li>
+          <li><b>ย้าย credential ทั้งหมดไป Secret Manager + บังคับ TLS</b> — เดิม SFTP/K2 Basic Auth เป็น plaintext/hardcoded (P0)</li>
+          <li><b>ใช้ identity ต่อตารางแทน sequence รวม 7 ตัว</b> — คงชื่อ sequence เดิมไว้เฉพาะช่วง migrate (Errata E18)</li>
+          <li><b>golden-file tests ต่อ interface ภายนอก</b> — encoding WINDOWS-874 / UTF-8 / TIS-620, วันที่ พ.ศ., ชื่อประกอบ first + last — กันพฤติกรรมเพี้ยนตอน re-implement</li>
+        </ol>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

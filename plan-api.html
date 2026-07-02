@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API (BE/FE ใหม่) · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  .ref{display:inline-flex; align-items:center; font-size:10.5px; font-weight:700; border-radius:12px; padding:2px 9px;
+    font-family:"Sarabun",sans-serif; white-space:nowrap; letter-spacing:.2px; vertical-align:1px;}
+  .ref.fgi{background:#e8f0fe; color:#1d4ed8;} .ref.k2{background:#f1ecfe; color:#6d28d9;}
+  .ref.new{background:#e7f7ee; color:#15803d;} .ref.mix{background:#fff4d6; color:#92670b;}
+  .mth{display:inline-flex; justify-content:center; min-width:52px; font-size:11px; font-weight:800; border-radius:7px;
+    padding:3px 8px; font-family:"Sarabun",sans-serif; letter-spacing:.4px;}
+  .mth.get{background:#e8f0fe; color:#1d4ed8;} .mth.post{background:#e7f7ee; color:#15803d;}
+  .mth.put{background:#fff4d6; color:#92670b;} .mth.del{background:#fdecec; color:#c0392b;}
+  .ep-path{font-family:ui-monospace,Menlo,monospace; font-size:12.5px; color:#37414e; font-weight:600;}
+  .api-group h3{font-size:14.5px; color:#2b3440; margin:22px 2px 10px; display:flex; align-items:center; gap:10px;}
+  .api-group h3 .gnum{width:26px; height:26px; border-radius:8px; background:var(--primary); color:#fff; display:inline-flex;
+    align-items:center; justify-content:center; font-size:13px; font-weight:700; flex:0 0 auto;}
+  #tblApi tbody tr, .api-group tbody tr{cursor:pointer;}
+  .api-group tbody tr.sel td{background:#eef4ff;}
+  .code{background:#0f172a; color:#d7e3f4; border-radius:12px; padding:14px 16px; font-family:ui-monospace,Menlo,monospace;
+    font-size:12px; line-height:1.65; overflow-x:auto; margin:0; white-space:pre;}
+  .code .cl{color:#7dd3a7;}
+  .rr-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;}
+  .rr-grid h4, .ep-sec h4{font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;}
+  .ep-sec{margin-top:22px;}
+  .ep-flow{margin:0; padding-left:22px; color:#45525f; font-size:13.5px; line-height:1.95;}
+  @media (max-width:900px){ .rr-grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body data-page="plan-api" data-nav="modules" data-module="plan-api" data-crumb="API (BE/FE ใหม่)">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">API Specification — ระบบใหม่ (แยก BE / FE)</h1>
+          <p class="page-sub">REST API ทั้งหมด 36 เส้น 7 กลุ่ม (+2 เส้นข้อมูลผิดปกติ comment รอตัดสินใจ) สำหรับ Frontend SPA และงานภายใน · ทุกเส้นระบุ ref ที่มา (FGI/FCS หรือ K2), Flow, Database และ Request/Response</p></div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" data-ack="ดาวน์โหลด OpenAPI 3.0 (ตัวอย่าง)">Export OpenAPI</button>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="si bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v4c0 1.5-2 3-2 3s2 1.5 2 3v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4c0 1.5 2 3 2 3s-2 1.5-2 3v4a2 2 0 0 1-2 2h-1"/></svg></div>
+          <div><div class="sv num">36</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
+        <div class="stat"><div class="si bg-teal"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 10h18M9 5v14"/></svg></div>
+          <div><div class="sv num">8</div><div class="sl">กลุ่มตามโดเมน</div></div></div>
+        <div class="stat"><div class="si bg-amber"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></div>
+          <div><div class="sv num">JWT</div><div class="sl">Bearer Token · Role 00–10</div></div></div>
+        <div class="stat"><div class="si bg-rose"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6H9ZM14 3v6h6"/></svg></div>
+          <div><div class="sv num">JSON</div><div class="sl">UTF-8 ทุกเส้น (เลิก TIS-620)</div></div></div>
+      </div>
+
+      <!-- conventions -->
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="font-size:13px;color:#45525f;line-height:2;">
+          <b style="color:#2b3440;">มาตรฐานกลาง (ทุกเส้น):</b>
+          Base URL <code class="ep-path">/api/v1</code> · Auth: <code class="ep-path">Authorization: Bearer &lt;JWT&gt;</code> ยกเว้น login/refresh และเส้น callback ภายนอก (API key) ·
+          แบ่งหน้า <code class="ep-path">?page=1&amp;size=20</code> ตอบ <code class="ep-path">{"page","size","total","items":[]}</code> ·
+          Error ตอบรูปแบบเดียวกันทุกเส้น: <code class="ep-path">{"code":"DOC_409","message":"ข้อความภาษาไทยตรงตาม SRS"}</code> — ข้อความ popup ต้องตรงตัวตามเอกสาร ·
+          วันที่ใช้ ISO-8601 + ปี ค.ศ. ใน payload (FE แปลงแสดงเป็น พ.ศ.) ·
+          ref ที่มา: <span class="ref fgi">FGI/FCS</span> เอกสาร Batch v4.0 · <span class="ref k2">K2</span> SRS v3.1 · <span class="ref new">ใหม่</span> เพิ่มในระบบใหม่ · <span class="ref mix">ผสม</span>
+          — ดูภาพรวมที่ <a href="plan-flow.html" style="color:#2f6fed;font-weight:600;">Flow FGI/FCS + K2</a> · ตารางที่ <a href="plan-database.html" style="color:#2f6fed;font-weight:600;">DB รวม</a>
+        </div>
+      </div>
+
+      <!-- catalog -->
+      <div class="card">
+        <div class="card-head"><h2>รายการ API ทั้งหมด</h2><span class="pill info">คลิกเส้นที่ต้องการเพื่อดูรายละเอียด</span></div>
+        <div id="apiCatalog"></div>
+      </div>
+
+
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <p style="margin:0; font-size:13px; color:#5d6b7a;">
+          ข้อแนะนำเพิ่มเติม: ทำ <b>OpenAPI 3.0 spec</b> เป็น contract กลางระหว่างทีม FE/BE ตั้งแต่วันแรก ·
+          เส้นภายใน (Workflow / Batch trigger) ใช้ <b>service token</b> แยกจาก JWT ผู้ใช้ ·
+          ทุกเส้นที่แก้ข้อมูลต้องบันทึกผู้ทำ (จาก JWT) ลง audit (consideration_logs / audit_logs / job_run_histories ตามโดเมน) ·
+          ข้อความ error ภาษาไทยต้องตรงตาม SRS ตรงตัว เช่น กรณียังไม่เลือกผลการพิจารณา
+        </p>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+  <script>
+(function () {
+  "use strict";
+
+  /* ===== API catalog: 36 เส้น 7 กลุ่ม (กลุ่มข้อมูลผิดปกติถูก comment รอตัดสินใจ) ===== */
+  var GROUPS = [
+    { name:'Auth & สิทธิ์ผู้ใช้', refT:'K2 · SRS 3.1.1', eps:[
+      { m:'POST', p:'/api/v1/auth/login', ref:'k2', refT:'K2 · 3.1.1', roles:'ทุกคน (public)',
+        sum:'เข้าสู่ระบบด้วยบัญชีพนักงาน แลก JWT พร้อม role และ section สำหรับใช้ทุกเส้นถัดไป',
+        flow:['ตรวจ username/password กับ AD/LDAP ขององค์กร','โหลด user_accounts + role (00–10) และ section_code ของผู้ใช้','ออก accessToken (30 นาที) + refreshToken (8 ชั่วโมง)'],
+        db:[['user_accounts','R','บัญชีผู้ใช้ + role (ตารางใหม่)'],['roles','R','ชื่อ role 00–10 (K2 3.1.1)']],
+        req:'{\n  "username": "phatcharida.p",\n  "password": "********"\n}',
+        res:'{\n  "accessToken": "eyJhbGciOiJIUzI1NiIs...",\n  "refreshToken": "d2f8a1...",\n  "user": {\n    "empId": "57123",\n    "name": "ภัชริดา ประเสริฐ",\n    "roles": ["03"],\n    "sectionCode": "06"\n  }\n}',
+        err:['401 — ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง','423 — บัญชีถูกล็อกจากการลองผิดเกินกำหนด'] },
+      { m:'POST', p:'/api/v1/auth/refresh', ref:'new', refT:'ใหม่', roles:'ผู้ถือ refreshToken',
+        sum:'ต่ออายุ accessToken โดยไม่ต้อง login ใหม่',
+        flow:['ตรวจ refreshToken ยังไม่หมดอายุ/ไม่ถูกเพิกถอน','ออก accessToken ใหม่'],
+        db:[['user_accounts','R','ตรวจสถานะบัญชียัง active']],
+        req:'{\n  "refreshToken": "d2f8a1..."\n}',
+        res:'{\n  "accessToken": "eyJhbGciOiJIUzI1NiIs..."\n}',
+        err:['401 — token หมดอายุหรือถูกเพิกถอน ให้ login ใหม่'] },
+      { m:'GET', p:'/api/v1/auth/me', ref:'k2', refT:'K2', roles:'ทุก role',
+        sum:'ข้อมูลผู้ใช้ปัจจุบันจาก JWT — FE ใช้แสดงชื่อ/role มุมขวาบน',
+        flow:['ถอด JWT → คืนข้อมูลผู้ใช้และ section ปัจจุบัน'],
+        db:[['user_accounts','R','ข้อมูลผู้ใช้ล่าสุด']],
+        req:'(ไม่มี body — ใช้ JWT ใน header)',
+        res:'{\n  "empId": "57123",\n  "name": "ภัชริดา ประเสริฐ",\n  "roles": ["03"],\n  "sectionCode": "06",\n  "zone": "RS"\n}',
+        err:['401 — token หมดอายุ'] },
+      { m:'GET', p:'/api/v1/me/menus', ref:'k2', refT:'K2 · 3.1.1', roles:'ทุก role',
+        sum:'เมนูที่ role ของผู้ใช้เข้าถึงได้ — FE ใช้สร้าง sidebar (แทนตารางสิทธิ์ 8 role ในหน้าจอ 3.1.1)',
+        flow:['อ่าน role จาก JWT','join menu_permissions × menus เอาเฉพาะ can_access = true','คืนรายการเมนูเรียงตามกลุ่ม'],
+        db:[['menu_permissions','R','สิทธิ์ต่อ role (composite PK)'],['menus','R','ชื่อ/กลุ่มเมนู']],
+        req:'(ไม่มี body)',
+        res:'{\n  "menus": [\n    { "code": "M01", "name": "รอดำเนินการ / เอกสาร", "group": "ระบบประกันรายได้" },\n    { "code": "M08", "name": "Batch Job Monitor", "group": "Job" }\n  ]\n}',
+        err:['401'] }
+    ]},
+
+    { name:'งาน & เอกสารประกันรายได้', refT:'K2 · SRS 3.1.2 / 3.1.3 / 3.1.6', eps:[
+      { m:'GET', p:'/api/v1/tasks', ref:'k2', refT:'K2 · 3.1.2', roles:'role ที่มีสิทธิ์เมนูเอกสาร',
+        sum:'งานรอท่านดำเนินการ — เอกสารที่ค้างอยู่ที่ section ของผู้ใช้ (หน้า k2-list-waiting.html)',
+        flow:['อ่าน sectionCode ของผู้ใช้จาก JWT','query workflow_tasks สถานะ OPEN ของ section นั้น','join compensation_documents + impacted_stores คืน 9 คอลัมน์ตามหน้าจอ'],
+        db:[['workflow_tasks','R','งานค้างต่อ section (ตารางใหม่ — inbox)'],['compensation_documents','R','ข้อมูลเอกสาร'],['impacted_stores','R','ชื่อ/ภาคของร้าน']],
+        req:'Query: ?page=1&size=20&q=00788\n(q = เลขที่เอกสาร / รหัสร้าน / ชื่อร้าน)',
+        res:'{\n  "page": 1, "total": 24,\n  "items": [{\n    "docNo": "2569/00123",\n    "storeCode": "00788",\n    "storeName": "รัตนอุทิศ ซ.13",\n    "impactMonth": "2026-06",\n    "status": "รอตรวจสอบ (STA)",\n    "currentSection": "06",\n    "waitingDays": 3\n  }]\n}',
+        err:['401'] },
+      { m:'GET', p:'/api/v1/documents', ref:'k2', refT:'K2 · 3.1.3 / 3.1.7', roles:'ตามสิทธิ์เมนู',
+        sum:'ค้นหาเอกสารที่เกี่ยวข้อง — บังคับระบุปี และคืนเฉพาะเอกสารที่มีเลขที่แล้ว (กติกา SRS)',
+        flow:['validate: ต้องระบุ year เสมอ ไม่งั้นตอบ 400','ค้น compensation_documents ตามเงื่อนไข (เลขที่ / ร้าน / สถานะ / เดือน)','คืนแบบแบ่งหน้า'],
+        db:[['compensation_documents','R','เอกสารตามเงื่อนไข'],['impacted_stores','R','ข้อมูลร้าน']],
+        req:'Query: ?year=2569&storeCode=00788&status=STA&page=1',
+        res:'{\n  "page": 1, "total": 6,\n  "items": [{ "docNo": "2569/00123", "status": "รอตรวจสอบ (STA)", ... }]\n}',
+        err:['400 — กรุณาระบุปีที่ต้องการค้นหา (กติกา SRS)','401'] },
+      { m:'GET', p:'/api/v1/documents/{docNo}', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
+        sum:'เอกสารฉบับเต็ม 12 ส่วนย่อย (k2-document.html) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน',
+        flow:['โหลดเอกสาร + ร้านใหม่ + คู่แข่ง + ปัจจัย + ไฟล์แนบ + สรุปชดเชย ในคำขอเดียว','คำนวณ permissions: ส่วนไหนแก้ได้ตาม role + current_section_code (data-editrole เดิม)','FE ใช้ธงนี้แสดงป้าย "อ่านอย่างเดียว" ต่อส่วน'],
+        db:[['compensation_documents','R','หัวเอกสาร'],['document_new_stores / document_competitors / document_external_factors','R','ส่วนย่อย'],['document_attachments / consideration_logs','R','ไฟล์แนบ + ประวัติ']],
+        req:'(ไม่มี body)',
+        res:'{\n  "docNo": "2569/00123",\n  "status": "รอตรวจสอบ (STA)",\n  "currentSection": "06",\n  "impactedStore": { "storeCode": "00788", ... },\n  "newStores": [ { "storeCode": "15211", "compensatePercent": 60.0 } ],\n  "competitors": [ ... ],\n  "factors": [ ... ],\n  "compensation": { "amount": 95000.00, "salesDropPercent": 12.5 },\n  "permissions": { "canEditSections": ["competitor","factor"], "canAction": true }\n}',
+        err:['404 — ไม่พบเอกสาร','401'] },
+      { m:'POST', p:'/api/v1/documents', ref:'k2', refT:'K2 · 3.1.6', roles:'02 HQ, 03 User Admin',
+        sum:'สร้างเอกสารใหม่นอกเงื่อนไข หรือสร้างเอกสารที่ FS (สองแท็บของ k2-create.html)',
+        flow:['ตรวจซ้ำ: ร้าน + เดือนที่ถูกกระทบ ต้องยังไม่มีเอกสาร','ออกเลขที่ YYYY/xxxxx (running ต่อปี เริ่ม 00001 — กติกา SRS)','insert compensation_documents สถานะเริ่มต้น + เปิด workflow_instances / workflow_tasks แรก (Section 06)','ส่งอีเมลตาม status_email_rules'],
+        db:[['compensation_documents','W','เอกสารใหม่'],['workflow_instances / workflow_tasks','W','เปิด workflow + งานแรก'],['status_email_rules','R','ผู้รับอีเมล TO/CC']],
+        req:'{\n  "impactedStoreCode": "00788",\n  "impactMonth": "2026-06",\n  "source": "MANUAL"   // MANUAL | FS\n}',
+        res:'201 Created\n{\n  "docNo": "2569/00124"\n}',
+        err:['409 — ร้านนี้ในเดือนนี้มีเอกสารอยู่แล้ว','422 — ข้อมูลบังคับไม่ครบ'] },
+      { m:'PUT', p:'/api/v1/documents/{docNo}', ref:'k2', refT:'K2 · 3.1.6', roles:'ตาม section ปัจจุบัน',
+        sum:'บันทึกแก้ไขส่วนย่อยของเอกสาร (ร้านใหม่ / คู่แข่ง / ปัจจัย) ตามสิทธิ์ของขั้นที่ถืออยู่',
+        flow:['ตรวจว่า role + section ปัจจุบันมีสิทธิ์แก้ส่วนที่ส่งมา (เช่น Section 01 แก้คู่แข่ง/ปัจจัยได้)','validate %ชดเชยของร้านใหม่รวมกันต้องเท่ากับ 100%','บันทึกและคืนเอกสารล่าสุด'],
+        db:[['document_new_stores','R/W','%ชดเชย · ระยะห่าง'],['document_competitors','R/W','คู่แข่ง'],['document_external_factors','R/W','ปัจจัยภายนอก']],
+        req:'{\n  "newStores": [ { "newStoreId": 88, "compensatePercent": 60.0 },\n                 { "newStoreId": 89, "compensatePercent": 40.0 } ]\n}',
+        res:'200 OK — เอกสารฉบับล่าสุด (โครงเดียวกับ GET)',
+        err:['403 — ไม่มีสิทธิ์แก้ส่วนนี้ในขั้นปัจจุบัน','422 — "%ชดเชย ... รวมกันแล้วไม่เท่ากับ 100%" (ข้อความตรงตาม SRS)'] },
+      { m:'POST', p:'/api/v1/documents/{docNo}/actions', ref:'k2', refT:'K2 · 3.1.4', roles:'เจ้าของ task ปัจจุบัน',
+        sum:'ส่งผลพิจารณา (ชดเชย / ไม่ชดเชย / หยุดชดเชย) — หัวใจของ workflow 7 ขั้น รวมกฎวงเงิน 100,000',
+        flow:['ตรวจว่าผู้ใช้เป็นเจ้าของ workflow_tasks ขั้นปัจจุบัน','validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว','คำนวณขั้นถัดไป: ชดเชย > 100,000 → AVP (03) · ≤ 100,000 ข้าม 03 ไป 04 · ไม่ชดเชย/หยุด → End','insert consideration_logs + ปิด task เดิม เปิด task ใหม่','ส่งอีเมล TO/CC ตาม status_email_rules'],
+        db:[['workflow_tasks','R/W','ปิดงานเดิม เปิดงานขั้นถัดไป'],['compensation_documents','W','อัปเดต Status + CurSection'],['consideration_logs','W','บันทึกผลพิจารณา'],['status_email_rules','R','ผู้รับอีเมล']],
+        req:'{\n  "action": "APPROVE",   // APPROVE | STOP | INITIAL\n  "comment": "เห็นควรชดเชยตามหลักเกณฑ์"\n}',
+        res:'{\n  "docNo": "2569/00123",\n  "nextSection": "02",\n  "status": "รอ GM พิจารณา"\n}',
+        err:['422 — "ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ"','403 — ไม่ใช่เจ้าของงานขั้นนี้','409 — งานถูกดำเนินการไปแล้วโดยผู้อื่น'] },
+      { m:'GET', p:'/api/v1/documents/{docNo}/timeline', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
+        sum:'ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร)',
+        flow:['อ่าน consideration_logs เรียงตามเวลา'],
+        db:[['consideration_logs','R','ประวัติครบทุกขั้น']],
+        req:'(ไม่มี body)',
+        res:'{\n  "items": [{\n    "section": "06",\n    "considerName": "สมชาย ใจดี",\n    "result": "ชดเชย",\n    "detail": "ตรวจสอบแล้วเข้าเกณฑ์",\n    "actionDateTime": "2026-06-18T10:42:00"\n  }]\n}',
+        err:['404'] },
+      { m:'POST', p:'/api/v1/documents/{docNo}/attachments', ref:'k2', refT:'K2 · 3.1.6', roles:'ตาม section ปัจจุบัน',
+        sum:'แนบไฟล์เข้าเอกสาร — จำกัด 5MB ต่อไฟล์ตาม SRS',
+        flow:['รับ multipart/form-data (file + sectionCode)','ตรวจขนาด ≤ 5MB และชนิดไฟล์ที่อนุญาต','บันทึกไฟล์ + insert document_attachments'],
+        db:[['document_attachments','W','เมทาดาต้าไฟล์ + section ที่แนบ']],
+        req:'multipart/form-data\n  file: (binary ≤ 5MB)\n  sectionCode: "06"',
+        res:'201 Created\n{ "attachId": 771, "fileName": "หนังสือแจ้งผล.pdf" }',
+        err:['413 — ไฟล์เกิน 5MB','415 — ชนิดไฟล์ไม่อนุญาต'] }
+    ]},
+
+    /* ปิดชั่วคราว — รอตัดสินใจหน้าข้อมูลผิดปกติ (k2-list-abnormal.html) · เปิดคืนโดยลบ comment นี้
+    { name:'ข้อมูลผิดปกติ / แจกงาน', refT:'K2 + FGI/FCS', eps:[
+      { m:'GET', p:'/api/v1/abnormal-stores', ref:'mix', refT:'FGI/FCS (ข้อมูล) + K2 (หน้าจอ)', roles:'05 Assign Job',
+        sum:'รายการร้านข้อมูลผิดปกติ (ยอดขาย < 60 วัน) จาก pipeline batch — หน้าจอ k2-list-abnormal.html',
+        flow:['query fgi_impact_sales_summaries ที่ total_working_days ≠ 60','join ข้อมูลร้าน + ผู้รับผิดชอบปัจจุบัน','FE แสดงเป็นแถวแดง (flag-red) ตามหน้าจอเดิม'],
+        db:[['fgi_impact_sales_summaries','R','เกณฑ์วันทำการ ≠ 60 (โซน A)'],['fgi_impact_stores','R','ข้อมูลคู่ร้าน']],
+        req:'Query: ?page=1&size=20',
+        res:'{\n  "items": [{\n    "storeCode": "01045",\n    "storeName": "บางบัวทอง ก.ม.8",\n    "workingDays": 42,\n    "impactMonth": "2026-06",\n    "assignee": null\n  }]\n}',
+        err:['401','403'] },
+      { m:'POST', p:'/api/v1/abnormal-stores/assign', ref:'k2', refT:'K2 (Assign Job)', roles:'05 Assign Job',
+        sum:'แจกงานร้านผิดปกติให้เจ้าหน้าที่ตรวจสอบ (เลือกหลายร้านพร้อมกันได้)',
+        flow:['ตรวจ role 05','สร้าง workflow_tasks ประเภทตรวจสอบข้อมูล ให้ผู้รับผิดชอบ','แจ้งอีเมลผู้รับงาน'],
+        db:[['workflow_tasks','W','งานตรวจสอบต่อร้าน'],['operator_assignments','R','รายชื่อเจ้าหน้าที่ (3.1.8)']],
+        req:'{\n  "storeCodes": ["01045", "00788"],\n  "assigneeEmpId": "57123"\n}',
+        res:'{ "assigned": 2 }',
+        err:['404 — ไม่พบเจ้าหน้าที่','403'] }
+    ]},
+    */
+
+    { name:'Master Data', refT:'K2 · SRS 3.1.8 / 3.1.9', eps:[
+      { m:'GET', p:'/api/v1/operators', ref:'k2', refT:'K2 · 3.1.8', roles:'03 User Admin',
+        sum:'รายชื่อผู้ปฏิบัติงาน (operator_assignments) พร้อมค้นหา/แบ่งหน้า',
+        flow:['query ตามเงื่อนไข (ชื่อ / section / zone)'],
+        db:[['operator_assignments','R','master ผู้ปฏิบัติงาน (เทียบจาก SRS)']],
+        req:'Query: ?q=สมชาย&sectionCode=06&page=1',
+        res:'{\n  "items": [{\n    "operatorAssignmentId": 12,\n    "empName": "สมชาย ใจดี",\n    "empMail": "somchai@cpall.co.th",\n    "sectionCode": "06",\n    "zoneCode": "RS"\n  }]\n}',
+        err:['401','403'] },
+      { m:'POST', p:'/api/v1/operators', ref:'k2', refT:'K2 · 3.1.8', roles:'03 User Admin',
+        sum:'เพิ่มผู้ปฏิบัติงานใหม่ (จากหน้าค้นหาพนักงานด้วยแว่นขยาย)',
+        flow:['validate พนักงานมีจริง (จากเส้น employees/search)','insert + บันทึก audit_logs (ADD)'],
+        db:[['operator_assignments','W','แถวใหม่'],['audit_logs','W','audit การเพิ่ม']],
+        req:'{\n  "empId": "57123",\n  "empName": "สมชาย ใจดี",\n  "empMail": "somchai@cpall.co.th",\n  "sectionCode": "06",\n  "zoneCode": "RS"\n}',
+        res:'201 Created — { "operatorAssignmentId": 31 }',
+        err:['409 — พนักงานคนนี้อยู่ใน section นี้แล้ว'] },
+      { m:'PUT', p:'/api/v1/operators/{id}', ref:'k2', refT:'K2 · 3.1.8', roles:'03 User Admin',
+        sum:'แก้ไขข้อมูลผู้ปฏิบัติงาน',
+        flow:['update + บันทึก audit_logs (EDIT)'],
+        db:[['operator_assignments','W','แก้ไข'],['audit_logs','W','audit']],
+        req:'{ "empMail": "somchai.j@cpall.co.th", "zoneCode": "RW" }',
+        res:'200 OK',
+        err:['404'] },
+      { m:'DELETE', p:'/api/v1/operators/{id}', ref:'k2', refT:'K2 · 3.1.8', roles:'03 User Admin',
+        sum:'ลบผู้ปฏิบัติงาน พร้อมบันทึกเหตุผล',
+        flow:['ตรวจว่าไม่ถืองานค้างใน workflow_tasks','ลบ + บันทึก audit_logs (DELETE + เหตุผล)'],
+        db:[['operator_assignments','W','ลบแถว'],['audit_logs','W','audit + เหตุผล'],['workflow_tasks','R','ตรวจงานค้าง']],
+        req:'{ "reason": "ย้ายหน่วยงาน" }',
+        res:'204 No Content',
+        err:['409 — ยังถืองานค้างอยู่ ต้องแจกงานใหม่ก่อน'] },
+      { m:'GET', p:'/api/v1/factors', ref:'k2', refT:'K2 · 3.1.9', roles:'03 User Admin',
+        sum:'รายการปัจจัยภายนอก (external_factors)',
+        flow:['query ทั้งหมด / ตามคำค้น'],
+        db:[['external_factors','R','master ปัจจัย (เทียบจาก SRS)']],
+        req:'Query: ?q=ถนน',
+        res:'{\n  "items": [{ "factorCode": "F001", "factorName": "ปิดถนน/ซ่อมถนน", "factorRemark": "..." }]\n}',
+        err:['401'] },
+      { m:'POST', p:'/api/v1/factors', ref:'k2', refT:'K2 · 3.1.9', roles:'03 User Admin',
+        sum:'เพิ่มปัจจัยภายนอก — รหัสห้ามซ้ำ (กติกา SRS)',
+        flow:['ตรวจ factor_code ไม่ซ้ำ','insert + audit_logs'],
+        db:[['external_factors','W','แถวใหม่'],['audit_logs','W','audit']],
+        req:'{ "factorCode": "F009", "factorName": "คู่แข่งจัดโปรโมชัน", "factorRemark": "" }',
+        res:'201 Created',
+        err:['409 — รหัสปัจจัยนี้มีอยู่แล้ว'] },
+      { m:'PUT', p:'/api/v1/factors/{code}', ref:'k2', refT:'K2 · 3.1.9', roles:'03 User Admin',
+        sum:'แก้ไขปัจจัยภายนอก',
+        flow:['update + audit_logs'],
+        db:[['external_factors','W','แก้ไข'],['audit_logs','W','audit']],
+        req:'{ "factorName": "คู่แข่งจัดโปรโมชันใหญ่" }',
+        res:'200 OK',
+        err:['404'] },
+      { m:'DELETE', p:'/api/v1/factors/{code}', ref:'k2', refT:'K2 · 3.1.9', roles:'03 User Admin',
+        sum:'ลบปัจจัยภายนอก (ต้องไม่ถูกใช้ในเอกสารใด)',
+        flow:['ตรวจไม่ถูกอ้างใน document_external_factors','ลบ + audit_logs'],
+        db:[['external_factors','W','ลบแถว'],['document_external_factors','R','ตรวจการใช้งาน'],['audit_logs','W','audit']],
+        req:'{ "reason": "เลิกใช้" }',
+        res:'204 No Content',
+        err:['409 — ปัจจัยถูกใช้ในเอกสารอยู่ ลบไม่ได้'] },
+      { m:'GET', p:'/api/v1/employees/search', ref:'mix', refT:'K2 3.1.8 + master FGI/FCS', roles:'03 User Admin',
+        sum:'ค้นหาพนักงานจากระบบ HR (popup แว่นขยายในหน้า 3.1.8)',
+        flow:['ค้นจาก employees (ตาราง master ที่ฝั่ง batch ใช้ join อยู่แล้ว)','คืนรายการสั้นสำหรับ popup เลือก'],
+        db:[['employees','R','master พนักงาน (โซน master เดิมของ FGI/FCS)']],
+        req:'Query: ?q=สมชาย (ชื่อ / รหัสพนักงาน)',
+        res:'{\n  "items": [{ "empId": "57123", "name": "สมชาย ใจดี", "mail": "somchai@cpall.co.th", "dept": "SBP DSA" }]\n}',
+        err:['401'] }
+    ]},
+
+    { name:'รายงาน', refT:'K2 · SRS 3.1.7', eps:[
+      { m:'GET', p:'/api/v1/reports/status-summary', ref:'k2', refT:'K2 · 3.1.7', roles:'04 / 06 Report Admin',
+        sum:'รายงานสรุปสถานะ 19 คอลัมน์ — บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)',
+        flow:['validate ปี (ไม่ระบุ → 400)','query compensation_documents + compensation_histories ตามเงื่อนไข','คืนแบบแบ่งหน้า 19 คอลัมน์ตามหน้าจอ k2-report.html'],
+        db:[['compensation_documents','R','สถานะเอกสาร'],['compensation_histories','R','ยอด/งวดชดเชย'],['impacted_stores','R','ข้อมูลร้าน']],
+        req:'Query: ?year=2569&month=6&zone=RS&status=END&page=1',
+        res:'{\n  "page": 1, "total": 212,\n  "items": [{ "docNo": "2569/00098", "storeCode": "00788", "status": "ปิดงาน (End)", "compensateAmount": 85000.00, ... }]\n}',
+        err:['400 — กรุณาระบุปีที่ต้องการค้นหา'] },
+      { m:'GET', p:'/api/v1/reports/status-summary/export', ref:'k2', refT:'K2 · 3.1.7', roles:'04 / 06 Report Admin',
+        sum:'Export รายงานเป็นไฟล์ Excel เงื่อนไขเดียวกับเส้นค้นหา',
+        flow:['เงื่อนไขเดียวกับ status-summary','สร้างไฟล์ .xlsx แล้ว stream กลับ'],
+        db:[['compensation_documents / compensation_histories','R','ข้อมูลชุดเดียวกับรายงาน']],
+        req:'Query: ?year=2569&month=6',
+        res:'200 OK\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\nContent-Disposition: attachment; filename="status-summary-2569-06.xlsx"',
+        err:['400 — ไม่ระบุปี'] }
+    ]},
+
+    { name:'Batch Job Admin', refT:'FGI/FCS · Jobs 1–10', eps:[
+      { m:'GET', p:'/api/v1/jobs', ref:'fgi', refT:'FGI/FCS', roles:'01 Admin',
+        sum:'รายการ batch job ทั้ง 11 entry points พร้อมสถานะรอบล่าสุด (หน้าจอ job-batch.html)',
+        flow:['อ่าน job_configs ทั้งหมด','join ผลรันล่าสุดจาก job_run_histories'],
+        db:[['job_configs','R','cron + enabled + params (ตารางใหม่)'],['job_run_histories','R','ผลรันล่าสุด']],
+        req:'(ไม่มี body)',
+        res:'{\n  "items": [{\n    "jobNo": "6",\n    "name": "ExportImpactStoreToFS",\n    "cron": "0 17 * * *",\n    "enabled": true,\n    "lastRun": { "status": "SUCCESS", "rows": 1254, "startedAt": "2026-07-01T17:00:00" }\n  }]\n}',
+        err:['401','403'] },
+      { m:'GET', p:'/api/v1/jobs/{jobNo}', ref:'fgi', refT:'FGI/FCS', roles:'01 Admin',
+        sum:'รายละเอียด job หนึ่งตัว: พารามิเตอร์ (แยกแก้ได้/คงที่), flow, ตารางที่ใช้',
+        flow:['อ่าน job_configs + เมทาดาต้า job (จากเอกสาร v4.0)'],
+        db:[['job_configs','R','พารามิเตอร์ปัจจุบัน']],
+        req:'(ไม่มี body)',
+        res:'{\n  "jobNo": "1",\n  "name": "ImportQSSI",\n  "params": [\n    { "key": "sftpPort", "value": "218", "editable": true },\n    { "key": "encoding", "value": "WINDOWS-874", "editable": false }\n  ]\n}',
+        err:['404'] },
+      { m:'PUT', p:'/api/v1/jobs/{jobNo}/params', ref:'fgi', refT:'FGI/FCS + ข้อ 8.2', roles:'01 Admin',
+        sum:'แก้พารามิเตอร์ที่แก้ได้ของ job (เวลารัน, path, เกณฑ์) — ค่าคงที่ทางธุรกิจแก้ผ่าน API ไม่ได้',
+        flow:['validate: แก้ได้เฉพาะ key ที่ editable (เกณฑ์ธุรกิจ เช่น −10, 50, 60 ต้องขออนุมัติตามข้อ 8.2 — ตอบ 422)','update job_configs + บันทึก audit_logs'],
+        db:[['job_configs','W','พารามิเตอร์ใหม่'],['audit_logs','W','audit ผู้แก้ + ค่าเดิม/ใหม่']],
+        req:'{\n  "params": { "cron": "0 18 * * *", "batchSize": 20000 }\n}',
+        res:'200 OK',
+        err:['422 — key นี้เป็นค่าคงที่ทางธุรกิจ แก้ผ่าน API ไม่ได้','404'] },
+      { m:'POST', p:'/api/v1/jobs/{jobNo}/run', ref:'fgi', refT:'FGI/FCS · Runbook 7.1', roles:'01 Admin',
+        sum:'สั่งรัน job นอกรอบ พร้อมระบุงวดข้อมูล — มี guard กันรันซ้อน',
+        flow:['ตรวจ job เปิดใช้งานอยู่','ตรวจไม่มีรอบที่กำลังรัน (สำคัญมากกับ Job 1 — temp table ใช้ร่วม ห้ามซ้อน)','enqueue ให้ Batch Scheduler + insert job_run_histories สถานะ RUNNING','ตอบ 202 พร้อม runId ให้ FE ตาม poll ได้'],
+        db:[['job_run_histories','W','รอบใหม่สถานะ RUNNING'],['job_configs','R','ตรวจ enabled']],
+        req:'{\n  "period": "2026-07"   // งวดข้อมูล (YYYY-MM)\n}',
+        res:'202 Accepted\n{ "runId": 4451 }',
+        err:['409 — Job กำลังรันอยู่ ห้ามรันซ้อน','422 — job ถูกปิดใช้งาน'] },
+      { m:'PUT', p:'/api/v1/jobs/{jobNo}/enabled', ref:'fgi', refT:'FGI/FCS', roles:'01 Admin',
+        sum:'เปิด/ปิดการทำงานของ job ตามรอบเวลา',
+        flow:['update job_configs.enabled + audit'],
+        db:[['job_configs','W','ธง enabled'],['audit_logs','W','audit']],
+        req:'{ "enabled": false, "reason": "ปิดชั่วคราวช่วงปิดงบ" }',
+        res:'200 OK',
+        err:['404'] },
+      { m:'GET', p:'/api/v1/jobs/{jobNo}/runs', ref:'fgi', refT:'FGI/FCS', roles:'01 Admin',
+        sum:'ประวัติการรันของ job (แท็บประวัติในหน้า Batch Monitor)',
+        flow:['query job_run_histories เรียงล่าสุดก่อน แบ่งหน้า'],
+        db:[['job_run_histories','R','เวลา · แถว · ไฟล์ · ผล · หมายเหตุ']],
+        req:'Query: ?page=1&size=20',
+        res:'{\n  "items": [{\n    "runId": 4451, "status": "SUCCESS", "rows": 48220,\n    "file": "mrs1-mrs5 (4 ไฟล์)", "startedAt": "2026-07-01T06:00:00", "durationSec": 252\n  }]\n}',
+        err:['404'] }
+    ]},
+
+    { name:'Workflow ภายใน', refT:'K2 3.1.4 + FGI/FCS Job 8b', eps:[
+      { m:'POST', p:'/api/v1/workflows/instances', ref:'mix', refT:'แทน K2 StartInstance (Job 8b)', roles:'service token (ภายใน)',
+        sum:'เปิด workflow ให้รายการที่ผ่าน Gen Flow Gate — เส้นภายในที่ Batch Scheduler เรียกแทนการยิง K2 REST เดิม',
+        flow:['ตรวจ service token (ไม่ใช่ JWT ผู้ใช้)','ตรวจ Gen Flow Gate เกณฑ์เดิมทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · opt_dv_user_id ไม่ว่าง · new_store_juristic_name ≠ impacted_store_juristic_name · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N}','ไม่ผ่าน: branch type นอกเซ็ต → workflow_generation_status=N · กรณีอื่นคง W (ตอบ 422 พร้อมเหตุผล)','ผ่าน: สร้าง compensation_documents (ถ้ายังไม่มี) + workflow_instances + workflow_tasks แรก (06) แล้วตั้ง workflow_generation_status=Y','ส่งอีเมลสรุปราย DV (พฤติกรรมเดิมของ Job 8b)'],
+        db:[['fgi_impact_stores','R/W','ตรวจ gate + อัปเดต workflow_generation_status W→Y/N'],['compensation_documents','W','เอกสารอัตโนมัติ (ถ้ายังไม่มี)'],['workflow_instances / workflow_tasks','W','เปิด instance + งานแรก']],
+        req:'{\n  "impactProcessId": 88123\n}',
+        res:'201 Created\n{\n  "instanceId": 501,\n  "docNo": "2569/00124",\n  "flagGenFlow": "Y"\n}',
+        err:['422 — ไม่ผ่าน Gen Flow Gate (ตอบเหตุผล + สถานะ W/N ที่ตั้งให้)','401 — service token ไม่ถูกต้อง'] },
+      { m:'GET', p:'/api/v1/workflows/instances/{id}', ref:'new', refT:'ใหม่', roles:'01 Admin / เจ้าของงาน',
+        sum:'สถานะ instance และงานขั้นปัจจุบัน (ใช้ debug/ติดตาม)',
+        flow:['อ่าน workflow_instances + workflow_tasks ปัจจุบัน + เอกสารที่ผูก'],
+        db:[['workflow_instances / workflow_tasks','R','สถานะ + งานปัจจุบัน']],
+        req:'(ไม่มี body)',
+        res:'{\n  "instanceId": 501,\n  "docNo": "2569/00124",\n  "status": "ACTIVE",\n  "currentTask": { "section": "02", "openedAt": "2026-07-01T09:00:00" }\n}',
+        err:['404'] },
+      { m:'GET', p:'/api/v1/workflows/summary', ref:'fgi', refT:'FGI/FCS · Monitoring 7.4', roles:'01 Admin',
+        sum:'ตัวเลขเฝ้าระวังตามเอกสาร: นับ workflow_generation_status W/Y/N, จำนวน start ล้มเหลว, งานค้างต่อขั้น',
+        flow:['aggregate จาก fgi_impact_stores + workflow_instances/workflow_tasks'],
+        db:[['fgi_impact_stores','R','นับ W/Y/N'],['workflow_tasks','R','งานค้างต่อ section']],
+        req:'(ไม่มี body)',
+        res:'{\n  "genFlow": { "W": 12, "Y": 58, "N": 4 },\n  "failedStarts": 0,\n  "openTasksBySection": { "06": 24, "02": 7 }\n}',
+        err:['401'] }
+    ]},
+
+    { name:'Interface & Dashboard', refT:'FGI/FCS · tracking / watchdog', eps:[
+      { m:'GET', p:'/api/v1/interfaces/tracking', ref:'fgi', refT:'FGI/FCS', roles:'01 Admin',
+        sum:'สถานะการรับ–ส่งไฟล์กับระบบภายนอก (interface_transactions ใหม่ แทน FGI_CONFIRM_RECEIVE_DATA)',
+        flow:['query ตาม dataName / สถานะค้าง / ช่วงเวลา แบ่งหน้า'],
+        db:[['interface_transactions','R','tracking typed FK (ตารางใหม่)']],
+        req:'Query: ?dataName=COMPENSATE_INIT_I&pending=true&page=1',
+        res:'{\n  "items": [{\n    "trackingId": 9912,\n    "dataName": "COMPENSATE_INIT_I",\n    "docNo": "2569/00098",\n    "sentAt": "2026-06-30T17:02:00",\n    "returnCode": null\n  }]\n}',
+        err:['401'] },
+      { m:'POST', p:'/api/v1/interfaces/sta/ack', ref:'new', refT:'ใหม่ (เสริม Job 10)', roles:'API key ของระบบ STA',
+        sum:'Callback ให้ระบบ STA ยิงตอบรับ (ACK) ตรง — แทนการรออัปเดต return_code ฝั่งเดียว',
+        flow:['ตรวจ API key เฉพาะของ STA','update interface_transactions.returnCode + receiveDate','รายการหายจากจอ pending-ack ทันที (watchdog Job 10 ยังคงเป็น safety net)'],
+        db:[['interface_transactions','W','บันทึก ACK']],
+        req:'{\n  "trackingId": 9912,\n  "returnCode": "W",\n  "receiveDate": "2026-07-02T08:15:00"\n}',
+        res:'200 OK',
+        err:['401 — API key ไม่ถูกต้อง','404 — ไม่พบ tracking'] },
+      { m:'GET', p:'/api/v1/interfaces/pending-ack', ref:'fgi', refT:'FGI/FCS · Job 10', roles:'01 Admin',
+        sum:'รายการ ACK ค้างเกิน 1 วัน (เกณฑ์เดียวกับ watchdog) — ใช้ทั้งหน้า dashboard และอีเมลเตือน',
+        flow:['เกณฑ์เดิมของ Job 10: returnCode IS NULL · interface แบบไฟล์ · อายุ ≥ 1 วัน','เฉพาะ dataset ฝั่ง STA (COMPENSATE_INIT_I / COMPENSATE_APPROVE_I)'],
+        db:[['interface_transactions','R','รายการค้าง']],
+        req:'(ไม่มี body)',
+        res:'{\n  "count": 2,\n  "items": [{ "dataName": "COMPENSATE_INIT_I", "docNo": "2569/00098", "ageDays": 2 }]\n}',
+        err:['401'] },
+      { m:'GET', p:'/api/v1/dashboard/summary', ref:'k2', refT:'K2 (หน้าหลัก)', roles:'ทุก role',
+        sum:'ตัวเลขหน้า Dashboard: งานค้าง, ร้านประกันรายได้เดือนนี้, ยอดชดเชย, ข้อมูลผิดปกติ + ข้อมูลกราฟ',
+        flow:['aggregate จากเอกสาร + งานค้าง + ผลชดเชยเดือนปัจจุบัน','cache 5 นาที'],
+        db:[['compensation_documents / workflow_tasks','R','งานค้าง + สถานะ'],['compensation_histories','R','ยอดชดเชยรายเดือน'],['fgi_impact_sales_summaries','R','จำนวนข้อมูลผิดปกติ']],
+        req:'(ไม่มี body)',
+        res:'{\n  "waitingTasks": 24,\n  "storesThisMonth": 342,\n  "compensationThisMonth": 8420000.00,\n  "abnormalStores": 5,\n  "chart": { "monthly": [ ... ] }\n}',
+        err:['401'] }
+    ]}
+  ];
+
+  /* ===== helpers ===== */
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  var FLAT = [];
+  GROUPS.forEach(function(g){ g.eps.forEach(function(e){ e._g = g.name; FLAT.push(e); }); });
+
+  function mthCls(m){ return m === 'GET' ? 'get' : m === 'POST' ? 'post' : m === 'PUT' ? 'put' : 'del'; }
+
+  /* ===== catalog ===== */
+  (function renderCatalog(){
+    var html = '';
+    GROUPS.forEach(function(g, gi){
+      html += '<div class="api-group"><h3><span class="gnum">' + (gi + 1) + '</span>' + esc(g.name) +
+        ' <span style="font-weight:400;color:#93a1b0;font-size:12px;">· ' + g.eps.length + ' เส้น · ' + esc(g.refT) + '</span></h3>' +
+        '<div class="table-wrap"><table class="data"><thead><tr><th style="width:70px;">Method</th><th>Path</th><th>ทำอะไร</th><th>ที่มา</th></tr></thead><tbody>';
+      g.eps.forEach(function(e){
+        var idx = FLAT.indexOf(e);
+        html += '<tr data-ep="' + idx + '"><td><span class="mth ' + mthCls(e.m) + '">' + e.m + '</span></td>' +
+          '<td class="ep-path">' + esc(e.p) + '</td>' +
+          '<td style="font-size:12.5px;">' + esc(e.sum) + '</td>' +
+          '<td><span class="ref ' + e.ref + '">' + esc(e.refT) + '</span></td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    });
+    document.getElementById('apiCatalog').innerHTML = html;
+  })();
+
+  /* ===== detail ===== */
+  function selectEp(idx){
+    var e = FLAT[idx];
+    if (!e) return;
+    
+    var titleHtml = '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+      '<span class="mth ' + mthCls(e.m) + '" style="font-size:13px;">' + e.m + '</span>' +
+      '<code class="ep-path" style="font-size:15px; color:#1d4ed8;">' + esc(e.p) + '</code></div>';
+      
+    var chips = '<span class="ref ' + e.ref + '">' + esc(e.refT) + '</span>' +
+      '<span class="chip time">สิทธิ์: ' + esc(e.roles) + '</span>' +
+      '<span class="chip job">' + esc(e._g) + '</span>';
+      
+    var flow = e.flow.map(function(f){ return '<li>' + esc(f) + '</li>'; }).join('');
+    
+    var db = e.db.map(function(d){
+      var cls = d[1] === 'R' ? 'info' : (d[1] === 'W' ? 'ok' : 'violet');
+      return '<tr><td class="ep-path">' + esc(d[0]) + '</td><td><span class="pill ' + cls + '">' + d[1] + '</span></td><td>' + esc(d[2]) + '</td></tr>';
+    }).join('');
+    
+    var reqTitle = e.m === 'GET' ? 'Request (Query / Header)' : 'Request Body';
+    var errs = e.err.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('');
+
+    var tabsHtml = 
+      '<div class="tabs" id="apiTabs">' +
+        '<button type="button" class="tab active" data-tab="t-req">1. Request / Response</button>' +
+        '<button type="button" class="tab" data-tab="t-db">2. Database</button>' +
+        '<button type="button" class="tab" data-tab="t-flow">3. Flow</button>' +
+      '</div>';
+
+    var tabReqRes = 
+      '<div data-tabpane="t-req">' +
+        '<div class="rr-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;">' +
+          '<div><h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">' + reqTitle + '</h4><pre class="code" style="background:#0f172a; color:#d7e3f4; border-radius:12px; padding:14px 16px; font-family:ui-monospace,Menlo,monospace; font-size:12px; line-height:1.65; overflow-x:auto; margin:0; white-space:pre;">' + esc(e.req) + '</pre></div>' +
+          '<div><h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">Response</h4><pre class="code" style="background:#0f172a; color:#d7e3f4; border-radius:12px; padding:14px 16px; font-family:ui-monospace,Menlo,monospace; font-size:12px; line-height:1.65; overflow-x:auto; margin:0; white-space:pre;">' + esc(e.res) + '</pre></div>' +
+        '</div>' +
+        '<div class="ep-sec" style="margin-top:22px;">' +
+          '<h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">Error ที่ต้องรองรับ</h4>' +
+          '<ul class="ep-flow" style="margin:0; padding-left:22px; color:#45525f; font-size:13.5px; line-height:1.95; list-style:disc;">' + errs + '</ul>' +
+        '</div>' +
+      '</div>';
+
+    var tabDb = 
+      '<div data-tabpane="t-db" hidden>' +
+        '<div class="ep-sec" style="margin-top:0;">' +
+          '<h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">Database ที่เกี่ยวข้อง</h4>' +
+          '<div class="table-wrap"><table class="data"><thead><tr><th>ตาราง</th><th>สิทธิ์</th><th>บทบาทในเส้นนี้</th></tr></thead>' +
+          '<tbody>' + db + '</tbody></table></div>' +
+        '</div>' +
+      '</div>';
+
+    var tabFlow = 
+      '<div data-tabpane="t-flow" hidden>' +
+        '<div class="ep-sec" style="margin-top:0;">' +
+          '<h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">ลำดับการทำงานของ API เส้นนี้</h4>' +
+          '<ol class="ep-flow" style="margin:0; padding-left:22px; color:#45525f; font-size:13.5px; line-height:1.95;">' + flow + '</ol>' +
+        '</div>' +
+      '</div>';
+
+    var bodyHtml = 
+      '<div style="margin-top:4px;">' +
+        '<div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;">' + chips + '</div>' +
+        tabsHtml +
+        tabReqRes +
+        tabDb +
+        tabFlow +
+      '</div>';
+
+    var bNode = document.createElement('div');
+    bNode.innerHTML = bodyHtml;
+    
+    bNode.addEventListener('click', function(ev) {
+      var t = ev.target.closest('.tab');
+      if (!t) return;
+      bNode.querySelectorAll('.tab').forEach(function(x) { x.classList.remove('active'); });
+      t.classList.add('active');
+      var key = t.getAttribute('data-tab');
+      bNode.querySelectorAll('[data-tabpane]').forEach(function(p) {
+        p.hidden = p.getAttribute('data-tabpane') !== key;
+      });
+    });
+
+    if (window.SBP && window.SBP.openModal) {
+      window.SBP.openModal({
+        title: e.m + ' ' + e.p,
+        sub: e.sum,
+        lg: true,
+        body: bNode
+      });
+    }
+  }
+
+  document.getElementById('apiCatalog').addEventListener('click', function(e){
+    var tr = e.target.closest('tr[data-ep]');
+    if (!tr) return;
+    selectEp(parseInt(tr.getAttribute('data-ep'), 10));
+  });
+})();
+  </script>
+</body>
+</html>

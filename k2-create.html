@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สร้างเอกสาร · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="k2-create" data-nav="modules" data-module="k2-create" data-crumb="สร้างเอกสาร">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">สร้างเอกสารประกันรายได้</h1>
+          <p class="page-sub">สร้างเอกสารร้านถูกกระทบ — กรณีนอกเงื่อนไขของระบบ (Create New Document) และผ่านระบบ Finance &amp; Account Unit (FS)</p></div>
+        <div class="page-actions">
+          <span class="pill info" style="align-self:center;">เลขที่เอกสารถัดไป · <b class="num">2569/00187</b></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="tabs" data-tabs>
+          <div class="tab active" data-tab="manual">สร้างเอกสารใหม่ (นอกเงื่อนไข)</div>
+          <div class="tab" data-tab="fs">สร้างเอกสารที่ FS</div>
+        </div>
+
+        <!-- pane: Create New Document -->
+        <div data-tabpane="manual">
+          <div class="card" style="margin:0 0 16px;border-left:5px solid var(--primary);background:#f7faff;">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+              <div style="font-size:13px;color:#45525f;line-height:1.7;">ใช้สำหรับร้าน Store Partner ที่อยู่<b>นอกเหนือเงื่อนไขการสร้างเอกสารอัตโนมัติ</b>ของระบบ · เลขที่เอกสารรูปแบบ <code>YYYY/Running 5 หลัก</code> (เริ่มต้น 00001) ระบบจะออกให้อัตโนมัติเมื่อกดสร้างเอกสาร</div>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="field"><label>รหัสร้านถูกกระทบ <span style="color:var(--danger);">*</span></label>
+              <div class="search" style="background:#fff;border:1px solid var(--line);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input class="num" placeholder="กดแว่นขยายเพื่อค้นหา" value="00788"></div></div>
+            <div class="field"><label>ชื่อร้านถูกกระทบ (อัตโนมัติ)</label><input value="รัตนอุทิศ ซ.13" readonly></div>
+            <div class="field"><label>ภาค (อัตโนมัติ)</label><input value="RS" readonly></div>
+            <div class="field"><label>ประเภทร้าน</label>
+              <select><option>FR Type A</option><option selected>FR Type B</option><option>FR Type C</option><option>FR Type C r</option><option>บริษัท</option><option>FR Type พนักงาน</option><option>FR Type PTT</option><option>FR Type BGC</option></select></div>
+            <div class="field"><label>วันที่โอนเป็นร้าน SP</label><input type="date"></div>
+            <div class="field"><label>เดือน/ปีที่ถูกกระทบ <span style="color:var(--danger);">*</span></label><input placeholder="MM/YYYY" value="06/2569" class="num"></div>
+            <div class="field"><label>ครั้งที่</label><input class="num" value="3"></div>
+            <div class="field"><label>รหัสร้านเปิดใหม่ (ที่ทำให้กระทบ) <span style="color:var(--danger);">*</span></label>
+              <div class="search" style="background:#fff;border:1px solid var(--line);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input class="num" placeholder="ค้นหารหัสร้านเปิดใหม่" value="00990"></div></div>
+            <div class="field col-2"><label>เหตุผลการสร้างเอกสารนอกเงื่อนไข <span style="color:var(--danger);">*</span></label><textarea rows="3" placeholder="ระบุเหตุผล/หมายเหตุการสร้างเอกสารนอกเงื่อนไข..."></textarea></div>
+          </div>
+
+          <div class="toolbar" style="justify-content:flex-end;margin:18px 0 0;">
+            <button class="btn btn-muted btn-sm" data-ack="เคลียร์ค่าเริ่มใหม่">เคลียร์ค่าเริ่มใหม่</button>
+            <button class="btn btn-primary btn-sm" data-ack="สร้างเอกสารใหม่เรียบร้อย · ออกเลขที่ 2569/00187" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M12 12v6M9 15h6"/></svg> สร้างเอกสาร</button>
+          </div>
+        </div>
+
+        <!-- pane: Create at FS -->
+        <div data-tabpane="fs" hidden>
+          <div class="card" style="margin:0 0 16px;border-left:5px solid var(--primary);background:#f7faff;">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+              <div style="font-size:13px;color:#45525f;line-height:1.7;">สร้างข้อมูลต้นทางผ่านระบบ <b>Finance &amp; Account Unit (FS)</b> จากนั้น<b>รอกระบวนการ SBP Statement</b> ประมวลผลและส่งข้อมูลกลับมายังระบบประกันรายได้ (ใช้เวลาประมาณ <b>1 วัน</b>) · เฉพาะผู้มีสิทธิ์เข้าถึงเท่านั้น</div>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="field"><label>รหัสร้านถูกกระทบ <span style="color:var(--danger);">*</span></label>
+              <div class="search" style="background:#fff;border:1px solid var(--line);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input class="num" placeholder="ค้นหารหัสร้าน" value="01045"></div></div>
+            <div class="field"><label>ชื่อร้านถูกกระทบ (อัตโนมัติ)</label><input value="บางบัวทอง ก.ม.8" readonly></div>
+            <div class="field"><label>เดือน/ปีที่ถูกกระทบ <span style="color:var(--danger);">*</span></label><input placeholder="MM/YYYY" value="06/2569" class="num"></div>
+            <div class="field"><label>Period Statement (From – To)</label><input placeholder="01/05/2569 - 31/05/2569" class="num"></div>
+          </div>
+          <div class="toolbar" style="justify-content:flex-end;margin:18px 0 0;">
+            <button class="btn btn-muted btn-sm" data-ack="เคลียร์ค่าเริ่มใหม่">เคลียร์ค่าเริ่มใหม่</button>
+            <button class="btn btn-primary btn-sm" data-ack="ส่งสร้างข้อมูลที่ FS · รอ SBP Statement ส่งกลับ ~1 วัน" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></svg> ส่งสร้างที่ FS</button>
+          </div>
+
+          <h3 style="font-size:14px;color:#2b3440;margin:24px 0 12px;">เอกสารที่รอ SBP Statement ส่งกลับ</h3>
+          <div class="table-wrap"><table class="data">
+            <thead><tr><th>รหัสร้าน</th><th>ชื่อร้านถูกกระทบ</th><th>เดือน/ปี</th><th>ส่งเข้า FS เมื่อ</th><th>สถานะ</th></tr></thead>
+            <tbody>
+              <tr><td class="num">01045</td><td>บางบัวทอง ก.ม.8</td><td class="num">06/2569</td><td class="num">25/06/2569</td><td><span class="pill wait">รอ SBP Statement</span></td></tr>
+              <tr><td class="num">00256</td><td>ปากเกร็ด สถานี</td><td class="num">05/2569</td><td class="num">24/06/2569</td><td><span class="pill ok">ส่งกลับแล้ว · สร้างเอกสาร</span></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

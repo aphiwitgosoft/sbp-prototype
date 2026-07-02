@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สิทธิ์การเข้าถึงเมนู · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  .matrix { border-collapse:collapse; min-width:960px; width:100%; }
+  .matrix th, .matrix td { border:1px solid var(--line,#e5e9f0); padding:9px 10px; font-size:13px; text-align:center; }
+  .matrix thead th { background:#eef3fb; color:#2b3440; font-weight:600; white-space:nowrap; }
+  .matrix th.rowh { text-align:left; background:#fafbfd; font-weight:500; color:#37414e; white-space:nowrap; position:sticky; left:0; z-index:1; }
+  .matrix tbody tr:hover td { background:#f7faff; }
+  .matrix tbody tr:hover th.rowh { background:#eef3fb; }
+  .rcode { display:block; font-size:11px; color:var(--muted,#8a97a5); font-weight:400; }
+  .yes { color:#16a34a; font-weight:700; }
+  .no  { color:#cbd3dd; }
+  .mnu { display:inline-block; padding:3px 10px; border-radius:6px; background:#2f6fed; color:#fff; font-size:12px; font-weight:600; }
+</style>
+</head>
+<body data-page="k2-permissions" data-nav="modules" data-module="k2-permissions" data-crumb="สิทธิ์การเข้าถึงเมนู">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">สิทธิ์การเข้าถึงเมนู</h1>
+          <p class="page-sub">กำหนดกลุ่มผู้ใช้ที่มีสิทธิ์เปิดเมนูของระบบ · ระบบประกันรายได้ (SRS 3.1.1)</p></div>
+        <div class="page-actions">
+          <span class="pill info" style="align-self:center;">8 Role · Role-based Access</span>
+        </div>
+      </div>
+
+      <!-- กลุ่มผู้ใช้งาน (Role) -->
+      <div class="card">
+        <div class="card-head"><h2>กลุ่มผู้ใช้งาน (Role)</h2></div>
+        <div class="table-wrap"><table class="data" style="min-width:720px;">
+          <thead><tr><th>Code</th><th>Role</th><th>คำอธิบาย</th></tr></thead>
+          <tbody>
+            <tr><td class="num">00</td><td>Default</td><td>กลุ่มผู้ดำเนินการในแบบฟอร์ม (Workflow)</td></tr>
+            <tr><td class="num">01</td><td>Admin</td><td>ผู้ดูแลระบบ BPM เห็นได้ทุกเมนู และจัดการข้อมูลได้ทุกอย่าง</td></tr>
+            <tr><td class="num">02</td><td>HQ</td><td>สำหรับ HQ Support</td></tr>
+            <tr><td class="num">03</td><td>User Admin</td><td>ให้ User เป็น Admin ระบบ</td></tr>
+            <tr><td class="num">04</td><td>Report Admin</td><td>สำหรับดูเมนูรายงาน / รายงานสรุป</td></tr>
+            <tr><td class="num">05</td><td>Assign Job</td><td>ไว้สำหรับคนที่มีหน้าที่แจกงานที่เมนูข้อมูลผิดปกติ</td></tr>
+            <tr><td class="num">06</td><td>Report Admin Special</td><td>สำหรับเรียกดูเอกสารทั้งหมด</td></tr>
+            <tr><td class="num">10</td><td>UserViewer</td><td>รายชื่อผู้มีสิทธิ์ดูเอกสาร (Role 01, 02 บริหารจัดการ)</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <!-- สิทธิ์เมนูหลัก -->
+      <div class="card">
+        <div class="card-head"><h2>สิทธิ์เมนูหลัก (Main Menu)</h2></div>
+        <div class="table-wrap"><table class="matrix">
+          <thead><tr>
+            <th class="rowh">เมนู</th>
+            <th>Default<span class="rcode">00</span></th>
+            <th>Admin<span class="rcode">01</span></th>
+            <th>HQ<span class="rcode">02</span></th>
+            <th>User Admin<span class="rcode">03</span></th>
+            <th>Report Admin<span class="rcode">04</span></th>
+            <th>Assign Job<span class="rcode">05</span></th>
+            <th>Report Admin Special<span class="rcode">06</span></th>
+            <th>User Viewer<span class="rcode">10</span></th>
+          </tr></thead>
+          <tbody>
+            <tr><th class="rowh"><span class="mnu">ALLProcess</span></th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+            <tr><th class="rowh"><span class="mnu">หน้าแรก</span></th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+            <tr><th class="rowh"><span class="mnu">สถานะบันทึก ▾</span></th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+            <tr><th class="rowh"><span class="mnu">Help</span></th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+            <tr><th class="rowh"><span class="mnu">รายงาน ▾</span></th><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="no">–</td></tr>
+            <tr><th class="rowh"><span class="mnu">ผู้ดูแลระบบ ▾</span></th><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <!-- สิทธิ์ Master Form -->
+      <div class="card">
+        <div class="card-head"><h2>สิทธิ์เมนู Master Form (ผู้ดูแลระบบ)</h2></div>
+        <div class="table-wrap"><table class="matrix">
+          <thead><tr>
+            <th class="rowh">เมนู Master Form</th>
+            <th>Admin<span class="rcode">01</span></th>
+            <th>HQ<span class="rcode">02</span></th>
+            <th>User Admin<span class="rcode">03</span></th>
+            <th>Report Admin<span class="rcode">04</span></th>
+            <th>Assign Job<span class="rcode">05</span></th>
+            <th>Report Admin Special<span class="rcode">06</span></th>
+            <th>User Viewer<span class="rcode">10</span></th>
+          </tr></thead>
+          <tbody>
+            <tr><th class="rowh">กำหนดสิทธิ์การเข้าถึงเมนู</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">กำหนดตำแหน่งงาน</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">กำหนดสถานะเอกสาร</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">กำหนดการยืนยันข้อมูล</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">กำหนดชื่อผู้ปฏิบัติงาน</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">กำหนดรายชื่อการส่งอีเมล</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">กำหนดปัจจัยภายนอก</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">กำหนดช่วงเวลาดำเนินการ</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">เปลี่ยนแปลงการเชื่อมต่อฐานข้อมูล Server</th><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">กำหนดประเภท Server</th><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">กำหนด URL ที่เกี่ยวข้อง</th><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">กำหนดรายชื่อผู้มีสิทธิ์เข้าใช้งาน Viewer</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">Migrate File S3</th><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            <tr><th class="rowh">รายงานสรุปสถานะ</th><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr>
+          </tbody>
+        </table></div>
+        <div class="flow-legend" style="margin:14px 0 2px;">
+          <div class="lg"><span class="yes" style="font-size:15px;">✓</span> มีสิทธิ์เข้าถึง / จัดการ</div>
+          <div class="lg"><span class="no" style="font-size:15px;">✗</span> ไม่มีสิทธิ์</div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          <div style="font-size:13.5px;color:#45525f;line-height:1.7;">
+            <b style="color:#2b3440;">User Acceptance Criteria:</b> มีการกำหนดสิทธิ์การเข้าถึงข้อมูล — ระบบแสดง/ซ่อนเมนูตาม Role ของผู้ใช้งานที่ Login เข้ามา (Pre-Condition: ผ่านการ login เข้าสู่ระบบ)
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

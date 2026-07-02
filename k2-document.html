@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>เอกสารข้อมูลร้านถูกกระทบ · K2 · SBP Management System</title>
+<title>เอกสารข้อมูลร้านถูกกระทบ · SBP Management System</title>
 <link rel="stylesheet" href="assets/sbp.css">
 </head>
 <body data-page="k2-document" data-nav="modules" data-module="k2-document" data-crumb="เอกสารร้านถูกกระทบ">
@@ -11,11 +11,25 @@
     <aside id="sidebar"></aside>
     <main class="content">
 
+      <!-- ตัวสลับบทบาท / ขั้นตอน Workflow (จำลองมุมมองตามผู้ดำเนินการ) -->
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="display:flex;gap:14px 18px;align-items:center;flex-wrap:wrap;">
+          <div style="display:flex;gap:10px;align-items:center;color:#2b3440;font-weight:600;font-size:14px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM19 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 8v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3 3M9 4h8a2 2 0 0 1 2 2v6"/></svg>
+            ขั้นตอน Workflow ตามบทบาท
+          </div>
+          <select id="roleSwitch" style="min-width:360px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;"></select>
+          <span id="roleStep" class="pill info" style="font-weight:600;"></span>
+          <span style="color:var(--muted);font-size:12.5px;flex:1;min-width:220px;">ส่วนที่ไม่อยู่ในสิทธิ์ของบทบาทนี้จะแสดงเป็น <b>Read Only</b></span>
+        </div>
+        <div class="wf-steps" id="wfSteps"></div>
+      </div>
+
       <div class="page-head">
         <div><h1 class="page-title">เอกสารข้อมูลร้านถูกกระทบ <span class="step">2569/00123</span></h1>
-          <p class="page-sub">ระบบประกันรายได้ฝั่ง K2 · ฝ่าย SBP DSA ดำเนินการ</p></div>
+          <p class="page-sub">รอบ 1 · ครั้งที่ 3 · เดือน 06/2569 &nbsp;·&nbsp; ระบบประกันรายได้ · <span id="docRole">ฝ่าย SBP DSA (Manager Franchise · section_code 06)</span></p></div>
         <div class="page-actions">
-          <span class="pill wait" style="align-self:center;">รอตรวจสอบ (STA)</span>
+          <span class="pill wait" id="docStatus" style="align-self:center;">รอฝ่าย SBP DSA ดำเนินการ</span>
           <button class="btn btn-ghost" data-ack="พิมพ์เอกสาร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6Z"/></svg> พิมพ์</button>
           <button class="btn btn-primary" data-ack="บันทึกเอกสารเรียบร้อย" data-kind="ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2ZM17 21v-8H7v8M7 3v5h8"/></svg> บันทึก</button>
         </div>
@@ -25,6 +39,8 @@
       <div class="card">
         <div class="card-head"><h2>ข้อมูลร้านถูกกระทบ</h2><span class="pulse-dot" style="margin-left:auto;margin-top:6px;"></span></div>
         <div class="doc-meta">
+          <div class="dm"><span class="k">รอบ / ครั้งที่ / เดือน</span><span class="v num">1 / 3 / 06/2569</span></div>
+          <div class="dm"><span class="k">สถานะเอกสาร</span><span class="v"><span class="pill wait" id="docStatus2">รอฝ่าย SBP DSA ดำเนินการ</span></span></div>
           <div class="dm"><span class="k">เลขที่เอกสาร</span><span class="v num">2569/00123</span></div>
           <div class="dm"><span class="k">วันที่สร้าง</span><span class="v num">12/06/2569</span></div>
           <div class="dm"><span class="k">รหัสร้านถูกกระทบ</span><span class="v num">00788</span></div>
@@ -37,26 +53,37 @@
           <div class="dm"><span class="k">ผู้ดำเนินการ</span><span class="v">Somchai J., Phatcharida P.</span></div>
           <div class="dm"><span class="k">ยอดขายที่ลดลง</span><span class="v num" style="color:#c0392b;">12.45%</span></div>
           <div class="dm"><span class="k">จำนวนเงินที่ชดเชย (ล่าสุด)</span><span class="v num" style="color:#16a34a;">48,200.00 ฿</span></div>
+          <div class="dm"><span class="k">เอกสารแนบ</span><span class="v"><a href="#" data-ack="เปิดเอกสาร PDF ในแท็บใหม่" style="display:inline-flex;align-items:center;gap:6px;color:#c0392b;text-decoration:none;font-weight:600;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M9 13h6M9 17h4"/></svg> SBP_Statement.pdf</a></span></div>
         </div>
         <div style="margin-top:12px;"><button class="btn btn-soft btn-sm" data-ack="เปิดข้อมูลยอดขายเพิ่มเติม (new tab)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg> ข้อมูลยอดขายเพิ่มเติม</button></div>
       </div>
 
       <!-- ส่วน ร้านเปิดใหม่ -->
-      <div class="card">
-        <div class="card-head"><h2>ร้านเปิดใหม่ (ที่ทำให้เกิดผลกระทบ)</h2></div>
-        <div class="table-wrap"><table class="data" style="min-width:920px;">
-          <thead><tr><th>ลำดับ</th><th>รหัสร้าน</th><th>ชื่อร้านเปิดใหม่</th><th>ภาค</th><th>ประเภทร้าน</th><th>วันที่เปิดร้าน</th><th>ระยะห่างตามจริง (กม.)</th><th>%ชดเชย</th><th>เงินชดเชย (ร้านใหม่)</th></tr></thead>
+      <div class="card" id="sec-newstore" data-editrole="opt-mgr">
+        <div class="card-head"><h2>ร้านเปิดใหม่ (ที่ทำให้เกิดผลกระทบ)</h2>
+          <span class="edit-badge" style="margin-left:auto;"></span>
+          <div class="edit-only" hidden style="display:flex;gap:8px;margin-left:12px;">
+            <button class="btn btn-ghost btn-sm" id="btnNsRefresh" data-ack="รีเฟรชรายการร้านเปิดใหม่"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg> รีเฟรช</button>
+            <button class="btn btn-muted btn-sm" id="btnNsRestore">คืนค่าก่อนแก้ไข</button>
+            <button class="btn btn-primary btn-sm" id="btnNsCalc"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7"/></svg> คำนวณเงินชดเชย</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table class="data" id="tbldocument_new_stores" data-base="48200" style="min-width:1180px;">
+          <thead><tr><th>ลำดับ</th><th>รหัสร้าน</th><th>ชื่อร้านเปิดใหม่</th><th>ภาค</th><th>ประเภทร้าน</th><th>เจ้าของร้าน</th><th>นิติบุคคล</th><th>วันที่เปิดร้าน</th><th>วันที่ปิดร้าน</th><th>ระยะห่าง (กม.)</th><th>%ชดเชย</th><th>เงินชดเชย (ร้านใหม่)</th></tr></thead>
           <tbody>
-            <tr><td class="num">1</td><td class="num">00990</td><td>สาขารัตนาธิเบศร์ 2</td><td>RS</td><td>FR Type A</td><td class="num">16/11/2566</td><td class="num">0.85</td><td class="num">100.00%</td><td class="num">48,200.00</td></tr>
-            <tr><td class="num">2</td><td class="num">01180</td><td>สาขาซอยวัดกู้</td><td>RS</td><td>บริษัท</td><td class="num">02/02/2567</td><td class="num">1.40</td><td class="num">50.00%</td><td class="num">24,100.00</td></tr>
+            <tr><td class="num">1</td><td class="num">00990</td><td>สาขารัตนาธิเบศร์ 2</td><td>RS</td><td>FR Type A</td><td>นายอนันต์ ทวีสุข</td><td>บ.รัตนา รีเทล จำกัด</td><td class="num">16/11/2566</td><td class="num">-</td><td class="num">0.85</td><td class="num"><input class="pct-input num" value="100.00" disabled>%</td><td class="num comp-cell">48,200.00</td></tr>
+            <tr><td class="num">2</td><td class="num">01180</td><td>สาขาซอยวัดกู้</td><td>RS</td><td>บริษัท</td><td>บ.ซีพี ออลล์ จำกัด</td><td>ซีพี ออลล์</td><td class="num">02/02/2567</td><td class="num">-</td><td class="num">1.40</td><td class="num"><input class="pct-input num" value="50.00" disabled>%</td><td class="num comp-cell">24,100.00</td></tr>
           </tbody>
         </table></div>
-        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">สูตรคำนวณ: เงินชดเชยร้านเปิดใหม่ = เงินชดเชยร้านถูกกระทบ × %ชดเชย</p>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">สูตรคำนวณ: เงินชดเชยร้านเปิดใหม่ = เงินชดเชยร้านถูกกระทบ × %ชดเชย &nbsp;·&nbsp; ผลรวม %ชดเชยทุกรายการต้องเท่ากับ 100%</p>
+        <p style="font-size:12px;color:var(--muted);margin:6px 0 0;">ประเภทร้านทั้งหมด 8 ชนิด: FR Type A · FR Type B · FR Type C · FR Type C r · บริษัท · FR Type พนักงาน · FR Type PTT · FR Type BGC</p>
       </div>
 
       <!-- ส่วน แผนที่ -->
       <div class="card">
-        <div class="card-head"><h2>แผนที่ (POI จากระบบ AllMap)</h2></div>
+        <div class="card-head"><h2>แผนที่ (POI จากระบบ AllMap)</h2>
+          <button class="btn btn-soft btn-sm" style="margin-left:auto;" data-ack="เปิด ALLMAP ตรวจสอบข้อมูล POI (เปิดแท็บใหม่)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg> Link To ALLMAP</button>
+        </div>
         <div class="flow-svg-wrap" style="padding:0;overflow:hidden;">
           <svg viewBox="0 0 760 440" width="100%" role="img" aria-label="แผนที่ร้านถูกกระทบ">
             <rect width="760" height="440" fill="#eaf1ea"/>
@@ -92,26 +119,37 @@
       </div>
 
       <!-- ส่วน ร้านคู่แข่งเปิดกระทบ -->
-      <div class="card">
-        <div class="card-head"><h2>ร้านคู่แข่งเปิดกระทบ</h2><span class="chip api" style="margin-left:auto;">ข้อมูลจากระบบ All Map</span></div>
-        <div class="table-wrap"><table class="data">
-          <thead><tr><th>ร้านคู่แข่ง</th><th>วันที่เปิดกระทบ</th><th>รายละเอียดเพิ่มเติม</th></tr></thead>
+      <div class="card" id="sec-competitor" data-editrole="opt-mgr">
+        <div class="card-head"><h2>ร้านคู่แข่งเปิดกระทบ</h2>
+          <span class="chip api" style="margin-left:auto;">ข้อมูลจากระบบ All Map</span>
+          <span class="edit-badge" style="margin-left:12px;"></span>
+          <div class="edit-only" hidden style="display:flex;gap:8px;margin-left:12px;">
+            <button class="btn btn-primary btn-sm" data-add-row="tblCompetitor"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่ม</button>
+            <button class="btn btn-muted btn-sm" data-ack="บันทึกข้อมูลร้านคู่แข่งเรียบร้อย" data-kind="ok">บันทึก</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table class="data" id="tblCompetitor" data-entity="competitor">
+          <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ร้านคู่แข่ง</th><th>วันที่เปิดกระทบ</th><th>รายละเอียดเพิ่มเติม</th><th class="col-action">Action</th></tr></thead>
           <tbody>
-            <tr><td>Lotus Go Fresh</td><td class="num">10/10/2566</td><td>เปิดฝั่งตรงข้าม ระยะ 120 ม.</td></tr>
-            <tr><td>CJ More</td><td class="num">05/01/2567</td><td>เปิดหัวซอยเดียวกัน</td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td>Lotus Express</td><td class="num">10/10/2566</td><td>เปิดฝั่งตรงข้าม ระยะ 120 ม.</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td>CJ Express</td><td class="num">05/01/2567</td><td>เปิดหัวซอยเดียวกัน</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
           </tbody>
         </table></div>
       </div>
 
       <!-- ส่วน ปัจจัยอื่นๆ -->
-      <div class="card">
+      <div class="card" id="sec-factor" data-editrole="opt-mgr">
         <div class="card-head"><h2>ปัจจัยอื่นๆ</h2>
-          <button class="btn btn-primary btn-sm" style="margin-left:auto;" data-add-row="tblFactorsDoc"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มข้อมูล</button>
+          <span class="edit-badge" style="margin-left:auto;"></span>
+          <div class="edit-only" hidden style="display:flex;gap:8px;margin-left:12px;">
+            <button class="btn btn-primary btn-sm" data-add-row="tblFactorsDoc"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มข้อมูล</button>
+            <button class="btn btn-muted btn-sm" data-ack="บันทึกข้อมูลปัจจัยอื่นๆ เรียบร้อย" data-kind="ok">บันทึก</button>
+          </div>
         </div>
-        <div class="table-wrap"><table class="data" id="tblFactorsDoc">
+        <div class="table-wrap"><table class="data" id="tblFactorsDoc" data-entity="factordoc">
           <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ปัจจัยภายนอก</th><th>วันที่เริ่มต้น</th><th>วันที่สิ้นสุด</th><th>รายละเอียดเพิ่มเติม</th><th class="col-action">Action</th></tr></thead>
           <tbody>
-            <tr><td><input type="checkbox" class="cbx"></td><td>การก่อสร้าง / ปิดถนน</td><td class="num">01/05/2569</td><td class="num">31/07/2569</td><td>ก่อสร้างสะพานกลับรถ กระทบการเข้าถึง</td><td class="col-action"><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td><input type="checkbox" class="cbx"></td><td>การก่อสร้าง / ปิดถนน</td><td class="num">01/05/2569</td><td class="num">31/07/2569</td><td>ก่อสร้างสะพานกลับรถ กระทบการเข้าถึง</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
           </tbody>
         </table></div>
       </div>
@@ -131,9 +169,9 @@
         <p style="font-size:12px;color:var(--muted);margin:10px 0 0;">รองรับ: pdf, doc/docx, xls/xlsx, ppt, jpg, gif, tif, zip, mp3, mov ฯลฯ — ไม่เกิน 5 MB ต่อไฟล์</p>
       </div>
 
-      <!-- ส่วน คำนวณเงินชดเชย -->
-      <div class="card">
-        <div class="card-head"><h2>คำนวณเงินชดเชย</h2><span class="chip file" style="margin-left:auto;">ผ่านระบบ Finance &amp; Account (FS)</span></div>
+      <!-- ส่วน คำนวณเงินชดเชย (แสดงเฉพาะเจ้าหน้าที่ SBP DSA · section_code 08) -->
+      <div class="card" id="sec-calc" data-roleonly="sbpdsa-officer">
+        <div class="card-head"><h2>คำนวณเงินชดเชย</h2><span class="chip file" style="margin-left:auto;">ผ่านระบบ Finance &amp; Account (FS) · เฉพาะเจ้าหน้าที่ SBP DSA</span></div>
         <div class="form-grid">
           <div class="field"><label>เงินชดเชยร้านถูกกระทบ (ตั้งต้น)</label><input class="num" value="48,200.00" readonly></div>
           <div class="field"><label>รวม %ชดเชยร้านเปิดใหม่</label><input class="num" value="150.00%" readonly></div>
@@ -166,29 +204,186 @@
         </table></div>
       </div>
 
-      <!-- ส่วน พิจารณา -->
+      <!-- ส่วน พิจารณา (ตัวเลือกเปลี่ยนตามบทบาท/ขั้นตอน) -->
       <div class="card" style="border-left:5px solid var(--primary);">
-        <div class="card-head"><h2>พิจารณา (ส่งดำเนินการ)</h2></div>
-        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">
-          <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-size:14px;color:#37414e;"><input type="radio" name="route"> เห็นควรไม่ชดเชย <span style="color:var(--muted);font-size:12.5px;">(เอกสารเสร็จสิ้น · บังคับกรอกความคิดเห็น)</span></label>
-          <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-size:14px;color:#37414e;"><input type="radio" name="route"> หยุดชดเชยประกันรายได้ <span style="color:var(--muted);font-size:12.5px;">(เอกสารเสร็จสิ้น)</span></label>
-          <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-size:14px;color:#37414e;"><input type="radio" name="route"> ส่งฝ่ายส่งเสริมธุรกิจ SBP</label>
-          <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-size:14px;color:#37414e;"><input type="radio" name="route" checked> ส่งฝ่ายบัญชี SBP ดำเนินการ <span style="color:var(--muted);font-size:12.5px;">(บังคับกรอกความคิดเห็น)</span></label>
-          <label style="display:flex;gap:10px;align-items:center;cursor:pointer;font-size:14px;color:#37414e;"><input type="radio" name="route"> ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ</label>
-        </div>
+        <div class="card-head"><h2>พิจารณา (ส่งดำเนินการ)</h2><span id="decHint" class="pill info" style="margin-left:auto;"></span></div>
+        <div id="decisionOptions" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;"></div>
         <div class="form-grid">
-          <div class="field col-2"><label>ความคิดเห็นเพิ่มเติม <span style="color:var(--danger);">*</span></label><textarea rows="3" placeholder="ระบุความคิดเห็น..."></textarea></div>
+          <div class="field col-2"><label>ความคิดเห็นเพิ่มเติม <span id="cmtStar" style="color:var(--danger);display:none;">*</span></label><textarea id="decComment" rows="3" placeholder="ระบุความคิดเห็น..."></textarea></div>
         </div>
-        <div class="toolbar" style="justify-content:flex-end;margin:16px 0 0;">
+        <p style="font-size:12px;color:var(--muted);margin:0 0 2px;">แนบไฟล์ ≤ 5 MB ต่อไฟล์ · รองรับ pdf, doc, docx, xls, xlsx, ppt, jpg, gif, tif, zip, mp3, mov, txt, csv ฯลฯ</p>
+        <div class="toolbar" style="justify-content:flex-end;margin:12px 0 0;">
           <button class="btn btn-ghost btn-sm" data-ack="แนบรูปภาพไฟล์ (≤ 5 MB)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> แนบรูป</button>
           <button class="btn btn-muted btn-sm" data-ack="บันทึกข้อมูล (ไม่ตรวจ require field)">บันทึก</button>
-          <button class="btn btn-primary btn-sm" data-ack="ส่งดำเนินการตามผลการพิจารณาเรียบร้อย" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></svg> ส่งดำเนินการ</button>
+          <button class="btn btn-primary btn-sm" id="btnDecSend"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></svg> ส่งดำเนินการ</button>
         </div>
       </div>
 
     </main>
   </div>
   <div id="toast-stack"></div>
+
+  <!-- popup แจ้งเตือน (ตามรูปแบบ SRS) -->
+  <div class="k2pop-overlay" id="k2pop">
+    <div class="k2pop">
+      <h4><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg> โปรดตรวจสอบ</h4>
+      <p id="k2popMsg"></p>
+      <div class="k2pop-foot"><button class="btn btn-primary btn-sm" id="k2popOk">OK</button></div>
+    </div>
+  </div>
+
+  <style>
+    .edit-badge{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;}
+    .edit-badge.on{background:#e7f7ee;color:#16794a;}
+    .edit-badge.off{background:#eef1f5;color:#8a97a5;}
+    .pct-input{width:74px;text-align:right;border:1px solid transparent;background:transparent;border-radius:6px;padding:3px 6px;font:inherit;color:inherit;}
+    .pct-input:not([disabled]){border-color:#2f6fed;background:#fff;}
+    .dec-opt{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:14px;color:#37414e;padding:8px 10px;border:1px solid var(--line,#e5e9f0);border-radius:9px;}
+    .dec-opt:hover{background:#f7faff;}
+    .dec-opt small{color:var(--muted,#8a97a5);font-size:12.5px;}
+    .k2pop-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:9999;}
+    .k2pop-overlay.show{display:flex;}
+    .k2pop{background:#fff;border-radius:12px;max-width:430px;width:90%;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+    .k2pop h4{margin:0 0 8px;font-size:15px;color:#b45309;display:flex;gap:10px;align-items:center;}
+    .k2pop p{margin:0 0 18px;font-size:13.5px;color:#45525f;line-height:1.6;}
+    .k2pop-foot{display:flex;justify-content:flex-end;}
+  </style>
+
   <script src="assets/sbp.js"></script>
+  <script>
+  /* ===== Workflow 7 role/step — หน้าเอกสารร้านถูกกระทบ (SRS 3.1.6) ===== */
+  (function () {
+    var ROLES = [
+      { key:'sbpdsa-mgr', role:'ฝ่าย SBP DSA (Manager Franchise · section_code 06)', status:'รอฝ่าย SBP DSA ดำเนินการ', pill:'wait', edit:[], opts:[
+        { label:'เห็นควรไม่ชดเชย', note:'เอกสารเสร็จสิ้น', req:true },
+        { label:'หยุดชดเชยประกันรายได้', note:'เอกสารเสร็จสิ้น' },
+        { label:'ส่งฝ่ายส่งเสริมธุรกิจ SBP' },
+        { label:'ส่งฝ่ายบัญชี SBP ดำเนินการ', req:true },
+        { label:'ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ' } ] },
+      { key:'sbpdsa-officer', role:'เจ้าหน้าที่ SBP DSA (Officer Franchise · section_code 08)', status:'รอเจ้าหน้าที่ SBP DSA ดำเนินการ', pill:'violet', edit:['sec-calc'], opts:[
+        { label:'คำนวณเงินชดเชยเรียบร้อย → ส่งฝ่ายส่งเสริมธุรกิจฯ' },
+        { label:'ส่งกลับฝ่าย SBP DSA' } ] },
+      { key:'opt-mgr', role:'ฝ่ายส่งเสริมธุรกิจฯ (Manager OPT · section_code 01)', status:'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ', pill:'info', edit:['sec-newstore','sec-competitor','sec-factor'], opts:[
+        { label:'เห็นควรชดเชย → GM ส่งเสริมธุรกิจฯ' },
+        { label:'เห็นควรไม่ชดเชย → ฝ่าย SBP DSA', req:true },
+        { label:'ฝ่าย SBP DSA ดำเนินการ (ส่งกลับ)' } ] },
+      { key:'opt-gm', role:'GM ส่งเสริมธุรกิจฯ (GM OPT · section_code 02)', status:'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ', pill:'info', edit:[], money:true, opts:[
+        { label:'เห็นควรชดเชย', money:'approve' },
+        { label:'เห็นควรไม่ชดเชย', money:'reject' },
+        { label:'ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP' } ] },
+      { key:'avp', role:'ผู้บริหารสำนักบริหาร SBP (AVP OPT · section_code 03)', status:'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill:'info', edit:[], opts:[
+        { label:'เห็นควรชดเชย → ฝ่ายบัญชี SBP' },
+        { label:'เห็นควรไม่ชดเชย → รอฝ่าย SBP DSA' },
+        { label:'ส่งกลับ GM ส่งเสริมธุรกิจฯ' } ] },
+      { key:'acct-mgr', role:'ฝ่ายบัญชี SBP (Manager Account Franchise · section_code 04)', status:'รอฝ่ายบัญชี SBP ดำเนินการ', pill:'info', edit:[], opts:[
+        { label:'บัญชีปฏิบัติการภาคดำเนินการ' },
+        { label:'ส่งกลับฝ่าย SBP DSA ดำเนินการ' } ] },
+      { key:'acct-op', role:'บัญชีปฏิบัติการภาค (Operation Account · section_code 05)', status:'รอบัญชีปฏิบัติการภาคดำเนินการ', pill:'info', edit:[], opts:[
+        { label:'บัญชีภาคอนุมัติ (จบ workflow)', end:true },
+        { label:'ส่งกลับฝ่ายบัญชี SBP ดำเนินการ' } ] }
+    ];
+
+    function $(id){ return document.getElementById(id); }
+    function toast(m,k){ if (window.SBP && SBP.toast) SBP.toast(m,k||''); }
+    function popup(msg){ $('k2popMsg').textContent = msg; $('k2pop').classList.add('show'); }
+    function money(){ var t=0; document.querySelectorAll('#tbldocument_new_stores .comp-cell').forEach(function(c){ t += parseFloat((c.textContent||'0').replace(/,/g,''))||0; }); return t; }
+    function fmt(n){ return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+    function roleByKey(k){ return ROLES.filter(function(r){return r.key===k;})[0] || ROLES[0]; }
+
+    function render(key){
+      var r = roleByKey(key), i;
+      $('docRole').textContent = r.role;
+      var st = $('docStatus'); st.textContent = r.status; st.className = 'pill ' + r.pill;
+      var st2 = $('docStatus2'); if (st2){ st2.textContent = r.status; st2.className = 'pill ' + r.pill; }
+      $('roleStep').textContent = 'ขั้นตอนที่ ' + (ROLES.indexOf(r)+1) + ' / ' + ROLES.length;
+
+      /* สิทธิ์แก้ไขแต่ละส่วน */
+      document.querySelectorAll('.card[data-editrole]').forEach(function(card){
+        var on = r.edit.indexOf(card.id) >= 0;
+        var b = card.querySelector('.edit-badge');
+        if (b){ b.className = 'edit-badge ' + (on?'on':'off'); b.textContent = on ? 'แก้ไขได้ (บทบาทนี้)' : 'อ่านอย่างเดียว'; }
+        card.querySelectorAll('.edit-only').forEach(function(el){ el.hidden = !on; });
+        card.querySelectorAll('.pct-input').forEach(function(inp){ inp.disabled = !on; });
+      });
+
+      /* ส่วนคำนวณเงินชดเชย เฉพาะบทบาทที่กำหนด */
+      document.querySelectorAll('.card[data-roleonly]').forEach(function(card){
+        card.hidden = card.getAttribute('data-roleonly') !== r.key;
+      });
+
+      /* ตัวเลือกพิจารณา */
+      var box = $('decisionOptions'); box.innerHTML = '';
+      var total = money();
+      r.opts.forEach(function(o, idx){
+        var note = o.note ? o.note : '';
+        if (o.money === 'approve') note = (total > 100000 ? 'ส่ง ผู้บริหารสำนักบริหาร SBP (วงเงิน > 100,000)' : 'ส่ง ฝ่ายบัญชี SBP (วงเงิน ≤ 100,000)');
+        if (o.money === 'reject')  note = (total > 100000 ? 'ส่ง ผู้บริหารสำนักบริหาร SBP (วงเงิน > 100,000)' : 'ส่ง ฝ่าย SBP DSA (วงเงิน ≤ 100,000)');
+        if (o.req) note = (note ? note + ' · ' : '') + 'บังคับกรอกความคิดเห็น';
+        if (o.end) note = (note ? note + ' · ' : '') + 'จบกระบวนการ';
+        var lab = document.createElement('label');
+        lab.className = 'dec-opt';
+        lab.innerHTML = '<input type="radio" name="route" data-req="'+(o.req?1:0)+'" style="margin-top:3px;"> <span>'+o.label+(note?' <small>('+note+')</small>':'')+'</span>';
+        box.appendChild(lab);
+      });
+      $('decHint').textContent = r.role.split(' (')[0];
+
+      /* ไฮไลต์ stepper ให้ตรงบทบาทปัจจุบัน */
+      document.querySelectorAll('#wfSteps .wf-step').forEach(function(c){
+        c.classList.toggle('on', c.getAttribute('data-rk') === r.key);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      var sel = $('roleSwitch');
+      ROLES.forEach(function(r,i){ var o=document.createElement('option'); o.value=r.key; o.textContent=(i+1)+'. '+r.role; sel.appendChild(o); });
+      sel.addEventListener('change', function(){ render(sel.value); toast('สลับมุมมองเป็น: '+roleByKey(sel.value).role.split(' (')[0], 'ok'); });
+
+      /* stepper ปุ่มกด 06 › 08 › 01 › 02 › 03 › 04 › 05 (เหมือนหน้า k2-list-waiting.html) */
+      var steps = $('wfSteps');
+      ROLES.forEach(function(r,i){
+        if (i){ var a=document.createElement('span'); a.className='wf-arrow'; a.textContent='›'; steps.appendChild(a); }
+        var code = (r.role.match(/section_code (\d+)/) || [0,''])[1];
+        var c = document.createElement('span');
+        c.className = 'wf-step'; c.setAttribute('data-rk', r.key);
+        c.innerHTML = '<b>' + code + '</b> ' + r.role.split(' (')[0];
+        c.addEventListener('click', function(){
+          sel.value = r.key; render(r.key);
+          toast('สลับมุมมองเป็น: ' + r.role.split(' (')[0], 'ok');
+        });
+        steps.appendChild(c);
+      });
+      render(ROLES[0].key);
+
+      $('k2popOk').addEventListener('click', function(){ $('k2pop').classList.remove('show'); });
+      $('k2pop').addEventListener('click', function(e){ if(e.target===$('k2pop')) $('k2pop').classList.remove('show'); });
+
+      /* ส่งดำเนินการ — validate ผลการพิจารณา + ความคิดเห็น */
+      $('btnDecSend').addEventListener('click', function(){
+        var sel = document.querySelector('#decisionOptions input[name="route"]:checked');
+        if (!sel){ popup('ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ'); return; }
+        if (sel.getAttribute('data-req')==='1' && !$('decComment').value.trim()){ popup('กรุณากรอกความคิดเห็นเพิ่มเติม (บังคับกรอกสำหรับผลการพิจารณานี้) ก่อนส่งดำเนินการ'); return; }
+        toast('ส่งดำเนินการตามผลการพิจารณาเรียบร้อย', 'ok');
+      });
+
+      /* ร้านเปิดใหม่ — คำนวณ + validate รวม 100% */
+      var base = parseFloat((document.getElementById('tbldocument_new_stores')||{}).getAttribute && document.getElementById('tbldocument_new_stores').getAttribute('data-base')) || 48200;
+      var calc = $('btnNsCalc');
+      if (calc) calc.addEventListener('click', function(){
+        var rows = document.querySelectorAll('#tbldocument_new_stores tbody tr'), sum = 0, vals = [];
+        rows.forEach(function(tr){ var p = parseFloat((tr.querySelector('.pct-input')||{}).value)||0; vals.push(p); sum += p; });
+        if (Math.round(sum*100)/100 !== 100){ popup('โปรดตรวจสอบ %ชดเชย ของท่าน รวมกันแล้วไม่เท่ากับ 100%'); return; }
+        rows.forEach(function(tr,i){ var c = tr.querySelector('.comp-cell'); if(c) c.textContent = fmt(base*vals[i]/100); });
+        render(document.getElementById('roleSwitch').value); /* refresh money-based options */
+        toast('คำนวณเงินชดเชยร้านเปิดใหม่เรียบร้อย', 'ok');
+      });
+      var restore = $('btnNsRestore');
+      if (restore) restore.addEventListener('click', function(){
+        var d = [['100.00','48,200.00'],['50.00','24,100.00']];
+        document.querySelectorAll('#tbldocument_new_stores tbody tr').forEach(function(tr,i){ if(!d[i])return; var p=tr.querySelector('.pct-input'); if(p)p.value=d[i][0]; var c=tr.querySelector('.comp-cell'); if(c)c.textContent=d[i][1]; });
+        toast('คืนค่าข้อมูลก่อนแก้ไขแล้ว','ok');
+      });
+    });
+  })();
+  </script>
 </body>
 </html>

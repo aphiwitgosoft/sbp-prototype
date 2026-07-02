@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Batch Job (FGI/FCS) · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  /* ===== page-specific: batch job console ===== */
+  .jb-phases{display:grid; grid-template-columns:repeat(5,1fr); gap:14px;}
+  .jb-chip{border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-size:12px;
+    border-radius:7px; padding:4px 9px; font-family:"Sarabun",sans-serif; font-weight:600; white-space:nowrap;
+    background:#e8f0fe; color:#1d4ed8; transition:.15s;}
+  .jb-chip:hover{background:#d7e5fd;}
+  .jtag{display:inline-flex; align-items:center; font-size:11.5px; font-weight:700; border-radius:7px; padding:3px 8px;
+    font-family:"Sarabun",sans-serif; white-space:nowrap; letter-spacing:.2px;}
+  .jtag.imp{background:#e8f0fe; color:#1d4ed8;} .jtag.exp{background:#e0f5f2; color:#0f766e;}
+  .jtag.mix{background:#f1ecfe; color:#6d28d9;} .jtag.k2{background:#fff4d6; color:#92670b;}
+  .jtag.wd{background:#fdecec; color:#c0392b;}
+  #tblJobs tbody tr{cursor:pointer;}
+  #tblJobs tbody tr.sel td{background:#eef4ff;}
+  .jd-chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+  .prm-badge{display:inline-flex; font-size:10.5px; font-weight:700; border-radius:6px; padding:1.5px 7px; margin-left:7px; vertical-align:1px;}
+  .prm-badge.cfg{background:#e7f7ee; color:#15803d;} .prm-badge.fix{background:#eef1f5; color:#8794a2;}
+  .field input.ro{background:#f6f8fb; border-style:dashed; color:#6b7885;}
+  .field .fnote{font-size:11.5px; color:#93a1b0; line-height:1.5;}
+  .jb-svgwrap{background:#fbfcfe; border:1px solid #e8eef6; border-radius:14px; padding:10px; overflow-x:auto;}
+  .jb-svgwrap svg{display:block; margin:0 auto;}
+  .jb-legend{display:flex; flex-wrap:wrap; gap:8px 16px; margin:12px 2px 2px; font-size:12px; color:#5d6b7a;}
+  .jb-legend i{display:inline-block; width:14px; height:14px; border-radius:4px; margin-right:6px; vertical-align:-2px;}
+  .rwb{display:inline-flex; font-size:11px; font-weight:700; border-radius:6px; padding:2px 8px; font-family:"Sarabun",sans-serif;}
+  .rwb.r{background:#e8f0fe; color:#1d4ed8;} .rwb.w{background:#e7f7ee; color:#15803d;} .rwb.rw{background:#f1ecfe; color:#6d28d9;}
+  .jb-runbar{display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; background:#f5f9ff; border:1px dashed #b9cff5;
+    border-radius:12px; padding:14px 16px; margin-top:18px;}
+  .jb-runbar .field{min-width:190px;}
+  @media (max-width:1100px){ .jb-phases{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:560px){ .jb-phases{grid-template-columns:1fr;} }
+</style>
+</head>
+<body data-page="job-batch" data-nav="modules" data-module="job-batch" data-crumb="Batch Job (FGI/FCS)">
+<div class="layout">
+  <aside id="sidebar"></aside>
+  <main class="content">
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Batch Job เบื้องหลังระบบ (FGI / FCS)</h1>
+        <p class="page-sub">ศูนย์ควบคุมงานเบื้องหลังที่ป้อนข้อมูลเข้าระบบประกันรายได้ K2 — อ้างอิง FGI &amp; FCS Batch Job Technical Document v4.0 (Source-Verified)</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-ghost" data-ack="รีเฟรชสถานะ Job ล่าสุดแล้ว" data-kind="ok">รีเฟรชสถานะ</button>
+        <button class="btn btn-primary" data-ack="Export ตารางเวลา Job ทั้งหมดเป็น Excel (ตัวอย่าง)" data-kind="ok">Export ตาราง Job</button>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="si bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></div>
+        <div><div class="sv num">11</div><div class="sl">Entry Point ทั้งหมด (Job 1–10 + 8b)</div></div>
+      </div>
+      <div class="stat">
+        <div class="si bg-teal"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></div>
+        <div><div class="sv num">8</div><div class="sl">Interface ไฟล์ รับ–ส่งภายนอก</div></div>
+      </div>
+      <div class="stat">
+        <div class="si bg-amber"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div>
+        <div><div class="sv num">2</div><div class="sl">ACK ค้างเกิน 1 วัน (จาก Watchdog เช้านี้)</div></div>
+      </div>
+      <div class="stat">
+        <div class="si bg-rose"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3Z"/></svg></div>
+        <div><div class="sv num">3</div><div class="sl">ความเสี่ยงระดับ P0 ที่เปิดอยู่</div></div>
+      </div>
+    </div>
+
+    <!-- ===== pipeline overview ===== -->
+    <div class="card">
+      <div class="card-head"><h2>ภาพรวม Pipeline (เฟส A–E)</h2><span class="pill info">คลิกชื่อ Job เพื่อดูรายละเอียด</span></div>
+      <div class="jb-phases" id="phaseStrip"></div>
+    </div>
+
+    <!-- ===== job list ===== -->
+    <div class="card">
+      <div class="card-head"><h2>รายการ Batch Job</h2><span class="pill muted">ข้อมูล ณ 02/07/2569 08:30</span></div>
+      <div class="table-wrap">
+        <table class="data" id="tblJobs">
+          <thead><tr>
+            <th>Job</th><th>ชื่องาน / Main Class</th><th>เฟส</th><th>ประเภท</th>
+            <th>กำหนดการ (Cron)</th><th>รอบล่าสุด</th><th>ผลล่าสุด</th><th>รอบถัดไป</th><th>สถานะ</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== job detail ===== -->
+    <div class="card" id="jobDetail" style="border-left:5px solid var(--primary);">
+      <div class="card-head" style="align-items:flex-start;">
+        <div>
+          <h2 id="jdTitle" style="margin:0;">—</h2>
+          <p id="jdDesc" style="margin:6px 0 0; font-size:13.5px; color:#5d6b7a; max-width:860px; line-height:1.7;">—</p>
+          <div class="jd-chips" id="jdChips"></div>
+        </div>
+        <div style="display:flex; gap:8px; flex:0 0 auto;">
+          <button class="btn btn-ghost btn-sm" id="btnToggleJob">ปิดการใช้งาน</button>
+        </div>
+      </div>
+
+      <div class="tabs" data-tabs style="margin-top:14px;">
+        <div class="tab active" data-tab="jform">แบบฟอร์มพารามิเตอร์</div>
+        <div class="tab" data-tab="jflow">Flowchart การทำงาน</div>
+        <div class="tab" data-tab="jdb">Database ที่ใช้</div>
+        <div class="tab" data-tab="jhist">ประวัติการรัน</div>
+      </div>
+
+      <!-- pane: parameters form -->
+      <div data-tabpane="jform">
+        <p style="font-size:12.5px; color:#93a1b0; margin:14px 2px 14px;">
+          <span class="prm-badge cfg">แก้ไขได้</span> = ค่าที่ผู้ดูแลปรับได้ (เวลารัน, งวดข้อมูล, ปลายทาง, เกณฑ์)
+          &nbsp;·&nbsp; <span class="prm-badge fix">ค่าคงที่</span> = กำหนดตายตัวตามเอกสาร/ธุรกิจ — เปลี่ยนต้องขออนุมัติ
+        </p>
+        <div class="form-grid" id="jdForm"></div>
+
+        <div class="jb-runbar">
+          <div class="field"><label>งวดข้อมูล / วันที่สั่งรัน (Manual Run)</label><input type="month" id="runPeriod" value="2569-07" class="num"></div>
+          <button class="btn btn-primary" id="btnRunNow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m7 4 12 8-12 8V4Z"/></svg> สั่งรันทันที</button>
+          <button class="btn btn-ghost" id="btnSaveParams">บันทึกพารามิเตอร์</button>
+          <span style="font-size:12px; color:#93a1b0;">การสั่งรันนอกรอบต้องผ่าน checklist ก่อนรัน (Runbook 7.1)</span>
+        </div>
+
+        <h3 style="font-size:14.5px; margin:22px 2px 10px; color:#2b3440;">หมายเหตุการปฏิบัติงาน (Runbook)</h3>
+        <div class="doc-meta" id="jdMeta"></div>
+      </div>
+
+      <!-- pane: flowchart -->
+      <div data-tabpane="jflow" hidden>
+        <div class="k2-grid" style="margin-top:16px;">
+          <div>
+            <div class="jb-svgwrap" id="jdFlowWrap"></div>
+            <div class="jb-legend">
+              <span><i style="background:#fff; border:1.6px solid #d4dbe4;"></i>ขั้นตอนประมวลผล</span>
+              <span><i style="background:#eef4ff; border:1.6px solid #96b4f0;"></i>ไฟล์ / DB / SFTP</span>
+              <span><i style="background:#fffaf0; border:1.6px solid #e2b45a;"></i>จุดตัดสินใจ</span>
+              <span><i style="background:#fdecec; border:1.6px solid #e08c8c;"></i>เส้นทางผิดพลาด</span>
+            </div>
+          </div>
+          <div class="card" style="margin:0;">
+            <div class="card-head"><h2 style="font-size:15px;">คำอธิบายทีละขั้น</h2></div>
+            <div class="timeline" id="jdFlowNotes"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- pane: database -->
+      <div data-tabpane="jdb" hidden>
+        <div class="jb-svgwrap" style="margin-top:16px;" id="jdDbWrap"></div>
+        <div class="jb-legend">
+          <span><i style="background:#e8f0fe;"></i>R = Job อ่านข้อมูล</span>
+          <span><i style="background:#e7f7ee;"></i>W = Job เขียนข้อมูล</span>
+          <span><i style="background:#f1ecfe;"></i>R/W = อ่านและเขียน</span>
+        </div>
+        <div class="table-wrap" style="margin-top:14px;">
+          <table class="data">
+            <thead><tr><th>ตาราง / วิว</th><th>สิทธิ์</th><th>บทบาทใน Job นี้</th></tr></thead>
+            <tbody id="jdTables"></tbody>
+          </table>
+        </div>
+        <h3 style="font-size:14.5px; margin:20px 2px 8px; color:#2b3440;">Relation ที่เกี่ยวข้อง</h3>
+        <ul id="jdRels" style="margin:0; padding-left:20px; color:#45525f; font-size:13.5px; line-height:1.9;"></ul>
+        <div class="card" style="margin:18px 0 0; border-left:5px solid var(--primary);">
+          <p style="margin:0; font-size:13px; color:#5d6b7a;">
+            โครงสร้างตารางฝั่ง Batch / Impact ดูที่หน้า
+            <a href="fgi-database.html" style="color:#2f6fed; font-weight:600;">DB FGI/FCS</a>
+            — ทุกตาราง FGI ผูกกันผ่าน hub <b>fgi_impact_processes</b> (id)
+            และตาราง tracking <b>interface_transactions</b> ใช้ typed FK แยกตามประเภทข้อมูล (impact_process_id / sales_summary_id / doc_no)
+          </p>
+        </div>
+      </div>
+
+      <!-- pane: run history -->
+      <div data-tabpane="jhist" hidden>
+        <div class="toolbar" style="margin-top:16px;">
+          <span class="pill ok" id="histOk">สำเร็จ 0</span>
+          <span class="pill fail" id="histFail">ล้มเหลว 0</span>
+          <div class="spacer"></div>
+          <button class="btn btn-ghost btn-sm" data-ack="เปิด log บนเซิร์ฟเวอร์ (ตัวอย่าง)">ดู Log ฉบับเต็ม</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>เริ่มรัน</th><th>ระยะเวลา</th><th>จำนวนแถว</th><th>ไฟล์ที่เกี่ยวข้อง</th><th>ผลลัพธ์</th><th>หมายเหตุ</th></tr></thead>
+            <tbody id="jdHist"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:5px solid var(--primary);">
+      <p style="margin:0; font-size:13px; color:#5d6b7a;">
+        หน้าจอนี้ออกแบบตามแนว Job Scheduler Console สากล (รายการงาน → รายละเอียด 4 แท็บ) —
+        ค่าพารามิเตอร์ กำหนดการ cron flow และตารางฐานข้อมูล อ้างอิงจากเอกสาร
+        <b>FGI &amp; FCS Batch Job Technical Document v4.0</b> ทุกจุดตัดสินใจและ error path ตรงตาม flowchart ในเอกสาร
+        ส่วนสถานะการรัน/ประวัติเป็นข้อมูลตัวอย่างเพื่อการออกแบบ
+      </p>
+    </div>
+
+  </main>
+</div>
+<div id="toast-stack"></div>
+<script src="assets/sbp.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ================= data: 11 entry points จากเอกสาร v4.0 ================= */
+  var PHASES = [
+    { k:'A', t:'นำเข้า Master', s:'QSSI · ALLMAP', c:'', jobs:['1','2','3'] },
+    { k:'B', t:'แลกเปลี่ยนยอดขาย', s:'IAS / MIS', c:'c-teal', jobs:['4','5'] },
+    { k:'C', t:'ส่งออก BPM', s:'3 ไฟล์อิสระ', c:'c-amber', jobs:['7','8','9'] },
+    { k:'D', t:'K2 / Statement', s:'Workflow + STA', c:'c-violet', jobs:['8b','6'] },
+    { k:'E', t:'เฝ้าระวัง ACK', s:'Watchdog', c:'c-rose', jobs:['10'] }
+  ];
+
+  var JOBS = [
+    {
+      no:'1', name:'ImportQSSI', th:'นำเข้าคะแนน QSSI รายเดือน', tag:'IMPORT', tagCls:'imp', phase:'A',
+      cls:'fcs.main.ImportQSSI', script:'FCS_ImportQSSI.sh', cron:'Monthly', cronTh:'รายเดือน (ต้นเดือน)',
+      out:'fcs_qssi_scores',
+      desc:'ดาวน์โหลดไฟล์คะแนน QSSI 4 ไฟล์ต่อเดือนผ่าน SFTP โหลดเข้าตารางพัก ทำ dedup และจับคู่หมวดคะแนนแบบ stateful แล้วลบงวดเดิมและ insert ลง fcs_qssi_scores เพื่อให้ Job 6 ใช้ตรวจความครบของคะแนน 6 หมวดก่อนปล่อยสถานะ INIT',
+      params:[
+        ['กำหนดการรัน (Cron)','Monthly','text',1,'ตั้งเวลาใน crontab ผ่านสคริปต์ FCS_ImportQSSI.sh'],
+        ['งวดข้อมูล (เดือนที่รัน)','07/2569','text',1,'ชื่อไฟล์ใช้เดือนปัจจุบัน แต่งวดใน DB คือเดือนก่อนหน้า (off-by-one โดยตั้งใจ — Errata E10)'],
+        ['SFTP Server','sezfssa02-office.cpall.co.th','text',1,''],
+        ['SFTP Port','218','number',1,'พอร์ตไม่มาตรฐาน — ที่มาของ retry / type-mismatch (Errata E11)'],
+        ['Remote Directory','/export/qssishare/onl/qssi/textfile/SBP/QSSI_Monthly/','text',1,''],
+        ['Local Directory','/appshare/SPS/FCS/interface_data/in/','text',1,''],
+        ['File Prefix (4 ไฟล์)','mrs1trnf_, mrs2trnf_, mrs3trnf_, mrs5trnf_','text',0,''],
+        ['Encoding','WINDOWS-874','text',0,''],
+        ['Batch Insert Size','10000','number',1,'จำนวนแถวต่อรอบ insert']
+      ],
+      flow:[
+        {k:'start', t:'เริ่ม'},
+        {k:'p', t:'กำหนดงวด: ชื่อไฟล์ = เดือนปัจจุบัน / งวด DB = เดือนก่อนหน้า', d:'off-by-one โดยตั้งใจตามเอกสาร (Errata E10)'},
+        {k:'io', t:'เชื่อมต่อ SFTP พอร์ต 218 ดาวน์โหลดไฟล์ทั้ง 4 prefix', d:'mrs1trnf_, mrs2trnf_, mrs3trnf_, mrs5trnf_ (WINDOWS-874)'},
+        {k:'d', t:'ดาวน์โหลดสำเร็จ และไฟล์ถูกต้อง?', no:'FAIL — ไม่มี auto-retry ข้ามไปขั้นย้ายไฟล์เข้า backup', noKind:'err', d:'ถ้าล้มเหลวจะไม่วนซ้ำอัตโนมัติ เพราะไฟล์ถูกย้ายเข้า backup เสมอ'},
+        {k:'p', t:'เปิด transaction ต่อไฟล์ โหลดลง staging data', d:'TransactionTemplate + savepoint ต่อไฟล์'},
+        {k:'p', t:'Dedup + จับคู่หมวดแบบ stateful (RS1 / RS2 / RS3 / RS5)', d:'RS1 เรียงตามลำดับ: D+E, F+G+H, I+J, K+L และ H ออกหมวด 16 เพิ่ม'},
+        {k:'io', t:'ลบงวด/หมวดเดิม แล้ว batch insert ลง fcs_qssi_scores', d:'insert ครั้งละ 10,000 แถว แล้ว commit ต่อไฟล์'},
+        {k:'io', t:'ย้ายไฟล์ต้นทางเข้า backup เสมอ (ทั้งสำเร็จและล้มเหลว)', d:'เหตุผลที่ห้ามหวังผล auto-retry — ต้องนำไฟล์กลับมาเองก่อนรันซ้ำ'},
+        {k:'err', t:'กรณี exception: rollback ถึง savepoint + ส่งเมลแจ้งล้มเหลว', d:'ไฟล์ต้นทางยังถูกย้ายเข้า backup ตามปกติ'},
+        {k:'end', t:'จบ'}
+      ],
+      tables:[
+        ['fcs_qssi_scores','W','ตารางคะแนนปลายทาง (ลบงวด/หมวดเดิมแล้ว insert ใหม่) โดยผ่านการ staging ข้อมูล']
+      ],
+      rels:[
+        'fcs_qssi_scores (store_id + category_code + impact_month + impact_year) → Job 6 ใช้ตรวจความครบ 6 หมวด (8, 9, 12, 1, 10, 16) จากงวด max เดียวในกรอบ 3 เดือน'
+      ],
+      meta:{ trans:'ต่อไฟล์ (TransactionTemplate + savepoint)',
+        rerun:'ไฟล์ถูกย้าย backup แม้ล้มเหลว — ก่อนรันซ้ำต้องนำไฟล์กลับ ตรวจงวดปลายทาง และตารางพัก',
+        mail:'storeretention (Cc ว่าง)',
+        risk:'convertStrToDouble แปลงพลาดกลายเป็น 0.0 เงียบ ๆ / ห้ามรันพร้อมกัน (temp table ใช้ร่วมทั้งระบบ)' },
+      run:['01/07/2569 06:00','ok','01/08/2569 06:00'],
+      hist:[
+        ['01/07/2569 06:00','4 นาที 12 วิ','48,220','mrs1–mrs5 (4 ไฟล์)','ok',''],
+        ['01/06/2569 06:00','3 นาที 58 วิ','47,105','mrs1–mrs5 (4 ไฟล์)','ok',''],
+        ['01/05/2569 06:00','1 นาที 03 วิ','0','mrs3trnf_ ขาดหาย','fail','ไฟล์ไม่ครบ — เมลแจ้งแล้ว ไฟล์ถูกย้าย backup ต้องนำกลับก่อนรันซ้ำ'],
+        ['01/04/2569 06:00','4 นาที 21 วิ','46,890','mrs1–mrs5 (4 ไฟล์)','ok','']
+      ]
+    },
+    {
+      no:'2', name:'ImportImpactStore', th:'นำเข้าคู่ร้านถูกกระทบจาก ALLMAP', tag:'IMPORT + RULES', tagCls:'imp', phase:'A',
+      cls:'fgi.main.ImportImpactStore', script:'FGI_ImportImpactStore.sh', cron:'0 07 7 * *', cronTh:'ทุกวันที่ 7 เวลา 07:00',
+      out:'fgi_impact_stores',
+      desc:'นำคู่ร้านถูกกระทบ–ร้านเปิดใหม่จากวิว ALLMAP เข้า fgi_impact_stores เติมข้อมูลจากตาราง master แล้วใช้กฎ DENY และ ON_PROCESS ตั้งค่า verify_status เป็น W / N / P',
+      params:[
+        ['กำหนดการรัน (Cron)','0 07 7 * *','text',1,'ทุกวันที่ 7 ของเดือน เวลา 07:00'],
+        ['Argument (ขอบเขต|งวด)','ALL|2569|06','text',1,'รูปแบบ ZONES|YYYY|MM หรือ ALL|YYYY|MM — ไม่ระบุจะใช้งวดตาม modifyDateToString'],
+        ['Source View','allmapssa.SEVEN_IMPACT_VIEW (SQL Server GSMALLMAP)','text',0,'dedup ด้วย ROW_NUMBER'],
+        ['Branch Type ที่เข้าเกณฑ์','B, FAM, FB1, FB2, FC1, FVB, FVC, FPT1','text',0,'FPT1 เข้าเกณฑ์เฉพาะเมื่อ SBP_CANCEL_TYPE_I = 06'],
+        ['กฎ DENY (ตรวจก่อน ON_PROCESS)','สาขา N=F / juristic เดียวกัน / สัญญาไม่คลุมงวด / เก่ากว่า 12 เดือน','text',0,''],
+        ['PK Sequence','SEQ_fgi_impact_stores','text',0,'']
+      ],
+      flow:[
+        {k:'start', t:'เริ่ม'},
+        {k:'io', t:'อ่าน SEVEN_IMPACT_VIEW จาก ALLMAP (ROW_NUMBER dedup)', d:'เชื่อม SQL Server GSMALLMAP ด้วย user allmapssa'},
+        {k:'d', t:'มีข้อมูลต้นทาง?', no:'จบการทำงาน', noKind:'end', d:''},
+        {k:'d', t:'เป็นคู่ร้านใหม่ (ยังไม่มีใน Oracle)?', no:'ข้ามรายการ — ของเดิมไม่ถูกอัปเดต (updateList เป็น dead code)', d:'Errata E4: รันซ้ำจะไม่อัปเดตคู่เดิม'},
+        {k:'p', t:'insert คู่ใหม่ verify_status = W, created_by = ALM', d:'PK จาก SEQ_fgi_impact_stores'},
+        {k:'p', t:'เติมข้อมูล master และ enrichment data', d:'INNER JOIN — ถ้า master ไม่ครบ แถวจะหลุดหายเงียบ ๆ'},
+        {k:'d', t:'ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS)', no:'verify_status = N (Deny)', noKind:'err', d:'DENY: สาขา N=F / juristic เดียวกัน / สัญญา SBP ไม่คลุมงวด / เก่ากว่า 12 เดือน'},
+        {k:'d', t:'เข้าเงื่อนไข ON_PROCESS หรือ created_by = STA?', no:'คงค่า W (รอตรวจสอบ)', d:'แหล่ง STA เข้าสถานะ P ได้อัตโนมัติ'},
+        {k:'p', t:'verify_status = P (On Process) แล้ววนจนครบทุกแถว', d:''},
+        {k:'end', t:'จบ'}
+      ],
+      tables:[
+        ['fgi_impact_stores','W','insert คู่ใหม่ / ตั้ง verify_status W-N-P / created_by=ALM รวมทั้งข้อมูล external']
+      ],
+      rels:[
+        'fgi_impact_stores (business key impacted_store_code + impact_month + impact_year) → แม่ของ fgi_impact_sales_summaries, fgi_impact_competitors และ hub fgi_impact_processes',
+        'PK id มาจาก SEQ_fgi_impact_stores (หนึ่งใน 7 sequence ของระบบ — Errata E18)',
+        'growth_rate_diff และ sales_status บนตารางนี้ คือเงื่อนไข Gen Flow Gate ของ Job 8b'
+      ],
+      meta:{ trans:'หนึ่ง transaction + savepoint',
+        rerun:'คู่เดิมถูกข้าม — รันซ้ำไม่อัปเดตของเดิม ต้องลบ/แก้คู่ที่ต้องการอย่างจงใจก่อน',
+        mail:'go-sbp (hardcoded, template 34)',
+        risk:'E4: updateList เป็น dead code / INNER JOIN ทำแถวที่ master ไม่ครบหายเงียบ (P1)' },
+      run:['07/06/2569 07:00','ok','07/07/2569 07:00'],
+      hist:[
+        ['07/06/2569 07:00','58 วิ','312','—','ok','คู่ใหม่ 312 / ข้ามของเดิม 1,840'],
+        ['07/05/2569 07:00','1 นาที 04 วิ','287','—','ok',''],
+        ['07/04/2569 07:00','1 นาที 12 วิ','301','—','ok','']
+      ]
+    },
+    {
+      no:'3', name:'ImportImpactCompetitor', th:'นำเข้าร้านคู่แข่งจาก ALLMAP', tag:'IMPORT', tagCls:'imp', phase:'A',
+      cls:'fgi.main.ImportImpactCompetitor', script:'(ยืนยันสคริปต์กับ Ops)', cron:'0 07 7 * *', cronTh:'ทุกวันที่ 7 เวลา 07:00',
+      out:'fgi_impact_competitors',
+      desc:'นำข้อมูลร้านคู่แข่งรายงวดจากวิว COMPETITOR_IMPACT_VIEW เข้า fgi_impact_competitors ทีละ 10,000 แถว กันซ้ำระดับงวด (ถ้างวดมีข้อมูลแล้วจะข้ามทั้งงวด ไม่มี upsert)',
+      params:[
+        ['กำหนดการรัน (Cron)','0 07 7 * *','text',1,'สคริปต์ scheduler จริงต้องยืนยันกับ Operations'],
+        ['Argument (งวด)','2569|06','text',1,'รูปแบบ YYYY|MM'],
+        ['Chunk Size','10000','number',1,'จำนวนแถวต่อรอบ insert'],
+        ['Source View','COMPETITOR_IMPACT_VIEW','text',0,'SELECT DISTINCT / map คอลัมน์ NAMT → NAME_TH, BRANCHT → BRANCH_TH']
+      ],
+      flow:[
+        {k:'start', t:'เริ่ม'},
+        {k:'d', t:'เป็นงวดใหม่ (ยังไม่เคยนำเข้า)?', no:'ข้ามทั้งงวด — ไม่มี upsert ต้องลบงวดก่อนจึงนำเข้าใหม่ได้', d:'กันซ้ำระดับงวด (Errata E15)'},
+        {k:'io', t:'SELECT DISTINCT จาก COMPETITOR_IMPACT_VIEW', d:''},
+        {k:'d', t:'พบข้อมูลต้นทาง?', no:'จบการทำงาน', noKind:'end', d:''},
+        {k:'p', t:'insert ทีละ 10,000 แถว พร้อม data_source = ALM', d:'map คอลัมน์ NAMT → NAME_TH และ BRANCHT → BRANCH_TH'},
+        {k:'d', t:'จำนวนที่ insert = จำนวนต้นทาง?', no:'Rollback + ส่งเมลแจ้งล้มเหลว', noKind:'err', d:'ตรวจ reconcile จำนวนแถวก่อน commit'},
+        {k:'end', t:'Commit / จบ'}
+      ],
+      tables:[
+        ['fgi_impact_competitors','W','insert รายงวด data_source=ALM (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP']
+      ],
+      rels:[
+        'fgi_impact_competitors (impacted_store_code + impact_month + impact_year ต้นทาง) → ผูกร้านถูกกระทบผ่าน impacted_store_code',
+        'PK จาก SEQ_fgi_impact_competitors / Job 7 อ่านตารางนี้เพื่อ export ไฟล์ BPM06003O'
+      ],
+      meta:{ trans:'หนึ่ง transaction + savepoint (insert เป็น chunk ละ 10,000)',
+        rerun:'ต้องลบข้อมูลงวดเองก่อน re-import แล้วตรวจจำนวนแถวเทียบต้นทาง',
+        mail:'config mailTo / storeretention',
+        risk:'กันซ้ำระดับงวดเท่านั้น — ไม่ใช่ upsert (E15)' },
+      run:['07/06/2569 07:05','ok','07/07/2569 07:05'],
+      hist:[
+        ['07/06/2569 07:05','42 วิ','2,410','—','ok',''],
+        ['07/05/2569 07:05','40 วิ','2,377','—','ok',''],
+        ['07/04/2569 07:05','44 วิ','2,395','—','ok','']
+      ]
+    },
+    {
+      no:'4', name:'PrepareImpactStoreToIAS', th:'เตรียมและส่งคำขอยอดขายไป IAS', tag:'PREPARE + EXPORT', tagCls:'mix', phase:'B',
+      cls:'fgi.main.PrepareImpactStoreToIAS', script:'FGI_ExportImpactStoreToAMS.sh', cron:'0 16 7-16 * *', cronTh:'วันที่ 7–16 เวลา 16:00',
+      out:'AMS06001O (UTF-8)',
+      desc:'สร้างข้อมูลตั้งต้น fgi_impact_sales_summaries จากคู่ร้านสถานะ P (ALM) พลิกธง W → P แบบ auto-commit แล้วเขียนไฟล์คำขอ AMS06001O ส่งให้ IAS/MIS คำนวณยอดขาย — เป็น Job เดียวที่ไม่มี transaction (ความเสี่ยง P0)',
+      params:[
+        ['กำหนดการรัน (Cron)','0 16 7-16 * *','text',1,'ทุกวันที่ 7–16 ของเดือน เวลา 16:00'],
+        ['เงื่อนไขอายุร้านถูกกระทบ','OPENDATE_I ≤ OPENDATE_N − 12 เดือน 15 วัน','text',0,'เกณฑ์ธุรกิจ — เปลี่ยนต้องอนุมัติ'],
+        ['เงื่อนไขวันปัจจุบัน','SYSDATE > OPENDATE_N + 16 วัน','text',0,''],
+        ['Output File','AMS06001O_yyyyMMddHHmm.txt (UTF-8, 1 logical record)','text',0,'COPY ไป backup — ไฟล์จริงคงไว้ให้ Job 5'],
+        ['ปลายทาง','IAS / MIS','text',1,'']
+      ],
+      flow:[
+        {k:'start', t:'เริ่ม'},
+        {k:'p', t:'seed fgi_impact_sales_summaries จากคู่ร้านสถานะ P / ALM', d:'ตัดรายการที่มี process (fgi_impact_processes) active ออก'},
+        {k:'d', t:'เข้าเงื่อนไขวันที่? (12 เดือน 15 วัน และ +16 วัน)', no:'จบการทำงาน', noKind:'end', d:'OPENDATE_I ≤ OPENDATE_N−12ด.15ว. และ SYSDATE > OPENDATE_N+16ว.'},
+        {k:'err', t:'อัปเดต SALES W → P แบบ AUTO-COMMIT ก่อนเขียนไฟล์', d:'ไม่มี transaction — rollback ไม่ได้ (ความเสี่ยง P0 หลักของระบบ)'},
+        {k:'io', t:'เขียนไฟล์ AMS06001O (UTF-8) แล้ว COPY ไป backup', d:'ไฟล์จริงคงไว้ที่เดิมเพื่อให้ Job 5 อ่านตอบกลับ'},
+        {k:'d', t:'เขียนไฟล์สำเร็จ?', no:'DB เป็น P แล้วแต่ไฟล์พัง — ต้อง reconcile ธง/ไฟล์/tracking ด้วยมือ', noKind:'err', d:''},
+        {k:'p', t:'insert tracking data_name = IMPACT_STORE_SALES', d:'transaction_pk = parseInt(impacted_store_code) — เลขศูนย์นำหน้าหาย / return code และ receive date เป็น NULL'},
+        {k:'end', t:'จบ'}
+      ],
+      tables:[
+        ['fgi_impact_sales_summaries','W','seed หัวตารางยอดขาย + พลิกธง W → P (auto-commit)'],
+        ['fgi_impact_stores','R','แหล่ง seed (สถานะ P / created_by=ALM)'],
+        ['fgi_impact_processes','R','กรองรายการที่มี process ค้างอยู่ออก'],
+        ['interface_transactions','W','tracking: data_name=IMPACT_STORE_SALES · typed FK = sales_summary_id / impact_process_id']
+      ],
+      rels:[
+        'fgi_impact_sales_summaries (impacted_store_code + impact_month + impact_year) → หัวตารางของ sales_transactions รายวันที่ Job 5 จะเติม',
+        'interface_transactions ใช้ typed FK แทน transaction_key แบบ polymorphic — เก็บรหัสร้าน/หัวตารางได้โดยไม่เสียเลขศูนย์นำหน้า'
+      ],
+      meta:{ trans:'ไม่มี transaction — auto-commit (เสี่ยง DB/ไฟล์ไม่ตรงกันสูงสุดในระบบ, P0)',
+        rerun:'ก่อนรันซ้ำต้อง reconcile ธง SALES + ไฟล์จริง + backup + tracking ด้วยมือทุกครั้ง',
+        mail:'go-sbp (ผ่าน shared helper)',
+        risk:'P0: commit W→P เกิดก่อนเขียนไฟล์ — แนะนำ transactional outbox ในระบบใหม่' },
+      run:['16/06/2569 16:00','ok','07/07/2569 16:00'],
+      hist:[
+        ['16/06/2569 16:00','35 วิ','118','AMS06001O_202606161600.txt','ok',''],
+        ['15/06/2569 16:00','33 วิ','96','AMS06001O_202606151600.txt','ok',''],
+        ['14/06/2569 16:00','31 วิ','0','—','ok','ไม่มีรายการเข้าเงื่อนไขวันที่'],
+        ['13/06/2569 16:00','38 วิ','104','AMS06001O_202606131600.txt','fail','เขียนไฟล์ล้มเหลว — DB เป็น P แล้ว ต้อง reconcile ด้วยมือ (บันทึกใน incident log)']
+      ]
+    },
+    {
+      no:'5', name:'ImportImpactSaleFromIAS', th:'รับยอดขายจาก IAS + คำนวณ Growth', tag:'IMPORT + CALC', tagCls:'imp', phase:'B',
+      cls:'fgi.main.ImportImpactSaleFromIAS', script:'FGI_ImportImpactStoreSale.sh', cron:'30 16 7-16 * *', cronTh:'วันที่ 7–16 เวลา 16:30',
+      out:'AMS06001I (รับเข้า)',
+      desc:'อ่านไฟล์ตอบกลับยอดขาย AMS06001I จาก IAS บันทึกยอดขายรายวันลง sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วตัดสิน verify_status = Y / N จาก growth_rate_diff',
+      params:[
+        ['กำหนดการรัน (Cron)','30 16 7-16 * *','text',1,'30 นาทีหลัง Job 4'],
+        ['Input File','AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์)','text',0,'impacted_store_code | OPENDATE_N | SALES_DATE | SALES_AMOUNT'],
+        ['หน้าต่างคำนวณ','4 ช่วง × 15 วัน รอบ OPENDATE_N (ไม่รวมวันเปิด)','text',0,''],
+        ['เกณฑ์ Outlier','|sales_diff| ≥ 50','number',0,'literal ในโค้ด — เปลี่ยนต้องอนุมัติธุรกิจ (8.2)'],
+        ['วันทำการคาดหวัง','60','number',0,'ถ้าไม่เท่า 60 → pre-accept เป็น Y ทันที'],
+        ['กฎ Pre-accept','อายุร้าน < 12 เดือน 15 วัน หรือวันทำการ ≠ 60 → Y','text',0,'']
+      ],
+      flow:[
+        {k:'start', t:'เริ่ม'},
+        {k:'io', t:'อ่านไฟล์ WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด', d:''},
+        {k:'d', t:'เป็นงวดที่ยังไม่นำเข้า?', no:'จบ (idempotency guard กันนำเข้าซ้ำ)', noKind:'end', d:''},
+        {k:'p', t:'เปิด transaction ต่อไฟล์ แล้ว insert sales_transactions แถวดิบ', d:'ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน'},
+        {k:'p', t:'total_working_days = จำนวนแถวดิบทั้งหมด', d:'นับรวมแถวนอกหน้าต่างคำนวณด้วย (raw count)'},
+        {k:'d', t:'ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept)', no:'Pre-accept: verify_status = Y ทันที', d:'pre-accept เมื่ออายุร้าน < 12ด.15ว. หรือวันทำการ ≠ 60'},
+        {k:'p', t:'คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (|sales_diff| ≥ 50)', d:'4 หน้าต่าง × 15 วัน ไม่รวมวันเปิดร้านใหม่ / ธงรวมอดีต-ปัจจุบันต้องตรงกัน'},
+        {k:'d', t:'NVL(growth_rate_diff, −1) < 0 ?', no:'verify_status = N (ไม่เข้าเกณฑ์ชดเชย)', d:'NULL ถูกแทนด้วย −1 = accept อัตโนมัติ (ความเสี่ยง P1)'},
+        {k:'p', t:'verify_status = Y แล้ว insert tracking IMPORT_SALES_FROM_IAS', d:''},
+        {k:'io', t:'ย้ายไฟล์เข้า backup', d:''},
+        {k:'end', t:'จบ'}
+      ],
+      tables:[
+        ['sales_transactions','W','ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา)'],
+        ['fgi_impact_sales_summaries','R/W','อัปเดต total_working_days, growth_rate_diff, verify_status Y/N'],
+        ['interface_transactions','W','tracking: data_name=IMPORT_SALES_FROM_IAS · typed FK = sales_summary_id']
+      ],
+      rels:[
+        'sales_transactions → ลูกของ fgi_impact_sales_summaries (หัวตารางต่อร้าน+งวด) ผูกด้วย impacted_store_code',
+        'ผล growth_rate_diff ที่คำนวณได้ ถูกใช้เป็นเงื่อนไข Gen Flow Gate (≤ −10) ของ Job 8b'
+      ],
+      meta:{ trans:'ต่อไฟล์ + savepoint (ระวัง inner catch ทำให้ rollback ไม่ทำงาน)',
+        rerun:'มี period guard — ถ้าจะซ้ำต้องลบ/แก้ sales_transactions อย่างระวังและคำนวณหัวตารางใหม่',
+        mail:'go-sbp (ผ่าน shared helper)',
+        risk:'P1: growth_rate_diff = NULL ถูก accept อัตโนมัติ / ต้องทดสอบ ก.พ. ปีอธิกสุรทิน และร้านไม่มียอดขาย' },
+      run:['16/06/2569 16:30','ok','07/07/2569 16:30'],
+      hist:[
+        ['16/06/2569 16:30','2 นาที 45 วิ','7,080','AMS06001I_202606161628.txt','ok','Y 74 / N 22 / pre-accept 22'],
+        ['15/06/2569 16:30','2 นาที 12 วิ','5,760','AMS06001I_202606151629.txt','ok',''],
+        ['14/06/2569 16:30','12 วิ','0','—','ok','ไม่มีไฟล์ตอบกลับ (Job 4 ไม่มีรายการ)']
+      ]
+    },
+    {
+      no:'6', name:'ExportImpactStoreToFS', th:'ซิงก์สถานะ + ส่งค่าชดเชยไป STA', tag:'STATE SYNC + EXPORT', tagCls:'mix', phase:'D',
+      cls:'fgi.main.ExportImpactStoreToFS', script:'FGI_ExportImpactStoreToSTA.sh', cron:'0 17 * * *', cronTh:'ทุกวัน 17:00',
+      out:'FRBC0001 (windows-874)',
+      desc:'รัน 10 mutation ตามลำดับบนตารางสถานะ ตรวจความครบของคะแนน QSSI 6 หมวด สร้างชุดสถานะที่ส่งออกได้ แล้วเขียนไฟล์ FRBC0001 (14 ฟิลด์ ปี พ.ศ.) ส่งให้ระบบ Statement (STA) ภายใน transaction เดียว',
+      params:[
+        ['กำหนดการรัน (Cron)','0 17 * * *','text',1,'ทุกวัน 17:00'],
+        ['dateStartInitToSTA','7','number',1,'วันของเดือนที่เริ่มปล่อยสถานะ I, C'],
+        ['numWaitPay','3','number',1,'จำนวนงวดรอจ่าย'],
+        ['หมวด QSSI ที่ตรวจ','8, 9, 12, 1, 10, 16','text',0,'ต้องครบทั้ง 6 หมวดจากงวด max เดียว ในกรอบ 3 เดือน'],
+        ['Output File','FRBC0001_yyyyMMddHHmmss.txt (windows-874, 14 ฟิลด์, พ.ศ.)','text',0,'ฟิลด์ 3/5/6 เป็นวันที่แบบไทย/พุทธศักราช'],
+        ['ปลายทาง SFTP','sestabr01.cpall.co.th (STA)','text',1,'']
+      ],
+      flow:[
+        {k:'start', t:'เริ่ม'},
+        {k:'p', t:'รัน 10 mutation ตามลำดับ บน fgi_impact_processes และ fgi_impact_stores', d:'state sync ก่อน export — ตรวจครบทั้ง 10 ขั้นตอน post-run'},
+        {k:'d', t:'QSSI ครบ 6 หมวด? (งวด max เดียว ในกรอบ 3 เดือน)', no:'ข้ามเส้นทาง INIT — สาย APPROVE ยังไปต่อ', d:'หมวด 8, 9, 12, 1, 10, 16 จาก fcs_qssi_scores (Job 1)'},
+        {k:'p', t:'สร้างชุดสถานะส่งออก: A, N, S (+ I, C เมื่อวันที่ ≥ 7 และ QSSI ครบ + Z ค้าง)', d:'Z จะถูกแปลงเป็น S เฉพาะในไฟล์ — ใน DB ยังเป็น Z'},
+        {k:'d', t:'มีแถวส่งออก?', no:'จบการทำงาน', noKind:'end', d:''},
+        {k:'io', t:'เขียนไฟล์ FRBC0001 14 ฟิลด์ (windows-874 + พ.ศ.)', d:'วันที่ผิดตัวเดียวทำให้ mapData คืน null และยกเลิกทั้งไฟล์'},
+        {k:'p', t:'insert tracking: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N', d:''},
+        {k:'io', t:'SFTP ไฟล์ไป STA', d:''},
+        {k:'d', t:'SFTP สำเร็จ?', no:'Rollback ทั้ง transaction + ลบไฟล์', noKind:'err', d:'transaction เดียวคลุม sync + ไฟล์ + tracking + SFTP'},
+        {k:'io', t:'ย้ายไฟล์เข้า backup', d:''},
+        {k:'end', t:'จบ'}
+      ],
+      tables:[
+        ['fgi_impact_processes','R/W','หนึ่งใน 10 mutation (สถานะ process / last_compensation_amount)'],
+        ['fgi_impact_stores','R/W','สถานะค่าชดเชย I/C/A/N/S/Z และข้อมูลร้าน/ผู้อนุมัติ/ค่าชดเชยร้านใหม่'],
+        ['fcs_qssi_scores','R','ตรวจความครบคะแนน 6 หมวด (จาก Job 1)'],
+        ['interface_transactions','W','tracking COMPENSATE_INIT / APPROVE (I,N) · typed FK = impact_process_id']
+      ],
+      rels:[
+        'hub fgi_impact_processes (id) → แม่ของ fgi_impact_stores ทั้งหมดที่ถูก mutate',
+        'fcs_qssi_scores → เงื่อนไขปล่อยสถานะ INIT (ครบ 6 หมวดจากงวดเดียว)',
+        'สถานะ COMPENSATE I/C/A/N/S/Z บน fgi_impact_stores → กำหนด data_name ของ tracking ที่ Job 10 เฝ้าดู'
+      ],
+      meta:{ trans:'หนึ่ง transaction คลุม sync + ไฟล์ + tracking + SFTP',
+        rerun:'transaction ป้องกันตามปกติ แต่ต้อง reconcile 10 mutation และระวังการ overwrite ไฟล์ปลายทางก่อนยืนยันผล',
+        mail:'storeretention + mailToBPM เมื่อสร้างไฟล์',
+        risk:'บั๊กจริง E20: SQL purge ต่อ data_name สองค่าเป็น string เดียว — tracking ไม่เคยถูกลบ สะสมโตขึ้นเรื่อย ๆ' },
+      run:['01/07/2569 17:00','ok','02/07/2569 17:00'],
+      hist:[
+        ['01/07/2569 17:00','3 นาที 02 วิ','1,254','FRBC0001_20260701170003.txt','ok','INIT 118 / APPROVE 1,136'],
+        ['30/06/2569 17:00','2 นาที 51 วิ','1,190','FRBC0001_20260630170002.txt','ok',''],
+        ['29/06/2569 17:00','2 นาที 47 วิ','0','—','fail','SFTP ไป STA ไม่ได้ — rollback + ลบไฟล์แล้ว รันรอบถัดไปสำเร็จ'],
+        ['28/06/2569 17:00','2 นาที 58 วิ','1,201','FRBC0001_20260628170001.txt','ok','']
+      ]
+    },
+    {
+      no:'7', name:'ExportCompetitor', th:'ส่งข้อมูลคู่แข่งไป BPM', tag:'EXPORT BPM', tagCls:'exp', phase:'C',
+      cls:'fgi.main.ExportCompetitor', script:'FGI_ExportCompetitorToBPM.sh', cron:'30 17 7-31 * *', cronTh:'วันที่ 7–31 เวลา 17:30',
+      out:'BPM06003O (UTF-8)',
+      desc:'เลือกงวดคู่แข่งล่าสุดต่อร้านที่อยู่ใน process ALM ที่ active และมี forecast เริ่มต้น เขียนไฟล์ BPM06003O 14 ฟิลด์ แล้ว SFTP ไปเส้นทาง competition ของ BPM',
+      params:[
+        ['กำหนดการรัน (Cron)','30 17 7-31 * *','text',1,'ทุกวันที่ 7–31 เวลา 17:30'],
+        ['ปลายทาง SFTP','BPM (path competition)','text',1,''],
+        ['Output File','BPM06003O_yyyyMMddHHmm.txt (UTF-8, 14 ฟิลด์)','text',0,'create_by = "system" (literal)'],
+        ['เงื่อนไขเลือกข้อมูล','งวดคู่แข่งล่าสุดต่อร้าน (dense rank) + forecast เริ่มต้น + ยังไม่ส่ง','text',0,'เดือน/ปีในไฟล์มาจาก fgi_impact_processes last_compensation_amount ไม่ใช่งวดคู่แข่ง']
+      ],
+      flow:[
+        {k:'start', t:'เริ่ม'},
+        {k:'p', t:'query คู่แข่งงวดล่าสุดต่อร้าน + forecast เริ่มต้น + ยังไม่ส่ง', d:'dense rank ตามงวดต้นทางของคู่แข่ง'},
+        {k:'d', t:'ข้อมูลผู้จัดการ SBP ครบ? (checkProcesssError)', no:'ตัดแถวทิ้งเงียบ ๆ — ไม่มีการแจ้งเตือน', noKind:'err', d:''},
+        {k:'d', t:'มีแถวเหลือส่งออก?', no:'จบการทำงาน', noKind:'end', d:''},
+        {k:'io', t:'เขียนไฟล์ BPM06003O 14 ฟิลด์ (UTF-8)', d:'เดือน/ปี export มาจาก fgi_impact_processes last_compensation_amount period'},
+        {k:'p', t:'insert tracking data_name = IMPACT_COMPETITOR, receive_date = now', d:''},
+        {k:'io', t:'SFTP ไป BPM (เส้นทาง competition)', d:''},
+        {k:'d', t:'SFTP สำเร็จ?', no:'Rollback + ลบไฟล์', noKind:'err', d:''},
+        {k:'end', t:'จบ'}
+      ],
+      tables:[
+        ['fgi_impact_competitors','R','งวดคู่แข่งล่าสุดต่อร้าน (จาก Job 3)'],
+        ['fgi_impact_processes','R','กรอง process ALM ที่ active / งวด export จาก last_compensation_amount'],
+        ['interface_transactions','W','tracking: data_name=IMPACT_COMPETITOR · typed FK = impact_process_id']
+      ],
+      rels:[
+        'fgi_impact_competitors ↔ fgi_impact_stores ผ่าน impacted_store_code (งวดล่าสุดต่อร้าน)',
+        'เดือน/ปีในไฟล์ export มาจาก hub fgi_impact_processes (last_compensation_amount) — ไม่ใช่งวดของข้อมูลคู่แข่งเอง'
+      ],
+      meta:{ trans:'หนึ่ง transaction + savepoint',
+        rerun:'tracking กันส่งซ้ำ — ตรวจ backup + tracking + ไฟล์ปลายทางก่อนรันซ้ำ',
+        mail:'storeretention + mailToBPM เมื่อสร้างไฟล์',
+        risk:'แถวที่ข้อมูลผู้จัดการ SBP ไม่ครบถูกตัดทิ้งเงียบ ๆ — ควรมี metric นับ' },
+      run:['30/06/2569 17:30','ok','07/07/2569 17:30'],
+      hist:[
+        ['30/06/2569 17:30','51 วิ','486','BPM06003O_202606301730.txt','ok',''],
+        ['29/06/2569 17:30','48 วิ','452','BPM06003O_202606291730.txt','ok',''],
+        ['28/06/2569 17:30','12 วิ','0','—','ok','ไม่มีรายการใหม่']
+      ]
+    },
+    {
+      no:'8', name:'ExportImpactStoreFlowToBPM', th:'ส่งข้อมูลชดเชยไป BPM (ไฟล์อย่างเดียว)', tag:'EXPORT BPM', tagCls:'exp', phase:'C',
+      cls:'fgi.main.ExportImpactStoreFlowToBPM', script:'FGI_ExportImpactStoreToBPM.sh', cron:'30 17 7-31 * *', cronTh:'วันที่ 7–31 เวลา 17:30',
+      out:'BPM06001O (UTF-8, 48 ฟิลด์)',
+      desc:'ส่งออกข้อมูล impact profile ค่าชดเชย และผู้อนุมัติ SBP เป็นไฟล์ BPM06001O (48 ฟิลด์) ไปยัง BPM — ทำหน้าที่ SFTP อย่างเดียว ห้ามมี logic เรียก K2 เด็ดขาด (การเปิด workflow เป็นของ Job 8b เท่านั้น)',
+      params:[
+        ['กำหนดการรัน (Cron)','30 17 7-31 * *','text',1,'ทุกวันที่ 7–31 เวลา 17:30'],
+        ['ปลายทาง SFTP','BPM/FGI/Inbound/compensateflow/','text',1,''],
+        ['Output File','BPM06001O_yyyyMMddHHmm.txt (UTF-8, 48 ฟิลด์)','text',0,'growth_rate_diff = NULL เมื่อ data_source = STA'],
+        ['เงื่อนไขเลือกข้อมูล','สถานะ I + forecast + ยังไม่ส่ง','text',0,'ไม่มี Gen Flow Gate ในเงื่อนไข — gate อยู่ที่ Job 8b'],
+        ['ข้อห้ามเชิงสถาปัตยกรรม','ห้ามมี K2 StartInstance ใน Job นี้','text',0,'Separation of Concerns — ความเสี่ยง P0 ถ้ารวมกัน']
+      ],
+      flow:[
+        {k:'start', t:'เริ่ม'},
+        {k:'p', t:'updateSeqToBpm ใน transaction แยก (commit อิสระ)', d:'กำหนดเลข seq สำหรับ BPM — ไม่ถูก rollback แม้หลักล้มเหลว'},
+        {k:'p', t:'เติมข้อมูลผู้อนุมัติ SBP', d:''},
+        {k:'p', t:'query impact profile สถานะ I + forecast + ยังไม่ส่ง', d:'ชื่อบุคคลประกอบเป็น ชื่อ + เว้นวรรค + นามสกุล'},
+        {k:'d', t:'ข้อมูลผู้อนุมัติครบ? (checkProcesssError)', no:'ตัดแถวทิ้งเงียบ ๆ', noKind:'err', d:''},
+        {k:'d', t:'มีแถวเหลือส่งออก?', no:'จบการทำงาน', noKind:'end', d:''},
+        {k:'io', t:'เขียนไฟล์ BPM06001O 48 ฟิลด์ (UTF-8)', d:'growth_rate_diff = NULL เมื่อแหล่งข้อมูลเป็น STA'},
+        {k:'p', t:'insert tracking data_name = IMPACT_STORE, return_code = W', d:'transaction_pk = id / Job 8b จะอ่านสถานะ W ต่อ'},
+        {k:'io', t:'SFTP ไป compensateflow', d:''},
+        {k:'d', t:'SFTP สำเร็จ?', no:'Rollback tracking + ลบไฟล์ (transaction แยกของ seq ไม่ถูก rollback)', noKind:'err', d:''},
+        {k:'end', t:'จบ — ไม่เรียก K2 (เป็นหน้าที่ Job 8b)'}
+      ],
+      tables:[
+        ['fgi_impact_stores','R','impact profile สถานะ I + forecast (key = id) พร้อมข้อมูลผู้อนุมัติ SBP'],
+        ['interface_transactions','W','tracking: data_name=IMPACT_STORE, return_code=W · typed FK = impact_process_id']
+      ],
+      rels:[
+        'fgi_impact_stores (id) → ลูกของ hub fgi_impact_processes / เป็น transaction_pk ของ tracking',
+        'tracking return_code = W คือสถานะตั้งต้นที่ Job 8b ใช้คัดรายการไปเปิด K2 workflow ต่อ'
+      ],
+      meta:{ trans:'สอง transaction — กำหนดเลข seq แยกจาก transaction หลัก',
+        rerun:'tracking กันซ้ำ — ตรวจ backup + tracking + ไฟล์ปลายทางก่อนรันซ้ำ',
+        mail:'storeretention + mailToBPM เมื่อสร้างไฟล์',
+        risk:'P0: ห้ามรวม Job 8 กับ 8b — การกู้คืนไฟล์ export กับการเปิด workflow ต้องแยกจากกันเสมอ' },
+      run:['30/06/2569 17:30','ok','07/07/2569 17:30'],
+      hist:[
+        ['30/06/2569 17:30','1 นาที 18 วิ','118','BPM06001O_202606301731.txt','ok',''],
+        ['29/06/2569 17:30','1 นาที 22 วิ','96','BPM06001O_202606291731.txt','ok','ตัดแถวผู้อนุมัติไม่ครบ 3 แถว (เงียบ)'],
+        ['28/06/2569 17:30','14 วิ','0','—','ok','ไม่มีรายการสถานะ I ใหม่']
+      ]
+    },
+    {
+      no:'8b', name:'StartK2WorkFlow', th:'เปิด K2 Workflow (FIA)', tag:'K2 REST', tagCls:'k2', phase:'D',
+      cls:'fgi.main.StartK2WorkFlow', script:'(scheduler แยก — ยืนยันกับ Ops)', cron:'แยกอิสระ', cronTh:'ยืนยันรอบกับ Operations',
+      out:'K2 StartInstance (REST)',
+      desc:'Job เดียวในระบบที่เรียก K2 workflow engine — คัดรายการที่ผ่าน Gen Flow Gate จากสถานะ workflow_generation_status = W แล้วยิง REST StartInstance เปิด workflow FIA และ reconcile สถานะ W / Y / N พร้อมส่งอีเมลสรุปราย DV',
+      params:[
+        ['Scheduler','แยกจาก Job 8 — ยืนยันเจ้าของรอบกับ Operations','text',1,'ตั้งใจแยกเพื่อกู้คืนอิสระจากไฟล์ export'],
+        ['K2 REST Endpoint','sesomapua01.7eleven.cp.co.th:81 (HTTP)','text',1,'เป้าหมาย: ย้ายเป็น HTTPS + Secret Manager (P0)'],
+        ['Basic Auth User','7ELEVEN\\bpmk2_fcs','text',1,'ปัจจุบัน hardcoded ในโค้ด — ความเสี่ยง P0'],
+        ['เกณฑ์ Growth Rate','growth_rate_diff ≤ −10','number',0,'literal ในโค้ด — เปลี่ยนต้องอนุมัติธุรกิจ'],
+        ['Branch Type ผ่าน Gate','FAM, FB1, FC1, FB2, FVB, FVC','text',0,'นอกเซ็ตนี้ถูกตั้ง N ทันที'],
+        ['เงื่อนไข Gate อื่น','workflow_generation_status=W · opt_dv_user_id ไม่ว่าง · new_store_juristic_name ≠ impacted_store_juristic_name · sales_status ∈ {Y, N}','text',0,'']
+      ],
+      flow:[
+        {k:'start', t:'เริ่ม'},
+        {k:'p', t:'updateBeforeSelect: ตั้ง W → Y เมื่อพบ K2 process เดิมอยู่แล้ว', d:'กันเปิด workflow ซ้ำ'},
+        {k:'d', t:'ผ่าน Gen Flow Gate ครบทุกเงื่อนไข?', no:'branch type นอกเซ็ต → N / กรณีอื่นคง W ไว้', d:'W + branch type + DV ไม่ว่าง + juristic ต่างกัน + growth ≤ −10 + sales status Y/N'},
+        {k:'io', t:'POST K2 REST StartInstance (HTTP + Basic Auth)', d:'endpoint sesomapua01.7eleven.cp.co.th:81'},
+        {k:'d', t:'HTTP 200 และ body มีคำว่า "Running"?', no:'log ล้มเหลว คงค่า W ไว้ reconcile — ไม่มี auto-retry', noKind:'err', d:''},
+        {k:'p', t:'workflow_generation_status = Y (เปิด workflow สำเร็จ)', d:'flag เขียนแบบ auto-commit — ไม่มี transaction'},
+        {k:'io', t:'ส่งอีเมลสรุปราย DV (group ตาม opt_dv_user_id)', d:''},
+        {k:'end', t:'จบ'}
+      ],
+      tables:[
+        ['fgi_impact_stores','R/W','อ่าน candidate workflow_generation_status=W + เขียนสถานะ W → Y / N'],
+        ['K2 process instance','R','ตรวจว่ามี workflow ของร้านนี้อยู่แล้วหรือไม่ (กันซ้ำ)']
+      ],
+      rels:[
+        'workflow_generation_status บน fgi_impact_stores: W = รอเปิด / Y = เปิดแล้วหรือมีอยู่แล้ว / N = ไม่เข้าเกณฑ์ — metric หลักที่ต้องเฝ้า',
+        'ต้นทางสถานะ W มาจาก Job 8 (ไฟล์ BPM06001O + tracking) — สองงานนี้ต้องแยกกันเสมอ (P0)'
+      ],
+      meta:{ trans:'ไม่มี transaction — flag เขียนแบบ auto-commit',
+        rerun:'ห้าม reset workflow_generation_status จนกว่าจะตรวจแล้วว่า K2 instance มีจริงหรือไม่',
+        mail:'อีเมลราย DV / GM user',
+        risk:'P0: credential hardcoded + endpoint เป็น HTTP / เฝ้า metric: จำนวน candidate, HTTP "Running", start ล้มเหลว, นับ W/Y/N' },
+      run:['30/06/2569 18:00','ok','ยืนยันกับ Ops'],
+      hist:[
+        ['30/06/2569 18:00','44 วิ','62','K2 StartInstance × 62','ok','Y 58 / N 4 / ค้าง W 0'],
+        ['29/06/2569 18:00','41 วิ','48','K2 StartInstance × 48','ok',''],
+        ['28/06/2569 18:00','52 วิ','51','K2 StartInstance × 51','fail','HTTP timeout 3 รายการ — คง W ไว้ reconcile รอบถัดไป']
+      ]
+    },
+    {
+      no:'9', name:'ExportOpenStore', th:'ส่งข้อมูลร้านเปิดใหม่ไป BPM', tag:'EXPORT BPM', tagCls:'exp', phase:'C',
+      cls:'fgi.main.ExportOpenStore', script:'FGI_Exportdocument_new_storesToBPM.sh', cron:'30 17 7-31 * *', cronTh:'วันที่ 7–31 เวลา 17:30',
+      out:'BPM06002O (UTF-8, 24 ฟิลด์)',
+      desc:'ส่งออกโปรไฟล์ร้านเปิดใหม่พร้อมค่า forecast เป็นไฟล์ BPM06002O (24 ฟิลด์) ไปยัง BPM โดยใช้กฎ NVL(adjust_n, forecast_n) — ค่า adjust มีลำดับความสำคัญเหนือ forecast',
+      params:[
+        ['กำหนดการรัน (Cron)','30 17 7-31 * *','text',1,'ทุกวันที่ 7–31 เวลา 17:30'],
+        ['ปลายทาง SFTP','BPM/FGI/Inbound/impactprofile/','text',1,''],
+        ['Output File','BPM06002O_yyyyMMddHHmm.txt (UTF-8, 24 ฟิลด์)','text',0,'ฟิลด์ 19–20 เว้นว่างโดยตั้งใจ / distance_unit ถูก select แต่ไม่ส่งออก'],
+        ['กฎ Forecast / Percent','NVL(adjust_n, forecast_n)','text',0,'ค่า adjust มาก่อน forecast เสมอ'],
+        ['เงื่อนไขเลือกข้อมูล','ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ส่ง','text',0,'']
+      ],
+      flow:[
+        {k:'start', t:'เริ่ม'},
+        {k:'p', t:'query ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ส่ง', d:''},
+        {k:'d', t:'มีแถวส่งออก?', no:'จบการทำงาน', noKind:'end', d:''},
+        {k:'io', t:'เขียนไฟล์ BPM06002O 24 ฟิลด์ (UTF-8)', d:'Forecast/Percent = NVL(adjust_n, forecast_n) / ฟิลด์ 19–20 ว่างโดยตั้งใจ'},
+        {k:'p', t:'insert tracking data_name = NEW_STORE', d:''},
+        {k:'io', t:'SFTP ไป impactprofile', d:''},
+        {k:'d', t:'SFTP สำเร็จ?', no:'Rollback transaction + ลบไฟล์', noKind:'err', d:'หนึ่ง transaction + savepoint คุ้มครอง DB กับไฟล์ให้สอดคล้องกัน'},
+        {k:'io', t:'ย้ายไฟล์เข้า backup', d:''},
+        {k:'end', t:'จบ'}
+      ],
+      tables:[
+        ['fgi_impact_stores','R','โปรไฟล์ร้านเปิดใหม่ สถานะ I (คอลัมน์ adjust_n, forecast_n, distance_unit) และค่า forecast/adjust รายงวด'],
+        ['interface_transactions','W','tracking: data_name=NEW_STORE · typed FK = doc_no / impact_process_id']
+      ],
+      rels:[
+        'fgi_impact_stores (id) → ลูกของ hub fgi_impact_processes ผูกกับคู่ร้านผ่าน id',
+        '%ชดเชยฝั่งร้านเปิดใหม่ (FORECAST_PERCENT_N / ADJUST_PERCENT_N) คือค่าที่ระบบ K2 นำไปตรวจผลรวม 100%'
+      ],
+      meta:{ trans:'หนึ่ง transaction — rollback + ลบไฟล์เมื่อ SFTP ล้มเหลว',
+        rerun:'tracking กันซ้ำ — ตรวจ backup + tracking + ไฟล์ปลายทางก่อนรันซ้ำ',
+        mail:'storeretention + mailToBPM เมื่อสร้างไฟล์',
+        risk:'ฟิลด์ 19–20 ว่างโดยตั้งใจ — อย่าตีความว่าเป็นบั๊กตอน re-implement' },
+      run:['30/06/2569 17:30','ok','07/07/2569 17:30'],
+      hist:[
+        ['30/06/2569 17:30','39 วิ','54','BPM06002O_202606301732.txt','ok',''],
+        ['29/06/2569 17:30','36 วิ','61','BPM06002O_202606291732.txt','ok',''],
+        ['28/06/2569 17:30','11 วิ','0','—','ok','ไม่มีร้านเปิดใหม่ค้างส่ง']
+      ]
+    },
+    {
+      no:'10', name:'NotifyNoReceiveData', th:'Watchdog เฝ้าระวัง ACK ค้าง', tag:'WATCHDOG', tagCls:'wd', phase:'E',
+      cls:'fgi.main.NotifyNoReceiveData', script:'FGI_NotifyNoReceiveData.sh', cron:'0 07 * * *', cronTh:'ทุกวัน 07:00',
+      out:'อีเมลเตือน (TIS-620)',
+      desc:'งานอ่านอย่างเดียว — ตรวจตาราง tracking หา dataset ค่าชดเชยฝั่ง STA ที่ยังไม่ได้รับ ACK เกิน 1 วัน แล้วส่งอีเมลเตือนผู้ดูแลระบบ ไม่สร้างไฟล์และไม่เขียนฐานข้อมูลใด ๆ',
+      params:[
+        ['กำหนดการรัน (Cron)','0 07 * * *','text',1,'ทุกวัน 07:00'],
+        ['data_name ที่เฝ้าดู','COMPENSATE_INIT_I, COMPENSATE_APPROVE_I','text',0,'เฉพาะฝั่ง STA — ไม่เฝ้า dataset ของ BPM'],
+        ['เกณฑ์ค้าง','return_code IS NULL และ INTERFACE_TYPE ≠ WS และ CREATE_DATE ≤ SYSDATE − 1','text',0,'เกณฑ์อายุ 1 วันเป็น literal — candidate พารามิเตอร์ในระบบใหม่'],
+        ['SMTP Route','เมลเตือนผู้ดูแล (storeretention warning)','text',1,'']
+      ],
+      flow:[
+        {k:'start', t:'เริ่ม'},
+        {k:'p', t:'query interface_transactions เฉพาะ dataset ฝั่ง STA', d:'COMPENSATE_INIT_I และ COMPENSATE_APPROVE_I เท่านั้น'},
+        {k:'d', t:'พบ ACK ค้างเกิน 1 วัน?', no:'จบ — ไม่ส่งอีเมล', noKind:'end', d:'return_code IS NULL + interface แบบไฟล์ + อายุ ≥ 1 วัน'},
+        {k:'p', t:'สรุปจำนวนค้าง group ตาม data_name + interface_type', d:'จำนวนค้าง = count_data − count_return_code'},
+        {k:'io', t:'ส่งอีเมลเตือนผู้ดูแลผ่าน SMTP', d:''},
+        {k:'end', t:'จบ'}
+      ],
+      tables:[
+        ['interface_transactions','R','อ่านอย่างเดียว (data_name, return_code, sent_at, received_at) — ไม่มีการเขียน DB']
+      ],
+      rels:[
+        'interface_transactions คือตาราง tracking กลางของทุก interface — return_code = NULL หมายถึงยังไม่ได้รับ ACK จากปลายทาง',
+        'แถวที่เฝ้าดูถูกสร้างโดย Job 6 (COMPENSATE_INIT / APPROVE) และรอ ACK จากระบบ STA'
+      ],
+      meta:{ trans:'อ่านอย่างเดียว — รันซ้ำปลอดภัย (เสี่ยงแค่อีเมลเตือนซ้ำ)',
+        rerun:'รันซ้ำได้ทุกเมื่อ',
+        mail:'storeretention (warning)',
+        risk:'บั๊ก purge ของ Job 6 (E20) ทำให้ตารางที่เฝ้าโตขึ้นเรื่อย ๆ — ระวังเวลา query ช้าลง' },
+      run:['02/07/2569 07:00','fail','03/07/2569 07:00'],
+      hist:[
+        ['02/07/2569 07:00','8 วิ','2','อีเมลเตือน 1 ฉบับ','fail','พบ ACK ค้าง 2 รายการ (COMPENSATE_INIT_I) — แจ้งผู้ดูแลแล้ว'],
+        ['01/07/2569 07:00','7 วิ','0','—','ok','ไม่พบรายการค้าง'],
+        ['30/06/2569 07:00','7 วิ','0','—','ok','ไม่พบรายการค้าง']
+      ]
+    }
+  ];
+
+  /* ================= helpers ================= */
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function byNo(no){ for (var i=0;i<JOBS.length;i++) if (JOBS[i].no===no) return JOBS[i]; return null; }
+  function wrapLines(t, max){
+    var words = String(t).split(' '), lines = [], cur = '';
+    words.forEach(function(w){
+      if ((cur ? cur + ' ' + w : w).length > max) {
+        if (cur) lines.push(cur);
+        while (w.length > max) {
+          var cut = max;
+          while (cut > 1 && /[ัิ-ฺ็-๎]/.test(w.charAt(cut))) cut--;
+          lines.push(w.slice(0, cut)); w = w.slice(cut);
+        }
+        cur = w;
+      } else cur = cur ? cur + ' ' + w : w;
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
+  function tspans(lines, x, y, lh){
+    return lines.map(function(l, i){
+      return '<tspan x="' + x + '" y="' + (y + i*lh) + '">' + esc(l) + '</tspan>';
+    }).join('');
+  }
+
+  /* ================= phase strip ================= */
+  (function renderPhases(){
+    var host = document.getElementById('phaseStrip'), html = '';
+    PHASES.forEach(function(ph){
+      var chips = ph.jobs.map(function(no){
+        var j = byNo(no);
+        return '<button class="jb-chip" data-job="' + no + '">Job ' + no + ' · ' + esc(j.name) + '</button>';
+      }).join('');
+      html += '<div class="flow-phase ' + ph.c + '">' +
+        '<div class="ph-h"><span class="ph-n">' + ph.k + '</span>' +
+        '<div><div class="ph-t">' + esc(ph.t) + '</div><div class="ph-s">' + esc(ph.s) + '</div></div></div>' +
+        '<div class="chips">' + chips + '</div></div>';
+    });
+    host.innerHTML = html;
+  })();
+
+  /* ================= job list ================= */
+  var enabled = {};
+  JOBS.forEach(function(j){ enabled[j.no] = true; });
+
+  function renderList(){
+    var tb = document.querySelector('#tblJobs tbody'), html = '';
+    JOBS.forEach(function(j){
+      var stPill = j.run[1] === 'ok' ? '<span class="pill ok">สำเร็จ</span>' : '<span class="pill fail">มีประเด็น</span>';
+      html += '<tr data-job="' + j.no + '"' + (current && current.no===j.no ? ' class="sel"' : '') + '>' +
+        '<td class="num" style="font-weight:700;">' + j.no + '</td>' +
+        '<td><div style="font-weight:600;">' + esc(j.th) + '</div><div class="num" style="font-size:11.5px;color:#93a1b0;">' + esc(j.name) + '</div></td>' +
+        '<td class="num">' + j.phase + '</td>' +
+        '<td><span class="jtag ' + j.tagCls + '">' + esc(j.tag) + '</span></td>' +
+        '<td><span class="chip time num">' + esc(j.cron) + '</span><div style="font-size:11.5px;color:#93a1b0;margin-top:3px;">' + esc(j.cronTh) + '</div></td>' +
+        '<td class="num">' + esc(j.run[0]) + '</td>' +
+        '<td>' + stPill + '</td>' +
+        '<td class="num">' + esc(j.run[2]) + '</td>' +
+        '<td>' + (enabled[j.no] ? '<span class="pill ok">เปิดใช้</span>' : '<span class="pill muted">ปิดอยู่</span>') + '</td>' +
+        '<td><button class="btn btn-soft btn-sm" data-job="' + j.no + '">ดูรายละเอียด</button></td></tr>';
+    });
+    tb.innerHTML = html;
+  }
+
+  /* ================= detail: header + form ================= */
+  var current = null;
+
+  function renderHeader(j){
+    document.getElementById('jdTitle').textContent = 'Job ' + j.no + ' — ' + j.th;
+    document.getElementById('jdDesc').textContent = j.desc;
+    var chips = '<span class="jtag ' + j.tagCls + '">' + esc(j.tag) + '</span>' +
+      '<span class="chip time num">' + esc(j.cron) + ' · ' + esc(j.cronTh) + '</span>' +
+      '<span class="chip job num">' + esc(j.script) + '</span>' +
+      '<span class="chip api num">' + esc(j.cls) + '</span>';
+    if (j.out) chips += '<span class="chip file num">' + esc(j.out) + '</span>';
+    document.getElementById('jdChips').innerHTML = chips;
+    document.getElementById('btnToggleJob').textContent = enabled[j.no] ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน';
+  }
+
+  function renderForm(j){
+    var html = '';
+    j.params.forEach(function(p){
+      var badge = p[3] ? '<span class="prm-badge cfg">แก้ไขได้</span>' : '<span class="prm-badge fix">ค่าคงที่</span>';
+      var input = '<input class="num' + (p[3] ? '' : ' ro') + '" type="text" value="' + esc(p[1]).replace(/"/g,'&quot;') + '"' + (p[3] ? '' : ' readonly') + '>';
+      html += '<div class="field' + (p[1].length > 46 ? ' col-2' : '') + '"><label>' + esc(p[0]) + badge + '</label>' + input +
+        (p[4] ? '<span class="fnote">' + esc(p[4]) + '</span>' : '') + '</div>';
+    });
+    document.getElementById('jdForm').innerHTML = html;
+
+    var m = j.meta;
+    document.getElementById('jdMeta').innerHTML =
+      '<div class="dm"><span class="k">Transaction</span><span class="v">' + esc(m.trans) + '</span></div>' +
+      '<div class="dm"><span class="k">แนวทางการรันซ้ำ (Re-run)</span><span class="v">' + esc(m.rerun) + '</span></div>' +
+      '<div class="dm"><span class="k">Mail Routing</span><span class="v">' + esc(m.mail) + '</span></div>' +
+      '<div class="dm"><span class="k">ความเสี่ยง / บั๊กที่ทราบ</span><span class="v">' + esc(m.risk) + '</span></div>';
+  }
+
+  /* ================= detail: flowchart ================= */
+  function renderFlow(j){
+    var W = 640, cx = 235, sideX = 455, sideW = 175, gap = 30, y = 16;
+    var out = [], notes = [], num = 0;
+
+    var defs = '<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">' +
+      '<path d="M0 0L10 5L0 10z" fill="#8493a5"/></marker></defs>';
+
+    var prevBottom = null;
+    j.flow.forEach(function(n){
+      var lines, w, h, shape = '', textCol = '#2b3440';
+      if (n.k === 'start' || n.k === 'end') {
+        lines = wrapLines(n.t, 30); w = Math.max(110, lines[0].length * 9 + 40); h = 34 + (lines.length - 1) * 16;
+        shape = '<rect x="' + (cx - w/2) + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="17" fill="#1f2937"/>' +
+          '<text text-anchor="middle" font-size="12.5" font-weight="600" fill="#fff">' + tspans(lines, cx, y + 21, 15) + '</text>';
+      } else if (n.k === 'd') {
+        lines = wrapLines(n.t, 24); w = 260; h = Math.max(76, lines.length * 17 + 42);
+        var mx = cx, my = y + h/2;
+        shape = '<polygon points="' + mx + ',' + y + ' ' + (mx + w/2) + ',' + my + ' ' + mx + ',' + (y + h) + ' ' + (mx - w/2) + ',' + my + '" fill="#fffaf0" stroke="#e2b45a" stroke-width="1.6"/>' +
+          '<text text-anchor="middle" font-size="12.5" fill="#7a5410">' + tspans(lines, mx, my - (lines.length - 1) * 8.5 + 4, 17) + '</text>';
+      } else {
+        lines = wrapLines(n.t, 36); w = 330; h = lines.length * 18 + 20;
+        var fill = '#fff', stroke = '#d4dbe4';
+        if (n.k === 'io') { fill = '#eef4ff'; stroke = '#96b4f0'; }
+        if (n.k === 'err') { fill = '#fdecec'; stroke = '#e08c8c'; textCol = '#b03a2e'; }
+        shape = '<rect x="' + (cx - w/2) + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="10" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6"/>' +
+          '<text text-anchor="middle" font-size="12.5" fill="' + textCol + '">' + tspans(lines, cx, y + 22, 18) + '</text>';
+      }
+
+      // connector from previous node
+      if (prevBottom !== null) {
+        out.push('<line x1="' + cx + '" y1="' + prevBottom + '" x2="' + cx + '" y2="' + (y - 2) + '" stroke="#8493a5" stroke-width="1.6" marker-end="url(#arw)"/>');
+        if (prevWasDecision) out.push('<text x="' + (cx + 8) + '" y="' + (prevBottom + 14) + '" font-size="11.5" fill="#15803d" font-weight="700">ใช่</text>');
+      }
+
+      // number badge + note
+      if (n.k !== 'start' && n.k !== 'end') {
+        num++;
+        var badgeY = (n.k === 'd') ? y + h/2 : y + Math.min(16, h/2);
+        var badgeX = (n.k === 'd') ? cx - 150 : cx - w/2 - 18;
+        out.push('<circle cx="' + badgeX + '" cy="' + badgeY + '" r="10" fill="#2f6fed"/>' +
+          '<text x="' + badgeX + '" y="' + (badgeY + 3.5) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff">' + num + '</text>');
+        notes.push({ n: num, t: n.t, d: n.d || '', no: n.no || '', dec: n.k === 'd', err: n.k === 'err' });
+      }
+
+      out.push(shape);
+
+      // side branch (decision "ไม่")
+      if (n.k === 'd' && n.no) {
+        var sLines = wrapLines(n.no, 20), sH = sLines.length * 15 + 16, sy = y + h/2 - sH/2;
+        var sFill = '#f7f9fc', sStroke = '#b9c3cf', sText = '#5d6b7a';
+        if (n.noKind === 'err') { sFill = '#fdecec'; sStroke = '#e08c8c'; sText = '#b03a2e'; }
+        if (n.noKind === 'end') { sFill = '#1f2937'; sStroke = '#1f2937'; sText = '#fff'; }
+        out.push('<line x1="' + (cx + 130) + '" y1="' + (y + h/2) + '" x2="' + (sideX - 4) + '" y2="' + (y + h/2) + '" stroke="#c0392b" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arw)"/>' +
+          '<text x="' + (cx + 138) + '" y="' + (y + h/2 - 7) + '" font-size="11.5" fill="#c0392b" font-weight="700">ไม่</text>' +
+          '<rect x="' + sideX + '" y="' + sy + '" width="' + sideW + '" height="' + sH + '" rx="9" fill="' + sFill + '" stroke="' + sStroke + '" stroke-width="1.3"' + (n.noKind === 'end' ? '' : ' stroke-dasharray="4 3"') + '/>' +
+          '<text text-anchor="middle" font-size="11" fill="' + sText + '">' + tspans(sLines, sideX + sideW/2, sy + 15, 15) + '</text>');
+      }
+
+      var prevWasDecisionNow = (n.k === 'd');
+      prevBottom = y + h;
+      prevWasDecision = prevWasDecisionNow;
+      y += h + gap;
+    });
+
+    var svg = '<svg width="' + W + '" height="' + y + '" viewBox="0 0 ' + W + ' ' + y + '" font-family="Prompt,Sarabun,sans-serif">' + defs + out.join('') + '</svg>';
+    document.getElementById('jdFlowWrap').innerHTML = svg;
+
+    var nh = '';
+    notes.forEach(function(nt, i){
+      var cls = nt.err ? '' : (i < 2 ? ' done' : '');
+      var meta = nt.d ? esc(nt.d) : '';
+      if (nt.dec && nt.no) meta += (meta ? '<br>' : '') + '<b>ใช่</b> → ขั้นถัดไป · <b style="color:#c0392b;">ไม่</b> → ' + esc(nt.no);
+      nh += '<div class="tl-item' + cls + '"><span class="tl-dot"></span>' +
+        '<div class="tl-t">' + nt.n + '. ' + esc(nt.t) + '</div>' +
+        (meta ? '<div class="tl-meta">' + meta + '</div>' : '') + '</div>';
+    });
+    document.getElementById('jdFlowNotes').innerHTML = nh;
+  }
+  var prevWasDecision = false;
+
+  /* ================= detail: database ================= */
+  function renderDb(j){
+    var reads = [], writes = [], boths = [];
+    j.tables.forEach(function(t){
+      if (t[1] === 'R') reads.push(t); else if (t[1] === 'W') writes.push(t); else boths.push(t);
+    });
+    var right = writes.concat(boths);
+    var rowH = 46, top = 24;
+    var H = Math.max(reads.length, right.length, 1) * rowH + top * 2 + 20;
+    var W = 860, jw = 210, jx = (W - jw) / 2, jy = H/2 - 26;
+
+    var s = ['<defs><marker id="dbarw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8493a5"/></marker></defs>'];
+
+    // job node
+    s.push('<rect x="' + jx + '" y="' + jy + '" width="' + jw + '" height="52" rx="12" fill="#2f6fed"/>' +
+      '<text x="' + (jx + jw/2) + '" y="' + (jy + 22) + '" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">Job ' + j.no + '</text>' +
+      '<text x="' + (jx + jw/2) + '" y="' + (jy + 39) + '" text-anchor="middle" font-size="10.5" fill="#cfe0ff">' + esc(j.name) + '</text>');
+
+    function tblBox(t, x, yy, kind){
+      var stroke = kind === 'r' ? '#96b4f0' : (kind === 'w' ? '#7bc79a' : '#c8a2e8');
+      var badge = kind === 'r' ? 'R' : (kind === 'w' ? 'W' : 'R/W');
+      var bfill = kind === 'r' ? '#e8f0fe' : (kind === 'w' ? '#e7f7ee' : '#f1ecfe');
+      var btext = kind === 'r' ? '#1d4ed8' : (kind === 'w' ? '#15803d' : '#6d28d9');
+      var name = t[0].length > 34 ? t[0].slice(0, 33) + '…' : t[0];
+      return '<rect x="' + x + '" y="' + yy + '" width="240" height="36" rx="9" fill="#fff" stroke="' + stroke + '" stroke-width="1.5"/>' +
+        '<text x="' + (x + 12) + '" y="' + (yy + 23) + '" font-size="11.5" font-weight="600" fill="#2b3440" font-family="Sarabun,sans-serif">' + esc(name) + '</text>' +
+        '<rect x="' + (x + 204) + '" y="' + (yy + 7) + '" width="30" height="16" rx="5" fill="' + bfill + '"/>' +
+        '<text x="' + (x + 219) + '" y="' + (yy + 19) + '" text-anchor="middle" font-size="9.5" font-weight="700" fill="' + btext + '">' + badge + '</text>';
+    }
+
+    reads.forEach(function(t, i){
+      var yy = top + i * rowH;
+      s.push(tblBox(t, 20, yy, 'r'));
+      s.push('<line x1="262" y1="' + (yy + 18) + '" x2="' + (jx - 4) + '" y2="' + (jy + 26) + '" stroke="#8493a5" stroke-width="1.4" marker-end="url(#dbarw)"/>');
+    });
+    right.forEach(function(t, i){
+      var yy = top + i * rowH;
+      var both = t[1] !== 'W';
+      s.push(tblBox(t, 600, yy, both ? 'b' : 'w'));
+      s.push('<line x1="' + (jx + jw + 4) + '" y1="' + (jy + 26) + '" x2="596" y2="' + (yy + 18) + '" stroke="#8493a5" stroke-width="1.4" marker-end="url(#dbarw)"' + (both ? ' marker-start="url(#dbarw)"' : '') + '/>');
+    });
+
+    document.getElementById('jdDbWrap').innerHTML =
+      '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" font-family="Prompt,Sarabun,sans-serif" style="max-width:100%;">' + s.join('') + '</svg>';
+
+    var th = '';
+    j.tables.forEach(function(t){
+      var cls = t[1] === 'R' ? 'r' : (t[1] === 'W' ? 'w' : 'rw');
+      th += '<tr><td class="num" style="font-weight:600;">' + esc(t[0]) + '</td>' +
+        '<td><span class="rwb ' + cls + '">' + t[1] + '</span></td><td>' + esc(t[2]) + '</td></tr>';
+    });
+    document.getElementById('jdTables').innerHTML = th;
+
+    document.getElementById('jdRels').innerHTML = j.rels.map(function(r){ return '<li>' + esc(r) + '</li>'; }).join('');
+  }
+
+  /* ================= detail: history ================= */
+  function renderHist(j){
+    var html = '', ok = 0, fail = 0;
+    j.hist.forEach(function(h){
+      if (h[4] === 'ok') ok++; else fail++;
+      html += '<tr' + (h[4] === 'fail' ? ' class="flag-red"' : '') + '>' +
+        '<td class="num">' + esc(h[0]) + '</td><td class="num">' + esc(h[1]) + '</td>' +
+        '<td class="num">' + esc(h[2]) + '</td><td class="num">' + esc(h[3]) + '</td>' +
+        '<td>' + (h[4] === 'ok' ? '<span class="pill ok">สำเร็จ</span>' : '<span class="pill fail">ล้มเหลว / เตือน</span>') + '</td>' +
+        '<td>' + esc(h[5]) + '</td></tr>';
+    });
+    document.getElementById('jdHist').innerHTML = html;
+    document.getElementById('histOk').textContent = 'สำเร็จ ' + ok;
+    document.getElementById('histFail').textContent = 'ล้มเหลว/เตือน ' + fail;
+  }
+
+  /* ================= select + wire ================= */
+  function selectJob(no, scroll){
+    var j = byNo(no);
+    if (!j) return;
+    current = j;
+    renderHeader(j); renderForm(j); renderFlow(j); renderDb(j); renderHist(j); renderList();
+    if (scroll) document.getElementById('jobDetail').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  document.addEventListener('click', function(e){
+    var t = e.target.closest('[data-job]');
+    if (t) { selectJob(t.getAttribute('data-job'), true); return; }
+  });
+
+  document.getElementById('btnRunNow').addEventListener('click', function(){
+    var p = document.getElementById('runPeriod').value || '-';
+    window.SBP.toast('สั่งรัน Job ' + current.no + ' (' + current.name + ') งวด ' + p + ' แล้ว — ดูผลในแท็บประวัติการรัน (ตัวอย่าง)', 'ok');
+  });
+  document.getElementById('btnSaveParams').addEventListener('click', function(){
+    window.SBP.toast('บันทึกพารามิเตอร์ของ Job ' + current.no + ' แล้ว (ตัวอย่าง)', 'ok');
+  });
+  document.getElementById('btnToggleJob').addEventListener('click', function(){
+    enabled[current.no] = !enabled[current.no];
+    this.textContent = enabled[current.no] ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน';
+    renderList();
+    window.SBP.toast((enabled[current.no] ? 'เปิด' : 'ปิด') + 'การใช้งาน Job ' + current.no + ' แล้ว (ตัวอย่าง)', enabled[current.no] ? 'ok' : 'del');
+  });
+
+  selectJob('1', false);
+})();
+</script>
+</body>
+</html>

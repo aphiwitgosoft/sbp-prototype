@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow FGI/FCS (Batch) · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  .ref{display:inline-flex; align-items:center; font-size:10.5px; font-weight:700; border-radius:12px; padding:2px 9px;
+    font-family:"Sarabun",sans-serif; white-space:nowrap; letter-spacing:.2px; vertical-align:1px;}
+  .ref.fgi{background:#e8f0fe; color:#1d4ed8;}
+  .pipe-wrap{background:#fbfcfe; border:1px solid #e8eef6; border-radius:14px; padding:10px; overflow-x:auto;}
+  .pipe-wrap svg{display:block; margin:0 auto; min-width:900px;}
+  td.mono{font-family:ui-monospace,Menlo,monospace; font-size:12px; white-space:nowrap; color:#37414e;}
+</style>
+</head>
+<body data-page="flow-fgi" data-nav="modules" data-module="flow-fgi" data-crumb="Flow FGI/FCS (Batch)">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">Flow FGI/FCS (Batch Pipeline)</h1>
+          <p class="page-sub">งานเบื้องหลังของระบบปัจจุบันทั้ง 11 entry points (Jobs 1–10 + 8b) · อ้างอิงเอกสาร FGI &amp; FCS Batch Job Technical Document v4.0 · ใช้ชื่อตาราง/ไฟล์ตามระบบจริง</p></div>
+        <div class="page-actions"><span class="pill info" style="align-self:center;"><span style="font-weight:600;">ระบบปัจจุบัน (As-Is)</span></span></div>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="font-size:13px;color:#45525f;line-height:1.9;">
+          หน้านี้คือภาพรวม pipeline ฝั่ง Batch ล้วน ๆ <span class="ref fgi">FGI/FCS</span> —
+          Flowchart รายละเอียดทีละ job (พารามิเตอร์ / decision / error path) ดูที่หน้า <a href="job-batch.html" style="color:#2f6fed;font-weight:600;">Batch Job (FGI/FCS)</a> ·
+          Flow ฝั่งอนุมัติดูที่ <a href="k2-flow.html" style="color:#2f6fed;font-weight:600;">Flow K2</a> ·
+          ภาพรวมระบบใหม่ที่รวมสองฝั่งดูที่ <a href="plan-flow.html" style="color:#2f6fed;font-weight:600;">Flow FGI/FCS + K2</a>
+        </div>
+      </div>
+
+      <!-- ===== pipeline diagram ===== -->
+      <div class="card">
+        <div class="card-head"><h2>แผนภาพ Pipeline (เฟส A–E)</h2><span class="pill info">ต้นทาง → Batch → ปลายทาง</span></div>
+        <div class="pipe-wrap">
+        <svg viewBox="0 0 1000 660" width="100%" style="max-width:980px;" font-family="Prompt,Sarabun,sans-serif" role="img" aria-label="FGI/FCS batch pipeline">
+          <defs><marker id="pa" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L6.5,3 L0,6 Z" fill="#8493a5"/></marker></defs>
+
+          <!-- column headers -->
+          <text x="120" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#8493a5">ระบบต้นทาง</text>
+          <text x="500" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#8493a5">FGI/FCS Batch (Oracle fcs_frn)</text>
+          <text x="870" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#8493a5">ระบบปลายทาง</text>
+
+          <!-- sources -->
+          <rect x="30" y="52" width="180" height="58" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.5"/>
+          <text x="120" y="76" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2b3440">QSSI</text>
+          <text x="120" y="94" text-anchor="middle" font-size="10" fill="#8493a5">SFTP พอร์ต 218 · รายเดือน</text>
+
+          <rect x="30" y="150" width="180" height="58" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.5"/>
+          <text x="120" y="174" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2b3440">ALLMAP</text>
+          <text x="120" y="192" text-anchor="middle" font-size="10" fill="#8493a5">SQL Server GSMALLMAP</text>
+
+          <rect x="30" y="286" width="180" height="58" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.5"/>
+          <text x="120" y="310" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2b3440">IAS / MIS</text>
+          <text x="120" y="328" text-anchor="middle" font-size="10" fill="#8493a5">คำนวณยอดขายรายวัน</text>
+
+          <!-- phase A -->
+          <rect x="300" y="46" width="400" height="112" rx="12" fill="#f5f9ff" stroke="#2f6fed" stroke-width="1.6"/>
+          <text x="318" y="70" font-size="12.5" font-weight="700" fill="#1d4ed8">เฟส A · นำเข้า Master</text>
+          <text x="318" y="92" font-size="11" fill="#45525f">Job 1 ImportQSSI → fcs_qssi_scores (งวด = เดือนก่อนหน้า)</text>
+          <text x="318" y="110" font-size="11" fill="#45525f">Job 2 ImportImpactStore → fgi_impact_stores (กฎ DENY / ON_PROCESS)</text>
+          <text x="318" y="128" font-size="11" fill="#45525f">Job 3 ImportImpactCompetitor → fgi_impact_competitors (กันซ้ำระดับงวด)</text>
+          <text x="318" y="148" font-size="9.5" fill="#8493a5">รายเดือน · และทุกวันที่ 7 เวลา 07:00</text>
+
+          <!-- phase B -->
+          <rect x="300" y="178" width="400" height="96" rx="12" fill="#f0faf8" stroke="#15b6a6" stroke-width="1.6"/>
+          <text x="318" y="202" font-size="12.5" font-weight="700" fill="#0f766e">เฟส B · แลกเปลี่ยนยอดขาย</text>
+          <text x="318" y="224" font-size="11" fill="#45525f">Job 4 Prepare → ไฟล์ AMS06001O (16:00) · พลิกธง W→P (ไม่มี transaction!)</text>
+          <text x="318" y="242" font-size="11" fill="#45525f">Job 5 Import ← AMS06001I (16:30) · คำนวณ sales_diff 4×15 วัน → verify_status Y/N</text>
+          <text x="318" y="262" font-size="9.5" fill="#8493a5">ทุกวันที่ 7–16 ของเดือน</text>
+
+          <!-- phase C -->
+          <rect x="300" y="294" width="400" height="96" rx="12" fill="#fffaf0" stroke="#f59e0b" stroke-width="1.6"/>
+          <text x="318" y="318" font-size="12.5" font-weight="700" fill="#b45309">เฟส C · ส่งออก BPM (3 ไฟล์อิสระ)</text>
+          <text x="318" y="340" font-size="11" fill="#45525f">Job 7 → BPM06003O (คู่แข่ง 14 ฟิลด์) · Job 8 → BPM06001O (48 ฟิลด์)</text>
+          <text x="318" y="358" font-size="11" fill="#45525f">Job 9 → BPM06002O (ร้านใหม่ 24 ฟิลด์) · tracking return_code = W</text>
+          <text x="318" y="378" font-size="9.5" fill="#8493a5">ทุกวันที่ 7–31 เวลา 17:30 · Job 8 ห้ามมี logic K2</text>
+
+          <!-- phase D -->
+          <rect x="300" y="410" width="400" height="96" rx="12" fill="#faf7ff" stroke="#7c3aed" stroke-width="1.6"/>
+          <text x="318" y="434" font-size="12.5" font-weight="700" fill="#6d28d9">เฟส D · K2 / Statement</text>
+          <text x="318" y="456" font-size="11" fill="#45525f">Job 8b StartK2WorkFlow — Gen Flow Gate → K2 REST StartInstance (W→Y/N)</text>
+          <text x="318" y="474" font-size="11" fill="#45525f">Job 6 → 10 mutations + เช็ค QSSI 6 หมวด → FRBC0001 (พ.ศ.) ไป STA</text>
+          <text x="318" y="494" font-size="9.5" fill="#8493a5">Job 6 ทุกวัน 17:00 · Job 8b scheduler แยก (ยืนยันกับ Ops)</text>
+
+          <!-- phase E -->
+          <rect x="300" y="526" width="400" height="78" rx="12" fill="#fdf2f2" stroke="#ef4444" stroke-width="1.6"/>
+          <text x="318" y="550" font-size="12.5" font-weight="700" fill="#c0392b">เฟส E · เฝ้าระวัง ACK (Watchdog)</text>
+          <text x="318" y="572" font-size="11" fill="#45525f">Job 10 — ACK ค้าง ≥ 1 วัน (COMPENSATE_INIT_I / APPROVE_I) → เมลเตือน</text>
+          <text x="318" y="590" font-size="9.5" fill="#8493a5">ทุกวัน 07:00 · อ่านอย่างเดียว รันซ้ำปลอดภัย</text>
+
+          <!-- targets -->
+          <rect x="780" y="294" width="180" height="58" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.5"/>
+          <text x="870" y="318" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2b3440">BPM</text>
+          <text x="870" y="336" text-anchor="middle" font-size="10" fill="#8493a5">รับ 3 ไฟล์ทาง SFTP</text>
+
+          <rect x="780" y="386" width="180" height="58" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.5"/>
+          <text x="870" y="410" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2b3440">K2 Engine</text>
+          <text x="870" y="428" text-anchor="middle" font-size="10" fill="#8493a5">Workflow FIA (7 ขั้น)</text>
+
+          <rect x="780" y="470" width="180" height="58" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.5"/>
+          <text x="870" y="494" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2b3440">STA (Statement)</text>
+          <text x="870" y="512" text-anchor="middle" font-size="10" fill="#8493a5">FRBC0001 → ตอบ ACK กลับ</text>
+
+          <rect x="780" y="548" width="180" height="56" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.5"/>
+          <text x="870" y="572" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2b3440">SMTP</text>
+          <text x="870" y="590" text-anchor="middle" font-size="10" fill="#8493a5">เมลเตือนผู้ดูแล (TIS-620)</text>
+
+          <!-- arrows: sources -> phases -->
+          <line x1="210" y1="81" x2="298" y2="86" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
+          <text x="216" y="72" font-size="9.5" fill="#5d6b7a">mrs1–5tmf (WIN-874)</text>
+          <line x1="210" y1="179" x2="298" y2="130" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
+          <text x="216" y="170" font-size="9.5" fill="#5d6b7a">SEVEN_IMPACT_VIEW ฯลฯ</text>
+          <line x1="298" y1="230" x2="210" y2="300" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
+          <text x="214" y="252" font-size="9.5" fill="#5d6b7a">AMS06001O (UTF-8)</text>
+          <line x1="210" y1="322" x2="298" y2="250" stroke="#8493a5" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#pa)"/>
+          <text x="214" y="290" font-size="9.5" fill="#5d6b7a">AMS06001I (WIN-874)</text>
+
+          <!-- arrows: phase chain -->
+          <line x1="500" y1="158" x2="500" y2="176" stroke="#8493a5" stroke-width="1.7" marker-end="url(#pa)"/>
+          <line x1="500" y1="274" x2="500" y2="292" stroke="#8493a5" stroke-width="1.7" marker-end="url(#pa)"/>
+          <line x1="500" y1="390" x2="500" y2="408" stroke="#8493a5" stroke-width="1.7" marker-end="url(#pa)"/>
+          <line x1="500" y1="506" x2="500" y2="524" stroke="#8493a5" stroke-width="1.7" marker-end="url(#pa)"/>
+
+          <!-- arrows: phases -> targets -->
+          <line x1="700" y1="342" x2="778" y2="326" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
+          <text x="706" y="326" font-size="9.5" fill="#5d6b7a">BPM06001O/2O/3O</text>
+          <line x1="700" y1="440" x2="778" y2="416" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
+          <text x="706" y="424" font-size="9.5" fill="#5d6b7a">K2 StartInstance (REST)</text>
+          <line x1="700" y1="478" x2="778" y2="496" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
+          <text x="706" y="502" font-size="9.5" fill="#5d6b7a">FRBC0001 (SFTP)</text>
+          <line x1="778" y1="512" x2="700" y2="556" stroke="#8493a5" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#pa)"/>
+          <text x="704" y="536" font-size="9.5" fill="#5d6b7a">ACK (return_code)</text>
+          <line x1="700" y1="576" x2="778" y2="576" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
+        </svg>
+        </div>
+      </div>
+
+      <!-- ===== monthly calendar ===== -->
+      <div class="card">
+        <div class="card-head"><h2>กติกาเวลา (Cron) รอบเดือน</h2></div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>เวลา</th><th>Cron</th><th>Job</th><th>งาน</th></tr></thead>
+            <tbody>
+              <tr><td>ต้นเดือน (รายเดือน)</td><td class="mono">Monthly</td><td class="mono">Job 1</td><td>นำเข้าคะแนน QSSI 4 ไฟล์ · ห้ามรันซ้อน (temp table ใช้ร่วม)</td></tr>
+              <tr><td>วันที่ 7 · 07:00</td><td class="mono">0 07 7 * *</td><td class="mono">Jobs 2, 3</td><td>นำเข้าคู่ร้านกระทบ + คู่แข่งจาก ALLMAP</td></tr>
+              <tr><td>วันที่ 7–16 · 16:00</td><td class="mono">0 16 7-16 * *</td><td class="mono">Job 4</td><td>ส่งคำขอยอดขายไป IAS (AMS06001O)</td></tr>
+              <tr><td>วันที่ 7–16 · 16:30</td><td class="mono">30 16 7-16 * *</td><td class="mono">Job 5</td><td>รับยอดขายกลับ + คำนวณ Growth (30 นาทีหลัง Job 4)</td></tr>
+              <tr><td>ทุกวัน · 17:00</td><td class="mono">0 17 * * *</td><td class="mono">Job 6</td><td>ซิงก์สถานะ 10 ขั้น + ส่ง FRBC0001 ไป STA</td></tr>
+              <tr><td>วันที่ 7–31 · 17:30</td><td class="mono">30 17 7-31 * *</td><td class="mono">Jobs 7, 8, 9</td><td>ส่งออก 3 ไฟล์ BPM (คู่แข่ง / ชดเชย / ร้านใหม่)</td></tr>
+              <tr><td>แยกอิสระ</td><td class="mono">ยืนยันกับ Ops</td><td class="mono">Job 8b</td><td>เปิด K2 workflow (Gen Flow Gate) — ตั้งใจแยกจาก Job 8</td></tr>
+              <tr><td>ทุกวัน · 07:00</td><td class="mono">0 07 * * *</td><td class="mono">Job 10</td><td>Watchdog ตรวจ ACK ค้าง ≥ 1 วัน แล้วส่งเมลเตือน</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== interface catalog ===== -->
+      <div class="card">
+        <div class="card-head"><h2>Interface ทั้งหมด (จาก Section 8 ของเอกสาร)</h2><span class="pill info">8 interfaces + อีเมล</span></div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>Interface</th><th>ทิศทาง</th><th>Encoding</th><th>ฟิลด์</th><th>เนื้อหา</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">mrs1/2/3/5tmf_yyyyMM</td><td>QSSI → Job 1</td><td class="mono">WINDOWS-874</td><td class="num">แปรผัน</td><td>คะแนน QSSI รายหมวด</td></tr>
+              <tr><td class="mono">AMS06001O_yyyyMMddHHmm.txt</td><td>Job 4 → IAS</td><td class="mono">UTF-8</td><td class="num">1 record</td><td>คำขอยอดขาย (storecode_i | opendate_n)</td></tr>
+              <tr><td class="mono">AMS06001I_yyyyMMddHHmm.txt</td><td>IAS → Job 5</td><td class="mono">WINDOWS-874</td><td class="num">4</td><td>ยอดขายรายวันตอบกลับ</td></tr>
+              <tr><td class="mono">FRBC0001_yyyyMMddHHmmss.txt</td><td>Job 6 → STA</td><td class="mono">windows-874 + พ.ศ.</td><td class="num">14</td><td>ค่าชดเชย + QSSI (สถานะ Z → S เฉพาะในไฟล์)</td></tr>
+              <tr><td class="mono">BPM06003O_yyyyMMddHHmm.txt</td><td>Job 7 → BPM</td><td class="mono">UTF-8</td><td class="num">14</td><td>ร้านคู่แข่ง</td></tr>
+              <tr><td class="mono">BPM06001O_yyyyMMddHHmm.txt</td><td>Job 8 → BPM</td><td class="mono">UTF-8</td><td class="num">48</td><td>Impact profile + ผู้อนุมัติ SBP</td></tr>
+              <tr><td class="mono">K2 StartInstance</td><td>Job 8b → K2</td><td class="mono">XML / HTTP</td><td class="num">–</td><td>เปิด workflow FIA (Basic Auth)</td></tr>
+              <tr><td class="mono">BPM06002O_yyyyMMddHHmm.txt</td><td>Job 9 → BPM</td><td class="mono">UTF-8</td><td class="num">24</td><td>ร้านเปิดใหม่ (ฟิลด์ 19–20 ว่างโดยตั้งใจ)</td></tr>
+              <tr><td class="mono">Email แจ้งเตือน</td><td>ทุก job → SMTP</td><td class="mono">TIS-620</td><td class="num">–</td><td>แจ้งผล/เตือนตาม mail routing ของแต่ละ job</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="font-size:12.5px;color:var(--muted);margin:12px 2px 0;">
+          สถานะข้อมูลหลักที่ไหลผ่าน pipeline: <b>verify_status</b> W → P → Y/N (คู่ร้าน/ยอดขาย) · <b>workflow_generation_status</b> W → Y/N (เปิด workflow) ·
+          <b>compensation_status</b> I/C/A/N/S/Z (ค่าชดเชย) — โครงสร้างตารางรวมดูหน้า <a href="plan-database.html" style="color:#2f6fed;font-weight:600;">DB รวม (ระบบใหม่)</a>
+        </p>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

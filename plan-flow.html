@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow FGI/FCS + K2 · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  .ref{display:inline-flex; align-items:center; font-size:10.5px; font-weight:700; border-radius:12px; padding:2px 9px;
+    font-family:"Sarabun",sans-serif; white-space:nowrap; letter-spacing:.2px; vertical-align:1px;}
+  .ref.fgi{background:#e8f0fe; color:#1d4ed8;} .ref.k2{background:#f1ecfe; color:#6d28d9;}
+  .ref.new{background:#e7f7ee; color:#15803d;} .ref.mix{background:#fff4d6; color:#92670b;}
+  .arch-wrap{background:#fbfcfe; border:1px solid #e8eef6; border-radius:14px; padding:10px; overflow-x:auto;}
+  .arch-wrap svg{display:block; margin:0 auto; min-width:900px;}
+  .int-old{color:#8a5b00; font-family:"Sarabun",sans-serif; font-size:12.5px;}
+  .int-new{color:#15803d; font-family:"Sarabun",sans-serif; font-size:12.5px; font-weight:600;}
+  .journey{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:8px;}
+  .journey-step{position:relative;min-height:148px;padding:16px 14px;border:1px solid var(--line);border-top:4px solid var(--primary);border-radius:12px;background:#fff;}
+  .journey-step::after{content:"›";position:absolute;right:-11px;top:53px;z-index:2;width:20px;height:28px;color:#93a4b8;background:#fff;font-size:28px;line-height:24px;text-align:center;}
+  .journey-step:last-child::after{display:none;}
+  .journey-step.fgi{border-top-color:#3b82f6}.journey-step.mix{border-top-color:#f59e0b}.journey-step.k2{border-top-color:#7c3aed}.journey-step.out{border-top-color:#16a34a}
+  .journey-no{display:inline-flex;width:25px;height:25px;align-items:center;justify-content:center;border-radius:8px;background:#eef4ff;color:#1d4ed8;font:700 12px ui-monospace,Menlo,monospace;}
+  .journey-step h3{margin:9px 0 5px;color:#2b3440;font-size:14px;}
+  .journey-step p{margin:0;color:#697789;font-size:12px;line-height:1.65;}
+  .journey-step code{display:block;margin-top:8px;color:#2f6fed;font-size:10.5px;white-space:normal;}
+  .rule-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px;}
+  .rule{padding:12px 14px;border-radius:10px;background:#f7f9fc;color:#5d6b7a;font-size:12.5px;line-height:1.65;}
+  .rule b{display:block;margin-bottom:2px;color:#2b3440;}
+  .flow-stage{display:flex;align-items:center;gap:10px;margin:2px 0 18px;padding:8px 12px;border-radius:9px;background:#f3f6fb;color:#4b5b6c;font-size:12.5px;font-weight:700;}
+  .flow-stage span{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;border-radius:7px;background:#2f6fed;color:#fff;font:700 11px ui-monospace,Menlo,monospace;}
+  @media(max-width:1100px){.journey{grid-template-columns:1fr 1fr}.journey-step::after{display:none}.journey-step:last-child{grid-column:1/-1}.rule-grid{grid-template-columns:1fr}}
+  @media(max-width:640px){.journey{grid-template-columns:1fr}.journey-step:last-child{grid-column:auto}}
+</style>
+</head>
+<body data-page="plan-flow" data-nav="modules" data-module="plan-flow" data-crumb="Flow FGI/FCS + K2">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">Flow FGI/FCS + K2 — ระบบใหม่</h1>
+          <p class="page-sub">รวมงานเบื้องหลัง FGI/FCS (11 jobs) เข้ากับ Workflow อนุมัติ 7 ขั้นของ K2 เป็นระบบเดียว · สถาปัตยกรรมใหม่แยก Frontend / Backend</p></div>
+        <div class="page-actions">
+          <span class="pill info" style="align-self:center;">Target Architecture</span>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="font-size:13px;color:#45525f;line-height:1.9;">
+          <b style="color:#2b3440;">วิธีอ่าน ref ที่มา:</b>
+          <span class="ref fgi">FGI/FCS</span> = มาจากเอกสาร Batch Job Technical Document v4.0 (Jobs 1–10 + 8b) ·
+          <span class="ref k2">K2</span> = มาจาก SRS ประกันรายได้-K2 v3.1 (หน้าจอ / workflow 7 ขั้น) ·
+          <span class="ref new">ใหม่</span> = ส่วนที่ออกแบบเพิ่มสำหรับระบบใหม่ ·
+          <span class="ref mix">ทั้งสอง</span> = พฤติกรรมรวมจากสองระบบ<br>
+          หน้าที่เกี่ยวข้อง: <a href="plan-database.html" style="color:#2f6fed;font-weight:600;">DB FGI/FCS + K2</a> ·
+          <a href="plan-api.html" style="color:#2f6fed;font-weight:600;">API (BE/FE ใหม่)</a> ·
+          ต้นฉบับเดิม: <a href="flow-fgi.html" style="color:#2f6fed;">Flow FGI/FCS</a>, <a href="k2-flow.html" style="color:#2f6fed;">Flow K2</a>, <a href="job-batch.html" style="color:#2f6fed;">Batch Job FGI/FCS</a>
+        </div>
+      </div>
+
+      <div class="db-stat-grid">
+        <div class="db-stat"><b>11</b><span>Batch Entry Points</span></div>
+        <div class="db-stat"><b>7</b><span>Approval Sections</span></div>
+        <div class="db-stat"><b>30</b><span>Tables ใน Schema รวม</span></div>
+        <div class="db-stat"><b>36</b><span>REST API Endpoints</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>ภาพรวมการทำงานใน 30 วินาที</h2><span class="pill info">อ่านจากซ้าย → ขวา</span></div>
+        <div class="journey">
+          <div class="journey-step fgi">
+            <span class="journey-no">1</span><h3>รับข้อมูลต้นทาง</h3>
+            <p>QSSI และ ALLMAP ส่งคะแนน ร้านถูกกระทบ ร้านเปิดใหม่ และคู่แข่งเข้าสู่ Batch Pipeline</p>
+            <code>Jobs 1–3 · Zone A</code>
+          </div>
+          <div class="journey-step fgi">
+            <span class="journey-no">2</span><h3>วิเคราะห์ผลกระทบ</h3>
+            <p>ขอยอดขายจาก IAS คำนวณ 4×15 วัน ตรวจ 60 วัน, outlier และ Gen Flow Gate</p>
+            <code>Jobs 4–5 · impact_process</code>
+          </div>
+          <div class="journey-step mix">
+            <span class="journey-no">3</span><h3>สร้างเอกสาร</h3>
+            <p>Document Service สร้างเอกสารและข้อมูลประกอบตรงในฐานข้อมูลเดียวกัน</p>
+            <code>doc_no · ไม่มีไฟล์ภายใน</code>
+          </div>
+          <div class="journey-step k2">
+            <span class="journey-no">4</span><h3>อนุมัติ 7 ขั้น</h3>
+            <p>Workflow ภายในเดินงาน 06→08→01→02→03→04→05 พร้อมส่งกลับและแจ้งอีเมล</p>
+            <code>workflow_instance · task</code>
+          </div>
+          <div class="journey-step out">
+            <span class="journey-no">5</span><h3>ส่งผลและติดตาม</h3>
+            <p>Job 6 ส่งผลชดเชยไป STA และรับ ACK โดยมี Job 10 เฝ้าระวังรายการค้าง</p>
+            <code>FRBC0001 · STA ACK</code>
+          </div>
+        </div>
+        <div class="rule-grid">
+          <div class="rule"><b>ตัดการส่งไฟล์ภายใน</b>FGI/FCS → Document/Workflow ใช้ DB และ service call โดยตรง</div>
+          <div class="rule"><b>คง interface ภายนอก</b>ไฟล์/SFTP กับ QSSI, IAS และ STA ยังคงอยู่ เพราะเป็นขอบเขตระบบอื่น</div>
+          <div class="rule"><b>กติกาธุรกิจไม่เปลี่ยน</b>60 วัน, growth ≤ −10, %ชดเชย 100% และวงเงิน 100,000 ยังคงเดิม</div>
+        </div>
+      </div>
+
+      <!-- ===== architecture BE/FE ===== -->
+      <div class="card">
+        <div class="card-head"><h2>1. สถาปัตยกรรมระบบใหม่ — แยก Frontend / Backend</h2><span class="pill ok">BE / FE Split</span></div>
+        <div class="arch-wrap">
+        <svg viewBox="0 0 1000 648" width="100%" style="max-width:980px;" font-family="Prompt,Sarabun,sans-serif" role="img" aria-label="สถาปัตยกรรม BE/FE ระบบใหม่">
+          <defs><marker id="aa" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L6.5,3 L0,6 Z" fill="#8493a5"/></marker></defs>
+
+          <!-- FE -->
+          <rect x="40" y="14" width="920" height="88" rx="14" fill="#f5f9ff" stroke="#2f6fed" stroke-width="1.8"/>
+          <text x="64" y="40" font-size="14" font-weight="700" fill="#1d4ed8">Frontend — Web SPA</text>
+          <rect x="242" y="26" width="42" height="18" rx="9" fill="#e7f7ee"/><text x="263" y="39" text-anchor="middle" font-size="10" font-weight="700" fill="#15803d">ใหม่</text>
+          <text x="64" y="62" font-size="11.5" fill="#5d6b7a">ใช้หน้าจอ prototype ชุดนี้เป็น spec: งานรอดำเนินการ · เอกสารร้านถูกกระทบ · สร้างเอกสาร · รายงาน (K2)</text>
+          <text x="64" y="80" font-size="11.5" fill="#5d6b7a">+ Batch Job Monitor (FGI/FCS) · Master / สิทธิ์เมนู (K2) — คุยกับ Backend ผ่าน REST API เท่านั้น</text>
+
+          <line x1="500" y1="102" x2="500" y2="126" stroke="#8493a5" stroke-width="1.8" marker-end="url(#aa)"/>
+
+          <!-- API -->
+          <rect x="200" y="128" width="600" height="48" rx="12" fill="#0f172a"/>
+          <text x="500" y="149" text-anchor="middle" font-size="13" font-weight="700" fill="#86efac">REST API  /api/v1 · JSON + JWT · 36 เส้น</text>
+          <text x="500" y="166" text-anchor="middle" font-size="10.5" fill="#9fb3cd">รายละเอียดทุกเส้นดูหน้า “API (BE/FE ใหม่)”</text>
+
+          <line x1="500" y1="176" x2="500" y2="200" stroke="#8493a5" stroke-width="1.8" marker-end="url(#aa)"/>
+
+          <!-- BE container -->
+          <rect x="40" y="202" width="920" height="232" rx="14" fill="#fff" stroke="#b9c3cf" stroke-width="1.6" stroke-dasharray="7 5"/>
+          <text x="64" y="226" font-size="13.5" font-weight="700" fill="#2b3440">Backend Services</text>
+          <rect x="218" y="212" width="42" height="18" rx="9" fill="#e7f7ee"/><text x="239" y="225" text-anchor="middle" font-size="10" font-weight="700" fill="#15803d">ใหม่</text>
+
+          <!-- row 1 -->
+          <rect x="64" y="240" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#c8a2e8" stroke-width="1.5"/>
+          <text x="78" y="262" font-size="12.5" font-weight="600" fill="#2b3440">Auth &amp; RBAC</text>
+          <rect x="78" y="270" width="88" height="17" rx="8" fill="#f1ecfe"/><text x="122" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#6d28d9">K2 · SRS 3.1.1</text>
+          <text x="78" y="306" font-size="10.5" fill="#5d6b7a">JWT · Role 00–10 · สิทธิ์เมนูต่อ Role</text>
+
+          <rect x="358" y="240" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#c8a2e8" stroke-width="1.5"/>
+          <text x="372" y="262" font-size="12.5" font-weight="600" fill="#2b3440">Document &amp; Compensation Service</text>
+          <rect x="372" y="270" width="88" height="17" rx="8" fill="#f1ecfe"/><text x="416" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#6d28d9">K2 · SRS 3.1.6</text>
+          <text x="372" y="306" font-size="10.5" fill="#5d6b7a">เอกสาร YYYY/xxxxx · คำนวณชดเชย · แนบไฟล์</text>
+
+          <rect x="652" y="240" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#c8a2e8" stroke-width="1.5"/>
+          <text x="666" y="262" font-size="12.5" font-weight="600" fill="#2b3440">Workflow Engine (ภายใน)</text>
+          <rect x="666" y="270" width="88" height="17" rx="8" fill="#f1ecfe"/><text x="710" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#6d28d9">K2 · SRS 3.1.4</text>
+          <rect x="760" y="270" width="130" height="17" rx="8" fill="#e8f0fe"/><text x="825" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">แทน K2 REST (Job 8b)</text>
+          <text x="666" y="306" font-size="10.5" fill="#5d6b7a">7 ขั้น 06→08→01→02→03→04→05 · กฎ 100,000</text>
+
+          <!-- row 2 -->
+          <rect x="64" y="336" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#96b4f0" stroke-width="1.5"/>
+          <text x="78" y="358" font-size="12.5" font-weight="600" fill="#2b3440">Batch Scheduler (Jobs 1–10)</text>
+          <rect x="78" y="366" width="60" height="17" rx="8" fill="#e8f0fe"/><text x="108" y="378.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">FGI/FCS</text>
+          <text x="78" y="402" font-size="10.5" fill="#5d6b7a">คง cron เดิม · พารามิเตอร์แก้ได้จากหน้าจอ · กันรันซ้อน</text>
+
+          <rect x="358" y="336" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#96b4f0" stroke-width="1.5"/>
+          <text x="372" y="358" font-size="12.5" font-weight="600" fill="#2b3440">Interface Service (SFTP / ไฟล์ / ACK)</text>
+          <rect x="372" y="366" width="60" height="17" rx="8" fill="#e8f0fe"/><text x="402" y="378.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">FGI/FCS</text>
+          <text x="372" y="402" font-size="10.5" fill="#5d6b7a">QSSI · IAS · STA · encoding ต่อ interface · tracking</text>
+
+          <rect x="652" y="336" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#e2b45a" stroke-width="1.5"/>
+          <text x="666" y="358" font-size="12.5" font-weight="600" fill="#2b3440">Report &amp; Notification</text>
+          <rect x="666" y="366" width="110" height="17" rx="8" fill="#fff4d6"/><text x="721" y="378.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#92670b">K2 3.1.5/3.1.7 + FGI</text>
+          <text x="666" y="402" font-size="10.5" fill="#5d6b7a">รายงาน 19 คอลัมน์ · อีเมลตามสถานะ (แทน TIS-620)</text>
+
+          <line x1="500" y1="434" x2="500" y2="458" stroke="#8493a5" stroke-width="1.8" marker-end="url(#aa)"/>
+
+          <!-- DB -->
+          <rect x="200" y="460" width="600" height="52" rx="12" fill="#eef4ff" stroke="#2f6fed" stroke-width="1.6"/>
+          <text x="500" y="482" text-anchor="middle" font-size="13" font-weight="700" fill="#1d4ed8">Database รวม — โซน A (FGI/FCS) · B (K2) · C (Master/Config ใช้ร่วม)</text>
+          <text x="500" y="500" text-anchor="middle" font-size="10.5" fill="#5d6b7a">โครงสร้างตารางทั้งหมดดูหน้า “DB รวม (ระบบใหม่)”</text>
+
+          <!-- external -->
+          <path d="M500,512 L500,538 M500,538 L128,538 L128,556 M500,538 L872,538 L872,556 M500,538 L500,556 M314,538 L314,556 M686,538 L686,556" fill="none" stroke="#8493a5" stroke-width="1.4"/>
+          <text x="512" y="534" font-size="10.5" fill="#8493a5">SFTP / ไฟล์ / DB Link (กลไกเดิมกับระบบภายนอก)</text>
+
+          <g>
+            <rect x="48" y="558" width="160" height="56" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.4"/>
+            <text x="128" y="580" text-anchor="middle" font-size="12" font-weight="600" fill="#2b3440">QSSI</text>
+            <text x="128" y="598" text-anchor="middle" font-size="10" fill="#8493a5">SFTP รายเดือน (Job 1)</text>
+            <rect x="234" y="558" width="160" height="56" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.4"/>
+            <text x="314" y="580" text-anchor="middle" font-size="12" font-weight="600" fill="#2b3440">ALLMAP</text>
+            <text x="314" y="598" text-anchor="middle" font-size="10" fill="#8493a5">SQL Server (Jobs 2–3)</text>
+            <rect x="420" y="558" width="160" height="56" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.4"/>
+            <text x="500" y="580" text-anchor="middle" font-size="12" font-weight="600" fill="#2b3440">IAS / MIS</text>
+            <text x="500" y="598" text-anchor="middle" font-size="10" fill="#8493a5">ไฟล์ยอดขาย (Jobs 4–5)</text>
+            <rect x="606" y="558" width="160" height="56" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.4"/>
+            <text x="686" y="580" text-anchor="middle" font-size="12" font-weight="600" fill="#2b3440">STA (Statement)</text>
+            <text x="686" y="598" text-anchor="middle" font-size="10" fill="#8493a5">FRBC0001 + ACK (Job 6/10)</text>
+            <rect x="792" y="558" width="160" height="56" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.4"/>
+            <text x="872" y="580" text-anchor="middle" font-size="12" font-weight="600" fill="#2b3440">SMTP</text>
+            <text x="872" y="598" text-anchor="middle" font-size="10" fill="#8493a5">อีเมลแจ้งเตือน</text>
+          </g>
+        </svg>
+        </div>
+        <p style="font-size:12.5px;color:var(--muted);margin:12px 2px 0;">
+          จุดเปลี่ยนสำคัญ: <b>ไม่มี BPM/K2 engine ภายนอกอีกต่อไป</b> — การเปิดและเดิน workflow ทำโดย Workflow Engine ใน Backend เอง
+          (แทนไฟล์ BPM06001O/2O/3O + K2 REST StartInstance ของ Job 8/8b/9) ส่วน interface กับระบบภายนอก (QSSI, ALLMAP, IAS, STA) คงกลไกไฟล์/SFTP เดิมไว้เพราะเป็นระบบของทีมอื่น
+        </p>
+      </div>
+
+      <!-- ===== end-to-end flow ===== -->
+      <div class="card">
+        <div class="card-head"><h2>2. รายละเอียด Flow ต้นทางถึงปลายทาง</h2><span class="pill info">12 ขั้น · เดือนละ 1 รอบใหญ่</span></div>
+        <div class="timeline" style="margin-top:6px;">
+
+          <div class="flow-stage"><span>A</span> รับและวิเคราะห์ข้อมูลผลกระทบ · Jobs 1–5</div>
+          <div class="tl-item done"><span class="tl-dot"></span>
+            <div class="tl-t">1. นำเข้าคะแนน QSSI รายเดือน <span class="ref fgi">FGI/FCS · Job 1</span></div>
+            <div class="tl-meta">SFTP จาก QSSI (4 ไฟล์ mrs*) → dedup + จับคู่หมวด → fcs_qssi_scores · งวด DB = เดือนก่อนหน้า (off-by-one โดยตั้งใจ)</div></div>
+
+          <div class="tl-item done"><span class="tl-dot"></span>
+            <div class="tl-t">2. นำเข้าคู่ร้านถูกกระทบ + ร้านคู่แข่ง <span class="ref fgi">FGI/FCS · Jobs 2–3</span></div>
+            <div class="tl-meta">ทุกวันที่ 7 เวลา 07:00 จาก ALLMAP (SQL Server) → fgi_impact_stores (กฎ DENY/ON_PROCESS → W/N/P) และ fgi_impact_competitors</div></div>
+
+          <div class="tl-item done"><span class="tl-dot"></span>
+            <div class="tl-t">3. ขอยอดขายรายวันจาก IAS <span class="ref fgi">FGI/FCS · Job 4</span></div>
+            <div class="tl-meta">วันที่ 7–16 เวลา 16:00 · เงื่อนไขอายุร้าน 12 เดือน 15 วัน / +16 วัน → ไฟล์ AMS06001O · ระบบใหม่ครอบด้วย transaction (แก้ความเสี่ยง P0 auto-commit)</div></div>
+
+          <div class="tl-item done"><span class="tl-dot"></span>
+            <div class="tl-t">4. รับยอดขาย + คำนวณ Growth Rate <span class="ref fgi">FGI/FCS · Job 5</span></div>
+            <div class="tl-meta">16:30 รับ AMS06001I → sales_transactions → คำนวณ sales_diff 4 หน้าต่าง × 15 วัน (outlier |sales_diff| ≥ 50) → verify_status Y/N · ระบบใหม่เพิ่ม review case ที่ growth_rate_diff เป็น NULL (แก้ P1 auto-accept)</div></div>
+
+          <div class="flow-stage"><span>B</span> เชื่อม FGI/FCS เข้าสู่ระบบเอกสารและ Workflow</div>
+          <div class="tl-item done"><span class="tl-dot"></span>
+            <div class="tl-t">5. สร้างเอกสารประกันรายได้อัตโนมัติ <span class="ref mix">FGI/FCS → K2</span> <span class="ref new">เปลี่ยนกลไก</span></div>
+            <div class="tl-meta">เดิม: Jobs 7/8/9 เขียนไฟล์ BPM06003O/BPM06001O/BPM06002O ส่ง SFTP ให้ BPM · ใหม่: Document Service สร้าง compensation_documents (เลขที่ YYYY/xxxxx) + document_new_stores + document_competitors ตรงใน DB โซนเดียวกัน — ไม่มีไฟล์ ไม่มี SFTP ภายใน · เพิ่มเส้นทาง manual: ผู้ใช้สร้างเอกสารเองผ่านหน้า "สร้างเอกสาร" (POST /documents) สำหรับเคสที่ batch ไม่ได้สร้าง (ขั้น 15 ของ Approve Flow เดิม)</div></div>
+
+          <div class="tl-item done"><span class="tl-dot"></span>
+            <div class="tl-t">6. เปิด Workflow ตาม Gen Flow Gate <span class="ref mix">FGI/FCS Job 8b → K2</span> <span class="ref new">เปลี่ยนกลไก</span></div>
+            <div class="tl-meta">เกณฑ์คงเดิมทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เดิมยิง K2 REST StartInstance / ใหม่เรียก POST /workflows/instances ภายใน แล้วตั้ง workflow_generation_status=Y</div></div>
+
+          <div class="flow-stage"><span>C</span> ผู้ใช้ตรวจสอบและอนุมัติ · Section 06–05</div>
+          <div class="tl-item active"><span class="tl-dot"></span>
+            <div class="tl-t">7. ขั้นที่ 1–2: ฝ่าย SBP DSA ตรวจสอบ + คำนวณเงินชดเชย <span class="ref k2">K2 · Section 06 → 08</span></div>
+            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · พิจารณา: ชดเชย / ไม่ชดเชย / หยุดชดเชย · บันทึก consideration_logs + อีเมลตาม status_email_rules · ทุกขั้นของ Section 06–05 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
+
+          <div class="tl-item"><span class="tl-dot"></span>
+            <div class="tl-t">8. ขั้นที่ 3: ฝ่ายส่งเสริมธุรกิจฯ ปรับข้อมูล <span class="ref k2">K2 · Section 01</span></div>
+            <div class="tl-meta">แก้ไขร้านเปิดใหม่ / ร้านคู่แข่ง / ปัจจัยภายนอก (%ชดเชยรวมต้องเท่ากับ 100%) แล้วส่งพิจารณาต่อ หรือส่งกลับ (back-flow)</div></div>
+
+          <div class="tl-item"><span class="tl-dot"></span>
+            <div class="tl-t">9. ขั้นที่ 4–5: GM → AVP ตามวงเงิน <span class="ref k2">K2 · Section 02 → 03</span></div>
+            <div class="tl-meta">กฎวงเงิน: ยอดชดเชย &gt; 100,000 บาท ต้องผ่านผู้บริหารสำนักบริหาร SBP (AVP) · ≤ 100,000 ข้ามไปฝ่ายบัญชีได้เลย</div></div>
+
+          <div class="tl-item"><span class="tl-dot"></span>
+            <div class="tl-t">10. ขั้นที่ 6–7: บัญชี SBP → บัญชีปฏิบัติการภาค <span class="ref k2">K2 · Section 04 → 05</span></div>
+            <div class="tl-meta">ตรวจการเงินและอนุมัติปิดงาน (End) · สถานะเอกสารครบตาม document_statuses + compensation_histories</div></div>
+
+          <div class="flow-stage"><span>D</span> ส่งผลออกและเฝ้าระวัง ACK · Jobs 6 และ 10</div>
+          <div class="tl-item"><span class="tl-dot"></span>
+            <div class="tl-t">11. ส่งผลชดเชยเข้า Statement <span class="ref fgi">FGI/FCS · Job 6</span></div>
+            <div class="tl-meta">ทุกวัน 17:00 · sync สถานะ 10 ขั้น → ตรวจ QSSI ครบ 6 หมวด (8,9,12,1,10,16) → ไฟล์ FRBC0001 (windows-874 พ.ศ.) SFTP ไป STA · ระบบใหม่แก้บั๊ก purge tracking (E20)</div></div>
+
+          <div class="tl-item"><span class="tl-dot"></span>
+            <div class="tl-t">12. เฝ้าระวัง ACK จาก STA <span class="ref fgi">FGI/FCS · Job 10</span> <span class="ref new">เพิ่ม callback</span></div>
+            <div class="tl-meta">เดิม: watchdog อ่าน tracking ทุก 07:00 แล้วส่งเมลเมื่อค้าง ≥ 1 วัน · ใหม่: เพิ่มเส้น POST /interfaces/sta/ack ให้ STA ยิงตอบกลับตรง — watchdog ยังคงไว้เป็น safety net</div></div>
+
+        </div>
+      </div>
+
+      <!-- ===== integration changes ===== -->
+      <div class="card">
+        <div class="card-head"><h2>3. จุดเชื่อมต่อที่เปลี่ยนจากระบบเดิม</h2><span class="pill wait">Migration Map</span></div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>จุดเชื่อมต่อ</th><th>กลไกเดิม</th><th>กลไกใหม่</th><th>ที่มา</th></tr></thead>
+            <tbody>
+              <tr><td>ส่งข้อมูลชดเชย/ร้านใหม่/คู่แข่ง เข้าระบบเอกสาร</td>
+                <td class="int-old">ไฟล์ BPM06001O (48 ฟิลด์) / BPM06002O / BPM06003O ผ่าน SFTP ไป BPM (Jobs 7, 8, 9)</td>
+                <td class="int-new">Document Service เขียน DB ตรง (compensation_documents / document_new_stores / document_competitors) — ตัดไฟล์และ SFTP ภายในทิ้ง</td>
+                <td><span class="ref mix">FGI/FCS → K2</span></td></tr>
+              <tr><td>เปิด Workflow</td>
+                <td class="int-old">Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded — ความเสี่ยง P0)</td>
+                <td class="int-new">Workflow Engine ภายใน · POST /workflows/instances · เกณฑ์ Gen Flow Gate คงเดิมทุกข้อ</td>
+                <td><span class="ref mix">FGI/FCS → K2</span></td></tr>
+              <tr><td>รับ ACK ผลประมวลจาก STA</td>
+                <td class="int-old">รอ STA อัปเดต return_code ใน tracking · Job 10 ตรวจทุกเช้า</td>
+                <td class="int-new">เพิ่ม POST /interfaces/sta/ack (API key) · Job 10 คงไว้เป็น safety net</td>
+                <td><span class="ref fgi">FGI/FCS</span> <span class="ref new">ใหม่</span></td></tr>
+              <tr><td>ตาราง tracking interface</td>
+                <td class="int-old">FGI_CONFIRM_RECEIVE_DATA — transaction_key เป็น polymorphic FK + บั๊ก purge (E20)</td>
+                <td class="int-new">interface_transactions — typed FK ต่อประเภทข้อมูล + งาน purge ทำงานจริง</td>
+                <td><span class="ref fgi">FGI/FCS</span> <span class="ref new">ใหม่</span></td></tr>
+              <tr><td>อีเมลแจ้งเตือน</td>
+                <td class="int-old">แต่ละ job ต่อ SMTP เอง · encoding TIS-620 · ผู้รับ hardcoded บางจุด (template 34)</td>
+                <td class="int-new">Notification Service กลาง · UTF-8 · ผู้รับตาม status_email_rules + config ต่อ job</td>
+                <td><span class="ref mix">ทั้งสอง</span></td></tr>
+              <tr><td>Interface ภายนอก QSSI / ALLMAP / IAS / STA</td>
+                <td class="int-old">SFTP + ไฟล์ตาม encoding เฉพาะ (WINDOWS-874 / UTF-8 / พ.ศ.)</td>
+                <td class="int-new">คงเดิม (ระบบของทีมอื่น) — ย้าย credential ไป Secret Manager + บังคับ known_hosts</td>
+                <td><span class="ref fgi">FGI/FCS</span></td></tr>
+              <tr><td>สิทธิ์ผู้ใช้และเมนู</td>
+                <td class="int-old">ตารางสิทธิ์ 8 role ในเอกสาร SRS (จัดการในระบบ BPM เดิม)</td>
+                <td class="int-new">Auth &amp; RBAC + JWT · menu_permissions ต่อ role · จัดการผ่านหน้าสิทธิ์การเข้าถึงเมนู</td>
+                <td><span class="ref k2">K2 · 3.1.1</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== behaviors adopted from legacy approve flow ===== -->
+      <div class="card">
+        <div class="card-head"><h2>4. พฤติกรรมจาก Approve Flow เดิมที่รับเข้าระบบใหม่</h2><span class="pill info">Flow ประกันรายได้.png</span></div>
+        <p style="margin:0 0 12px;color:#5d6b7a;font-size:13px;line-height:1.7;">
+          จากแผนภาพอนุมัติระบบเดิม (BPMN "A-Document Approve Flow ประกันรายได้") มี 4 พฤติกรรมที่ flow ด้านบนยังไม่ครอบคลุม —
+          ทั้งหมดอยู่ฝั่งเอกสาร/Workflow (โซน B/C) <b>ไม่กระทบ FGI/FCS pipeline (Jobs 1–10) และ interface ภายนอก</b></p>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>พฤติกรรม</th><th>จาก flow เดิม</th><th>ระบบใหม่</th><th>ขอบเขตผลกระทบ</th></tr></thead>
+            <tbody>
+              <tr><td>อีเมลเตือนงานค้างรายสัปดาห์</td>
+                <td class="int-old">ส่งอีเมลแจ้งเตือนผู้ดำเนินการ ทุกวันจันทร์ 10:00 แทบทุกขั้น (จุด 10.1, 20.2, 30.1, 70.1, 80.1, 110.2)</td>
+                <td class="int-new">Notification Service เพิ่ม reminder job รายสัปดาห์ อ่านงานค้างจาก workflow_tasks · ผู้รับตาม status_email_rules · รอบเวลาแก้ได้ใน config</td>
+                <td>โซน B/C · ไม่แตะ FGI/FCS</td></tr>
+              <tr><td>Escalation งานค้าง 30/45/60 วัน</td>
+                <td class="int-old">ส่งต่อไปยัง GM OPT เมื่องานค้างครบ 30, 45, 60 วัน (จุด 20.3)</td>
+                <td class="int-new">Workflow Engine ตรวจ waiting_days ของ workflow_tasks แล้วแจ้ง/ส่งต่อหัวหน้า Section ตามเกณฑ์ 30/45/60 วัน (ค่ากำหนดแก้ได้)</td>
+                <td>โซน B · ไม่แตะ FGI/FCS</td></tr>
+              <tr><td>สร้างเอกสารแบบ manual</td>
+                <td class="int-old">ขั้น 15 (lane admin): กรอกข้อมูลร้านเปิดใหม่/ร้านถูกกระทบเอง เมื่อระบบคำนวณให้ไม่ได้</td>
+                <td class="int-new">หน้า "สร้างเอกสาร" (k2-create) → POST /documents ลงตารางชุดเดียวกับเส้นอัตโนมัติ — เป็นจุดเข้าเสริมฝั่งผู้ใช้ ไม่แตะ batch</td>
+                <td>โซน B · ไม่แตะ FGI/FCS</td></tr>
+              <tr><td>เงื่อนไขร้านก่อน/หลัง 1/10/2557</td>
+                <td class="int-old">โน้ต 10.1–10.4 แยกจุดเริ่มเอกสารตามวันที่โอนร้านแฟรนไชส์ และกรณีไม่มีข้อมูลให้คำนวณ</td>
+                <td class="int-new">ถ้ายืนยันตาม SRS: ใช้เป็นกฎ routing ตอนเปิด instance ใน Workflow Engine — เกณฑ์ Gen Flow Gate ฝั่ง batch คงเดิมทุกข้อ · <b>รอ verify กับ SRS v3.1</b></td>
+                <td>โซน B · ไม่แตะ FGI/FCS</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <p style="margin:0; font-size:13px; color:#5d6b7a;">
+          กติกาธุรกิจทั้งหมด<b>คงเดิมตามเอกสารอ้างอิง</b> — เกณฑ์ Gen Flow Gate, กฎวงเงิน 100,000, หน้าต่างคำนวณ 4×15 วัน, เกณฑ์ outlier ≥ 50, QSSI 6 หมวด, %ชดเชยรวม 100% ฯลฯ
+          การเปลี่ยนแปลงจำกัดอยู่ที่<b>กลไกทางเทคนิค</b> (ไฟล์ภายใน → DB/API, K2 engine → Workflow ภายใน) และการแก้ความเสี่ยง P0/P1 ที่เอกสาร v4.0 ระบุ
+          — การเปลี่ยนพฤติกรรมเชิงธุรกิจใด ๆ ต้องขออนุมัติแยกตามข้อ 8.2 ของเอกสาร
+        </p>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

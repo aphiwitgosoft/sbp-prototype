@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DB K2 · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  .spec { border-collapse:collapse; width:100%; min-width:560px; }
+  .spec th, .spec td { border:1px solid var(--line,#e5e9f0); padding:7px 10px; font-size:12.5px; text-align:left; }
+  .spec thead th { background:#eef3fb; color:#2b3440; font-weight:600; }
+  .spec td.k { font-family:ui-monospace,Menlo,monospace; color:#37414e; white-space:nowrap; }
+  .spec td.ty { color:#8a5b00; font-family:ui-monospace,Menlo,monospace; white-space:nowrap; }
+  .pk { display:inline-block; font-size:10.5px; font-weight:700; color:#b45309; background:#fff7e6; border:1px solid #f3d9a4; border-radius:5px; padding:1px 6px; }
+  .fk { display:inline-block; font-size:10.5px; font-weight:700; color:#2456c8; background:#eaf1ff; border:1px solid #c3d5f7; border-radius:5px; padding:1px 6px; }
+  .src-srs { display:inline-block; font-size:10.5px; font-weight:600; color:#16794a; background:#e7f7ee; border-radius:12px; padding:2px 9px; }
+  .src-add { display:inline-block; font-size:10.5px; font-weight:600; color:#8a97a5; background:#eef1f5; border-radius:12px; padding:2px 9px; }
+  .ent-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:960px){ .ent-grid{ grid-template-columns:1fr; } }
+  .ent h3 { font-size:13.5px; margin:0 0 8px; color:#2b3440; display:flex; align-items:center; gap:8px; }
+  .ent h3 code { font-family:ui-monospace,Menlo,monospace; font-size:12.5px; color:#2f6fed; }
+</style>
+</head>
+<body data-page="k2-database" data-nav="modules" data-module="k2-database" data-crumb="DB K2">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">ฐานข้อมูล K2</h1>
+          <p class="page-sub">เอกสารประกันรายได้ · Workflow อนุมัติ 7 ขั้น · Master และ RBAC</p></div>
+        <div class="page-actions">
+          <span class="pill info" style="align-self:center;">21 Core Tables · Zone B/C</span>
+        </div>
+      </div>
+
+      <nav class="db-switcher" aria-label="เลือกแบบฐานข้อมูล">
+        <a href="fgi-database.html">FGI/FCS</a>
+        <a class="active" href="k2-database.html" aria-current="page">K2</a>
+        <a href="plan-database.html">FGI/FCS + K2</a>
+      </nav>
+
+      <div class="db-stat-grid">
+        <div class="db-stat"><b>21</b><span>ตารางหลักฝั่ง K2</span></div>
+        <div class="db-stat"><b>7</b><span>Workflow Sections</span></div>
+        <div class="db-stat"><b>8</b><span>RBAC Roles</span></div>
+        <div class="db-stat"><b>5 MB</b><span>ขนาดไฟล์แนบสูงสุด</span></div>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          <div style="font-size:13px;color:#45525f;line-height:1.7;">
+            <b style="color:#2b3440;">มาตรฐานชื่อ:</b> schema เป้าหมายใช้ภาษาอังกฤษแบบ <code>lower_snake_case</code> สำหรับ table และ column ทั้งหมด เพื่อเตรียมต่อยอดเป็น BE/FE · เอกสาร SRS ใช้เป็นแหล่งที่มาของฟิลด์และกติกา ส่วนชื่อ table/PK/FK ถูกปรับให้เป็นชื่อสากลทิศทางเดียวกัน — ทำเครื่องหมาย <span class="src-srs">SRS</span> = อ้างอิงเอกสาร, <span class="src-add">ออกแบบ</span> = ออกแบบเพิ่ม
+          </div>
+        </div>
+      </div>
+
+      <!-- ER Diagram -->
+      <div class="card">
+        <div class="card-head"><h2>ER Diagram (ความสัมพันธ์หลัก)</h2><span class="pill info" style="margin-left:auto;">1 : N</span></div>
+        <div style="overflow-x:auto;">
+        <svg viewBox="0 0 1000 700" width="100%" style="min-width:760px;max-width:960px;display:block;margin:0 auto;font-family:Tahoma,'Segoe UI',sans-serif;" role="img" aria-label="ER diagram ระบบประกันรายได้">
+          <defs><marker id="er" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L6.5,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
+
+          <!-- relationship lines -->
+          <g stroke="#94a3b8" stroke-width="1.6" fill="none">
+            <line x1="300" y1="330" x2="392" y2="330" marker-end="url(#er)"/>
+            <line x1="300" y1="150" x2="430" y2="300" marker-end="url(#er)"/>
+            <line x1="520" y1="184" x2="512" y2="300" marker-end="url(#er)"/>
+            <line x1="606" y1="330" x2="726" y2="120" marker-end="url(#er)"/>
+            <line x1="606" y1="360" x2="726" y2="285" marker-end="url(#er)"/>
+            <line x1="606" y1="392" x2="726" y2="410" marker-end="url(#er)"/>
+            <line x1="831" y1="464" x2="831" y2="502" marker-end="url(#er)"/>
+            <line x1="470" y1="452" x2="512" y2="512" marker-end="url(#er)"/>
+            <line x1="430" y1="452" x2="256" y2="512" marker-end="url(#er)"/>
+          </g>
+          <g font-size="10" fill="#94a3b8" font-family="Tahoma">
+            <text x="312" y="324">1</text><text x="372" y="324">N</text>
+            <text x="700" y="128">N</text><text x="700" y="292">N</text><text x="700" y="418">N</text>
+            <text x="522" y="505">N</text><text x="250" y="505">N</text>
+            <text x="820" y="498">1</text>
+          </g>
+
+          <!-- entity: compensation_documents (center) -->
+          <rect x="392" y="300" width="216" height="152" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
+          <text x="404" y="318" fill="#2f6fed" font-size="12.5" font-weight="700">compensation_documents</text>
+          <line x1="392" y1="326" x2="608" y2="326" stroke="#e6ebf2"/>
+          <text x="404" y="344" fill="#56606c" font-size="10.3"><tspan font-weight="700">doc_no</tspan>  ◄ PK (YYYY/xxxxx)</text>
+          <text x="404" y="360" fill="#56606c" font-size="10.3">document_round · compensation_round · impact_month</text>
+          <text x="404" y="376" fill="#56606c" font-size="10.3">status_code  ◄ FK</text>
+          <text x="404" y="392" fill="#56606c" font-size="10.3">current_section_code  ◄ FK</text>
+          <text x="404" y="408" fill="#56606c" font-size="10.3">impacted_store_code  ◄ FK</text>
+          <text x="404" y="424" fill="#56606c" font-size="10.3">compensation_amount</text>
+          <text x="404" y="440" fill="#56606c" font-size="10.3">sales_drop_percent</text>
+
+          <!-- impacted_stores (left) -->
+          <rect x="108" y="288" width="192" height="116" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
+          <text x="120" y="306" fill="#2f6fed" font-size="12.5" font-weight="700">impacted_stores</text>
+          <line x1="108" y1="314" x2="300" y2="314" stroke="#e6ebf2"/>
+          <text x="120" y="332" fill="#56606c" font-size="10.3"><tspan font-weight="700">store_code</tspan>  ◄ PK</text>
+          <text x="120" y="348" fill="#56606c" font-size="10.3">store_name · zone_code</text>
+          <text x="120" y="364" fill="#56606c" font-size="10.3">store_type · owner_name</text>
+          <text x="120" y="380" fill="#56606c" font-size="10.3">juristic_name</text>
+          <text x="120" y="396" fill="#56606c" font-size="10.3">transfer_date</text>
+
+          <!-- workflow_sections (top-left) -->
+          <rect x="180" y="96" width="182" height="78" rx="8" fill="#fff" stroke="#f59e0b" stroke-width="1.6"/>
+          <text x="192" y="114" fill="#b45309" font-size="12.5" font-weight="700">workflow_sections</text>
+          <line x1="180" y1="122" x2="362" y2="122" stroke="#f6e6c8"/>
+          <text x="192" y="140" fill="#56606c" font-size="10.3"><tspan font-weight="700">section_code</tspan>  ◄ PK</text>
+          <text x="192" y="156" fill="#56606c" font-size="10.3">section_name (06/08/01…)</text>
+
+          <!-- document_statuses (top) -->
+          <rect x="432" y="96" width="164" height="78" rx="8" fill="#fff" stroke="#f59e0b" stroke-width="1.6"/>
+          <text x="444" y="114" fill="#b45309" font-size="12.5" font-weight="700">document_statuses</text>
+          <line x1="432" y1="122" x2="596" y2="122" stroke="#f6e6c8"/>
+          <text x="444" y="140" fill="#56606c" font-size="10.3"><tspan font-weight="700">status_code</tspan>  ◄ PK</text>
+          <text x="444" y="156" fill="#56606c" font-size="10.3">status_name</text>
+
+          <!-- document_new_stores (right-top) -->
+          <rect x="726" y="60" width="210" height="132" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
+          <text x="738" y="78" fill="#2f6fed" font-size="12.5" font-weight="700">document_new_stores</text>
+          <line x1="726" y1="86" x2="936" y2="86" stroke="#e6ebf2"/>
+          <text x="738" y="104" fill="#56606c" font-size="10.3"><tspan font-weight="700">id</tspan>  ◄ PK</text>
+          <text x="738" y="120" fill="#56606c" font-size="10.3">doc_no  ◄ FK</text>
+          <text x="738" y="136" fill="#56606c" font-size="10.3">store_code · store_type</text>
+          <text x="738" y="152" fill="#56606c" font-size="10.3">distance_km</text>
+          <text x="738" y="168" fill="#56606c" font-size="10.3">compensation_percent</text>
+          <text x="738" y="184" fill="#56606c" font-size="10.3">compensation_amount</text>
+
+          <!-- document_competitors (right) -->
+          <rect x="726" y="244" width="210" height="94" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
+          <text x="738" y="262" fill="#2f6fed" font-size="12.5" font-weight="700">document_competitors</text>
+          <line x1="726" y1="270" x2="936" y2="270" stroke="#e6ebf2"/>
+          <text x="738" y="288" fill="#56606c" font-size="10.3"><tspan font-weight="700">id</tspan>  ◄ PK</text>
+          <text x="738" y="304" fill="#56606c" font-size="10.3">doc_no ◄ FK · competitor_code ◄ FK</text>
+          <text x="738" y="320" fill="#56606c" font-size="10.3">open_date · remark</text>
+
+          <!-- document_external_factors (right) -->
+          <rect x="726" y="380" width="210" height="86" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
+          <text x="738" y="398" fill="#2f6fed" font-size="12.5" font-weight="700">document_external_factors</text>
+          <line x1="726" y1="406" x2="936" y2="406" stroke="#e6ebf2"/>
+          <text x="738" y="424" fill="#56606c" font-size="10.3"><tspan font-weight="700">id</tspan>  ◄ PK</text>
+          <text x="738" y="440" fill="#56606c" font-size="10.3">doc_no ◄ FK · factor_code ◄ FK</text>
+          <text x="738" y="456" fill="#56606c" font-size="10.3">start_date · end_date</text>
+
+          <!-- external_factors (right-bottom, master) -->
+          <rect x="726" y="502" width="210" height="82" rx="8" fill="#fff" stroke="#16a34a" stroke-width="1.6"/>
+          <text x="738" y="520" fill="#15803d" font-size="12.5" font-weight="700">external_factors</text>
+          <line x1="726" y1="528" x2="936" y2="528" stroke="#dcefe3"/>
+          <text x="738" y="546" fill="#56606c" font-size="10.3"><tspan font-weight="700">factor_code</tspan>  ◄ PK</text>
+          <text x="738" y="562" fill="#56606c" font-size="10.3">factor_name</text>
+          <text x="738" y="578" fill="#56606c" font-size="10.3">factor_remark</text>
+
+          <!-- consideration_logs (bottom) -->
+          <rect x="410" y="512" width="206" height="118" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
+          <text x="422" y="530" fill="#2f6fed" font-size="12.5" font-weight="700">consideration_logs</text>
+          <line x1="410" y1="538" x2="616" y2="538" stroke="#e6ebf2"/>
+          <text x="422" y="556" fill="#56606c" font-size="10.3"><tspan font-weight="700">id</tspan>  ◄ PK</text>
+          <text x="422" y="572" fill="#56606c" font-size="10.3">doc_no  ◄ FK</text>
+          <text x="422" y="588" fill="#56606c" font-size="10.3">reviewer_name · section_code</text>
+          <text x="422" y="604" fill="#56606c" font-size="10.3">result · detail</text>
+          <text x="422" y="620" fill="#56606c" font-size="10.3">action_at</text>
+
+          <!-- document_attachments (bottom-left) -->
+          <rect x="130" y="512" width="192" height="110" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
+          <text x="142" y="530" fill="#2f6fed" font-size="12.5" font-weight="700">document_attachments</text>
+          <line x1="130" y1="538" x2="322" y2="538" stroke="#e6ebf2"/>
+          <text x="142" y="556" fill="#56606c" font-size="10.3"><tspan font-weight="700">id</tspan>  ◄ PK</text>
+          <text x="142" y="572" fill="#56606c" font-size="10.3">doc_no  ◄ FK</text>
+          <text x="142" y="588" fill="#56606c" font-size="10.3">file_name · section_code</text>
+          <text x="142" y="604" fill="#56606c" font-size="10.3">created_by_name · created_at</text>
+        </svg>
+        </div>
+        <div class="flow-legend" style="margin:14px 0 2px;">
+          <div class="lg"><span style="width:14px;height:14px;border-radius:4px;background:#fff;border:1.5px solid #2f6fed;display:inline-block;"></span> ตารางรายการ (Transaction)</div>
+          <div class="lg"><span style="width:14px;height:14px;border-radius:4px;background:#fff;border:1.5px solid #16a34a;display:inline-block;"></span> ตาราง Master</div>
+          <div class="lg"><span style="width:14px;height:14px;border-radius:4px;background:#fff;border:1.5px solid #f59e0b;display:inline-block;"></span> ตารางอ้างอิง (Reference)</div>
+          <div class="lg">เส้น 1 : N = หนึ่งต่อกลุ่ม</div>
+        </div>
+      </div>
+
+      <!-- Master tables -->
+      <div class="card">
+        <div class="card-head"><h2>ตาราง Master</h2></div>
+        <div class="ent-grid">
+
+          <div class="ent">
+            <h3><code>operator_assignments</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">id</td><td class="ty">int</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">employee_name_en</td><td class="ty">varchar(150)</td><td></td></tr>
+              <tr><td class="k">employee_email</td><td class="ty">varchar(120)</td><td></td></tr>
+              <tr><td class="k">section_code</td><td class="ty">varchar(2)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">zone_code</td><td class="ty">varchar(3)</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>external_factors</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">factor_code</td><td class="ty">varchar(10)</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">factor_name</td><td class="ty">varchar(150)</td><td></td></tr>
+              <tr><td class="k">factor_remark</td><td class="ty">varchar(255)</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>audit_logs</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">table_name</td><td class="ty">varchar(60)</td><td></td></tr>
+              <tr><td class="k">ref_key</td><td class="ty">varchar(60)</td><td></td></tr>
+              <tr><td class="k">action_type</td><td class="ty">varchar(10)</td><td></td></tr>
+              <tr><td class="k">reason</td><td class="ty">varchar(255)</td><td></td></tr>
+              <tr><td class="k">updated_by · updated_at</td><td class="ty">varchar · datetime</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>competitors</code> <span class="src-add">ออกแบบ</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">competitor_code</td><td class="ty">varchar(10)</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">competitor_name</td><td class="ty">varchar(100)</td><td></td></tr>
+            </tbody></table>
+            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">24 ร้านตาม Master ในเอกสาร (108 Shop, Lotus Express, CJ Express … Thai Shop)</p>
+          </div>
+
+          <div class="ent">
+            <h3><code>workflow_sections</code> · <code>document_statuses</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">section_code / status_code</td><td class="ty">varchar(2)</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">section_name / status_name</td><td class="ty">varchar(80)</td><td></td></tr>
+            </tbody></table>
+            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">Section: 06/08/01/02/03/04/05 · Status 8 ค่า: "รอ&lt;ผู้ดำเนินการ&gt;ดำเนินการ" ของ 7 section + "เสร็จสิ้นดำเนินการ" (ตารางเส้นทางดู workflow.md)</p>
+          </div>
+
+          <div class="ent">
+            <h3><code>roles</code> · <code>menus</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">role_code / menu_code</td><td class="ty">varchar(4)</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">role_name / menu_name</td><td class="ty">varchar(80)</td><td></td></tr>
+            </tbody></table>
+            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">Role 00–10 ตามตารางสิทธิ์ (3.1.1)</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Transaction tables -->
+      <div class="card">
+        <div class="card-head"><h2>ตารางรายการ (Transaction)</h2></div>
+        <div class="ent-grid">
+
+          <div class="ent">
+            <h3><code>compensation_documents</code> <span class="src-add">ออกแบบ</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">document_round · compensation_round · impact_month</td><td class="ty">int · int · varchar(7)</td><td></td></tr>
+              <tr><td class="k">status_code</td><td class="ty">varchar(2)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">current_section_code</td><td class="ty">varchar(2)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">impacted_store_code</td><td class="ty">varchar(5)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">impact_process_id</td><td class="ty">bigint</td><td><span class="fk">FK</span> FGI/FCS</td></tr>
+              <tr><td class="k">compensation_amount</td><td class="ty">decimal(12,2)</td><td></td></tr>
+              <tr><td class="k">sales_drop_percent</td><td class="ty">decimal(5,2)</td><td></td></tr>
+              <tr><td class="k">created_at</td><td class="ty">datetime</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>impacted_stores</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">store_code</td><td class="ty">varchar(5)</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">store_name · zone_code</td><td class="ty">varchar · varchar(3)</td><td></td></tr>
+              <tr><td class="k">store_type · owner_name</td><td class="ty">varchar</td><td></td></tr>
+              <tr><td class="k">juristic_name</td><td class="ty">varchar(150)</td><td></td></tr>
+              <tr><td class="k">transfer_date</td><td class="ty">date</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>document_new_stores</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">store_code · store_type</td><td class="ty">varchar</td><td></td></tr>
+              <tr><td class="k">owner_name · juristic_name</td><td class="ty">varchar</td><td></td></tr>
+              <tr><td class="k">open_date · close_date</td><td class="ty">date</td><td></td></tr>
+              <tr><td class="k">distance_km</td><td class="ty">decimal(5,2)</td><td></td></tr>
+              <tr><td class="k">compensation_percent</td><td class="ty">decimal(5,2)</td><td></td></tr>
+              <tr><td class="k">compensation_amount</td><td class="ty">decimal(12,2)</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>document_competitors</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">competitor_code</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">open_date · remark</td><td class="ty">date · varchar</td><td></td></tr>
+              <tr><td class="k">source_system (ALM/USER)</td><td class="ty">varchar(10)</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>document_external_factors</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">factor_code</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">start_date · end_date</td><td class="ty">date</td><td></td></tr>
+              <tr><td class="k">remark</td><td class="ty">varchar(255)</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>consideration_logs</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">reviewer_name · section_code</td><td class="ty">varchar</td><td></td></tr>
+              <tr><td class="k">result · detail</td><td class="ty">varchar</td><td></td></tr>
+              <tr><td class="k">action_at</td><td class="ty">datetime</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>compensation_histories</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">store_code</td><td class="ty">varchar(5)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">compensation_round · impact_month</td><td class="ty">int · varchar(7)</td><td></td></tr>
+              <tr><td class="k">compensation_amount</td><td class="ty">decimal(12,2)</td><td></td></tr>
+              <tr><td class="k">submit_account_month</td><td class="ty">varchar(7)</td><td></td></tr>
+              <tr><td class="k">status_code · result</td><td class="ty">varchar</td><td></td></tr>
+              <tr><td class="k">ref_doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>document_attachments</code> <span class="src-srs">SRS</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">file_name · section_code</td><td class="ty">varchar</td><td></td></tr>
+              <tr><td class="k">created_by_name · remark</td><td class="ty">varchar</td><td></td></tr>
+              <tr><td class="k">created_at</td><td class="ty">datetime</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Internal workflow tables -->
+      <div class="card">
+        <div class="card-head"><h2>ตาราง Workflow ภายใน</h2><span class="pill info" style="margin-left:auto;">แทน K2 Engine ภายนอก</span></div>
+        <div class="ent-grid">
+
+          <div class="ent">
+            <h3><code>workflow_instances</code> <span class="src-add">ระบบใหม่</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">instance_id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">instance_status</td><td class="ty">varchar(20)</td><td>RUNNING / COMPLETED / STOPPED</td></tr>
+              <tr><td class="k">started_at · completed_at</td><td class="ty">timestamp</td><td></td></tr>
+              <tr><td class="k">lock_version</td><td class="ty">int</td><td>Optimistic locking</td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>workflow_tasks</code> <span class="src-add">ระบบใหม่</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">task_id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">instance_id</td><td class="ty">bigint</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">section_code</td><td class="ty">varchar(2)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">assignee_employee_id</td><td class="ty">varchar(30)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">task_status</td><td class="ty">varchar(20)</td><td>OPEN / COMPLETED / CANCELLED</td></tr>
+              <tr><td class="k">opened_at · completed_at</td><td class="ty">timestamp</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+          <div class="ent">
+            <h3><code>user_accounts</code> <span class="src-add">ระบบใหม่</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">employee_id</td><td class="ty">varchar(30)</td><td><span class="pk">PK</span></td></tr>
+              <tr><td class="k">role_code</td><td class="ty">varchar(4)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">section_code · zone_code</td><td class="ty">varchar</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">is_active</td><td class="ty">boolean</td><td>Default true</td></tr>
+              <tr><td class="k">last_login_at</td><td class="ty">timestamp</td><td></td></tr>
+            </tbody></table>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Config tables -->
+      <div class="card">
+        <div class="card-head"><h2>ตารางกำหนดค่า (Config)</h2></div>
+        <div class="ent-grid">
+
+          <div class="ent">
+            <h3><code>status_email_rules</code> <span class="src-srs">SRS 3.1.5</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">status_code</td><td class="ty">varchar(2)</td><td><span class="pk">PK</span> <span class="fk">FK</span></td></tr>
+              <tr><td class="k">to_section_code</td><td class="ty">varchar(2)</td><td><span class="fk">FK</span></td></tr>
+              <tr><td class="k">cc_section_code</td><td class="ty">varchar(2)</td><td><span class="fk">FK</span></td></tr>
+            </tbody></table>
+            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">กำหนดผู้รับอีเมล (TO/CC) เมื่อเปลี่ยนสถานะ</p>
+          </div>
+
+          <div class="ent">
+            <h3><code>menu_permissions</code> <span class="src-srs">SRS 3.1.1</span></h3>
+            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
+              <tr><td class="k">role_code</td><td class="ty">varchar(4)</td><td><span class="pk">PK</span> <span class="fk">FK</span></td></tr>
+              <tr><td class="k">menu_code</td><td class="ty">varchar(4)</td><td><span class="pk">PK</span> <span class="fk">FK</span></td></tr>
+              <tr><td class="k">can_access</td><td class="ty">bit</td><td></td></tr>
+            </tbody></table>
+            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">สิทธิ์เมนูต่อ Role (Composite PK)</p>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>

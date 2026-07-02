@@ -20,6 +20,8 @@
     idcog:'M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 14v3M19 21v.01M21.6 16.5l-2.6 1.5-2.6-1.5M16.4 16.5 19 18l2.6-1.5',
     flow:'M6 3v6m0 0a3 3 0 1 0 0 0ZM18 9a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm0 0v3a3 3 0 0 1-3 3H9m0 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
     route:'M5 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM19 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 8v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3 3M9 4h8a2 2 0 0 1 2 2v6',
+    lock:'M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8 11V7a4 4 0 0 1 8 0v4M12 15v2',
+    schema:'M3 5h18v14H3zM3 10h18M3 15h18M9 5v14',
     badge:'M9 12l2 2 4-4M7.5 4.2a2 2 0 0 1 1.4-.6h6.2a2 2 0 0 1 1.4.6l1.3 1.3a2 2 0 0 1 .6 1.4v6.2a2 2 0 0 1-.6 1.4l-1.3 1.3a2 2 0 0 1-1.4.6H8.9a2 2 0 0 1-1.4-.6l-1.3-1.3a2 2 0 0 1-.6-1.4V6.9a2 2 0 0 1 .6-1.4Z',
     map:'M9 20l-5.5 2.5V6L9 3.5m0 16.5 6-2.5m-6 2.5V3.5m6 16.5 5.5 2.5V6L15 3.5m0 16.5V3.5m-6 0 6 2.5',
     pin:'M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11ZM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
@@ -33,6 +35,8 @@
     search:'M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z',
     download:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
     upload:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+    clock:'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+    braces:'M8 3H7a2 2 0 0 0-2 2v4c0 1.5-2 3-2 3s2 1.5 2 3v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4c0 1.5 2 3 2 3s-2 1.5-2 3v4a2 2 0 0 1-2 2h-1',
     person:'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.4 0-8 2.6-8 5.5V21h16v-1.5c0-2.9-3.6-5.5-8-5.5Z'
   };
   function svg(path, cls, w, fill) {
@@ -45,26 +49,34 @@
   /* ---------- module navigation (global) ---------- */
   var MODULES = [
     { key:'home',       label:'หน้าหลัก',              href:'index.html',       icon:I.home,      group:'' },
-    { key:'recruitment',label:'สรรหา & ใบสมัคร',        href:'recruitment.html', icon:I.recruit,   group:'งานปฏิบัติการ' },
-    { key:'contracts',  label:'สัญญา & ทดลองงาน',       href:'contracts.html',   icon:I.badge,     group:'งานปฏิบัติการ' },
-    { key:'statement',  label:'บัญชีแฟรนไชส์',          href:'statement.html',   icon:I.statement, group:'งานปฏิบัติการ' },
-    { key:'evaluation', label:'ประเมินผล / เกรด',        href:'evaluation.html',  icon:I.star,      group:'งานปฏิบัติการ' },
-    { key:'manpower',   label:'กำลังคน',                href:'manpower.html',    icon:I.users,     group:'งานปฏิบัติการ' },
-    { key:'training',   label:'อบรม',                   href:'training.html',    icon:I.cap,       group:'งานปฏิบัติการ' },
-    { key:'survey',     label:'แบบสอบถาม',              href:'survey.html',      icon:I.poll,      group:'งานปฏิบัติการ' },
-    { key:'fgi',        label:'ประกันรายได้ · ภาพรวม',   href:'fgi.html',         icon:I.shield,    group:'ประกันรายได้ (FGI)' },
-    { key:'fgi-flow',   label:'ผังกระบวนการ FGI',       href:'fgi-flow.html',    icon:I.route,     group:'ประกันรายได้ (FGI)' },
-    { key:'k2',          label:'รอดำเนินการ / เอกสาร',    href:'k2.html',           icon:I.badge,     group:'ระบบ K2 / BPM' },
-    { key:'k2-abnormal', label:'ข้อมูลผิดปกติ / แจกงาน',   href:'k2-abnormal.html',  icon:I.alert,     group:'ระบบ K2 / BPM' },
-    { key:'k2-document', label:'เอกสารร้านถูกกระทบ (แผนที่)', href:'k2-document.html', icon:I.map,    group:'ระบบ K2 / BPM' },
-    { key:'k2-report',   label:'รายงานสรุปสถานะ',         href:'k2-report.html',    icon:I.statement, group:'ระบบ K2 / BPM' },
-    { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ระบบ K2 / BPM' },
-    { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ระบบ K2 / BPM' },
-    { key:'masterdata', label:'ข้อมูลหลัก',             href:'masterdata.html',  icon:I.db,        group:'ระบบ' },
-    { key:'useradmin',  label:'ผู้ใช้ & Active Directory', href:'useradmin.html',icon:I.idcog,    group:'ระบบ' },
-    { key:'workflow',   label:'อนุมัติงาน',             href:'workflow.html',    icon:I.flow,      group:'ระบบ' }
+    { key:'k2-create',   label:'สร้างเอกสาร',             href:'k2-create.html',    icon:I.plus,      group:'ระบบประกันรายได้' },
+    { key:'k2-docs',     label:'เอกสาร',                  icon:I.badge,             group:'ระบบประกันรายได้', children:[
+      { key:'k2-list-waiting',  label:'รอดำเนินการ',   href:'k2-list-waiting.html' },
+      { key:'k2-list-related',  label:'ที่เกี่ยวข้อง',  href:'k2-list-related.html' }
+      // ปิดเมนูชั่วคราว — รอตัดสินใจว่าจะใช้หน้าข้อมูลผิดปกติหรือไม่ (ไฟล์ k2-list-abnormal.html ยังอยู่ครบ)
+      // ,{ key:'k2-list-abnormal', label:'ข้อมูลผิดปกติ',  href:'k2-list-abnormal.html' }
+    ]},
+    { key:'k2-report',   label:'รายงานสรุปสถานะ',         href:'k2-report.html',    icon:I.statement, group:'ระบบประกันรายได้' },
+    { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ผู้ดูแลระบบ' },
+    { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ผู้ดูแลระบบ' },
+    { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ผู้ดูแลระบบ' },
+    { key:'job-batch',   label:'Batch Job (FGI/FCS)',     href:'job-batch.html',    icon:I.clock,     group:'Job' },
+    { key:'flow-fgi',    label:'Flow FGI/FCS',             href:'flow-fgi.html',     icon:I.flow,      group:'Flow' },
+    { key:'k2-flow',     label:'Flow K2',                  href:'k2-flow.html',      icon:I.route,     group:'Flow' },
+    { key:'plan-flow',   label:'Flow FGI/FCS + K2',        href:'plan-flow.html',    icon:I.flow,      group:'Flow' },
+    { key:'fgi-database', label:'DB FGI/FCS',               href:'fgi-database.html', icon:I.db,        group:'Database' },
+    { key:'k2-database', label:'DB K2',                     href:'k2-database.html',  icon:I.schema,    group:'Database' },
+    { key:'plan-database', label:'DB FGI/FCS + K2',         href:'plan-database.html', icon:I.db,       group:'Database' },
+    { key:'plan-api',    label:'API (BE/FE ใหม่)',         href:'plan-api.html',     icon:I.braces,    group:'Plan' }
   ];
-  function moduleByKey(k){ for (var i=0;i<MODULES.length;i++) if (MODULES[i].key===k) return MODULES[i]; return null; }
+  function moduleByKey(k){
+    for (var i=0;i<MODULES.length;i++){
+      var m = MODULES[i];
+      if (m.key===k) return m;
+      if (m.children) for (var j=0;j<m.children.length;j++) if (m.children[j].key===k) return m.children[j];
+    }
+    return null;
+  }
 
   /* ---------- application sub-sections (the [2/3] menu in the screenshot) ---------- */
   var APP_SECTIONS = [
@@ -100,8 +112,7 @@
     h.innerHTML =
       '<button class="hamburger" id="btnMenu" aria-label="เมนู">' + svg(I.menu, '', 24) + '</button>' +
       '<a class="brand" href="index.html">' +
-        '<div class="seven-logo"><span class="band b1"></span><span class="band b2"></span><span class="band b3"></span><span class="seven">7</span></div>' +
-        '<div class="brand-text"><div class="l1">STORE</div><div class="l2">BUSINESS PARTNER</div></div>' +
+        '<img class="brand-logo" src="assets/logo-7-11-store-business-partner.png" width="169" height="40" alt="7-Eleven Store Business Partner">' +
       '</a>' +
       '<nav class="breadcrumb">' + crumbHtml + '</nav>' +
       '<div class="header-right">' +
@@ -140,6 +151,16 @@
     }
 
     var pageKey = document.body.getAttribute('data-page');
+    var file = location.pathname.split('/').pop() || 'index.html';
+    var full = file + (location.search || '');
+    // เมนูลูกที่ active: (1) href ตรงทั้งไฟล์+query → (2) key ตรง data-page → (3) ไฟล์เดียวกัน (ตัวแรกชนะ)
+    function activeChildIndex(children) {
+      var i;
+      for (i = 0; i < children.length; i++) if (children[i].href === full) return i;
+      for (i = 0; i < children.length; i++) if (children[i].key === pageKey) return i;
+      for (i = 0; i < children.length; i++) if (children[i].href.split('?')[0] === file) return i;
+      return -1;
+    }
     var groups = {}, order = [];
     MODULES.forEach(function (m) {
       var g = m.group || '_';
@@ -150,6 +171,20 @@
     order.forEach(function (g) {
       if (g !== '_') out += '<div class="side-group">' + g + '</div>';
       groups[g].forEach(function (m) {
+        if (m.children) {
+          var ai = activeChildIndex(m.children);
+          var open = ai > -1;
+          out += '<div class="nav-item nav-parent' + (open ? ' open child-on' : '') + '" data-navtoggle="' + m.key + '">' +
+            svg(m.icon, 'ico', 20) + '<span>' + m.label + '</span>' + svg(I.chevR, 'chev caret', 18) + '</div>';
+          out += '<div class="nav-sub' + (open ? ' open' : '') + '" data-navsub="' + m.key + '">';
+          m.children.forEach(function (c, i) {
+            var on = i === ai;
+            out += '<a class="nav-item sub' + (on ? ' active' : '') + '" href="' + c.href + '">' +
+              '<span>' + c.label + '</span>' + (on ? svg(I.chevR, 'chev', 16) : '') + '</a>';
+          });
+          out += '</div>';
+          return;
+        }
         var on = m.key === pageKey;
         out += '<a class="nav-item' + (on ? ' active' : '') + '" href="' + m.href + '">' +
           svg(m.icon, 'ico', 20) + '<span>' + m.label + '</span>' + (on ? svg(I.chevR, 'chev', 18) : '') + '</a>';
@@ -169,7 +204,7 @@
     setTimeout(function () { t.style.opacity = '0'; t.style.transform = 'translateY(8px)'; t.style.transition = '.3s';
       setTimeout(function () { t.remove(); }, 320); }, 2400);
   }
-  window.SBP = { toast: toast };
+  window.SBP = { toast: toast, openModal: openModal };
 
   /* ---------- wire interactions ---------- */
   function wire() {
@@ -182,9 +217,15 @@
 
     // delegated clicks (view / edit / add / nav / actions)
     document.addEventListener('click', function (e) {
-      var t = e.target.closest('.icon-view,.icon-edit,.icon-del,[data-add-row],[data-href],[data-section],[data-step],.hide-toggle,[data-toast],[data-ack]');
+      var t = e.target.closest('.icon-view,.icon-edit,.icon-del,[data-add-row],[data-href],[data-section],[data-step],.hide-toggle,[data-toast],[data-ack],[data-navtoggle]');
       if (!t) return;
       var tbl, tr;
+      if (t.hasAttribute('data-navtoggle')) {
+        var sub = document.querySelector('[data-navsub="' + t.getAttribute('data-navtoggle') + '"]');
+        t.classList.toggle('open');
+        if (sub) sub.classList.toggle('open');
+        return;
+      }
       if (t.classList.contains('icon-view')) { e.preventDefault(); tbl = t.closest('table.data'); tr = t.closest('tr'); if (tbl && tr) openView(tbl, tr); return; }
       if (t.classList.contains('icon-edit')) { e.preventDefault(); tbl = t.closest('table.data'); tr = t.closest('tr'); if (tbl && tr) openEdit(tbl, tr); return; }
       if (t.classList.contains('icon-del')) { e.preventDefault(); tr = t.closest('tr'); if (tr && confirm('ยืนยันการลบรายการนี้?')) { tr.remove(); toast('ลบรายการแล้ว', 'del'); } return; }
@@ -419,17 +460,30 @@
       { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' }
     ],
     operator: [
-      { key: 'name', label: 'ชื่อผู้ปฏิบัติงาน (CompenOrgEmpEname)', col: 'ชื่อผู้ปฏิบัติงาน', wide: true },
-      { key: 'email', label: 'E-Mail (CompenOrgEmpMail)', col: 'E-Mail', wide: true },
-      { key: 'position', label: 'ชื่อตำแหน่ง (CompenOrgSectionCode)', col: 'ชื่อตำแหน่ง', type: 'select', options: ['ส่งเสริมธุรกิจพันธมิตรฯ', 'Manager Franchise (SectionCode 06)', 'SBP DSA', 'ผจก.เขต', 'เจ้าหน้าที่บัญชี (FS)'] },
-      { key: 'zone', label: 'ภาคที่รับผิดชอบ (CompenOrgZoneCode)', col: 'ภาคที่รับผิดชอบ', type: 'select', options: ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS', '-'] },
+      { key: 'name', label: 'ชื่อผู้ปฏิบัติงาน (employee_name)', col: 'ชื่อผู้ปฏิบัติงาน', wide: true },
+      { key: 'email', label: 'E-Mail (employee_email)', col: 'E-Mail', wide: true },
+      { key: 'position', label: 'ชื่อตำแหน่ง (section_code)', col: 'ชื่อตำแหน่ง', type: 'select', options: ['ส่งเสริมธุรกิจพันธมิตรฯ', 'Manager Franchise (section_code 06)', 'SBP DSA', 'ผจก.เขต', 'เจ้าหน้าที่บัญชี (FS)'] },
+      { key: 'zone', label: 'ภาคที่รับผิดชอบ (zone_code)', col: 'ภาคที่รับผิดชอบ', type: 'select', options: ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS', '-'] },
       { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล' }
     ],
     factor: [
-      { key: 'code', label: 'รหัสปัจจัยภายนอก (FactorCode)', col: 'รหัสปัจจัย' },
-      { key: 'name', label: 'ชื่อปัจจัยภายนอก (FactorName)', col: 'ชื่อปัจจัย', wide: true },
-      { key: 'remark', label: 'รายละเอียดเพิ่มเติม (FactorRemark)', col: 'รายละเอียดเพิ่มเติม', wide: true },
+      { key: 'code', label: 'รหัสปัจจัยภายนอก (factor_code)', col: 'รหัสปัจจัย' },
+      { key: 'name', label: 'ชื่อปัจจัยภายนอก (factor_name)', col: 'ชื่อปัจจัย', wide: true },
+      { key: 'remark', label: 'รายละเอียดเพิ่มเติม (factor_remark)', col: 'รายละเอียดเพิ่มเติม', wide: true },
       { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล' }
+    ],
+    competitor: [
+      { key: 'name', label: 'ร้านคู่แข่ง (Master)', col: 'ร้านคู่แข่ง', wide: true, type: 'select',
+        options: ['108 Shop', 'V Shop', 'Lotus Express', 'AM PM', 'Joy', 'Max Valu', 'Bai Chak', 'Lawson 108', 'Mini Big C', 'BATAGRO SHOP', 'Lemon Green', 'Rak Ban Kerd', 'CJ Express', 'Tops Daily', 'StarMart', 'CP FreshMark', 'Golden Place', 'Super Cheap', 'Family Mart', 'Jiffy', 'Suria', 'Fresh Mart', 'Tigermart', 'Thai Shop'] },
+      { key: 'date', label: 'วันที่เปิดกระทบ', col: 'วันที่เปิดกระทบ' },
+      { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true }
+    ],
+    factordoc: [
+      { key: 'factor', label: 'ปัจจัยภายนอก', col: 'ปัจจัยภายนอก', wide: true, type: 'select',
+        options: ['ร้านคู่แข่งเปิดใหม่', 'ห้างค้าปลีกขนาดใหญ่', 'การก่อสร้าง / ปิดถนน', 'ทำเล/สถานีเปลี่ยน'] },
+      { key: 'start', label: 'วันที่เริ่มต้น', col: 'วันที่เริ่มต้น' },
+      { key: 'end', label: 'วันที่สิ้นสุด', col: 'วันที่สิ้นสุด' },
+      { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true }
     ],
     contract: [
       { key: 'sid', label: 'รหัสสาขา (STORE_ID)', col: 'รหัสสาขา' },
@@ -465,7 +519,7 @@
       { key: 'docno', label: 'เลขที่เอกสาร', col: 'เลขที่เอกสาร' },
       { key: 'store', label: 'รหัสร้าน', col: 'รหัสร้าน' },
       { key: 'name', label: 'ชื่อร้านถูกกระทบ', col: 'ชื่อร้าน', wide: true },
-      { key: 'region', label: 'ภาค', col: 'ภาค', type: 'select', options: ['RN', 'RS', 'RE', 'RW', 'BE', 'BN', 'BS', 'BW'] },
+      { key: 'region', label: 'ภาค', col: 'ภาค', type: 'select', options: ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS'] },
       { key: 'reason', label: 'สาเหตุผิดปกติ', col: 'สาเหตุผิดปกติ', wide: true, type: 'select', options: ['ยอดขายไม่ครบ 60 วัน', 'ข้อมูลร้านไม่ครบ', 'ไม่มีข้อมูลสาขา', 'ระยะห่างผิดปกติ'] },
       { key: 'assignee', label: 'ผู้รับผิดชอบ (แจกงาน)', col: 'ผู้รับผิดชอบ', type: 'select', options: ['- ยังไม่แจกงาน -', 'นายสมชาย ใจดี', 'นางสาวมาลี ศรีสุข', 'นายวีรพล มั่นคง', 'Phatcharida P.'] },
       { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' }
@@ -598,8 +652,19 @@
     openModal({ title: 'เพิ่มข้อมูล', icon: I.plus, body: body,
       footer: [footBtn('ยกเลิก', 'btn-ghost', closeModal), footBtn(svg(I.plus, '', 16) + ' เพิ่มข้อมูล', 'btn-primary', function () { commit(table, null, fields, body, 'add'); })] });
   }
+  function pdate(s) { var m = (s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if (!m) return null; return new Date(+m[3], +m[2] - 1, +m[1]).getTime(); }
   function commit(table, row, fields, form, mode) {
     var smap = statusMap(table), tb = table.querySelector('tbody'), target = row;
+    // ---- validation ตาม SRS (ร้านคู่แข่ง / ปัจจัยอื่นๆ) ----
+    var ent = table.getAttribute('data-entity');
+    function fv(k) { var el = form.querySelector('[data-fk="' + k + '"]'); return el ? (el.value || '').trim() : ''; }
+    function warn(msg) { var p = document.getElementById('k2pop'); if (p) { document.getElementById('k2popMsg').textContent = msg; p.classList.add('show'); } else toast(msg, 'del'); }
+    if (ent === 'competitor' && !fv('name')) { warn('กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ'); return; }
+    if (ent === 'factordoc') {
+      if (!fv('factor')) { warn('กรุณาเลือกปัจจัยอื่นๆ ที่ท่านต้องการ'); return; }
+      var ds = pdate(fv('start')), de = pdate(fv('end'));
+      if (ds && de && de < ds) { warn('วันที่สิ้นสุดต้องมีค่าเท่ากับหรือมากกว่าวันที่เริ่มต้น'); return; }
+    }
     if (mode === 'add') {
       var tmpl = tb.querySelector('tr:last-child'); if (!tmpl) { closeModal(); return; }
       target = tmpl.cloneNode(true); target.classList.remove('flag-red');
@@ -611,32 +676,24 @@
     closeModal();
   }
 
-  // rich impacted-store document view for the K2 inbox
+  // K2 inbox: เปิดเอกสารด้วยการอัปเดตส่วน "เอกสารข้อมูลร้านถูกกระทบ" ด้านล่าง + เลื่อนไป
+  // (ไม่ใช้ modal — ใช้ description ด้านล่างซึ่งมีปุ่มผลการพิจารณาอยู่แล้ว)
   function openK2Doc(table, row, meta) {
     var g = function (l) { return valByLabel(row, meta, l) || '-'; };
     var docno = g('เลขที่เอกสาร'), store = g('รหัสร้าน'), name = g('ชื่อร้านถูกกระทบ'), region = g('ภาค'),
-      drop = g('ยอดขายที่ลดลง'), comp = g('จำนวนเงินที่ชดเชย'), status = g('สถานะ'), wait = g('รอ (วัน)');
-    var scls = statusMap(table)[status] || 'info';
-    var pairs = [
-      ['เลขที่เอกสาร', esc(docno)], ['สถานะเอกสาร', '<span class="pill ' + scls + '">' + esc(status) + '</span>'],
-      ['รหัสร้านถูกกระทบ', esc(store)], ['ชื่อร้านถูกกระทบ', esc(name)], ['ภาค', esc(region)], ['ประเภทร้าน', 'FR Type B'],
-      ['เจ้าของร้าน', 'นายวีรพล มั่นคง'], ['นิติบุคคล', 'หจก. ' + esc(name)], ['วันที่โอนร้าน', '01/03/2566'],
-      ['ผู้ดำเนินการ', 'Somchai J., Phatcharida P.'],
-      ['ยอดขายที่ลดลง', '<span style="color:#c0392b">' + esc(drop) + '</span>'],
-      ['จำนวนเงินที่ชดเชย', '<span style="color:#16a34a">' + esc(comp) + ' ฿</span>'], ['รอดำเนินการ', esc(wait) + ' วัน']
-    ];
-    var body = cre('div');
-    body.innerHTML =
-      '<div class="doc-meta">' + pairs.map(function (p) { return '<div class="dm"><span class="k">' + p[0] + '</span><span class="v">' + p[1] + '</span></div>'; }).join('') + '</div>' +
-      '<h3 style="font-size:14px;color:#2b3440;margin:18px 0 10px;">ผลการพิจารณา (Decision)</h3>' +
-      '<div class="decisions">' +
-      '<div class="dec approve" data-ack="อนุมัติ (A) · บันทึกบัญชีส่ง SAP" data-kind="ok"><div class="di">' + svg('M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11', '', 20) + '</div><div class="dt">Approve (A)</div><div class="dd">อนุมัติ + บันทึกบัญชี → SAP</div></div>' +
-      '<div class="dec stop" data-ack="หยุดกระบวนการ (S) · End" data-kind="del"><div class="di">' + svg('M10 9v6m4-6v6M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z', '', 20) + '</div><div class="dt">Stop Flow (S)</div><div class="dd">หยุดกระบวนการ (End)</div></div>' +
-      '<div class="dec initial" data-ack="ตั้ง Flow เริ่มต้นค่าชดเชย (I)"><div class="di">' + svg('M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3', '', 20) + '</div><div class="dt">Initial (I)</div><div class="dd">เริ่มต้นค่าชดเชยใหม่</div></div>' +
-      '</div>' +
-      '<div class="chips" style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;"><span class="chip api">/fgiService/confirmDataFromBPM</span><span class="chip file">RT040035_</span></div>';
-    openModal({ lg: true, title: 'เอกสารข้อมูลร้านถูกกระทบ', sub: 'เลขที่ ' + docno + ' · ' + name, icon: I.badge, body: body,
-      footer: [footBtn('ปิด', 'btn-ghost', closeModal), footBtn(svg(I.map, '', 16) + ' เปิดเอกสารเต็ม (แผนที่ / พิจารณา)', 'btn-soft', function () { location.href = 'k2-document.html'; }), footBtn(svg(I.badge, '', 16) + ' ยืนยัน K2', 'btn-primary', function () { toast('ยืนยันข้อมูลกับ BPM (confirmDataFromBPM) สำเร็จ', 'ok'); closeModal(); })] });
+      drop = g('ยอดขายที่ลดลง'), comp = g('จำนวนเงินที่ชดเชย'), status = g('สถานะ');
+    var sec = document.getElementById('openedDoc');
+    if (!sec) return;
+    function set(id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt; }
+    set('odDocNoTitle', docno); set('odDocNo', docno); set('odStore', store);
+    set('odName', name); set('odRegion', region);
+    if (drop && drop !== '-') set('odDrop', drop);
+    if (comp && comp !== '-') set('odComp', comp + ' ฿');
+    var st = document.getElementById('odStatus');
+    if (st) { st.className = 'pill ' + (statusMap(table)[status] || 'info'); st.textContent = status; }
+    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    sec.classList.remove('flash'); void sec.offsetWidth; sec.classList.add('flash');
+    toast('เปิดเอกสาร ' + docno + ' — ดูรายละเอียดและผลการพิจารณาด้านล่าง', 'ok');
   }
 
   /* ---------- init ---------- */

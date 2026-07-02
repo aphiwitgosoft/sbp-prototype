@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flow K2 · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  /* stepper (happy path) */
+  .stepper { display:flex; gap:0; overflow-x:auto; padding:6px 2px 14px; }
+  .stp { flex:0 0 auto; display:flex; align-items:center; }
+  .stp .node { display:flex; flex-direction:column; align-items:center; gap:6px; min-width:118px; text-align:center; }
+  .stp .circ { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:14px; box-shadow:0 4px 12px rgba(47,111,237,.28); }
+  .stp .lbl { font-size:12px; color:#37414e; line-height:1.35; max-width:120px; }
+  .stp .arrow { color:#c4ccd6; margin:0 2px 22px; }
+  .stp.start .circ { background:#16a34a; box-shadow:0 4px 12px rgba(22,163,74,.3); }
+  .stp.end .circ { background:#ef4444; box-shadow:0 4px 12px rgba(239,68,68,.3); }
+  .stp .circ.blue { background:#2f6fed; }
+
+  /* swimlane rows */
+  .lane { display:grid; grid-template-columns:200px 1fr; gap:0; border:1px solid var(--line,#e5e9f0); border-bottom:none; }
+  .lane:last-child { border-bottom:1px solid var(--line,#e5e9f0); }
+  .lane-h { background:#eef3fb; padding:14px 14px; display:flex; flex-direction:column; gap:4px; justify-content:center; border-right:1px solid var(--line,#e5e9f0); }
+  .lane-h b { font-size:13.5px; color:#2b3440; }
+  .lane-h .sc { font-size:11.5px; color:var(--muted,#8a97a5); }
+  .lane-b { padding:13px 14px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .lane.startlane .lane-h { background:#e7f7ee; }
+  .lane.endlane   .lane-h { background:#fdeaea; }
+  .task { font-size:13px; color:#37414e; font-weight:500; padding:6px 12px; border:1px dashed #c4ccd6; border-radius:8px; background:#fafbfd; }
+  .branch { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; padding:5px 11px; border-radius:20px; font-weight:500; }
+  .branch svg { flex:0 0 auto; }
+  .b-go { background:#eaf1ff; color:#2456c8; }
+  .b-back { background:#fff4e5; color:#b45309; }
+  .b-end { background:#fdeaea; color:#c0392b; }
+</style>
+</head>
+<body data-page="k2-flow" data-nav="modules" data-module="k2-flow" data-crumb="Flow K2">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">Flow K2 — Workflow อนุมัติประกันรายได้</h1>
+          <p class="page-sub">กระบวนการตั้งแต่สร้างเอกสารร้านถูกกระทบจนอนุมัติชดเชย · อ้างอิง SRS 3.1.4 และใช้เป็นต้นแบบ workflow สำหรับระบบ BE/FE ใหม่</p></div>
+        <div class="page-actions">
+          <span class="pill info" style="align-self:center;">7 ขั้นตอน · 8 สถานะ</span>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="font-size:13px;color:#45525f;line-height:1.9;">
+          หน้านี้อธิบายเฉพาะ flow ฝั่ง <b>K2</b> หลังจากมีเอกสารแล้ว ·
+          งานต้นทาง batch ดูที่ <a href="flow-fgi.html" style="color:#2f6fed;font-weight:600;">Flow FGI/FCS</a> ·
+          ภาพรวมระบบใหม่ที่รวมสองฝั่งดูที่ <a href="plan-flow.html" style="color:#2f6fed;font-weight:600;">Flow FGI/FCS + K2</a>
+        </div>
+      </div>
+
+      <!-- Happy path stepper -->
+      <div class="card">
+        <div class="card-head"><h2>เส้นทางหลัก (Happy Path)</h2></div>
+        <div class="stepper">
+          <div class="stp start"><div class="node"><div class="circ">S</div><div class="lbl">รับข้อมูล / สร้างที่ FS</div></div></div>
+          <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
+          <div class="stp"><div class="node"><div class="circ blue">06</div><div class="lbl">ฝ่าย SBP DSA</div></div></div>
+          <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
+          <div class="stp"><div class="node"><div class="circ blue">08</div><div class="lbl">เจ้าหน้าที่ SBP DSA<br>(คำนวณเงิน)</div></div></div>
+          <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
+          <div class="stp"><div class="node"><div class="circ blue">01</div><div class="lbl">ฝ่ายส่งเสริมธุรกิจฯ</div></div></div>
+          <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
+          <div class="stp"><div class="node"><div class="circ blue">02</div><div class="lbl">GM ส่งเสริมธุรกิจฯ</div></div></div>
+          <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
+          <div class="stp"><div class="node"><div class="circ blue">03</div><div class="lbl">ผู้บริหารสำนักฯ (AVP)<br><small style="color:#8a97a5;">วงเงิน &gt; 100,000</small></div></div></div>
+          <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
+          <div class="stp"><div class="node"><div class="circ blue">04</div><div class="lbl">ฝ่ายบัญชี SBP</div></div></div>
+          <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
+          <div class="stp"><div class="node"><div class="circ blue">05</div><div class="lbl">บัญชีปฏิบัติการภาค</div></div></div>
+          <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
+          <div class="stp end"><div class="node"><div class="circ">✓</div><div class="lbl">อนุมัติ · จบกระบวนการ</div></div></div>
+        </div>
+        <p style="font-size:12.5px;color:var(--muted);margin:4px 0 0;">ระบบรับข้อมูลจากทีม Store Chain Unit เป็น text file รอบ <b>17:00 ของทุกวัน</b> ผ่าน Batch job · กรณีนอกเงื่อนไขสร้างเอกสารเองผ่านระบบ FS (รอ SBP Statement ~1 วัน)</p>
+      </div>
+
+      <!-- Flowchart (BPMN-style diagram) -->
+      <div class="card">
+        <div class="card-head"><h2>แผนผังกระบวนการ (Flowchart)</h2><span class="pill info" style="margin-left:auto;">Decision · Branch · End</span></div>
+        <div style="overflow-x:auto;">
+        <svg viewBox="0 0 980 1370" width="100%" style="min-width:780px;max-width:960px;display:block;margin:0 auto;font-family:Tahoma,'Segoe UI',sans-serif;" role="img" aria-label="แผนผังกระบวนการประกันรายได้">
+          <defs>
+            <marker id="ah" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L6.5,3 L0,6 Z" fill="#94a3b8"/></marker>
+            <marker id="ahb" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L6.5,3 L0,6 Z" fill="#f59e0b"/></marker>
+          </defs>
+
+          <!-- ===== เส้นทางส่งต่อ (ทึบ) ===== -->
+          <g stroke="#94a3b8" stroke-width="1.8" fill="none">
+            <line x1="430" y1="72"   x2="430" y2="108" marker-end="url(#ah)"/>
+            <line x1="430" y1="180"  x2="430" y2="208" marker-end="url(#ah)"/>
+            <line x1="430" y1="316"  x2="430" y2="356" marker-end="url(#ah)"/>
+            <line x1="430" y1="428"  x2="430" y2="474" marker-end="url(#ah)"/>
+            <line x1="430" y1="546"  x2="430" y2="574" marker-end="url(#ah)"/>
+            <line x1="430" y1="670"  x2="430" y2="708" marker-end="url(#ah)"/>
+            <line x1="430" y1="780"  x2="430" y2="808" marker-end="url(#ah)"/>
+            <line x1="430" y1="916"  x2="430" y2="976" marker-end="url(#ah)"/>
+            <line x1="430" y1="1048" x2="430" y2="1092" marker-end="url(#ah)"/>
+            <line x1="430" y1="1164" x2="430" y2="1214" marker-end="url(#ah)"/>
+            <!-- 06: เห็นควรไม่ชดเชย/หยุด → จบ -->
+            <line x1="535" y1="264" x2="672" y2="264" marker-end="url(#ah)"/>
+            <!-- ราง "ส่งข้ามขั้น" จาก 06 — เดินช่องขวาสุด ไม่ตัดผ่านกล่องใด -->
+            <path d="M456,303 L964,303 L964,1070 L520,1070 L520,1052" marker-end="url(#ah)"/>
+            <path d="M964,512 L568,512" marker-end="url(#ah)"/>
+            <!-- วงเงิน > 100,000 → AVP -->
+            <line x1="535" y1="864" x2="672" y2="864" marker-end="url(#ah)"/>
+            <!-- AVP เห็นควรชดเชย → 04 -->
+            <path d="M780,898 L780,1040 L564,1040" marker-end="url(#ah)"/>
+            <!-- End2 → หมายเหตุ batch -->
+            <line x1="430" y1="1270" x2="430" y2="1284" stroke-dasharray="3 4"/>
+          </g>
+
+          <!-- ===== เส้นทางส่งกลับ / ไม่ชดเชย (ประ ส้ม) ===== -->
+          <g stroke="#f59e0b" stroke-width="1.6" fill="none" stroke-dasharray="6 5">
+            <!-- รางรวมกลับ 06 (ซ้ายสุด) -->
+            <path d="M140,1014 L140,146 L296,146" marker-end="url(#ahb)"/>
+            <line x1="300" y1="394" x2="141" y2="394"/>
+            <line x1="335" y1="624" x2="141" y2="624"/>
+            <line x1="325" y1="864" x2="141" y2="864"/>
+            <line x1="300" y1="1014" x2="141" y2="1014"/>
+            <!-- ส่งกลับทีละขั้น -->
+            <path d="M560,746 L600,746 L600,532 L568,532" marker-end="url(#ahb)"/>
+            <path d="M300,1130 L232,1130 L232,1040 L296,1040" marker-end="url(#ahb)"/>
+            <!-- จุดเชื่อม ก / ข (แทนเส้นยาวข้ามแผนภาพ) -->
+            <line x1="676" y1="882" x2="641" y2="882" marker-end="url(#ahb)"/>
+            <line x1="234" y1="124" x2="296" y2="124" marker-end="url(#ahb)"/>
+            <path d="M746,830 L746,764 L568,764" marker-end="url(#ahb)"/>
+          </g>
+
+          <!-- วงกลมจุดเชื่อม -->
+          <g>
+            <circle cx="626" cy="882" r="11" fill="#fff7e6" stroke="#f59e0b" stroke-width="1.4"/>
+            <text x="626" y="886" text-anchor="middle" fill="#b45309" font-size="10.5" font-weight="700">A</text>
+            <circle cx="220" cy="124" r="11" fill="#fff7e6" stroke="#f59e0b" stroke-width="1.4"/>
+            <text x="220" y="128" text-anchor="middle" fill="#b45309" font-size="10.5" font-weight="700">A</text>
+
+          </g>
+
+          <!-- ===== ป้ายกำกับเส้น ===== -->
+          <g font-size="10.5" fill="#67707c">
+            <text x="440" y="200">ส่งดำเนินการ (validate: ต้องเลือกผลพิจารณา)</text>
+            <text x="440" y="342">ส่งเจ้าหน้าที่ SBP DSA (08)</text>
+            <text x="440" y="456">คำนวณเงินชดเชยเรียบร้อย</text>
+            <text x="440" y="696">เห็นควรชดเชย</text>
+            <text x="440" y="944">เห็นควรชดเชย · ≤ 100,000</text>
+            <text x="440" y="1074">ส่งบัญชีปฏิบัติการภาค</text>
+            <text x="440" y="1194">บัญชีภาคอนุมัติ</text>
+            <text x="544" y="252">เห็นควรไม่ชดเชย / หยุดชดเชย</text>
+            <text x="544" y="852">&gt; 100,000 (ทั้งชดเชย/ไม่ชดเชย)</text>
+            <text x="700" y="297">ส่งข้ามขั้นจาก 06 (ไม่ผ่าน 08)</text>
+            <text x="760" y="506">→ ฝ่ายส่งเสริมฯ (01)</text>
+            <text x="620" y="1062">→ ฝ่ายบัญชี SBP (04)</text>
+            <text x="792" y="956">เห็นควรชดเชย → 04</text>
+          </g>
+          <g font-size="10.5" fill="#b45309">
+            <text x="150" y="386">08 ส่งกลับ → 06</text>
+            <text x="150" y="616">01 ไม่ชดเชย / ส่งกลับ → 06</text>
+            <text x="150" y="856">02 ไม่ชดเชย · ≤ 100,000 → 06</text>
+            <text x="150" y="1006">04 ส่งกลับ → 06</text>
+            <text x="612" y="650" transform="rotate(-90 612 650)">02 ส่งกลับ → 01</text>
+            <text x="238" y="1122">05 ส่งกลับ → 04</text>
+            <text x="606" y="912">AVP ไม่ชดเชย → 06</text>
+            <text x="618" y="757">AVP ส่งกลับ → 02</text>
+            <text x="160" y="106">จาก AVP (ไม่ชดเชย)</text>
+            <text x="128" y="580" transform="rotate(-90 128 580)">เห็นควรไม่ชดเชย / ส่งกลับ → รอฝ่าย SBP DSA (06)</text>
+          </g>
+
+          <!-- ===== กล่องแจ้งเตือนอัตโนมัติ (จาก status_email_rules + Approve Flow เดิม) ===== -->
+          <rect x="640" y="18" width="320" height="136" rx="12" fill="#fbfcfe" stroke="#d6dfeb" stroke-width="1.4"/>
+          <text x="656" y="42" font-size="12.5" font-weight="700" fill="#2b3440">การแจ้งเตือนอัตโนมัติ (ทุกขั้นตอน)</text>
+          <text x="656" y="64" font-size="10.5" fill="#5d6b7a">✉ เปลี่ยนสถานะ → อีเมลถึงผู้ดำเนินการถัดไป (TO)</text>
+          <text x="668" y="80" font-size="10.5" fill="#5d6b7a">พร้อมสำเนา (CC) ตาม status_email_rules</text>
+          <text x="656" y="102" font-size="10.5" fill="#5d6b7a">⏰ เตือนงานค้างทุกวันจันทร์ 10:00 น.</text>
+          <text x="656" y="122" font-size="10.5" fill="#5d6b7a">▲ ค้างครบ 30 / 45 / 60 วัน → escalation หัวหน้า Section</text>
+          <text x="656" y="142" font-size="9.5" fill="#8a97a5">(reminder / escalation รับมาจาก Approve Flow เดิม)</text>
+
+          <!-- ===== โหนด ===== -->
+          <!-- Start -->
+          <rect x="300" y="18" width="260" height="54" rx="27" fill="#e7f7ee" stroke="#16a34a" stroke-width="1.6"/>
+          <text x="430" y="40" text-anchor="middle" fill="#15803d" font-size="12.5" font-weight="700">เริ่ม · เอกสารเข้าระบบ</text>
+          <text x="430" y="56" text-anchor="middle" fill="#4d7c5f" font-size="9.5">Batch 17:00 (Store Chain Unit) · หรือสร้างเองที่หน้าสร้างเอกสาร</text>
+
+          <!-- 06 -->
+          <rect x="300" y="112" width="260" height="68" rx="10" fill="#eef3fb" stroke="#2f6fed" stroke-width="1.6"/>
+          <circle cx="326" cy="146" r="14" fill="#2f6fed"/><text x="326" y="150" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">06</text>
+          <text x="350" y="136" fill="#2b3440" font-size="12.5" font-weight="600">ฝ่าย SBP DSA</text>
+          <text x="350" y="152" fill="#67707c" font-size="10.5">ตรวจสอบเอกสาร &amp; พิจารณา (5 ทางเลือก)</text>
+          <text x="350" y="168" fill="#8a97a5" font-size="9.5">ยอดขาย &lt; 60 วัน = แถวแดง · แนบไฟล์ ≤ 5MB</text>
+
+          <!-- D1 -->
+          <polygon points="430,212 535,264 430,316 325,264" fill="#fff7e6" stroke="#f59e0b" stroke-width="1.6"/>
+          <text x="430" y="260" text-anchor="middle" fill="#b45309" font-size="10.5" font-weight="600">ผลพิจารณา</text>
+          <text x="430" y="274" text-anchor="middle" fill="#b45309" font-size="10.5" font-weight="600">ฝ่าย SBP DSA</text>
+
+          <!-- 08 -->
+          <rect x="300" y="356" width="260" height="68" rx="10" fill="#eef3fb" stroke="#2f6fed" stroke-width="1.6"/>
+          <circle cx="326" cy="390" r="14" fill="#2f6fed"/><text x="326" y="394" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">08</text>
+          <text x="350" y="380" fill="#2b3440" font-size="12.5" font-weight="600">เจ้าหน้าที่ SBP DSA</text>
+          <text x="350" y="396" fill="#67707c" font-size="10.5">คำนวณเงินชดเชย</text>
+          <text x="350" y="412" fill="#8a97a5" font-size="9.5">ผ่านระบบ FS (Franchise Statement)</text>
+
+          <!-- 01 -->
+          <rect x="300" y="478" width="260" height="68" rx="10" fill="#eef3fb" stroke="#2f6fed" stroke-width="1.6"/>
+          <circle cx="326" cy="512" r="14" fill="#2f6fed"/><text x="326" y="516" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">01</text>
+          <text x="350" y="502" fill="#2b3440" font-size="12.5" font-weight="600">ฝ่ายส่งเสริมธุรกิจฯ</text>
+          <text x="350" y="518" fill="#67707c" font-size="10.5">แก้ไขร้านเปิดใหม่ / คู่แข่ง / ปัจจัย + พิจารณา</text>
+          <text x="350" y="534" fill="#8a97a5" font-size="9.5">%ชดเชยรวมต้องเท่ากับ 100%</text>
+
+          <!-- D2 -->
+          <polygon points="430,578 525,624 430,670 335,624" fill="#fff7e6" stroke="#f59e0b" stroke-width="1.6"/>
+          <text x="430" y="620" text-anchor="middle" fill="#b45309" font-size="10.5" font-weight="600">ผลพิจารณา</text>
+          <text x="430" y="634" text-anchor="middle" fill="#b45309" font-size="10.5" font-weight="600">ฝ่ายส่งเสริมฯ</text>
+
+          <!-- 02 -->
+          <rect x="300" y="712" width="260" height="68" rx="10" fill="#eef3fb" stroke="#2f6fed" stroke-width="1.6"/>
+          <circle cx="326" cy="746" r="14" fill="#2f6fed"/><text x="326" y="750" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">02</text>
+          <text x="350" y="736" fill="#2b3440" font-size="12.5" font-weight="600">GM ส่งเสริมธุรกิจฯ</text>
+          <text x="350" y="752" fill="#67707c" font-size="10.5">พิจารณาตามวงเงิน</text>
+          <text x="350" y="768" fill="#8a97a5" font-size="9.5">เกณฑ์ 100,000 ใช้ทั้งชดเชยและไม่ชดเชย</text>
+
+          <!-- D3 -->
+          <polygon points="430,812 535,864 430,916 325,864" fill="#fff7e6" stroke="#f59e0b" stroke-width="1.6"/>
+          <text x="430" y="860" text-anchor="middle" fill="#b45309" font-size="10.5" font-weight="600">ผลพิจารณา</text>
+          <text x="430" y="874" text-anchor="middle" fill="#b45309" font-size="10.5" font-weight="600">+ วงเงิน</text>
+
+          <!-- AVP 03 -->
+          <rect x="676" y="830" width="270" height="68" rx="10" fill="#eef3fb" stroke="#2f6fed" stroke-width="1.6"/>
+          <circle cx="702" cy="864" r="14" fill="#2f6fed"/><text x="702" y="868" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">03</text>
+          <text x="726" y="854" fill="#2b3440" font-size="12" font-weight="600">ผู้บริหารสำนักบริหาร SBP (AVP)</text>
+          <text x="726" y="870" fill="#67707c" font-size="10.5">อนุมัติวงเงินสูง</text>
+          <text x="726" y="886" fill="#8a97a5" font-size="9.5">เฉพาะเอกสารวงเงิน &gt; 100,000</text>
+
+          <!-- 04 -->
+          <rect x="300" y="980" width="260" height="68" rx="10" fill="#eef3fb" stroke="#2f6fed" stroke-width="1.6"/>
+          <circle cx="326" cy="1014" r="14" fill="#2f6fed"/><text x="326" y="1018" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">04</text>
+          <text x="350" y="1004" fill="#2b3440" font-size="12.5" font-weight="600">ฝ่ายบัญชี SBP</text>
+          <text x="350" y="1020" fill="#67707c" font-size="10.5">ตรวจสอบบัญชี</text>
+          <text x="350" y="1036" fill="#8a97a5" font-size="9.5">ส่งกลับฝ่าย SBP DSA ได้</text>
+
+          <!-- 05 -->
+          <rect x="300" y="1096" width="260" height="68" rx="10" fill="#eef3fb" stroke="#2f6fed" stroke-width="1.6"/>
+          <circle cx="326" cy="1130" r="14" fill="#2f6fed"/><text x="326" y="1134" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">05</text>
+          <text x="350" y="1120" fill="#2b3440" font-size="12.5" font-weight="600">บัญชีปฏิบัติการภาค</text>
+          <text x="350" y="1136" fill="#67707c" font-size="10.5">อนุมัติปิดงาน</text>
+          <text x="350" y="1152" fill="#8a97a5" font-size="9.5">ส่งกลับฝ่ายบัญชี SBP ได้</text>
+
+          <!-- End1 (ไม่ชดเชย/หยุด) -->
+          <rect x="676" y="238" width="270" height="52" rx="26" fill="#fdeaea" stroke="#ef4444" stroke-width="1.6"/>
+          <text x="811" y="260" text-anchor="middle" fill="#c0392b" font-size="12" font-weight="700">จบ · เสร็จสิ้นดำเนินการ</text>
+          <text x="811" y="276" text-anchor="middle" fill="#a8574f" font-size="9.5">เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้</text>
+
+          <!-- End2 (อนุมัติ) -->
+          <rect x="300" y="1218" width="260" height="52" rx="26" fill="#e7f7ee" stroke="#16a34a" stroke-width="1.6"/>
+          <text x="430" y="1240" text-anchor="middle" fill="#15803d" font-size="12.5" font-weight="700">จบ · เสร็จสิ้นดำเนินการ</text>
+          <text x="430" y="1256" text-anchor="middle" fill="#4d7c5f" font-size="9.5">บัญชีภาคอนุมัติ (End)</text>
+
+          <!-- ต่อฝั่ง batch หลังจบ -->
+          <rect x="230" y="1288" width="400" height="58" rx="10" fill="#f7f9fc" stroke="#b9c3cf" stroke-width="1.3" stroke-dasharray="6 5"/>
+          <text x="430" y="1312" text-anchor="middle" fill="#5d6b7a" font-size="10.5">หลังจบ workflow: Job 6 ส่งผลชดเชยเป็นไฟล์ FRBC0001 → Statement (STA)</text>
+          <text x="430" y="1330" text-anchor="middle" fill="#8a97a5" font-size="9.5">Approve = A → บันทึกบัญชี SAP · ดูภาพรวมที่หน้า Flow FGI/FCS + K2</text>
+        </svg>
+        </div>
+        <div class="flow-legend" style="margin:14px 0 2px;">
+          <div class="lg"><span style="width:14px;height:14px;border-radius:4px;background:#e7f7ee;border:1.5px solid #16a34a;display:inline-block;"></span> เริ่ม / จบ (Start / End)</div>
+          <div class="lg"><span style="width:14px;height:14px;border-radius:4px;background:#eef3fb;border:1.5px solid #2f6fed;display:inline-block;"></span> ขั้นตอนดำเนินการ (Task)</div>
+          <div class="lg"><span style="width:13px;height:13px;background:#fff7e6;border:1.5px solid #f59e0b;display:inline-block;transform:rotate(45deg);"></span> จุดตัดสินใจ (Decision)</div>
+          <div class="lg"><span style="width:18px;border-top:2px solid #94a3b8;display:inline-block;"></span> ส่งต่อ / ส่งข้ามขั้น</div>
+          <div class="lg"><span style="width:18px;border-top:2px dashed #f59e0b;display:inline-block;"></span> ส่งกลับ / เห็นควรไม่ชดเชย (รวมกลับ 06 ที่รางซ้าย)</div>
+          <div class="lg"><span style="width:16px;height:16px;border-radius:50%;background:#fff7e6;border:1.5px solid #f59e0b;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#b45309;font-weight:700;">A</span> จุดเชื่อม — เส้นทางเดียวกันที่ตัดข้ามแผนภาพ ใช้วงกลมอักษรคู่กันแทนการลากเส้นตัด</div>
+        </div>
+      </div>
+
+      <!-- Swimlane (per role + decision branches) -->
+      <div class="card">
+        <div class="card-head"><h2>Swimlane · ผู้ดำเนินการและตัวเลือกการส่งงาน</h2></div>
+
+        <div class="lane startlane">
+          <div class="lane-h"><b>ระบบ / Store Chain Unit</b><span class="sc">Batch 17:00 · FS + SBP Statement</span></div>
+          <div class="lane-b">
+            <span class="task">สร้างเอกสารร้านถูกกระทบ</span>
+            <span class="branch b-go">ส่งเข้ากระบวนการ → ฝ่าย SBP DSA</span>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-h"><b>ฝ่าย SBP DSA</b><span class="sc">Manager Franchise · section_code 06</span></div>
+          <div class="lane-b">
+            <span class="task">ตรวจสอบเอกสาร &amp; พิจารณา</span>
+            <span class="branch b-end">เห็นควรไม่ชดเชย → จบ</span>
+            <span class="branch b-end">หยุดชดเชยประกันรายได้ → จบ</span>
+            <span class="branch b-go">ส่งฝ่ายส่งเสริมธุรกิจ SBP</span>
+            <span class="branch b-go">ส่งฝ่ายบัญชี SBP</span>
+            <span class="branch b-go">ส่งเจ้าหน้าที่ SBP DSA</span>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-h"><b>เจ้าหน้าที่ SBP DSA</b><span class="sc">Officer Franchise · section_code 08</span></div>
+          <div class="lane-b">
+            <span class="task">คำนวณเงินชดเชย (ผ่าน FS)</span>
+            <span class="branch b-go">คำนวณเรียบร้อย → ฝ่ายส่งเสริมธุรกิจฯ</span>
+            <span class="branch b-back">ส่งกลับ ฝ่าย SBP DSA</span>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-h"><b>ฝ่ายส่งเสริมธุรกิจฯ</b><span class="sc">Manager OPT · section_code 01</span></div>
+          <div class="lane-b">
+            <span class="task">แก้ไขร้านเปิดใหม่ / คู่แข่ง / ปัจจัย &amp; พิจารณา</span>
+            <span class="branch b-go">เห็นควรชดเชย → GM ส่งเสริมธุรกิจฯ</span>
+            <span class="branch b-back">เห็นควรไม่ชดเชย → ฝ่าย SBP DSA</span>
+            <span class="branch b-back">ส่งกลับ ฝ่าย SBP DSA</span>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-h"><b>GM ส่งเสริมธุรกิจฯ</b><span class="sc">GM OPT · section_code 02</span></div>
+          <div class="lane-b">
+            <span class="task">พิจารณาตามวงเงิน</span>
+            <span class="branch b-go">เห็นควรชดเชย · &gt; 100,000 → ผู้บริหารสำนักฯ (AVP)</span>
+            <span class="branch b-go">เห็นควรชดเชย · ≤ 100,000 → ฝ่ายบัญชี SBP</span>
+            <span class="branch b-go">เห็นควรไม่ชดเชย · &gt; 100,000 → ผู้บริหารสำนักฯ (AVP)</span>
+            <span class="branch b-back">เห็นควรไม่ชดเชย · ≤ 100,000 → ฝ่าย SBP DSA</span>
+            <span class="branch b-back">ส่งกลับ ฝ่ายส่งเสริมธุรกิจฯ</span>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-h"><b>ผู้บริหารสำนักบริหาร SBP</b><span class="sc">AVP OPT · section_code 03</span></div>
+          <div class="lane-b">
+            <span class="task">พิจารณาวงเงินสูง (&gt; 100,000)</span>
+            <span class="branch b-go">เห็นควรชดเชย → ฝ่ายบัญชี SBP</span>
+            <span class="branch b-back">เห็นควรไม่ชดเชย → ฝ่าย SBP DSA</span>
+            <span class="branch b-back">ส่งกลับ GM</span>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-h"><b>ฝ่ายบัญชี SBP</b><span class="sc">Manager Account Franchise · section_code 04</span></div>
+          <div class="lane-b">
+            <span class="task">ตรวจสอบบัญชี</span>
+            <span class="branch b-go">ส่งบัญชีปฏิบัติการภาค</span>
+            <span class="branch b-back">ส่งกลับ ฝ่าย SBP DSA</span>
+          </div>
+        </div>
+
+        <div class="lane endlane">
+          <div class="lane-h"><b>บัญชีปฏิบัติการภาค</b><span class="sc">Operation Account · section_code 05</span></div>
+          <div class="lane-b">
+            <span class="task">อนุมัติปิดงาน</span>
+            <span class="branch b-end">บัญชีภาคอนุมัติ → จบ workflow</span>
+            <span class="branch b-back">ส่งกลับ ฝ่ายบัญชี SBP</span>
+          </div>
+        </div>
+
+        <div class="flow-legend" style="margin:16px 0 2px;">
+          <div class="lg"><span class="branch b-go" style="padding:2px 9px;">ส่งต่อ</span> ส่งไปขั้นตอนถัดไป</div>
+          <div class="lg"><span class="branch b-back" style="padding:2px 9px;">ส่งกลับ</span> ส่งกลับขั้นตอนก่อนหน้า</div>
+          <div class="lg"><span class="branch b-end" style="padding:2px 9px;">จบ</span> สิ้นสุดกระบวนการ (End)</div>
+        </div>
+      </div>
+
+      <!-- Transitions table -->
+      <div class="card">
+        <div class="card-head"><h2>ตารางเส้นทางการส่งงาน (Transitions)</h2></div>
+        <div class="table-wrap"><table class="data" style="min-width:820px;">
+          <thead><tr><th>ลำดับ</th><th>ผู้ดำเนินการ</th><th>section_code</th><th>ตัวเลือกส่งงาน / หมายเหตุ</th></tr></thead>
+          <tbody>
+            <tr><td class="num">1</td><td>ฝ่าย SBP DSA (Manager Franchise)</td><td class="num">06</td><td>ไม่ชดเชย · หยุดชดเชย · ส่งเสริมธุรกิจ SBP · บัญชี SBP · เจ้าหน้าที่ SBP DSA</td></tr>
+            <tr><td class="num">2</td><td>เจ้าหน้าที่ SBP DSA (Officer Franchise)</td><td class="num">08</td><td>มี view คำนวณเงินชดเชย → ส่งฝ่ายส่งเสริมธุรกิจฯ / ส่งกลับ DSA</td></tr>
+            <tr><td class="num">3</td><td>ฝ่ายส่งเสริมธุรกิจฯ (Manager OPT)</td><td class="num">01</td><td>แก้ไขร้านเปิดใหม่ + คู่แข่ง + ปัจจัยได้ · เห็นควรชดเชย(→GM) / ไม่ชดเชย / ส่งกลับ DSA</td></tr>
+            <tr><td class="num">4</td><td>GM ส่งเสริมธุรกิจฯ (GM OPT)</td><td class="num">02</td><td>เห็นควรชดเชย: &gt;100,000 → AVP · ≤100,000 → บัญชี SBP &nbsp;|&nbsp; เห็นควรไม่ชดเชย: &gt;100,000 → AVP · ≤100,000 → SBP DSA &nbsp;|&nbsp; ส่งกลับส่งเสริมฯ</td></tr>
+            <tr><td class="num">5</td><td>ผู้บริหารสำนักบริหาร SBP (AVP OPT)</td><td class="num">03</td><td>เห็นควรชดเชย / ไม่ชดเชย / ส่งกลับ GM</td></tr>
+            <tr><td class="num">6</td><td>ฝ่ายบัญชี SBP (Manager Account Franchise)</td><td class="num">04</td><td>บัญชีปฏิบัติการภาค / ส่งกลับ SBP DSA</td></tr>
+            <tr><td class="num">7</td><td>บัญชีปฏิบัติการภาค (Operation Account)</td><td class="num">05</td><td>บัญชีภาคอนุมัติ = <b>จบ workflow</b> / ส่งกลับฝ่ายบัญชี</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <!-- State / Email matrix (SRS 3.1.5) -->
+      <div class="card">
+        <div class="card-head"><h2>สถานะเอกสาร และการส่งอีเมล (State / Email)</h2><span class="pill info" style="margin-left:auto;">ส่งอีเมลแจ้งผู้ดำเนินการ Step ถัดไป</span></div>
+        <div class="table-wrap"><table class="data" style="min-width:1000px;">
+          <thead><tr><th>State</th><th>สถานะเอกสาร (Status Name)</th><th>ผู้ดำเนินการ</th><th>อีเมลถึง (TO)</th><th>สำเนา (CC)</th></tr></thead>
+          <tbody>
+            <tr><td class="num">00</td><td>สร้างเอกสารใหม่ / รอเริ่มดำเนินการ</td><td>ระบบ / FS (Store Chain Unit)</td><td>ฝ่าย SBP DSA</td><td>ผู้สร้างเอกสาร</td></tr>
+            <tr><td class="num">06</td><td>รอฝ่าย SBP DSA ดำเนินการ</td><td>Manager Franchise</td><td>ฝ่าย SBP DSA</td><td>เจ้าหน้าที่ SBP DSA</td></tr>
+            <tr><td class="num">08</td><td>รอเจ้าหน้าที่ SBP DSA ดำเนินการ</td><td>Officer Franchise</td><td>เจ้าหน้าที่ SBP DSA</td><td>ฝ่าย SBP DSA</td></tr>
+            <tr><td class="num">01</td><td>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</td><td>Manager OPT</td><td>ฝ่ายส่งเสริมธุรกิจฯ</td><td>ฝ่าย SBP DSA</td></tr>
+            <tr><td class="num">02</td><td>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</td><td>GM OPT</td><td>GM ส่งเสริมธุรกิจฯ</td><td>ฝ่ายส่งเสริมธุรกิจฯ</td></tr>
+            <tr><td class="num">03</td><td>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</td><td>AVP OPT</td><td>ผู้บริหารสำนักบริหาร SBP</td><td>GM ส่งเสริมธุรกิจฯ</td></tr>
+            <tr><td class="num">04</td><td>รอฝ่ายบัญชี SBP ดำเนินการ</td><td>Manager Account Franchise</td><td>ฝ่ายบัญชี SBP</td><td>ฝ่าย SBP DSA</td></tr>
+            <tr><td class="num">05</td><td>รอบัญชีปฏิบัติการภาคดำเนินการ</td><td>Operation Account</td><td>บัญชีปฏิบัติการภาค</td><td>ฝ่ายบัญชี SBP</td></tr>
+            <tr class="flag-red"><td class="num">—</td><td>เสร็จสิ้น / ไม่ชดเชย / หยุดชดเชย (End)</td><td>— (จบกระบวนการ)</td><td>ผู้เกี่ยวข้องทั้งหมด</td><td>—</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">เมื่อเอกสารเปลี่ยนสถานะ (ส่งดำเนินการ) ระบบจะส่งอีเมลแจ้งผู้ดำเนินการ Step ถัดไป (TO) และสำเนา (CC) โดยอัตโนมัติ</p>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          <div style="font-size:13.5px;color:#45525f;line-height:1.7;">
+            <b style="color:#2b3440;">เงื่อนไขวงเงิน:</b> เงินชดเชย &gt; <b>100,000.00</b> บาท ส่งไปผู้บริหารสำนักบริหาร SBP (AVP) — <b>ใช้ทั้งกรณีเห็นควรชดเชยและเห็นควรไม่ชดเชย</b> · ไม่เกินเกณฑ์: เห็นควรชดเชยส่งฝ่ายบัญชี SBP / เห็นควรไม่ชดเชยส่งกลับฝ่าย SBP DSA · ดูมุมมองรายบทบาทได้ที่หน้า <a href="k2-document.html">เอกสารร้านถูกกระทบ</a>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+</body>
+</html>
