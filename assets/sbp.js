@@ -48,7 +48,7 @@
 
   /* ---------- module navigation (global) ---------- */
   var MODULES = [
-    { key:'home',       label:'หน้าหลัก',              href:'index.html',       icon:I.home,      group:'' },
+    { key:'home',        label:'Overview',                href:'index.html',        icon:I.home,      group:'ระบบประกันรายได้' },
     { key:'k2-create',   label:'สร้างเอกสาร',             href:'k2-create.html',    icon:I.plus,      group:'ระบบประกันรายได้' },
     { key:'k2-docs',     label:'เอกสาร',                  icon:I.badge,             group:'ระบบประกันรายได้', children:[
       { key:'k2-list-waiting',  label:'รอดำเนินการ',   href:'k2-list-waiting.html' },
@@ -57,17 +57,17 @@
       // ,{ key:'k2-list-abnormal', label:'ข้อมูลผิดปกติ',  href:'k2-list-abnormal.html' }
     ]},
     { key:'k2-report',   label:'รายงานสรุปสถานะ',         href:'k2-report.html',    icon:I.statement, group:'ระบบประกันรายได้' },
-    { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ผู้ดูแลระบบ' },
-    { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ผู้ดูแลระบบ' },
-    { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ผู้ดูแลระบบ' },
-    { key:'job-batch',   label:'Batch Job (FGI/FCS)',     href:'job-batch.html',    icon:I.clock,     group:'Job' },
+    { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ระบบประกันรายได้' },
+    { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ระบบประกันรายได้' },
+    { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ระบบประกันรายได้' },
+    { key:'job-batch',   label:'Batch Job',                href:'job-batch.html',    icon:I.clock,     group:'ระบบประกันรายได้' },
     { key:'flow-fgi',    label:'Flow FGI/FCS',             href:'flow-fgi.html',     icon:I.flow,      group:'Flow' },
     { key:'k2-flow',     label:'Flow K2',                  href:'k2-flow.html',      icon:I.route,     group:'Flow' },
     { key:'plan-flow',   label:'Flow FGI/FCS + K2',        href:'plan-flow.html',    icon:I.flow,      group:'Flow' },
     { key:'fgi-database', label:'DB FGI/FCS',               href:'fgi-database.html', icon:I.db,        group:'Database' },
     { key:'k2-database', label:'DB K2',                     href:'k2-database.html',  icon:I.schema,    group:'Database' },
     { key:'plan-database', label:'DB FGI/FCS + K2',         href:'plan-database.html', icon:I.db,       group:'Database' },
-    { key:'plan-api',    label:'API (BE/FE ใหม่)',         href:'plan-api.html',     icon:I.braces,    group:'Plan' }
+    { key:'plan-api',    label:'API',                       href:'plan-api.html',     icon:I.braces,    group:'Plan' }
   ];
   function moduleByKey(k){
     for (var i=0;i<MODULES.length;i++){
@@ -462,15 +462,15 @@
     operator: [
       { key: 'name', label: 'ชื่อผู้ปฏิบัติงาน (employee_name)', col: 'ชื่อผู้ปฏิบัติงาน', wide: true },
       { key: 'email', label: 'E-Mail (employee_email)', col: 'E-Mail', wide: true },
-      { key: 'position', label: 'ชื่อตำแหน่ง (section_code)', col: 'ชื่อตำแหน่ง', type: 'select', options: ['ส่งเสริมธุรกิจพันธมิตรฯ', 'Manager Franchise (section_code 06)', 'SBP DSA', 'ผจก.เขต', 'เจ้าหน้าที่บัญชี (FS)'] },
+      { key: 'position', label: 'ชื่อตำแหน่ง (section_code)', col: 'ชื่อตำแหน่ง', type: 'select', options: ['ฝ่าย SBP DSA', 'เจ้าหน้าที่ SBP DSA', 'ส่งเสริมธุรกิจพันธมิตรฯ', 'GM ส่งเสริมธุรกิจฯ', 'ผู้บริหารสำนักบริหาร SBP (AVP)', 'ฝ่ายบัญชี SBP', 'บัญชีปฏิบัติการภาค'] },
       { key: 'zone', label: 'ภาคที่รับผิดชอบ (zone_code)', col: 'ภาคที่รับผิดชอบ', type: 'select', options: ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS', '-'] },
-      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล' }
+      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
     ],
     factor: [
       { key: 'code', label: 'รหัสปัจจัยภายนอก (factor_code)', col: 'รหัสปัจจัย' },
       { key: 'name', label: 'ชื่อปัจจัยภายนอก (factor_name)', col: 'ชื่อปัจจัย', wide: true },
       { key: 'remark', label: 'รายละเอียดเพิ่มเติม (factor_remark)', col: 'รายละเอียดเพิ่มเติม', wide: true },
-      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล' }
+      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
     ],
     competitor: [
       { key: 'name', label: 'ร้านคู่แข่ง (Master)', col: 'ร้านคู่แข่ง', wide: true, type: 'select',

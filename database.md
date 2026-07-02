@@ -71,7 +71,7 @@
 | `operator_assignments` | K2 · SRS 3.1.8 | id | `section_code` · `zone_code` | ผู้ปฏิบัติงานต่อ section_code/zone_code |
 | `external_factors` | K2 · SRS 3.1.9 | `factor_code` | ← document_external_factors | ปัจจัยภายนอก master · รหัสห้ามซ้ำ |
 | `competitors` | K2 | `competitor_code` | ← document_competitors | ร้านคู่แข่ง 24 ราย (108 Shop, Lotus Express, CJ …) |
-| `audit_logs` | K2 | id | `table_name` + `ref_key` (generic) | ประวัติแก้ไข master ทุกตาราง + เหตุผล |
+| `audit_logs` | K2 | id | `table_name` + `ref_key` (generic) | ประวัติแก้ไข master แบบหลายรายการ: `action_type` · `old_value` → `new_value` · `reason` · `updated_by` · `updated_at` (= MaintainMasterHistory เดิม — แผงประวัติท้ายหน้าจอ 3.1.8/3.1.9) |
 | `status_email_rules` | K2 · SRS 3.1.5 | `status_code` | `to_section_code` · `cc_section_code` → workflow_sections | ผู้รับอีเมล TO/CC เมื่อเปลี่ยนสถานะ — ใช้โดย Notification Service |
 | `user_accounts` | ใหม่ | `employee_id` | `role_code` → roles | บัญชีผู้ใช้ + role สำหรับ JWT (เดิมพึ่งระบบ BPM) |
 | `job_configs` | ใหม่ | `job_no` | ← job_run_histories | cron + พารามิเตอร์ที่แก้ได้ของ 11 jobs (หน้า Batch Monitor) |
@@ -101,5 +101,5 @@
 ## เอกสารที่เกี่ยวข้อง
 
 - Flow ที่ใช้ตารางเหล่านี้: [workflow.md](workflow.md) · `plan-flow.html`
-- API ที่อ่าน/เขียนตาราง: `plan-api.html` (36 endpoints)
+- API ที่อ่าน/เขียนตาราง: `plan-api.html` (39 endpoints)
 - Schema ต้นทางแยกระบบ: `fgi-database.html` (FGI/FCS) · `k2-database.html` (K2, 16 ตาราง + ER diagram)

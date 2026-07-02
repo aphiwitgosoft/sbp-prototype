@@ -8,8 +8,10 @@
 <style>
   /* ===== page-specific: batch job console ===== */
   .jb-phases{display:grid; grid-template-columns:repeat(5,1fr); gap:14px;}
+  .jb-phases .flow-phase{min-width:0;}  /* กัน grid item กว้างเกินคอลัมน์จนชิปทะลุกรอบ */
   .jb-chip{border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-size:12px;
-    border-radius:7px; padding:4px 9px; font-family:"Sarabun",sans-serif; font-weight:600; white-space:nowrap;
+    border-radius:7px; padding:4px 9px; font-family:"Sarabun",sans-serif; font-weight:600;
+    white-space:normal; text-align:left; line-height:1.45; word-break:break-word; max-width:100%;
     background:#e8f0fe; color:#1d4ed8; transition:.15s;}
   .jb-chip:hover{background:#d7e5fd;}
   .jtag{display:inline-flex; align-items:center; font-size:11.5px; font-weight:700; border-radius:7px; padding:3px 8px;
@@ -19,6 +21,10 @@
   .jtag.wd{background:#fdecec; color:#c0392b;}
   #tblJobs tbody tr{cursor:pointer;}
   #tblJobs tbody tr.sel td{background:#eef4ff;}
+  /* job ที่ปิดใช้งาน — เทาอ่อนทั้งแถว */
+  #tblJobs tbody tr.jb-off td{background:#f4f6f9; color:#9aa7b6;}
+  #tblJobs tbody tr.jb-off .jtag, #tblJobs tbody tr.jb-off .chip, #tblJobs tbody tr.jb-off .pill{opacity:.55; filter:grayscale(.35);}
+  #tblJobs tbody tr.jb-off.sel td{background:#e9edf3;}
   .jd-chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
   .prm-badge{display:inline-flex; font-size:10.5px; font-weight:700; border-radius:6px; padding:1.5px 7px; margin-left:7px; vertical-align:1px;}
   .prm-badge.cfg{background:#e7f7ee; color:#15803d;} .prm-badge.fix{background:#eef1f5; color:#8794a2;}
@@ -30,14 +36,28 @@
   .jb-legend i{display:inline-block; width:14px; height:14px; border-radius:4px; margin-right:6px; vertical-align:-2px;}
   .rwb{display:inline-flex; font-size:11px; font-weight:700; border-radius:6px; padding:2px 8px; font-family:"Sarabun",sans-serif;}
   .rwb.r{background:#e8f0fe; color:#1d4ed8;} .rwb.w{background:#e7f7ee; color:#15803d;} .rwb.rw{background:#f1ecfe; color:#6d28d9;}
+  /* ปุ่มเปิด/ปิดการใช้งาน job — สวิตช์เปลี่ยนสีตามสถานะ */
+  .jb-toggle{display:inline-flex; align-items:center; gap:9px; border:1px solid transparent; border-radius:999px;
+    padding:7px 9px 7px 14px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; transition:.18s;}
+  .jb-toggle svg{flex:0 0 auto;}
+  .jb-toggle .jt-switch{width:36px; height:20px; border-radius:999px; position:relative; transition:.18s; flex:0 0 auto;}
+  .jb-toggle .jt-knob{position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.28); transition:left .18s;}
+  .jb-toggle.on{background:#e7f7ee; border-color:#b7e4c7; color:#15803d;}
+  .jb-toggle.on .jt-switch{background:#16a34a;}
+  .jb-toggle.on .jt-knob{left:18px;}
+  .jb-toggle.off{background:#fdecec; border-color:#f3c1c1; color:#c0392b;}
+  .jb-toggle.off .jt-switch{background:#d7dde5;}
+  .jb-toggle:hover{box-shadow:0 3px 10px rgba(31,72,104,.12);}
   .jb-runbar{display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; background:#f5f9ff; border:1px dashed #b9cff5;
     border-radius:12px; padding:14px 16px; margin-top:18px;}
   .jb-runbar .field{min-width:190px;}
+  @media (max-width:1360px){ .jb-phases{grid-template-columns:repeat(3,1fr);} }
   @media (max-width:1100px){ .jb-phases{grid-template-columns:repeat(2,1fr);} }
   @media (max-width:560px){ .jb-phases{grid-template-columns:1fr;} }
 </style>
 </head>
-<body data-page="job-batch" data-nav="modules" data-module="job-batch" data-crumb="Batch Job (FGI/FCS)">
+<body data-page="job-batch" data-nav="modules" data-module="job-batch" data-crumb="Batch Job">
 <div class="layout">
   <aside id="sidebar"></aside>
   <main class="content">
@@ -100,8 +120,12 @@
           <p id="jdDesc" style="margin:6px 0 0; font-size:13.5px; color:#5d6b7a; max-width:860px; line-height:1.7;">—</p>
           <div class="jd-chips" id="jdChips"></div>
         </div>
-        <div style="display:flex; gap:8px; flex:0 0 auto;">
-          <button class="btn btn-ghost btn-sm" id="btnToggleJob">ปิดการใช้งาน</button>
+        <div style="display:flex; gap:8px; flex:0 0 auto; margin-left:auto;">
+          <button class="jb-toggle on" id="btnToggleJob" type="button" title="คลิกเพื่อเปิด/ปิดการใช้งาน Job นี้">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10M18.4 6.6a9 9 0 1 1-12.8 0"/></svg>
+            <span class="jt-label">เปิดใช้งาน</span>
+            <span class="jt-switch"><span class="jt-knob"></span></span>
+          </button>
         </div>
       </div>
 
@@ -120,10 +144,13 @@
         </p>
         <div class="form-grid" id="jdForm"></div>
 
+        <div style="display:flex; justify-content:flex-end; margin-top:16px; padding-top:14px; border-top:1px dashed #dde5ef;">
+          <button class="btn btn-primary" id="btnSaveParams"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2ZM17 21v-8H7v8M7 3v5h8"/></svg> บันทึกพารามิเตอร์</button>
+        </div>
+
         <div class="jb-runbar">
           <div class="field"><label>งวดข้อมูล / วันที่สั่งรัน (Manual Run)</label><input type="month" id="runPeriod" value="2569-07" class="num"></div>
           <button class="btn btn-primary" id="btnRunNow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m7 4 12 8-12 8V4Z"/></svg> สั่งรันทันที</button>
-          <button class="btn btn-ghost" id="btnSaveParams">บันทึกพารามิเตอร์</button>
           <span style="font-size:12px; color:#93a1b0;">การสั่งรันนอกรอบต้องผ่าน checklist ก่อนรัน (Runbook 7.1)</span>
         </div>
 
@@ -745,7 +772,10 @@
     var tb = document.querySelector('#tblJobs tbody'), html = '';
     JOBS.forEach(function(j){
       var stPill = j.run[1] === 'ok' ? '<span class="pill ok">สำเร็จ</span>' : '<span class="pill fail">มีประเด็น</span>';
-      html += '<tr data-job="' + j.no + '"' + (current && current.no===j.no ? ' class="sel"' : '') + '>' +
+      var rowCls = [];
+      if (current && current.no === j.no) rowCls.push('sel');
+      if (!enabled[j.no]) rowCls.push('jb-off');
+      html += '<tr data-job="' + j.no + '"' + (rowCls.length ? ' class="' + rowCls.join(' ') + '"' : '') + '>' +
         '<td class="num" style="font-weight:700;">' + j.no + '</td>' +
         '<td><div style="font-weight:600;">' + esc(j.th) + '</div><div class="num" style="font-size:11.5px;color:#93a1b0;">' + esc(j.name) + '</div></td>' +
         '<td class="num">' + j.phase + '</td>' +
@@ -772,7 +802,7 @@
       '<span class="chip api num">' + esc(j.cls) + '</span>';
     if (j.out) chips += '<span class="chip file num">' + esc(j.out) + '</span>';
     document.getElementById('jdChips').innerHTML = chips;
-    document.getElementById('btnToggleJob').textContent = enabled[j.no] ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน';
+    setToggleUI(enabled[j.no]);
   }
 
   function renderForm(j){
@@ -967,9 +997,14 @@
   document.getElementById('btnSaveParams').addEventListener('click', function(){
     window.SBP.toast('บันทึกพารามิเตอร์ของ Job ' + current.no + ' แล้ว (ตัวอย่าง)', 'ok');
   });
+  function setToggleUI(on){
+    var t = document.getElementById('btnToggleJob');
+    t.className = 'jb-toggle ' + (on ? 'on' : 'off');
+    t.querySelector('.jt-label').textContent = on ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+  }
   document.getElementById('btnToggleJob').addEventListener('click', function(){
     enabled[current.no] = !enabled[current.no];
-    this.textContent = enabled[current.no] ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน';
+    setToggleUI(enabled[current.no]);
     renderList();
     window.SBP.toast((enabled[current.no] ? 'เปิด' : 'ปิด') + 'การใช้งาน Job ' + current.no + ' แล้ว (ตัวอย่าง)', enabled[current.no] ? 'ok' : 'del');
   });

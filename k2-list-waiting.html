@@ -24,6 +24,10 @@
   #tblK2 tbody tr.flag-red[data-href]:hover td, #tblRelated tbody tr.flag-red[data-href]:hover td{background:#fdeaea;}
   @media (max-width:1100px){.stat-grid.eight{grid-template-columns:repeat(2,1fr);}}
   @media (max-width:640px){.stat-grid.eight{grid-template-columns:1fr;}}
+  /* แถบ "ขั้นตอน Workflow ตามบทบาท" — sticky ใต้ header เมื่อเลื่อนลง */
+  #roleBar{position:sticky; top:var(--header-h); z-index:30; transition:box-shadow .18s, padding .18s;}
+  #roleBar.stuck{box-shadow:0 12px 28px rgba(31,72,104,.18); padding-top:12px; padding-bottom:12px;}
+  #roleBar.stuck .rb-hint{display:none;}
 </style>
 </head>
 <body data-page="k2-list-waiting" data-nav="modules" data-module="k2-list-waiting" data-crumb="เอกสาร · รอดำเนินการ">
@@ -39,7 +43,7 @@
             ขั้นตอน Workflow ตามบทบาท
           </div>
           <select id="roleSwitch" style="min-width:360px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;"></select>
-          <span style="color:var(--muted);font-size:12.5px;flex:1;min-width:220px;">งานรอดำเนินการและการ์ดสถานะด้านล่างจะแสดงเฉพาะที่อยู่ในสิทธิ์ของบทบาทนี้</span>
+          <span class="rb-hint" style="color:var(--muted);font-size:12.5px;flex:1;min-width:220px;">งานรอดำเนินการและการ์ดสถานะด้านล่างจะแสดงเฉพาะที่อยู่ในสิทธิ์ของบทบาทนี้</span>
         </div>
         <div class="wf-steps" id="wfSteps"></div>
       </div>
@@ -690,6 +694,16 @@
     } else {
       renderRelatedStats();
     }
+  })();
+  </script>
+  <script>
+  /* sticky แถบบทบาท: เพิ่มเงา + ย่อเมื่อถูกตรึงใต้ header */
+  (function () {
+    var rb = document.getElementById('roleBar');
+    if (!rb || rb.style.display === 'none') return;
+    window.addEventListener('scroll', function () {
+      rb.classList.toggle('stuck', rb.getBoundingClientRect().top <= 65 && window.scrollY > 10);
+    }, { passive: true });
   })();
   </script>
 </body>

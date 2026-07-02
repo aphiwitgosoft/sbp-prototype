@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>API (BE/FE ใหม่) · SBP Management System</title>
+<title>API · SBP Management System</title>
 <link rel="stylesheet" href="assets/sbp.css">
 <style>
   .ref{display:inline-flex; align-items:center; font-size:10.5px; font-weight:700; border-radius:12px; padding:2px 9px;
@@ -30,14 +30,14 @@
   @media (max-width:900px){ .rr-grid{grid-template-columns:1fr;} }
 </style>
 </head>
-<body data-page="plan-api" data-nav="modules" data-module="plan-api" data-crumb="API (BE/FE ใหม่)">
+<body data-page="plan-api" data-nav="modules" data-module="plan-api" data-crumb="API">
   <div class="layout">
     <aside id="sidebar"></aside>
     <main class="content">
 
       <div class="page-head">
-        <div><h1 class="page-title">API Specification — ระบบใหม่ (แยก BE / FE)</h1>
-          <p class="page-sub">REST API ทั้งหมด 36 เส้น 7 กลุ่ม (+2 เส้นข้อมูลผิดปกติ comment รอตัดสินใจ) สำหรับ Frontend SPA และงานภายใน · ทุกเส้นระบุ ref ที่มา (FGI/FCS หรือ K2), Flow, Database และ Request/Response</p></div>
+        <div><h1 class="page-title">API Specification</h1>
+          <p class="page-sub">REST API ทั้งหมด 39 เส้น 7 กลุ่ม (+2 เส้นข้อมูลผิดปกติ comment รอตัดสินใจ) สำหรับ Frontend SPA และงานภายใน · ทุกเส้นระบุ ref ที่มา (FGI/FCS หรือ K2), Flow, Database และ Request/Response</p></div>
         <div class="page-actions">
           <button class="btn btn-ghost" data-ack="ดาวน์โหลด OpenAPI 3.0 (ตัวอย่าง)">Export OpenAPI</button>
         </div>
@@ -45,9 +45,9 @@
 
       <div class="stat-grid">
         <div class="stat"><div class="si bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v4c0 1.5-2 3-2 3s2 1.5 2 3v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4c0 1.5 2 3 2 3s-2 1.5-2 3v4a2 2 0 0 1-2 2h-1"/></svg></div>
-          <div><div class="sv num">36</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
+          <div><div class="sv num">39</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
         <div class="stat"><div class="si bg-teal"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 10h18M9 5v14"/></svg></div>
-          <div><div class="sv num">8</div><div class="sl">กลุ่มตามโดเมน</div></div></div>
+          <div><div class="sv num">7</div><div class="sl">กลุ่มตามโดเมน</div></div></div>
         <div class="stat"><div class="si bg-amber"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></div>
           <div><div class="sv num">JWT</div><div class="sl">Bearer Token · Role 00–10</div></div></div>
         <div class="stat"><div class="si bg-rose"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6H9ZM14 3v6h6"/></svg></div>
@@ -92,7 +92,7 @@
 (function () {
   "use strict";
 
-  /* ===== API catalog: 36 เส้น 7 กลุ่ม (กลุ่มข้อมูลผิดปกติถูก comment รอตัดสินใจ) ===== */
+  /* ===== API catalog: 39 เส้น 7 กลุ่ม (กลุ่มข้อมูลผิดปกติถูก comment รอตัดสินใจ) ===== */
   var GROUPS = [
     { name:'Auth & สิทธิ์ผู้ใช้', refT:'K2 · SRS 3.1.1', eps:[
       { m:'POST', p:'/api/v1/auth/login', ref:'k2', refT:'K2 · 3.1.1', roles:'ทุกคน (public)',
@@ -121,7 +121,7 @@
         flow:['อ่าน role จาก JWT','join menu_permissions × menus เอาเฉพาะ can_access = true','คืนรายการเมนูเรียงตามกลุ่ม'],
         db:[['menu_permissions','R','สิทธิ์ต่อ role (composite PK)'],['menus','R','ชื่อ/กลุ่มเมนู']],
         req:'(ไม่มี body)',
-        res:'{\n  "menus": [\n    { "code": "M01", "name": "รอดำเนินการ / เอกสาร", "group": "ระบบประกันรายได้" },\n    { "code": "M08", "name": "Batch Job Monitor", "group": "Job" }\n  ]\n}',
+        res:'{\n  "menus": [\n    { "code": "M02", "name": "เอกสาร · รอดำเนินการ", "group": "ระบบประกันรายได้" },\n    { "code": "M08", "name": "Batch Job", "group": "ระบบประกันรายได้" }\n  ]\n}',
         err:['401'] }
     ]},
 
@@ -131,21 +131,21 @@
         flow:['อ่าน sectionCode ของผู้ใช้จาก JWT','query workflow_tasks สถานะ OPEN ของ section นั้น','join compensation_documents + impacted_stores คืน 9 คอลัมน์ตามหน้าจอ'],
         db:[['workflow_tasks','R','งานค้างต่อ section (ตารางใหม่ — inbox)'],['compensation_documents','R','ข้อมูลเอกสาร'],['impacted_stores','R','ชื่อ/ภาคของร้าน']],
         req:'Query: ?page=1&size=20&q=00788\n(q = เลขที่เอกสาร / รหัสร้าน / ชื่อร้าน)',
-        res:'{\n  "page": 1, "total": 24,\n  "items": [{\n    "docNo": "2569/00123",\n    "storeCode": "00788",\n    "storeName": "รัตนอุทิศ ซ.13",\n    "impactMonth": "2026-06",\n    "status": "รอตรวจสอบ (STA)",\n    "currentSection": "06",\n    "waitingDays": 3\n  }]\n}',
+        res:'{\n  "page": 1, "total": 24,\n  "items": [{\n    "docNo": "2569/00123",\n    "storeCode": "00788",\n    "storeName": "รัตนอุทิศ ซ.13",\n    "impactMonth": "2026-06",\n    "status": "รอฝ่าย SBP DSA ดำเนินการ",\n    "currentSection": "06",\n    "waitingDays": 3\n  }]\n}',
         err:['401'] },
       { m:'GET', p:'/api/v1/documents', ref:'k2', refT:'K2 · 3.1.3 / 3.1.7', roles:'ตามสิทธิ์เมนู',
         sum:'ค้นหาเอกสารที่เกี่ยวข้อง — บังคับระบุปี และคืนเฉพาะเอกสารที่มีเลขที่แล้ว (กติกา SRS)',
         flow:['validate: ต้องระบุ year เสมอ ไม่งั้นตอบ 400','ค้น compensation_documents ตามเงื่อนไข (เลขที่ / ร้าน / สถานะ / เดือน)','คืนแบบแบ่งหน้า'],
         db:[['compensation_documents','R','เอกสารตามเงื่อนไข'],['impacted_stores','R','ข้อมูลร้าน']],
-        req:'Query: ?year=2569&storeCode=00788&status=STA&page=1',
-        res:'{\n  "page": 1, "total": 6,\n  "items": [{ "docNo": "2569/00123", "status": "รอตรวจสอบ (STA)", ... }]\n}',
+        req:'Query: ?year=2569&storeCode=00788&status=06&page=1\n(status = section ที่รออยู่ 06/08/01/02/03/04/05 หรือ END)',
+        res:'{\n  "page": 1, "total": 6,\n  "items": [{ "docNo": "2569/00123", "status": "รอฝ่าย SBP DSA ดำเนินการ", ... }]\n}',
         err:['400 — กรุณาระบุปีที่ต้องการค้นหา (กติกา SRS)','401'] },
       { m:'GET', p:'/api/v1/documents/{docNo}', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
         sum:'เอกสารฉบับเต็ม 12 ส่วนย่อย (k2-document.html) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน',
         flow:['โหลดเอกสาร + ร้านใหม่ + คู่แข่ง + ปัจจัย + ไฟล์แนบ + สรุปชดเชย ในคำขอเดียว','คำนวณ permissions: ส่วนไหนแก้ได้ตาม role + current_section_code (data-editrole เดิม)','FE ใช้ธงนี้แสดงป้าย "อ่านอย่างเดียว" ต่อส่วน'],
         db:[['compensation_documents','R','หัวเอกสาร'],['document_new_stores / document_competitors / document_external_factors','R','ส่วนย่อย'],['document_attachments / consideration_logs','R','ไฟล์แนบ + ประวัติ']],
         req:'(ไม่มี body)',
-        res:'{\n  "docNo": "2569/00123",\n  "status": "รอตรวจสอบ (STA)",\n  "currentSection": "06",\n  "impactedStore": { "storeCode": "00788", ... },\n  "newStores": [ { "storeCode": "15211", "compensatePercent": 60.0 } ],\n  "competitors": [ ... ],\n  "factors": [ ... ],\n  "compensation": { "amount": 95000.00, "salesDropPercent": 12.5 },\n  "permissions": { "canEditSections": ["competitor","factor"], "canAction": true }\n}',
+        res:'{\n  "docNo": "2569/00123",\n  "status": "รอฝ่าย SBP DSA ดำเนินการ",\n  "currentSection": "06",\n  "impactedStore": { "storeCode": "00788", ... },\n  "newStores": [ { "storeCode": "15211", "compensatePercent": 60.0 } ],\n  "competitors": [ ... ],\n  "factors": [ ... ],\n  "compensation": { "amount": 95000.00, "salesDropPercent": 12.5 },\n  "permissions": { "canEditSections": ["competitor","factor"], "canAction": true }\n}',
         err:['404 — ไม่พบเอกสาร','401'] },
       { m:'POST', p:'/api/v1/documents', ref:'k2', refT:'K2 · 3.1.6', roles:'02 HQ, 03 User Admin',
         sum:'สร้างเอกสารใหม่นอกเงื่อนไข หรือสร้างเอกสารที่ FS (สองแท็บของ k2-create.html)',
@@ -162,11 +162,11 @@
         res:'200 OK — เอกสารฉบับล่าสุด (โครงเดียวกับ GET)',
         err:['403 — ไม่มีสิทธิ์แก้ส่วนนี้ในขั้นปัจจุบัน','422 — "%ชดเชย ... รวมกันแล้วไม่เท่ากับ 100%" (ข้อความตรงตาม SRS)'] },
       { m:'POST', p:'/api/v1/documents/{docNo}/actions', ref:'k2', refT:'K2 · 3.1.4', roles:'เจ้าของ task ปัจจุบัน',
-        sum:'ส่งผลพิจารณา (ชดเชย / ไม่ชดเชย / หยุดชดเชย) — หัวใจของ workflow 7 ขั้น รวมกฎวงเงิน 100,000',
-        flow:['ตรวจว่าผู้ใช้เป็นเจ้าของ workflow_tasks ขั้นปัจจุบัน','validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว','คำนวณขั้นถัดไป: ชดเชย > 100,000 → AVP (03) · ≤ 100,000 ข้าม 03 ไป 04 · ไม่ชดเชย/หยุด → End','insert consideration_logs + ปิด task เดิม เปิด task ใหม่','ส่งอีเมล TO/CC ตาม status_email_rules'],
+        sum:'ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 7 ขั้น · กฎวงเงิน 100,000 ใช้ทั้งกรณีชดเชยและไม่ชดเชย',
+        flow:['ตรวจว่าผู้ใช้เป็นเจ้าของ workflow_tasks ขั้นปัจจุบัน','validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว','คำนวณขั้นถัดไปตามตารางเส้นทาง (workflow.md): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 06 ส่งข้าม 04 ได้ · 02 ชดเชย/ไม่ชดเชย > 100,000 → 03 · ชดเชย ≤ 100,000 → 04 · ไม่ชดเชย ≤ 100,000 → กลับ 06 · ทุกขั้นมีเส้นส่งกลับ','insert consideration_logs + ปิด task เดิม เปิด task ใหม่','ส่งอีเมล TO/CC ตาม status_email_rules'],
         db:[['workflow_tasks','R/W','ปิดงานเดิม เปิดงานขั้นถัดไป'],['compensation_documents','W','อัปเดต Status + CurSection'],['consideration_logs','W','บันทึกผลพิจารณา'],['status_email_rules','R','ผู้รับอีเมล']],
-        req:'{\n  "action": "APPROVE",   // APPROVE | STOP | INITIAL\n  "comment": "เห็นควรชดเชยตามหลักเกณฑ์"\n}',
-        res:'{\n  "docNo": "2569/00123",\n  "nextSection": "02",\n  "status": "รอ GM พิจารณา"\n}',
+        req:'{\n  "action": "COMPENSATE",\n  // ตัวเลือกตามขั้นปัจจุบัน เช่น COMPENSATE / NOT_COMPENSATE / STOP\n  // CALC_DONE (08) / SEND_BACK / SKIP_TO_ACCT (06→04)\n  "comment": "เห็นควรชดเชยตามหลักเกณฑ์"\n}',
+        res:'{\n  "docNo": "2569/00123",\n  "nextSection": "02",\n  "status": "รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ"\n}',
         err:['422 — "ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ"','403 — ไม่ใช่เจ้าของงานขั้นนี้','409 — งานถูกดำเนินการไปแล้วโดยผู้อื่น'] },
       { m:'GET', p:'/api/v1/documents/{docNo}/timeline', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
         sum:'ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร)',
@@ -220,11 +220,11 @@
         err:['409 — พนักงานคนนี้อยู่ใน section นี้แล้ว'] },
       { m:'PUT', p:'/api/v1/operators/{id}', ref:'k2', refT:'K2 · 3.1.8', roles:'03 User Admin',
         sum:'แก้ไขข้อมูลผู้ปฏิบัติงาน',
-        flow:['update + บันทึก audit_logs (EDIT)'],
+        flow:['validate: ต้องระบุ reason เสมอ (กติกา SRS)','update + บันทึก audit_logs (EDIT · old_value → new_value · เหตุผล)'],
         db:[['operator_assignments','W','แก้ไข'],['audit_logs','W','audit']],
-        req:'{ "empMail": "somchai.j@cpall.co.th", "zoneCode": "RW" }',
+        req:'{\n  "empMail": "somchai.j@cpall.co.th",\n  "zoneCode": "RN",\n  "reason": "ปรับพื้นที่รับผิดชอบตามโครงสร้างใหม่"   // บังคับ (SRS)\n}',
         res:'200 OK',
-        err:['404'] },
+        err:['422 — กรุณาระบุเหตุผลการแก้ไขข้อมูล','404'] },
       { m:'DELETE', p:'/api/v1/operators/{id}', ref:'k2', refT:'K2 · 3.1.8', roles:'03 User Admin',
         sum:'ลบผู้ปฏิบัติงาน พร้อมบันทึกเหตุผล',
         flow:['ตรวจว่าไม่ถืองานค้างใน workflow_tasks','ลบ + บันทึก audit_logs (DELETE + เหตุผล)'],
@@ -248,11 +248,11 @@
         err:['409 — รหัสปัจจัยนี้มีอยู่แล้ว'] },
       { m:'PUT', p:'/api/v1/factors/{code}', ref:'k2', refT:'K2 · 3.1.9', roles:'03 User Admin',
         sum:'แก้ไขปัจจัยภายนอก',
-        flow:['update + audit_logs'],
+        flow:['validate: ต้องระบุ reason เสมอ (กติกา SRS)','update + audit_logs (EDIT · old_value → new_value · เหตุผล)'],
         db:[['external_factors','W','แก้ไข'],['audit_logs','W','audit']],
-        req:'{ "factorName": "คู่แข่งจัดโปรโมชันใหญ่" }',
+        req:'{\n  "factorName": "คู่แข่งจัดโปรโมชันใหญ่",\n  "reason": "ขยายนิยามให้ชัดเจนขึ้น"   // บังคับ (SRS)\n}',
         res:'200 OK',
-        err:['404'] },
+        err:['422 — กรุณาระบุเหตุผลการแก้ไขข้อมูล','404'] },
       { m:'DELETE', p:'/api/v1/factors/{code}', ref:'k2', refT:'K2 · 3.1.9', roles:'03 User Admin',
         sum:'ลบปัจจัยภายนอก (ต้องไม่ถูกใช้ในเอกสารใด)',
         flow:['ตรวจไม่ถูกอ้างใน document_external_factors','ลบ + audit_logs'],
@@ -266,7 +266,28 @@
         db:[['employees','R','master พนักงาน (โซน master เดิมของ FGI/FCS)']],
         req:'Query: ?q=สมชาย (ชื่อ / รหัสพนักงาน)',
         res:'{\n  "items": [{ "empId": "57123", "name": "สมชาย ใจดี", "mail": "somchai@cpall.co.th", "dept": "SBP DSA" }]\n}',
-        err:['401'] }
+        err:['401'] },
+      { m:'GET', p:'/api/v1/menu-permissions', ref:'k2', refT:'K2 · 3.1.1', roles:'01 Admin, 02 HQ',
+        sum:'ตาราง matrix สิทธิ์เมนูทั้งหมด (8 role × เมนู) — หน้าจอสิทธิ์การเข้าถึงเมนู',
+        flow:['อ่าน menu_permissions ทั้งหมด join menus + roles','คืนเป็น matrix ต่อเมนู'],
+        db:[['menu_permissions','R','สิทธิ์ต่อ role (composite PK)'],['menus / roles','R','ชื่อเมนูและ role 00–10']],
+        req:'(ไม่มี body)',
+        res:'{\n  "menus": [{\n    "menuCode": "M07",\n    "menuName": "รายงานสรุปสถานะ",\n    "access": { "00": false, "01": true, "02": false, "03": false, "04": true, "05": false, "06": true, "10": false }\n  }]\n}',
+        err:['401','403'] },
+      { m:'PUT', p:'/api/v1/menu-permissions/{menuCode}', ref:'k2', refT:'K2 · 3.1.1', roles:'01 Admin, 02 HQ',
+        sum:'แก้สิทธิ์การเข้าถึงเมนูหนึ่งรายการต่อทุก role — บันทึก audit เสมอ',
+        flow:['validate role code อยู่ในเซ็ต 00–10','update menu_permissions ของเมนูนั้น','บันทึก audit_logs (ผู้แก้ + ค่าเดิม/ใหม่)'],
+        db:[['menu_permissions','W','สิทธิ์ใหม่ต่อ role'],['audit_logs','W','audit การแก้สิทธิ์']],
+        req:'{\n  "access": { "04": true, "06": true }\n}',
+        res:'200 OK',
+        err:['404 — ไม่พบเมนู','403'] },
+      { m:'GET', p:'/api/v1/audit-logs', ref:'k2', refT:'K2 · 3.1.8 / 3.1.9', roles:'01 Admin, 02 HQ, 03 User Admin',
+        sum:'ประวัติการแก้ไขข้อมูล master แบบหลายรายการ (ใคร · ทำอะไร · ค่าเดิม→ใหม่ · เหตุผล · เมื่อไร) — แผงประวัติท้ายหน้าจอ 3.1.8 / 3.1.9',
+        flow:['query audit_logs ตาม table_name (+ ref_key ถ้าระบุเฉพาะรายการ)','เรียงล่าสุดก่อน แบ่งหน้า'],
+        db:[['audit_logs','R','ประวัติหลายรายการต่อข้อมูล (= MaintainMasterHistory เดิม)']],
+        req:'Query: ?table=operator_assignments&refKey=12&page=1',
+        res:'{\n  "items": [{\n    "actionType": "EDIT",\n    "refKey": "12",\n    "oldValue": "zoneCode=RS",\n    "newValue": "zoneCode=RN",\n    "reason": "ปรับพื้นที่รับผิดชอบตามโครงสร้างใหม่",\n    "updatedBy": "ภัชริดา ประดิษฐ์ทองใส",\n    "updatedAt": "2026-07-02T14:20:00"\n  }]\n}',
+        err:['401','403'] }
     ]},
 
     { name:'รายงาน', refT:'K2 · SRS 3.1.7', eps:[
@@ -275,7 +296,7 @@
         flow:['validate ปี (ไม่ระบุ → 400)','query compensation_documents + compensation_histories ตามเงื่อนไข','คืนแบบแบ่งหน้า 19 คอลัมน์ตามหน้าจอ k2-report.html'],
         db:[['compensation_documents','R','สถานะเอกสาร'],['compensation_histories','R','ยอด/งวดชดเชย'],['impacted_stores','R','ข้อมูลร้าน']],
         req:'Query: ?year=2569&month=6&zone=RS&status=END&page=1',
-        res:'{\n  "page": 1, "total": 212,\n  "items": [{ "docNo": "2569/00098", "storeCode": "00788", "status": "ปิดงาน (End)", "compensateAmount": 85000.00, ... }]\n}',
+        res:'{\n  "page": 1, "total": 212,\n  "items": [{ "docNo": "2569/00098", "storeCode": "00788", "status": "เสร็จสิ้นดำเนินการ", "compensateAmount": 85000.00, ... }]\n}',
         err:['400 — กรุณาระบุปีที่ต้องการค้นหา'] },
       { m:'GET', p:'/api/v1/reports/status-summary/export', ref:'k2', refT:'K2 · 3.1.7', roles:'04 / 06 Report Admin',
         sum:'Export รายงานเป็นไฟล์ Excel เงื่อนไขเดียวกับเส้นค้นหา',
