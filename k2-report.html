@@ -49,8 +49,8 @@
             <div style="display:flex;gap:8px;"><input placeholder="เลือกรหัสร้าน" style="flex:1;"><button class="btn btn-soft btn-sm" data-ack="เปิด Pop Up เลือกร้านที่ถูกกระทบ"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg></button></div>
           </div>
           <div class="field"><label>ชื่อร้านที่ถูกกระทบ</label><input placeholder="แสดงอัตโนมัติหลังเลือกรหัสร้าน" readonly></div>
-          <div class="field"><label>เดือน/ปี (เริ่มต้น)</label><input class="num" placeholder="ดด/ปปปป"></div>
-          <div class="field"><label>ถึง (สิ้นสุด)</label><input class="num" placeholder="ดด/ปปปป"></div>
+          <div class="field"><label>เดือน/ปี (เริ่มต้น)</label><input type="month" class="num"></div>
+          <div class="field"><label>ถึง (สิ้นสุด)</label><input type="month" class="num"></div>
           <div class="field"><label>ประเภทร้าน (เลือกได้มากกว่า 1)</label>
             <div class="ckgrid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
               <label><input type="checkbox"> FR Type A</label>
@@ -85,7 +85,7 @@
             </select>
           </div>
           <div class="field"><label>Period Statement (From – To)</label>
-            <div style="display:flex;gap:8px;"><input class="num" placeholder="ดด/ปปปป" style="flex:1;"><input class="num" placeholder="ดด/ปปปป" style="flex:1;"></div>
+            <div style="display:flex;gap:8px;"><input type="month" class="num" style="flex:1;" aria-label="Period Statement From"><input type="month" class="num" style="flex:1;" aria-label="Period Statement To"></div>
           </div>
         </div>
         <div class="toolbar" style="justify-content:flex-end;margin:18px 0 0;">

@@ -428,7 +428,7 @@
       { key: 'tel', label: 'เบอร์โทรศัพท์' },
       { key: 'email', label: 'อีเมล' },
       { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' },
-      { key: 'date', label: 'วันที่สมัคร', col: 'วันที่สมัคร' }
+      { key: 'date', label: 'วันที่สมัคร', col: 'วันที่สมัคร', type: 'date' }
     ],
     aduser: [
       { key: 'empid', label: 'Employee ID (EMP_ID)', col: 'Employee ID' },
@@ -475,14 +475,14 @@
     competitor: [
       { key: 'name', label: 'ร้านคู่แข่ง (Master)', col: 'ร้านคู่แข่ง', wide: true, type: 'select',
         options: ['108 Shop', 'V Shop', 'Lotus Express', 'AM PM', 'Joy', 'Max Valu', 'Bai Chak', 'Lawson 108', 'Mini Big C', 'BATAGRO SHOP', 'Lemon Green', 'Rak Ban Kerd', 'CJ Express', 'Tops Daily', 'StarMart', 'CP FreshMark', 'Golden Place', 'Super Cheap', 'Family Mart', 'Jiffy', 'Suria', 'Fresh Mart', 'Tigermart', 'Thai Shop'] },
-      { key: 'date', label: 'วันที่เปิดกระทบ', col: 'วันที่เปิดกระทบ' },
+      { key: 'date', label: 'วันที่เปิดกระทบ', col: 'วันที่เปิดกระทบ', type: 'date' },
       { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true }
     ],
     factordoc: [
       { key: 'factor', label: 'ปัจจัยภายนอก', col: 'ปัจจัยภายนอก', wide: true, type: 'select',
         options: ['ร้านคู่แข่งเปิดใหม่', 'ห้างค้าปลีกขนาดใหญ่', 'การก่อสร้าง / ปิดถนน', 'ทำเล/สถานีเปลี่ยน'] },
-      { key: 'start', label: 'วันที่เริ่มต้น', col: 'วันที่เริ่มต้น' },
-      { key: 'end', label: 'วันที่สิ้นสุด', col: 'วันที่สิ้นสุด' },
+      { key: 'start', label: 'วันที่เริ่มต้น', col: 'วันที่เริ่มต้น', type: 'date' },
+      { key: 'end', label: 'วันที่สิ้นสุด', col: 'วันที่สิ้นสุด', type: 'date' },
       { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true }
     ],
     contract: [
@@ -513,7 +513,7 @@
       { key: 'store', label: 'สาขา (Map to Store)', col: 'สาขา' },
       { key: 'resp', label: 'ผู้ตอบ (Participant)', col: 'ผู้ตอบ' },
       { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' },
-      { key: 'date', label: 'วันที่', col: 'วันที่' }
+      { key: 'date', label: 'วันที่', col: 'วันที่', type: 'date' }
     ],
     abnormal: [
       { key: 'docno', label: 'เลขที่เอกสาร', col: 'เลขที่เอกสาร' },
@@ -565,6 +565,7 @@
     if (f.colIdx >= 0 && row.children[f.colIdx]) {
       var c = row.children[f.colIdx];
       if (f.type === 'status') c.innerHTML = '<span class="pill ' + (smap[val] || 'info') + '">' + esc(val) + '</span>';
+      else if (f.type === 'date') c.textContent = dateToBE(val);
       else c.textContent = val;
     } else row.dataset[f.key] = val;
   }
@@ -574,6 +575,20 @@
     } return '';
   }
 
+  /* วันที่ในตารางแสดงเป็น dd/mm/พ.ศ. แต่ input[type=date] ใช้ ISO ค.ศ. — แปลงไปกลับ */
+  function dateToISO(s) {
+    s = s || '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    var m = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (!m) return '';
+    var y = +m[3]; if (y > 2400) y -= 543;
+    return y + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+  }
+  function dateToBE(s) {
+    var m = (s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return s || '';
+    return m[3] + '/' + m[2] + '/' + (+m[1] + 543);
+  }
   function buildField(f, value, sopts) {
     var wrap = cre('div', 'field' + (f.wide ? ' col-2' : ''));
     wrap.appendChild(cre('label', null, esc(f.label)));
@@ -583,6 +598,8 @@
       var opts = f.type === 'status' ? (sopts && sopts.length ? sopts.slice() : [value]) : (f.options || []).slice();
       if (value && opts.indexOf(value) < 0) opts.unshift(value);
       opts.forEach(function (o) { var op = cre('option', null, esc(o)); op.value = o; if (o === value) op.selected = true; ctrl.appendChild(op); });
+    } else if (f.type === 'date') {
+      ctrl = cre('input'); ctrl.type = 'date'; ctrl.value = dateToISO(value);
     } else { ctrl = cre('input'); ctrl.type = 'text'; ctrl.value = value || ''; }
     ctrl.setAttribute('data-fk', f.key);
     wrap.appendChild(ctrl); return wrap;
@@ -652,7 +669,12 @@
     openModal({ title: 'เพิ่มข้อมูล', icon: I.plus, body: body,
       footer: [footBtn('ยกเลิก', 'btn-ghost', closeModal), footBtn(svg(I.plus, '', 16) + ' เพิ่มข้อมูล', 'btn-primary', function () { commit(table, null, fields, body, 'add'); })] });
   }
-  function pdate(s) { var m = (s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if (!m) return null; return new Date(+m[3], +m[2] - 1, +m[1]).getTime(); }
+  function pdate(s) {
+    var iso = (s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]).getTime();
+    var m = (s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if (!m) return null;
+    return new Date(+m[3], +m[2] - 1, +m[1]).getTime();
+  }
   function commit(table, row, fields, form, mode) {
     var smap = statusMap(table), tb = table.querySelector('tbody'), target = row;
     // ---- validation ตาม SRS (ร้านคู่แข่ง / ปัจจัยอื่นๆ) ----
