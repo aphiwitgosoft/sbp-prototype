@@ -242,8 +242,12 @@
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">role_code / menu_code</td><td class="ty">varchar(4)</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">role_name / menu_name</td><td class="ty">varchar(80)</td><td></td></tr>
+              <tr><td class="k">role_desc</td><td class="ty">varchar(200)</td><td></td></tr>
+              <tr><td class="k">menu_group (MAIN/MASTER)</td><td class="ty">varchar(10)</td><td></td></tr>
+              <tr><td class="k">sort_order</td><td class="ty">int</td><td></td></tr>
+              <tr><td class="k">is_system</td><td class="ty">bit</td><td></td></tr>
             </tbody></table>
-            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">Role 00–10 ตามตารางสิทธิ์ (3.1.1)</p>
+            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">Role 00–10 ตามตารางสิทธิ์ (3.1.1) · เพิ่ม/แก้/ลบผ่านหน้าจอ 3.1.1 — <code>is_system</code> กัน role/เมนูหลักถูกลบ · ประวัติลง audit_logs</p>
           </div>
 
         </div>
@@ -418,7 +422,7 @@
               <tr><td class="k">menu_code</td><td class="ty">varchar(4)</td><td><span class="pk">PK</span> <span class="fk">FK</span></td></tr>
               <tr><td class="k">can_access</td><td class="ty">bit</td><td></td></tr>
             </tbody></table>
-            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">สิทธิ์เมนูต่อ Role (Composite PK)</p>
+            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">สิทธิ์เมนูต่อ Role (Composite PK) · แก้จากหน้าจอ 3.1.1 (PUT /api/v1/menu-permissions) · เพิ่ม role/เมนูใหม่ = สร้างแถว can_access=false ทุกช่อง · ลบ role/เมนู = cascade</p>
           </div>
 
         </div>

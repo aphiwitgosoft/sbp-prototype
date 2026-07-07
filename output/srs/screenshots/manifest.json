@@ -1,0 +1,110 @@
+[
+  {
+    "file": "index.html",
+    "width": 1440,
+    "height": 1882,
+    "output": "index.png"
+  },
+  {
+    "file": "flow-fgi.html",
+    "width": 1440,
+    "height": 2331,
+    "output": "flow-fgi.png"
+  },
+  {
+    "file": "k2-flow.html",
+    "width": 1440,
+    "height": 4237,
+    "output": "k2-flow.png"
+  },
+  {
+    "file": "plan-flow.html",
+    "width": 1440,
+    "height": 3879,
+    "output": "plan-flow.png"
+  },
+  {
+    "file": "fgi-database.html",
+    "width": 1440,
+    "height": 3153,
+    "output": "fgi-database.png"
+  },
+  {
+    "file": "k2-database.html",
+    "width": 1544,
+    "height": 4693,
+    "output": "k2-database.png"
+  },
+  {
+    "file": "plan-database.html",
+    "width": 1440,
+    "height": 3930,
+    "output": "plan-database.png"
+  },
+  {
+    "file": "job-batch.html",
+    "width": 1440,
+    "height": 2953,
+    "output": "job-batch.png"
+  },
+  {
+    "file": "k2-create.html",
+    "width": 1440,
+    "height": 1009,
+    "output": "k2-create.png"
+  },
+  {
+    "file": "k2-list-waiting.html",
+    "width": 1440,
+    "height": 1577,
+    "output": "k2-list-waiting.png"
+  },
+  {
+    "file": "k2-list-related.html",
+    "width": 1506,
+    "height": 1624,
+    "output": "k2-list-related.png"
+  },
+  {
+    "file": "k2-list-abnormal.html",
+    "width": 1440,
+    "height": 1479,
+    "output": "k2-list-abnormal.png"
+  },
+  {
+    "file": "k2-document.html",
+    "width": 1440,
+    "height": 3917,
+    "output": "k2-document.png"
+  },
+  {
+    "file": "k2-report.html",
+    "width": 1440,
+    "height": 1863,
+    "output": "k2-report.png"
+  },
+  {
+    "file": "k2-operators.html",
+    "width": 1440,
+    "height": 1217,
+    "output": "k2-operators.png"
+  },
+  {
+    "file": "k2-factors.html",
+    "width": 1440,
+    "height": 1142,
+    "output": "k2-factors.png"
+  },
+  {
+    "file": "k2-permissions.html",
+    "width": 1440,
+    "height": 2621,
+    "output": "k2-permissions.png"
+  },
+  {
+    "file": "plan-api.html",
+    "width": 1440,
+    "height": 3749,
+    "output": "plan-api.png"
+  }
+]

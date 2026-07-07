@@ -1,0 +1,2949 @@
+{
+  "jobs": [
+    {
+      "no": "1",
+      "name": "ImportQSSI",
+      "th": "นำเข้าคะแนน QSSI รายเดือน",
+      "tag": "IMPORT",
+      "tagCls": "imp",
+      "phase": "A",
+      "cls": "fcs.main.ImportQSSI",
+      "script": "FCS_ImportQSSI.sh",
+      "cron": "Monthly",
+      "cronTh": "รายเดือน (ต้นเดือน)",
+      "out": "fcs_qssi_scores",
+      "desc": "ดาวน์โหลดไฟล์คะแนน QSSI 4 ไฟล์ต่อเดือนผ่าน SFTP โหลดเข้าตารางพัก ทำ dedup และจับคู่หมวดคะแนนแบบ stateful แล้วลบงวดเดิมและ insert ลง fcs_qssi_scores เพื่อให้ Job 6 ใช้ตรวจความครบของคะแนน 6 หมวดก่อนปล่อยสถานะ INIT",
+      "params": [
+        [
+          "กำหนดการรัน (Cron)",
+          "Monthly",
+          "text",
+          1,
+          "ตั้งเวลาใน crontab ผ่านสคริปต์ FCS_ImportQSSI.sh"
+        ],
+        [
+          "งวดข้อมูล (เดือนที่รัน)",
+          "07/2569",
+          "text",
+          1,
+          "ชื่อไฟล์ใช้เดือนปัจจุบัน แต่งวดใน DB คือเดือนก่อนหน้า (off-by-one โดยตั้งใจ — Errata E10)"
+        ],
+        [
+          "SFTP Server",
+          "sezfssa02-office.cpall.co.th",
+          "text",
+          1,
+          ""
+        ],
+        [
+          "SFTP Port",
+          "218",
+          "number",
+          1,
+          "พอร์ตไม่มาตรฐาน — ที่มาของ retry / type-mismatch (Errata E11)"
+        ],
+        [
+          "Remote Directory",
+          "/export/qssishare/onl/qssi/textfile/SBP/QSSI_Monthly/",
+          "text",
+          1,
+          ""
+        ],
+        [
+          "Local Directory",
+          "/appshare/SPS/FCS/interface_data/in/",
+          "text",
+          1,
+          ""
+        ],
+        [
+          "File Prefix (4 ไฟล์)",
+          "mrs1trnf_, mrs2trnf_, mrs3trnf_, mrs5trnf_",
+          "text",
+          0,
+          ""
+        ],
+        [
+          "Encoding",
+          "WINDOWS-874",
+          "text",
+          0,
+          ""
+        ],
+        [
+          "Batch Insert Size",
+          "10000",
+          "number",
+          1,
+          "จำนวนแถวต่อรอบ insert"
+        ]
+      ],
+      "flow": [
+        {
+          "k": "start",
+          "t": "เริ่ม"
+        },
+        {
+          "k": "p",
+          "t": "กำหนดงวด: ชื่อไฟล์ = เดือนปัจจุบัน / งวด DB = เดือนก่อนหน้า",
+          "d": "off-by-one โดยตั้งใจตามเอกสาร (Errata E10)"
+        },
+        {
+          "k": "io",
+          "t": "เชื่อมต่อ SFTP พอร์ต 218 ดาวน์โหลดไฟล์ทั้ง 4 prefix",
+          "d": "mrs1trnf_, mrs2trnf_, mrs3trnf_, mrs5trnf_ (WINDOWS-874)"
+        },
+        {
+          "k": "d",
+          "t": "ดาวน์โหลดสำเร็จ และไฟล์ถูกต้อง?",
+          "no": "FAIL — ไม่มี auto-retry ข้ามไปขั้นย้ายไฟล์เข้า backup",
+          "noKind": "err",
+          "d": "ถ้าล้มเหลวจะไม่วนซ้ำอัตโนมัติ เพราะไฟล์ถูกย้ายเข้า backup เสมอ"
+        },
+        {
+          "k": "p",
+          "t": "เปิด transaction ต่อไฟล์ โหลดลง staging data",
+          "d": "TransactionTemplate + savepoint ต่อไฟล์"
+        },
+        {
+          "k": "p",
+          "t": "Dedup + จับคู่หมวดแบบ stateful (RS1 / RS2 / RS3 / RS5)",
+          "d": "RS1 เรียงตามลำดับ: D+E, F+G+H, I+J, K+L และ H ออกหมวด 16 เพิ่ม"
+        },
+        {
+          "k": "io",
+          "t": "ลบงวด/หมวดเดิม แล้ว batch insert ลง fcs_qssi_scores",
+          "d": "insert ครั้งละ 10,000 แถว แล้ว commit ต่อไฟล์"
+        },
+        {
+          "k": "io",
+          "t": "ย้ายไฟล์ต้นทางเข้า backup เสมอ (ทั้งสำเร็จและล้มเหลว)",
+          "d": "เหตุผลที่ห้ามหวังผล auto-retry — ต้องนำไฟล์กลับมาเองก่อนรันซ้ำ"
+        },
+        {
+          "k": "err",
+          "t": "กรณี exception: rollback ถึง savepoint + ส่งเมลแจ้งล้มเหลว",
+          "d": "ไฟล์ต้นทางยังถูกย้ายเข้า backup ตามปกติ"
+        },
+        {
+          "k": "end",
+          "t": "จบ"
+        }
+      ],
+      "tables": [
+        [
+          "fcs_qssi_scores",
+          "W",
+          "ตารางคะแนนปลายทาง (ลบงวด/หมวดเดิมแล้ว insert ใหม่) โดยผ่านการ staging ข้อมูล"
+        ]
+      ],
+      "rels": [
+        "fcs_qssi_scores (store_id + category_code + impact_month + impact_year) → Job 6 ใช้ตรวจความครบ 6 หมวด (8, 9, 12, 1, 10, 16) จากงวด max เดียวในกรอบ 3 เดือน"
+      ],
+      "meta": {
+        "trans": "ต่อไฟล์ (TransactionTemplate + savepoint)",
+        "rerun": "ไฟล์ถูกย้าย backup แม้ล้มเหลว — ก่อนรันซ้ำต้องนำไฟล์กลับ ตรวจงวดปลายทาง และตารางพัก",
+        "mail": "storeretention (Cc ว่าง)",
+        "risk": "convertStrToDouble แปลงพลาดกลายเป็น 0.0 เงียบ ๆ / ห้ามรันพร้อมกัน (temp table ใช้ร่วมทั้งระบบ)"
+      },
+      "run": [
+        "01/07/2569 06:00",
+        "ok",
+        "01/08/2569 06:00"
+      ],
+      "hist": [
+        [
+          "01/07/2569 06:00",
+          "4 นาที 12 วิ",
+          "48,220",
+          "mrs1–mrs5 (4 ไฟล์)",
+          "ok",
+          ""
+        ],
+        [
+          "01/06/2569 06:00",
+          "3 นาที 58 วิ",
+          "47,105",
+          "mrs1–mrs5 (4 ไฟล์)",
+          "ok",
+          ""
+        ],
+        [
+          "01/05/2569 06:00",
+          "1 นาที 03 วิ",
+          "0",
+          "mrs3trnf_ ขาดหาย",
+          "fail",
+          "ไฟล์ไม่ครบ — เมลแจ้งแล้ว ไฟล์ถูกย้าย backup ต้องนำกลับก่อนรันซ้ำ"
+        ],
+        [
+          "01/04/2569 06:00",
+          "4 นาที 21 วิ",
+          "46,890",
+          "mrs1–mrs5 (4 ไฟล์)",
+          "ok",
+          ""
+        ]
+      ]
+    },
+    {
+      "no": "2",
+      "name": "ImportImpactStore",
+      "th": "นำเข้าคู่ร้านถูกกระทบจาก ALLMAP",
+      "tag": "IMPORT + RULES",
+      "tagCls": "imp",
+      "phase": "A",
+      "cls": "fgi.main.ImportImpactStore",
+      "script": "FGI_ImportImpactStore.sh",
+      "cron": "0 07 7 * *",
+      "cronTh": "ทุกวันที่ 7 เวลา 07:00",
+      "out": "fgi_impact_stores",
+      "desc": "นำคู่ร้านถูกกระทบ–ร้านเปิดใหม่จากวิว ALLMAP เข้า fgi_impact_stores เติมข้อมูลจากตาราง master แล้วใช้กฎ DENY และ ON_PROCESS ตั้งค่า verify_status เป็น W / N / P",
+      "params": [
+        [
+          "กำหนดการรัน (Cron)",
+          "0 07 7 * *",
+          "text",
+          1,
+          "ทุกวันที่ 7 ของเดือน เวลา 07:00"
+        ],
+        [
+          "Argument (ขอบเขต|งวด)",
+          "ALL|2569|06",
+          "text",
+          1,
+          "รูปแบบ ZONES|YYYY|MM หรือ ALL|YYYY|MM — ไม่ระบุจะใช้งวดตาม modifyDateToString"
+        ],
+        [
+          "Source View",
+          "allmapssa.SEVEN_IMPACT_VIEW (SQL Server GSMALLMAP)",
+          "text",
+          0,
+          "dedup ด้วย ROW_NUMBER"
+        ],
+        [
+          "Branch Type ที่เข้าเกณฑ์",
+          "B, FAM, FB1, FB2, FC1, FVB, FVC, FPT1",
+          "text",
+          0,
+          "FPT1 เข้าเกณฑ์เฉพาะเมื่อ SBP_CANCEL_TYPE_I = 06"
+        ],
+        [
+          "กฎ DENY (ตรวจก่อน ON_PROCESS)",
+          "สาขา N=F / juristic เดียวกัน / สัญญาไม่คลุมงวด / เก่ากว่า 12 เดือน",
+          "text",
+          0,
+          ""
+        ],
+        [
+          "PK Sequence",
+          "SEQ_fgi_impact_stores",
+          "text",
+          0,
+          ""
+        ]
+      ],
+      "flow": [
+        {
+          "k": "start",
+          "t": "เริ่ม"
+        },
+        {
+          "k": "io",
+          "t": "อ่าน SEVEN_IMPACT_VIEW จาก ALLMAP (ROW_NUMBER dedup)",
+          "d": "เชื่อม SQL Server GSMALLMAP ด้วย user allmapssa"
+        },
+        {
+          "k": "d",
+          "t": "มีข้อมูลต้นทาง?",
+          "no": "จบการทำงาน",
+          "noKind": "end",
+          "d": ""
+        },
+        {
+          "k": "d",
+          "t": "เป็นคู่ร้านใหม่ (ยังไม่มีใน Oracle)?",
+          "no": "ข้ามรายการ — ของเดิมไม่ถูกอัปเดต (updateList เป็น dead code)",
+          "d": "Errata E4: รันซ้ำจะไม่อัปเดตคู่เดิม"
+        },
+        {
+          "k": "p",
+          "t": "insert คู่ใหม่ verify_status = W, created_by = ALM",
+          "d": "PK จาก SEQ_fgi_impact_stores"
+        },
+        {
+          "k": "p",
+          "t": "เติมข้อมูล master และ enrichment data",
+          "d": "INNER JOIN — ถ้า master ไม่ครบ แถวจะหลุดหายเงียบ ๆ"
+        },
+        {
+          "k": "d",
+          "t": "ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS)",
+          "no": "verify_status = N (Deny)",
+          "noKind": "err",
+          "d": "DENY: สาขา N=F / juristic เดียวกัน / สัญญา SBP ไม่คลุมงวด / เก่ากว่า 12 เดือน"
+        },
+        {
+          "k": "d",
+          "t": "เข้าเงื่อนไข ON_PROCESS หรือ created_by = STA?",
+          "no": "คงค่า W (รอตรวจสอบ)",
+          "d": "แหล่ง STA เข้าสถานะ P ได้อัตโนมัติ"
+        },
+        {
+          "k": "p",
+          "t": "verify_status = P (On Process) แล้ววนจนครบทุกแถว",
+          "d": ""
+        },
+        {
+          "k": "end",
+          "t": "จบ"
+        }
+      ],
+      "tables": [
+        [
+          "fgi_impact_stores",
+          "W",
+          "insert คู่ใหม่ / ตั้ง verify_status W-N-P / created_by=ALM รวมทั้งข้อมูล external"
+        ]
+      ],
+      "rels": [
+        "fgi_impact_stores (business key impacted_store_code + impact_month + impact_year) → แม่ของ fgi_impact_sales_summaries, fgi_impact_competitors และ hub fgi_impact_processes",
+        "PK id มาจาก SEQ_fgi_impact_stores (หนึ่งใน 7 sequence ของระบบ — Errata E18)",
+        "growth_rate_diff และ sales_status บนตารางนี้ คือเงื่อนไข Gen Flow Gate ของ Job 8b"
+      ],
+      "meta": {
+        "trans": "หนึ่ง transaction + savepoint",
+        "rerun": "คู่เดิมถูกข้าม — รันซ้ำไม่อัปเดตของเดิม ต้องลบ/แก้คู่ที่ต้องการอย่างจงใจก่อน",
+        "mail": "go-sbp (hardcoded, template 34)",
+        "risk": "E4: updateList เป็น dead code / INNER JOIN ทำแถวที่ master ไม่ครบหายเงียบ (P1)"
+      },
+      "run": [
+        "07/06/2569 07:00",
+        "ok",
+        "07/07/2569 07:00"
+      ],
+      "hist": [
+        [
+          "07/06/2569 07:00",
+          "58 วิ",
+          "312",
+          "—",
+          "ok",
+          "คู่ใหม่ 312 / ข้ามของเดิม 1,840"
+        ],
+        [
+          "07/05/2569 07:00",
+          "1 นาที 04 วิ",
+          "287",
+          "—",
+          "ok",
+          ""
+        ],
+        [
+          "07/04/2569 07:00",
+          "1 นาที 12 วิ",
+          "301",
+          "—",
+          "ok",
+          ""
+        ]
+      ]
+    },
+    {
+      "no": "3",
+      "name": "ImportImpactCompetitor",
+      "th": "นำเข้าร้านคู่แข่งจาก ALLMAP",
+      "tag": "IMPORT",
+      "tagCls": "imp",
+      "phase": "A",
+      "cls": "fgi.main.ImportImpactCompetitor",
+      "script": "(ยืนยันสคริปต์กับ Ops)",
+      "cron": "0 07 7 * *",
+      "cronTh": "ทุกวันที่ 7 เวลา 07:00",
+      "out": "fgi_impact_competitors",
+      "desc": "นำข้อมูลร้านคู่แข่งรายงวดจากวิว COMPETITOR_IMPACT_VIEW เข้า fgi_impact_competitors ทีละ 10,000 แถว กันซ้ำระดับงวด (ถ้างวดมีข้อมูลแล้วจะข้ามทั้งงวด ไม่มี upsert)",
+      "params": [
+        [
+          "กำหนดการรัน (Cron)",
+          "0 07 7 * *",
+          "text",
+          1,
+          "สคริปต์ scheduler จริงต้องยืนยันกับ Operations"
+        ],
+        [
+          "Argument (งวด)",
+          "2569|06",
+          "text",
+          1,
+          "รูปแบบ YYYY|MM"
+        ],
+        [
+          "Chunk Size",
+          "10000",
+          "number",
+          1,
+          "จำนวนแถวต่อรอบ insert"
+        ],
+        [
+          "Source View",
+          "COMPETITOR_IMPACT_VIEW",
+          "text",
+          0,
+          "SELECT DISTINCT / map คอลัมน์ NAMT → NAME_TH, BRANCHT → BRANCH_TH"
+        ]
+      ],
+      "flow": [
+        {
+          "k": "start",
+          "t": "เริ่ม"
+        },
+        {
+          "k": "d",
+          "t": "เป็นงวดใหม่ (ยังไม่เคยนำเข้า)?",
+          "no": "ข้ามทั้งงวด — ไม่มี upsert ต้องลบงวดก่อนจึงนำเข้าใหม่ได้",
+          "d": "กันซ้ำระดับงวด (Errata E15)"
+        },
+        {
+          "k": "io",
+          "t": "SELECT DISTINCT จาก COMPETITOR_IMPACT_VIEW",
+          "d": ""
+        },
+        {
+          "k": "d",
+          "t": "พบข้อมูลต้นทาง?",
+          "no": "จบการทำงาน",
+          "noKind": "end",
+          "d": ""
+        },
+        {
+          "k": "p",
+          "t": "insert ทีละ 10,000 แถว พร้อม data_source = ALM",
+          "d": "map คอลัมน์ NAMT → NAME_TH และ BRANCHT → BRANCH_TH"
+        },
+        {
+          "k": "d",
+          "t": "จำนวนที่ insert = จำนวนต้นทาง?",
+          "no": "Rollback + ส่งเมลแจ้งล้มเหลว",
+          "noKind": "err",
+          "d": "ตรวจ reconcile จำนวนแถวก่อน commit"
+        },
+        {
+          "k": "end",
+          "t": "Commit / จบ"
+        }
+      ],
+      "tables": [
+        [
+          "fgi_impact_competitors",
+          "W",
+          "insert รายงวด data_source=ALM (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP"
+        ]
+      ],
+      "rels": [
+        "fgi_impact_competitors (impacted_store_code + impact_month + impact_year ต้นทาง) → ผูกร้านถูกกระทบผ่าน impacted_store_code",
+        "PK จาก SEQ_fgi_impact_competitors / Job 7 อ่านตารางนี้เพื่อ export ไฟล์ BPM06003O"
+      ],
+      "meta": {
+        "trans": "หนึ่ง transaction + savepoint (insert เป็น chunk ละ 10,000)",
+        "rerun": "ต้องลบข้อมูลงวดเองก่อน re-import แล้วตรวจจำนวนแถวเทียบต้นทาง",
+        "mail": "config mailTo / storeretention",
+        "risk": "กันซ้ำระดับงวดเท่านั้น — ไม่ใช่ upsert (E15)"
+      },
+      "run": [
+        "07/06/2569 07:05",
+        "ok",
+        "07/07/2569 07:05"
+      ],
+      "hist": [
+        [
+          "07/06/2569 07:05",
+          "42 วิ",
+          "2,410",
+          "—",
+          "ok",
+          ""
+        ],
+        [
+          "07/05/2569 07:05",
+          "40 วิ",
+          "2,377",
+          "—",
+          "ok",
+          ""
+        ],
+        [
+          "07/04/2569 07:05",
+          "44 วิ",
+          "2,395",
+          "—",
+          "ok",
+          ""
+        ]
+      ]
+    },
+    {
+      "no": "4",
+      "name": "PrepareImpactStoreToIAS",
+      "th": "เตรียมและส่งคำขอยอดขายไป IAS",
+      "tag": "PREPARE + EXPORT",
+      "tagCls": "mix",
+      "phase": "B",
+      "cls": "fgi.main.PrepareImpactStoreToIAS",
+      "script": "FGI_ExportImpactStoreToAMS.sh",
+      "cron": "0 16 7-16 * *",
+      "cronTh": "วันที่ 7–16 เวลา 16:00",
+      "out": "AMS06001O (UTF-8)",
+      "desc": "สร้างข้อมูลตั้งต้น fgi_impact_sales_summaries จากคู่ร้านสถานะ P (ALM) พลิกธง W → P แบบ auto-commit แล้วเขียนไฟล์คำขอ AMS06001O ส่งให้ IAS/MIS คำนวณยอดขาย — เป็น Job เดียวที่ไม่มี transaction (ความเสี่ยง P0)",
+      "params": [
+        [
+          "กำหนดการรัน (Cron)",
+          "0 16 7-16 * *",
+          "text",
+          1,
+          "ทุกวันที่ 7–16 ของเดือน เวลา 16:00"
+        ],
+        [
+          "เงื่อนไขอายุร้านถูกกระทบ",
+          "OPENDATE_I ≤ OPENDATE_N − 12 เดือน 15 วัน",
+          "text",
+          0,
+          "เกณฑ์ธุรกิจ — เปลี่ยนต้องอนุมัติ"
+        ],
+        [
+          "เงื่อนไขวันปัจจุบัน",
+          "SYSDATE > OPENDATE_N + 16 วัน",
+          "text",
+          0,
+          ""
+        ],
+        [
+          "Output File",
+          "AMS06001O_yyyyMMddHHmm.txt (UTF-8, 1 logical record)",
+          "text",
+          0,
+          "COPY ไป backup — ไฟล์จริงคงไว้ให้ Job 5"
+        ],
+        [
+          "ปลายทาง",
+          "IAS / MIS",
+          "text",
+          1,
+          ""
+        ]
+      ],
+      "flow": [
+        {
+          "k": "start",
+          "t": "เริ่ม"
+        },
+        {
+          "k": "p",
+          "t": "seed fgi_impact_sales_summaries จากคู่ร้านสถานะ P / ALM",
+          "d": "ตัดรายการที่มี process (fgi_impact_processes) active ออก"
+        },
+        {
+          "k": "d",
+          "t": "เข้าเงื่อนไขวันที่? (12 เดือน 15 วัน และ +16 วัน)",
+          "no": "จบการทำงาน",
+          "noKind": "end",
+          "d": "OPENDATE_I ≤ OPENDATE_N−12ด.15ว. และ SYSDATE > OPENDATE_N+16ว."
+        },
+        {
+          "k": "err",
+          "t": "อัปเดต SALES W → P แบบ AUTO-COMMIT ก่อนเขียนไฟล์",
+          "d": "ไม่มี transaction — rollback ไม่ได้ (ความเสี่ยง P0 หลักของระบบ)"
+        },
+        {
+          "k": "io",
+          "t": "เขียนไฟล์ AMS06001O (UTF-8) แล้ว COPY ไป backup",
+          "d": "ไฟล์จริงคงไว้ที่เดิมเพื่อให้ Job 5 อ่านตอบกลับ"
+        },
+        {
+          "k": "d",
+          "t": "เขียนไฟล์สำเร็จ?",
+          "no": "DB เป็น P แล้วแต่ไฟล์พัง — ต้อง reconcile ธง/ไฟล์/tracking ด้วยมือ",
+          "noKind": "err",
+          "d": ""
+        },
+        {
+          "k": "p",
+          "t": "insert tracking data_name = IMPACT_STORE_SALES",
+          "d": "transaction_pk = parseInt(impacted_store_code) — เลขศูนย์นำหน้าหาย / return code และ receive date เป็น NULL"
+        },
+        {
+          "k": "end",
+          "t": "จบ"
+        }
+      ],
+      "tables": [
+        [
+          "fgi_impact_sales_summaries",
+          "W",
+          "seed หัวตารางยอดขาย + พลิกธง W → P (auto-commit)"
+        ],
+        [
+          "fgi_impact_stores",
+          "R",
+          "แหล่ง seed (สถานะ P / created_by=ALM)"
+        ],
+        [
+          "fgi_impact_processes",
+          "R",
+          "กรองรายการที่มี process ค้างอยู่ออก"
+        ],
+        [
+          "interface_transactions",
+          "W",
+          "tracking: data_name=IMPACT_STORE_SALES · typed FK = sales_summary_id / impact_process_id"
+        ]
+      ],
+      "rels": [
+        "fgi_impact_sales_summaries (impacted_store_code + impact_month + impact_year) → หัวตารางของ sales_transactions รายวันที่ Job 5 จะเติม",
+        "interface_transactions ใช้ typed FK แทน transaction_key แบบ polymorphic — เก็บรหัสร้าน/หัวตารางได้โดยไม่เสียเลขศูนย์นำหน้า"
+      ],
+      "meta": {
+        "trans": "ไม่มี transaction — auto-commit (เสี่ยง DB/ไฟล์ไม่ตรงกันสูงสุดในระบบ, P0)",
+        "rerun": "ก่อนรันซ้ำต้อง reconcile ธง SALES + ไฟล์จริง + backup + tracking ด้วยมือทุกครั้ง",
+        "mail": "go-sbp (ผ่าน shared helper)",
+        "risk": "P0: commit W→P เกิดก่อนเขียนไฟล์ — แนะนำ transactional outbox ในระบบใหม่"
+      },
+      "run": [
+        "16/06/2569 16:00",
+        "ok",
+        "07/07/2569 16:00"
+      ],
+      "hist": [
+        [
+          "16/06/2569 16:00",
+          "35 วิ",
+          "118",
+          "AMS06001O_202606161600.txt",
+          "ok",
+          ""
+        ],
+        [
+          "15/06/2569 16:00",
+          "33 วิ",
+          "96",
+          "AMS06001O_202606151600.txt",
+          "ok",
+          ""
+        ],
+        [
+          "14/06/2569 16:00",
+          "31 วิ",
+          "0",
+          "—",
+          "ok",
+          "ไม่มีรายการเข้าเงื่อนไขวันที่"
+        ],
+        [
+          "13/06/2569 16:00",
+          "38 วิ",
+          "104",
+          "AMS06001O_202606131600.txt",
+          "fail",
+          "เขียนไฟล์ล้มเหลว — DB เป็น P แล้ว ต้อง reconcile ด้วยมือ (บันทึกใน incident log)"
+        ]
+      ]
+    },
+    {
+      "no": "5",
+      "name": "ImportImpactSaleFromIAS",
+      "th": "รับยอดขายจาก IAS + คำนวณ Growth",
+      "tag": "IMPORT + CALC",
+      "tagCls": "imp",
+      "phase": "B",
+      "cls": "fgi.main.ImportImpactSaleFromIAS",
+      "script": "FGI_ImportImpactStoreSale.sh",
+      "cron": "30 16 7-16 * *",
+      "cronTh": "วันที่ 7–16 เวลา 16:30",
+      "out": "AMS06001I (รับเข้า)",
+      "desc": "อ่านไฟล์ตอบกลับยอดขาย AMS06001I จาก IAS บันทึกยอดขายรายวันลง sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วตัดสิน verify_status = Y / N จาก growth_rate_diff",
+      "params": [
+        [
+          "กำหนดการรัน (Cron)",
+          "30 16 7-16 * *",
+          "text",
+          1,
+          "30 นาทีหลัง Job 4"
+        ],
+        [
+          "Input File",
+          "AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์)",
+          "text",
+          0,
+          "impacted_store_code | OPENDATE_N | SALES_DATE | SALES_AMOUNT"
+        ],
+        [
+          "หน้าต่างคำนวณ",
+          "4 ช่วง × 15 วัน รอบ OPENDATE_N (ไม่รวมวันเปิด)",
+          "text",
+          0,
+          ""
+        ],
+        [
+          "เกณฑ์ Outlier",
+          "|sales_diff| ≥ 50",
+          "number",
+          0,
+          "literal ในโค้ด — เปลี่ยนต้องอนุมัติธุรกิจ (8.2)"
+        ],
+        [
+          "วันทำการคาดหวัง",
+          "60",
+          "number",
+          0,
+          "ถ้าไม่เท่า 60 → pre-accept เป็น Y ทันที"
+        ],
+        [
+          "กฎ Pre-accept",
+          "อายุร้าน < 12 เดือน 15 วัน หรือวันทำการ ≠ 60 → Y",
+          "text",
+          0,
+          ""
+        ]
+      ],
+      "flow": [
+        {
+          "k": "start",
+          "t": "เริ่ม"
+        },
+        {
+          "k": "io",
+          "t": "อ่านไฟล์ WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด",
+          "d": ""
+        },
+        {
+          "k": "d",
+          "t": "เป็นงวดที่ยังไม่นำเข้า?",
+          "no": "จบ (idempotency guard กันนำเข้าซ้ำ)",
+          "noKind": "end",
+          "d": ""
+        },
+        {
+          "k": "p",
+          "t": "เปิด transaction ต่อไฟล์ แล้ว insert sales_transactions แถวดิบ",
+          "d": "ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน"
+        },
+        {
+          "k": "p",
+          "t": "total_working_days = จำนวนแถวดิบทั้งหมด",
+          "d": "นับรวมแถวนอกหน้าต่างคำนวณด้วย (raw count)"
+        },
+        {
+          "k": "d",
+          "t": "ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept)",
+          "no": "Pre-accept: verify_status = Y ทันที",
+          "d": "pre-accept เมื่ออายุร้าน < 12ด.15ว. หรือวันทำการ ≠ 60"
+        },
+        {
+          "k": "p",
+          "t": "คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (|sales_diff| ≥ 50)",
+          "d": "4 หน้าต่าง × 15 วัน ไม่รวมวันเปิดร้านใหม่ / ธงรวมอดีต-ปัจจุบันต้องตรงกัน"
+        },
+        {
+          "k": "d",
+          "t": "NVL(growth_rate_diff, −1) < 0 ?",
+          "no": "verify_status = N (ไม่เข้าเกณฑ์ชดเชย)",
+          "d": "NULL ถูกแทนด้วย −1 = accept อัตโนมัติ (ความเสี่ยง P1)"
+        },
+        {
+          "k": "p",
+          "t": "verify_status = Y แล้ว insert tracking IMPORT_SALES_FROM_IAS",
+          "d": ""
+        },
+        {
+          "k": "io",
+          "t": "ย้ายไฟล์เข้า backup",
+          "d": ""
+        },
+        {
+          "k": "end",
+          "t": "จบ"
+        }
+      ],
+      "tables": [
+        [
+          "sales_transactions",
+          "W",
+          "ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา)"
+        ],
+        [
+          "fgi_impact_sales_summaries",
+          "R/W",
+          "อัปเดต total_working_days, growth_rate_diff, verify_status Y/N"
+        ],
+        [
+          "interface_transactions",
+          "W",
+          "tracking: data_name=IMPORT_SALES_FROM_IAS · typed FK = sales_summary_id"
+        ]
+      ],
+      "rels": [
+        "sales_transactions → ลูกของ fgi_impact_sales_summaries (หัวตารางต่อร้าน+งวด) ผูกด้วย impacted_store_code",
+        "ผล growth_rate_diff ที่คำนวณได้ ถูกใช้เป็นเงื่อนไข Gen Flow Gate (≤ −10) ของ Job 8b"
+      ],
+      "meta": {
+        "trans": "ต่อไฟล์ + savepoint (ระวัง inner catch ทำให้ rollback ไม่ทำงาน)",
+        "rerun": "มี period guard — ถ้าจะซ้ำต้องลบ/แก้ sales_transactions อย่างระวังและคำนวณหัวตารางใหม่",
+        "mail": "go-sbp (ผ่าน shared helper)",
+        "risk": "P1: growth_rate_diff = NULL ถูก accept อัตโนมัติ / ต้องทดสอบ ก.พ. ปีอธิกสุรทิน และร้านไม่มียอดขาย"
+      },
+      "run": [
+        "16/06/2569 16:30",
+        "ok",
+        "07/07/2569 16:30"
+      ],
+      "hist": [
+        [
+          "16/06/2569 16:30",
+          "2 นาที 45 วิ",
+          "7,080",
+          "AMS06001I_202606161628.txt",
+          "ok",
+          "Y 74 / N 22 / pre-accept 22"
+        ],
+        [
+          "15/06/2569 16:30",
+          "2 นาที 12 วิ",
+          "5,760",
+          "AMS06001I_202606151629.txt",
+          "ok",
+          ""
+        ],
+        [
+          "14/06/2569 16:30",
+          "12 วิ",
+          "0",
+          "—",
+          "ok",
+          "ไม่มีไฟล์ตอบกลับ (Job 4 ไม่มีรายการ)"
+        ]
+      ]
+    },
+    {
+      "no": "6",
+      "name": "ExportImpactStoreToFS",
+      "th": "ซิงก์สถานะ + ส่งค่าชดเชยไป STA",
+      "tag": "STATE SYNC + EXPORT",
+      "tagCls": "mix",
+      "phase": "D",
+      "cls": "fgi.main.ExportImpactStoreToFS",
+      "script": "FGI_ExportImpactStoreToSTA.sh",
+      "cron": "0 17 * * *",
+      "cronTh": "ทุกวัน 17:00",
+      "out": "FRBC0001 (windows-874)",
+      "desc": "รัน 10 mutation ตามลำดับบนตารางสถานะ ตรวจความครบของคะแนน QSSI 6 หมวด สร้างชุดสถานะที่ส่งออกได้ แล้วเขียนไฟล์ FRBC0001 (14 ฟิลด์ ปี พ.ศ.) ส่งให้ระบบ Statement (STA) ภายใน transaction เดียว",
+      "params": [
+        [
+          "กำหนดการรัน (Cron)",
+          "0 17 * * *",
+          "text",
+          1,
+          "ทุกวัน 17:00"
+        ],
+        [
+          "dateStartInitToSTA",
+          "7",
+          "number",
+          1,
+          "วันของเดือนที่เริ่มปล่อยสถานะ I, C"
+        ],
+        [
+          "numWaitPay",
+          "3",
+          "number",
+          1,
+          "จำนวนงวดรอจ่าย"
+        ],
+        [
+          "หมวด QSSI ที่ตรวจ",
+          "8, 9, 12, 1, 10, 16",
+          "text",
+          0,
+          "ต้องครบทั้ง 6 หมวดจากงวด max เดียว ในกรอบ 3 เดือน"
+        ],
+        [
+          "Output File",
+          "FRBC0001_yyyyMMddHHmmss.txt (windows-874, 14 ฟิลด์, พ.ศ.)",
+          "text",
+          0,
+          "ฟิลด์ 3/5/6 เป็นวันที่แบบไทย/พุทธศักราช"
+        ],
+        [
+          "ปลายทาง SFTP",
+          "sestabr01.cpall.co.th (STA)",
+          "text",
+          1,
+          ""
+        ]
+      ],
+      "flow": [
+        {
+          "k": "start",
+          "t": "เริ่ม"
+        },
+        {
+          "k": "p",
+          "t": "รัน 10 mutation ตามลำดับ บน fgi_impact_processes และ fgi_impact_stores",
+          "d": "state sync ก่อน export — ตรวจครบทั้ง 10 ขั้นตอน post-run"
+        },
+        {
+          "k": "d",
+          "t": "QSSI ครบ 6 หมวด? (งวด max เดียว ในกรอบ 3 เดือน)",
+          "no": "ข้ามเส้นทาง INIT — สาย APPROVE ยังไปต่อ",
+          "d": "หมวด 8, 9, 12, 1, 10, 16 จาก fcs_qssi_scores (Job 1)"
+        },
+        {
+          "k": "p",
+          "t": "สร้างชุดสถานะส่งออก: A, N, S (+ I, C เมื่อวันที่ ≥ 7 และ QSSI ครบ + Z ค้าง)",
+          "d": "Z จะถูกแปลงเป็น S เฉพาะในไฟล์ — ใน DB ยังเป็น Z"
+        },
+        {
+          "k": "d",
+          "t": "มีแถวส่งออก?",
+          "no": "จบการทำงาน",
+          "noKind": "end",
+          "d": ""
+        },
+        {
+          "k": "io",
+          "t": "เขียนไฟล์ FRBC0001 14 ฟิลด์ (windows-874 + พ.ศ.)",
+          "d": "วันที่ผิดตัวเดียวทำให้ mapData คืน null และยกเลิกทั้งไฟล์"
+        },
+        {
+          "k": "p",
+          "t": "insert tracking: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N",
+          "d": ""
+        },
+        {
+          "k": "io",
+          "t": "SFTP ไฟล์ไป STA",
+          "d": ""
+        },
+        {
+          "k": "d",
+          "t": "SFTP สำเร็จ?",
+          "no": "Rollback ทั้ง transaction + ลบไฟล์",
+          "noKind": "err",
+          "d": "transaction เดียวคลุม sync + ไฟล์ + tracking + SFTP"
+        },
+        {
+          "k": "io",
+          "t": "ย้ายไฟล์เข้า backup",
+          "d": ""
+        },
+        {
+          "k": "end",
+          "t": "จบ"
+        }
+      ],
+      "tables": [
+        [
+          "fgi_impact_processes",
+          "R/W",
+          "หนึ่งใน 10 mutation (สถานะ process / last_compensation_amount)"
+        ],
+        [
+          "fgi_impact_stores",
+          "R/W",
+          "สถานะค่าชดเชย I/C/A/N/S/Z และข้อมูลร้าน/ผู้อนุมัติ/ค่าชดเชยร้านใหม่"
+        ],
+        [
+          "fcs_qssi_scores",
+          "R",
+          "ตรวจความครบคะแนน 6 หมวด (จาก Job 1)"
+        ],
+        [
+          "interface_transactions",
+          "W",
+          "tracking COMPENSATE_INIT / APPROVE (I,N) · typed FK = impact_process_id"
+        ]
+      ],
+      "rels": [
+        "hub fgi_impact_processes (id) → แม่ของ fgi_impact_stores ทั้งหมดที่ถูก mutate",
+        "fcs_qssi_scores → เงื่อนไขปล่อยสถานะ INIT (ครบ 6 หมวดจากงวดเดียว)",
+        "สถานะ COMPENSATE I/C/A/N/S/Z บน fgi_impact_stores → กำหนด data_name ของ tracking ที่ Job 10 เฝ้าดู"
+      ],
+      "meta": {
+        "trans": "หนึ่ง transaction คลุม sync + ไฟล์ + tracking + SFTP",
+        "rerun": "transaction ป้องกันตามปกติ แต่ต้อง reconcile 10 mutation และระวังการ overwrite ไฟล์ปลายทางก่อนยืนยันผล",
+        "mail": "storeretention + mailToBPM เมื่อสร้างไฟล์",
+        "risk": "บั๊กจริง E20: SQL purge ต่อ data_name สองค่าเป็น string เดียว — tracking ไม่เคยถูกลบ สะสมโตขึ้นเรื่อย ๆ"
+      },
+      "run": [
+        "01/07/2569 17:00",
+        "ok",
+        "02/07/2569 17:00"
+      ],
+      "hist": [
+        [
+          "01/07/2569 17:00",
+          "3 นาที 02 วิ",
+          "1,254",
+          "FRBC0001_20260701170003.txt",
+          "ok",
+          "INIT 118 / APPROVE 1,136"
+        ],
+        [
+          "30/06/2569 17:00",
+          "2 นาที 51 วิ",
+          "1,190",
+          "FRBC0001_20260630170002.txt",
+          "ok",
+          ""
+        ],
+        [
+          "29/06/2569 17:00",
+          "2 นาที 47 วิ",
+          "0",
+          "—",
+          "fail",
+          "SFTP ไป STA ไม่ได้ — rollback + ลบไฟล์แล้ว รันรอบถัดไปสำเร็จ"
+        ],
+        [
+          "28/06/2569 17:00",
+          "2 นาที 58 วิ",
+          "1,201",
+          "FRBC0001_20260628170001.txt",
+          "ok",
+          ""
+        ]
+      ]
+    },
+    {
+      "no": "7",
+      "name": "ExportCompetitor",
+      "th": "ส่งข้อมูลคู่แข่งไป BPM",
+      "tag": "EXPORT BPM",
+      "tagCls": "exp",
+      "phase": "C",
+      "cls": "fgi.main.ExportCompetitor",
+      "script": "FGI_ExportCompetitorToBPM.sh",
+      "cron": "30 17 7-31 * *",
+      "cronTh": "วันที่ 7–31 เวลา 17:30",
+      "out": "BPM06003O (UTF-8)",
+      "desc": "เลือกงวดคู่แข่งล่าสุดต่อร้านที่อยู่ใน process ALM ที่ active และมี forecast เริ่มต้น เขียนไฟล์ BPM06003O 14 ฟิลด์ แล้ว SFTP ไปเส้นทาง competition ของ BPM",
+      "params": [
+        [
+          "กำหนดการรัน (Cron)",
+          "30 17 7-31 * *",
+          "text",
+          1,
+          "ทุกวันที่ 7–31 เวลา 17:30"
+        ],
+        [
+          "ปลายทาง SFTP",
+          "BPM (path competition)",
+          "text",
+          1,
+          ""
+        ],
+        [
+          "Output File",
+          "BPM06003O_yyyyMMddHHmm.txt (UTF-8, 14 ฟิลด์)",
+          "text",
+          0,
+          "create_by = \"system\" (literal)"
+        ],
+        [
+          "เงื่อนไขเลือกข้อมูล",
+          "งวดคู่แข่งล่าสุดต่อร้าน (dense rank) + forecast เริ่มต้น + ยังไม่ส่ง",
+          "text",
+          0,
+          "เดือน/ปีในไฟล์มาจาก fgi_impact_processes last_compensation_amount ไม่ใช่งวดคู่แข่ง"
+        ]
+      ],
+      "flow": [
+        {
+          "k": "start",
+          "t": "เริ่ม"
+        },
+        {
+          "k": "p",
+          "t": "query คู่แข่งงวดล่าสุดต่อร้าน + forecast เริ่มต้น + ยังไม่ส่ง",
+          "d": "dense rank ตามงวดต้นทางของคู่แข่ง"
+        },
+        {
+          "k": "d",
+          "t": "ข้อมูลผู้จัดการ SBP ครบ? (checkProcesssError)",
+          "no": "ตัดแถวทิ้งเงียบ ๆ — ไม่มีการแจ้งเตือน",
+          "noKind": "err",
+          "d": ""
+        },
+        {
+          "k": "d",
+          "t": "มีแถวเหลือส่งออก?",
+          "no": "จบการทำงาน",
+          "noKind": "end",
+          "d": ""
+        },
+        {
+          "k": "io",
+          "t": "เขียนไฟล์ BPM06003O 14 ฟิลด์ (UTF-8)",
+          "d": "เดือน/ปี export มาจาก fgi_impact_processes last_compensation_amount period"
+        },
+        {
+          "k": "p",
+          "t": "insert tracking data_name = IMPACT_COMPETITOR, receive_date = now",
+          "d": ""
+        },
+        {
+          "k": "io",
+          "t": "SFTP ไป BPM (เส้นทาง competition)",
+          "d": ""
+        },
+        {
+          "k": "d",
+          "t": "SFTP สำเร็จ?",
+          "no": "Rollback + ลบไฟล์",
+          "noKind": "err",
+          "d": ""
+        },
+        {
+          "k": "end",
+          "t": "จบ"
+        }
+      ],
+      "tables": [
+        [
+          "fgi_impact_competitors",
+          "R",
+          "งวดคู่แข่งล่าสุดต่อร้าน (จาก Job 3)"
+        ],
+        [
+          "fgi_impact_processes",
+          "R",
+          "กรอง process ALM ที่ active / งวด export จาก last_compensation_amount"
+        ],
+        [
+          "interface_transactions",
+          "W",
+          "tracking: data_name=IMPACT_COMPETITOR · typed FK = impact_process_id"
+        ]
+      ],
+      "rels": [
+        "fgi_impact_competitors ↔ fgi_impact_stores ผ่าน impacted_store_code (งวดล่าสุดต่อร้าน)",
+        "เดือน/ปีในไฟล์ export มาจาก hub fgi_impact_processes (last_compensation_amount) — ไม่ใช่งวดของข้อมูลคู่แข่งเอง"
+      ],
+      "meta": {
+        "trans": "หนึ่ง transaction + savepoint",
+        "rerun": "tracking กันส่งซ้ำ — ตรวจ backup + tracking + ไฟล์ปลายทางก่อนรันซ้ำ",
+        "mail": "storeretention + mailToBPM เมื่อสร้างไฟล์",
+        "risk": "แถวที่ข้อมูลผู้จัดการ SBP ไม่ครบถูกตัดทิ้งเงียบ ๆ — ควรมี metric นับ"
+      },
+      "run": [
+        "30/06/2569 17:30",
+        "ok",
+        "07/07/2569 17:30"
+      ],
+      "hist": [
+        [
+          "30/06/2569 17:30",
+          "51 วิ",
+          "486",
+          "BPM06003O_202606301730.txt",
+          "ok",
+          ""
+        ],
+        [
+          "29/06/2569 17:30",
+          "48 วิ",
+          "452",
+          "BPM06003O_202606291730.txt",
+          "ok",
+          ""
+        ],
+        [
+          "28/06/2569 17:30",
+          "12 วิ",
+          "0",
+          "—",
+          "ok",
+          "ไม่มีรายการใหม่"
+        ]
+      ]
+    },
+    {
+      "no": "8",
+      "name": "ExportImpactStoreFlowToBPM",
+      "th": "ส่งข้อมูลชดเชยไป BPM (ไฟล์อย่างเดียว)",
+      "tag": "EXPORT BPM",
+      "tagCls": "exp",
+      "phase": "C",
+      "cls": "fgi.main.ExportImpactStoreFlowToBPM",
+      "script": "FGI_ExportImpactStoreToBPM.sh",
+      "cron": "30 17 7-31 * *",
+      "cronTh": "วันที่ 7–31 เวลา 17:30",
+      "out": "BPM06001O (UTF-8, 48 ฟิลด์)",
+      "desc": "ส่งออกข้อมูล impact profile ค่าชดเชย และผู้อนุมัติ SBP เป็นไฟล์ BPM06001O (48 ฟิลด์) ไปยัง BPM — ทำหน้าที่ SFTP อย่างเดียว ห้ามมี logic เรียก K2 เด็ดขาด (การเปิด workflow เป็นของ Job 8b เท่านั้น)",
+      "params": [
+        [
+          "กำหนดการรัน (Cron)",
+          "30 17 7-31 * *",
+          "text",
+          1,
+          "ทุกวันที่ 7–31 เวลา 17:30"
+        ],
+        [
+          "ปลายทาง SFTP",
+          "BPM/FGI/Inbound/compensateflow/",
+          "text",
+          1,
+          ""
+        ],
+        [
+          "Output File",
+          "BPM06001O_yyyyMMddHHmm.txt (UTF-8, 48 ฟิลด์)",
+          "text",
+          0,
+          "growth_rate_diff = NULL เมื่อ data_source = STA"
+        ],
+        [
+          "เงื่อนไขเลือกข้อมูล",
+          "สถานะ I + forecast + ยังไม่ส่ง",
+          "text",
+          0,
+          "ไม่มี Gen Flow Gate ในเงื่อนไข — gate อยู่ที่ Job 8b"
+        ],
+        [
+          "ข้อห้ามเชิงสถาปัตยกรรม",
+          "ห้ามมี K2 StartInstance ใน Job นี้",
+          "text",
+          0,
+          "Separation of Concerns — ความเสี่ยง P0 ถ้ารวมกัน"
+        ]
+      ],
+      "flow": [
+        {
+          "k": "start",
+          "t": "เริ่ม"
+        },
+        {
+          "k": "p",
+          "t": "updateSeqToBpm ใน transaction แยก (commit อิสระ)",
+          "d": "กำหนดเลข seq สำหรับ BPM — ไม่ถูก rollback แม้หลักล้มเหลว"
+        },
+        {
+          "k": "p",
+          "t": "เติมข้อมูลผู้อนุมัติ SBP",
+          "d": ""
+        },
+        {
+          "k": "p",
+          "t": "query impact profile สถานะ I + forecast + ยังไม่ส่ง",
+          "d": "ชื่อบุคคลประกอบเป็น ชื่อ + เว้นวรรค + นามสกุล"
+        },
+        {
+          "k": "d",
+          "t": "ข้อมูลผู้อนุมัติครบ? (checkProcesssError)",
+          "no": "ตัดแถวทิ้งเงียบ ๆ",
+          "noKind": "err",
+          "d": ""
+        },
+        {
+          "k": "d",
+          "t": "มีแถวเหลือส่งออก?",
+          "no": "จบการทำงาน",
+          "noKind": "end",
+          "d": ""
+        },
+        {
+          "k": "io",
+          "t": "เขียนไฟล์ BPM06001O 48 ฟิลด์ (UTF-8)",
+          "d": "growth_rate_diff = NULL เมื่อแหล่งข้อมูลเป็น STA"
+        },
+        {
+          "k": "p",
+          "t": "insert tracking data_name = IMPACT_STORE, return_code = W",
+          "d": "transaction_pk = id / Job 8b จะอ่านสถานะ W ต่อ"
+        },
+        {
+          "k": "io",
+          "t": "SFTP ไป compensateflow",
+          "d": ""
+        },
+        {
+          "k": "d",
+          "t": "SFTP สำเร็จ?",
+          "no": "Rollback tracking + ลบไฟล์ (transaction แยกของ seq ไม่ถูก rollback)",
+          "noKind": "err",
+          "d": ""
+        },
+        {
+          "k": "end",
+          "t": "จบ — ไม่เรียก K2 (เป็นหน้าที่ Job 8b)"
+        }
+      ],
+      "tables": [
+        [
+          "fgi_impact_stores",
+          "R",
+          "impact profile สถานะ I + forecast (key = id) พร้อมข้อมูลผู้อนุมัติ SBP"
+        ],
+        [
+          "interface_transactions",
+          "W",
+          "tracking: data_name=IMPACT_STORE, return_code=W · typed FK = impact_process_id"
+        ]
+      ],
+      "rels": [
+        "fgi_impact_stores (id) → ลูกของ hub fgi_impact_processes / เป็น transaction_pk ของ tracking",
+        "tracking return_code = W คือสถานะตั้งต้นที่ Job 8b ใช้คัดรายการไปเปิด K2 workflow ต่อ"
+      ],
+      "meta": {
+        "trans": "สอง transaction — กำหนดเลข seq แยกจาก transaction หลัก",
+        "rerun": "tracking กันซ้ำ — ตรวจ backup + tracking + ไฟล์ปลายทางก่อนรันซ้ำ",
+        "mail": "storeretention + mailToBPM เมื่อสร้างไฟล์",
+        "risk": "P0: ห้ามรวม Job 8 กับ 8b — การกู้คืนไฟล์ export กับการเปิด workflow ต้องแยกจากกันเสมอ"
+      },
+      "run": [
+        "30/06/2569 17:30",
+        "ok",
+        "07/07/2569 17:30"
+      ],
+      "hist": [
+        [
+          "30/06/2569 17:30",
+          "1 นาที 18 วิ",
+          "118",
+          "BPM06001O_202606301731.txt",
+          "ok",
+          ""
+        ],
+        [
+          "29/06/2569 17:30",
+          "1 นาที 22 วิ",
+          "96",
+          "BPM06001O_202606291731.txt",
+          "ok",
+          "ตัดแถวผู้อนุมัติไม่ครบ 3 แถว (เงียบ)"
+        ],
+        [
+          "28/06/2569 17:30",
+          "14 วิ",
+          "0",
+          "—",
+          "ok",
+          "ไม่มีรายการสถานะ I ใหม่"
+        ]
+      ]
+    },
+    {
+      "no": "8b",
+      "name": "StartK2WorkFlow",
+      "th": "เปิด K2 Workflow (FIA)",
+      "tag": "K2 REST",
+      "tagCls": "k2",
+      "phase": "D",
+      "cls": "fgi.main.StartK2WorkFlow",
+      "script": "(scheduler แยก — ยืนยันกับ Ops)",
+      "cron": "แยกอิสระ",
+      "cronTh": "ยืนยันรอบกับ Operations",
+      "out": "K2 StartInstance (REST)",
+      "desc": "Job เดียวในระบบที่เรียก K2 workflow engine — คัดรายการที่ผ่าน Gen Flow Gate จากสถานะ workflow_generation_status = W แล้วยิง REST StartInstance เปิด workflow FIA และ reconcile สถานะ W / Y / N พร้อมส่งอีเมลสรุปราย DV",
+      "params": [
+        [
+          "Scheduler",
+          "แยกจาก Job 8 — ยืนยันเจ้าของรอบกับ Operations",
+          "text",
+          1,
+          "ตั้งใจแยกเพื่อกู้คืนอิสระจากไฟล์ export"
+        ],
+        [
+          "K2 REST Endpoint",
+          "sesomapua01.7eleven.cp.co.th:81 (HTTP)",
+          "text",
+          1,
+          "เป้าหมาย: ย้ายเป็น HTTPS + Secret Manager (P0)"
+        ],
+        [
+          "Basic Auth User",
+          "7ELEVEN\\bpmk2_fcs",
+          "text",
+          1,
+          "ปัจจุบัน hardcoded ในโค้ด — ความเสี่ยง P0"
+        ],
+        [
+          "เกณฑ์ Growth Rate",
+          "growth_rate_diff ≤ −10",
+          "number",
+          0,
+          "literal ในโค้ด — เปลี่ยนต้องอนุมัติธุรกิจ"
+        ],
+        [
+          "Branch Type ผ่าน Gate",
+          "FAM, FB1, FC1, FB2, FVB, FVC",
+          "text",
+          0,
+          "นอกเซ็ตนี้ถูกตั้ง N ทันที"
+        ],
+        [
+          "เงื่อนไข Gate อื่น",
+          "workflow_generation_status=W · opt_dv_user_id ไม่ว่าง · new_store_juristic_name ≠ impacted_store_juristic_name · sales_status ∈ {Y, N}",
+          "text",
+          0,
+          ""
+        ]
+      ],
+      "flow": [
+        {
+          "k": "start",
+          "t": "เริ่ม"
+        },
+        {
+          "k": "p",
+          "t": "updateBeforeSelect: ตั้ง W → Y เมื่อพบ K2 process เดิมอยู่แล้ว",
+          "d": "กันเปิด workflow ซ้ำ"
+        },
+        {
+          "k": "d",
+          "t": "ผ่าน Gen Flow Gate ครบทุกเงื่อนไข?",
+          "no": "branch type นอกเซ็ต → N / กรณีอื่นคง W ไว้",
+          "d": "W + branch type + DV ไม่ว่าง + juristic ต่างกัน + growth ≤ −10 + sales status Y/N"
+        },
+        {
+          "k": "io",
+          "t": "POST K2 REST StartInstance (HTTP + Basic Auth)",
+          "d": "endpoint sesomapua01.7eleven.cp.co.th:81"
+        },
+        {
+          "k": "d",
+          "t": "HTTP 200 และ body มีคำว่า \"Running\"?",
+          "no": "log ล้มเหลว คงค่า W ไว้ reconcile — ไม่มี auto-retry",
+          "noKind": "err",
+          "d": ""
+        },
+        {
+          "k": "p",
+          "t": "workflow_generation_status = Y (เปิด workflow สำเร็จ)",
+          "d": "flag เขียนแบบ auto-commit — ไม่มี transaction"
+        },
+        {
+          "k": "io",
+          "t": "ส่งอีเมลสรุปราย DV (group ตาม opt_dv_user_id)",
+          "d": ""
+        },
+        {
+          "k": "end",
+          "t": "จบ"
+        }
+      ],
+      "tables": [
+        [
+          "fgi_impact_stores",
+          "R/W",
+          "อ่าน candidate workflow_generation_status=W + เขียนสถานะ W → Y / N"
+        ],
+        [
+          "K2 process instance",
+          "R",
+          "ตรวจว่ามี workflow ของร้านนี้อยู่แล้วหรือไม่ (กันซ้ำ)"
+        ]
+      ],
+      "rels": [
+        "workflow_generation_status บน fgi_impact_stores: W = รอเปิด / Y = เปิดแล้วหรือมีอยู่แล้ว / N = ไม่เข้าเกณฑ์ — metric หลักที่ต้องเฝ้า",
+        "ต้นทางสถานะ W มาจาก Job 8 (ไฟล์ BPM06001O + tracking) — สองงานนี้ต้องแยกกันเสมอ (P0)"
+      ],
+      "meta": {
+        "trans": "ไม่มี transaction — flag เขียนแบบ auto-commit",
+        "rerun": "ห้าม reset workflow_generation_status จนกว่าจะตรวจแล้วว่า K2 instance มีจริงหรือไม่",
+        "mail": "อีเมลราย DV / GM user",
+        "risk": "P0: credential hardcoded + endpoint เป็น HTTP / เฝ้า metric: จำนวน candidate, HTTP \"Running\", start ล้มเหลว, นับ W/Y/N"
+      },
+      "run": [
+        "30/06/2569 18:00",
+        "ok",
+        "ยืนยันกับ Ops"
+      ],
+      "hist": [
+        [
+          "30/06/2569 18:00",
+          "44 วิ",
+          "62",
+          "K2 StartInstance × 62",
+          "ok",
+          "Y 58 / N 4 / ค้าง W 0"
+        ],
+        [
+          "29/06/2569 18:00",
+          "41 วิ",
+          "48",
+          "K2 StartInstance × 48",
+          "ok",
+          ""
+        ],
+        [
+          "28/06/2569 18:00",
+          "52 วิ",
+          "51",
+          "K2 StartInstance × 51",
+          "fail",
+          "HTTP timeout 3 รายการ — คง W ไว้ reconcile รอบถัดไป"
+        ]
+      ]
+    },
+    {
+      "no": "9",
+      "name": "ExportOpenStore",
+      "th": "ส่งข้อมูลร้านเปิดใหม่ไป BPM",
+      "tag": "EXPORT BPM",
+      "tagCls": "exp",
+      "phase": "C",
+      "cls": "fgi.main.ExportOpenStore",
+      "script": "FGI_Exportdocument_new_storesToBPM.sh",
+      "cron": "30 17 7-31 * *",
+      "cronTh": "วันที่ 7–31 เวลา 17:30",
+      "out": "BPM06002O (UTF-8, 24 ฟิลด์)",
+      "desc": "ส่งออกโปรไฟล์ร้านเปิดใหม่พร้อมค่า forecast เป็นไฟล์ BPM06002O (24 ฟิลด์) ไปยัง BPM โดยใช้กฎ NVL(adjust_n, forecast_n) — ค่า adjust มีลำดับความสำคัญเหนือ forecast",
+      "params": [
+        [
+          "กำหนดการรัน (Cron)",
+          "30 17 7-31 * *",
+          "text",
+          1,
+          "ทุกวันที่ 7–31 เวลา 17:30"
+        ],
+        [
+          "ปลายทาง SFTP",
+          "BPM/FGI/Inbound/impactprofile/",
+          "text",
+          1,
+          ""
+        ],
+        [
+          "Output File",
+          "BPM06002O_yyyyMMddHHmm.txt (UTF-8, 24 ฟิลด์)",
+          "text",
+          0,
+          "ฟิลด์ 19–20 เว้นว่างโดยตั้งใจ / distance_unit ถูก select แต่ไม่ส่งออก"
+        ],
+        [
+          "กฎ Forecast / Percent",
+          "NVL(adjust_n, forecast_n)",
+          "text",
+          0,
+          "ค่า adjust มาก่อน forecast เสมอ"
+        ],
+        [
+          "เงื่อนไขเลือกข้อมูล",
+          "ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ส่ง",
+          "text",
+          0,
+          ""
+        ]
+      ],
+      "flow": [
+        {
+          "k": "start",
+          "t": "เริ่ม"
+        },
+        {
+          "k": "p",
+          "t": "query ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ส่ง",
+          "d": ""
+        },
+        {
+          "k": "d",
+          "t": "มีแถวส่งออก?",
+          "no": "จบการทำงาน",
+          "noKind": "end",
+          "d": ""
+        },
+        {
+          "k": "io",
+          "t": "เขียนไฟล์ BPM06002O 24 ฟิลด์ (UTF-8)",
+          "d": "Forecast/Percent = NVL(adjust_n, forecast_n) / ฟิลด์ 19–20 ว่างโดยตั้งใจ"
+        },
+        {
+          "k": "p",
+          "t": "insert tracking data_name = NEW_STORE",
+          "d": ""
+        },
+        {
+          "k": "io",
+          "t": "SFTP ไป impactprofile",
+          "d": ""
+        },
+        {
+          "k": "d",
+          "t": "SFTP สำเร็จ?",
+          "no": "Rollback transaction + ลบไฟล์",
+          "noKind": "err",
+          "d": "หนึ่ง transaction + savepoint คุ้มครอง DB กับไฟล์ให้สอดคล้องกัน"
+        },
+        {
+          "k": "io",
+          "t": "ย้ายไฟล์เข้า backup",
+          "d": ""
+        },
+        {
+          "k": "end",
+          "t": "จบ"
+        }
+      ],
+      "tables": [
+        [
+          "fgi_impact_stores",
+          "R",
+          "โปรไฟล์ร้านเปิดใหม่ สถานะ I (คอลัมน์ adjust_n, forecast_n, distance_unit) และค่า forecast/adjust รายงวด"
+        ],
+        [
+          "interface_transactions",
+          "W",
+          "tracking: data_name=NEW_STORE · typed FK = doc_no / impact_process_id"
+        ]
+      ],
+      "rels": [
+        "fgi_impact_stores (id) → ลูกของ hub fgi_impact_processes ผูกกับคู่ร้านผ่าน id",
+        "%ชดเชยฝั่งร้านเปิดใหม่ (FORECAST_PERCENT_N / ADJUST_PERCENT_N) คือค่าที่ระบบ K2 นำไปตรวจผลรวม 100%"
+      ],
+      "meta": {
+        "trans": "หนึ่ง transaction — rollback + ลบไฟล์เมื่อ SFTP ล้มเหลว",
+        "rerun": "tracking กันซ้ำ — ตรวจ backup + tracking + ไฟล์ปลายทางก่อนรันซ้ำ",
+        "mail": "storeretention + mailToBPM เมื่อสร้างไฟล์",
+        "risk": "ฟิลด์ 19–20 ว่างโดยตั้งใจ — อย่าตีความว่าเป็นบั๊กตอน re-implement"
+      },
+      "run": [
+        "30/06/2569 17:30",
+        "ok",
+        "07/07/2569 17:30"
+      ],
+      "hist": [
+        [
+          "30/06/2569 17:30",
+          "39 วิ",
+          "54",
+          "BPM06002O_202606301732.txt",
+          "ok",
+          ""
+        ],
+        [
+          "29/06/2569 17:30",
+          "36 วิ",
+          "61",
+          "BPM06002O_202606291732.txt",
+          "ok",
+          ""
+        ],
+        [
+          "28/06/2569 17:30",
+          "11 วิ",
+          "0",
+          "—",
+          "ok",
+          "ไม่มีร้านเปิดใหม่ค้างส่ง"
+        ]
+      ]
+    },
+    {
+      "no": "10",
+      "name": "NotifyNoReceiveData",
+      "th": "Watchdog เฝ้าระวัง ACK ค้าง",
+      "tag": "WATCHDOG",
+      "tagCls": "wd",
+      "phase": "E",
+      "cls": "fgi.main.NotifyNoReceiveData",
+      "script": "FGI_NotifyNoReceiveData.sh",
+      "cron": "0 07 * * *",
+      "cronTh": "ทุกวัน 07:00",
+      "out": "อีเมลเตือน (TIS-620)",
+      "desc": "งานอ่านอย่างเดียว — ตรวจตาราง tracking หา dataset ค่าชดเชยฝั่ง STA ที่ยังไม่ได้รับ ACK เกิน 1 วัน แล้วส่งอีเมลเตือนผู้ดูแลระบบ ไม่สร้างไฟล์และไม่เขียนฐานข้อมูลใด ๆ",
+      "params": [
+        [
+          "กำหนดการรัน (Cron)",
+          "0 07 * * *",
+          "text",
+          1,
+          "ทุกวัน 07:00"
+        ],
+        [
+          "data_name ที่เฝ้าดู",
+          "COMPENSATE_INIT_I, COMPENSATE_APPROVE_I",
+          "text",
+          0,
+          "เฉพาะฝั่ง STA — ไม่เฝ้า dataset ของ BPM"
+        ],
+        [
+          "เกณฑ์ค้าง",
+          "return_code IS NULL และ INTERFACE_TYPE ≠ WS และ CREATE_DATE ≤ SYSDATE − 1",
+          "text",
+          0,
+          "เกณฑ์อายุ 1 วันเป็น literal — candidate พารามิเตอร์ในระบบใหม่"
+        ],
+        [
+          "SMTP Route",
+          "เมลเตือนผู้ดูแล (storeretention warning)",
+          "text",
+          1,
+          ""
+        ]
+      ],
+      "flow": [
+        {
+          "k": "start",
+          "t": "เริ่ม"
+        },
+        {
+          "k": "p",
+          "t": "query interface_transactions เฉพาะ dataset ฝั่ง STA",
+          "d": "COMPENSATE_INIT_I และ COMPENSATE_APPROVE_I เท่านั้น"
+        },
+        {
+          "k": "d",
+          "t": "พบ ACK ค้างเกิน 1 วัน?",
+          "no": "จบ — ไม่ส่งอีเมล",
+          "noKind": "end",
+          "d": "return_code IS NULL + interface แบบไฟล์ + อายุ ≥ 1 วัน"
+        },
+        {
+          "k": "p",
+          "t": "สรุปจำนวนค้าง group ตาม data_name + interface_type",
+          "d": "จำนวนค้าง = count_data − count_return_code"
+        },
+        {
+          "k": "io",
+          "t": "ส่งอีเมลเตือนผู้ดูแลผ่าน SMTP",
+          "d": ""
+        },
+        {
+          "k": "end",
+          "t": "จบ"
+        }
+      ],
+      "tables": [
+        [
+          "interface_transactions",
+          "R",
+          "อ่านอย่างเดียว (data_name, return_code, sent_at, received_at) — ไม่มีการเขียน DB"
+        ]
+      ],
+      "rels": [
+        "interface_transactions คือตาราง tracking กลางของทุก interface — return_code = NULL หมายถึงยังไม่ได้รับ ACK จากปลายทาง",
+        "แถวที่เฝ้าดูถูกสร้างโดย Job 6 (COMPENSATE_INIT / APPROVE) และรอ ACK จากระบบ STA"
+      ],
+      "meta": {
+        "trans": "อ่านอย่างเดียว — รันซ้ำปลอดภัย (เสี่ยงแค่อีเมลเตือนซ้ำ)",
+        "rerun": "รันซ้ำได้ทุกเมื่อ",
+        "mail": "storeretention (warning)",
+        "risk": "บั๊ก purge ของ Job 6 (E20) ทำให้ตารางที่เฝ้าโตขึ้นเรื่อย ๆ — ระวังเวลา query ช้าลง"
+      },
+      "run": [
+        "02/07/2569 07:00",
+        "fail",
+        "03/07/2569 07:00"
+      ],
+      "hist": [
+        [
+          "02/07/2569 07:00",
+          "8 วิ",
+          "2",
+          "อีเมลเตือน 1 ฉบับ",
+          "fail",
+          "พบ ACK ค้าง 2 รายการ (COMPENSATE_INIT_I) — แจ้งผู้ดูแลแล้ว"
+        ],
+        [
+          "01/07/2569 07:00",
+          "7 วิ",
+          "0",
+          "—",
+          "ok",
+          "ไม่พบรายการค้าง"
+        ],
+        [
+          "30/06/2569 07:00",
+          "7 วิ",
+          "0",
+          "—",
+          "ok",
+          "ไม่พบรายการค้าง"
+        ]
+      ]
+    }
+  ],
+  "apiGroups": [
+    {
+      "name": "Auth & สิทธิ์ผู้ใช้",
+      "refT": "K2 · SRS 3.1.1",
+      "eps": [
+        {
+          "m": "POST",
+          "p": "/api/v1/auth/login",
+          "ref": "k2",
+          "refT": "K2 · 3.1.1",
+          "roles": "ทุกคน (public)",
+          "sum": "เข้าสู่ระบบด้วยบัญชีพนักงาน แลก JWT พร้อม role และ section สำหรับใช้ทุกเส้นถัดไป",
+          "flow": [
+            "ตรวจ username/password กับ AD/LDAP ขององค์กร",
+            "โหลด user_accounts + role (00–10) และ section_code ของผู้ใช้",
+            "ออก accessToken (30 นาที) + refreshToken (8 ชั่วโมง)"
+          ],
+          "db": [
+            [
+              "user_accounts",
+              "R",
+              "บัญชีผู้ใช้ + role (ตารางใหม่)"
+            ],
+            [
+              "roles",
+              "R",
+              "ชื่อ role 00–10 (K2 3.1.1)"
+            ]
+          ],
+          "req": "{\n  \"username\": \"phatcharida.p\",\n  \"password\": \"********\"\n}",
+          "res": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIs...\",\n  \"refreshToken\": \"d2f8a1...\",\n  \"user\": {\n    \"empId\": \"57123\",\n    \"name\": \"ภัชริดา ประเสริฐ\",\n    \"roles\": [\"03\"],\n    \"sectionCode\": \"06\"\n  }\n}",
+          "err": [
+            "401 — ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+            "423 — บัญชีถูกล็อกจากการลองผิดเกินกำหนด"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/auth/refresh",
+          "ref": "new",
+          "refT": "ใหม่",
+          "roles": "ผู้ถือ refreshToken",
+          "sum": "ต่ออายุ accessToken โดยไม่ต้อง login ใหม่",
+          "flow": [
+            "ตรวจ refreshToken ยังไม่หมดอายุ/ไม่ถูกเพิกถอน",
+            "ออก accessToken ใหม่"
+          ],
+          "db": [
+            [
+              "user_accounts",
+              "R",
+              "ตรวจสถานะบัญชียัง active"
+            ]
+          ],
+          "req": "{\n  \"refreshToken\": \"d2f8a1...\"\n}",
+          "res": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIs...\"\n}",
+          "err": [
+            "401 — token หมดอายุหรือถูกเพิกถอน ให้ login ใหม่"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/auth/me",
+          "ref": "k2",
+          "refT": "K2",
+          "roles": "ทุก role",
+          "sum": "ข้อมูลผู้ใช้ปัจจุบันจาก JWT — FE ใช้แสดงชื่อ/role มุมขวาบน",
+          "flow": [
+            "ถอด JWT → คืนข้อมูลผู้ใช้และ section ปัจจุบัน"
+          ],
+          "db": [
+            [
+              "user_accounts",
+              "R",
+              "ข้อมูลผู้ใช้ล่าสุด"
+            ]
+          ],
+          "req": "(ไม่มี body — ใช้ JWT ใน header)",
+          "res": "{\n  \"empId\": \"57123\",\n  \"name\": \"ภัชริดา ประเสริฐ\",\n  \"roles\": [\"03\"],\n  \"sectionCode\": \"06\",\n  \"zone\": \"RS\"\n}",
+          "err": [
+            "401 — token หมดอายุ"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/me/menus",
+          "ref": "k2",
+          "refT": "K2 · 3.1.1",
+          "roles": "ทุก role",
+          "sum": "เมนูที่ role ของผู้ใช้เข้าถึงได้ — FE ใช้สร้าง sidebar (แทนตารางสิทธิ์ 8 role ในหน้าจอ 3.1.1)",
+          "flow": [
+            "อ่าน role จาก JWT",
+            "join menu_permissions × menus เอาเฉพาะ can_access = true",
+            "คืนรายการเมนูเรียงตามกลุ่ม"
+          ],
+          "db": [
+            [
+              "menu_permissions",
+              "R",
+              "สิทธิ์ต่อ role (composite PK)"
+            ],
+            [
+              "menus",
+              "R",
+              "ชื่อ/กลุ่มเมนู"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"menus\": [\n    { \"code\": \"M02\", \"name\": \"เอกสาร · รอดำเนินการ\", \"group\": \"ระบบประกันรายได้\" },\n    { \"code\": \"M08\", \"name\": \"Batch Job\", \"group\": \"ระบบประกันรายได้\" }\n  ]\n}",
+          "err": [
+            "401"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "งาน & เอกสารประกันรายได้",
+      "refT": "K2 · SRS 3.1.2 / 3.1.3 / 3.1.6",
+      "eps": [
+        {
+          "m": "GET",
+          "p": "/api/v1/tasks",
+          "ref": "k2",
+          "refT": "K2 · 3.1.2",
+          "roles": "role ที่มีสิทธิ์เมนูเอกสาร",
+          "sum": "งานรอท่านดำเนินการ — เอกสารที่ค้างอยู่ที่ section ของผู้ใช้ (หน้า k2-list-waiting.html)",
+          "flow": [
+            "อ่าน sectionCode ของผู้ใช้จาก JWT",
+            "query workflow_tasks สถานะ OPEN ของ section นั้น",
+            "join compensation_documents + impacted_stores คืน 9 คอลัมน์ตามหน้าจอ"
+          ],
+          "db": [
+            [
+              "workflow_tasks",
+              "R",
+              "งานค้างต่อ section (ตารางใหม่ — inbox)"
+            ],
+            [
+              "compensation_documents",
+              "R",
+              "ข้อมูลเอกสาร"
+            ],
+            [
+              "impacted_stores",
+              "R",
+              "ชื่อ/ภาคของร้าน"
+            ]
+          ],
+          "req": "Query: ?page=1&size=20&q=00788\n(q = เลขที่เอกสาร / รหัสร้าน / ชื่อร้าน)",
+          "res": "{\n  \"page\": 1, \"total\": 24,\n  \"items\": [{\n    \"docNo\": \"2569/00123\",\n    \"storeCode\": \"00788\",\n    \"storeName\": \"รัตนอุทิศ ซ.13\",\n    \"impactMonth\": \"2026-06\",\n    \"status\": \"รอฝ่าย SBP DSA ดำเนินการ\",\n    \"currentSection\": \"06\",\n    \"waitingDays\": 3\n  }]\n}",
+          "err": [
+            "401"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/documents",
+          "ref": "k2",
+          "refT": "K2 · 3.1.3 / 3.1.7",
+          "roles": "ตามสิทธิ์เมนู",
+          "sum": "ค้นหาเอกสารที่เกี่ยวข้อง — บังคับระบุปี และคืนเฉพาะเอกสารที่มีเลขที่แล้ว (กติกา SRS)",
+          "flow": [
+            "validate: ต้องระบุ year เสมอ ไม่งั้นตอบ 400",
+            "ค้น compensation_documents ตามเงื่อนไข (เลขที่ / ร้าน / สถานะ / เดือน)",
+            "คืนแบบแบ่งหน้า"
+          ],
+          "db": [
+            [
+              "compensation_documents",
+              "R",
+              "เอกสารตามเงื่อนไข"
+            ],
+            [
+              "impacted_stores",
+              "R",
+              "ข้อมูลร้าน"
+            ]
+          ],
+          "req": "Query: ?year=2569&storeCode=00788&status=06&page=1\n(status = section ที่รออยู่ 06/08/01/02/03/04/05 หรือ END)",
+          "res": "{\n  \"page\": 1, \"total\": 6,\n  \"items\": [{ \"docNo\": \"2569/00123\", \"status\": \"รอฝ่าย SBP DSA ดำเนินการ\", ... }]\n}",
+          "err": [
+            "400 — กรุณาระบุปีที่ต้องการค้นหา (กติกา SRS)",
+            "401"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/documents/{docNo}",
+          "ref": "k2",
+          "refT": "K2 · 3.1.6",
+          "roles": "ตามสิทธิ์เมนู",
+          "sum": "เอกสารฉบับเต็ม 12 ส่วนย่อย (k2-document.html) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน",
+          "flow": [
+            "โหลดเอกสาร + ร้านใหม่ + คู่แข่ง + ปัจจัย + ไฟล์แนบ + สรุปชดเชย ในคำขอเดียว",
+            "คำนวณ permissions: ส่วนไหนแก้ได้ตาม role + current_section_code (data-editrole เดิม)",
+            "FE ใช้ธงนี้แสดงป้าย \"อ่านอย่างเดียว\" ต่อส่วน"
+          ],
+          "db": [
+            [
+              "compensation_documents",
+              "R",
+              "หัวเอกสาร"
+            ],
+            [
+              "document_new_stores / document_competitors / document_external_factors",
+              "R",
+              "ส่วนย่อย"
+            ],
+            [
+              "document_attachments / consideration_logs",
+              "R",
+              "ไฟล์แนบ + ประวัติ"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"docNo\": \"2569/00123\",\n  \"status\": \"รอฝ่าย SBP DSA ดำเนินการ\",\n  \"currentSection\": \"06\",\n  \"impactedStore\": { \"storeCode\": \"00788\", ... },\n  \"newStores\": [ { \"storeCode\": \"15211\", \"compensatePercent\": 60.0 } ],\n  \"competitors\": [ ... ],\n  \"factors\": [ ... ],\n  \"compensation\": { \"amount\": 95000.00, \"salesDropPercent\": 12.5 },\n  \"permissions\": { \"canEditSections\": [\"competitor\",\"factor\"], \"canAction\": true }\n}",
+          "err": [
+            "404 — ไม่พบเอกสาร",
+            "401"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/documents",
+          "ref": "k2",
+          "refT": "K2 · 3.1.6",
+          "roles": "02 HQ, 03 User Admin",
+          "sum": "สร้างเอกสารใหม่นอกเงื่อนไข หรือสร้างเอกสารที่ FS (สองแท็บของ k2-create.html)",
+          "flow": [
+            "ตรวจซ้ำ: ร้าน + เดือนที่ถูกกระทบ ต้องยังไม่มีเอกสาร",
+            "ออกเลขที่ YYYY/xxxxx (running ต่อปี เริ่ม 00001 — กติกา SRS)",
+            "insert compensation_documents สถานะเริ่มต้น + เปิด workflow_instances / workflow_tasks แรก (Section 06)",
+            "ส่งอีเมลตาม status_email_rules"
+          ],
+          "db": [
+            [
+              "compensation_documents",
+              "W",
+              "เอกสารใหม่"
+            ],
+            [
+              "workflow_instances / workflow_tasks",
+              "W",
+              "เปิด workflow + งานแรก"
+            ],
+            [
+              "status_email_rules",
+              "R",
+              "ผู้รับอีเมล TO/CC"
+            ]
+          ],
+          "req": "{\n  \"impactedStoreCode\": \"00788\",\n  \"impactMonth\": \"2026-06\",\n  \"source\": \"MANUAL\"   // MANUAL | FS\n}",
+          "res": "201 Created\n{\n  \"docNo\": \"2569/00124\"\n}",
+          "err": [
+            "409 — ร้านนี้ในเดือนนี้มีเอกสารอยู่แล้ว",
+            "422 — ข้อมูลบังคับไม่ครบ"
+          ]
+        },
+        {
+          "m": "PUT",
+          "p": "/api/v1/documents/{docNo}",
+          "ref": "k2",
+          "refT": "K2 · 3.1.6",
+          "roles": "ตาม section ปัจจุบัน",
+          "sum": "บันทึกแก้ไขส่วนย่อยของเอกสาร (ร้านใหม่ / คู่แข่ง / ปัจจัย) ตามสิทธิ์ของขั้นที่ถืออยู่",
+          "flow": [
+            "ตรวจว่า role + section ปัจจุบันมีสิทธิ์แก้ส่วนที่ส่งมา (เช่น Section 01 แก้คู่แข่ง/ปัจจัยได้)",
+            "validate %ชดเชยของร้านใหม่รวมกันต้องเท่ากับ 100%",
+            "บันทึกและคืนเอกสารล่าสุด"
+          ],
+          "db": [
+            [
+              "document_new_stores",
+              "R/W",
+              "%ชดเชย · ระยะห่าง"
+            ],
+            [
+              "document_competitors",
+              "R/W",
+              "คู่แข่ง"
+            ],
+            [
+              "document_external_factors",
+              "R/W",
+              "ปัจจัยภายนอก"
+            ]
+          ],
+          "req": "{\n  \"newStores\": [ { \"newStoreId\": 88, \"compensatePercent\": 60.0 },\n                 { \"newStoreId\": 89, \"compensatePercent\": 40.0 } ]\n}",
+          "res": "200 OK — เอกสารฉบับล่าสุด (โครงเดียวกับ GET)",
+          "err": [
+            "403 — ไม่มีสิทธิ์แก้ส่วนนี้ในขั้นปัจจุบัน",
+            "422 — \"%ชดเชย ... รวมกันแล้วไม่เท่ากับ 100%\" (ข้อความตรงตาม SRS)"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/documents/{docNo}/actions",
+          "ref": "k2",
+          "refT": "K2 · 3.1.4",
+          "roles": "เจ้าของ task ปัจจุบัน",
+          "sum": "ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 7 ขั้น · กฎวงเงิน 100,000 ใช้ทั้งกรณีชดเชยและไม่ชดเชย",
+          "flow": [
+            "ตรวจว่าผู้ใช้เป็นเจ้าของ workflow_tasks ขั้นปัจจุบัน",
+            "validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว",
+            "คำนวณขั้นถัดไปตามตารางเส้นทาง (workflow.md): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 06 ส่งข้าม 04 ได้ · 02 ชดเชย/ไม่ชดเชย > 100,000 → 03 · ชดเชย ≤ 100,000 → 04 · ไม่ชดเชย ≤ 100,000 → กลับ 06 · ทุกขั้นมีเส้นส่งกลับ",
+            "insert consideration_logs + ปิด task เดิม เปิด task ใหม่",
+            "ส่งอีเมล TO/CC ตาม status_email_rules"
+          ],
+          "db": [
+            [
+              "workflow_tasks",
+              "R/W",
+              "ปิดงานเดิม เปิดงานขั้นถัดไป"
+            ],
+            [
+              "compensation_documents",
+              "W",
+              "อัปเดต Status + CurSection"
+            ],
+            [
+              "consideration_logs",
+              "W",
+              "บันทึกผลพิจารณา"
+            ],
+            [
+              "status_email_rules",
+              "R",
+              "ผู้รับอีเมล"
+            ]
+          ],
+          "req": "{\n  \"action\": \"COMPENSATE\",\n  // ตัวเลือกตามขั้นปัจจุบัน เช่น COMPENSATE / NOT_COMPENSATE / STOP\n  // CALC_DONE (08) / SEND_BACK / SKIP_TO_ACCT (06→04)\n  \"comment\": \"เห็นควรชดเชยตามหลักเกณฑ์\"\n}",
+          "res": "{\n  \"docNo\": \"2569/00123\",\n  \"nextSection\": \"02\",\n  \"status\": \"รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ\"\n}",
+          "err": [
+            "422 — \"ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูล ก่อนกดส่งดำเนินการ\"",
+            "403 — ไม่ใช่เจ้าของงานขั้นนี้",
+            "409 — งานถูกดำเนินการไปแล้วโดยผู้อื่น"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/documents/{docNo}/timeline",
+          "ref": "k2",
+          "refT": "K2 · 3.1.6",
+          "roles": "ตามสิทธิ์เมนู",
+          "sum": "ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร)",
+          "flow": [
+            "อ่าน consideration_logs เรียงตามเวลา"
+          ],
+          "db": [
+            [
+              "consideration_logs",
+              "R",
+              "ประวัติครบทุกขั้น"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"items\": [{\n    \"section\": \"06\",\n    \"considerName\": \"สมชาย ใจดี\",\n    \"result\": \"ชดเชย\",\n    \"detail\": \"ตรวจสอบแล้วเข้าเกณฑ์\",\n    \"actionDateTime\": \"2026-06-18T10:42:00\"\n  }]\n}",
+          "err": [
+            "404"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/documents/{docNo}/attachments",
+          "ref": "k2",
+          "refT": "K2 · 3.1.6",
+          "roles": "ตาม section ปัจจุบัน",
+          "sum": "แนบไฟล์เข้าเอกสาร — จำกัด 5MB ต่อไฟล์ตาม SRS",
+          "flow": [
+            "รับ multipart/form-data (file + sectionCode)",
+            "ตรวจขนาด ≤ 5MB และชนิดไฟล์ที่อนุญาต",
+            "บันทึกไฟล์ + insert document_attachments"
+          ],
+          "db": [
+            [
+              "document_attachments",
+              "W",
+              "เมทาดาต้าไฟล์ + section ที่แนบ"
+            ]
+          ],
+          "req": "multipart/form-data\n  file: (binary ≤ 5MB)\n  sectionCode: \"06\"",
+          "res": "201 Created\n{ \"attachId\": 771, \"fileName\": \"หนังสือแจ้งผล.pdf\" }",
+          "err": [
+            "413 — ไฟล์เกิน 5MB",
+            "415 — ชนิดไฟล์ไม่อนุญาต"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Master Data",
+      "refT": "K2 · SRS 3.1.8 / 3.1.9",
+      "eps": [
+        {
+          "m": "GET",
+          "p": "/api/v1/operators",
+          "ref": "k2",
+          "refT": "K2 · 3.1.8",
+          "roles": "03 User Admin",
+          "sum": "รายชื่อผู้ปฏิบัติงาน (operator_assignments) พร้อมค้นหา/แบ่งหน้า",
+          "flow": [
+            "query ตามเงื่อนไข (ชื่อ / section / zone)"
+          ],
+          "db": [
+            [
+              "operator_assignments",
+              "R",
+              "master ผู้ปฏิบัติงาน (เทียบจาก SRS)"
+            ]
+          ],
+          "req": "Query: ?q=สมชาย&sectionCode=06&page=1",
+          "res": "{\n  \"items\": [{\n    \"operatorAssignmentId\": 12,\n    \"empName\": \"สมชาย ใจดี\",\n    \"empMail\": \"somchai@cpall.co.th\",\n    \"sectionCode\": \"06\",\n    \"zoneCode\": \"RS\"\n  }]\n}",
+          "err": [
+            "401",
+            "403"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/operators",
+          "ref": "k2",
+          "refT": "K2 · 3.1.8",
+          "roles": "03 User Admin",
+          "sum": "เพิ่มผู้ปฏิบัติงานใหม่ (จากหน้าค้นหาพนักงานด้วยแว่นขยาย)",
+          "flow": [
+            "validate พนักงานมีจริง (จากเส้น employees/search)",
+            "insert + บันทึก audit_logs (ADD)"
+          ],
+          "db": [
+            [
+              "operator_assignments",
+              "W",
+              "แถวใหม่"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit การเพิ่ม"
+            ]
+          ],
+          "req": "{\n  \"empId\": \"57123\",\n  \"empName\": \"สมชาย ใจดี\",\n  \"empMail\": \"somchai@cpall.co.th\",\n  \"sectionCode\": \"06\",\n  \"zoneCode\": \"RS\"\n}",
+          "res": "201 Created — { \"operatorAssignmentId\": 31 }",
+          "err": [
+            "409 — พนักงานคนนี้อยู่ใน section นี้แล้ว"
+          ]
+        },
+        {
+          "m": "PUT",
+          "p": "/api/v1/operators/{id}",
+          "ref": "k2",
+          "refT": "K2 · 3.1.8",
+          "roles": "03 User Admin",
+          "sum": "แก้ไขข้อมูลผู้ปฏิบัติงาน",
+          "flow": [
+            "validate: ต้องระบุ reason เสมอ (กติกา SRS)",
+            "update + บันทึก audit_logs (EDIT · old_value → new_value · เหตุผล)"
+          ],
+          "db": [
+            [
+              "operator_assignments",
+              "W",
+              "แก้ไข"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit"
+            ]
+          ],
+          "req": "{\n  \"empMail\": \"somchai.j@cpall.co.th\",\n  \"zoneCode\": \"RN\",\n  \"reason\": \"ปรับพื้นที่รับผิดชอบตามโครงสร้างใหม่\"   // บังคับ (SRS)\n}",
+          "res": "200 OK",
+          "err": [
+            "422 — กรุณาระบุเหตุผลการแก้ไขข้อมูล",
+            "404"
+          ]
+        },
+        {
+          "m": "DELETE",
+          "p": "/api/v1/operators/{id}",
+          "ref": "k2",
+          "refT": "K2 · 3.1.8",
+          "roles": "03 User Admin",
+          "sum": "ลบผู้ปฏิบัติงาน พร้อมบันทึกเหตุผล",
+          "flow": [
+            "ตรวจว่าไม่ถืองานค้างใน workflow_tasks",
+            "ลบ + บันทึก audit_logs (DELETE + เหตุผล)"
+          ],
+          "db": [
+            [
+              "operator_assignments",
+              "W",
+              "ลบแถว"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit + เหตุผล"
+            ],
+            [
+              "workflow_tasks",
+              "R",
+              "ตรวจงานค้าง"
+            ]
+          ],
+          "req": "{ \"reason\": \"ย้ายหน่วยงาน\" }",
+          "res": "204 No Content",
+          "err": [
+            "409 — ยังถืองานค้างอยู่ ต้องแจกงานใหม่ก่อน"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/factors",
+          "ref": "k2",
+          "refT": "K2 · 3.1.9",
+          "roles": "03 User Admin",
+          "sum": "รายการปัจจัยภายนอก (external_factors)",
+          "flow": [
+            "query ทั้งหมด / ตามคำค้น"
+          ],
+          "db": [
+            [
+              "external_factors",
+              "R",
+              "master ปัจจัย (เทียบจาก SRS)"
+            ]
+          ],
+          "req": "Query: ?q=ถนน",
+          "res": "{\n  \"items\": [{ \"factorCode\": \"F001\", \"factorName\": \"ปิดถนน/ซ่อมถนน\", \"factorRemark\": \"...\" }]\n}",
+          "err": [
+            "401"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/factors",
+          "ref": "k2",
+          "refT": "K2 · 3.1.9",
+          "roles": "03 User Admin",
+          "sum": "เพิ่มปัจจัยภายนอก — รหัสห้ามซ้ำ (กติกา SRS)",
+          "flow": [
+            "ตรวจ factor_code ไม่ซ้ำ",
+            "insert + audit_logs"
+          ],
+          "db": [
+            [
+              "external_factors",
+              "W",
+              "แถวใหม่"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit"
+            ]
+          ],
+          "req": "{ \"factorCode\": \"F009\", \"factorName\": \"คู่แข่งจัดโปรโมชัน\", \"factorRemark\": \"\" }",
+          "res": "201 Created",
+          "err": [
+            "409 — รหัสปัจจัยนี้มีอยู่แล้ว"
+          ]
+        },
+        {
+          "m": "PUT",
+          "p": "/api/v1/factors/{code}",
+          "ref": "k2",
+          "refT": "K2 · 3.1.9",
+          "roles": "03 User Admin",
+          "sum": "แก้ไขปัจจัยภายนอก",
+          "flow": [
+            "validate: ต้องระบุ reason เสมอ (กติกา SRS)",
+            "update + audit_logs (EDIT · old_value → new_value · เหตุผล)"
+          ],
+          "db": [
+            [
+              "external_factors",
+              "W",
+              "แก้ไข"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit"
+            ]
+          ],
+          "req": "{\n  \"factorName\": \"คู่แข่งจัดโปรโมชันใหญ่\",\n  \"reason\": \"ขยายนิยามให้ชัดเจนขึ้น\"   // บังคับ (SRS)\n}",
+          "res": "200 OK",
+          "err": [
+            "422 — กรุณาระบุเหตุผลการแก้ไขข้อมูล",
+            "404"
+          ]
+        },
+        {
+          "m": "DELETE",
+          "p": "/api/v1/factors/{code}",
+          "ref": "k2",
+          "refT": "K2 · 3.1.9",
+          "roles": "03 User Admin",
+          "sum": "ลบปัจจัยภายนอก (ต้องไม่ถูกใช้ในเอกสารใด)",
+          "flow": [
+            "ตรวจไม่ถูกอ้างใน document_external_factors",
+            "ลบ + audit_logs"
+          ],
+          "db": [
+            [
+              "external_factors",
+              "W",
+              "ลบแถว"
+            ],
+            [
+              "document_external_factors",
+              "R",
+              "ตรวจการใช้งาน"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit"
+            ]
+          ],
+          "req": "{ \"reason\": \"เลิกใช้\" }",
+          "res": "204 No Content",
+          "err": [
+            "409 — ปัจจัยถูกใช้ในเอกสารอยู่ ลบไม่ได้"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/employees/search",
+          "ref": "mix",
+          "refT": "K2 3.1.8 + master FGI/FCS",
+          "roles": "03 User Admin",
+          "sum": "ค้นหาพนักงานจากระบบ HR (popup แว่นขยายในหน้า 3.1.8)",
+          "flow": [
+            "ค้นจาก employees (ตาราง master ที่ฝั่ง batch ใช้ join อยู่แล้ว)",
+            "คืนรายการสั้นสำหรับ popup เลือก"
+          ],
+          "db": [
+            [
+              "employees",
+              "R",
+              "master พนักงาน (โซน master เดิมของ FGI/FCS)"
+            ]
+          ],
+          "req": "Query: ?q=สมชาย (ชื่อ / รหัสพนักงาน)",
+          "res": "{\n  \"items\": [{ \"empId\": \"57123\", \"name\": \"สมชาย ใจดี\", \"mail\": \"somchai@cpall.co.th\", \"dept\": \"SBP DSA\" }]\n}",
+          "err": [
+            "401"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/menu-permissions",
+          "ref": "k2",
+          "refT": "K2 · 3.1.1",
+          "roles": "01 Admin, 02 HQ",
+          "sum": "ตาราง matrix สิทธิ์เมนูทั้งหมด (8 role × เมนู) — หน้าจอสิทธิ์การเข้าถึงเมนู",
+          "flow": [
+            "อ่าน menu_permissions ทั้งหมด join menus + roles",
+            "คืนเป็น matrix ต่อเมนู"
+          ],
+          "db": [
+            [
+              "menu_permissions",
+              "R",
+              "สิทธิ์ต่อ role (composite PK)"
+            ],
+            [
+              "menus / roles",
+              "R",
+              "ชื่อเมนูและ role 00–10"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"menus\": [{\n    \"menuCode\": \"M07\",\n    \"menuName\": \"รายงานสรุปสถานะ\",\n    \"access\": { \"00\": false, \"01\": true, \"02\": false, \"03\": false, \"04\": true, \"05\": false, \"06\": true, \"10\": false }\n  }]\n}",
+          "err": [
+            "401",
+            "403"
+          ]
+        },
+        {
+          "m": "PUT",
+          "p": "/api/v1/menu-permissions/{menuCode}",
+          "ref": "k2",
+          "refT": "K2 · 3.1.1",
+          "roles": "01 Admin, 02 HQ",
+          "sum": "แก้สิทธิ์การเข้าถึงเมนูหนึ่งรายการต่อทุก role — บันทึก audit เสมอ",
+          "flow": [
+            "validate role code อยู่ในเซ็ต 00–10",
+            "update menu_permissions ของเมนูนั้น",
+            "บันทึก audit_logs (ผู้แก้ + ค่าเดิม/ใหม่)"
+          ],
+          "db": [
+            [
+              "menu_permissions",
+              "W",
+              "สิทธิ์ใหม่ต่อ role"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit การแก้สิทธิ์"
+            ]
+          ],
+          "req": "{\n  \"access\": { \"04\": true, \"06\": true }\n}",
+          "res": "200 OK",
+          "err": [
+            "404 — ไม่พบเมนู",
+            "403"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/audit-logs",
+          "ref": "k2",
+          "refT": "K2 · 3.1.8 / 3.1.9",
+          "roles": "01 Admin, 02 HQ, 03 User Admin",
+          "sum": "ประวัติการแก้ไขข้อมูล master แบบหลายรายการ (ใคร · ทำอะไร · ค่าเดิม→ใหม่ · เหตุผล · เมื่อไร) — แผงประวัติท้ายหน้าจอ 3.1.8 / 3.1.9",
+          "flow": [
+            "query audit_logs ตาม table_name (+ ref_key ถ้าระบุเฉพาะรายการ)",
+            "เรียงล่าสุดก่อน แบ่งหน้า"
+          ],
+          "db": [
+            [
+              "audit_logs",
+              "R",
+              "ประวัติหลายรายการต่อข้อมูล (= MaintainMasterHistory เดิม)"
+            ]
+          ],
+          "req": "Query: ?table=operator_assignments&refKey=12&page=1",
+          "res": "{\n  \"items\": [{\n    \"actionType\": \"EDIT\",\n    \"refKey\": \"12\",\n    \"oldValue\": \"zoneCode=RS\",\n    \"newValue\": \"zoneCode=RN\",\n    \"reason\": \"ปรับพื้นที่รับผิดชอบตามโครงสร้างใหม่\",\n    \"updatedBy\": \"ภัชริดา ประดิษฐ์ทองใส\",\n    \"updatedAt\": \"2026-07-02T14:20:00\"\n  }]\n}",
+          "err": [
+            "401",
+            "403"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "รายงาน",
+      "refT": "K2 · SRS 3.1.7",
+      "eps": [
+        {
+          "m": "GET",
+          "p": "/api/v1/reports/status-summary",
+          "ref": "k2",
+          "refT": "K2 · 3.1.7",
+          "roles": "04 / 06 Report Admin",
+          "sum": "รายงานสรุปสถานะ 19 คอลัมน์ — บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)",
+          "flow": [
+            "validate ปี (ไม่ระบุ → 400)",
+            "query compensation_documents + compensation_histories ตามเงื่อนไข",
+            "คืนแบบแบ่งหน้า 19 คอลัมน์ตามหน้าจอ k2-report.html"
+          ],
+          "db": [
+            [
+              "compensation_documents",
+              "R",
+              "สถานะเอกสาร"
+            ],
+            [
+              "compensation_histories",
+              "R",
+              "ยอด/งวดชดเชย"
+            ],
+            [
+              "impacted_stores",
+              "R",
+              "ข้อมูลร้าน"
+            ]
+          ],
+          "req": "Query: ?year=2569&month=6&zone=RS&status=END&page=1",
+          "res": "{\n  \"page\": 1, \"total\": 212,\n  \"items\": [{ \"docNo\": \"2569/00098\", \"storeCode\": \"00788\", \"status\": \"เสร็จสิ้นดำเนินการ\", \"compensateAmount\": 85000.00, ... }]\n}",
+          "err": [
+            "400 — กรุณาระบุปีที่ต้องการค้นหา"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/reports/status-summary/export",
+          "ref": "k2",
+          "refT": "K2 · 3.1.7",
+          "roles": "04 / 06 Report Admin",
+          "sum": "Export รายงานเป็นไฟล์ Excel เงื่อนไขเดียวกับเส้นค้นหา",
+          "flow": [
+            "เงื่อนไขเดียวกับ status-summary",
+            "สร้างไฟล์ .xlsx แล้ว stream กลับ"
+          ],
+          "db": [
+            [
+              "compensation_documents / compensation_histories",
+              "R",
+              "ข้อมูลชุดเดียวกับรายงาน"
+            ]
+          ],
+          "req": "Query: ?year=2569&month=6",
+          "res": "200 OK\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\nContent-Disposition: attachment; filename=\"status-summary-2569-06.xlsx\"",
+          "err": [
+            "400 — ไม่ระบุปี"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Batch Job Admin",
+      "refT": "FGI/FCS · Jobs 1–10",
+      "eps": [
+        {
+          "m": "GET",
+          "p": "/api/v1/jobs",
+          "ref": "fgi",
+          "refT": "FGI/FCS",
+          "roles": "01 Admin",
+          "sum": "รายการ batch job ทั้ง 11 entry points พร้อมสถานะรอบล่าสุด (หน้าจอ job-batch.html)",
+          "flow": [
+            "อ่าน job_configs ทั้งหมด",
+            "join ผลรันล่าสุดจาก job_run_histories"
+          ],
+          "db": [
+            [
+              "job_configs",
+              "R",
+              "cron + enabled + params (ตารางใหม่)"
+            ],
+            [
+              "job_run_histories",
+              "R",
+              "ผลรันล่าสุด"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"items\": [{\n    \"jobNo\": \"6\",\n    \"name\": \"ExportImpactStoreToFS\",\n    \"cron\": \"0 17 * * *\",\n    \"enabled\": true,\n    \"lastRun\": { \"status\": \"SUCCESS\", \"rows\": 1254, \"startedAt\": \"2026-07-01T17:00:00\" }\n  }]\n}",
+          "err": [
+            "401",
+            "403"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/jobs/{jobNo}",
+          "ref": "fgi",
+          "refT": "FGI/FCS",
+          "roles": "01 Admin",
+          "sum": "รายละเอียด job หนึ่งตัว: พารามิเตอร์ (แยกแก้ได้/คงที่), flow, ตารางที่ใช้",
+          "flow": [
+            "อ่าน job_configs + เมทาดาต้า job (จากเอกสาร v4.0)"
+          ],
+          "db": [
+            [
+              "job_configs",
+              "R",
+              "พารามิเตอร์ปัจจุบัน"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"jobNo\": \"1\",\n  \"name\": \"ImportQSSI\",\n  \"params\": [\n    { \"key\": \"sftpPort\", \"value\": \"218\", \"editable\": true },\n    { \"key\": \"encoding\", \"value\": \"WINDOWS-874\", \"editable\": false }\n  ]\n}",
+          "err": [
+            "404"
+          ]
+        },
+        {
+          "m": "PUT",
+          "p": "/api/v1/jobs/{jobNo}/params",
+          "ref": "fgi",
+          "refT": "FGI/FCS + ข้อ 8.2",
+          "roles": "01 Admin",
+          "sum": "แก้พารามิเตอร์ที่แก้ได้ของ job (เวลารัน, path, เกณฑ์) — ค่าคงที่ทางธุรกิจแก้ผ่าน API ไม่ได้",
+          "flow": [
+            "validate: แก้ได้เฉพาะ key ที่ editable (เกณฑ์ธุรกิจ เช่น −10, 50, 60 ต้องขออนุมัติตามข้อ 8.2 — ตอบ 422)",
+            "update job_configs + บันทึก audit_logs"
+          ],
+          "db": [
+            [
+              "job_configs",
+              "W",
+              "พารามิเตอร์ใหม่"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit ผู้แก้ + ค่าเดิม/ใหม่"
+            ]
+          ],
+          "req": "{\n  \"params\": { \"cron\": \"0 18 * * *\", \"batchSize\": 20000 }\n}",
+          "res": "200 OK",
+          "err": [
+            "422 — key นี้เป็นค่าคงที่ทางธุรกิจ แก้ผ่าน API ไม่ได้",
+            "404"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/jobs/{jobNo}/run",
+          "ref": "fgi",
+          "refT": "FGI/FCS · Runbook 7.1",
+          "roles": "01 Admin",
+          "sum": "สั่งรัน job นอกรอบ พร้อมระบุงวดข้อมูล — มี guard กันรันซ้อน",
+          "flow": [
+            "ตรวจ job เปิดใช้งานอยู่",
+            "ตรวจไม่มีรอบที่กำลังรัน (สำคัญมากกับ Job 1 — temp table ใช้ร่วม ห้ามซ้อน)",
+            "enqueue ให้ Batch Scheduler + insert job_run_histories สถานะ RUNNING",
+            "ตอบ 202 พร้อม runId ให้ FE ตาม poll ได้"
+          ],
+          "db": [
+            [
+              "job_run_histories",
+              "W",
+              "รอบใหม่สถานะ RUNNING"
+            ],
+            [
+              "job_configs",
+              "R",
+              "ตรวจ enabled"
+            ]
+          ],
+          "req": "{\n  \"period\": \"2026-07\"   // งวดข้อมูล (YYYY-MM)\n}",
+          "res": "202 Accepted\n{ \"runId\": 4451 }",
+          "err": [
+            "409 — Job กำลังรันอยู่ ห้ามรันซ้อน",
+            "422 — job ถูกปิดใช้งาน"
+          ]
+        },
+        {
+          "m": "PUT",
+          "p": "/api/v1/jobs/{jobNo}/enabled",
+          "ref": "fgi",
+          "refT": "FGI/FCS",
+          "roles": "01 Admin",
+          "sum": "เปิด/ปิดการทำงานของ job ตามรอบเวลา",
+          "flow": [
+            "update job_configs.enabled + audit"
+          ],
+          "db": [
+            [
+              "job_configs",
+              "W",
+              "ธง enabled"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit"
+            ]
+          ],
+          "req": "{ \"enabled\": false, \"reason\": \"ปิดชั่วคราวช่วงปิดงบ\" }",
+          "res": "200 OK",
+          "err": [
+            "404"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/jobs/{jobNo}/runs",
+          "ref": "fgi",
+          "refT": "FGI/FCS",
+          "roles": "01 Admin",
+          "sum": "ประวัติการรันของ job (แท็บประวัติในหน้า Batch Monitor)",
+          "flow": [
+            "query job_run_histories เรียงล่าสุดก่อน แบ่งหน้า"
+          ],
+          "db": [
+            [
+              "job_run_histories",
+              "R",
+              "เวลา · แถว · ไฟล์ · ผล · หมายเหตุ"
+            ]
+          ],
+          "req": "Query: ?page=1&size=20",
+          "res": "{\n  \"items\": [{\n    \"runId\": 4451, \"status\": \"SUCCESS\", \"rows\": 48220,\n    \"file\": \"mrs1-mrs5 (4 ไฟล์)\", \"startedAt\": \"2026-07-01T06:00:00\", \"durationSec\": 252\n  }]\n}",
+          "err": [
+            "404"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Workflow ภายใน",
+      "refT": "K2 3.1.4 + FGI/FCS Job 8b",
+      "eps": [
+        {
+          "m": "POST",
+          "p": "/api/v1/workflows/instances",
+          "ref": "mix",
+          "refT": "แทน K2 StartInstance (Job 8b)",
+          "roles": "service token (ภายใน)",
+          "sum": "เปิด workflow ให้รายการที่ผ่าน Gen Flow Gate — เส้นภายในที่ Batch Scheduler เรียกแทนการยิง K2 REST เดิม",
+          "flow": [
+            "ตรวจ service token (ไม่ใช่ JWT ผู้ใช้)",
+            "ตรวจ Gen Flow Gate เกณฑ์เดิมทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · opt_dv_user_id ไม่ว่าง · new_store_juristic_name ≠ impacted_store_juristic_name · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N}",
+            "ไม่ผ่าน: branch type นอกเซ็ต → workflow_generation_status=N · กรณีอื่นคง W (ตอบ 422 พร้อมเหตุผล)",
+            "ผ่าน: สร้าง compensation_documents (ถ้ายังไม่มี) + workflow_instances + workflow_tasks แรก (06) แล้วตั้ง workflow_generation_status=Y",
+            "ส่งอีเมลสรุปราย DV (พฤติกรรมเดิมของ Job 8b)"
+          ],
+          "db": [
+            [
+              "fgi_impact_stores",
+              "R/W",
+              "ตรวจ gate + อัปเดต workflow_generation_status W→Y/N"
+            ],
+            [
+              "compensation_documents",
+              "W",
+              "เอกสารอัตโนมัติ (ถ้ายังไม่มี)"
+            ],
+            [
+              "workflow_instances / workflow_tasks",
+              "W",
+              "เปิด instance + งานแรก"
+            ]
+          ],
+          "req": "{\n  \"impactProcessId\": 88123\n}",
+          "res": "201 Created\n{\n  \"instanceId\": 501,\n  \"docNo\": \"2569/00124\",\n  \"flagGenFlow\": \"Y\"\n}",
+          "err": [
+            "422 — ไม่ผ่าน Gen Flow Gate (ตอบเหตุผล + สถานะ W/N ที่ตั้งให้)",
+            "401 — service token ไม่ถูกต้อง"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/workflows/instances/{id}",
+          "ref": "new",
+          "refT": "ใหม่",
+          "roles": "01 Admin / เจ้าของงาน",
+          "sum": "สถานะ instance และงานขั้นปัจจุบัน (ใช้ debug/ติดตาม)",
+          "flow": [
+            "อ่าน workflow_instances + workflow_tasks ปัจจุบัน + เอกสารที่ผูก"
+          ],
+          "db": [
+            [
+              "workflow_instances / workflow_tasks",
+              "R",
+              "สถานะ + งานปัจจุบัน"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"instanceId\": 501,\n  \"docNo\": \"2569/00124\",\n  \"status\": \"ACTIVE\",\n  \"currentTask\": { \"section\": \"02\", \"openedAt\": \"2026-07-01T09:00:00\" }\n}",
+          "err": [
+            "404"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/workflows/summary",
+          "ref": "fgi",
+          "refT": "FGI/FCS · Monitoring 7.4",
+          "roles": "01 Admin",
+          "sum": "ตัวเลขเฝ้าระวังตามเอกสาร: นับ workflow_generation_status W/Y/N, จำนวน start ล้มเหลว, งานค้างต่อขั้น",
+          "flow": [
+            "aggregate จาก fgi_impact_stores + workflow_instances/workflow_tasks"
+          ],
+          "db": [
+            [
+              "fgi_impact_stores",
+              "R",
+              "นับ W/Y/N"
+            ],
+            [
+              "workflow_tasks",
+              "R",
+              "งานค้างต่อ section"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"genFlow\": { \"W\": 12, \"Y\": 58, \"N\": 4 },\n  \"failedStarts\": 0,\n  \"openTasksBySection\": { \"06\": 24, \"02\": 7 }\n}",
+          "err": [
+            "401"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Interface & Dashboard",
+      "refT": "FGI/FCS · tracking / watchdog",
+      "eps": [
+        {
+          "m": "GET",
+          "p": "/api/v1/interfaces/tracking",
+          "ref": "fgi",
+          "refT": "FGI/FCS",
+          "roles": "01 Admin",
+          "sum": "สถานะการรับ–ส่งไฟล์กับระบบภายนอก (interface_transactions ใหม่ แทน FGI_CONFIRM_RECEIVE_DATA)",
+          "flow": [
+            "query ตาม dataName / สถานะค้าง / ช่วงเวลา แบ่งหน้า"
+          ],
+          "db": [
+            [
+              "interface_transactions",
+              "R",
+              "tracking typed FK (ตารางใหม่)"
+            ]
+          ],
+          "req": "Query: ?dataName=COMPENSATE_INIT_I&pending=true&page=1",
+          "res": "{\n  \"items\": [{\n    \"trackingId\": 9912,\n    \"dataName\": \"COMPENSATE_INIT_I\",\n    \"docNo\": \"2569/00098\",\n    \"sentAt\": \"2026-06-30T17:02:00\",\n    \"returnCode\": null\n  }]\n}",
+          "err": [
+            "401"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/interfaces/sta/ack",
+          "ref": "new",
+          "refT": "ใหม่ (เสริม Job 10)",
+          "roles": "API key ของระบบ STA",
+          "sum": "Callback ให้ระบบ STA ยิงตอบรับ (ACK) ตรง — แทนการรออัปเดต return_code ฝั่งเดียว",
+          "flow": [
+            "ตรวจ API key เฉพาะของ STA",
+            "update interface_transactions.returnCode + receiveDate",
+            "รายการหายจากจอ pending-ack ทันที (watchdog Job 10 ยังคงเป็น safety net)"
+          ],
+          "db": [
+            [
+              "interface_transactions",
+              "W",
+              "บันทึก ACK"
+            ]
+          ],
+          "req": "{\n  \"trackingId\": 9912,\n  \"returnCode\": \"W\",\n  \"receiveDate\": \"2026-07-02T08:15:00\"\n}",
+          "res": "200 OK",
+          "err": [
+            "401 — API key ไม่ถูกต้อง",
+            "404 — ไม่พบ tracking"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/interfaces/pending-ack",
+          "ref": "fgi",
+          "refT": "FGI/FCS · Job 10",
+          "roles": "01 Admin",
+          "sum": "รายการ ACK ค้างเกิน 1 วัน (เกณฑ์เดียวกับ watchdog) — ใช้ทั้งหน้า dashboard และอีเมลเตือน",
+          "flow": [
+            "เกณฑ์เดิมของ Job 10: returnCode IS NULL · interface แบบไฟล์ · อายุ ≥ 1 วัน",
+            "เฉพาะ dataset ฝั่ง STA (COMPENSATE_INIT_I / COMPENSATE_APPROVE_I)"
+          ],
+          "db": [
+            [
+              "interface_transactions",
+              "R",
+              "รายการค้าง"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"count\": 2,\n  \"items\": [{ \"dataName\": \"COMPENSATE_INIT_I\", \"docNo\": \"2569/00098\", \"ageDays\": 2 }]\n}",
+          "err": [
+            "401"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/dashboard/summary",
+          "ref": "k2",
+          "refT": "K2 (หน้าหลัก)",
+          "roles": "ทุก role",
+          "sum": "ตัวเลขหน้า Dashboard: งานค้าง, ร้านประกันรายได้เดือนนี้, ยอดชดเชย, ข้อมูลผิดปกติ + ข้อมูลกราฟ",
+          "flow": [
+            "aggregate จากเอกสาร + งานค้าง + ผลชดเชยเดือนปัจจุบัน",
+            "cache 5 นาที"
+          ],
+          "db": [
+            [
+              "compensation_documents / workflow_tasks",
+              "R",
+              "งานค้าง + สถานะ"
+            ],
+            [
+              "compensation_histories",
+              "R",
+              "ยอดชดเชยรายเดือน"
+            ],
+            [
+              "fgi_impact_sales_summaries",
+              "R",
+              "จำนวนข้อมูลผิดปกติ"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"waitingTasks\": 24,\n  \"storesThisMonth\": 342,\n  \"compensationThisMonth\": 8420000.00,\n  \"abnormalStores\": 5,\n  \"chart\": { \"monthly\": [ ... ] }\n}",
+          "err": [
+            "401"
+          ]
+        }
+      ]
+    }
+  ]
+}

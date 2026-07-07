@@ -16,6 +16,28 @@
   .yes { color:#16a34a; font-weight:700; }
   .no  { color:#cbd3dd; }
   .mnu { display:inline-block; padding:3px 10px; border-radius:6px; background:#2f6fed; color:#fff; font-size:12px; font-weight:600; }
+  /* toggle cells */
+  .matrix td.tgl { cursor:pointer; user-select:none; }
+  .matrix td.tgl:hover { outline:2px solid rgba(47,111,237,.35); outline-offset:-2px; }
+  .matrix td.tgl.dirty { background:#fff8e1 !important; }
+  .matrix td.mact-cell { white-space:nowrap; }
+  .mact { display:inline-flex; gap:2px; }
+  .mact button { border:none; background:none; cursor:pointer; color:#8a97a5; padding:3px; border-radius:6px; line-height:0; }
+  .mact button:hover { color:#2f6fed; background:#eef3fb; }
+  .mact button.m-del:hover { color:#e11d48; background:#fdecec; }
+  .dirty-chip { display:inline-block; min-width:20px; padding:1px 7px; border-radius:999px; background:rgba(255,255,255,.28); font-size:12px; font-weight:700; }
+  /* page modal (เพิ่ม/แก้ไข/ลบเมนู) */
+  .pm-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:9999;}
+  .pm-overlay.show{display:flex;}
+  .pm-modal{background:#fff;border-radius:12px;max-width:480px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;}
+  .pm-head{display:flex;align-items:center;padding:15px 20px;border-bottom:1px solid var(--line,#e5e9f0);}
+  .pm-head h3{margin:0;font-size:15px;color:#2b3440;flex:1;}
+  .pm-x{border:none;background:none;font-size:24px;line-height:1;color:#8a97a5;cursor:pointer;}
+  .pm-body{padding:16px 20px;display:flex;flex-direction:column;gap:12px;}
+  .pm-body p{margin:0;font-size:13.5px;color:#45525f;line-height:1.7;}
+  .pm-field label{display:block;font-size:12.5px;color:#5d6b7a;margin-bottom:5px;}
+  .pm-field input,.pm-field select{width:100%;border:1px solid var(--line,#e5e9f0);border-radius:8px;padding:9px 12px;font:inherit;box-sizing:border-box;}
+  .pm-foot{display:flex;justify-content:flex-end;gap:8px;padding:13px 20px;border-top:1px solid var(--line,#e5e9f0);background:#fafbfd;}
 </style>
 </head>
 <body data-page="k2-permissions" data-nav="modules" data-module="k2-permissions" data-crumb="สิทธิ์การเข้าถึงเมนู">
@@ -25,98 +47,70 @@
 
       <div class="page-head">
         <div><h1 class="page-title">สิทธิ์การเข้าถึงเมนู</h1>
-          <p class="page-sub">กำหนดกลุ่มผู้ใช้ที่มีสิทธิ์เปิดเมนูของระบบ · ระบบประกันรายได้ (SRS 3.1.1)</p></div>
+          <p class="page-sub">กำหนดกลุ่มผู้ใช้ที่มีสิทธิ์เปิดเมนูของระบบ · เพิ่ม / แก้ไข / ลบ Role และเมนูได้ · ระบบประกันรายได้ (SRS 3.1.1)</p></div>
         <div class="page-actions">
-          <span class="pill info" style="align-self:center;">8 Role · Role-based Access</span>
+          <button class="btn btn-soft" data-add-row="tblRoles"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่ม Role</button>
+          <button class="btn btn-soft" id="btnAddMenu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มเมนู</button>
+          <button class="btn btn-primary" id="btnSaveMatrix"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2ZM17 21v-8H7v8M7 3v5h8"/></svg> บันทึกสิทธิ์ <span class="dirty-chip" id="dirtyCount">0</span></button>
         </div>
       </div>
 
       <!-- กลุ่มผู้ใช้งาน (Role) -->
       <div class="card">
-        <div class="card-head"><h2>กลุ่มผู้ใช้งาน (Role)</h2></div>
-        <div class="table-wrap"><table class="data" style="min-width:720px;">
-          <thead><tr><th>Code</th><th>Role</th><th>คำอธิบาย</th></tr></thead>
+        <div class="card-head"><h2>กลุ่มผู้ใช้งาน (Role)</h2><span class="pill info" style="margin-left:auto;">roles · เพิ่ม/แก้ไข/ลบได้</span></div>
+        <div class="table-wrap"><table class="data" id="tblRoles" data-entity="role" style="min-width:760px;">
+          <thead><tr><th>Code</th><th>Role</th><th>คำอธิบาย</th><th class="col-action">Action</th></tr></thead>
           <tbody>
-            <tr><td class="num">00</td><td>Default</td><td>กลุ่มผู้ดำเนินการในแบบฟอร์ม (Workflow)</td></tr>
-            <tr><td class="num">01</td><td>Admin</td><td>ผู้ดูแลระบบ BPM เห็นได้ทุกเมนู และจัดการข้อมูลได้ทุกอย่าง</td></tr>
-            <tr><td class="num">02</td><td>HQ</td><td>สำหรับ HQ Support</td></tr>
-            <tr><td class="num">03</td><td>User Admin</td><td>ให้ User เป็น Admin ระบบ</td></tr>
-            <tr><td class="num">04</td><td>Report Admin</td><td>สำหรับดูเมนูรายงาน / รายงานสรุป</td></tr>
-            <tr><td class="num">05</td><td>Assign Job</td><td>ไว้สำหรับคนที่มีหน้าที่แจกงานที่เมนูข้อมูลผิดปกติ</td></tr>
-            <tr><td class="num">06</td><td>Report Admin Special</td><td>สำหรับเรียกดูเอกสารทั้งหมด</td></tr>
-            <tr><td class="num">10</td><td>UserViewer</td><td>รายชื่อผู้มีสิทธิ์ดูเอกสาร (Role 01, 02 บริหารจัดการ)</td></tr>
+            <tr><td class="num">00</td><td>Default</td><td>กลุ่มผู้ดำเนินการในแบบฟอร์ม (Workflow)</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="num">01</td><td>Admin</td><td>ผู้ดูแลระบบ BPM เห็นได้ทุกเมนู และจัดการข้อมูลได้ทุกอย่าง</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="num">02</td><td>HQ</td><td>สำหรับ HQ Support</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="num">03</td><td>User Admin</td><td>ให้ User เป็น Admin ระบบ</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="num">04</td><td>Report Admin</td><td>สำหรับดูเมนูรายงาน / รายงานสรุป</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="num">05</td><td>Assign Job</td><td>ไว้สำหรับคนที่มีหน้าที่แจกงานที่เมนูข้อมูลผิดปกติ</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="num">06</td><td>Report Admin Special</td><td>สำหรับเรียกดูเอกสารทั้งหมด</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="num">10</td><td>UserViewer</td><td>รายชื่อผู้มีสิทธิ์ดูเอกสาร (Role 01, 02 บริหารจัดการ)</td><td class="col-action"><button class="icon-btn icon-view" aria-label="ดู"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg></button><button class="icon-btn icon-edit" aria-label="แก้ไข"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del" aria-label="ลบ"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
           </tbody>
         </table></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">Role หลัก 8 ตัว (00–10) เป็นข้อมูลระบบ (<code>is_system</code>) — ระบบจริงจะไม่อนุญาตให้ลบ · เพิ่ม/ลบ Role แล้วคอลัมน์ในตารางสิทธิ์ด้านล่างจะปรับตามอัตโนมัติ</p>
       </div>
 
       <!-- สิทธิ์เมนูหลัก -->
       <div class="card">
-        <div class="card-head"><h2>สิทธิ์เมนูหลัก (Main Menu)</h2></div>
-        <div class="table-wrap"><table class="matrix">
-          <thead><tr>
-            <th class="rowh">เมนู</th>
-            <th>Default<span class="rcode">00</span></th>
-            <th>Admin<span class="rcode">01</span></th>
-            <th>HQ<span class="rcode">02</span></th>
-            <th>User Admin<span class="rcode">03</span></th>
-            <th>Report Admin<span class="rcode">04</span></th>
-            <th>Assign Job<span class="rcode">05</span></th>
-            <th>Report Admin Special<span class="rcode">06</span></th>
-            <th>User Viewer<span class="rcode">10</span></th>
-          </tr></thead>
-          <tbody>
-            <tr><th class="rowh"><span class="mnu">ALLProcess</span></th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-            <tr><th class="rowh"><span class="mnu">หน้าแรก</span></th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-            <tr><th class="rowh"><span class="mnu">สถานะบันทึก ▾</span></th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-            <tr><th class="rowh"><span class="mnu">Help</span></th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
-            <tr><th class="rowh"><span class="mnu">รายงาน ▾</span></th><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="no">–</td></tr>
-            <tr><th class="rowh"><span class="mnu">ผู้ดูแลระบบ ▾</span></th><td class="no">–</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">–</td><td class="no">–</td><td class="no">–</td><td class="no">–</td></tr>
-          </tbody>
-        </table></div>
+        <div class="card-head"><h2>สิทธิ์เมนูหลัก (Main Menu)</h2><span class="pill info" style="margin-left:auto;">คลิกช่อง ✓/– เพื่อสลับสิทธิ์</span></div>
+        <div class="table-wrap"><table class="matrix" id="mtxMain"></table></div>
       </div>
 
       <!-- สิทธิ์ Master Form -->
       <div class="card">
-        <div class="card-head"><h2>สิทธิ์เมนู Master Form (ผู้ดูแลระบบ)</h2></div>
-        <div class="table-wrap"><table class="matrix">
-          <thead><tr>
-            <th class="rowh">เมนู Master Form</th>
-            <th>Admin<span class="rcode">01</span></th>
-            <th>HQ<span class="rcode">02</span></th>
-            <th>User Admin<span class="rcode">03</span></th>
-            <th>Report Admin<span class="rcode">04</span></th>
-            <th>Assign Job<span class="rcode">05</span></th>
-            <th>Report Admin Special<span class="rcode">06</span></th>
-            <th>User Viewer<span class="rcode">10</span></th>
-          </tr></thead>
-          <tbody>
-            <tr><th class="rowh">กำหนดสิทธิ์การเข้าถึงเมนู</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">กำหนดตำแหน่งงาน</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">กำหนดสถานะเอกสาร</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">กำหนดการยืนยันข้อมูล</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">กำหนดชื่อผู้ปฏิบัติงาน</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">กำหนดรายชื่อการส่งอีเมล</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">กำหนดปัจจัยภายนอก</th><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">กำหนดช่วงเวลาดำเนินการ</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">เปลี่ยนแปลงการเชื่อมต่อฐานข้อมูล Server</th><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">กำหนดประเภท Server</th><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">กำหนด URL ที่เกี่ยวข้อง</th><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">กำหนดรายชื่อผู้มีสิทธิ์เข้าใช้งาน Viewer</th><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">Migrate File S3</th><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
-            <tr><th class="rowh">รายงานสรุปสถานะ</th><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr>
-          </tbody>
-        </table></div>
+        <div class="card-head"><h2>สิทธิ์เมนู Master Form (ผู้ดูแลระบบ)</h2><span class="pill info" style="margin-left:auto;">คลิกช่อง ✓/✗ เพื่อสลับสิทธิ์</span></div>
+        <div class="table-wrap"><table class="matrix" id="mtxMaster"></table></div>
         <div class="flow-legend" style="margin:14px 0 2px;">
           <div class="lg"><span class="yes" style="font-size:15px;">✓</span> มีสิทธิ์เข้าถึง / จัดการ</div>
           <div class="lg"><span class="no" style="font-size:15px;">✗</span> ไม่มีสิทธิ์</div>
+          <div class="lg"><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#fff8e1;border:1px solid #e6d9a8;"></span> แก้ไขแล้ว ยังไม่บันทึก</div>
         </div>
+      </div>
+
+      <!-- ประวัติการแก้ไขข้อมูล -->
+      <div class="card">
+        <div class="card-head"><h2>ประวัติการแก้ไขข้อมูล</h2><span class="pill info" style="margin-left:auto;">audit_logs (MaintainMasterHistory)</span></div>
+        <div class="table-wrap"><table class="data" id="tblAudit" style="min-width:980px;">
+          <thead><tr><th>วันที่แก้ไข</th><th>ผู้แก้ไข</th><th>คำสั่ง</th><th>รายการ</th><th>ข้อมูลเดิม → ข้อมูลใหม่</th><th>เหตุผลการแก้ไข</th></tr></thead>
+          <tbody>
+            <tr><td class="num">01/07/2569 11:32</td><td>Admin BPM</td><td><span class="pill info">แก้ไข</span></td><td>สิทธิ์เมนู · รายงานสรุปสถานะ</td><td>Role 06: ✗ → ✓</td><td>เปิดสิทธิ์ Report Admin Special ตามคำขอฝ่ายบัญชี</td></tr>
+            <tr><td class="num">24/06/2569 15:04</td><td>ภัชริดา ประดิษฐ์ทองใส</td><td><span class="pill ok">เพิ่ม</span></td><td>Role 10 · UserViewer</td><td>—</td><td>รองรับรายชื่อผู้มีสิทธิ์ดูเอกสาร (Viewer)</td></tr>
+            <tr><td class="num">18/06/2569 09:47</td><td>Admin BPM</td><td><span class="pill fail">ลบ</span></td><td>เมนู · รายงานเฉพาะกิจ (เดิม)</td><td>—</td><td>ยุบรวมกับเมนูรายงานสรุปสถานะ</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">ระบบบันทึกประวัติอัตโนมัติทุกครั้งที่ เพิ่ม / แก้ไข / ลบ Role · เมนู · สิทธิ์เมนู — การแก้ไขและการลบต้องระบุเหตุผลเสมอ · เก็บหลายรายการต่อข้อมูลหนึ่งตัว เรียงล่าสุดก่อน</p>
       </div>
 
       <div class="card" style="border-left:5px solid var(--primary);">
         <div style="display:flex;gap:12px;align-items:flex-start;">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
           <div style="font-size:13.5px;color:#45525f;line-height:1.7;">
-            <b style="color:#2b3440;">User Acceptance Criteria:</b> มีการกำหนดสิทธิ์การเข้าถึงข้อมูล — ระบบแสดง/ซ่อนเมนูตาม Role ของผู้ใช้งานที่ Login เข้ามา (Pre-Condition: ผ่านการ login เข้าสู่ระบบ)
+            <b style="color:#2b3440;">User Acceptance Criteria:</b> มีการกำหนดสิทธิ์การเข้าถึงข้อมูล — ระบบแสดง/ซ่อนเมนูตาม Role ของผู้ใช้งานที่ Login เข้ามา (Pre-Condition: ผ่านการ login เข้าสู่ระบบ) ·
+            จัดการได้เฉพาะ Role <b>01 Admin</b> และ <b>02 HQ</b> · ข้อมูลบันทึกที่ตาราง <code>roles</code> / <code>menus</code> / <code>menu_permissions</code> ผ่าน API <code>/api/v1/roles</code> · <code>/api/v1/menus</code> · <code>PUT /api/v1/menu-permissions/{menuCode}</code> และเก็บประวัติที่ <code>audit_logs</code>
           </div>
         </div>
       </div>
@@ -124,6 +118,201 @@
     </main>
   </div>
   <div id="toast-stack"></div>
+
+  <!-- Pop Up เพิ่ม/แก้ไข/ลบเมนู -->
+  <div class="pm-overlay" id="pmPop">
+    <div class="pm-modal">
+      <div class="pm-head"><h3 id="pmTitle">เพิ่มเมนู</h3><button class="pm-x" id="pmClose" aria-label="ปิด">×</button></div>
+      <div class="pm-body" id="pmBody"></div>
+      <div class="pm-foot"><button class="btn btn-ghost" id="pmCancel">ยกเลิก</button><button class="btn btn-primary" id="pmOk">ตกลง</button></div>
+    </div>
+  </div>
+
   <script src="assets/sbp.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ===== ข้อมูลเมนู + สิทธิ์ (menus / menu_permissions) — ค่าตั้งต้นตรงตาราง SRS 3.1.1 ===== */
+    var MENUS = [
+      { code:'M01', grp:'main', name:'ALLProcess',      acc:{ '00':1,'01':1,'02':1,'03':1,'04':1,'05':1,'06':1,'10':1 } },
+      { code:'M02', grp:'main', name:'หน้าแรก',          acc:{ '00':1,'01':1,'02':1,'03':1,'04':1,'05':1,'06':1,'10':1 } },
+      { code:'M03', grp:'main', name:'สถานะบันทึก ▾',    acc:{ '00':1,'01':1,'02':1,'03':1,'04':1,'05':1,'06':1,'10':1 } },
+      { code:'M04', grp:'main', name:'Help',            acc:{ '00':1,'01':1,'02':1,'03':1,'04':1,'05':1,'06':1,'10':1 } },
+      { code:'M05', grp:'main', name:'รายงาน ▾',         acc:{ '00':0,'01':1,'02':1,'03':0,'04':1,'05':1,'06':0,'10':0 } },
+      { code:'M06', grp:'main', name:'ผู้ดูแลระบบ ▾',     acc:{ '00':0,'01':1,'02':1,'03':1,'04':0,'05':0,'06':0,'10':0 } },
+      { code:'S01', grp:'master', name:'กำหนดสิทธิ์การเข้าถึงเมนู',           acc:{ '01':1,'02':1 } },
+      { code:'S02', grp:'master', name:'กำหนดตำแหน่งงาน',                    acc:{ '01':1,'02':1 } },
+      { code:'S03', grp:'master', name:'กำหนดสถานะเอกสาร',                  acc:{ '01':1,'02':1 } },
+      { code:'S04', grp:'master', name:'กำหนดการยืนยันข้อมูล',               acc:{ '01':1,'02':1 } },
+      { code:'S05', grp:'master', name:'กำหนดชื่อผู้ปฏิบัติงาน',              acc:{ '01':1,'02':1,'03':1 } },
+      { code:'S06', grp:'master', name:'กำหนดรายชื่อการส่งอีเมล',            acc:{ '01':1,'02':1 } },
+      { code:'S07', grp:'master', name:'กำหนดปัจจัยภายนอก',                 acc:{ '01':1,'02':1,'03':1 } },
+      { code:'S08', grp:'master', name:'กำหนดช่วงเวลาดำเนินการ',             acc:{ '01':1,'02':1 } },
+      { code:'S09', grp:'master', name:'เปลี่ยนแปลงการเชื่อมต่อฐานข้อมูล Server', acc:{ '01':1 } },
+      { code:'S10', grp:'master', name:'กำหนดประเภท Server',                acc:{ '01':1 } },
+      { code:'S11', grp:'master', name:'กำหนด URL ที่เกี่ยวข้อง',             acc:{ '01':1 } },
+      { code:'S12', grp:'master', name:'กำหนดรายชื่อผู้มีสิทธิ์เข้าใช้งาน Viewer', acc:{ '01':1,'02':1 } },
+      { code:'S13', grp:'master', name:'Migrate File S3',                   acc:{ '01':1 } },
+      { code:'S14', grp:'master', name:'รายงานสรุปสถานะ',                   acc:{ '01':1,'04':1,'06':1 } }
+    ];
+    var nextMenuNo = 1;
+    var dirty = {};          // key = menuCode|roleCode — ช่องที่แก้แล้วยังไม่บันทึก
+    var CURRENT_USER = 'ภัชริดา ประดิษฐ์ทองใส (01 Admin)';
+
+    function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function toast(m,k){ if (window.SBP && SBP.toast) SBP.toast(m,k); }
+
+    /* Role อ่านสดจากตาราง roles ด้านบน — เพิ่ม/ลบ Role แล้ว matrix ปรับตาม */
+    function roleList(){
+      return [].slice.call(document.querySelectorAll('#tblRoles tbody tr')).map(function (tr) {
+        return { code: tr.children[0].textContent.trim(), name: tr.children[1].textContent.trim() };
+      }).filter(function (r) { return r.code; });
+    }
+
+    /* ===== render matrix ===== */
+    function cellMark(grp, on){ return on ? '✓' : (grp === 'main' ? '–' : '✗'); }
+    function renderMatrix(tbl, grp) {
+      var roles = roleList();
+      if (grp === 'master') roles = roles.filter(function (r) { return r.code !== '00'; });
+      var h = '<thead><tr><th class="rowh">' + (grp === 'main' ? 'เมนู' : 'เมนู Master Form') + '</th>';
+      roles.forEach(function (r) { h += '<th>' + esc(r.name) + '<span class="rcode">' + esc(r.code) + '</span></th>'; });
+      h += '<th style="width:76px;">จัดการ</th></tr></thead><tbody>';
+      MENUS.filter(function (m) { return m.grp === grp; }).forEach(function (m) {
+        h += '<tr><th class="rowh">' + (grp === 'main' ? '<span class="mnu">' + esc(m.name) + '</span>' : esc(m.name)) + '</th>';
+        roles.forEach(function (r) {
+          var on = !!m.acc[r.code];
+          h += '<td class="tgl ' + (on ? 'yes' : 'no') + (dirty[m.code + '|' + r.code] ? ' dirty' : '') + '" data-menu="' + m.code + '" data-role="' + r.code + '">' + cellMark(grp, on) + '</td>';
+        });
+        h += '<td class="mact-cell"><span class="mact">' +
+          '<button class="m-edit" data-code="' + m.code + '" aria-label="แก้ไขชื่อเมนู"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>' +
+          '<button class="m-del" data-code="' + m.code + '" aria-label="ลบเมนู"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>' +
+          '</span></td></tr>';
+      });
+      tbl.innerHTML = h + '</tbody>';
+    }
+    function renderAll(){ renderMatrix(document.getElementById('mtxMain'), 'main'); renderMatrix(document.getElementById('mtxMaster'), 'master'); }
+    function updateDirtyChip(){ document.getElementById('dirtyCount').textContent = Object.keys(dirty).length; }
+    function findMenu(code){ for (var i = 0; i < MENUS.length; i++) if (MENUS[i].code === code) return MENUS[i]; return null; }
+
+    /* ===== audit_logs (prototype: เติมแถวบนสุดของตารางประวัติ) ===== */
+    function nowBE(){
+      var d = new Date(), p = function (n) { return ('0' + n).slice(-2); };
+      return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + (d.getFullYear() + 543) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+    function addAudit(cmd, item, change, reason) {
+      var pill = cmd === 'เพิ่ม' ? 'ok' : (cmd === 'ลบ' ? 'fail' : 'info');
+      var tb = document.querySelector('#tblAudit tbody');
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td class="num">' + nowBE() + '</td><td>' + esc(CURRENT_USER) + '</td><td><span class="pill ' + pill + '">' + cmd + '</span></td><td>' + esc(item) + '</td><td>' + esc(change || '—') + '</td><td>' + esc(reason || '-') + '</td>';
+      tb.insertBefore(tr, tb.firstChild);
+      tr.style.background = '#f0fff7'; setTimeout(function () { tr.style.background = ''; }, 1000);
+    }
+
+    /* ===== page modal ===== */
+    var pop = document.getElementById('pmPop'), pmBody = document.getElementById('pmBody'), pmOkFn = null;
+    function pmOpen(title, bodyHTML, okLabel, fn) {
+      document.getElementById('pmTitle').textContent = title;
+      document.getElementById('pmOk').textContent = okLabel || 'ตกลง';
+      pmBody.innerHTML = bodyHTML; pmOkFn = fn;
+      pop.classList.add('show');
+      var first = pmBody.querySelector('input,select'); if (first) setTimeout(function () { first.focus(); }, 50);
+    }
+    function pmClose(){ pop.classList.remove('show'); pmOkFn = null; }
+    function pmVal(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+    document.getElementById('pmClose').addEventListener('click', pmClose);
+    document.getElementById('pmCancel').addEventListener('click', pmClose);
+    pop.addEventListener('click', function (e) { if (e.target === pop) pmClose(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') pmClose(); });
+    document.getElementById('pmOk').addEventListener('click', function () { if (pmOkFn) pmOkFn(); });
+
+    /* ===== interactions: toggle สิทธิ์ / แก้ไขชื่อ / ลบเมนู ===== */
+    ['mtxMain', 'mtxMaster'].forEach(function (id) {
+      document.getElementById(id).addEventListener('click', function (e) {
+        var td = e.target.closest('td.tgl');
+        if (td) {
+          var m = findMenu(td.getAttribute('data-menu')), rc = td.getAttribute('data-role');
+          if (!m) return;
+          m.acc[rc] = m.acc[rc] ? 0 : 1;
+          var key = m.code + '|' + rc;
+          if (dirty[key]) delete dirty[key]; else dirty[key] = 1;   // toggle กลับค่าเดิม = ไม่ dirty แล้ว
+          td.className = 'tgl ' + (m.acc[rc] ? 'yes' : 'no') + (dirty[key] ? ' dirty' : '');
+          td.textContent = cellMark(m.grp, m.acc[rc]);
+          updateDirtyChip();
+          return;
+        }
+        var be = e.target.closest('button.m-edit');
+        if (be) {
+          var menu = findMenu(be.getAttribute('data-code'));
+          pmOpen('แก้ไขชื่อเมนู',
+            '<div class="pm-field"><label>ชื่อเมนู (menu_name)</label><input id="pmName" value="' + esc(menu.name) + '"></div>' +
+            '<div class="pm-field"><label>เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)</label><input id="pmReason" placeholder="ระบุเหตุผล"></div>',
+            'บันทึก', function () {
+              var nm = pmVal('pmName');
+              if (!nm) { toast('กรุณาระบุชื่อเมนู', 'del'); return; }
+              var old = menu.name; menu.name = nm;
+              addAudit('แก้ไข', 'เมนู · ' + nm, 'ชื่อ: ' + old + ' → ' + nm, pmVal('pmReason'));
+              renderAll(); pmClose(); toast('บันทึกการแก้ไขเรียบร้อย', 'ok');
+            });
+          return;
+        }
+        var bd = e.target.closest('button.m-del');
+        if (bd) {
+          var mdel = findMenu(bd.getAttribute('data-code'));
+          pmOpen('ยืนยันการลบเมนู',
+            '<p>ต้องการลบเมนู <b>' + esc(mdel.name) + '</b> หรือไม่? สิทธิ์ของทุก Role ในเมนูนี้จะถูกลบด้วย (menu_permissions cascade)</p>' +
+            '<div class="pm-field"><label>เหตุผลการลบ (บันทึกลง audit_logs)</label><input id="pmReason" placeholder="ระบุเหตุผล"></div>',
+            'ลบเมนู', function () {
+              MENUS.splice(MENUS.indexOf(mdel), 1);
+              Object.keys(dirty).forEach(function (k) { if (k.indexOf(mdel.code + '|') === 0) delete dirty[k]; });
+              addAudit('ลบ', 'เมนู · ' + mdel.name, '—', pmVal('pmReason'));
+              renderAll(); updateDirtyChip(); pmClose(); toast('ลบเมนู ' + mdel.name + ' แล้ว', 'del');
+            });
+          return;
+        }
+      });
+    });
+
+    /* เพิ่มเมนู */
+    document.getElementById('btnAddMenu').addEventListener('click', function () {
+      pmOpen('เพิ่มเมนู',
+        '<div class="pm-field"><label>ชื่อเมนู (menu_name)</label><input id="pmName" placeholder="เช่น รายงานผลชดเชยรายเดือน"></div>' +
+        '<div class="pm-field"><label>กลุ่มเมนู (menu_group)</label><select id="pmGrp"><option value="main">เมนูหลัก (Main Menu)</option><option value="master">Master Form (ผู้ดูแลระบบ)</option></select></div>' +
+        '<div class="pm-field"><label>เหตุผลการเพิ่มข้อมูล (บันทึกลง audit_logs)</label><input id="pmReason" placeholder="ระบุเหตุผล"></div>',
+        'เพิ่มเมนู', function () {
+          var nm = pmVal('pmName');
+          if (!nm) { toast('กรุณาระบุชื่อเมนู', 'del'); return; }
+          var code = 'N' + ('0' + nextMenuNo++).slice(-2);
+          MENUS.push({ code: code, grp: pmVal('pmGrp') || 'main', name: nm, acc: {} });   // เมนูใหม่เริ่มจากไม่มีสิทธิ์ — คลิกช่องเพื่อเปิดทีละ role
+          addAudit('เพิ่ม', 'เมนู · ' + nm, '—', pmVal('pmReason'));
+          renderAll(); pmClose(); toast('เพิ่มเมนู ' + nm + ' เรียบร้อย — คลิกช่องในตารางเพื่อเปิดสิทธิ์', 'ok');
+        });
+    });
+
+    /* บันทึกสิทธิ์ (PUT /api/v1/menu-permissions/{menuCode}) */
+    document.getElementById('btnSaveMatrix').addEventListener('click', function () {
+      var n = Object.keys(dirty).length;
+      if (!n) { toast('ไม่มีการเปลี่ยนแปลงที่ต้องบันทึก', 'del'); return; }
+      addAudit('แก้ไข', 'สิทธิ์เมนู (menu_permissions)', 'ปรับสิทธิ์ ' + n + ' รายการ', 'ปรับสิทธิ์ผ่านหน้าจอกำหนดสิทธิ์การเข้าถึงเมนู');
+      dirty = {}; renderAll(); updateDirtyChip();
+      toast('บันทึกสิทธิ์เมนูเรียบร้อย · PUT /api/v1/menu-permissions', 'ok');
+    });
+
+    /* เพิ่ม/ลบ Role ที่ตารางบน → sync คอลัมน์ matrix + ลงประวัติ */
+    new MutationObserver(function (muts) {
+      muts.forEach(function (mu) {
+        [].forEach.call(mu.addedNodes, function (n) {
+          if (n.nodeType === 1 && n.tagName === 'TR') addAudit('เพิ่ม', 'Role ' + n.children[0].textContent.trim() + ' · ' + n.children[1].textContent.trim(), '—', '-');
+        });
+        [].forEach.call(mu.removedNodes, function (n) {
+          if (n.nodeType === 1 && n.tagName === 'TR') addAudit('ลบ', 'Role ' + n.children[0].textContent.trim() + ' · ' + n.children[1].textContent.trim(), '—', '-');
+        });
+      });
+      renderAll();
+    }).observe(document.querySelector('#tblRoles tbody'), { childList: true, subtree: true });   // subtree: จับการแก้ไขชื่อ/รหัส role ในเซลล์ด้วย
+
+    renderAll(); updateDirtyChip();
+  })();
+  </script>
 </body>
 </html>

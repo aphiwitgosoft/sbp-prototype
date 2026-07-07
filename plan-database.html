@@ -41,7 +41,7 @@
       <div class="page-head">
         <div><h1 class="page-title">ฐานข้อมูล FGI/FCS + K2</h1>
           <p class="page-sub">เริ่มจาก Data Spine แล้วขยายเป็น 3 โซน: Impact Pipeline · เอกสารและ Workflow · Master/Config ใช้ร่วม</p></div>
-        <div class="page-actions"><span class="pill info" style="align-self:center;">Target Schema · 30 ตาราง</span></div>
+        <div class="page-actions"><span class="pill info" style="align-self:center;">Target Schema · 34 ตาราง</span></div>
       </div>
 
       <nav class="db-switcher" aria-label="เลือกแบบฐานข้อมูล">
@@ -61,7 +61,7 @@
       </div>
 
       <div class="db-stat-grid">
-        <div class="db-stat"><b>30</b><span>ตารางใน Target Schema</span></div>
+        <div class="db-stat"><b>34</b><span>ตารางใน Target Schema</span></div>
         <div class="db-stat"><b>3</b><span>Data Zones</span></div>
         <div class="db-stat"><b>1</b><span>Schema ใช้ร่วมกัน</span></div>
         <div class="db-stat"><b>4</b><span>Core IDs ที่ใช้ trace งาน</span></div>
@@ -88,7 +88,7 @@
       <div class="card">
         <div class="card-head"><h2>1. แผนภาพโซนข้อมูล (Zone Map)</h2><span class="pill info">A · B · C</span></div>
         <div class="zone-wrap">
-        <svg viewBox="0 0 1080 596" width="100%" style="max-width:1060px;" font-family="Prompt,Sarabun,sans-serif" role="img" aria-label="โซนฐานข้อมูลระบบใหม่">
+        <svg viewBox="0 0 1080 756" width="100%" style="max-width:1060px;" font-family="Prompt,Sarabun,sans-serif" role="img" aria-label="โซนฐานข้อมูลระบบใหม่">
           <defs><marker id="za" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L6.5,3 L0,6 Z" fill="#8493a5"/></marker></defs>
 
           <!-- zone panels -->
@@ -100,7 +100,7 @@
           <text x="388" y="40" font-size="13" font-weight="700" fill="#6d28d9">โซน B · เอกสาร &amp; Workflow</text>
           <rect x="656" y="26" width="36" height="18" rx="9" fill="#f1ecfe"/><text x="674" y="39" text-anchor="middle" font-size="10" font-weight="700" fill="#6d28d9">K2</text>
 
-          <rect x="728" y="14" width="336" height="572" rx="14" fill="#f6fbf7" stroke="#15803d" stroke-width="1.6"/>
+          <rect x="728" y="14" width="336" height="732" rx="14" fill="#f6fbf7" stroke="#15803d" stroke-width="1.6"/>
           <text x="744" y="40" font-size="13" font-weight="700" fill="#15803d">โซน C · Master / Config ใช้ร่วม</text>
           <rect x="990" y="26" width="60" height="18" rx="9" fill="#e7f7ee"/><text x="1020" y="39" text-anchor="middle" font-size="10" font-weight="700" fill="#15803d">ใช้ร่วม</text>
 
@@ -215,6 +215,18 @@
             <rect x="744" y="506" width="304" height="40" rx="8" fill="#f2fbf5" stroke="#15803d" stroke-width="1.4" stroke-dasharray="5 4"/>
             <text x="756" y="523" font-size="11.5" font-weight="700" fill="#15803d" font-family="Menlo,monospace">job_configs · job_run_histories</text>
             <text x="756" y="538" font-size="9.5" fill="#5d6b7a">ใหม่ — พารามิเตอร์ 11 jobs + ประวัติรัน (หน้า Batch Monitor)</text>
+
+            <rect x="744" y="556" width="304" height="40" rx="8" fill="#f2fbf5" stroke="#15803d" stroke-width="1.4" stroke-dasharray="5 4"/>
+            <text x="756" y="573" font-size="11.5" font-weight="700" fill="#15803d" font-family="Menlo,monospace">system_configs</text>
+            <text x="756" y="588" font-size="9.5" fill="#5d6b7a">ใหม่ — Global config key–value (รัศมี 1/2 กม. · วงเงิน 100,000 · เกณฑ์ 60 วัน)</text>
+
+            <rect x="744" y="606" width="304" height="40" rx="8" fill="#f2fbf5" stroke="#15803d" stroke-width="1.4" stroke-dasharray="5 4"/>
+            <text x="756" y="623" font-size="11.5" font-weight="700" fill="#15803d" font-family="Menlo,monospace">email_templates</text>
+            <text x="756" y="638" font-size="9.5" fill="#5d6b7a">ใหม่ — เนื้อหา 8 template (EM-01–08) subject/body + ตัวแปร merge (หน้า Email Template)</text>
+
+            <rect x="744" y="656" width="304" height="40" rx="8" fill="#fff" stroke="#9fd4b0" stroke-width="1.4"/>
+            <text x="756" y="673" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">stores · employees</text>
+            <text x="756" y="688" font-size="9.5" fill="#8493a5">master สาขา 7-Eleven ทุกประเภท + พนักงาน (HR) · ป้อน popup ค้นหาร้าน/พนักงาน (k2-create · 3.1.8)</text>
           </g>
 
           <!-- cross arrows A -> B -->
@@ -233,7 +245,7 @@
 
       <!-- ===== all tables ===== -->
       <div class="card">
-        <div class="card-head"><h2>2. Data Dictionary ระดับภาพรวม</h2><span class="pill info">30 ตาราง · 27 รายการกลุ่ม</span></div>
+        <div class="card-head"><h2>2. Data Dictionary ระดับภาพรวม</h2><span class="pill info">34 ตาราง · 31 รายการกลุ่ม</span></div>
         <div class="table-wrap">
           <table class="data">
             <thead><tr><th>ตาราง</th><th>โซน</th><th>ที่มา</th><th>PK</th><th>FK / ความสัมพันธ์หลัก</th><th>บทบาท</th></tr></thead>
@@ -251,23 +263,27 @@
               <tr><td class="tb">document_new_stores</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no → compensation_documents</td><td>ร้านเปิดใหม่ · distance_km · %ชดเชย (ผลรวมต้อง 100%)</td></tr>
               <tr><td class="tb">document_competitors</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no · competitor_code → competitors</td><td>คู่แข่งในเอกสาร · source_system ALM/USER</td></tr>
               <tr><td class="tb">document_external_factors</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no · factor_code → external_factors</td><td>ปัจจัยภายนอกที่ใช้ในเอกสาร + ช่วงวันที่</td></tr>
-              <tr><td class="tb">consideration_logs</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no → compensation_documents</td><td>ประวัติพิจารณา (ผู้พิจารณา · Section · ผล · เวลา)</td></tr>
+              <tr><td class="tb">consideration_logs</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no → compensation_documents</td><td>ประวัติพิจารณา (ผู้พิจารณา · Section · ผล · เวลา) · result_category (APPROVE/REJECT/PENDING) สำหรับ filter อนุมัติ/ไม่อนุมัติ หน้ารายงาน</td></tr>
               <tr><td class="tb">document_attachments</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no → compensation_documents</td><td>ไฟล์แนบ ≤ 5MB ต่อไฟล์ · Section ที่แนบ</td></tr>
               <tr><td class="tb">compensation_histories</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>store_code · ref_doc_no</td><td>ประวัติชดเชยต่อร้าน/รอบ · เดือนส่งบัญชี (ผูกไฟล์ FRBC0001 ของ Job 6)</td></tr>
               <tr><td class="tb">workflow_instances</td><td>B</td><td><span class="ref new">ใหม่</span></td><td class="num">instance_id</td><td>doc_no → compensation_documents</td><td>instance workflow ภายใน (แทน K2 engine) · สถานะแทน workflow_generation_status=Y</td></tr>
               <tr><td class="tb">workflow_tasks</td><td>B</td><td><span class="ref new">ใหม่</span></td><td class="num">task_id</td><td>instance_id · section_code · assignee_employee_id</td><td>งานค้างต่อ Section — แหล่งข้อมูลหน้างานรอดำเนินการ (inbox)</td></tr>
               <tr class="zone-row c"><td colspan="6">Zone C · Shared — Master, RBAC, Configuration และ Audit</td></tr>
-              <tr><td class="tb">impacted_stores</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">store_code</td><td>= impacted_store_code ของโซน A (สะพานหลักสองระบบ)</td><td>ข้อมูลร้าน SP master</td></tr>
+              <tr><td class="tb">stores</td><td>C</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">store_code</td><td>← impacted_stores (subset SP) · ← document_new_stores.new_store_code</td><td>master สาขา 7-Eleven ทุกประเภท (SP / เปิดใหม่ / ปิด renovate) — แหล่งค้นหาร้านของหน้า k2-create (API /stores/search)</td></tr>
+              <tr><td class="tb">impacted_stores</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">store_code</td><td>= impacted_store_code ของโซน A (สะพานหลักสองระบบ) · subset SP ของ stores</td><td>ข้อมูลร้าน SP master</td></tr>
               <tr><td class="tb">workflow_sections / document_statuses</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">section_code / status_code</td><td>อ้างโดย compensation_documents · workflow_tasks · status_email_rules</td><td>ขั้นตอน 06/08/01/02/03/04/05 · สถานะเอกสาร</td></tr>
-              <tr><td class="tb">roles / menus / menu_permissions</td><td>C</td><td><span class="ref k2">K2 · 3.1.1</span></td><td class="num">role_code / menu_code (composite)</td><td>menu_permissions = composite PK</td><td>สิทธิ์เมนู 8 role (00–10) — แหล่งข้อมูล RBAC ของ Auth</td></tr>
-              <tr><td class="tb">operator_assignments</td><td>C</td><td><span class="ref k2">K2 · 3.1.8</span></td><td class="num">id</td><td>section_code · zone_code</td><td>ผู้ปฏิบัติงานต่อ section_code/zone_code</td></tr>
+              <tr><td class="tb">roles / menus / menu_permissions</td><td>C</td><td><span class="ref k2">K2 · 3.1.1</span></td><td class="num">role_code / menu_code (composite)</td><td>menu_permissions = composite PK</td><td>สิทธิ์เมนู 8 role (00–10) — แหล่งข้อมูล RBAC ของ Auth · CRUD ผ่านหน้าจอ 3.1.1 (API /roles /menus /menu-permissions) · is_system กันลบ role/เมนูหลัก · menus มี menu_group (MAIN/MASTER) + sort_order · ประวัติลง audit_logs</td></tr>
+              <tr><td class="tb">operator_assignments</td><td>C</td><td><span class="ref k2">K2 · 3.1.8</span></td><td class="num">id</td><td>section_code · zone_code · employee_id → employees</td><td>ผู้ปฏิบัติงานต่อ section_code/zone_code · เลือกชื่อผ่าน popup ค้นหาพนักงาน</td></tr>
+              <tr><td class="tb">employees</td><td>C</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">employee_id</td><td>← user_accounts.employee_id · ← operator_assignments (เลือกผ่าน popup)</td><td>master พนักงานองค์กร (HR) — batch join อยู่แล้ว · ป้อน popup ค้นหาพนักงาน (API /employees/search) หน้า 3.1.8</td></tr>
               <tr><td class="tb">external_factors</td><td>C</td><td><span class="ref k2">K2 · 3.1.9</span></td><td class="num">factor_code</td><td>← document_external_factors</td><td>ปัจจัยภายนอก master · รหัสห้ามซ้ำ</td></tr>
               <tr><td class="tb">competitors</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">competitor_code</td><td>← document_competitors</td><td>ร้านคู่แข่ง 24 ราย</td></tr>
               <tr><td class="tb">audit_logs</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>table_name + ref_key (generic)</td><td>ประวัติแก้ไข master แบบหลายรายการ: action · old_value → new_value · เหตุผล · ผู้แก้ · เวลา (= MaintainMasterHistory เดิม)</td></tr>
               <tr><td class="tb">status_email_rules</td><td>C</td><td><span class="ref k2">K2 · 3.1.5</span></td><td class="num">status_code</td><td>to_section_code · cc_section_code → workflow_sections</td><td>ผู้รับอีเมลเมื่อเปลี่ยนสถานะ — ใช้โดย Notification Service</td></tr>
+              <tr><td class="tb">email_templates</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">template_code (EM-01–08)</td><td>อ่านคู่กับ status_email_rules โดย Notification Service</td><td>เนื้อหา 8 email template (subject/body + ตัวแปร merge) แก้ได้จากหน้า plan-email.html · From/To/Cc ล็อกตาม status_email_rules · ประวัติแก้ไข/รีเซ็ต → audit_logs · ถ้อยคำเป็น beyond SRS (SRS กำหนดเฉพาะผู้รับ/จังหวะส่ง)</td></tr>
               <tr><td class="tb">user_accounts</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">employee_id</td><td>role_code → roles</td><td>บัญชีผู้ใช้สำหรับ JWT (เดิมพึ่งระบบ BPM)</td></tr>
               <tr><td class="tb">job_configs</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">job_no</td><td>← job_run_histories</td><td>cron + พารามิเตอร์ที่แก้ได้ของ 11 jobs (หน้า Batch Monitor)</td></tr>
               <tr><td class="tb">job_run_histories</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">run_id</td><td>job_no → job_configs</td><td>ประวัติรันต่อรอบ (เวลา · แถว · ไฟล์ · ผล) — เดิมอยู่ใน log ไฟล์</td></tr>
+              <tr><td class="tb">system_configs</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">config_key</td><td>อ่านโดยทุก service · ประวัติแก้ไข → audit_logs</td><td>Global config แบบ key–value (หน้า system-config.html) · category (IMPACT/WORKFLOW/DOCUMENT/AUTH/NOTIFICATION/BATCH) · value_type (NUMBER/STRING/BOOLEAN/JSON/CRON) · is_editable กันแก้ค่าคงที่ทางธุรกิจ (ข้อ 8.2) · ห้ามเก็บ secret (อยู่ Secret Manager) · cache 5 นาที + invalidate เมื่อแก้ไข</td></tr>
             </tbody>
           </table>
         </div>
@@ -278,6 +294,7 @@
         <div class="card-head"><h2>3. กุญแจเชื่อมข้ามระบบ (Cross-System Keys)</h2></div>
         <ul style="margin:0; padding-left:20px; color:#45525f; font-size:13.5px; line-height:2;">
           <li><b>impacted_stores.store_code = fgi_impact_stores.impacted_store_code</b> — สะพานหลักระหว่างโซน C (K2) กับโซน A (FGI/FCS) ใช้รหัสร้าน 5 หลักเดียวกันทั้งระบบ <span class="ref mix">ทั้งสอง</span></li>
+          <li><b>stores.store_code ← impacted_stores / document_new_stores.new_store_code</b> — stores คือ master สาขา 7-Eleven ทุกประเภท · impacted_stores เป็น subset ร้าน SP · ร้านเปิดใหม่ในเอกสารอ้าง stores ตัวเดียวกัน — เป็นแหล่งของ popup ค้นหาร้านในหน้าสร้างเอกสาร <span class="ref fgi">FGI/FCS</span></li>
           <li><b>*.impact_process_id → fgi_impact_processes.id</b> — hub กลางของคู่ร้าน ยอดขาย และคู่แข่งในหนึ่งรอบชดเชย ลดการ join ด้วย business key หลายคอลัมน์ <span class="ref new">ใหม่</span></li>
           <li><b>compensation_documents.impact_process_id → fgi_impact_processes</b> — FK ใหม่ 1 รอบชดเชย : 1 เอกสาร แทนการส่งไฟล์ BPM06001O (48 ฟิลด์) ข้ามระบบ <span class="ref new">ใหม่</span></li>
           <li><b>workflow_instances.doc_no → compensation_documents</b> — เปิด instance เมื่อผ่าน Gen Flow Gate · สถานะ instance ทำหน้าที่แทน workflow_generation_status = Y ของเดิม <span class="ref new">ใหม่</span></li>

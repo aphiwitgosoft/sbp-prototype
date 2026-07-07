@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Template · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  /* ---- โครงการ์ด template ---- */
+  .tpl-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px 18px;margin:0 0 14px;}
+  .tpl-meta .m{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:9px 12px;}
+  .tpl-meta .m .k{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px;}
+  .tpl-meta .m .v{font-size:13px;color:#2b3440;font-weight:600;line-height:1.5;}
+  .tpl-code{font-family:'SFMono-Regular',Consolas,monospace;font-size:12.5px;background:#eef4ff;color:var(--primary);border-radius:6px;padding:2px 8px;font-weight:700;}
+
+  /* ---- mockup อีเมล ---- */
+  .mail{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(20,35,60,.06);}
+  .mail-top{background:#f6f8fb;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .mail-row{display:flex;gap:10px;font-size:13px;padding:2.5px 0;align-items:baseline;}
+  .mail-row .k{flex:0 0 64px;color:var(--muted);font-size:12px;}
+  .mail-row .v{color:#2b3440;}
+  .mail-row .v.subj{font-weight:700;}
+  .mail-body{padding:18px 22px;font-size:13.5px;line-height:1.9;color:#2b3440;}
+  .mail-body table.det{border-collapse:collapse;margin:10px 0 14px;font-size:13px;min-width:340px;}
+  .mail-body table.det td{border:1px solid #e3e9f0;padding:6px 12px;}
+  .mail-body table.det td:first-child{background:#f8fafc;color:#5d6b7a;white-space:nowrap;}
+  .mail-btn{display:inline-block;background:var(--primary);color:#fff;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;margin:6px 0 10px;}
+  .mail-foot{font-size:11.5px;color:#93a1b0;border-top:1px dashed #e3e9f0;margin-top:14px;padding-top:10px;}
+  .mf{display:inline-block;background:#eef4ff;color:#2456c4;border:1px dashed #b9cdf5;border-radius:6px;padding:0 6px;font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;line-height:1.7;}
+  .mf.warn{background:#fff7ed;color:#b45309;border-color:#fcd9a8;}
+  .mail.warn .mail-top{background:#fff9f2;}
+  .mail.ok .mail-top{background:#f2fbf6;}
+
+  /* ---- legend ตัวแปร merge ---- */
+  .mf-legend{font-size:12px;color:#5d6b7a;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-top:12px;line-height:2.1;}
+  .mf-legend b{color:#2b3440;}
+
+  .flowpoint{display:inline-flex;align-items:center;gap:6px;background:#f0f6ff;border:1px solid #d7e5fb;color:#2456c4;border-radius:999px;padding:2px 12px;font-size:12px;font-weight:600;}
+  #em01Select{padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;min-width:330px;}
+
+  /* ---- แก้ไข / รีเซ็ต template ---- */
+  .tpl-actions{display:inline-flex;gap:8px;align-items:center;margin-left:10px;flex:0 0 auto;}
+  .card.tpl-editing .mail{outline:2px dashed var(--primary);outline-offset:3px;}
+  .mail [contenteditable="true"]{background:#fffdf2;border-radius:4px;box-shadow:inset 0 0 0 1px #f2e3ae;cursor:text;min-width:60px;}
+  .mail [contenteditable="true"]:focus{outline:none;box-shadow:inset 0 0 0 2px var(--primary);background:#fff;}
+
+  /* ---- Rich-text toolbar + แถบตัวแปร (โผล่เฉพาะโหมดแก้ไข) ---- */
+  .tpl-editor{display:none;margin:0 0 14px;border:1px solid #cfdff8;border-radius:12px;background:#fff;box-shadow:0 3px 12px rgba(20,35,60,.09);overflow:hidden;position:sticky;top:calc(var(--header-h) + 10px);z-index:6;}
+  .card.tpl-editing .tpl-editor{display:block;}
+  .rt-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:3px;padding:7px 9px;border-bottom:1px solid #edf2f9;background:#fbfcff;}
+  .rt-toolbar button:not(.btn){min-width:31px;height:31px;padding:0 8px;border:1px solid transparent;border-radius:7px;background:none;font-size:14.5px;color:#3c4856;cursor:pointer;line-height:1;font-family:inherit;}
+  .rt-toolbar button:not(.btn):hover{background:#eef4ff;border-color:#d7e5fb;color:var(--primary);}
+  .rt-toolbar button:not(.btn):active{background:#dcebff;}
+  .rt-toolbar button[data-tblop]{font-size:12.5px;}
+  .rt-sep{width:1px;height:20px;background:var(--line);margin:0 6px;flex:0 0 auto;}
+
+  /* ปุ่มบันทึก/รีเซ็ต ลอยติดไปกับแถบเครื่องมือ */
+  .rt-actions{margin-left:auto;display:inline-flex;gap:7px;align-items:center;padding-left:10px;}
+
+  /* grid picker เลือกขนาดตาราง */
+  .rt-dd{position:relative;display:inline-flex;}
+  .rt-grid{position:absolute;top:35px;left:0;background:#fff;border:1px solid #cfdff8;border-radius:10px;box-shadow:0 12px 28px rgba(20,35,60,.18);padding:10px;display:none;z-index:9;}
+  .rt-grid.show{display:block;}
+  .rt-grid .g{display:grid;grid-template-columns:repeat(6,18px);gap:3px;}
+  .rt-grid .c{width:18px;height:18px;border:1px solid #d8e2ee;border-radius:4px;background:#f6f9fd;cursor:pointer;}
+  .rt-grid .c.on{background:#cfe0ff;border-color:var(--primary);}
+  .rt-grid .cap{display:block;font-size:11.5px;color:var(--muted);margin-top:7px;text-align:center;white-space:nowrap;}
+  .rt-vars{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:9px 10px;}
+  .rt-vars .lbl{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px;}
+  .rt-var{display:inline-flex;flex-direction:column;align-items:flex-start;border:1px dashed #b9cdf5;background:#eef4ff;border-radius:8px;padding:4px 9px 3px;cursor:pointer;font-family:inherit;text-align:left;}
+  .rt-var code{font-family:'SFMono-Regular',Consolas,monospace;font-size:11.5px;font-weight:700;color:#2456c4;line-height:1.35;}
+  .rt-var small{font-size:10.5px;color:#7b8794;line-height:1.35;}
+  .rt-var:hover{background:#dcebff;border-style:solid;}
+
+  /* ตัวแปรในเนื้อหาระหว่างแก้ไข = ก้อนเดียว คลิกเพื่อเลือกทั้งตัว */
+  .card.tpl-editing .mail .mf{cursor:pointer;}
+  .card.tpl-editing .mail .mf:hover{background:#dcebff;box-shadow:0 0 0 2px #b9cdf5;}
+  .card.tpl-editing .mail .mf.warn:hover{background:#ffedd5;box-shadow:0 0 0 2px #fcd9a8;}
+
+  /* ---- แถวในตารางแผนที่ = คลิกไปยัง template ---- */
+  #tplMap tbody tr{cursor:pointer;transition:background .12s;}
+  #tplMap tbody tr:hover{background:#f0f6ff;}
+  #tplMap tbody tr:hover .tpl-code{background:#dcebff;color:var(--primary-dark);}
+  #tplMap tbody tr td:first-child{white-space:nowrap;}
+  #tplMap tbody tr .jump-go{opacity:0;color:var(--primary);font-weight:700;margin-left:7px;transition:opacity .12s;}
+  #tplMap tbody tr:hover .jump-go{opacity:1;}
+
+  /* ไฮไลต์การ์ดปลายทางเมื่อกระโดดมาถึง (ไม่กระทบ layout/box-shadow เดิม) */
+  @keyframes tplFlash{0%,20%{outline-color:rgba(47,111,237,.85);}100%{outline-color:rgba(47,111,237,0);}}
+  .card.tpl-flash{outline:3px solid rgba(47,111,237,0);outline-offset:3px;animation:tplFlash 1.5s ease-out;}
+</style>
+</head>
+<body data-page="plan-email" data-nav="modules" data-module="plan-email" data-crumb="Email Template">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div>
+          <h1 class="page-title">Email Template — จุดส่งอีเมลใน Flow</h1>
+          <p class="page-sub">Notification Service กลาง (ระบบใหม่ SBPGI) · UTF-8 แทน TIS-620 · ผู้รับตาม <b>status_email_rules</b> + config ต่อ job</p>
+        </div>
+        <div class="page-actions">
+          <span class="pill info" style="align-self:center;">8 Templates</span>
+          <button class="btn btn-ghost" id="btnResetAll"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg> รีเซ็ตทั้งหมดเป็น Default</button>
+        </div>
+      </div>
+
+      <!-- สรุปจุดส่งอีเมลทั้งหมดใน flow -->
+      <div class="card">
+        <div class="card-head"><h2>แผนที่ Template → จุดใน Flow</h2><span class="sub" style="margin-left:12px;">คลิกแถวเพื่อไปยัง template ที่เกี่ยวข้อง</span><span class="pill info" style="margin-left:auto;">อ้างอิง workflow.md · plan-flow.html</span></div>
+        <div class="table-wrap"><table class="data" id="tplMap" style="min-width:960px;">
+          <thead><tr><th>Template</th><th>ชื่อ</th><th>จุดที่ส่งใน Flow</th><th>ผู้รับ (TO)</th><th>แหล่งกติกาผู้รับ</th><th>ความถี่</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tpl-code">EM-01</span></td><td>แจ้งผู้ดำเนินการลำดับถัดไป</td><td>Stage C — ทุกครั้งที่เอกสารเปลี่ยนสถานะ (ส่งดำเนินการ)</td><td>ผู้ดำเนินการ Step ถัดไป</td><td>status_email_rules (SRS 3.1.5)</td><td>ตามเหตุการณ์</td></tr>
+            <tr><td><span class="tpl-code">EM-02</span></td><td>เอกสารเสร็จสิ้นดำเนินการ (End)</td><td>Stage C — เห็นควรไม่ชดเชย / หยุดชดเชย / บัญชีภาคอนุมัติ</td><td>ผู้เกี่ยวข้องทั้งหมด</td><td>status_email_rules</td><td>ตามเหตุการณ์</td></tr>
+            <tr><td><span class="tpl-code">EM-03</span></td><td>เอกสารถูกส่งกลับ (Back-flow)</td><td>Stage C — เลือกผลพิจารณา "ส่งกลับ" ทุกขั้น</td><td>ผู้ดำเนินการที่ถูกส่งกลับหา</td><td>status_email_rules</td><td>ตามเหตุการณ์</td></tr>
+            <tr><td><span class="tpl-code">EM-04</span></td><td>เตือนงานค้างรายสัปดาห์</td><td>Reminder Job — อ่านงานค้างจาก workflow_tasks</td><td>ผู้ดำเนินการที่มีงานค้าง</td><td>status_email_rules + config</td><td>ทุกวันจันทร์ 10:00 (แก้ได้)</td></tr>
+            <tr><td><span class="tpl-code">EM-05</span></td><td>Escalation งานค้าง 30/45/60 วัน</td><td>Workflow Engine ตรวจ waiting_days ของ workflow_tasks</td><td>หัวหน้า Section / GM OPT</td><td>เกณฑ์ escalation (config)</td><td>เมื่อครบ 30/45/60 วัน</td></tr>
+            <tr><td><span class="tpl-code">EM-06</span></td><td>สรุปการเปิด Workflow ราย DV</td><td>Stage B — Gen Flow Gate เปิด workflow เสร็จ (เดิม Job 8b)</td><td>DV / GM user (opt_dv_user_id)</td><td>พฤติกรรมเดิม Job 8b</td><td>ตามรอบ batch</td></tr>
+            <tr><td><span class="tpl-code">EM-07</span></td><td>แจ้ง Batch Job ผิดพลาด</td><td>Stage A/B/D — ทุก Job 1–10 เมื่อจบด้วย Error</td><td>ผู้ดูแลระบบ (เดิม storeretention)</td><td>config ต่อ job</td><td>ตามเหตุการณ์</td></tr>
+            <tr><td><span class="tpl-code">EM-08</span></td><td>Watchdog — ACK จาก STA ค้าง</td><td>Stage D — Job 10 ตรวจ interface_transactions ทุก 07:00</td><td>ผู้ดูแลระบบ</td><td>พฤติกรรมเดิม Job 10</td><td>ทุกวัน 07:00 (เมื่อพบค้าง ≥ 1 วัน)</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          <div style="font-size:13.5px;color:#45525f;line-height:1.7;">
+            <b style="color:#2b3440;">ขอบเขต:</b> ผู้รับ TO/CC ของ EM-01–EM-03 ยึดตามตาราง State/Email ใน SRS 3.1.5 (ดูหน้า <a href="k2-flow.html">Flow K2</a>) · <b>เนื้อหา/ถ้อยคำในตัว template เป็นข้อเสนอของระบบใหม่ (beyond SRS)</b> — SRS ระบุเพียงผู้รับและจังหวะการส่ง ไม่ได้กำหนดข้อความอีเมล · ทุกฉบับส่งจาก Notification Service กลางเป็น UTF-8<br>
+            <b style="color:#2b3440;">การแก้ไข:</b> กด "แก้ไข" ที่ template จะมีแถบเครื่องมือจัดรูปแบบ (หนา / เอียง / ขีดเส้น / สี / ไฮไลต์ / รายการ / ตาราง — เลือกขนาดแล้วเพิ่ม-ลบแถว/คอลัมน์ได้) และแถบ <b>ตัวแปร</b> พร้อมปุ่ม "บันทึก" และ "รีเซ็ต" ลอยติดแถบเครื่องมือขณะเลื่อนหน้า — คลิกชิปตัวแปรเพื่อแทรก ณ ตำแหน่งเคอร์เซอร์ได้ทั้งใน Subject และเนื้อหา · ตัวแปรในเนื้อหาเป็นก้อนเดียว คลิกครั้งเดียวเพื่อเลือกทั้งตัวแล้วลบ/แทนที่ได้ทันที (From/To/Cc ล็อกตาม status_email_rules) แล้วกด "บันทึก" — ค่าที่แก้เก็บในเบราว์เซอร์เครื่องนี้ (localStorage) · กด "รีเซ็ต" รายตัว หรือ "รีเซ็ตทั้งหมดเป็น Default" ด้านบนเพื่อกลับค่าเริ่มต้น
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs" data-tabs style="margin-top:4px;">
+        <div class="tab active" data-tab="twf">Workflow เปลี่ยนสถานะ (EM-01–03)</div>
+        <div class="tab" data-tab="trem">เตือนงานค้าง / Escalation (EM-04–05)</div>
+        <div class="tab" data-tab="tbat">Batch FGI/FCS (EM-06–08)</div>
+      </div>
+
+      <!-- ==================== TAB 1 : WORKFLOW ==================== -->
+      <div data-tabpane="twf">
+
+        <!-- EM-01 -->
+        <div class="card" data-tpl="EM-01">
+          <div class="card-head"><h2><span class="tpl-code">EM-01</span> &nbsp;แจ้งผู้ดำเนินการลำดับถัดไป</h2><span class="flowpoint" style="margin-left:auto;">✉ Stage C · เปลี่ยนสถานะเอกสาร</span></div>
+          <div class="tpl-meta">
+            <div class="m"><span class="k">Trigger</span><span class="v">กด "ส่งดำเนินการ" แล้วสถานะเอกสารเปลี่ยนเป็น "รอ&lt;ผู้ดำเนินการ&gt;ดำเนินการ"</span></div>
+            <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = ผู้ดำเนินการลำดับถัดไป · CC ตาม status_email_rules</span></div>
+            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">compensation_documents · workflow_tasks · consideration_logs</span></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+            <span style="font-size:13px;color:#5d6b7a;font-weight:600;">ดูตัวอย่างเมื่อสถานะถัดไปเป็น:</span>
+            <select id="em01Select">
+              <option value="06">รอฝ่าย SBP DSA ดำเนินการ (06)</option>
+              <option value="08">รอเจ้าหน้าที่ SBP DSA ดำเนินการ (08)</option>
+              <option value="01" selected>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ (01)</option>
+              <option value="02">รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ (02)</option>
+              <option value="03">รอผู้บริหารสำนักบริหาร SBP ดำเนินการ (03)</option>
+              <option value="04">รอฝ่ายบัญชี SBP ดำเนินการ (04)</option>
+              <option value="05">รอบัญชีปฏิบัติการภาคดำเนินการ (05)</option>
+            </select>
+            <span class="pill wait" id="em01Status">รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</span>
+          </div>
+          <div class="mail">
+            <div class="mail-top">
+              <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">To</span><span class="v" id="em01To">ฝ่ายส่งเสริมธุรกิจ SBP &lt;sbp-opt-mgr@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">Cc</span><span class="v" id="em01Cc">ฝ่าย SBP DSA &lt;sbp-dsa-mgr@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj" id="em01Subj">[SBPGI] เอกสารประกันรายได้ 2569/00123 — รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</span></div>
+            </div>
+            <div class="mail-body">
+              เรียน <span id="em01Dear">ฝ่ายส่งเสริมธุรกิจ SBP</span><br>
+              เอกสารประกันรายได้เลขที่ <span class="mf">2569/00123</span> ได้เปลี่ยนสถานะเป็น
+              "<b id="em01BodyStatus">รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</b>" กรุณาเข้าระบบเพื่อตรวจสอบและดำเนินการ
+              <table class="det">
+                <tr><td>เลขที่เอกสาร</td><td><span class="mf">2569/00123</span></td></tr>
+                <tr><td>ร้านถูกกระทบ</td><td><span class="mf">00788</span> — <span class="mf">รัตนอุทิศ ซ.13</span> (ภาค <span class="mf">RS</span>)</td></tr>
+                <tr><td>รอบ / ครั้งที่ / เดือน</td><td><span class="mf">1</span> / <span class="mf">3</span> / <span class="mf">06/2569</span></td></tr>
+                <tr><td>ยอดขายที่ลดลง</td><td><span class="mf">12.45%</span></td></tr>
+                <tr><td>จำนวนเงินชดเชย (ล่าสุด)</td><td><span class="mf">48,200.00</span> บาท</td></tr>
+                <tr><td>ผลพิจารณาล่าสุด</td><td><span class="mf" id="em01Action">คำนวณเงินชดเชยเรียบร้อย</span> โดย <span class="mf" id="em01Actor">เจ้าหน้าที่ SBP DSA</span></td></tr>
+              </table>
+              <span class="mail-btn">เปิดเอกสารในระบบ</span><br>
+              <span style="font-size:12px;color:#93a1b0;">ลิงก์: <span class="mf">{{doc_url}}</span> (หน้าเอกสารร้านถูกกระทบ · มุมมองตามบทบาทของท่าน)</span>
+              <div class="mail-foot">อีเมลฉบับนี้ส่งอัตโนมัติจากระบบ SBPGI (Notification Service) กรุณาอย่าตอบกลับ · การกำหนดผู้รับเป็นไปตาม status_email_rules</div>
+            </div>
+          </div>
+          <div class="mf-legend">
+            <b>ตัวแปร merge:</b>
+            <span class="mf">{{doc_no}}</span> เลขที่เอกสาร ·
+            <span class="mf">{{store_code}}</span>/<span class="mf">{{store_name}}</span>/<span class="mf">{{region}}</span> ร้านถูกกระทบ ·
+            <span class="mf">{{round}}</span>/<span class="mf">{{times}}</span>/<span class="mf">{{period}}</span> รอบ-ครั้งที่-เดือน ·
+            <span class="mf">{{sales_drop_pct}}</span> ยอดขายที่ลดลง ·
+            <span class="mf">{{compensate_amount}}</span> เงินชดเชย ·
+            <span class="mf">{{next_status}}</span> สถานะใหม่ ·
+            <span class="mf">{{last_action}}</span>/<span class="mf">{{last_actor}}</span> ผลพิจารณา-ผู้ดำเนินการก่อนหน้า ·
+            <span class="mf">{{doc_url}}</span> ลิงก์เอกสาร
+          </div>
+        </div>
+
+        <!-- EM-02 -->
+        <div class="card" data-tpl="EM-02">
+          <div class="card-head"><h2><span class="tpl-code">EM-02</span> &nbsp;เอกสารเสร็จสิ้นดำเนินการ (End)</h2><span class="flowpoint" style="margin-left:auto;">✉ Stage C · จบ workflow</span></div>
+          <div class="tpl-meta">
+            <div class="m"><span class="k">Trigger</span><span class="v">เห็นควรไม่ชดเชย (06) · หยุดชดเชยประกันรายได้ (06) · บัญชีภาคอนุมัติ (05)</span></div>
+            <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = ผู้เกี่ยวข้องทั้งหมดในเอกสาร (ทุก section ที่เคยดำเนินการ)</span></div>
+            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">document_statuses · compensation_histories · consideration_logs</span></div>
+          </div>
+          <div class="mail ok">
+            <div class="mail-top">
+              <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">To</span><span class="v">ผู้เกี่ยวข้องทั้งหมดของเอกสาร <span class="mf">{{stakeholder_list}}</span></span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] เอกสารประกันรายได้ 2569/00123 — เสร็จสิ้นดำเนินการ (บัญชีภาคอนุมัติ)</span></div>
+            </div>
+            <div class="mail-body">
+              เรียน ผู้เกี่ยวข้องทุกท่าน<br>
+              เอกสารประกันรายได้เลขที่ <span class="mf">2569/00123</span> ร้าน <span class="mf">รัตนอุทิศ ซ.13</span> (<span class="mf">00788</span>)
+              ได้ <b>เสร็จสิ้นดำเนินการ</b> ด้วยผลพิจารณา "<span class="mf">บัญชีภาคอนุมัติ</span>"
+              <table class="det">
+                <tr><td>ผลสุดท้าย</td><td><span class="mf">อนุมัติชดเชย</span></td></tr>
+                <tr><td>จำนวนเงินชดเชย</td><td><span class="mf">48,200.00</span> บาท</td></tr>
+                <tr><td>วันที่ปิดงาน</td><td><span class="mf">28/06/2569</span></td></tr>
+                <tr><td>ขั้นตอนถัดไป (นอกระบบ)</td><td>ส่งผลเข้า Statement ผ่านไฟล์ FRBC0001 ไป STA (Job 6 · Stage D)</td></tr>
+              </table>
+              <span class="mail-btn">ดูประวัติการพิจารณา</span>
+              <div class="mail-foot">อีเมลฉบับนี้ส่งอัตโนมัติจากระบบ SBPGI (Notification Service) กรุณาอย่าตอบกลับ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EM-03 -->
+        <div class="card" data-tpl="EM-03">
+          <div class="card-head"><h2><span class="tpl-code">EM-03</span> &nbsp;เอกสารถูกส่งกลับ (Back-flow)</h2><span class="flowpoint" style="margin-left:auto;">✉ Stage C · ส่งกลับเพื่อแก้ไข</span></div>
+          <div class="tpl-meta">
+            <div class="m"><span class="k">Trigger</span><span class="v">ผลพิจารณา "ส่งกลับ…" ทุกขั้น เช่น GM ส่งกลับฝ่ายส่งเสริมฯ · บัญชีภาคส่งกลับฝ่ายบัญชี</span></div>
+            <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = ผู้ดำเนินการที่ถูกส่งกลับหา · CC = ผู้ส่งกลับ</span></div>
+            <div class="m"><span class="k">จุดต่างจาก EM-01</span><span class="v">เน้นเหตุผล/ความเห็นของผู้ส่งกลับ เพื่อให้แก้ไขได้ตรงจุด</span></div>
+          </div>
+          <div class="mail warn">
+            <div class="mail-top">
+              <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">To</span><span class="v">ฝ่ายส่งเสริมธุรกิจ SBP &lt;sbp-opt-mgr@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">Cc</span><span class="v">GM ส่งเสริมธุรกิจ SBP &lt;sbp-opt-gm@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] เอกสารประกันรายได้ 2569/00123 — ถูกส่งกลับเพื่อแก้ไข</span></div>
+            </div>
+            <div class="mail-body">
+              เรียน ฝ่ายส่งเสริมธุรกิจ SBP<br>
+              เอกสารประกันรายได้เลขที่ <span class="mf">2569/00123</span> ถูก <b>ส่งกลับ</b> จาก
+              <span class="mf">GM ส่งเสริมธุรกิจ SBP</span> เพื่อให้ตรวจสอบ/แก้ไขข้อมูลก่อนส่งพิจารณาอีกครั้ง
+              <table class="det">
+                <tr><td>ผู้ส่งกลับ</td><td><span class="mf">GM ส่งเสริมธุรกิจ SBP</span> (section 02)</td></tr>
+                <tr><td>สถานะใหม่</td><td><span class="mf">รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</span></td></tr>
+                <tr><td>ความเห็น / เหตุผล</td><td><span class="mf warn">%ชดเชยของร้านเปิดใหม่รวมไม่เท่ากับ 100% กรุณาปรับสัดส่วนใหม่</span></td></tr>
+                <tr><td>วันที่ส่งกลับ</td><td><span class="mf">20/06/2569</span></td></tr>
+              </table>
+              <span class="mail-btn">เปิดเอกสารเพื่อแก้ไข</span>
+              <div class="mail-foot">อีเมลฉบับนี้ส่งอัตโนมัติจากระบบ SBPGI (Notification Service) กรุณาอย่าตอบกลับ</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /twf -->
+
+      <!-- ==================== TAB 2 : REMINDER / ESCALATION ==================== -->
+      <div data-tabpane="trem" hidden>
+
+        <!-- EM-04 -->
+        <div class="card" data-tpl="EM-04">
+          <div class="card-head"><h2><span class="tpl-code">EM-04</span> &nbsp;เตือนงานค้างรายสัปดาห์</h2><span class="flowpoint" style="margin-left:auto;">⏰ Reminder Job · จันทร์ 10:00</span></div>
+          <div class="tpl-meta">
+            <div class="m"><span class="k">Trigger</span><span class="v">Reminder job รายสัปดาห์ (รอบเวลาแก้ได้ใน config) — รับพฤติกรรมจาก Approve Flow เดิม จุด 10.1, 20.2, 30.1, 70.1, 80.1, 110.2</span></div>
+            <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = ผู้ดำเนินการแต่ละ section ที่มีงานค้าง (แยกฉบับต่อคน)</span></div>
+            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">workflow_tasks (งานค้างในสถานะ "รอ&lt;role&gt;ดำเนินการ")</span></div>
+          </div>
+          <div class="mail">
+            <div class="mail-top">
+              <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">To</span><span class="v">ฝ่าย SBP DSA &lt;sbp-dsa-mgr@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] แจ้งเตือนงานค้างประจำสัปดาห์ — 3 เอกสารรอท่านดำเนินการ</span></div>
+            </div>
+            <div class="mail-body">
+              เรียน ฝ่าย SBP DSA<br>
+              ณ วันที่ <span class="mf">29/06/2569</span> ท่านมีเอกสารประกันรายได้ค้างดำเนินการ <b><span class="mf">3</span> รายการ</b> ดังนี้
+              <table class="det" style="min-width:480px;">
+                <tr><td>เลขที่เอกสาร</td><td>ร้านถูกกระทบ</td><td>สถานะ</td><td>ค้างมาแล้ว</td></tr>
+                <tr><td><span class="mf">2569/00123</span></td><td>รัตนอุทิศ ซ.13 (00788)</td><td>รอฝ่าย SBP DSA ดำเนินการ</td><td><span class="mf">12</span> วัน</td></tr>
+                <tr><td><span class="mf">2569/00119</span></td><td>ตลาดพลู สถานี (00512)</td><td>รอฝ่าย SBP DSA ดำเนินการ</td><td><span class="mf">9</span> วัน</td></tr>
+                <tr><td><span class="mf">2569/00104</span></td><td>บ้านโป่ง 12 (00233)</td><td>รอฝ่าย SBP DSA ดำเนินการ</td><td><span class="mf">26</span> วัน</td></tr>
+              </table>
+              <span class="mail-btn">เปิดหน้างานรอดำเนินการ</span><br>
+              <span style="font-size:12px;color:#93a1b0;">ลิงก์: หน้า "เอกสาร → รอดำเนินการ" ของระบบ SBPGI</span>
+              <div class="mail-foot">อีเมลสรุปอัตโนมัติทุกวันจันทร์ 10:00 (ปรับรอบเวลาได้โดยผู้ดูแลระบบ) กรุณาอย่าตอบกลับ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EM-05 -->
+        <div class="card" data-tpl="EM-05">
+          <div class="card-head"><h2><span class="tpl-code">EM-05</span> &nbsp;Escalation งานค้าง 30/45/60 วัน</h2><span class="flowpoint" style="margin-left:auto;">⚠ Workflow Engine · waiting_days</span></div>
+          <div class="tpl-meta">
+            <div class="m"><span class="k">Trigger</span><span class="v">งานค้างครบ 30 / 45 / 60 วัน (เกณฑ์แก้ได้) — รับพฤติกรรมจาก Approve Flow เดิม จุด 20.3</span></div>
+            <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = หัวหน้า Section / GM OPT · CC = ผู้ดำเนินการเจ้าของงาน</span></div>
+            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">workflow_tasks.waiting_days</span></div>
+          </div>
+          <div class="mail warn">
+            <div class="mail-top">
+              <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">To</span><span class="v">GM ส่งเสริมธุรกิจ SBP &lt;sbp-opt-gm@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">Cc</span><span class="v">ฝ่าย SBP DSA &lt;sbp-dsa-mgr@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] งานค้างเกิน 45 วัน — เอกสาร 2569/00104 (Escalation)</span></div>
+            </div>
+            <div class="mail-body">
+              เรียน GM ส่งเสริมธุรกิจ SBP<br>
+              เอกสารประกันรายได้ต่อไปนี้ค้างดำเนินการเกินเกณฑ์ <b><span class="mf">45</span> วัน</b> จึงแจ้งมายังท่านเพื่อพิจารณาติดตาม/ส่งต่อ
+              <table class="det">
+                <tr><td>เลขที่เอกสาร</td><td><span class="mf">2569/00104</span> — บ้านโป่ง 12 (<span class="mf">00233</span>)</td></tr>
+                <tr><td>สถานะปัจจุบัน</td><td><span class="mf">รอฝ่าย SBP DSA ดำเนินการ</span></td></tr>
+                <tr><td>ค้างมาแล้ว</td><td><span class="mf warn">47</span> วัน (เกณฑ์แจ้งเตือน: 30 → 45 → 60 วัน)</td></tr>
+                <tr><td>ผู้ดำเนินการเจ้าของงาน</td><td><span class="mf">ฝ่าย SBP DSA</span></td></tr>
+              </table>
+              <span class="mail-btn">เปิดเอกสาร</span>
+              <div class="mail-foot">แจ้งอัตโนมัติเมื่อครบเกณฑ์ 30 / 45 / 60 วัน (ค่ากำหนดแก้ได้โดยผู้ดูแลระบบ) กรุณาอย่าตอบกลับ</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /trem -->
+
+      <!-- ==================== TAB 3 : BATCH ==================== -->
+      <div data-tabpane="tbat" hidden>
+
+        <!-- EM-06 -->
+        <div class="card" data-tpl="EM-06">
+          <div class="card-head"><h2><span class="tpl-code">EM-06</span> &nbsp;สรุปการเปิด Workflow ราย DV</h2><span class="flowpoint" style="margin-left:auto;">⚙ Stage B · Gen Flow Gate (เดิม Job 8b)</span></div>
+          <div class="tpl-meta">
+            <div class="m"><span class="k">Trigger</span><span class="v">Workflow Engine เปิด instance ตามเกณฑ์ Gen Flow Gate เสร็จในแต่ละรอบ (แทน K2 REST StartInstance)</span></div>
+            <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = DV / GM user (group ตาม opt_dv_user_id) — พฤติกรรมเดิมของ Job 8b</span></div>
+            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">fgi_impact_stores.workflow_generation_status (W → Y/N)</span></div>
+          </div>
+          <div class="mail">
+            <div class="mail-top">
+              <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">To</span><span class="v">DV เขตกรุงเทพตะวันออก &lt;dv-be-04@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] สรุปการเปิด Workflow ประกันรายได้ ประจำรอบ 06/2569 — DV เขตกรุงเทพตะวันออก</span></div>
+            </div>
+            <div class="mail-body">
+              เรียน DV เขตกรุงเทพตะวันออก<br>
+              ระบบได้เปิด workflow เอกสารประกันรายได้ประจำรอบ <span class="mf">06/2569</span> สำหรับร้านในความรับผิดชอบของท่าน สรุปได้ดังนี้
+              <table class="det">
+                <tr><td>ร้านที่ผ่านเกณฑ์ Gen Flow Gate</td><td><span class="mf">5</span> ร้าน</td></tr>
+                <tr><td>เปิด workflow สำเร็จ (Y)</td><td><span class="mf">4</span> เอกสาร — 2569/00121, 00122, 00123, 00125</td></tr>
+                <tr><td>เปิดไม่สำเร็จ (N)</td><td><span class="mf warn">1</span> รายการ — ร้าน 00790 (ข้อมูล DV ไม่ครบ)</td></tr>
+                <tr><td>สถานะเริ่มต้นของเอกสาร</td><td>รอฝ่าย SBP DSA ดำเนินการ (06)</td></tr>
+              </table>
+              <span class="mail-btn">เปิดรายงานสรุปสถานะ</span>
+              <div class="mail-foot">อีเมลสรุปอัตโนมัติหลังจบรอบเปิด workflow (เกณฑ์ Gen Flow Gate คงเดิมทุกข้อตามเอกสาร Batch v4.0) กรุณาอย่าตอบกลับ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EM-07 -->
+        <div class="card" data-tpl="EM-07">
+          <div class="card-head"><h2><span class="tpl-code">EM-07</span> &nbsp;แจ้ง Batch Job ผิดพลาด</h2><span class="flowpoint" style="margin-left:auto;">⚙ ทุก Job 1–10 · เมื่อจบด้วย Error</span></div>
+          <div class="tpl-meta">
+            <div class="m"><span class="k">Trigger</span><span class="v">Batch Scheduler พบ job จบด้วยสถานะ Error (แทนการที่แต่ละ job ต่อ SMTP เอง)</span></div>
+            <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = ผู้ดูแลระบบตาม config ต่อ job (เดิม storeretention · เลิก hardcode template 34)</span></div>
+            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">ผลรัน job + error log (ดูหน้า Batch Job)</span></div>
+          </div>
+          <div class="mail warn">
+            <div class="mail-top">
+              <div class="mail-row"><span class="k">From</span><span class="v">SBPGI Batch Scheduler &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">To</span><span class="v">ผู้ดูแลระบบ SBPGI &lt;sbpgi-admin@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI][Batch] Job 5 — FGI_ImportImpactStoreSale ทำงานผิดพลาด (รอบ 16:30)</span></div>
+            </div>
+            <div class="mail-body">
+              แจ้งเตือน: Batch job ต่อไปนี้จบการทำงานด้วยสถานะ <b style="color:#b45309;">Error</b>
+              <table class="det">
+                <tr><td>Job</td><td><span class="mf">Job 5 — FGI_ImportImpactStoreSale</span> (รับยอดขาย + คำนวณ Growth Rate)</td></tr>
+                <tr><td>รอบการรัน</td><td><span class="mf">16/06/2569 16:30</span></td></tr>
+                <tr><td>ขั้นตอนที่ล้มเหลว</td><td><span class="mf">อ่านไฟล์ AMS06001I</span></td></tr>
+                <tr><td>รหัส / ข้อความ</td><td><span class="mf warn">E11 — ไม่พบไฟล์ AMS06001I_25690616.txt บน SFTP</span></td></tr>
+                <tr><td>ผลกระทบ</td><td>ยังไม่คำนวณ sales_diff ของงวดนี้ — ข้อมูลไม่ถูกเขียนบางส่วน (job ครอบด้วย transaction)</td></tr>
+                <tr><td>การแก้ไขเบื้องต้น</td><td>ตรวจไฟล์ต้นทางจาก IAS/MIS แล้วสั่ง rerun จากหน้า Batch Job</td></tr>
+              </table>
+              <span class="mail-btn">เปิดหน้า Batch Job</span>
+              <div class="mail-foot">Notification Service กลาง · UTF-8 · ผู้รับกำหนดใน config ต่อ job กรุณาอย่าตอบกลับ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EM-08 -->
+        <div class="card" data-tpl="EM-08">
+          <div class="card-head"><h2><span class="tpl-code">EM-08</span> &nbsp;Watchdog — ACK จาก STA ค้างเกิน 1 วัน</h2><span class="flowpoint" style="margin-left:auto;">⚙ Stage D · Job 10 · ทุกวัน 07:00</span></div>
+          <div class="tpl-meta">
+            <div class="m"><span class="k">Trigger</span><span class="v">Job 10 (NotifyNoReceiveData) พบ dataset ที่ยังไม่ได้รับ ACK เกิน 1 วัน — คงไว้เป็น safety net คู่กับ POST /interfaces/sta/ack</span></div>
+            <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = ผู้ดูแลระบบ (เดิม storeretention warning)</span></div>
+            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">interface_transactions (return_code IS NULL · อายุ ≥ 1 วัน)</span></div>
+          </div>
+          <div class="mail warn">
+            <div class="mail-top">
+              <div class="mail-row"><span class="k">From</span><span class="v">SBPGI Batch Scheduler &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">To</span><span class="v">ผู้ดูแลระบบ SBPGI &lt;sbpgi-admin@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI][Watchdog] ACK จาก STA ค้างเกิน 1 วัน — 2 dataset</span></div>
+            </div>
+            <div class="mail-body">
+              แจ้งเตือน: พบข้อมูลค่าชดเชยที่ส่งไป STA แล้ว <b>ยังไม่ได้รับ ACK ตอบกลับ</b> เกิน 1 วัน
+              <table class="det" style="min-width:460px;">
+                <tr><td>ไฟล์ / Dataset</td><td>ส่งเมื่อ</td><td>ค้างมาแล้ว</td></tr>
+                <tr><td><span class="mf">FRBC0001_25690614.txt</span></td><td><span class="mf">14/06/2569 17:00</span></td><td><span class="mf warn">2</span> วัน</td></tr>
+                <tr><td><span class="mf">FRBC0001_25690615.txt</span></td><td><span class="mf">15/06/2569 17:00</span></td><td><span class="mf warn">1</span> วัน</td></tr>
+              </table>
+              กรุณาประสานทีม STA เพื่อตรวจสอบการประมวลผล หรือดูรายการค้างที่ dashboard (<span class="mf">GET /interfaces/pending-ack</span>)
+              <div class="mail-foot">งานอ่านอย่างเดียว รันซ้ำปลอดภัย · แจ้งทุกวัน 07:00 เมื่อพบรายการค้าง กรุณาอย่าตอบกลับ</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tbat -->
+
+      <!-- ประวัติการแก้ไขข้อมูล (template) -->
+      <div class="card" style="margin-top:4px;">
+        <div class="card-head"><h2>ประวัติการแก้ไขข้อมูล</h2><span class="pill info" style="margin-left:auto;">audit_logs (table_name = email_templates)</span></div>
+        <div class="table-wrap"><table class="data" style="min-width:980px;">
+          <thead><tr><th>วันที่แก้ไข</th><th>ผู้แก้ไข</th><th>คำสั่ง</th><th>รายการ</th><th>ข้อมูลเดิม → ข้อมูลใหม่</th><th>เหตุผลการแก้ไข</th></tr></thead>
+          <tbody>
+            <tr><td class="num">02/07/2569 10:20</td><td>Admin BPM</td><td><span class="pill info">แก้ไข</span></td><td><span class="tpl-code">EM-07</span> แจ้ง Batch Job ผิดพลาด</td><td>เพิ่มแถว "การแก้ไขเบื้องต้น" ในเนื้อหาอีเมล</td><td>ให้ผู้ดูแลเห็นแนวทาง rerun ได้ทันทีจากอีเมล</td></tr>
+            <tr><td class="num">27/06/2569 14:05</td><td>ภัชริดา ประดิษฐ์ทองใส</td><td><span class="pill info">แก้ไข</span></td><td><span class="tpl-code">EM-01</span> แจ้งผู้ดำเนินการลำดับถัดไป</td><td>เพิ่มตัวแปร {{doc_url}} ท้ายเนื้อหา</td><td>ให้กดเปิดเอกสารจากอีเมลได้โดยตรง</td></tr>
+            <tr><td class="num">24/06/2569 09:30</td><td>Admin BPM</td><td><span class="pill fail">รีเซ็ต</span></td><td><span class="tpl-code">EM-05</span> Escalation งานค้าง 30/45/60 วัน</td><td>คืนค่า Default</td><td>ยกเลิกถ้อยคำที่ทดลองปรับก่อนหน้า</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">ระบบบันทึกประวัติอัตโนมัติทุกครั้งที่ แก้ไข / รีเซ็ต template — ผู้รับ From/To/Cc ล็อกตาม status_email_rules แก้ไม่ได้ · การแก้ไขและการรีเซ็ตต้องระบุเหตุผลเสมอ · เก็บหลายรายการต่อ template เรียงล่าสุดก่อน</p>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+  <script>
+  (function () {
+    /* EM-01 — สลับตัวอย่างตามสถานะถัดไป (TO/CC ตามตาราง State/Email ใน k2-flow.html) */
+    var RULES = {
+      '06': { status:'รอฝ่าย SBP DSA ดำเนินการ',            to:'ฝ่าย SBP DSA', toMail:'sbp-dsa-mgr@cpall.co.th',      cc:'เจ้าหน้าที่ SBP DSA', ccMail:'sbp-dsa-officer@cpall.co.th', action:'เห็นควรไม่ชดเชย (ส่งกลับ)',        actor:'ฝ่ายส่งเสริมธุรกิจ SBP' },
+      '08': { status:'รอเจ้าหน้าที่ SBP DSA ดำเนินการ',      to:'เจ้าหน้าที่ SBP DSA', toMail:'sbp-dsa-officer@cpall.co.th', cc:'ฝ่าย SBP DSA', ccMail:'sbp-dsa-mgr@cpall.co.th',    action:'เจ้าหน้าที่ SBP DSA ดำเนินการ',     actor:'ฝ่าย SBP DSA' },
+      '01': { status:'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ',   to:'ฝ่ายส่งเสริมธุรกิจ SBP', toMail:'sbp-opt-mgr@cpall.co.th', cc:'ฝ่าย SBP DSA', ccMail:'sbp-dsa-mgr@cpall.co.th',    action:'คำนวณเงินชดเชยเรียบร้อย',           actor:'เจ้าหน้าที่ SBP DSA' },
+      '02': { status:'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ',   to:'GM ส่งเสริมธุรกิจ SBP', toMail:'sbp-opt-gm@cpall.co.th', cc:'ฝ่ายส่งเสริมธุรกิจ SBP', ccMail:'sbp-opt-mgr@cpall.co.th', action:'เห็นควรชดเชย',                    actor:'ฝ่ายส่งเสริมธุรกิจ SBP' },
+      '03': { status:'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', to:'ผู้บริหารสำนักบริหาร SBP', toMail:'sbp-avp@cpall.co.th', cc:'GM ส่งเสริมธุรกิจ SBP', ccMail:'sbp-opt-gm@cpall.co.th', action:'เห็นควรชดเชย (> 100,000 บาท)',     actor:'GM ส่งเสริมธุรกิจ SBP' },
+      '04': { status:'รอฝ่ายบัญชี SBP ดำเนินการ',            to:'ฝ่ายบัญชี SBP', toMail:'sbp-account@cpall.co.th',     cc:'ฝ่าย SBP DSA', ccMail:'sbp-dsa-mgr@cpall.co.th',    action:'เห็นควรชดเชย (≤ 100,000 บาท)',     actor:'GM ส่งเสริมธุรกิจ SBP' },
+      '05': { status:'รอบัญชีปฏิบัติการภาคดำเนินการ',        to:'บัญชีปฏิบัติการภาค', toMail:'region-account-rs@cpall.co.th', cc:'ฝ่ายบัญชี SBP', ccMail:'sbp-account@cpall.co.th', action:'บัญชีปฏิบัติการภาคดำเนินการ',    actor:'ฝ่ายบัญชี SBP' }
+    };
+    var sel = document.getElementById('em01Select');
+    function set(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }
+    function applyEm01(code) {
+      var r = RULES[code]; if (!r) return;
+      set('em01Status', r.status);
+      set('em01To', r.to + ' <' + r.toMail + '>');
+      set('em01Cc', r.cc + ' <' + r.ccMail + '>');
+      set('em01Subj', '[SBPGI] เอกสารประกันรายได้ 2569/00123 — ' + r.status);
+      set('em01Dear', r.to);
+      set('em01BodyStatus', r.status);
+      set('em01Action', r.action);
+      set('em01Actor', r.actor);
+    }
+    if (sel) {
+      sel.addEventListener('change', function () { applyEm01(sel.value); });
+      applyEm01(sel.value);
+    }
+
+    /* ---- แก้ไข template + รีเซ็ตเป็น Default (เก็บใน localStorage ต่อเครื่อง) ---- */
+    var LS_PREFIX = 'sbpEmailTpl:';
+    function toast(msg, kind) { if (window.SBP && window.SBP.toast) window.SBP.toast(msg, kind); }
+
+    /* ตัวแปร merge ต่อ template — แสดงเป็นชิปให้คลิกแทรก ณ ตำแหน่งเคอร์เซอร์ */
+    var VARS = {
+      'EM-01': [
+        ['doc_no','เลขที่เอกสาร'], ['store_code','รหัสร้าน'], ['store_name','ชื่อร้าน'], ['region','ภาค'],
+        ['round','รอบ'], ['times','ครั้งที่'], ['period','เดือน/ปี'], ['sales_drop_pct','% ยอดขายที่ลดลง'],
+        ['compensate_amount','เงินชดเชย'], ['next_status','สถานะใหม่'], ['last_action','ผลพิจารณาก่อนหน้า'],
+        ['last_actor','ผู้ดำเนินการก่อนหน้า'], ['doc_url','ลิงก์เอกสาร']
+      ],
+      'EM-02': [
+        ['doc_no','เลขที่เอกสาร'], ['store_code','รหัสร้าน'], ['store_name','ชื่อร้าน'],
+        ['final_action','ผลพิจารณาที่จบ'], ['final_result','ผลสุดท้าย'], ['compensate_amount','เงินชดเชย'],
+        ['closed_date','วันที่ปิดงาน'], ['stakeholder_list','รายชื่อผู้เกี่ยวข้อง'], ['doc_url','ลิงก์เอกสาร']
+      ],
+      'EM-03': [
+        ['doc_no','เลขที่เอกสาร'], ['store_code','รหัสร้าน'], ['store_name','ชื่อร้าน'],
+        ['returned_by','ผู้ส่งกลับ'], ['returned_section','section ผู้ส่งกลับ'], ['next_status','สถานะใหม่'],
+        ['return_comment','ความเห็น/เหตุผล'], ['return_date','วันที่ส่งกลับ'], ['doc_url','ลิงก์เอกสาร']
+      ],
+      'EM-04': [
+        ['recipient_role','ชื่อผู้รับ/หน่วยงาน'], ['as_of_date','ข้อมูล ณ วันที่'], ['pending_count','จำนวนงานค้าง'],
+        ['pending_table','ตารางรายการงานค้าง'], ['list_url','ลิงก์หน้ารอดำเนินการ']
+      ],
+      'EM-05': [
+        ['doc_no','เลขที่เอกสาร'], ['store_code','รหัสร้าน'], ['store_name','ชื่อร้าน'],
+        ['current_status','สถานะปัจจุบัน'], ['waiting_days','จำนวนวันค้าง'], ['threshold_days','เกณฑ์วันที่ครบ'],
+        ['owner_role','ผู้ดำเนินการเจ้าของงาน'], ['doc_url','ลิงก์เอกสาร']
+      ],
+      'EM-06': [
+        ['dv_name','ชื่อ DV / เขต'], ['period','รอบ (เดือน/ปี)'], ['eligible_count','ร้านผ่านเกณฑ์'],
+        ['success_count','เปิด workflow สำเร็จ'], ['success_doc_list','รายการเอกสารที่เปิด'],
+        ['failed_count','เปิดไม่สำเร็จ'], ['failed_list','รายการที่ไม่สำเร็จ'], ['report_url','ลิงก์รายงานสรุป']
+      ],
+      'EM-07': [
+        ['job_code','รหัส Job'], ['job_name','ชื่อ Job'], ['run_round','รอบการรัน'],
+        ['failed_step','ขั้นตอนที่ล้มเหลว'], ['error_code','รหัสข้อผิดพลาด'], ['error_message','ข้อความข้อผิดพลาด'],
+        ['impact','ผลกระทบ'], ['batch_url','ลิงก์หน้า Batch Job']
+      ],
+      'EM-08': [
+        ['pending_count','จำนวน dataset ค้าง'], ['dataset_table','ตารางไฟล์ที่ค้าง'], ['file_name','ชื่อไฟล์'],
+        ['sent_time','เวลาที่ส่ง'], ['pending_days','จำนวนวันค้าง'], ['dashboard_url','ลิงก์ dashboard']
+      ]
+    };
+
+    var TOOLBAR_HTML =
+      '<button type="button" data-cmd="undo" title="ย้อนกลับ (Ctrl+Z)">↶</button>' +
+      '<button type="button" data-cmd="redo" title="ทำซ้ำ (Ctrl+Shift+Z)">↷</button>' +
+      '<span class="rt-sep"></span>' +
+      '<button type="button" data-cmd="bold" title="ตัวหนา (Ctrl+B)"><b>B</b></button>' +
+      '<button type="button" data-cmd="italic" title="ตัวเอียง (Ctrl+I)"><i>I</i></button>' +
+      '<button type="button" data-cmd="underline" title="ขีดเส้นใต้ (Ctrl+U)"><u>U</u></button>' +
+      '<button type="button" data-cmd="strikeThrough" title="ขีดฆ่า"><s>S</s></button>' +
+      '<span class="rt-sep"></span>' +
+      '<button type="button" data-cmd="foreColor" data-val="#b42318" title="อักษรสีแดง"><b style="color:#b42318;">A</b></button>' +
+      '<button type="button" data-cmd="foreColor" data-val="#b45309" title="อักษรสีส้ม"><b style="color:#b45309;">A</b></button>' +
+      '<button type="button" data-cmd="foreColor" data-val="#2456c4" title="อักษรสีน้ำเงิน"><b style="color:#2456c4;">A</b></button>' +
+      '<button type="button" data-cmd="foreColor" data-val="#2b3440" title="อักษรสีปกติ"><b>A</b></button>' +
+      '<button type="button" data-cmd="hiliteColor" data-val="#fff3bf" title="ไฮไลต์"><b style="background:#fff3bf;padding:0 3px;border-radius:3px;">A</b></button>' +
+      '<span class="rt-sep"></span>' +
+      '<button type="button" data-cmd="insertUnorderedList" title="รายการหัวข้อ">•≡</button>' +
+      '<button type="button" data-cmd="insertOrderedList" title="รายการตัวเลข">1≡</button>' +
+      '<span class="rt-sep"></span>' +
+      '<span class="rt-dd"><button type="button" data-tbl-pick title="แทรกตาราง (เลือกขนาด)">▦</button>' +
+        '<span class="rt-grid">' + (function () {
+          var h = '<span class="g">';
+          for (var r = 1; r <= 6; r++) for (var c = 1; c <= 6; c++) h += '<span class="c" data-r="' + r + '" data-c="' + c + '"></span>';
+          return h + '</span><span class="cap">เลือกขนาดตาราง</span>';
+        })() + '</span></span>' +
+      '<button type="button" data-tblop="row+" title="เพิ่มแถวใต้ตำแหน่งเคอร์เซอร์">+แถว</button>' +
+      '<button type="button" data-tblop="col+" title="เพิ่มคอลัมน์ขวาตำแหน่งเคอร์เซอร์">+คอลัมน์</button>' +
+      '<button type="button" data-tblop="row-" title="ลบแถวที่เคอร์เซอร์อยู่">−แถว</button>' +
+      '<button type="button" data-tblop="col-" title="ลบคอลัมน์ที่เคอร์เซอร์อยู่">−คอลัมน์</button>' +
+      '<span class="rt-sep"></span>' +
+      '<button type="button" data-cmd="removeFormat" title="ล้างรูปแบบ"><s>T</s>x</button>';
+
+    var tpls = [].slice.call(document.querySelectorAll('[data-tpl]')).map(function (card) {
+      var key  = card.getAttribute('data-tpl');
+      var mail = card.querySelector('.mail');
+      var subj = card.querySelector('.mail-row .v.subj');
+      var body = card.querySelector('.mail-body');
+      var def  = { subj: subj.innerHTML, body: body.innerHTML };
+
+      var box = document.createElement('span');
+      box.className = 'tpl-actions';
+      box.innerHTML =
+        '<span class="pill info" data-state>Default</span>' +
+        '<button class="btn btn-soft btn-sm" data-edit>แก้ไข</button>' +
+        '<button class="btn btn-ghost btn-sm" data-reset>รีเซ็ต</button>';
+      card.querySelector('.card-head').appendChild(box);
+      var stateEl = box.querySelector('[data-state]');
+      var btnEdit = box.querySelector('[data-edit]');
+      var btnReset = box.querySelector('[data-reset]');
+
+      /* แถบเครื่องมือ + ชิปตัวแปร (แสดงเฉพาะโหมดแก้ไข ลอยติดขอบบนขณะเลื่อน) */
+      var editor = document.createElement('div');
+      editor.className = 'tpl-editor';
+      var chips = (VARS[key] || []).map(function (v) {
+        return '<button type="button" class="rt-var" data-var="' + v[0] + '" data-label="' + v[1] + '" title="แทรก ' + v[1] + '"><code>{{' + v[0] + '}}</code><small>' + v[1] + '</small></button>';
+      }).join('');
+      editor.innerHTML =
+        '<div class="rt-toolbar">' + TOOLBAR_HTML +
+          '<span class="rt-actions">' +
+            '<button type="button" class="btn btn-primary btn-sm" data-act="save">บันทึก</button>' +
+            '<button type="button" class="btn btn-ghost btn-sm" data-act="reset">รีเซ็ต</button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="rt-vars"><span class="lbl">แทรกตัวแปร:</span>' + chips + '</div>';
+      card.insertBefore(editor, mail);
+      var grid = editor.querySelector('.rt-grid');
+      var gridCap = grid.querySelector('.cap');
+
+      /* จำตำแหน่งเคอร์เซอร์ล่าสุด (Subject หรือเนื้อหา) เพื่อแทรกตัวแปร/จัดรูปแบบให้ถูกที่ */
+      var lastRange = null, lastField = null;
+      function saveSel() {
+        var s = window.getSelection();
+        if (!s.rangeCount) return;
+        var r = s.getRangeAt(0), n = r.commonAncestorContainer;
+        if (body.contains(n)) { lastRange = r.cloneRange(); lastField = body; }
+        else if (subj.contains(n)) { lastRange = r.cloneRange(); lastField = subj; }
+      }
+      ['keyup', 'mouseup', 'focus', 'input'].forEach(function (ev) {
+        body.addEventListener(ev, saveSel);
+        subj.addEventListener(ev, saveSel);
+      });
+      function restoreSel(field) {
+        field.focus();
+        var s = window.getSelection(), r;
+        if (lastRange && field.contains(lastRange.commonAncestorContainer)) {
+          r = lastRange;
+        } else {
+          r = document.createRange(); r.selectNodeContents(field); r.collapse(false);
+        }
+        s.removeAllRanges(); s.addRange(r);
+      }
+
+      /* ---- ตาราง: หา cell ที่เคอร์เซอร์อยู่ / แทรก / เพิ่ม-ลบแถวคอลัมน์ ---- */
+      function curCell() {
+        var s = window.getSelection();
+        if (!s.rangeCount) return null;
+        var n = s.getRangeAt(0).commonAncestorContainer;
+        var el = n.nodeType === 1 ? n : n.parentNode;
+        var td = el && el.closest ? el.closest('td,th') : null;
+        return (td && body.contains(td)) ? td : null;
+      }
+      function insertTable(rows, cols) {
+        restoreSel(body);
+        var td = curCell();
+        if (td) {                       /* เคอร์เซอร์อยู่ในตารางเดิม → วางตารางใหม่ต่อท้าย */
+          var t = td.closest('table');
+          var s = window.getSelection(), rg = document.createRange();
+          rg.setStartAfter(t); rg.collapse(true);
+          s.removeAllRanges(); s.addRange(rg);
+        }
+        var html = '<table class="det">';
+        for (var i = 0; i < rows; i++) {
+          html += '<tr>';
+          for (var j = 0; j < cols; j++) html += '<td>&nbsp;</td>';
+          html += '</tr>';
+        }
+        html += '</table><br>';
+        document.execCommand('insertHTML', false, html);
+        saveSel();
+      }
+      function tableOp(op) {
+        restoreSel(body);
+        var td = curCell();
+        if (!td) { toast('คลิกวางเคอร์เซอร์ในตารางก่อน แล้วค่อยกดปุ่มแถว/คอลัมน์'); return; }
+        var tr = td.parentNode, tbl = td.closest('table');
+        var idx = [].indexOf.call(tr.children, td);
+        var rows = [].slice.call(tbl.rows);
+        function newCell() { var c = document.createElement('td'); c.innerHTML = '&nbsp;'; return c; }
+        if (op === 'row+') {
+          var nr = document.createElement('tr');
+          for (var i = 0; i < tr.children.length; i++) nr.appendChild(newCell());
+          tr.parentNode.insertBefore(nr, tr.nextSibling);
+        } else if (op === 'col+') {
+          rows.forEach(function (r) {
+            var ref = r.children[idx];
+            r.insertBefore(newCell(), ref ? ref.nextSibling : null);
+          });
+        } else if (op === 'row-') {
+          if (rows.length <= 1) tbl.parentNode.removeChild(tbl);
+          else tr.parentNode.removeChild(tr);
+          lastRange = null;
+        } else if (op === 'col-') {
+          if (tr.children.length <= 1) tbl.parentNode.removeChild(tbl);
+          else rows.forEach(function (r) { if (r.children[idx]) r.removeChild(r.children[idx]); });
+          lastRange = null;
+        }
+      }
+      function hideGrid() { grid.classList.remove('show'); }
+      grid.addEventListener('mouseover', function (e) {
+        var c = e.target.closest('.c');
+        if (!c) return;
+        var R = +c.getAttribute('data-r'), C = +c.getAttribute('data-c');
+        [].forEach.call(grid.querySelectorAll('.c'), function (el) {
+          el.classList.toggle('on', +el.getAttribute('data-r') <= R && +el.getAttribute('data-c') <= C);
+        });
+        gridCap.textContent = R + ' แถว × ' + C + ' คอลัมน์';
+      });
+      document.addEventListener('click', function (e) {
+        if (!editor.contains(e.target)) hideGrid();
+      });
+
+      editor.addEventListener('mousedown', function (e) {
+        e.preventDefault();             /* คง selection/เคอร์เซอร์ในเนื้อหาไว้ */
+      });
+      editor.addEventListener('click', function (e) {
+        if (!card.classList.contains('tpl-editing')) return;
+
+        var cell = e.target.closest('.rt-grid .c');
+        if (cell) { hideGrid(); insertTable(+cell.getAttribute('data-r'), +cell.getAttribute('data-c')); return; }
+
+        var b = e.target.closest('button');
+        if (!b) return;
+
+        if (b.hasAttribute('data-act')) {       /* บันทึก / รีเซ็ต (sticky) */
+          hideGrid();
+          if (b.getAttribute('data-act') === 'save') btnEdit.click();
+          else btnReset.click();
+          return;
+        }
+        if (b.hasAttribute('data-tbl-pick')) { grid.classList.toggle('show'); return; }
+        hideGrid();
+        if (b.hasAttribute('data-tblop')) { tableOp(b.getAttribute('data-tblop')); saveSel(); return; }
+
+        var field = (lastField === subj) ? subj : body;
+        restoreSel(field);
+        if (b.hasAttribute('data-var')) {
+          var name = b.getAttribute('data-var');
+          if (field === subj) {
+            document.execCommand('insertText', false, '{{' + name + '}}');
+          } else {
+            document.execCommand('insertHTML', false,
+              '<span class="mf" contenteditable="false" title="' + b.getAttribute('data-label') + '">{{' + name + '}}</span>&nbsp;');
+          }
+        } else if (b.hasAttribute('data-cmd')) {
+          document.execCommand(b.getAttribute('data-cmd'), false, b.getAttribute('data-val') || null);
+        }
+        saveSel();
+      });
+
+      /* คลิกตัวแปรในเนื้อหา = เลือกทั้งก้อน กด Delete/พิมพ์ทับได้ทันที */
+      body.addEventListener('click', function (e) {
+        if (!card.classList.contains('tpl-editing')) return;
+        var mf = e.target.closest('.mf');
+        if (!mf || !body.contains(mf)) return;
+        var r = document.createRange(); r.selectNode(mf);
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        lastRange = r.cloneRange(); lastField = body;
+      });
+
+      /* ระหว่างแก้ไข ตัวแปรเป็น atom (contenteditable=false) — ถอดออกก่อนบันทึกให้ HTML สะอาด */
+      function setTokens(on) {
+        [].forEach.call(body.querySelectorAll('.mf'), function (el) {
+          if (on) el.setAttribute('contenteditable', 'false');
+          else el.removeAttribute('contenteditable');
+        });
+      }
+
+      function setState(custom) {
+        stateEl.textContent = custom ? 'แก้ไขเอง' : 'Default';
+        stateEl.className = 'pill ' + (custom ? 'wait' : 'info');
+      }
+      function setEditing(on) {
+        card.classList.toggle('tpl-editing', on);
+        subj.contentEditable = on ? 'true' : 'false';
+        body.contentEditable = on ? 'true' : 'false';
+        setTokens(on);
+        if (on) { try { document.execCommand('styleWithCSS', false, true); } catch (e) {} }
+        else { lastRange = null; lastField = null; hideGrid(); }
+        btnEdit.textContent = on ? 'บันทึก' : 'แก้ไข';
+        btnEdit.classList.toggle('btn-primary', on);
+        btnEdit.classList.toggle('btn-soft', !on);
+      }
+      function reset(silent) {
+        setEditing(false);
+        subj.innerHTML = def.subj;
+        body.innerHTML = def.body;
+        try { localStorage.removeItem(LS_PREFIX + key); } catch (e) {}
+        setState(false);
+        if (key === 'EM-01' && sel) applyEm01(sel.value);
+        if (!silent) toast('รีเซ็ต ' + key + ' เป็นค่า Default แล้ว', 'del');
+      }
+
+      try {
+        var saved = localStorage.getItem(LS_PREFIX + key);
+        if (saved) {
+          var o = JSON.parse(saved);
+          subj.innerHTML = o.subj; body.innerHTML = o.body;
+          setState(true);
+        }
+      } catch (e) {}
+
+      btnEdit.addEventListener('click', function () {
+        var startEditing = !card.classList.contains('tpl-editing');
+        if (startEditing) {
+          setEditing(true);
+          body.focus();
+          toast('พิมพ์แก้ได้โดยตรง · ใช้แถบเครื่องมือจัดรูปแบบ และคลิกชิปตัวแปรเพื่อแทรก แล้วกด "บันทึก"');
+        } else {
+          setEditing(false);
+          try { localStorage.setItem(LS_PREFIX + key, JSON.stringify({ subj: subj.innerHTML, body: body.innerHTML })); } catch (e) {}
+          setState(true);
+          toast('บันทึก ' + key + ' แล้ว (เก็บในเบราว์เซอร์เครื่องนี้)', 'ok');
+        }
+      });
+      btnReset.addEventListener('click', function () { reset(false); });
+
+      return { key: key, reset: reset };
+    });
+
+    var btnAll = document.getElementById('btnResetAll');
+    if (btnAll) btnAll.addEventListener('click', function () {
+      tpls.forEach(function (t) { t.reset(true); });
+      toast('รีเซ็ต template ทั้งหมด (' + tpls.length + ' ฉบับ) เป็นค่า Default แล้ว', 'del');
+    });
+
+    /* ---- คลิกแถวในตารางแผนที่ → สลับแท็บที่ถูกต้อง + เลื่อนไปยังการ์ด template + ไฮไลต์ ---- */
+    var tplMap = document.getElementById('tplMap');
+    if (tplMap) {
+      var headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-h'), 10) || 64;
+
+      /* เลื่อนแบบนุ่มด้วย setTimeout บน scrollTo(0,y) — ไม่พึ่ง behavior:'smooth' และไม่พึ่ง rAF
+         (ทำงานได้แม้ในสภาพแวดล้อมที่ rAF ถูกหยุด เช่นแท็บที่ไม่ได้ paint) */
+      var scrollTimer = null;
+      function smoothScrollTo(targetY) {
+        targetY = targetY < 0 ? 0 : targetY;
+        if (scrollTimer) { clearTimeout(scrollTimer); scrollTimer = null; }
+        var startY = window.pageYOffset, diff = targetY - startY, dur = 380, t0 = Date.now();
+        if (Math.abs(diff) < 2) { window.scrollTo(0, targetY); return; }
+        (function tick() {
+          var p = Math.min(1, (Date.now() - t0) / dur);
+          var eased = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; /* easeInOutQuad */
+          window.scrollTo(0, Math.round(startY + diff * eased));
+          if (p < 1) scrollTimer = setTimeout(tick, 16);
+          else scrollTimer = null;
+        })();
+      }
+
+      /* เติมลูกศรบอกว่าคลิกได้ ไว้ท้ายชิป EM ในคอลัมน์แรก (มองเห็นเสมอแม้ตารางเลื่อนแนวนอน) */
+      [].forEach.call(tplMap.querySelectorAll('tbody tr'), function (tr) {
+        var codeEl = tr.querySelector('.tpl-code');
+        if (!codeEl) return;
+        tr.setAttribute('title', 'ไปยัง ' + codeEl.textContent.trim());
+        if (!codeEl.parentNode.querySelector('.jump-go')) {
+          var go = document.createElement('span');
+          go.className = 'jump-go';
+          go.textContent = '›';
+          codeEl.parentNode.appendChild(go);
+        }
+      });
+
+      function jumpTo(code) {
+        var card = document.querySelector('[data-tpl="' + code + '"]');
+        if (!card) return;
+        /* ถ้าการ์ดอยู่ในแท็บที่ซ่อนอยู่ ให้สลับไปแท็บนั้นก่อน (คลิก .tab เพื่อใช้ handler เดิมของ sbp.js) */
+        var pane = card.closest('[data-tabpane]');
+        if (pane) {
+          var paneKey = pane.getAttribute('data-tabpane');
+          var tab = document.querySelector('.tab[data-tab="' + paneKey + '"]');
+          if (tab && !tab.classList.contains('active')) tab.click();
+        }
+        /* เลื่อนแบบนุ่ม โดยเผื่อความสูง header ที่ปักอยู่ */
+        var top = card.getBoundingClientRect().top + window.pageYOffset - headerH - 14;
+        smoothScrollTo(top);
+        /* รีสตาร์ทอนิเมชันไฮไลต์ทุกครั้งที่คลิก */
+        card.classList.remove('tpl-flash');
+        void card.offsetWidth;
+        card.classList.add('tpl-flash');
+      }
+
+      tplMap.addEventListener('click', function (e) {
+        var tr = e.target.closest('tbody tr');
+        if (!tr || !tplMap.contains(tr)) return;
+        var codeEl = tr.querySelector('.tpl-code');
+        if (codeEl) jumpTo(codeEl.textContent.trim());
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

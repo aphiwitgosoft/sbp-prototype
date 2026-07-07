@@ -62,16 +62,17 @@ Thai popup/validation strings in the docs are specified verbatim from the SRS an
 
 `FGI_FCS_Batch_Job_Technical_Document_Improved_v4.0.pdf` (29 pages) describes the 11 backend batch entry points (Jobs 1–10 + 8b StartK2WorkFlow) that feed the K2 system; it is the sole requirements source for `job-batch.html` (batch-job console screen) and is not referenced by the K2 screen docs.
 
-Flow pages live in sidebar group `Flow`: `flow-fgi.html` = FGI/FCS batch pipeline, `k2-flow.html` = K2 approval workflow, and `plan-flow.html` = combined FGI/FCS + K2 target flow. Database pages live in sidebar group `Database`: `fgi-database.html` = FGI/FCS pipeline schema, `k2-database.html` = K2 documents/workflow schema, and `plan-database.html` = combined 30-table target schema (zones A = FGI/FCS, B = K2 documents/workflow, C = shared master/config). `plan-api.html` (sidebar group `Plan`) documents the 39-endpoint REST API spec (an abnormal-stores group of 2 endpoints is commented out pending the keep-or-drop decision). Target database names use English `lower_snake_case` consistently; source tags — (FGI/FCS), (K2), or (ใหม่) — still tie each object back to the requirement documents and should be preserved.
+Flow pages live in sidebar group `Flow`: `flow-fgi.html` = FGI/FCS batch pipeline, `k2-flow.html` = K2 approval workflow, and `plan-flow.html` = combined FGI/FCS + K2 target flow. Database pages live in sidebar group `Database`: `fgi-database.html` = FGI/FCS pipeline schema, `k2-database.html` = K2 documents/workflow schema, and `plan-database.html` = combined 34-table target schema (zones A = FGI/FCS, B = K2 documents/workflow, C = shared master/config). `plan-api.html` (sidebar group `Plan`) documents the 61-endpoint / 10-group REST API spec (an abnormal-stores group of 2 endpoints is commented out pending the keep-or-drop decision). Target database names use English `lower_snake_case` consistently; source tags — (FGI/FCS), (K2), or (ใหม่) — still tie each object back to the requirement documents and should be preserved.
 
-## Living docs: database.md and workflow.md (MUST read & keep in sync)
+## Living docs: database.md, workflow.md, and api.md (MUST read & keep in sync)
 
-`database.md` and `workflow.md` in the repo root are the canonical markdown summaries of the new-system design:
+`database.md`, `workflow.md`, and `api.md` in the repo root are the canonical markdown summaries of the new-system design:
 
-- `database.md` — the 30-table target schema, mirrors `plan-database.html` (data spine, zones A/B/C, cross-system keys, P0/P1 fixes).
+- `database.md` — the 34-table target schema, mirrors `plan-database.html` (data spine, zones A/B/C, cross-system keys, P0/P1 fixes).
 - `workflow.md` — the end-to-end flow, mirrors `plan-flow.html` plus the sequence diagrams `old-flow.png` (legacy, 7 lanes incl. EAI and K2) and `new-flow.png` (target, 5 lanes).
+- `api.md` — the 61-endpoint / 10-group REST spec, mirrors `plan-api.html` (per-endpoint modal structure, business rules bound to endpoints, the commented abnormal-stores group).
 
-**Whenever a conversation touches the database or the flow/workflow, read the relevant .md file first.** When a design decision changes either topic, update the .md file **and** its HTML counterpart (`plan-database.html` / `plan-flow.html`) in the same change so they never drift.
+**Whenever a conversation touches the database, the flow/workflow, or the API, read the relevant .md file first.** When a design decision changes any of these topics, update the .md file **and** its HTML counterpart (`plan-database.html` / `plan-flow.html` / `plan-api.html`) in the same change so they never drift. The three are cross-coupled: an API change often touches a table (`database.md`) or a flow step (`workflow.md`) — update all affected pairs together.
 
 Core architectural premise recorded there: the new system merges **EAI and K2 into SBPGI** — FGI/FCS batch jobs and the K2 document/workflow run in one system on one database. The internal `BPM06001O_/2O_/3O_` file exports through EAI (Jobs 7/8/9) and the K2 REST StartInstance call (Job 8b) are removed, replaced by direct DB writes (Document Service) and an internal Workflow Engine. External interfaces (QSSI, ALLMAP, IAS/MIS, STA, SMTP) keep their existing file/SFTP mechanisms.
 

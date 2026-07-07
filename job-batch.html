@@ -92,6 +92,31 @@
       </div>
     </div>
 
+    <!-- ===== charts overview ===== -->
+    <div class="charts-row" style="grid-template-columns:1fr 1.4fr 1fr; margin-bottom:24px;">
+      <div class="chart-card">
+        <h3>สถานะรอบล่าสุด</h3>
+        <div class="csub">รอบเช้านี้ (02/07/2569) · 11 entry points</div>
+        <div style="display:flex; align-items:center; gap:16px;">
+          <div data-chart="donut" data-values="9,2" data-colors="#16a34a,#f59e0b" data-center="Jobs"></div>
+          <div style="display:flex; flex-direction:column; gap:10px; font-size:12.5px; color:#5d6b7a;">
+            <span style="display:flex;align-items:center;gap:8px;"><i style="width:12px;height:12px;border-radius:3px;background:#16a34a;display:inline-block;"></i> สำเร็จ <b style="color:#2b3440;">9</b></span>
+            <span style="display:flex;align-items:center;gap:8px;"><i style="width:12px;height:12px;border-radius:3px;background:#f59e0b;display:inline-block;"></i> เตือน / ACK ค้าง <b style="color:#2b3440;">2</b></span>
+          </div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>จำนวน Job ต่อเฟส (Pipeline A–E)</h3>
+        <div class="csub">A รับเข้า · B ยอดขาย · C ส่งออก BPM (เดิม) · D workflow/STA · E watchdog</div>
+        <div data-chart="bar" data-values="3,2,3,2,1" data-labels="A,B,C,D,E"></div>
+      </div>
+      <div class="chart-card">
+        <h3>ACK ค้าง (7 วันล่าสุด)</h3>
+        <div class="csub">รายการที่ watchdog (Job 10) แจ้งค้าง ≥ 1 วัน</div>
+        <div data-chart="spark" data-values="1,0,2,1,3,2,2"></div>
+      </div>
+    </div>
+
     <!-- ===== pipeline overview ===== -->
     <div class="card">
       <div class="card-head"><h2>ภาพรวม Pipeline (เฟส A–E)</h2><span class="pill info">คลิกชื่อ Job เพื่อดูรายละเอียด</span></div>
@@ -218,6 +243,20 @@
           </table>
         </div>
       </div>
+    </div>
+
+    <!-- ประวัติการแก้ไขข้อมูล (พารามิเตอร์ / เปิด-ปิด Job) -->
+    <div class="card">
+      <div class="card-head"><h2>ประวัติการแก้ไขข้อมูล</h2><span class="pill info" style="margin-left:auto;">audit_logs (table_name = job_configs)</span></div>
+      <div class="table-wrap"><table class="data" style="min-width:980px;">
+        <thead><tr><th>วันที่แก้ไข</th><th>ผู้แก้ไข</th><th>คำสั่ง</th><th>รายการ</th><th>ข้อมูลเดิม → ข้อมูลใหม่</th><th>เหตุผลการแก้ไข</th></tr></thead>
+        <tbody>
+          <tr><td class="num">02/07/2569 08:15</td><td>Admin BPM</td><td><span class="pill info">แก้ไข</span></td><td>Job 1 ImportQSSI · Batch Insert Size</td><td>5,000 → 10,000</td><td>เร่ง throughput การนำเข้าคะแนน QSSI ตามผล tuning</td></tr>
+          <tr><td class="num">28/06/2569 17:45</td><td>ภัชริดา ประดิษฐ์ทองใส</td><td><span class="pill fail">ปิดใช้งาน</span></td><td>Job 9 ExportOpenStore</td><td>เปิดใช้ → ปิดอยู่</td><td>หยุดส่งไฟล์ BPM06002O ชั่วคราวระหว่างตรวจสอบค่า forecast</td></tr>
+          <tr><td class="num">20/06/2569 09:30</td><td>Admin BPM</td><td><span class="pill info">แก้ไข</span></td><td>Job 4 PrepareImpactStoreToIAS · กำหนดการรัน (Cron)</td><td>0 16 7-15 * * → 0 16 7-16 * *</td><td>ขยายหน้าต่างส่งคำขอยอดขายไป IAS อีก 1 วัน</td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">ระบบบันทึกประวัติอัตโนมัติทุกครั้งที่ บันทึกพารามิเตอร์ / เปิด-ปิด Job — ค่าคงที่ทางธุรกิจแก้ผ่านหน้าจอไม่ได้ ต้องขออนุมัติก่อน · การแก้ไขต้องระบุเหตุผลเสมอ · เก็บที่ audit_logs เรียงล่าสุดก่อน</p>
     </div>
 
     <div class="card" style="border-left:5px solid var(--primary);">

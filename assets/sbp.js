@@ -9,6 +9,7 @@
   /* ---------- icon set (24x24 stroke) ---------- */
   var I = {
     menu:'M3 6h18M3 12h18M3 18h18',
+    cog:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-3c0-.4 0-.8-.1-1.2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-2-1.2L14.5 2h-5l-.4 2.6a7.6 7.6 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 2 1.2l.4 2.6h5l.4-2.6a7.6 7.6 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2Z',
     chevR:'m9 6 6 6-6 6', chevD:'m6 9 6 6 6-6', chevU:'m6 15 6-6 6 6',
     home:'M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5',
     recruit:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6',
@@ -37,6 +38,7 @@
     upload:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
     clock:'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
     braces:'M8 3H7a2 2 0 0 0-2 2v4c0 1.5-2 3-2 3s2 1.5 2 3v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4c0 1.5 2 3 2 3s-2 1.5-2 3v4a2 2 0 0 1-2 2h-1',
+    mail:'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1ZM3.5 6.5 12 13l8.5-6.5',
     person:'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.4 0-8 2.6-8 5.5V21h16v-1.5c0-2.9-3.6-5.5-8-5.5Z'
   };
   function svg(path, cls, w, fill) {
@@ -60,7 +62,9 @@
     { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ระบบประกันรายได้' },
     { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ระบบประกันรายได้' },
     { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ระบบประกันรายได้' },
+    { key:'system-config', label:'ตั้งค่าระบบ (Config)',   href:'system-config.html', icon:I.cog,    group:'ระบบประกันรายได้' },
     { key:'job-batch',   label:'Batch Job',                href:'job-batch.html',    icon:I.clock,     group:'ระบบประกันรายได้' },
+    { key:'plan-email',  label:'Email Template',            href:'plan-email.html',   icon:I.mail,      group:'ระบบประกันรายได้' },
     { key:'flow-fgi',    label:'Flow FGI/FCS',             href:'flow-fgi.html',     icon:I.flow,      group:'Flow' },
     { key:'k2-flow',     label:'Flow K2',                  href:'k2-flow.html',      icon:I.route,     group:'Flow' },
     { key:'plan-flow',   label:'Flow FGI/FCS + K2',        href:'plan-flow.html',    icon:I.flow,      group:'Flow' },
@@ -459,11 +463,27 @@
       { key: 'etype', label: 'ประเภทพนักงาน (EMP_TYPE)', type: 'select', options: ['Full-time', 'Part-time (P/T)'] },
       { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' }
     ],
+    role: [
+      { key: 'code', label: 'รหัส Role (role_code)', col: 'Code' },
+      { key: 'name', label: 'ชื่อ Role (role_name)', col: 'Role', wide: true },
+      { key: 'desc', label: 'คำอธิบาย (role_desc)', col: 'คำอธิบาย', wide: true },
+      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
+    ],
     operator: [
       { key: 'name', label: 'ชื่อผู้ปฏิบัติงาน (employee_name)', col: 'ชื่อผู้ปฏิบัติงาน', wide: true },
       { key: 'email', label: 'E-Mail (employee_email)', col: 'E-Mail', wide: true },
       { key: 'position', label: 'ชื่อตำแหน่ง (section_code)', col: 'ชื่อตำแหน่ง', type: 'select', options: ['ฝ่าย SBP DSA', 'เจ้าหน้าที่ SBP DSA', 'ส่งเสริมธุรกิจพันธมิตรฯ', 'GM ส่งเสริมธุรกิจฯ', 'ผู้บริหารสำนักบริหาร SBP (AVP)', 'ฝ่ายบัญชี SBP', 'บัญชีปฏิบัติการภาค'] },
       { key: 'zone', label: 'ภาคที่รับผิดชอบ (zone_code)', col: 'ภาคที่รับผิดชอบ', type: 'select', options: ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS', '-'] },
+      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
+    ],
+    config: [
+      { key: 'ckey', label: 'Config Key (config_key)', col: 'Config Key', wide: true },
+      { key: 'cat', label: 'หมวดหมู่ (category)', col: 'หมวดหมู่', type: 'select', options: ['IMPACT', 'WORKFLOW', 'DOCUMENT', 'AUTH', 'NOTIFICATION', 'BATCH'] },
+      { key: 'val', label: 'ค่า (config_value)', col: 'ค่า (Value)', wide: true },
+      { key: 'vtype', label: 'ชนิดข้อมูล (value_type)', col: 'ชนิดข้อมูล', type: 'select', options: ['NUMBER', 'STRING', 'BOOLEAN', 'JSON', 'CRON'] },
+      { key: 'unit', label: 'หน่วย (unit)', col: 'หน่วย' },
+      { key: 'desc', label: 'คำอธิบาย (description)', col: 'คำอธิบาย', wide: true },
+      { key: 'editable', label: 'แก้ไขได้ (is_editable)', col: 'แก้ไขได้', type: 'select', options: ['แก้ได้', 'ค่าคงที่ (ต้องขออนุมัติ)'] },
       { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
     ],
     factor: [

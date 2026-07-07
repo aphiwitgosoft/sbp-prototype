@@ -1,0 +1,1268 @@
+                                                                FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+
+
+
+                                    FGI & FCS
+
+        Batch Job Technical Document
+         Store Business Partner - Franchise Growth Impact / Compensation
+
+               Version 4.0 - Source-Verified Implementation & Operations Edition
+
+
+
+
+Document Version                                4.0 - updated from Improved v3.0 using SGI V4
+
+Scope                                           11entry points: Jobs -110+ StartK2WorkFlow; logic, operations
+                                                and data dictionary
+
+Primary DB                                      Oracle fcs_frn; external SQL Server GSMALLMAP /
+                                                allmapssa
+
+Source of truth                                 main -> controller -> service -> DAO -> SQL + config.xml
+
+Classification / Updated                        Internal Use Only / 1 July 2026
+
+
+
+
+                                                                                                 Internal Use Only · Page   1
+                                                                                                 FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+1. Executive Summary
+    Purpose เอกสารฉบับนี้ อัปเดตจาก Version 3.0 โดยใช้ SGI V4 เป็น source of truth เพื่อให้ใช้ทั้งการปฏิบัติการ,
+    troubleshooting และ re-implement ระบบเป็นภาษาอื่นได้โดยไม่ตีความ business logic ผิด
+
+
+
+
+1.1 Scope และหลั กการใช้งาน
+        ครอบคลุม 10 batch jobs เดิม และ entry point เพิ่มเติม Job 8b - StartK2WorkFlow ซึ่งเป็นตัวเรียก K2 REST จริง
+        คงรูปแบบ System Design & Operation Guide ของ v3.0 พร้อมเพิ่ม implementation-grade specification, Data Dictionary, status domains,
+         sequences และ gotchas
+        ข้อมูลที่ SGI V4 ระบุว่าเป็น current-state bug หรือความเสี่ยง ถูกบันทึกแยกจากแนวทางปรั บปรุง เพื่อไม่ให้เผลอเปลี่ยน
+         พฤติกรรมระหว่าง re-implement
+        ข้อมูล credential แสดงแบบ masked; เอกสารระบุเฉพาะตำแหน่งจัดเก็บและความเสี่ยงเท่านั้น
+
+1.2 Major Changes from v3.0
+                                      Area                                                                        Update
+
+    Architecture                                                        แยก Job 8 (BPM06001O ผ่าน SFTP) ออกจาก Job 8b (K2 REST
+                                                                        StartInstance) อย่างชัดเจน
+
+    Job 2                                                               แก้ branch type set ให้รวม B และ FPT1; คู่ร้านเดิมถูก skip เพราะ
+                                                                        updateList เป็น dead code
+
+    Job 5                                                               เพิ่ม pre-accept, raw TOTAL_WORKING_DAY, paired outlier
+                                                                        logic และ NULL growth diff -> auto accept Y
+
+    Job 6                                                               เพิ่ม dynamic eligibility, QSSI completeness gate, 10 ordered
+                                                                        DB m u ta tion s, Th a i/Bu d d h ist f ie ld form a ttin g และ known
+                                                                        purge bug
+
+    Job 1/4/7                                                           เพิ่ม off-by-one month, transaction/auto-commit, tracking semantics และ
+                                                                        gotchas ที่มีผลต่อ re-run
+
+    Data Model                                                          เพิ่ม hub relationship, polymorphic tracking key, status
+                                                                        domains, 7 sequence catalog และ external views
+
+    Cross-cutting                                                       แก้ข้อเท็จจริงด้าน plaintext secrets, STQA datasource, mail
+                                                                        routing และ transaction pattern ต่อ job
+
+
+
+2. Source-Verified Errata from v3.0
+    Important ตารางนี้ เป็นรายการที่หากยึด v3.0 เดิมเพียงอย่างเดียว อาจทำให้ implementation หรือ operational
+    decision ผิด
+
+
+                ID                    Level                Job                  v3.0 assumption           Source-verified truth             Impact
+
+    E1                                            8/8b
+                                                                        Job 8                           Job 8ทำ SFTP เท่านั้น;
+                           CRITICAL
+                                                                                รวม SFTP + K2                                      สถาปั ตยกรรมและ
+                                                                                                        StartK2WorkFlow
+                                                                                                                      เป็น         recovery ผิด
+
+                                                                                                        entry point แยก
+
+    E2                     CRITICAL               8b
+                                                                        Gen Flow Gate     อยู่ใน        Gate    อยู่ใน             ชุด file export กับ
+                                                                        Job 8                           StartK2WorkFlow
+                                                                                                                                   workflow start ถูกผูกผิด
+
+    E3                     CRITICAL               2
+                                                                        Eligible   มี 6 branch types    กฎจริงรวม B และ            คัดร้านผิด
+                                                                                                        FPT1 พร้อมเงื่อนไข
+
+                                                                                                                                  Internal Use Only · Page    2
+                                                                           FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+      ID              Level               Job         v3.0 assumption               Source-verified truth                         Impact
+
+                                                                                  cancel type 06
+
+E4         CRITICAL           2
+                                                มี update existing pair           updateList  เป็น dead              พฤติกรรมต่างจาก
+                                                                                  code; existing pair ถูก            ระบบจริง
+                                                                                  skip
+
+E5         CRITICAL           5                 ตัด outlier อย่างเดียว มี paired past/present flags;                 ผล Y/N ผิด
+                                                                                  NULL diff- > NVL( -1) -> Y
+
+E6                            6
+                                                Sync DB
+           CRITICAL
+                                                          เป็นขั้นตอน             มี 10 ordered mutations            state transition     ไม่ครบ
+                                                เดียว
+E7                            6                                                   Dy n a m ic A,N,S + op tion a l
+                                                Status filter
+           HIGH
+                                                                คงที่                                                ส่งผิดชุด
+                                                                                  I,C + stale Z
+
+E8                            6
+           HIGH
+                                                QSSI   เป็น optional              INITต้องครบ 6          สร้าง INIT ผิด
+                                                                                          ใช้ max period
+                                                                                  categories;
+
+                                                                                  เดียว
+E9                            6
+                                                                                  Field 3/5/6
+           HIGH
+                                                Date formatting         ทั่วไป                  ใช้                  ไฟล์ผิดสัญญา
+                                                                                  Thai/Buddhist locale; Z->S
+                                                                                  output only
+
+E10
+                                                                                  Filename                           off-by-one
+           HIGH               1
+                                                ชื่อไฟล์และ period                      เดือนปั จจุบัน                            โดยเจตนา
+                                                เดียวกัน                          แต่ DB period เดือน
+                                                                                  ก่อนหน้า
+E11
+                                                SFTP
+           HIGH               1
+                                                       ทั่วไป                     Port 218; backup       แม้         retry   และ type mismatch
+                                                                                  fail; numeric/string literal
+                                                                                  quirks
+
+E12        HIGH               4                 มี transaction                    ไม่มี transaction; W->P            DB/file inconsistency
+
+                                                                                  commit ก่อนเขียน
+
+                                                                                  ไฟล์
+E13        HIGH               5                 working day = filtered days       TOTAL_WORKING_DAY
+                                                                                                                     flag   ผิด
+                                                                                  เป็น rawcount; pre-accept
+                                                                                  ก่อน growth
+E14        HIGH               7                 ใช้ค่า source ตรง                 create_by=system; period
+                                                                                                                     ข้อมูลไฟล์ต่าง
+                                                                                  จาก on-process; incomplete
+                                                                                  manager ถูก drop
+
+E15        HIGH               3                 upsert    ได้                     idempotency
+                                                                                            ระดั บ period;           duplicate/recovery
+
+                                                                                  ต้อง delete ก่อน re-
+                                                                                  import
+
+E16                           Security
+                                                                                  Secrets
+           MEDIUM
+                                                ใช้ secret store                            อยู่                     security assumption     ผิด
+                                                                                  plaintext/hardcoded    ใน
+                                                                                  current state
+
+E17        MEDIUM             Environment
+                                                เป็น production                   Properties       ที่ commit ชี้    รั นผิด environment
+                                                                                  STQA test
+
+E18        MEDIUM             Sequences
+                                                ไม่ได้ระบุ                        ต้องใช้ sequence                   PK generation    ขาด
+                                                                                  catalog
+
+E19        MEDIUM             Mail
+                                                routing   เดียว                   ผู้รั บต่างกันตาม job แจ้งผิดคน
+                                                                                  + IS_TEST switch
+
+E20                           6
+                                                                                  SQL
+           MEDIUM
+                                                purge tracking    ปกติ                ใช้ data_name string ข้อมูลสะสม
+                                                                                  เดียวผิดรูปแบบ จึง
+                                                                                  ไม่ purge
+
+
+
+
+                                                                                                                    Internal Use Only · Page 3
+                                                                                         FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+3. System Context and End-to-End Flow
+3.1 System Context
+   QSSI SFTP provides monthly score files; Job 1 maps them into FCS_QSSI_SCORE.
+   ALLMAP SQL Server provides impact-store pairs and competitor records for Jobs 2 and 3.
+   IAS/MIS exchanges AMS06001O outbound and AMS06001I inbound sales files for Jobs 4 and 5.
+   BPM receives three independent SFTP files from Jobs 7-9; K2 workflow is started separately by Job 8b.
+   STA receives FRBC0001 from Job 6; Job 10 monitors overdue ACK only for STA compensate datasets.
+
+
+
+
+                                                                                                                          Internal Use Only · Page 4
+                                                                               FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+
+End-to-End Flow - Source-Verified                                                    11 ENTRY POINTS
+
+
+v4.0
+
+
+
+
+              Job 8 exports BPM file only; Job 8b starts K2 separately; Job 10 monitors STA ACK records.
+
+
+
+
+                                                                                                                Internal Use Only · Page   5
+                                                                                            FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+3.2 Entry Points and Schedule
+          #                     Main Class                           Script                           Cron                            Role
+
+1                       fcs.main.ImportQSSI              FCS_ImportQSSI.sh              Monthly                          QSSI SFTP ->
+                                                                                                                         FCS_QSSI_SCORE
+
+2                       fgi.main.ImportImpactStore       FGI_ImportImpactStore.sh       0 07 7 * *                       ALLMAP im p a ct p a irs ->
+                                                                                                                         W/P/N
+
+3                       fgi.main.ImportImpactCompetit    Verify scheduler script        0 07 7 * *                       ALLMAP competitors ->
+                        or                                                                                               period import
+
+4                       fgi.main.PrepareImpactStoreToI   FGI_ExportImpactStoreToAMS.    0 16 7-16 * *                    AMS06001O outbound
+                        AS                               sh
+
+5                       fgi.main.ImportImpactSaleFrom    FGI_ImportImpactStoreSale.sh   30 16 7-16 * *                   AMS06001I -> growth/flag
+                        IAS
+
+6                       fgi.main.ExportImpactStoreToF    FGI_ExportImpactStoreToSTA.    0 17 * * *                       FRBC0001 -> STA
+                        S                                sh
+
+7                       fgi.main.ExportCompetitor        FGI_ExportCompetitorToBPM.     30 17 7-31 * * BPM06003O
+                                                         sh
+
+8                       fgi.main.ExportImpactStoreFlo    FGI_ExportImpactStoreToBPM.    30 17 7-31 * * BPM06001O SFTP only
+                        wToBPM                           sh
+
+8b                      fgi.main.StartK2WorkFlow         Separate scheduler             Confirm with Ops                 K2 REST StartInstance
+
+9                       fgi.main.ExportOpenStore         FGI_ExportNewStoreToBPM.sh     30 17 7-31 * * BPM06002O
+10                      fgi.main.NotifyNoReceiveData     FGI_NotifyNoReceiveData.sh     0 07 * * *                       Read-only STA ACK watchdog
+
+
+
+4. Data Model and Database Dictionary
+ Type inference SGI V4 ระบุว่า repository ไม่มี DDL ครบทุกตาราง ดั งนั้นชนิดข้อมูลบางส่วนถูก infer จาก RowMapper,
+ PreparedStatement และ Oracle functions; ต้องยืนยันกับ DBA ก่อนสร้าง schema ใหม่
+
+
+
+
+4.1 Relationship Map
+
+
+
+
+4.2 Status Domains
+               Domain                                                Table                                         Values / Meaning
+
+FLAG_VERIFY                                   FGI_IMPACT_STORE / SALES                               W Wait; P On Process; Y Accept; N Deny; Z
+                                                                                                     wait-pay filler
+
+FLAG_ACTION                                   ON_PROCESS                                             Y Active; W Wait/closing; N Ended; active =
+                                                                                                     Y,W
+
+FLAG_GEN_FLOW                                 IMPACT_STORE                                           W waiting K2; Y generated/skip; N
+                                                                                                     ineligible
+
+COMPENSATE_STATUS                             COMPENSATE                                             I Init; C Closed; A Approved; N Rejected; S
+                                                                                                     Final; Z wait slot -> output S
+
+
+                                                                                                                             Internal Use Only · Page   6
+                                                                                 FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+                     Domain                                    Table                                   Values / Meaning
+
+IMPACT_TYPE                                     STORE_INFO                              01 default; 02 60 working days/open after
+                                                                                        threshold; 03 working day !=60; 04 STA-
+                                                                                        sourced
+
+DATA_NAME                                       CONFIRM_RECEIVE_DATA                    Discriminator for IMPACT_STORE,
+                                                                                        NEW_STORE, IMPACT_COMPETITOR,
+                                                                                        COMPENSATE_*_I/N, SALES
+
+RETURN_CODE                                     CONFIRM_RECEIVE_DATA                    NULL = no ACK; W = received
+
+DATASOURCE                                      Multiple                                ALM = ALLMAP; STA = Franchise
+                                                                                        Statement; HRS = HR feed
+
+
+4.3 Sequence Catalog
+                              Sequence                                                            Target
+
+SEQ_FGI_IMPACT_STORE                                              FGI_IMPACT_STORE.IMPACT_STORE_ID
+
+SEQ_FGI_IMPACT_PROCESS                                            FGI_IMPACT_STORE_ON_PROCESS.IMPACT_PROCESS_ID
+
+SEQ_FGI_COMPENSATE_I                                              FGI_IMPACT_STORE_COMPENSATE.COMPENSATE_I_ID
+
+SEQ_FGI_COMPENSATE_N                                              FGI_NEW_STORE_COMPENSATE.COMPENSATE_N_ID
+
+SEQ_FGI_STORE_INFO_I                                              FGI_IMPACT_STORE_INFO.IMPACT_STORE_INFO_ID
+
+SEQ_FGI_STORE_INFO_N                                              FGI_NEW_STORE_INFO.NEW_STORE_INFO_ID
+
+SEQ_FGI_IMPACT_COMPETITOR                                         FGI_IMPACT_COMPETITOR.IMPACT_COMPETITOR_ID
+
+
+4.4 Core Table Dictionary
+FGI_IMPACT_STORE
+      Column / Group                     Type                  Null                       Key                               Notes
+
+IMPACT_STORE_ID               NUMBER                       N                PK                                SEQ_FGI_IMPACT_STORE
+
+MONTH / YEAR                  NUMBER                       N                Period                            Business period
+
+STORECODE_I                   VARCHAR2                     N                FK                                Business key across FGI
+                                                                                                              tables
+
+STORECODE_N                   VARCHAR2                     Y                FK                                New store
+
+BRANCHTYPE_I / _N             VARCHAR2                     Y                -                                 Eligibility / disqualifier
+
+OPENDATE_I / _N               DATE                         Y                -                                 Store open dates
+
+JURISTIC_* / SBP_*            Mixed                        Y                -                                 Enrichment from franchise
+                                                                                                              contract
+
+GROWTH_RATE_DIFF              NUMBER                       Y                -                                 K2 gate <= -10
+
+SALES_STATUS                  VARCHAR2                     Y                -                                 K2 gate Y/N
+
+FLAG_VERIFY                   VARCHAR2                     N                -                                 W/P/Y/N
+
+FLAG_GEN_FLOW                 VARCHAR2                     Y                -                                 W/Y/N
+
+CREATE_BY / UPDATE_BY         VARCHAR2                     Y                -                                 ALM/STA
+
+
+FGI_IMPACT_STORE_ON_PROCESS
+      Column / Group                     Type                  Null                       Key                               Notes
+
+IMPACT_PROCESS_ID             NUMBER                       N                PK                                Hub key
+
+STORECODE_I                   VARCHAR2                     N                FK                                Links impact store
+
+LAST_COMPENSATE_SEQ /         NUMBER                       N                -                                 Period counter
+_NO
+
+
+
+                                                                                                                  Internal Use Only · Page   7
+                                                             FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+         Column / Group               Type       Null                 Key                               Notes
+
+START/LAST/END             NUMBER            Y          -                                 Process period range
+MONTH/YEAR
+
+FLAG_ACTION                VARCHAR2          N          -                                 Y/W/N
+
+DATASOURCE                 VARCHAR2          N          -                                 ALM/STA
+
+UPDATE_DATE                DATE              Y          -                                 Stale wait >30 days logic
+
+
+FGI_IMPACT_STORE_COMPENSATE
+         Column / Group               Type       Null                 Key                               Notes
+
+COMPENSATE_I_ID            NUMBER            N          PK                                SEQ_FGI_COMPENSATE_I
+
+IMPACT_PROCESS_ID          NUMBER            N          FK                                Hub
+
+STORECODE_I                VARCHAR2          N          FK                                Impact store
+
+COMPENSATE_SEQ / _NO       NUMBER            N          -                                 Ordering
+
+COMPENSATE_MONTH /         NUMBER            N          -                                 Period
+YEAR
+
+FORECAST / ADJUST          NUMBER            Y          -                                 Compensation value
+
+COMPENSATE_STATUS          VARCHAR2          N          -                                 I/C/A/N/S/Z
+
+STMT_MONTH / YEAR          NUMBER            Y          -                                 Statement period
+
+COMMENT / audit dates      Mixed             Y          -                                 Operational metadata
+
+
+FGI_IMPACT_STORE_INFO
+         Column / Group               Type       Null                 Key                               Notes
+
+IMPACT_STORE_INFO_ID       NUMBER            N          PK                                SEQ_FGI_STORE_INFO_I
+
+IMPACT_PROCESS_ID          NUMBER            N          FK                                Hub
+
+STORECODE_I                VARCHAR2          N          FK                                Impact store
+
+COMPENSATE period/seq      NUMBER            N          -                                 Snapshot period
+
+BPM_COMPENSATE_SEQ /       NUMBER            Y          -                                 Assigned for BPM
+_NO
+
+Store/juristic/franchise   Mixed             Y          -                                 Snapshot
+fields
+
+DV/GM/AVP + SBP approver   VARCHAR2          Y          -                                 Export to BPM
+fields
+
+IMPACT_TYPE                VARCHAR2          Y          -                                 01-04
+URL_ALL_MAP                VARCHAR2          Y          -                                 Encoded parameters
+
+
+FGI_NEW_STORE_INFO / COMPENSATE
+         Column / Group               Type       Null                 Key                               Notes
+
+NEW_STORE_INFO_ID /        NUMBER            N          PK                                Sequences N
+COMPENSATE_N_ID
+
+IMPACT_PROCESS_ID          NUMBER            N          FK                                Hub
+
+IMPACT_STORE_ID            NUMBER            Y          FK                                Impact pair
+
+STORECODE_N /              VARCHAR2          -          FK                                New and impact store
+STORECODE_I
+
+COMPENSATE period/seq      NUMBER            N          -                                 Period
+
+FORECAST_N / ADJUST_N      NUMBER            Y          -                                 Value
+
+FORECAST_PERCENT_N /       NUMBER            Y          -                                 Percent
+ADJUST_PERCENT_N
+
+Store/juristic/franchise   Mixed             Y          -                                 Snapshot
+
+
+                                                                                              Internal Use Only · Page   8
+                                                             FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+         Column / Group               Type       Null                 Key                               Notes
+
+fields
+
+
+FGI_IMPACT_STORE_SALES / SALES_TRN
+         Column / Group               Type       Null                 Key                               Notes
+
+STORECODE_I + MONTH +      Mixed             N          Business key                      Sales header
+YEAR
+
+OPENDATE_I / _N            DATE              Y          -                                 Window anchor
+
+GROWTH_RATE_BEFORE/        NUMBER            Y          -                                 Computed result
+AFTER/DIFF
+
+TOTAL_WORKING_DAY          NUMBER            Y          -                                 Raw record count
+
+FLAG_VERIFY                VARCHAR2          N          -                                 W/P/Y/N
+
+TRN.SEQ                    NUMBER            N          -                                 Day offset
+
+TRN 4 date/sales windows   Mixed             Y          -                                 Before/after, past/present
+
+TRN DIFF fields            NUMBER            Y          -                                 Outlier threshold 50
+
+IMPORT_FILE                VARCHAR2          Y          -                                 Source file
+
+
+FGI_IMPACT_COMPETITOR
+         Column / Group               Type       Null                 Key                               Notes
+
+IMPACT_COMPETITOR_ID       NUMBER            N          PK                                SEQ_FGI_IMPACT_COMPETIT
+                                                                                          OR
+
+STORECODE_I                VARCHAR2          N          FK                                Impact store
+
+COMPET_ID                  VARCHAR2          Y          -                                 Competitor ID
+
+NAME_TH                    VARCHAR2          Y          -                                 Source NAMT
+
+NAME                       VARCHAR2          Y          -                                 English
+
+BRANCH_TH                  VARCHAR2          Y          -                                 Source BRANCHT
+
+ZONE/SUBZONE               VARCHAR2          Y          -                                 Location
+
+OPEN/CLOSE_DATE            DATE              Y          -                                 Dates
+
+MONTH/YEAR                 NUMBER            N          -                                 Source period
+
+DATASOURCE                 VARCHAR2          N          -                                 ALM
+
+
+FGI_CONFIRM_RECEIVE_DATA
+         Column / Group               Type       Null                 Key                               Notes
+
+DATA_NAME                  VARCHAR2          N          Discriminator                     Object type
+
+TRANSACTION_PK             NUMBER            N          Poly FK                           Target PK depends on
+                                                                                          DATA_NAME
+
+MONTH / YEAR               NUMBER            N          -                                 Period
+
+INTERFACE_TYPE             VARCHAR2          Y          -                                 WS or filename / W by some
+                                                                                          jobs
+
+RETURN_CODE                VARCHAR2          Y          -                                 NULL or W
+
+RECEIVE_DATE               DATE              Y          -                                 Receipt date
+
+CREATE_DATE                DATE              Y          -                                 Age/purge/watchdog
+
+
+FCS_QSSI_SCORE / FCS_TMP_QSSI_SCORE
+         Column / Group               Type       Null                 Key                               Notes
+
+STORE_ID                   VARCHAR2          N          Business key                      Store
+
+CATEGORY                   NUMBER            N          -                                 Includes 1,8,9,10,12,16
+
+
+
+                                                                                               Internal Use Only · Page   9
+                                                                                   FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+          Column / Group              Type                     Null                         Key                             Notes
+
+    MONTH / YEAR            String/Number            N                         -                                Used in to_date(year||
+                                                                                                                month)
+
+    SCORE                   NUMBER                   Y                         -                                NVL to zero during export
+
+    TMP                     Mixed                    Y                         -                                Dedup and mapping staging
+    DATA_DESC/MAX/PERCENT
+    /FILE/CHECK_DATE
+
+
+
+4.5 External Objects and Master Joins
+      SQL Server views: allmapssa.SEVEN_IMPACT_VIEW and allmapssa.COMPETITOR_IMPACT_VIEW.
+      Oracle views: V_FGI_SBP_APPROVER and V_FGI_IMPACT_USER.
+      Master joins: MAS_STORE, MAS_STORE_ORGANIZE, MAS_EMPLOYEE, MAS_PARAM, FR_STORE, JURISTIC, FRANCHISEE,
+       BUSINESS_USER, BUSINESS_USER_GROUP.
+      FGI_CONFIRM_RECEIVE_DATA.TRANSACTION_PK is polymorphic; a new schema should prefer typed foreign keys or a discriminated
+       association.
+
+
+5. Detailed Job Specifications
+    Job 1 - ImportQSSI                                                                                                         IMPORT
+
+
+    Main Class                                                    fcs.main.ImportQSSI
+
+    Script / Trigger                                              FCS_ImportQSSI.sh / monthly
+
+    Transaction                                                   Per file TransactionTemplate + savepoint
+
+    Primary Tables                                                FCS_TMP_QSSI_SCORE, FCS_QSSI_SCORE,
+                                                                  COMMON_CODE
+
+
+
+
+                                                                                                                  Internal Use Only · Page   10
+                                                                                             FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+
+
+
+                                                            Source-verified control flow
+
+Inputs and Preconditions
+   Remote directory /export/qssishare/onl/qssi/textfile/SBP/QSSI_Monthly/
+   SFTP port 218; four prefixes mrs1trnf_, mrs2trnf_, mrs3trnf_, mrs5trnf_
+   Local input /appshare/SPS/FCS/interface_data/in/; WINDOWS-874; batch size 10,000
+
+Business Rules and Implementation Notes
+   Filename uses the current month, while the DB period written is the previous month.
+   RS1 mapping is stateful: D+E, F+G+H, I+J, K+L; H also emits category 16.
+   Backup move runs even when import fails, so there is no automatic retry.
+   Temp table is deleted per file and must not be processed concurrently.
+
+Output, Error Handling and Re-run
+   Output FCS_QSSI_SCORE; data later feeds Job 6 QSSI categories 8,9,12,1,10,16.
+   On exception, rollback to savepoint and send failure email; source file still moves to backup.
+
+
+
+
+                                                                                                                            Internal Use Only · Page   11
+                                                                                             FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+    Job 2 - ImportImpactStore                                                                                               IMPORT + RULES
+
+
+    Main Class                                                               fgi.main.ImportImpactStore
+
+    Script / Cron                                                            FGI_ImportImpactStore.sh / 0 07 7 * *
+
+    Transaction                                                              One transaction + savepoint
+
+    Primary Tables                                                           FGI_IMPACT_STORE + master/franchise joins
+
+
+
+
+                                                              Source-verified control flow
+
+Inputs and Preconditions
+      Argument ZONES|YYYY|MM or ALL|YYYY|MM; default period follows modifyDateToString behavior.
+      Source allmapssa.SEVEN_IMPACT_VIEW; target PK SEQ_FGI_IMPACT_STORE.
+
+Business Rules and Implementation Notes
+      Existing pairs are skipped: updateList is dead code.
+
+                                                                                                                            Internal Use Only · Page   12
+                                                                                          FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+     Eligible set includes B,FAM,FB1,FB2,FC1,FVB,FVC,FPT1; FPT1 requires cancel type 06.
+     DENY covers branch N=F, same juristic, SBP contract not covering period, or record older than 12 months.
+     DENY runs before ON_PROCESS; CREATE_BY=STA can become P automatically.
+
+Output, Error Handling and Re-run
+     New rows start W and CREATE_BY=ALM; enrichment comes from MAS_STORE/FR_STORE/JURISTIC.
+     Re-run must consider skipped existing pairs and master rows missing from INNER JOIN.
+
+    DENY set: ('B','FAM','FB1','FB2','FC1','FVB','FVC','FPT1')
+    FPT1 is eligible only with SBP_CANCEL_TYPE_I='06'
+    Existing pair -> skip (updateList is dead code)
+
+
+
+
+                                                                                                                         Internal Use Only · Page   13
+                                                                                                   FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+    Job 3 - ImportImpactCompetitor                                                                                                             IMPORT
+
+
+    Main Class                                                                fgi.main.ImportImpactCompetitor
+
+    Script / Cron                                                             Confirmwith scheduler; 0 07 7 * *
+
+    Transaction                                                               One transaction + savepoint; chunks of 10,000
+
+    Primary Table                                                             FGI_IMPACT_COMPETITOR
+
+
+
+
+                                                               Source-verified control flow
+
+Inputs and Preconditions
+      Argument YYYY|MM; source COMPETITOR_IMPACT_VIEW.
+
+Business Rules and Implementation Notes
+      Duplicate guard is period-level; any existing row causes the entire period to be skipped.
+      Source column NAMT maps to NAME_TH and BRANCHT maps to BRANCH_TH.
+      DATASOURCE is literal ALM.
+
+Output, Error Handling and Re-run
+      No upsert. To re-import a period, delete existing rows first and reconcile source count.
+
+
+
+
+                                                                                                                                  Internal Use Only · Page   14
+                                                                                               FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+    Job 4 - PrepareImpactStoreToIAS                                                                                        PREPARE / EXPORT
+
+
+    Main Class                                                                 fgi.main.PrepareImpactStoreToIAS
+
+    Script / Cron                                                              FGI_ExportImpactStoreToAMS.sh / 0 16 7-16 * *
+
+    Transaction                                                                None - auto-commit
+
+    Output                                                                     06001                                          8-8
+
+
+
+
+                                                                Source-verified control flow
+
+Inputs and Preconditions
+      Seeds SALES from Impact Store P/ALM, excludes active ON_PROCESS.
+      Eligible when impact store is open at least 12 months + 15 days before new store and current date passes new-store +16 days.
+
+Business Rules and Implementation Notes
+      UPDATE W->P happens before file writing and cannot roll back.
+      transaction_pk uses parseInt(STORECODE_I), which loses leading zeros.
+      Backup is copy, not move; live file remains for Job 5.
+
+Output, Error Handling and Re-run
+      Tracking DATA_NAME=IMPACT_STORE_SALES with NULL return code/receive date.
+      Recovery must reconcile DB flag, output file, backup and tracking manually.
+
+
+
+
+                                                                                                                              Internal Use Only · Page   15
+                                                                                              FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+    Job 5 - ImportImpactSaleFromIAS                                                                               IMPORT / CALCULATION
+
+
+    Main Class                                                                fgi.main.ImportImpactSaleFromIAS
+
+    Script / Cron                                                             FGI_ImportImpactStoreSale.sh / 30 16 7-16 * *
+
+    Transaction                                                               One transaction + savepoint per file
+
+    Input                                                                     AMS06001I_yyyyMMddHHmm.txt, WINDOWS-874
+
+
+
+
+                                                               Source-verified control flow
+
+Inputs and Preconditions
+      Four 15-day windows around OPENDATE_N; impact date itself is excluded.
+      Input fields: STORECODE_I | OPENDATE_N | SALES_DATE | SALES_AMOUNT.
+
+Business Rules and Implementation Notes
+      TOTAL_WORKING_DAY is raw record count, including records outside the four windows.
+      Pre-accept Y occurs when store age is insufficient or working day count is not 60.
+      Outlier threshold is |DIFF| >=50 and inclusion pairs past/present flags.
+
+
+                                                                                                                             Internal Use Only · Page   16
+                                                                              FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+     Final rule NVL(GROWTH_RATE_DIFF,-1)<0 means NULL becomes Y.
+
+Output, Error Handling and Re-run
+     Updates SALES_TRN and SALES header, inserts IMPORT_SALES_FROM_IAS tracking, backs up input.
+     Unit tests must cover zero-sales / missing data, leap-Feb windows and paired outlier behavior.
+
+    PRE-ACCEPT: OPENDATE_I > ADD_MONTHS(OPENDATE_N,-12)-15 OR TOTAL_WORKING_DAY != 60 -> Y
+    FINAL: CASE WHEN NVL(GROWTH_RATE_DIFF,-1) < 0 THEN 'Y' ELSE 'N' END
+
+
+
+
+                                                                                                             Internal Use Only · Page   17
+                                                                                               FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+    Job 6 - ExportImpactStoreToFS / STA                                                                               STATE SYNC + EXPORT
+
+
+    Main Class                                                                fgi.main.ExportImpactStoreToFS
+
+    Script / Cron                                                             FGI_ExportImpactStoreToSTA.sh / 0 17 * * *
+
+    Transaction                                                               One TransactionTemplate + savepoint covering
+                                                                              sync/file/tracking/SFTP
+
+    Output                                                                    FRBC0001_yyyyMMddHHmmss.txt, windows-874, 14
+                                                                              fields
+
+
+
+
+                                                               Source-verified control flow
+
+Inputs and Preconditions
+      Runtime: dateStartInitToSTA=7; numWaitPay=3; QSSI categories 8,9,12,1,10,16.
+      Runs 10 ordered mutations across ON_PROCESS, COMPENSATE, STORE_INFO and NEW_STORE tables before export.
+
+Business Rules and Implementation Notes
+      Dynamic eligible status list: A,N,S; add I,C when day>=7 and complete QSSI; include stale Z branch.
+      I,C map to COMPENSATE_INIT_I/N; A,N,S,Z map to COMPENSATE_APPROVE_I/N.
+      Z remains Z in DB and is converted to S only in output.
+      QSSI must be complete across all six categories for INIT path and comes from one max period in the 3-month window.
+      FRBC0001 date/period fields use Thai/Buddhist locale.
+
+Output, Error Handling and Re-run
+      SFTP failure rolls back and deletes file; success moves backup.
+      Known source bug: purge SQL treats two data names as one literal string, so compensate tracking is not purged.
+      A single invalid date can cause mapData... to return null and cancel the entire file.
+
+    STATUS: A,N,S; add I,C when date gate + QSSI complete; include stale Z
+    DATA_NAME: I,C -> INIT_* | A,N,S,Z -> APPROVE_*; output maps Z -> S
+
+
+                                                                                                                              Internal Use Only · Page   18
+                                                                                               FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+    Job 7 - ExportCompetitor                                                                                                        EXPORT BPM
+
+
+    Main Class                                                               fgi.main.ExportCompetitor
+
+    Script / Cron                                                            FGI_ExportCompetitorToBPM.sh / 30 17 7-31 * *
+
+    Transaction                                                              One transaction + savepoint
+
+    Output                                                                   BPM06003O_yyyyMMddHHmm.txt, UTF-8, 14 fields
+
+
+
+
+                                                              Source-verified control flow
+
+Inputs and Preconditions
+      Selects latest competitor period per store in active ALM process with initial compensation forecast.
+
+Business Rules and Implementation Notes
+      create_by is literal 'system'.
+      Export month/year come from ON_PROCESS last_compensate period, not competitor source period.
+      Rows with incomplete SBP manager data are silently removed.
+
+Output, Error Handling and Re-run
+      Tracking DATA_NAME=IMPACT_COMPETITOR; interface_type=W; receive_date=now; SFTP competition path.
+
+
+
+
+                                                                                                                              Internal Use Only · Page   19
+                                                             FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+Job 8 - ExportImpactStoreFlowToBPM                                             EXPORT BPM - SFTP ONLY
+
+
+Main Class                                   fgi.main.ExportImpactStoreFlowToBPM
+
+Script / Cron                                FGI_ExportImpactStoreToBPM.sh / 30 17 7-31 * *
+
+Transaction                                  updateSeqToBpm separate transaction + main transaction
+
+Output                                       BPM06001O_yyyyMMddHHmm.txt, UTF-8, 48 tokens
+
+
+
+
+                              Source-verified control flow
+
+
+                                                                                            Internal Use Only · Page   20
+                                                                                      FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+Inputs and Preconditions
+     Exports impact profile, compensation and SBP approver data to BPM/FGI/Inbound/compensateflow/.
+
+Business Rules and Implementation Notes
+     This job does not call K2. Gen Flow Gate belongs only to Job 8b.
+     growth_rate_diff is NULL for DATASOURCE=STA.
+     Several name fields are composite first-name + space + last-name tokens.
+     Rows with incomplete approvers are removed by checkProcesssError.
+
+Output, Error Handling and Re-run
+     Tracking DATA_NAME=IMPACT_STORE, transaction_pk=IMPACT_STORE_INFO_ID, return_code=W, receive_date=now.
+     SFTP fail rolls back tracking and deletes file.
+
+    Separation of Concerns Job 8 creates and uploads BPM06001O only. It must not contain K2 StartInstance logic.
+    Job 8b ow n s th e K2 ga te , REST ca ll a n d FLAG_GEN_FLOW re con cilia tion .
+
+
+
+
+                                                                                                                     Internal Use Only · Page   21
+                                                                                              FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+    Job 8b - StartK2WorkFlow                                                                                                              K2 REST
+
+
+    Main Class                                                              fgi.main.StartK2WorkFlow
+
+    Trigger                                                                 Separate scheduler - confirm with Operations
+
+    Transaction                                                             No transaction wrapper; flag updates auto-commit
+
+    Endpoint                                                                K2 REST StartInstance over HTTP Basic Auth
+
+
+
+
+                                                             Source-verified control flow
+
+Inputs and Preconditions
+      Gate requires FLAG_GEN_FLOW=W, branch type FAM/FB1/FC1/FB2/FVB/FVC, resolved DV, different juristic, growth_rate_diff<= -10
+       and SALES_STATUS in Y,N.
+
+Business Rules and Implementation Notes
+      updateBeforeSelect marks rows with an existing impact process as Y to prevent duplicate starts.
+      Success requires HTTP 200 and response body containing Running.
+      Successful rows are updated to Y; ineligible branch types are set N; failures require reconciliation through FLAG_GEN_FLOW.
+
+Output, Error Handling and Re-run
+      Sends emails grouped by OPT_DV_USER_ID.
+      Current state uses HTTP and hardcoded Basic Auth; move to HTTPS and secret manager during re-implementation.
+
+    FLAG_GEN_FLOW='W'
+    BRANCHTYPE_I IN ('FAM','FB1','FC1','FB2','FVB','FVC')
+    OPT_DV_USER_ID IS NOT NULL
+    JURISTIC_N <> JURISTIC_I
+    GROWTH_RATE_DIFF <= -10
+    SALES_STATUS IN ('Y','N')
+
+
+
+
+                                                                                                                             Internal Use Only · Page   22
+                                                                                               FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+    Job 9 - ExportOpenStore                                                                                                         EXPORT BPM
+
+
+    Main Class                                                                 fgi.main.ExportOpenStore
+
+    Script / Cron                                                              FGI_ExportNewStoreToBPM.sh / 30 17 7-31 * *
+
+    Transaction                                                                One transaction + savepoint
+
+    Output                                                                     BPM06002O_yyyyMMddHHmm.txt, UTF-8, 24 fields
+
+
+
+
+                                                                Source-verified control flow
+
+Inputs and Preconditions
+      Exports new-store profile and forecast to BPM/FGI/Inbound/impactprofile/.
+
+Business Rules and Implementation Notes
+      Forecast and percent use NVL(adjust, forecast).
+      Fields 19-20 (adjust values) are intentionally blank in the file.
+      distance_unit is selected but not emitted.
+
+Output, Error Handling and Re-run
+      Tracking DATA_NAME=NEW_STORE; SFTP success moves backup; failure rolls back and deletes file.
+
+
+
+
+                                                                                                                              Internal Use Only · Page   23
+                                                                                             FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+    Job 10 - NotifyNoReceiveData                                                                                                   WATCHDOG
+
+
+    Main Class                                                               fgi.main.NotifyNoReceiveData
+
+    Script / Cron                                                            FGI_NotifyNoReceiveData.sh / 0 07 * * *
+
+    Transaction                                                              Read-only
+
+    Output                                                                   Warning email only
+
+
+
+
+                                                              Source-verified control flow
+
+Inputs and Preconditions
+      Queries FGI_CONFIRM_RECEIVE_DATA for COMPENSATE_INIT_I and COMPENSATE_APPROVE_I.
+
+Business Rules and Implementation Notes
+      Pending means RETURN_CODE IS NULL, INTERFACE_TYPE != WS and CREATE_DATE <= SYSDATE-1.
+      Aggregation includes ACKed rows; count_data - count_return_code is pending count.
+      Does not monitor BPM datasets.
+
+Output, Error Handling and Re-run
+      No DB writes and no files; re-run is safe but avoid duplicate warnings.
+
+
+
+
+                                                                                                                            Internal Use Only · Page   24
+                                                                                                FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+6. Cross-Cutting Concerns
+6.1 Encoding and File Contracts
+                Interface                          Direction                              Encoding                                 Owner
+
+    QSSI mrs*                           Inbound                                WINDOWS-874                          Job 1
+
+    AMS06001O                           Outbound                               UTF-8                                Job 4
+
+    AMS06001I                           Inbound                                WINDOWS-874                          Job 5
+
+    FRBC0001                            Outbound                               windows-874 + Thai locale            Job 6
+
+    BPM06001O                           Outbound                               UTF-8                                Job 8
+
+    BPM06002O                           Outbound                               UTF-8                                Job 9
+
+    BPM06003O                           Outbound                               UTF-8                                Job 7
+
+    Email                               Outbound                               TIS-620                              All jobs
+
+
+6.2 Credentials and Security
+    Current State SFTP credentials are stored in plaintext configuration; K2 Basic Auth is hardcoded;
+    StrictHostKeyChecking=no; K2 endpoint uses HTTP. These are facts of the current implementation, not
+    recommended target design.
+
+
+
+                 System                             Endpoint                                 User                             Current Storage
+
+    QSSI SFTP                           sezfssa02-office.cpall.co.th:218       qssi                                 Plaintext config; masked in
+                                                                                                                    document
+
+    STA SFTP                            sestabr01.cpall.co.th:22               staapp                               Plaintext config; masked
+
+    BPM SFTP                            seeaiff07.cpall.co.th:22               vdeu                                 Plaintext config; masked
+
+    K2 REST                             sesomapua01.7eleven.cp.co.th:8         7ELEVEN\bpmk2_fcs                    Ha rd cod e d Ba sic Au th ; m a ske d
+                                        1
+
+        Target state: externalize secrets to Vault/Secret Manager, enforce TLS/HTTPS, manage known_hosts and mask credentials/payloads in logs.
+
+6.3 Transaction and Re-run Matrix
+                        Entry                                              Pattern                                   Operational Note
+
+    1                                               Per file transaction                               Atomic DB; backup even on fail
+
+    2                                               One transaction                                    Insert/enrich/deny/onprocess
+
+    3                                               One transaction                                    Chunk insert + count reconcile
+
+    4                                               No transaction                                     Highest DB/file inconsistency risk
+
+    5                                               Per file transaction                               Inner catches may not rollback
+
+    6                                               One transaction                                    Sync + file + tracking + SFTP
+
+    7                                               One transaction                                    Rollback/delete on fail
+
+    8                                               Two transactions                                   Sequence assignment separate
+
+    8b                                              No transaction                                     Reconcile with FLAG_GEN_FLOW
+
+    9                                               One transaction                                    Rollback/delete on fail
+
+    10                                              Read-only                                          Safe to rerun; duplicate email risk
+
+
+
+
+                                                                                                                               Internal Use Only · Page   25
+                                                                                                    FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+6.4 Environment and Datasources
+         Oracle datasource uses SingleConnectionDataSource, not a connection pool; BaseJdbc.jdbcTemplate is static and assumes single-run
+          execution.
+         SQL Server datasource is GSMALLMAP with allmapssa in production and sde in QA.
+         The committed jdbc.properties referenced by SGI V4 points to STQA test; verify active environment before every production run.
+         Run from project root so config.xml and relative classpath resources resolve correctly: java -cp "frFCSJar.jar:lib/*:." <mainClass> [args].
+
+6.5 Mail Routing
+                                        Job                                                                        Routing
+
+    1                                                                            storeretention (Cc blank)
+
+    2                                                                            go-sbp hardcoded; template 34
+
+    3                                                                            config mailTo / storeretention
+
+    4,5                                                                          go-sbp via shared helper
+
+    6,7,8,9                                                                      storeretention + mailToBPM when file generated
+
+    8b                                                                           Per DV/GM user
+
+    10                                                                           storeretention warning
+
+
+
+
+                                                                                                                                   Internal Use Only · Page   26
+                                                                                                         FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+7. Operational Runbook
+7.1 Pre-Run Checklist
+        Confirm business date, scheduler window and active datasource/environment.
+        Confirm upstream file or ALLMAP view is available and has expected period.
+        Check previous run status, live output folder, backup folder and FGI_CONFIRM_RECEIVE_DATA.
+        Confirm no concurrent Job 1 run because FCS_TMP_QSSI_SCORE is shared.
+        Verify disk space, SFTP reachability and SMTP route.
+        For Job 8b, confirm K2 endpoint and scheduler ownership separately from Job 8.
+
+7.2 Post-Run Checklist
+        Validate row counts and state flags against source records.
+        Verify file name, field count, encoding, locale and remote destination.
+        Verify tracking DATA_NAME / TRANSACTION_PK / month / year and ACK status.
+        Review warning/failure mail and log path; confirm backup move/copy semantics.
+        For Job 6, reconcile all 10 state mutations before confirming successful business output.
+
+7.3 Re-run Decision Guide
+                          Job                                           Constraint                                                   Re-run Action
+
+    1                                                 File moved even on failure                                 Restore source file only after checking
+                                                                                                                 target period and temp table
+
+    2                                                 Existing pair skipped                                      Delete/repair pair deliberately; rerun will
+                                                                                                                 not update
+
+    3                                                 Period guard                                               Delete period before re-import
+
+    4                                                 Auto-commit W->P                                           Reconcile SALES flags, file and tracking
+                                                                                                                 before rerun
+
+    5                                                 Period guard + raw count                                   Delete/repair SALES_TRN carefully; recalc
+                                                                                                                 header
+
+    6                                                 Transaction normally protects                              Check known purge bug and remote
+                                                                                                                 overwrite semantics
+
+    7-9                                               Tracking prevents duplicate                                Check backup + tracking + remote file
+
+    8b                                                Auto-commit flags                                          Reset FLAG_GEN_FLOW only after K2
+                                                                                                                 instance check
+
+    10                                                Read-only                                                  Safe; may resend warning
+
+
+7.4 Monitoring Metrics
+                                      Area                                                                      Recommended Metrics
+
+    Scheduler                                                                      Run start/end, duration, status per entry point
+
+    Input                                                                          Files expected/found, source row count, invalid lines
+
+    Database                                                                       Rows inserted/updated/skipped, W/P/Y/N counts, compensation status counts
+
+    Interfaces                                                                     File size, row count, SFTP result, remote path, backup result
+
+    Tracking                                                                       Outstanding ACK age, duplicate prevention count, pending by DATA_NAME
+
+    K2                                                                             Gate candidates, HTTP Running, failed starts, FLAG_GEN_FLOW W/Y/N
+
+    Quality                                                                        QSSI six-category completeness, sales NULL diff, working day !=60
+
+    Alerts                                                                         No ACK >1 day, environment mismatch, credentials/TLS finding
+
+
+
+
+                                                                                                                                            Internal Use Only · Page   27
+                                                                                                              FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+8. Interface and Control Catalog
+             Interface                      Direction                           Encoding                               Fields                          Purpose
+
+    mrs1/2/3/5trnf_yyyyMM         QSSI -> Job 1                         WINDOWS-874                      Variable                          QSSI categories
+
+    AMS06001O_yyyyMMddH           Job 4 -> IAS                          UTF-8                            1 logical record                  storecode_i | opendate_n
+    Hmm.txt
+
+    AMS06001I_yyyyMMddH           IAS -> Job 5                          WINDOWS-874                      4                                 Sales daily response
+    Hmm.txt
+
+    FRBC0001_yyyyMMddHH           Job 6 -> STA                          windows-874                      14                                Compensation + QSSI
+    mmss.txt
+
+    BPM06003O_yyyyMMddHHm         Job 7 -> BPM                          UTF-8                            14                                Competitor
+    m.txt
+
+    BPM06001O_yyyyMMddHHm         Job 8 -> BPM                          UTF-8                            48                                Impact profile
+    m.txt
+
+    K2 StartInstance              Job 8b -> K2                          XML/HTTP                         Data fields                       FIA workflow
+
+    BPM06002O_yyyyMMddHHm         Job 9 -> BPM                          UTF-8                            24                                New store
+    m.txt
+
+
+8.1 Technical Risks and Recommendations
+                  Priority                                  Risk                                      Impact                                Recommendation
+
+    P0                                    Plaintext/hardcoded credentials + HTTP      Credential exposure / MITM                  Vault/Secret Manager, TLS, known_hosts
+                                          K2
+
+    P0                                    Job 4 auto-commit before file               Lost request or inconsistent flag           Transactional outbox or explicit recovery
+                                                                                                                                  reconciliation
+
+    P0                                    Job 8/8b separation not understood          Duplicate/missing workflows                 Keep decoupling; monitor
+                                                                                                                                  FLAG_GEN_FLOW and K2 instances
+
+    P1                                    Job 5 NULL diff auto-accept                 Incorrect business acceptance               Business sign-off + regression tests
+
+    P1                                    Job 2 existing pair skipped                 Master changes not reflected                Confirm intentional behavior or
+                                                                                                                                  implement controlled update
+
+    P1                                    Job 6 purge literal bug                     Tracking table growth                       Fix deliberately with data migration and
+                                                                                                                                  tests
+
+    P1                                    Polymorphic TRANSACTION_PK                  Weak referential integrity                  Typed keys/discriminated association in
+                                                                                                                                  target schema
+
+    P2                                    Static JdbcTemplate / shared temp           Concurrency risk                            Single-run guard or refactor to scoped
+                                                                                                                                  datasource/temp
+
+    P2                                    Mixed locale and encoding                   Corrupt Thai or date fields                 Golden-file tests for each interface
+
+
+8.2 Re-implementation Checklist
+        Create schema from the Data Dictionary and enforce status domains as enums/check constraints.
+        Obtain real definitions for SEVEN_IMPACT_VIEW, COMPETITOR_IMPACT_VIEW, V_FGI_SBP_APPROVER and
+         V_FGI_IMPACT_USER.
+        Preserve literal thresholds and unusual behavior unless business approves a change: 218, -10, 50%, 60, 12 months, 15 days, 24 months, QSSI
+         8/9/12/1/10/16, NUM_WAIT_PAY=3.
+        Build golden-file tests for all interfaces, encodings, field counts, Thai/Buddhist dates and composite name tokens.
+        Write unit tests for every gotcha, especially Job 1 off-by-one, Job 2 dead update, Job 4 auto-commit, Job 5 NULL diff, Job 6 purge bug and Job
+         8/8b separation.
+        Document any intentional bug fix as a behavior change, with migration and rollback plan.
+
+
+
+
+                                                                                                                                              Internal Use Only · Page     28
+                                                                           FGI & FCS Batch Job Technical Document - v4.0 Source-Verified
+
+9. Glossary
+                           Term                                                         Meaning
+
+ACK                                                      Acknowledgement from downstream system
+
+ALM                                                      ALLMAP datasource
+
+BPM                                                      Business Process Management file consumer
+
+FCS                                                      Franchise Compensation System module
+
+FGI                                                      Franchise Growth Impact module
+
+IAS/MIS                                                  Sales calculation file interface
+
+2                                                        Workflow engine; started only by Job 8b
+
+STA                                                      Franchise Statement system
+
+QSSI                                                     Quality/Safety score source
+
+W/P/Y/N                                                  Wait / On Process / Accept / Deny
+
+Source Reference This improved document was updated from FGI_FCS_Batch_Job_Technical_Document_Improved_v3.0 usin
+SGI V4 - Source-Verified Implementation Edition. Exact SQL should still be checked against the repository before
+production re-implementation.
+
+
+
+
+                                                                                                          Internal Use Only · Page   29
+
