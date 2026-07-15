@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Base — ต่อจาก sbp.css (โทน/ฟอนต์เดิม)
+   ============================================================ */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-appbg text-ink font-sans text-[14px] leading-normal antialiased;
+  }
+  .num {
+    @apply font-num;
+  }
+}
+
+/* ============================================================
+   Component classes ที่ใช้ซ้ำทั้งระบบ (ผูกกับ Tailwind @apply)
+   คอมโพเนนต์ React ใช้ผ่าน class เหล่านี้ หรือ util ตรง ๆ
+   ============================================================ */
+@layer components {
+  .card {
+    @apply bg-card border border-line rounded-card shadow-card p-5;
+  }
+  .card-head {
+    @apply flex items-center gap-3 mb-3.5;
+  }
+  .card-head h2 {
+    @apply text-[16px] font-semibold text-ink m-0;
+  }
+
+  /* pill = สถานะ (มีจุด) · chip = ป้ายข้อมูล */
+  .pill {
+    @apply inline-flex items-center gap-1.5 text-[12px] font-semibold rounded-full px-2.5 py-1;
+  }
+  .pill::before {
+    content: '';
+    @apply w-1.5 h-1.5 rounded-full bg-current opacity-70;
+  }
+  .pill.wait { @apply bg-amber-100 text-amber-700; }
+  .pill.violet { @apply bg-violet-100 text-violet-700; }
+  .pill.info { @apply bg-blue-100 text-blue-700; }
+  .pill.orange { @apply bg-orange-100 text-orange-700; }
+  .pill.navy { @apply bg-indigo-100 text-indigo-800; }
+  .pill.teal { @apply bg-teal-100 text-teal-700; }
+  .pill.muted { @apply bg-slate-100 text-slate-600; }
+  .pill.ok { @apply bg-green-100 text-green-700; }
+  .pill.fail { @apply bg-red-100 text-red-700; }
+
+  .chip {
+    @apply inline-flex items-center text-[11.5px] font-semibold rounded-md px-2 py-0.5 bg-slate-100 text-slate-600;
+  }
+
+  /* ปุ่ม */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-[13.5px] font-medium transition-colors select-none;
+  }
+  .btn-sm { @apply px-3 py-1.5 text-[13px]; }
+  .btn-primary { @apply bg-primary text-white hover:bg-primary-dark; }
+  .btn-soft { @apply bg-primary-soft text-primary hover:bg-blue-100; }
+  .btn-ghost { @apply bg-transparent text-slate-600 border border-line hover:bg-slate-50; }
+  .btn-muted { @apply bg-slate-100 text-slate-600 hover:bg-slate-200; }
+
+  /* ตาราง */
+  .table-wrap { @apply overflow-x-auto; }
+  table.data { @apply w-full border-collapse text-[13px]; }
+  table.data thead th {
+    @apply bg-thbg text-think text-left font-semibold px-3 py-2.5 whitespace-nowrap;
+  }
+  table.data tbody td {
+    @apply px-3 py-2.5 border-b border-line align-middle;
+  }
+  table.data tbody tr:hover { @apply bg-slate-50/70; }
+  table.data tr.flag-red td { @apply bg-red-50; }
+
+  /* stat card */
+  .stat {
+    @apply flex items-center gap-3.5 bg-card border border-line rounded-card shadow-card p-4;
+  }
+  .stat .si {
+    @apply w-11 h-11 rounded-xl flex items-center justify-center text-white flex-none;
+  }
+  .stat .sv { @apply text-2xl font-bold text-ink leading-none; }
+  .stat .sl { @apply text-[12px] text-muted mt-1; }
+
+  .field { @apply flex flex-col gap-1.5; }
+  .field > label { @apply text-[13px] text-slate-600; }
+  .field input,
+  .field select,
+  .field textarea {
+    @apply border border-line rounded-lg px-3 py-2 text-[13.5px] bg-white outline-none focus:border-primary;
+  }
+}
+
+/* chart bar rect (พอร์ตจาก sbp.css) */
+.barRect {
+  fill: #3b82f6;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: growBar 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+.barLab {
+  fill: #9aa7b6;
+  font-size: 5.4px;
+  font-family: 'Sarabun', sans-serif;
+}
+.donutBig { fill: #222b36; font-size: 22px; font-weight: 700; font-family: 'Sarabun', sans-serif; }
+.donutSub { fill: #8a97a5; font-size: 9px; font-family: 'Prompt', sans-serif; }
+.donutSeg { transition: stroke-dashoffset 1s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .barRect,
+  .donutSeg,
+  .sparkLine {
+    animation: none !important;
+    transition: none !important;
+  }
+}

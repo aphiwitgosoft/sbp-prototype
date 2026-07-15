@@ -4,7 +4,7 @@
 
 Version 3.2 Draft
 
-> Generated from repository requirements and HTML prototype. See source-of-truth and open-item sections.
+> Generated from repository requirements and prototype screens. See source-of-truth and open-item sections.
 
 
 # 1. SRS Overview
@@ -12,7 +12,7 @@ Version 3.2 Draft
 
 ## 1.1 Purpose
 
-เอกสารนี้กำหนดความต้องการของระบบประกันรายได้ SBPGI แบบรวม โดยสกัดจากต้นแบบ HTML เอกสาร SRS K2 Version 3.1 เอกสาร Batch Job Technical Document Version 4.0 และเอกสารออกแบบ Flow/Database ที่อยู่ใน Repository เดียวกัน
+เอกสารนี้กำหนดความต้องการของระบบประกันรายได้ SBPGI แบบรวม โดยสกัดจากต้นแบบหน้าจอ เอกสาร SRS K2 Version 3.1 เอกสาร Batch Job Technical Document Version 4.0 และเอกสารออกแบบ Flow/Database ที่อยู่ใน Repository เดียวกัน
 
 ขอบเขตเนื้อหาจัดเรียงตามที่ร้องขอ: Flow, Database, Batch Job, หน้าจอ K2 ที่เหลือ และ API เพื่อใช้เป็นฐานร่วมสำหรับ Business, Developer, Tester, Operations และผู้อนุมัติการออกแบบ
 
@@ -22,8 +22,8 @@ Version 3.2 Draft
 | Tag | ความหมาย | การใช้งาน |
 | --- | --- | --- |
 | REQ | ข้อกำหนดที่มีแหล่งอ้างอิงจาก SRS หรือเอกสาร Batch | ต้องพัฒนาและทดสอบตามข้อความที่กำหนด |
-| DES | Target design ที่เพิ่มในหน้าจอ plan-flow / plan-database / plan-api | ต้องผ่าน Architecture และ Business sign-off |
-| PROTO | พฤติกรรมหรือข้อมูลตัวอย่างใน HTML prototype | ใช้ยืนยัน UX ไม่ใช่ข้อมูล Production |
+| DES | Target design ที่เพิ่มในหน้าจอ plan-flow / plan-database / plan-api / system-config / plan-email | ต้องผ่าน Architecture และ Business sign-off |
+| PROTO | พฤติกรรมหรือข้อมูลตัวอย่างใน prototype | ใช้ยืนยัน UX ไม่ใช่ข้อมูล Production |
 | OPEN | ประเด็นขัดแย้งหรือยังไม่ตัดสินใจ | ห้ามถือเป็นข้อยุติจนกว่าจะมีผู้อนุมัติ |
 
 
@@ -31,10 +31,11 @@ Version 3.2 Draft
 
 - REQ: RDM-SRS ประกันรายได้-K2 Version 3.1 เป็นแหล่งอ้างอิงหลักของหน้าจอและ workflow ฝั่ง K2
 - REQ: FGI_FCS_Batch_Job_Technical_Document_Improved_v4.0 เป็นแหล่งอ้างอิงหลักของ Jobs 1-10 และ Job 8b
-- DES: workflow.md และ plan-flow.html เป็น Target flow ของระบบใหม่ที่รวม EAI และ K2 เข้า SBPGI
-- DES: database.md และ plan-database.html เป็น Target schema 30 ตาราง
-- DES: plan-api.html เป็น REST API target 39 endpoints
-- PROTO: HTML ทุกหน้าและ assets/sbp.js ใช้ยืนยัน fields, actions, modal schema, labels และ navigation
+- DES: เอกสาร workflow และหน้าจอ Flow เป็น Target flow ของระบบใหม่ที่รวม EAI และ K2 เข้า SBPGI
+- DES: เอกสาร database และหน้าจอ Database เป็น Target schema 34 ตาราง
+- DES: หน้าจอ API Specification เป็น REST API target 61 endpoints / 10 กลุ่ม
+- DES: หน้าจอ Global Config และ Email Template เป็นหน้าจอเสริมสำหรับค่ากำหนดกลางและ Notification Service
+- PROTO: Prototype ทุกหน้าจอและ shared shell ใช้ยืนยัน fields, actions, modal schema, labels และ navigation
 
 # 2. Overall of System
 
@@ -48,7 +49,7 @@ Version 3.2 Draft
 
 | Layer | องค์ประกอบ | หน้าที่ |
 | --- | --- | --- |
-| Frontend | Web SPA จากต้นแบบ HTML | Dashboard, K2 forms, report, batch monitor และ administration |
+| Frontend | Web SPA จากต้นแบบหน้าจอ | Dashboard, K2 forms, report, batch monitor และ administration |
 | Backend | Auth/RBAC, Document, Workflow, Batch Scheduler, Interface, Report/Notification | ให้บริการ REST API /api/v1 และ orchestration ภายใน |
 | Database | Schema รวม Zone A/B/C | เก็บ pipeline, เอกสาร/workflow, master/config และ audit |
 | External | QSSI, ALLMAP, IAS/MIS, STA, SAP, SMTP | คง file/SFTP/API ตามขอบเขตระบบภายนอก |
@@ -90,27 +91,21 @@ Version 3.2 Draft
 
 ## 3.1 Flow Requirements
 
-> PROTO Screen Capture: Flow FGI/FCS (Batch Pipeline) (flow-fgi.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 2 ส่วน
+![รูปที่ 1: Flow FGI/FCS (Batch Pipeline) - ส่วนที่ 1/2](flow-fgi-01.png)
 
-![Screen Capture: Flow FGI/FCS (Batch Pipeline) - ส่วนที่ 1/2 (flow-fgi.html)](flow-fgi-01.png)
+![รูปที่ 2: Flow FGI/FCS (Batch Pipeline) - ส่วนที่ 2/2](flow-fgi-02.png)
 
-![Screen Capture: Flow FGI/FCS (Batch Pipeline) - ส่วนที่ 2/2 (flow-fgi.html)](flow-fgi-02.png)
+![รูปที่ 3: Flow K2 - Workflow อนุมัติ - ส่วนที่ 1/3](k2-flow-01.png)
 
-> PROTO Screen Capture: Flow K2 - Workflow อนุมัติ (k2-flow.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 3 ส่วน
+![รูปที่ 4: Flow K2 - Workflow อนุมัติ - ส่วนที่ 2/3](k2-flow-02.png)
 
-![Screen Capture: Flow K2 - Workflow อนุมัติ - ส่วนที่ 1/3 (k2-flow.html)](k2-flow-01.png)
+![รูปที่ 5: Flow K2 - Workflow อนุมัติ - ส่วนที่ 3/3](k2-flow-03.png)
 
-![Screen Capture: Flow K2 - Workflow อนุมัติ - ส่วนที่ 2/3 (k2-flow.html)](k2-flow-02.png)
+![รูปที่ 6: Flow FGI/FCS + K2 - Target System - ส่วนที่ 1/3](plan-flow-01.png)
 
-![Screen Capture: Flow K2 - Workflow อนุมัติ - ส่วนที่ 3/3 (k2-flow.html)](k2-flow-03.png)
+![รูปที่ 7: Flow FGI/FCS + K2 - Target System - ส่วนที่ 2/3](plan-flow-02.png)
 
-> PROTO Screen Capture: Flow FGI/FCS + K2 - Target System (plan-flow.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 3 ส่วน
-
-![Screen Capture: Flow FGI/FCS + K2 - Target System - ส่วนที่ 1/3 (plan-flow.html)](plan-flow-01.png)
-
-![Screen Capture: Flow FGI/FCS + K2 - Target System - ส่วนที่ 2/3 (plan-flow.html)](plan-flow-02.png)
-
-![Screen Capture: Flow FGI/FCS + K2 - Target System - ส่วนที่ 3/3 (plan-flow.html)](plan-flow-03.png)
+![รูปที่ 8: Flow FGI/FCS + K2 - Target System - ส่วนที่ 3/3](plan-flow-03.png)
 
 
 ### 3.1.1 End-to-end flow
@@ -195,7 +190,7 @@ Version 3.2 Draft
 - งานเตือนรายสัปดาห์ทำงานวันจันทร์ 10:00 และ escalation งานค้าง 30/45/60 วันต้องอ่านค่าจาก config
 - การเปลี่ยนกฎธุรกิจ เช่น -10, 50, 60 วัน และ 100,000 บาท ต้องผ่าน Business sign-off
 - ทุก transition ต้องบันทึก consideration_logs, ผู้กระทำ, เวลา, สถานะก่อน/หลัง และ correlation id
-![Figure 1: Approve Flow เดิม ใช้ประกอบการเทียบพฤติกรรม](Flow ประกันรายได้.png)
+![รูปที่ 9: Approve Flow เดิม ใช้ประกอบการเทียบพฤติกรรม](Flow ประกันรายได้.png)
 
 
 ---
@@ -203,36 +198,30 @@ Version 3.2 Draft
 
 ## 3.2 Database Requirements
 
-> PROTO Screen Capture: Database FGI/FCS (fgi-database.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 3 ส่วน
+![รูปที่ 10: Database FGI/FCS - ส่วนที่ 1/3](fgi-database-01.png)
 
-![Screen Capture: Database FGI/FCS - ส่วนที่ 1/3 (fgi-database.html)](fgi-database-01.png)
+![รูปที่ 11: Database FGI/FCS - ส่วนที่ 2/3](fgi-database-02.png)
 
-![Screen Capture: Database FGI/FCS - ส่วนที่ 2/3 (fgi-database.html)](fgi-database-02.png)
+![รูปที่ 12: Database FGI/FCS - ส่วนที่ 3/3](fgi-database-03.png)
 
-![Screen Capture: Database FGI/FCS - ส่วนที่ 3/3 (fgi-database.html)](fgi-database-03.png)
+![รูปที่ 13: Database K2 - ส่วนที่ 1/4](k2-database-01.png)
 
-> PROTO Screen Capture: Database K2 (k2-database.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 4 ส่วน
+![รูปที่ 14: Database K2 - ส่วนที่ 2/4](k2-database-02.png)
 
-![Screen Capture: Database K2 - ส่วนที่ 1/4 (k2-database.html)](k2-database-01.png)
+![รูปที่ 15: Database K2 - ส่วนที่ 3/4](k2-database-03.png)
 
-![Screen Capture: Database K2 - ส่วนที่ 2/4 (k2-database.html)](k2-database-02.png)
+![รูปที่ 16: Database K2 - ส่วนที่ 4/4](k2-database-04.png)
 
-![Screen Capture: Database K2 - ส่วนที่ 3/4 (k2-database.html)](k2-database-03.png)
+![รูปที่ 17: Database FGI/FCS + K2 - Target Schema - ส่วนที่ 1/3](plan-database-01.png)
 
-![Screen Capture: Database K2 - ส่วนที่ 4/4 (k2-database.html)](k2-database-04.png)
+![รูปที่ 18: Database FGI/FCS + K2 - Target Schema - ส่วนที่ 2/3](plan-database-02.png)
 
-> PROTO Screen Capture: Database FGI/FCS + K2 - Target Schema (plan-database.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 3 ส่วน
-
-![Screen Capture: Database FGI/FCS + K2 - Target Schema - ส่วนที่ 1/3 (plan-database.html)](plan-database-01.png)
-
-![Screen Capture: Database FGI/FCS + K2 - Target Schema - ส่วนที่ 2/3 (plan-database.html)](plan-database-02.png)
-
-![Screen Capture: Database FGI/FCS + K2 - Target Schema - ส่วนที่ 3/3 (plan-database.html)](plan-database-03.png)
+![รูปที่ 19: Database FGI/FCS + K2 - Target Schema - ส่วนที่ 3/3](plan-database-03.png)
 
 
 ### 3.2.1 Data architecture
 
-Target database เป็น schema รวม 30 ตาราง แบ่งเป็น Zone A: FGI/FCS impact pipeline, Zone B: K2 documents/workflow และ Zone C: shared master/config/audit โดยใช้ชื่อ table/column แบบ English lower_snake_case
+Target database เป็น schema รวม 34 ตาราง แบ่งเป็น Zone A: FGI/FCS impact pipeline, Zone B: K2 documents/workflow และ Zone C: shared master/config/audit โดยใช้ชื่อ table/column แบบ English lower_snake_case
 
 | Order | Core key | Purpose |
 | --- | --- | --- |
@@ -260,23 +249,27 @@ Target database เป็น schema รวม 30 ตาราง แบ่งเ
 | document_new_stores | B | K2 | id | doc_no -> compensation_documents | ร้านเปิดใหม่ · distance_km · %ชดเชย (ผลรวมต้อง 100%) |
 | document_competitors | B | K2 | id | doc_no · competitor_code -> competitors | คู่แข่งในเอกสาร · source_system ALM/USER |
 | document_external_factors | B | K2 | id | doc_no · factor_code -> external_factors | ปัจจัยภายนอกที่ใช้ในเอกสาร + ช่วงวันที่ |
-| consideration_logs | B | K2 | id | doc_no -> compensation_documents | ประวัติพิจารณา (ผู้พิจารณา · Section · ผล · เวลา) |
+| consideration_logs | B | K2 | id | doc_no -> compensation_documents | ประวัติพิจารณา (ผู้พิจารณา · Section · ผล · เวลา) · result_category (APPROVE/REJECT/PENDING) สำหรับ filter อนุมัติ/ไม่อนุมัติ หน้ารายงาน |
 | document_attachments | B | K2 | id | doc_no -> compensation_documents | ไฟล์แนบ <= 5MB ต่อไฟล์ · Section ที่แนบ |
 | compensation_histories | B | K2 | id | store_code · ref_doc_no | ประวัติชดเชยต่อร้าน/รอบ · เดือนส่งบัญชี (ผูกไฟล์ FRBC0001 ของ Job 6) |
 | workflow_instances | B | ใหม่ | instance_id | doc_no -> compensation_documents | instance workflow ภายใน (แทน K2 engine) · สถานะแทน workflow_generation_status=Y |
 | workflow_tasks | B | ใหม่ | task_id | instance_id · section_code · assignee_employee_id | งานค้างต่อ Section - แหล่งข้อมูลหน้างานรอดำเนินการ (inbox) |
 | Zone C · Shared - Master, RBAC, Configuration และ Audit |  |  |  |  |  |
-| impacted_stores | C | K2 | store_code | = impacted_store_code ของโซน A (สะพานหลักสองระบบ) | ข้อมูลร้าน SP master |
+| stores | C | FGI/FCS | store_code | <- impacted_stores (subset SP) · <- document_new_stores.new_store_code | master สาขา 7-Eleven ทุกประเภท (SP / เปิดใหม่ / ปิด renovate) - แหล่งค้นหาร้านของหน้า k2-create (API /stores/search) |
+| impacted_stores | C | K2 | store_code | = impacted_store_code ของโซน A (สะพานหลักสองระบบ) · subset SP ของ stores | ข้อมูลร้าน SP master |
 | workflow_sections / document_statuses | C | K2 | section_code / status_code | อ้างโดย compensation_documents · workflow_tasks · status_email_rules | ขั้นตอน 06/08/01/02/03/04/05 · สถานะเอกสาร |
 | roles / menus / menu_permissions | C | K2 · 3.1.1 | role_code / menu_code (composite) | menu_permissions = composite PK | สิทธิ์เมนู 8 role (00-10) - แหล่งข้อมูล RBAC ของ Auth · CRUD ผ่านหน้าจอ 3.1.1 (API /roles /menus /menu-permissions) · is_system กันลบ role/เมนูหลัก · menus มี menu_group (MAIN/MASTER) + sort_order · ประวัติลง audit_logs |
-| operator_assignments | C | K2 · 3.1.8 | id | section_code · zone_code | ผู้ปฏิบัติงานต่อ section_code/zone_code |
+| operator_assignments | C | K2 · 3.1.8 | id | section_code · zone_code · employee_id -> employees | ผู้ปฏิบัติงานต่อ section_code/zone_code · เลือกชื่อผ่าน popup ค้นหาพนักงาน |
+| employees | C | FGI/FCS | employee_id | <- user_accounts.employee_id · <- operator_assignments (เลือกผ่าน popup) | master พนักงานองค์กร (HR) - batch join อยู่แล้ว · ป้อน popup ค้นหาพนักงาน (API /employees/search) หน้า 3.1.8 |
 | external_factors | C | K2 · 3.1.9 | factor_code | <- document_external_factors | ปัจจัยภายนอก master · รหัสห้ามซ้ำ |
 | competitors | C | K2 | competitor_code | <- document_competitors | ร้านคู่แข่ง 24 ราย |
 | audit_logs | C | K2 | id | table_name + ref_key (generic) | ประวัติแก้ไข master แบบหลายรายการ: action · old_value -> new_value · เหตุผล · ผู้แก้ · เวลา (= MaintainMasterHistory เดิม) |
 | status_email_rules | C | K2 · 3.1.5 | status_code | to_section_code · cc_section_code -> workflow_sections | ผู้รับอีเมลเมื่อเปลี่ยนสถานะ - ใช้โดย Notification Service |
+| email_templates | C | ใหม่ | template_code (EM-01-08) | อ่านคู่กับ status_email_rules โดย Notification Service | เนื้อหา 8 email template (subject/body + ตัวแปร merge) แก้ได้จากหน้า Email Template · From/To/Cc ล็อกตาม status_email_rules · ประวัติแก้ไข/รีเซ็ต -> audit_logs · ถ้อยคำเป็น beyond SRS (SRS กำหนดเฉพาะผู้รับ/จังหวะส่ง) |
 | user_accounts | C | ใหม่ | employee_id | role_code -> roles | บัญชีผู้ใช้สำหรับ JWT (เดิมพึ่งระบบ BPM) |
 | job_configs | C | ใหม่ | job_no | <- job_run_histories | cron + พารามิเตอร์ที่แก้ได้ของ 11 jobs (หน้า Batch Monitor) |
 | job_run_histories | C | ใหม่ | run_id | job_no -> job_configs | ประวัติรันต่อรอบ (เวลา · แถว · ไฟล์ · ผล) - เดิมอยู่ใน log ไฟล์ |
+| system_configs | C | ใหม่ | config_key | อ่านโดยทุก service · ประวัติแก้ไข -> audit_logs | Global config แบบ key-value (หน้า Global Config) · category (IMPACT/WORKFLOW/DOCUMENT/AUTH/NOTIFICATION/BATCH) · value_type (NUMBER/STRING/BOOLEAN/JSON/CRON) · is_editable กันแก้ค่าคงที่ทางธุรกิจ (ข้อ 8.2) · ห้ามเก็บ secret (อยู่ Secret Manager) · cache 5 นาที + invalidate เมื่อแก้ไข |
 
 
 ### 3.2.3 Detailed entities - FGI/FCS
@@ -599,6 +592,8 @@ Target database เป็น schema รวม 30 ตาราง แบ่งเ
 - doc_no ต้อง unique และรูปแบบ YYYY/xxxxx; running แยกต่อปี
 - document_new_stores.compensation_percent รวมต่อเอกสารต้องเท่ากับ 100%
 - ใช้ foreign key จริงระหว่าง compensation_documents.impact_process_id และ fgi_impact_processes.id
+- system_configs เป็นแหล่งค่ากำหนดกลางแบบ key-value; ค่าธุรกิจที่ is_editable=false แก้ผ่าน UI/API ไม่ได้
+- email_templates เก็บเฉพาะ subject/body และตัวแปร merge; ผู้รับ From/To/Cc ต้องอ้าง status_email_rules
 - ใช้ enum/check constraint สำหรับ W/P/Y/N, Y/W/N, I/C/A/N/S/Z และ task status
 - ใช้ optimistic locking กับเอกสาร/workflow ที่มีการแก้พร้อมกัน
 - ทุก master mutation ต้องบันทึก audit_logs ค่าเดิม ค่าใหม่ เหตุผล ผู้แก้ และเวลา
@@ -622,16 +617,16 @@ Target database เป็น schema รวม 30 ตาราง แบ่งเ
 
 ## 3.3 Batch Job Requirements
 
-> PROTO Screen Capture: Batch Job Console - Job 1 Detail (job-batch.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 2 ส่วน
+![รูปที่ 20: Batch Job Console - Job 1 Detail - ส่วนที่ 1/3](job-batch-01.png)
 
-![Screen Capture: Batch Job Console - Job 1 Detail - ส่วนที่ 1/2 (job-batch.html)](job-batch-01.png)
+![รูปที่ 21: Batch Job Console - Job 1 Detail - ส่วนที่ 2/3](job-batch-02.png)
 
-![Screen Capture: Batch Job Console - Job 1 Detail - ส่วนที่ 2/2 (job-batch.html)](job-batch-02.png)
+![รูปที่ 22: Batch Job Console - Job 1 Detail - ส่วนที่ 3/3](job-batch-03.png)
 
 
 ### 3.3.1 Batch console
 
-หน้า job-batch.html เป็น Job Scheduler Console สำหรับ Admin แสดง pipeline A-E, รายการ 11 entry points, สถานะรอบล่าสุด/ถัดไป, เปิดปิดงาน, พารามิเตอร์, manual run, flow, database และ run history
+หน้า Batch Job Console สำหรับ Admin แสดง pipeline A-E, รายการ 11 entry points, สถานะรอบล่าสุด/ถัดไป, เปิดปิดงาน, พารามิเตอร์, manual run, flow, database และ run history
 
 | Job | Name | Thai name | Phase | Schedule | Output |
 | --- | --- | --- | --- | --- | --- |
@@ -1222,13 +1217,11 @@ Target database เป็น schema รวม 30 ตาราง แบ่งเ
 ## 3.4 K2 Screen Requirements
 
 
-### SCR-01 Overview / Dashboard (index.html)
+### SCR-01 Overview / Dashboard
 
-> PROTO Screen Capture: Overview / Dashboard (index.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 2 ส่วน
+![รูปที่ 23: Overview / Dashboard - ส่วนที่ 1/2](index-01.png)
 
-![Screen Capture: Overview / Dashboard - ส่วนที่ 1/2 (index.html)](index-01.png)
-
-![Screen Capture: Overview / Dashboard - ส่วนที่ 2/2 (index.html)](index-02.png)
+![รูปที่ 24: Overview / Dashboard - ส่วนที่ 2/2](index-02.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -1248,11 +1241,9 @@ Target database เป็น schema รวม 30 ตาราง แบ่งเ
 - ทางลัดและ sidebar ต้องสร้างตาม menu_permissions
 - ค่าชื่อผู้ใช้/role ต้องมาจาก JWT ไม่ใช้ข้อมูล mock
 
-### SCR-02 สร้างเอกสาร (k2-create.html)
+### SCR-02 สร้างเอกสาร
 
-> PROTO Screen Capture: สร้างเอกสาร (k2-create.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 1 ส่วน
-
-![Screen Capture: สร้างเอกสาร - ส่วนที่ 1/1 (k2-create.html)](k2-create-01.png)
+![รูปที่ 25: สร้างเอกสาร](k2-create-01.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -1282,13 +1273,11 @@ Target database เป็น schema รวม 30 ตาราง แบ่งเ
 - ตรวจ duplicate ร้าน+งวดก่อนสร้าง
 - ออกเลขเอกสารอัตโนมัติและเปิด workflow Section 06
 
-### SCR-03 เอกสารรอดำเนินการ (k2-list-waiting.html)
+### SCR-03 เอกสารรอดำเนินการ
 
-> PROTO Screen Capture: เอกสารรอดำเนินการ (k2-list-waiting.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 2 ส่วน
+![รูปที่ 26: เอกสารรอดำเนินการ - ส่วนที่ 1/2](k2-list-waiting-01.png)
 
-![Screen Capture: เอกสารรอดำเนินการ - ส่วนที่ 1/2 (k2-list-waiting.html)](k2-list-waiting-01.png)
-
-![Screen Capture: เอกสารรอดำเนินการ - ส่วนที่ 2/2 (k2-list-waiting.html)](k2-list-waiting-02.png)
+![รูปที่ 27: เอกสารรอดำเนินการ - ส่วนที่ 2/2](k2-list-waiting-02.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -1318,13 +1307,11 @@ Target database เป็น schema รวม 30 ตาราง แบ่งเ
 - คลิกแถวเปิดเอกสาร; งานข้อมูลยอดขายไม่ครบ 60 วันเป็นแถวแดง
 - Role switcher เป็น prototype aid เท่านั้น Production ใช้ JWT/assignment จริง
 
-### SCR-04 เอกสารที่เกี่ยวข้อง (k2-list-related.html)
+### SCR-04 เอกสารที่เกี่ยวข้อง
 
-> PROTO Screen Capture: เอกสารที่เกี่ยวข้อง (k2-list-related.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 2 ส่วน
+![รูปที่ 28: เอกสารที่เกี่ยวข้อง - ส่วนที่ 1/2](k2-list-related-01.png)
 
-![Screen Capture: เอกสารที่เกี่ยวข้อง - ส่วนที่ 1/2 (k2-list-related.html)](k2-list-related-01.png)
-
-![Screen Capture: เอกสารที่เกี่ยวข้อง - ส่วนที่ 2/2 (k2-list-related.html)](k2-list-related-02.png)
+![รูปที่ 29: เอกสารที่เกี่ยวข้อง - ส่วนที่ 2/2](k2-list-related-02.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -1354,11 +1341,9 @@ Target database เป็น schema รวม 30 ตาราง แบ่งเ
 - เอกสารนอก task ปัจจุบันต้องเป็น read-only
 - ผลการค้นหาต้องจำกัดตาม role และ record-level access
 
-### SCR-05 ข้อมูลผิดปกติ / แจกงาน (k2-list-abnormal.html)
+### SCR-05 ข้อมูลผิดปกติ / แจกงาน
 
-> PROTO Screen Capture: ข้อมูลผิดปกติ / แจกงาน (k2-list-abnormal.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 1 ส่วน
-
-![Screen Capture: ข้อมูลผิดปกติ / แจกงาน - ส่วนที่ 1/1 (k2-list-abnormal.html)](k2-list-abnormal-01.png)
+![รูปที่ 30: ข้อมูลผิดปกติ / แจกงาน](k2-list-abnormal-01.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -1387,15 +1372,13 @@ Target database เป็น schema รวม 30 ตาราง แบ่งเ
 - แสดงสาเหตุ ผู้รับผิดชอบ และสถานะ assignment
 - OPEN: เมนูนี้และ API 2 เส้นถูก comment ไว้ รอคำตัดสิน keep/drop
 
-### SCR-06 เอกสารข้อมูลร้านถูกกระทบ (k2-document.html)
+### SCR-06 เอกสารข้อมูลร้านถูกกระทบ
 
-> PROTO Screen Capture: เอกสารข้อมูลร้านถูกกระทบ (k2-document.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 3 ส่วน
+![รูปที่ 31: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 1/3](k2-document-01.png)
 
-![Screen Capture: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 1/3 (k2-document.html)](k2-document-01.png)
+![รูปที่ 32: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 2/3](k2-document-02.png)
 
-![Screen Capture: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 2/3 (k2-document.html)](k2-document-02.png)
-
-![Screen Capture: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 3/3 (k2-document.html)](k2-document-03.png)
+![รูปที่ 33: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 3/3](k2-document-03.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -1432,13 +1415,11 @@ Target database เป็น schema รวม 30 ตาราง แบ่งเ
 - ไฟล์แนบไม่เกิน 5 MB และต้องบันทึก section/uploader/time
 - ส่งดำเนินการต้องเลือกผล; ข้อความ popup ต้องตรงตาม SRS
 
-### SCR-07 รายงานสรุปสถานะ (k2-report.html)
+### SCR-07 รายงานสรุปสถานะ
 
-> PROTO Screen Capture: รายงานสรุปสถานะ (k2-report.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 2 ส่วน
+![รูปที่ 34: รายงานสรุปสถานะ - ส่วนที่ 1/2](k2-report-01.png)
 
-![Screen Capture: รายงานสรุปสถานะ - ส่วนที่ 1/2 (k2-report.html)](k2-report-01.png)
-
-![Screen Capture: รายงานสรุปสถานะ - ส่วนที่ 2/2 (k2-report.html)](k2-report-02.png)
+![รูปที่ 35: รายงานสรุปสถานะ - ส่วนที่ 2/2](k2-report-02.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -1449,7 +1430,7 @@ Target database เป็น schema รวม 30 ตาราง แบ่งเ
 
 #### Input / filter fields
 
-รหัสร้านที่ถูกกระทบ · ชื่อร้านที่ถูกกระทบ · เดือน/ปี (เริ่มต้น) · ถึง (สิ้นสุด) · ประเภทร้าน (เลือกได้มากกว่า 1) · FR Type A · FR Type B · FR Type C · FR Type พนักงาน · ภาค (เลือกได้มากกว่า 1) · BE · BN · BS · BW · RC · RE · RN · RS · สถานะ (ค้นหาได้ทีละ 1 สถานะ) · Period Statement (From - To)
+รหัสร้านที่ถูกกระทบ · ชื่อร้านที่ถูกกระทบ · เดือน/ปี (เริ่มต้น) · ถึง (สิ้นสุด) · ประเภทร้าน (เลือกได้มากกว่า 1) · FR Type A · FR Type B · FR Type C · FR Type พนักงาน · ภาค (เลือกได้มากกว่า 1) · BE · BN · BS · BW · RC · RE · RN · RS · สถานะ (ค้นหาได้ทีละ 1 สถานะ) · ผลการพิจารณา (อนุมัติ/ไม่อนุมัติ) · Period Statement (From - To)
 
 
 #### Displayed tables
@@ -1468,11 +1449,9 @@ Export Excel · เคลียร์ค่าเริ่มใหม่ · ค
 - ผลและ Excel ต้องใช้ dataset/เงื่อนไขเดียวกัน
 - แถวข้อมูลยอดขายไม่ครบ 60 วันต้องเป็นสีแดง
 
-### SCR-08 กำหนดผู้ปฏิบัติงาน (k2-operators.html)
+### SCR-08 กำหนดผู้ปฏิบัติงาน
 
-> PROTO Screen Capture: กำหนดผู้ปฏิบัติงาน (k2-operators.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 1 ส่วน
-
-![Screen Capture: กำหนดผู้ปฏิบัติงาน - ส่วนที่ 1/1 (k2-operators.html)](k2-operators-01.png)
+![รูปที่ 36: กำหนดผู้ปฏิบัติงาน](k2-operators-01.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -1497,11 +1476,9 @@ Export Excel · เคลียร์ค่าเริ่มใหม่ · ค
 - แสดงภาคเมื่อเป็นตำแหน่งส่งเสริมธุรกิจพันธมิตรฯ
 - เพิ่ม/แก้/ลบต้องบันทึก audit และเหตุผลเมื่อแก้ไข
 
-### SCR-09 กำหนดปัจจัยภายนอก (k2-factors.html)
+### SCR-09 กำหนดปัจจัยภายนอก
 
-> PROTO Screen Capture: กำหนดปัจจัยภายนอก (k2-factors.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 1 ส่วน
-
-![Screen Capture: กำหนดปัจจัยภายนอก - ส่วนที่ 1/1 (k2-factors.html)](k2-factors-01.png)
+![รูปที่ 37: กำหนดปัจจัยภายนอก](k2-factors-01.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -1526,13 +1503,11 @@ Export Excel · เคลียร์ค่าเริ่มใหม่ · ค
 - แก้ได้เฉพาะชื่อและรายละเอียด; ต้องระบุเหตุผล
 - ทุก mutation ต้องบันทึก audit_logs
 
-### SCR-10 สิทธิ์การเข้าถึงเมนู (k2-permissions.html)
+### SCR-10 สิทธิ์การเข้าถึงเมนู
 
-> PROTO Screen Capture: สิทธิ์การเข้าถึงเมนู (k2-permissions.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 2 ส่วน
+![รูปที่ 38: สิทธิ์การเข้าถึงเมนู - ส่วนที่ 1/2](k2-permissions-01.png)
 
-![Screen Capture: สิทธิ์การเข้าถึงเมนู - ส่วนที่ 1/2 (k2-permissions.html)](k2-permissions-01.png)
-
-![Screen Capture: สิทธิ์การเข้าถึงเมนู - ส่วนที่ 2/2 (k2-permissions.html)](k2-permissions-02.png)
+![รูปที่ 39: สิทธิ์การเข้าถึงเมนู - ส่วนที่ 2/2](k2-permissions-02.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -1557,10 +1532,74 @@ Export Excel · เคลียร์ค่าเริ่มใหม่ · ค
 - API ต้องตรวจ role/record access ซ้ำทุก request
 - การเปลี่ยนสิทธิ์ต้อง audit และมีผลกับ token/session ตามนโยบาย
 
-### 3.4.11 Shared UI contract
+### SCR-11 ตั้งค่าระบบ (Global Config)
 
-- ทุกหน้าต้องมี data-page, data-nav, data-module, optional data-crumb, aside#sidebar และ main.content
-- Header/sidebar ถูกสร้างโดย assets/sbp.js; ห้ามทำซ้ำในแต่ละหน้า
+![รูปที่ 40: ตั้งค่าระบบ (Global Config) - ส่วนที่ 1/2](system-config-01.png)
+
+![รูปที่ 41: ตั้งค่าระบบ (Global Config) - ส่วนที่ 2/2](system-config-02.png)
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | จัดการค่ากำหนดกลางที่ใช้ร่วมทั้งระบบ เช่น รัศมีผลกระทบ เกณฑ์ข้อมูล วงเงินอนุมัติ token และ notification switch |
+| Actor | Admin และผู้ดูแลระบบที่ได้รับมอบหมาย |
+| Pre-condition | ผ่านการ login และมีสิทธิ์เมนู/ข้อมูล |
+
+
+#### Displayed tables
+
+- tblConfigs: Config Key | หมวดหมู่ | ค่า (Value) | ชนิดข้อมูล | หน่วย | คำอธิบาย | แก้ไขได้ | Action
+- Table: วันที่แก้ไข | ผู้แก้ไข | คำสั่ง | รายการ | ข้อมูลเดิม -> ข้อมูลใหม่ | เหตุผลการแก้ไข
+
+#### Actions
+
+เพิ่ม Config · Invalidate Cache
+
+
+#### Business rules / acceptance
+
+- config_key ต้องเป็น dot notation และห้ามซ้ำ
+- value_type ต้อง validate ค่า NUMBER, STRING, BOOLEAN, JSON หรือ CRON ก่อนบันทึก
+- ค่าที่ is_editable=false เป็นค่าคงที่ทางธุรกิจ แก้หรือลบผ่าน UI/API ไม่ได้
+- ห้ามเก็บ secret เช่น password, API key หรือ connection string ใน system_configs
+- ทุกการเพิ่ม แก้ ลบ และ invalidate cache ต้องบันทึก audit_logs พร้อมเหตุผล
+
+### SCR-12 Email Template
+
+![รูปที่ 42: Email Template - ส่วนที่ 1/3](plan-email-01.png)
+
+![รูปที่ 43: Email Template - ส่วนที่ 2/3](plan-email-02.png)
+
+![รูปที่ 44: Email Template - ส่วนที่ 3/3](plan-email-03.png)
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | กำหนดเนื้อหาอีเมล 8 template ของ Notification Service และผูกจุดส่งกับ workflow/batch |
+| Actor | Admin และผู้ดูแล notification |
+| Pre-condition | ผ่านการ login และมีสิทธิ์เมนู/ข้อมูล |
+
+
+#### Displayed tables
+
+- tplMap: Template | ชื่อ | จุดที่ส่งใน Flow | ผู้รับ (TO) | แหล่งกติกาผู้รับ | ความถี่
+- Table: วันที่แก้ไข | ผู้แก้ไข | คำสั่ง | รายการ | ข้อมูลเดิม -> ข้อมูลใหม่ | เหตุผลการแก้ไข
+
+#### Actions
+
+รีเซ็ตทั้งหมดเป็น Default
+
+
+#### Business rules / acceptance
+
+- รองรับ template EM-01 ถึง EM-08 ครอบคลุม workflow transition, reminder, escalation, batch error และ STA ACK watchdog
+- แก้ไขได้เฉพาะ subject/body และตัวแปร merge ที่รองรับของ template นั้น
+- From/To/Cc ต้องล็อกตาม status_email_rules หรือ config ต่อ job ไม่ให้แก้ใน template
+- ต้องรีเซ็ตกลับ Default ได้ทั้งราย template และทั้งหมด
+- ทุกการแก้ไขหรือรีเซ็ตต้องบันทึก audit_logs พร้อมเหตุผล
+
+### 3.4.13 Shared UI contract
+
+- ทุกหน้าจอต้องมี metadata สำหรับ page, nav, module, breadcrumb, sidebar mount และ main content
+- Header/sidebar ถูกสร้างโดย shared shell; ห้ามทำซ้ำในแต่ละหน้า
 - Schema modal อ้างชื่อ table header แบบ exact match; การเปลี่ยน label ต้องแก้ mapping และทดสอบ add/view/edit/delete
 - รองรับ desktop และ responsive layout; ตารางกว้างต้องเลื่อนแนวนอนโดยไม่ตัดข้อมูล
 - ข้อความ popup/validation ภาษาไทยและ source tag (FGI/FCS), (K2), (ใหม่) ต้องคงตามข้อกำหนด
@@ -1570,13 +1609,13 @@ Export Excel · เคลียร์ค่าเริ่มใหม่ · ค
 
 ## 3.5 API Requirements
 
-> PROTO Screen Capture: API Specification (plan-api.html) - ภาพจาก localhost ที่ viewport 1440 px แบ่งตามความสูงเนื้อหาจริงจำนวน 3 ส่วน
+![รูปที่ 45: API Specification - ส่วนที่ 1/4](plan-api-01.png)
 
-![Screen Capture: API Specification - ส่วนที่ 1/3 (plan-api.html)](plan-api-01.png)
+![รูปที่ 46: API Specification - ส่วนที่ 2/4](plan-api-02.png)
 
-![Screen Capture: API Specification - ส่วนที่ 2/3 (plan-api.html)](plan-api-02.png)
+![รูปที่ 47: API Specification - ส่วนที่ 3/4](plan-api-03.png)
 
-![Screen Capture: API Specification - ส่วนที่ 3/3 (plan-api.html)](plan-api-03.png)
+![รูปที่ 48: API Specification - ส่วนที่ 4/4](plan-api-04.png)
 
 
 ### 3.5.1 Common conventions
@@ -1600,14 +1639,19 @@ Export Excel · เคลียร์ค่าเริ่มใหม่ · ค
 | Auth & สิทธิ์ผู้ใช้ | POST | /api/v1/auth/refresh | ผู้ถือ refreshToken | ต่ออายุ accessToken โดยไม่ต้อง login ใหม่ | ใหม่ |
 | Auth & สิทธิ์ผู้ใช้ | GET | /api/v1/auth/me | ทุก role | ข้อมูลผู้ใช้ปัจจุบันจาก JWT - FE ใช้แสดงชื่อ/role มุมขวาบน | K2 |
 | Auth & สิทธิ์ผู้ใช้ | GET | /api/v1/me/menus | ทุก role | เมนูที่ role ของผู้ใช้เข้าถึงได้ - FE ใช้สร้าง sidebar (แทนตารางสิทธิ์ 8 role ในหน้าจอ 3.1.1) | K2 · 3.1.1 |
-| งาน & เอกสารประกันรายได้ | GET | /api/v1/tasks | role ที่มีสิทธิ์เมนูเอกสาร | งานรอท่านดำเนินการ - เอกสารที่ค้างอยู่ที่ section ของผู้ใช้ (หน้า k2-list-waiting.html) | K2 · 3.1.2 |
+| งาน & เอกสารประกันรายได้ | GET | /api/v1/tasks | role ที่มีสิทธิ์เมนูเอกสาร | งานรอท่านดำเนินการ - เอกสารที่ค้างอยู่ที่ section ของผู้ใช้ (หน้า Task Inbox) | K2 · 3.1.2 |
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/documents | ตามสิทธิ์เมนู | ค้นหาเอกสารที่เกี่ยวข้อง - บังคับระบุปี และคืนเฉพาะเอกสารที่มีเลขที่แล้ว (กติกา SRS) | K2 · 3.1.3 / 3.1.7 |
-| งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo} | ตามสิทธิ์เมนู | เอกสารฉบับเต็ม 12 ส่วนย่อย (k2-document.html) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน | K2 · 3.1.6 |
-| งาน & เอกสารประกันรายได้ | POST | /api/v1/documents | 02 HQ, 03 User Admin | สร้างเอกสารใหม่นอกเงื่อนไข หรือสร้างเอกสารที่ FS (สองแท็บของ k2-create.html) | K2 · 3.1.6 |
+| งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo} | ตามสิทธิ์เมนู | เอกสารฉบับเต็ม 12 ส่วนย่อย (Document Detail) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน | K2 · 3.1.6 |
+| งาน & เอกสารประกันรายได้ | POST | /api/v1/documents | 02 HQ, 03 User Admin | สร้างเอกสารใหม่นอกเงื่อนไข หรือสร้างเอกสารที่ FS (สองแท็บของ Create Document) | K2 · 3.1.6 |
 | งาน & เอกสารประกันรายได้ | PUT | /api/v1/documents/{docNo} | ตาม section ปัจจุบัน | บันทึกแก้ไขส่วนย่อยของเอกสาร (ร้านใหม่ / คู่แข่ง / ปัจจัย) ตามสิทธิ์ของขั้นที่ถืออยู่ | K2 · 3.1.6 |
 | งาน & เอกสารประกันรายได้ | POST | /api/v1/documents/{docNo}/actions | เจ้าของ task ปัจจุบัน | ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน - หัวใจ workflow 7 ขั้น · กฎวงเงิน 100,000 ใช้ทั้งกรณีชดเชยและไม่ชดเชย | K2 · 3.1.4 |
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo}/timeline | ตามสิทธิ์เมนู | ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร) | K2 · 3.1.6 |
 | งาน & เอกสารประกันรายได้ | POST | /api/v1/documents/{docNo}/attachments | ตาม section ปัจจุบัน | แนบไฟล์เข้าเอกสาร - จำกัด 5MB ต่อไฟล์ตาม SRS | K2 · 3.1.6 |
+| งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo}/sales | ตามสิทธิ์เมนู | ข้อมูลยอดขายเพิ่มเติมของเอกสาร (4 หน้าต่าง x 15 วัน) - ปุ่ม "ข้อมูลยอดขายเพิ่มเติม" ในหน้าเอกสาร Document Detail | K2 · 3.1.6 |
+| ข้อมูลอ้างอิง (Lookup / Reference) | GET | /api/v1/stores/search | ตามสิทธิ์เมนูเอกสาร | ค้นหาร้าน (แว่นขยายในหน้า Create Document) - ร้านถูกกระทบ (SP) หรือร้านเปิดใหม่ 7-Eleven ตาม type | FGI/FCS master + K2 |
+| ข้อมูลอ้างอิง (Lookup / Reference) | GET | /api/v1/competitors | ตาม section ปัจจุบัน | รายการร้านคู่แข่ง master 24 ราย - dropdown ตอนกดปุ่ม "เพิ่ม" ตารางร้านคู่แข่งเปิดกระทบ (Document Detail) | K2 · master คู่แข่ง |
+| ข้อมูลอ้างอิง (Lookup / Reference) | GET | /api/v1/document-statuses | ทุก role | รายการสถานะเอกสารทั้งหมด - เติม dropdown ตัวกรองสถานะในหน้าค้นหาเอกสาร (k2-list-related) และรายงาน (k2-report) | K2 · 3.1.3 / 3.1.7 |
+| ข้อมูลอ้างอิง (Lookup / Reference) | GET | /api/v1/workflow-sections | ทุก role | รายการ Section 7 ขั้น - dropdown เลือกตำแหน่ง/ขั้น (หน้า 3.1.8) และตัวกรองตาม section | K2 · master section |
 | Master Data | GET | /api/v1/operators | 03 User Admin | รายชื่อผู้ปฏิบัติงาน (operator_assignments) พร้อมค้นหา/แบ่งหน้า | K2 · 3.1.8 |
 | Master Data | POST | /api/v1/operators | 03 User Admin | เพิ่มผู้ปฏิบัติงานใหม่ (จากหน้าค้นหาพนักงานด้วยแว่นขยาย) | K2 · 3.1.8 |
 | Master Data | PUT | /api/v1/operators/{id} | 03 User Admin | แก้ไขข้อมูลผู้ปฏิบัติงาน | K2 · 3.1.8 |
@@ -1619,10 +1663,27 @@ Export Excel · เคลียร์ค่าเริ่มใหม่ · ค
 | Master Data | GET | /api/v1/employees/search | 03 User Admin | ค้นหาพนักงานจากระบบ HR (popup แว่นขยายในหน้า 3.1.8) | K2 3.1.8 + master FGI/FCS |
 | Master Data | GET | /api/v1/menu-permissions | 01 Admin, 02 HQ | ตาราง matrix สิทธิ์เมนูทั้งหมด (8 role x เมนู) - หน้าจอสิทธิ์การเข้าถึงเมนู | K2 · 3.1.1 |
 | Master Data | PUT | /api/v1/menu-permissions/{menuCode} | 01 Admin, 02 HQ | แก้สิทธิ์การเข้าถึงเมนูหนึ่งรายการต่อทุก role - บันทึก audit เสมอ | K2 · 3.1.1 |
+| Master Data | GET | /api/v1/roles | 01 Admin, 02 HQ | รายการ Role ทั้งหมด (ตารางกลุ่มผู้ใช้งานในหน้าจอ 3.1.1 และ dropdown ที่อื่น) | K2 · 3.1.1 |
+| Master Data | POST | /api/v1/roles | 01 Admin, 02 HQ | เพิ่ม Role ใหม่ - ระบบสร้างสิทธิ์เมนูเริ่มต้นเป็น "ไม่มีสิทธิ์" ทุกเมนู | ใหม่ · หน้าจอ 3.1.1 |
+| Master Data | PUT | /api/v1/roles/{roleCode} | 01 Admin, 02 HQ | แก้ชื่อ/คำอธิบาย Role - ต้องระบุเหตุผล บันทึก audit เสมอ | ใหม่ · หน้าจอ 3.1.1 |
+| Master Data | DELETE | /api/v1/roles/{roleCode} | 01 Admin, 02 HQ | ลบ Role - ลบไม่ได้ถ้าเป็น Role ระบบ (is_system) หรือยังมีผู้ใช้อ้างอยู่ | ใหม่ · หน้าจอ 3.1.1 |
+| Master Data | POST | /api/v1/menus | 01 Admin, 02 HQ | เพิ่มเมนูใหม่เข้าระบบ - สิทธิ์เริ่มต้นเป็น "ไม่มีสิทธิ์" ทุก Role | ใหม่ · หน้าจอ 3.1.1 |
+| Master Data | PUT | /api/v1/menus/{menuCode} | 01 Admin, 02 HQ | แก้ชื่อ/กลุ่ม/ลำดับเมนู - ต้องระบุเหตุผล บันทึก audit เสมอ | ใหม่ · หน้าจอ 3.1.1 |
+| Master Data | DELETE | /api/v1/menus/{menuCode} | 01 Admin, 02 HQ | ลบเมนูพร้อมสิทธิ์ทุก Role ของเมนูนั้น (cascade) - เมนูระบบลบไม่ได้ | ใหม่ · หน้าจอ 3.1.1 |
 | Master Data | GET | /api/v1/audit-logs | 01 Admin, 02 HQ, 03 User Admin | ประวัติการแก้ไขข้อมูล master แบบหลายรายการ (ใคร · ทำอะไร · ค่าเดิม->ใหม่ · เหตุผล · เมื่อไร) - แผงประวัติท้ายหน้าจอ 3.1.8 / 3.1.9 | K2 · 3.1.8 / 3.1.9 |
+| System Config (Global) | GET | /api/v1/configs | 01 Admin | รายการค่ากำหนดกลางทั้งหมด กรองตามหมวด/คำค้นได้ (หน้าจอ Global Config) | ใหม่ · Global Config |
+| System Config (Global) | GET | /api/v1/configs/{key} | ทุก role (อ่าน) / service token | อ่านค่ากำหนดรายตัว - เส้นที่ทุก service เรียกตอนใช้งานจริง พร้อม cache 5 นาที | ใหม่ · Global Config |
+| System Config (Global) | POST | /api/v1/configs | 01 Admin | เพิ่มค่ากำหนดใหม่ - key ห้ามซ้ำ และ validate ค่าตาม value_type | ใหม่ · Global Config |
+| System Config (Global) | PUT | /api/v1/configs/{key} | 01 Admin | แก้ค่ากำหนด - ต้องระบุเหตุผล · ค่าคงที่ทางธุรกิจ (is_editable=false) แก้ผ่าน API ไม่ได้ | ใหม่ · Global Config |
+| System Config (Global) | DELETE | /api/v1/configs/{key} | 01 Admin | ลบค่ากำหนด - ลบได้เฉพาะ key ที่ไม่ใช่ค่าระบบ และต้องระบุเหตุผล | ใหม่ · Global Config |
+| Email Template (Notification) | GET | /api/v1/email-templates | 01 Admin | รายการ 8 email template (EM-01-08) พร้อมสถานะว่าถูกแก้จาก Default หรือยัง (หน้าจอ Email Template) | ใหม่ · Notification |
+| Email Template (Notification) | GET | /api/v1/email-templates/{code} | 01 Admin | อ่าน template รายตัว (EM-01-08) พร้อมชุดตัวแปร merge ที่ใช้ได้ในฉบับนั้น | ใหม่ · Notification |
+| Email Template (Notification) | PUT | /api/v1/email-templates/{code} | 01 Admin | บันทึกเนื้อหา template - แก้ได้เฉพาะ subject/body และตัวแปร · ผู้รับ From/To/Cc แก้ผ่านเส้นนี้ไม่ได้ (ล็อกตาม status_email_rules) | ใหม่ · Notification |
+| Email Template (Notification) | POST | /api/v1/email-templates/{code}/reset | 01 Admin | รีเซ็ต template ฉบับเดียวกลับเป็น Default (ปุ่ม "รีเซ็ต" รายตัวในหน้าจอ) | ใหม่ · Notification |
+| Email Template (Notification) | POST | /api/v1/email-templates/reset-all | 01 Admin | รีเซ็ต template ทั้ง 8 ฉบับกลับเป็น Default พร้อมกัน (ปุ่ม "รีเซ็ตทั้งหมดเป็น Default") | ใหม่ · Notification |
 | รายงาน | GET | /api/v1/reports/status-summary | 04 / 06 Report Admin | รายงานสรุปสถานะ 19 คอลัมน์ - บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS) | K2 · 3.1.7 |
 | รายงาน | GET | /api/v1/reports/status-summary/export | 04 / 06 Report Admin | Export รายงานเป็นไฟล์ Excel เงื่อนไขเดียวกับเส้นค้นหา | K2 · 3.1.7 |
-| Batch Job Admin | GET | /api/v1/jobs | 01 Admin | รายการ batch job ทั้ง 11 entry points พร้อมสถานะรอบล่าสุด (หน้าจอ job-batch.html) | FGI/FCS |
+| Batch Job Admin | GET | /api/v1/jobs | 01 Admin | รายการ batch job ทั้ง 11 entry points พร้อมสถานะรอบล่าสุด (หน้าจอ Batch Job Console) | FGI/FCS |
 | Batch Job Admin | GET | /api/v1/jobs/{jobNo} | 01 Admin | รายละเอียด job หนึ่งตัว: พารามิเตอร์ (แยกแก้ได้/คงที่), flow, ตารางที่ใช้ | FGI/FCS |
 | Batch Job Admin | PUT | /api/v1/jobs/{jobNo}/params | 01 Admin | แก้พารามิเตอร์ที่แก้ได้ของ job (เวลารัน, path, เกณฑ์) - ค่าคงที่ทางธุรกิจแก้ผ่าน API ไม่ได้ | FGI/FCS + ข้อ 8.2 |
 | Batch Job Admin | POST | /api/v1/jobs/{jobNo}/run | 01 Admin | สั่งรัน job นอกรอบ พร้อมระบุงวดข้อมูล - มี guard กันรันซ้อน | FGI/FCS · Runbook 7.1 |
@@ -1809,7 +1870,7 @@ Errors
 
 | Item | Requirement |
 | --- | --- |
-| Purpose | งานรอท่านดำเนินการ - เอกสารที่ค้างอยู่ที่ section ของผู้ใช้ (หน้า k2-list-waiting.html) |
+| Purpose | งานรอท่านดำเนินการ - เอกสารที่ค้างอยู่ที่ section ของผู้ใช้ (หน้า Task Inbox) |
 | Roles | role ที่มีสิทธิ์เมนูเอกสาร |
 | Source | K2 · 3.1.2 |
 
@@ -1895,7 +1956,7 @@ Errors
 
 | Item | Requirement |
 | --- | --- |
-| Purpose | เอกสารฉบับเต็ม 12 ส่วนย่อย (k2-document.html) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน |
+| Purpose | เอกสารฉบับเต็ม 12 ส่วนย่อย (Document Detail) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน |
 | Roles | ตามสิทธิ์เมนู |
 | Source | K2 · 3.1.6 |
 
@@ -1941,7 +2002,7 @@ Errors
 
 | Item | Requirement |
 | --- | --- |
-| Purpose | สร้างเอกสารใหม่นอกเงื่อนไข หรือสร้างเอกสารที่ FS (สองแท็บของ k2-create.html) |
+| Purpose | สร้างเอกสารใหม่นอกเงื่อนไข หรือสร้างเอกสารที่ FS (สองแท็บของ Create Document) |
 | Roles | 02 HQ, 03 User Admin |
 | Source | K2 · 3.1.6 |
 
@@ -2145,10 +2206,194 @@ Errors
 - 413 - ไฟล์เกิน 5MB
 - 415 - ชนิดไฟล์ไม่อนุญาต
 
-### API Group 3: Master Data (K2 · SRS 3.1.8 / 3.1.9)
+#### API-13 GET /api/v1/documents/{docNo}/sales
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | ข้อมูลยอดขายเพิ่มเติมของเอกสาร (4 หน้าต่าง x 15 วัน) - ปุ่ม "ข้อมูลยอดขายเพิ่มเติม" ในหน้าเอกสาร Document Detail |
+| Roles | ตามสิทธิ์เมนู |
+| Source | K2 · 3.1.6 |
+
+Flow:
+
+1. หา impact_process_id ของเอกสารจาก compensation_documents
+1. อ่าน fgi_impact_sales_summaries (หัว) + sales_transactions (รายวัน) ของงวดนั้น (โซน A)
+1. คืน growth_rate_diff · total_working_days + แถวยอดขายรายวันแยก 4 หน้าต่าง
+| Table | Access | Role |
+| --- | --- | --- |
+| compensation_documents | R | หา impact_process_id ของเอกสาร |
+| fgi_impact_sales_summaries | R | หัวยอดขาย · growth_rate_diff · total_working_days |
+| sales_transactions | R | ยอดขายรายวัน 4 หน้าต่าง x 15 วัน |
+
+Request
+
+```text
+(ไม่มี body)
+```
+
+Response
+
+```text
+{
+  "growthRateDiff": -12.45,
+  "totalWorkingDays": 60,
+  "windows": [
+    { "label": "ก่อนเปิด 15 วัน",
+      "rows": [ { "date": "2026-05-01", "amount": 42500.00 } ] }
+  ]
+}
+```
+
+Errors
+
+- 404 - ไม่พบเอกสารหรือยอดขายของงวดนี้
+- 401
+
+### API Group 3: ข้อมูลอ้างอิง (Lookup / Reference) (K2 + FGI/FCS · master สำหรับ dropdown)
 
 
-#### API-13 GET /api/v1/operators
+#### API-14 GET /api/v1/stores/search
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | ค้นหาร้าน (แว่นขยายในหน้า Create Document) - ร้านถูกกระทบ (SP) หรือร้านเปิดใหม่ 7-Eleven ตาม type |
+| Roles | ตามสิทธิ์เมนูเอกสาร |
+| Source | FGI/FCS master + K2 |
+
+Flow:
+
+1. รับ q (รหัส/ชื่อร้าน) + type (impacted | new)
+1. type=impacted -> ค้น impacted_stores (ร้าน SP)
+1. type=new -> ค้น stores (master สาขา 7-Eleven ทุกประเภท)
+1. คืนรายการสั้นสำหรับ popup เลือก (คงเลขศูนย์นำหน้ารหัสร้าน)
+| Table | Access | Role |
+| --- | --- | --- |
+| stores | R | master สาขา 7-Eleven - ร้านเปิดใหม่ (โซน C) |
+| impacted_stores | R | ร้าน SP - ร้านถูกกระทบ |
+
+Request
+
+```text
+Query: ?q=00788&type=impacted
+(type = impacted | new)
+```
+
+Response
+
+```text
+{
+  "items": [{ "storeCode": "00788", "storeName": "รัตนอุทิศ ซ.13", "storeType": "SP" }]
+}
+```
+
+Errors
+
+- 401
+
+#### API-15 GET /api/v1/competitors
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | รายการร้านคู่แข่ง master 24 ราย - dropdown ตอนกดปุ่ม "เพิ่ม" ตารางร้านคู่แข่งเปิดกระทบ (Document Detail) |
+| Roles | ตาม section ปัจจุบัน |
+| Source | K2 · master คู่แข่ง |
+
+Flow:
+
+1. query competitors ทั้งหมด / ตามคำค้น
+1. คืนรหัส + ชื่อคู่แข่งสำหรับเลือกใส่ document_competitors
+| Table | Access | Role |
+| --- | --- | --- |
+| competitors | R | master ร้านคู่แข่ง 24 ราย (108 Shop, Lotus Express, CJ ...) |
+
+Request
+
+```text
+Query: ?q=lotus
+```
+
+Response
+
+```text
+{
+  "items": [{ "competitorCode": "C007", "competitorName": "Lotus Express" }]
+}
+```
+
+Errors
+
+- 401
+
+#### API-16 GET /api/v1/document-statuses
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | รายการสถานะเอกสารทั้งหมด - เติม dropdown ตัวกรองสถานะในหน้าค้นหาเอกสาร (k2-list-related) และรายงาน (k2-report) |
+| Roles | ทุก role |
+| Source | K2 · 3.1.3 / 3.1.7 |
+
+Flow:
+
+1. อ่าน document_statuses ทั้งหมดเรียงตามลำดับ workflow
+| Table | Access | Role |
+| --- | --- | --- |
+| document_statuses | R | สถานะเอกสาร (06/08/01/02/03/04/05/END) |
+
+Request
+
+```text
+(ไม่มี body)
+```
+
+Response
+
+```text
+{
+  "items": [{ "statusCode": "06", "statusName": "รอฝ่าย SBP DSA ดำเนินการ" }]
+}
+```
+
+Errors
+
+- 401
+
+#### API-17 GET /api/v1/workflow-sections
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | รายการ Section 7 ขั้น - dropdown เลือกตำแหน่ง/ขั้น (หน้า 3.1.8) และตัวกรองตาม section |
+| Roles | ทุก role |
+| Source | K2 · master section |
+
+Flow:
+
+1. อ่าน workflow_sections ทั้งหมดเรียงตามลำดับ 06->08->01->02->03->04->05
+| Table | Access | Role |
+| --- | --- | --- |
+| workflow_sections | R | ขั้นตอน 06/08/01/02/03/04/05 |
+
+Request
+
+```text
+(ไม่มี body)
+```
+
+Response
+
+```text
+{
+  "items": [{ "sectionCode": "06", "sectionName": "ฝ่าย SBP DSA" }]
+}
+```
+
+Errors
+
+- 401
+
+### API Group 4: Master Data (K2 · SRS 3.1.8 / 3.1.9)
+
+
+#### API-18 GET /api/v1/operators
 
 | Item | Requirement |
 | --- | --- |
@@ -2188,7 +2433,7 @@ Errors
 - 401
 - 403
 
-#### API-14 POST /api/v1/operators
+#### API-19 POST /api/v1/operators
 
 | Item | Requirement |
 | --- | --- |
@@ -2227,7 +2472,7 @@ Errors
 
 - 409 - พนักงานคนนี้อยู่ใน section นี้แล้ว
 
-#### API-15 PUT /api/v1/operators/{id}
+#### API-20 PUT /api/v1/operators/{id}
 
 | Item | Requirement |
 | --- | --- |
@@ -2265,7 +2510,7 @@ Errors
 - 422 - กรุณาระบุเหตุผลการแก้ไขข้อมูล
 - 404
 
-#### API-16 DELETE /api/v1/operators/{id}
+#### API-21 DELETE /api/v1/operators/{id}
 
 | Item | Requirement |
 | --- | --- |
@@ -2299,7 +2544,7 @@ Errors
 
 - 409 - ยังถืองานค้างอยู่ ต้องแจกงานใหม่ก่อน
 
-#### API-17 GET /api/v1/factors
+#### API-22 GET /api/v1/factors
 
 | Item | Requirement |
 | --- | --- |
@@ -2332,7 +2577,7 @@ Errors
 
 - 401
 
-#### API-18 POST /api/v1/factors
+#### API-23 POST /api/v1/factors
 
 | Item | Requirement |
 | --- | --- |
@@ -2365,7 +2610,7 @@ Errors
 
 - 409 - รหัสปัจจัยนี้มีอยู่แล้ว
 
-#### API-19 PUT /api/v1/factors/{code}
+#### API-24 PUT /api/v1/factors/{code}
 
 | Item | Requirement |
 | --- | --- |
@@ -2402,7 +2647,7 @@ Errors
 - 422 - กรุณาระบุเหตุผลการแก้ไขข้อมูล
 - 404
 
-#### API-20 DELETE /api/v1/factors/{code}
+#### API-25 DELETE /api/v1/factors/{code}
 
 | Item | Requirement |
 | --- | --- |
@@ -2436,7 +2681,7 @@ Errors
 
 - 409 - ปัจจัยถูกใช้ในเอกสารอยู่ ลบไม่ได้
 
-#### API-21 GET /api/v1/employees/search
+#### API-26 GET /api/v1/employees/search
 
 | Item | Requirement |
 | --- | --- |
@@ -2470,7 +2715,7 @@ Errors
 
 - 401
 
-#### API-22 GET /api/v1/menu-permissions
+#### API-27 GET /api/v1/menu-permissions
 
 | Item | Requirement |
 | --- | --- |
@@ -2510,7 +2755,7 @@ Errors
 - 401
 - 403
 
-#### API-23 PUT /api/v1/menu-permissions/{menuCode}
+#### API-28 PUT /api/v1/menu-permissions/{menuCode}
 
 | Item | Requirement |
 | --- | --- |
@@ -2547,7 +2792,274 @@ Errors
 - 404 - ไม่พบเมนู
 - 403
 
-#### API-24 GET /api/v1/audit-logs
+#### API-29 GET /api/v1/roles
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | รายการ Role ทั้งหมด (ตารางกลุ่มผู้ใช้งานในหน้าจอ 3.1.1 และ dropdown ที่อื่น) |
+| Roles | 01 Admin, 02 HQ |
+| Source | K2 · 3.1.1 |
+
+Flow:
+
+1. อ่าน roles ทั้งหมดเรียงตาม role_code
+| Table | Access | Role |
+| --- | --- | --- |
+| roles | R | role_code · role_name · role_desc · is_system |
+
+Request
+
+```text
+(ไม่มี body)
+```
+
+Response
+
+```text
+{
+  "items": [{ "roleCode": "01", "roleName": "Admin", "roleDesc": "ผู้ดูแลระบบ BPM ...", "isSystem": true }]
+}
+```
+
+Errors
+
+- 401
+- 403
+
+#### API-30 POST /api/v1/roles
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | เพิ่ม Role ใหม่ - ระบบสร้างสิทธิ์เมนูเริ่มต้นเป็น "ไม่มีสิทธิ์" ทุกเมนู |
+| Roles | 01 Admin, 02 HQ |
+| Source | ใหม่ · หน้าจอ 3.1.1 |
+
+Flow:
+
+1. validate role_code ไม่ซ้ำ
+1. insert roles (is_system = false)
+1. insert menu_permissions ทุกเมนู can_access = false
+1. บันทึก audit_logs
+| Table | Access | Role |
+| --- | --- | --- |
+| roles | W | role ใหม่ |
+| menu_permissions | W | สิทธิ์เริ่มต้น false ทุกเมนู |
+| audit_logs | W | audit การเพิ่ม |
+
+Request
+
+```text
+{
+  "roleCode": "11",
+  "roleName": "Zone Viewer",
+  "roleDesc": "ดูเอกสารเฉพาะภาคของตน"
+}
+```
+
+Response
+
+```text
+201 Created
+```
+
+Errors
+
+- 409 - รหัส Role ซ้ำกับที่มีอยู่
+- 403
+
+#### API-31 PUT /api/v1/roles/{roleCode}
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | แก้ชื่อ/คำอธิบาย Role - ต้องระบุเหตุผล บันทึก audit เสมอ |
+| Roles | 01 Admin, 02 HQ |
+| Source | ใหม่ · หน้าจอ 3.1.1 |
+
+Flow:
+
+1. ตรวจ role มีอยู่
+1. update roles (role_code ของ role ระบบแก้ไม่ได้)
+1. บันทึก audit_logs (ค่าเดิม/ใหม่ + เหตุผล)
+| Table | Access | Role |
+| --- | --- | --- |
+| roles | W | ชื่อ/คำอธิบายใหม่ |
+| audit_logs | W | audit การแก้ไข |
+
+Request
+
+```text
+{
+  "roleName": "Report Admin",
+  "roleDesc": "สำหรับดูเมนูรายงานทุกภาค",
+  "reason": "ขยายขอบเขตการดูรายงาน"
+}
+```
+
+Response
+
+```text
+200 OK
+```
+
+Errors
+
+- 404 - ไม่พบ Role
+- 403
+
+#### API-32 DELETE /api/v1/roles/{roleCode}
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | ลบ Role - ลบไม่ได้ถ้าเป็น Role ระบบ (is_system) หรือยังมีผู้ใช้อ้างอยู่ |
+| Roles | 01 Admin, 02 HQ |
+| Source | ใหม่ · หน้าจอ 3.1.1 |
+
+Flow:
+
+1. ตรวจ is_system = false และไม่มี user_accounts อ้างถึง
+1. ลบ menu_permissions ของ role ทั้งหมด แล้วลบ roles
+1. บันทึก audit_logs พร้อมเหตุผล
+| Table | Access | Role |
+| --- | --- | --- |
+| roles | W | ลบ role |
+| menu_permissions | W | ลบสิทธิ์ของ role (cascade) |
+| audit_logs | W | audit การลบ |
+
+Request
+
+```text
+{ "reason": "ยุบรวมกับ Role 04" }
+```
+
+Response
+
+```text
+204 No Content
+```
+
+Errors
+
+- 409 - Role หลักของระบบ (00-10) ลบไม่ได้
+- 409 - ยังมีผู้ใช้อยู่ใน Role นี้ ลบไม่ได้
+- 403
+
+#### API-33 POST /api/v1/menus
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | เพิ่มเมนูใหม่เข้าระบบ - สิทธิ์เริ่มต้นเป็น "ไม่มีสิทธิ์" ทุก Role |
+| Roles | 01 Admin, 02 HQ |
+| Source | ใหม่ · หน้าจอ 3.1.1 |
+
+Flow:
+
+1. validate ชื่อเมนูไม่ว่าง / menu_group อยู่ในเซ็ต MAIN, MASTER
+1. insert menus (running menu_code + sort_order ท้ายกลุ่ม)
+1. insert menu_permissions ทุก role can_access = false
+1. บันทึก audit_logs
+| Table | Access | Role |
+| --- | --- | --- |
+| menus | W | เมนูใหม่ (menu_group + sort_order) |
+| menu_permissions | W | สิทธิ์เริ่มต้น false ทุก role |
+| audit_logs | W | audit การเพิ่ม |
+
+Request
+
+```text
+{
+  "menuName": "รายงานผลชดเชยรายเดือน",
+  "menuGroup": "MAIN"
+}
+```
+
+Response
+
+```text
+201 Created
+{ "menuCode": "M07" }
+```
+
+Errors
+
+- 422 - กรุณาระบุชื่อเมนู
+- 403
+
+#### API-34 PUT /api/v1/menus/{menuCode}
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | แก้ชื่อ/กลุ่ม/ลำดับเมนู - ต้องระบุเหตุผล บันทึก audit เสมอ |
+| Roles | 01 Admin, 02 HQ |
+| Source | ใหม่ · หน้าจอ 3.1.1 |
+
+Flow:
+
+1. ตรวจเมนูมีอยู่
+1. update menus
+1. บันทึก audit_logs (ค่าเดิม/ใหม่ + เหตุผล)
+| Table | Access | Role |
+| --- | --- | --- |
+| menus | W | ชื่อ/กลุ่ม/ลำดับใหม่ |
+| audit_logs | W | audit การแก้ไข |
+
+Request
+
+```text
+{
+  "menuName": "รายงานสรุปสถานะ (ใหม่)",
+  "sortOrder": 5,
+  "reason": "ปรับชื่อให้ตรงรายงานฉบับปรับปรุง"
+}
+```
+
+Response
+
+```text
+200 OK
+```
+
+Errors
+
+- 404 - ไม่พบเมนู
+- 403
+
+#### API-35 DELETE /api/v1/menus/{menuCode}
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | ลบเมนูพร้อมสิทธิ์ทุก Role ของเมนูนั้น (cascade) - เมนูระบบลบไม่ได้ |
+| Roles | 01 Admin, 02 HQ |
+| Source | ใหม่ · หน้าจอ 3.1.1 |
+
+Flow:
+
+1. ตรวจ is_system = false
+1. ลบ menu_permissions ของเมนู แล้วลบ menus
+1. บันทึก audit_logs พร้อมเหตุผล
+| Table | Access | Role |
+| --- | --- | --- |
+| menus | W | ลบเมนู |
+| menu_permissions | W | ลบสิทธิ์ทุก role ของเมนู (cascade) |
+| audit_logs | W | audit การลบ |
+
+Request
+
+```text
+{ "reason": "ยุบรวมกับเมนูรายงานสรุปสถานะ" }
+```
+
+Response
+
+```text
+204 No Content
+```
+
+Errors
+
+- 409 - เมนูหลักของระบบลบไม่ได้
+- 403
+
+#### API-36 GET /api/v1/audit-logs
 
 | Item | Requirement |
 | --- | --- |
@@ -2590,10 +3102,411 @@ Errors
 - 401
 - 403
 
-### API Group 4: รายงาน (K2 · SRS 3.1.7)
+### API Group 5: System Config (Global) (ใหม่ · system_configs)
 
 
-#### API-25 GET /api/v1/reports/status-summary
+#### API-37 GET /api/v1/configs
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | รายการค่ากำหนดกลางทั้งหมด กรองตามหมวด/คำค้นได้ (หน้าจอ Global Config) |
+| Roles | 01 Admin |
+| Source | ใหม่ · Global Config |
+
+Flow:
+
+1. query system_configs ตาม category / คำค้น
+1. คืนครบทุก field รวม value_type · unit · is_editable
+| Table | Access | Role |
+| --- | --- | --- |
+| system_configs | R | ค่ากำหนดกลางทั้งหมด (ตารางใหม่) |
+
+Request
+
+```text
+Query: ?category=WORKFLOW&q=escalation
+```
+
+Response
+
+```text
+{
+  "items": [{
+    "configKey": "workflow.escalation_days",
+    "category": "WORKFLOW",
+    "value": "[30, 45, 60]",
+    "valueType": "JSON",
+    "unit": "วัน",
+    "description": "ลำดับวัน escalation งานค้าง",
+    "isEditable": true
+  }]
+}
+```
+
+Errors
+
+- 401
+- 403
+
+#### API-38 GET /api/v1/configs/{key}
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | อ่านค่ากำหนดรายตัว - เส้นที่ทุก service เรียกตอนใช้งานจริง พร้อม cache 5 นาที |
+| Roles | ทุก role (อ่าน) / service token |
+| Source | ใหม่ · Global Config |
+
+Flow:
+
+1. อ่าน system_configs ด้วย config_key
+1. ตอบพร้อม header Cache-Control (TTL 5 นาที) - service ฝั่งเรียก cache ตาม
+1. ค่า BOOLEAN/NUMBER/JSON ตอบเป็น typed value ตาม value_type ไม่ใช่ string ล้วน
+| Table | Access | Role |
+| --- | --- | --- |
+| system_configs | R | ค่ารายตัว |
+
+Request
+
+```text
+(ไม่มี body)
+```
+
+Response
+
+```text
+{
+  "configKey": "workflow.avp_amount_threshold",
+  "value": 100000,
+  "valueType": "NUMBER",
+  "unit": "บาท"
+}
+```
+
+Errors
+
+- 404 - ไม่พบ config key นี้
+- 401
+
+#### API-39 POST /api/v1/configs
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | เพิ่มค่ากำหนดใหม่ - key ห้ามซ้ำ และ validate ค่าตาม value_type |
+| Roles | 01 Admin |
+| Source | ใหม่ · Global Config |
+
+Flow:
+
+1. validate config_key รูปแบบ dot notation และไม่ซ้ำ
+1. validate ค่า parse ได้ตาม value_type (NUMBER/BOOLEAN/JSON/CRON)
+1. ปฏิเสธค่าที่เป็น secret (รหัสผ่าน/API key ต้องอยู่ Secret Manager)
+1. insert + บันทึก audit_logs (ADD)
+| Table | Access | Role |
+| --- | --- | --- |
+| system_configs | W | แถวใหม่ |
+| audit_logs | W | audit การเพิ่ม |
+
+Request
+
+```text
+{
+  "configKey": "report.export_max_rows",
+  "category": "DOCUMENT",
+  "value": "50000",
+  "valueType": "NUMBER",
+  "unit": "แถว",
+  "description": "จำนวนแถวสูงสุดต่อไฟล์ export"
+}
+```
+
+Response
+
+```text
+201 Created
+```
+
+Errors
+
+- 409 - Config Key นี้มีอยู่แล้ว
+- 422 - ค่าไม่ตรงกับชนิดข้อมูล (value_type)
+
+#### API-40 PUT /api/v1/configs/{key}
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | แก้ค่ากำหนด - ต้องระบุเหตุผล · ค่าคงที่ทางธุรกิจ (is_editable=false) แก้ผ่าน API ไม่ได้ |
+| Roles | 01 Admin |
+| Source | ใหม่ · Global Config |
+
+Flow:
+
+1. ตรวจ is_editable - ค่าคงที่ทางธุรกิจ (รัศมี · วงเงิน 100,000 · เกณฑ์ 60 วัน · เกณฑ์ −10 ตามข้อ 8.2) ตอบ 422
+1. validate ค่าใหม่ตาม value_type + ต้องระบุ reason เสมอ
+1. update + บันทึก audit_logs (EDIT · old_value -> new_value · เหตุผล)
+1. broadcast invalidate cache ให้ทุก service อ่านค่าใหม่ทันที
+| Table | Access | Role |
+| --- | --- | --- |
+| system_configs | W | ค่าใหม่ |
+| audit_logs | W | audit ผู้แก้ + ค่าเดิม/ใหม่ + เหตุผล |
+
+Request
+
+```text
+{
+  "value": "[30, 45, 60]",
+  "reason": "เพิ่มขั้นเตือน 45 วันตามมติที่ประชุม"   // บังคับ
+}
+```
+
+Response
+
+```text
+200 OK
+```
+
+Errors
+
+- 422 - key นี้เป็นค่าคงที่ทางธุรกิจ แก้ผ่าน API ไม่ได้
+- 422 - กรุณาระบุเหตุผลการแก้ไขข้อมูล
+- 404
+
+#### API-41 DELETE /api/v1/configs/{key}
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | ลบค่ากำหนด - ลบได้เฉพาะ key ที่ไม่ใช่ค่าระบบ และต้องระบุเหตุผล |
+| Roles | 01 Admin |
+| Source | ใหม่ · Global Config |
+
+Flow:
+
+1. ตรวจ is_editable = true (ค่าคงที่ทางธุรกิจ/ค่าระบบลบไม่ได้)
+1. ลบ + บันทึก audit_logs (DELETE + เหตุผล)
+1. broadcast invalidate cache
+| Table | Access | Role |
+| --- | --- | --- |
+| system_configs | W | ลบแถว |
+| audit_logs | W | audit + เหตุผล |
+
+Request
+
+```text
+{ "reason": "เลิกใช้หลังย้ายไปกำหนดใน job_configs" }
+```
+
+Response
+
+```text
+204 No Content
+```
+
+Errors
+
+- 409 - ค่าระบบ/ค่าคงที่ทางธุรกิจ ลบไม่ได้
+- 404
+
+### API Group 6: Email Template (Notification) (ใหม่ · email_templates)
+
+
+#### API-42 GET /api/v1/email-templates
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | รายการ 8 email template (EM-01-08) พร้อมสถานะว่าถูกแก้จาก Default หรือยัง (หน้าจอ Email Template) |
+| Roles | 01 Admin |
+| Source | ใหม่ · Notification |
+
+Flow:
+
+1. query email_templates ทั้ง 8 รหัส
+1. join จุดส่งใน flow (status_email_rules) เพื่อแสดงผู้รับ TO/CC ที่ล็อกไว้
+1. คืน subject/body ปัจจุบัน + is_customized
+| Table | Access | Role |
+| --- | --- | --- |
+| email_templates | R | เนื้อหา template ทั้งหมด (ตารางใหม่) |
+| status_email_rules | R | ผู้รับ TO/CC ที่ล็อกต่อสถานะ |
+
+Request
+
+```text
+(ไม่มี body)
+```
+
+Response
+
+```text
+{
+  "items": [{
+    "templateCode": "EM-01",
+    "name": "แจ้งผู้ดำเนินการลำดับถัดไป",
+    "subject": "[SBPGI] เอกสารประกันรายได้ {{doc_no}} - {{next_status}}",
+    "isCustomized": false
+  }]
+}
+```
+
+Errors
+
+- 401
+- 403
+
+#### API-43 GET /api/v1/email-templates/{code}
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | อ่าน template รายตัว (EM-01-08) พร้อมชุดตัวแปร merge ที่ใช้ได้ในฉบับนั้น |
+| Roles | 01 Admin |
+| Source | ใหม่ · Notification |
+
+Flow:
+
+1. อ่าน email_templates ด้วย template_code
+1. คืน subject/body + รายการตัวแปร merge ที่รองรับ + ผู้รับ TO/CC (อ่านอย่างเดียว)
+| Table | Access | Role |
+| --- | --- | --- |
+| email_templates | R | เนื้อหารายตัว |
+| status_email_rules | R | ผู้รับ TO/CC (ล็อก) |
+
+Request
+
+```text
+(ไม่มี body)
+```
+
+Response
+
+```text
+{
+  "templateCode": "EM-01",
+  "subject": "[SBPGI] เอกสารประกันรายได้ {{doc_no}} - {{next_status}}",
+  "body": "<p>เรียน {{next_actor}} ...</p>",
+  "variables": ["doc_no", "store_code", "next_status", "doc_url"],
+  "lockedRecipients": { "to": "ผู้ดำเนินการลำดับถัดไป", "cc": "ตาม status_email_rules" }
+}
+```
+
+Errors
+
+- 404 - ไม่พบ template code นี้
+- 401
+
+#### API-44 PUT /api/v1/email-templates/{code}
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | บันทึกเนื้อหา template - แก้ได้เฉพาะ subject/body และตัวแปร · ผู้รับ From/To/Cc แก้ผ่านเส้นนี้ไม่ได้ (ล็อกตาม status_email_rules) |
+| Roles | 01 Admin |
+| Source | ใหม่ · Notification |
+
+Flow:
+
+1. validate ใช้เฉพาะตัวแปร merge ที่รองรับของ template นั้น
+1. ปฏิเสธการแก้ From/To/Cc - ผู้รับกำหนดที่ status_email_rules เท่านั้น
+1. update email_templates + set is_customized = true
+1. บันทึก audit_logs (EDIT · old -> new · เหตุผล)
+| Table | Access | Role |
+| --- | --- | --- |
+| email_templates | W | subject/body ใหม่ |
+| audit_logs | W | audit ผู้แก้ + ค่าเดิม/ใหม่ + เหตุผล |
+
+Request
+
+```text
+{
+  "subject": "[SBPGI] เอกสาร {{doc_no}} - {{next_status}}",
+  "body": "<p>เรียน {{next_actor}} ...</p>",
+  "reason": "เพิ่มลิงก์เปิดเอกสาร {{doc_url}}"   // บังคับ
+}
+```
+
+Response
+
+```text
+200 OK
+```
+
+Errors
+
+- 422 - ใช้ตัวแปร merge ที่ไม่รองรับใน template นี้
+- 422 - แก้ผู้รับ From/To/Cc ผ่านเส้นนี้ไม่ได้
+- 422 - กรุณาระบุเหตุผลการแก้ไข
+- 404
+
+#### API-45 POST /api/v1/email-templates/{code}/reset
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | รีเซ็ต template ฉบับเดียวกลับเป็น Default (ปุ่ม "รีเซ็ต" รายตัวในหน้าจอ) |
+| Roles | 01 Admin |
+| Source | ใหม่ · Notification |
+
+Flow:
+
+1. คืน subject/body เป็นชุด Default ของ template นั้น
+1. set is_customized = false
+1. บันทึก audit_logs (RESET + เหตุผล)
+| Table | Access | Role |
+| --- | --- | --- |
+| email_templates | W | คืนค่า Default |
+| audit_logs | W | audit การรีเซ็ต |
+
+Request
+
+```text
+{ "reason": "ยกเลิกถ้อยคำที่ทดลองปรับ" }
+```
+
+Response
+
+```text
+200 OK
+```
+
+Errors
+
+- 404 - ไม่พบ template code นี้
+- 401
+
+#### API-46 POST /api/v1/email-templates/reset-all
+
+| Item | Requirement |
+| --- | --- |
+| Purpose | รีเซ็ต template ทั้ง 8 ฉบับกลับเป็น Default พร้อมกัน (ปุ่ม "รีเซ็ตทั้งหมดเป็น Default") |
+| Roles | 01 Admin |
+| Source | ใหม่ · Notification |
+
+Flow:
+
+1. คืน subject/body ของทุก template เป็นชุด Default
+1. set is_customized = false ทุกฉบับ
+1. บันทึก audit_logs หนึ่งรายการต่อ template ที่เปลี่ยนจริง
+| Table | Access | Role |
+| --- | --- | --- |
+| email_templates | W | คืนค่า Default ทั้ง 8 |
+| audit_logs | W | audit ต่อ template ที่เปลี่ยน |
+
+Request
+
+```text
+{ "reason": "ล้างค่าทดสอบทั้งหมดก่อนส่งมอบ" }
+```
+
+Response
+
+```text
+200 OK
+{ "resetCount": 3 }
+```
+
+Errors
+
+- 401
+- 403
+
+### API Group 7: รายงาน (K2 · SRS 3.1.7)
+
+
+#### API-47 GET /api/v1/reports/status-summary
 
 | Item | Requirement |
 | --- | --- |
@@ -2605,17 +3518,20 @@ Flow:
 
 1. validate ปี (ไม่ระบุ -> 400)
 1. query compensation_documents + compensation_histories ตามเงื่อนไข
-1. คืนแบบแบ่งหน้า 19 คอลัมน์ตามหน้าจอ k2-report.html
+1. กรอง result (APPROVE/REJECT/PENDING) จากผลพิจารณาล่าสุดใน consideration_logs - filter "อนุมัติ/ไม่อนุมัติ" หน้า k2-report
+1. คืนแบบแบ่งหน้า 19 คอลัมน์ตามหน้าจอ Status Report
 | Table | Access | Role |
 | --- | --- | --- |
 | compensation_documents | R | สถานะเอกสาร |
 | compensation_histories | R | ยอด/งวดชดเชย |
 | impacted_stores | R | ข้อมูลร้าน |
+| consideration_logs | R | ผลพิจารณาล่าสุด (กรองอนุมัติ/ไม่อนุมัติ) |
 
 Request
 
 ```text
-Query: ?year=2569&month=6&zone=RS&status=END&page=1
+Query: ?year=2569&month=6&zone=RS&status=END&result=APPROVE&page=1
+(result = APPROVE | REJECT | PENDING - อนุมัติ / ไม่อนุมัติ / ยังไม่พิจารณา)
 ```
 
 Response
@@ -2631,7 +3547,7 @@ Errors
 
 - 400 - กรุณาระบุปีที่ต้องการค้นหา
 
-#### API-26 GET /api/v1/reports/status-summary/export
+#### API-48 GET /api/v1/reports/status-summary/export
 
 | Item | Requirement |
 | --- | --- |
@@ -2650,7 +3566,8 @@ Flow:
 Request
 
 ```text
-Query: ?year=2569&month=6
+Query: ?year=2569&month=6&result=APPROVE
+(เงื่อนไขชุดเดียวกับเส้นค้นหา รวม result อนุมัติ/ไม่อนุมัติ)
 ```
 
 Response
@@ -2665,14 +3582,14 @@ Errors
 
 - 400 - ไม่ระบุปี
 
-### API Group 5: Batch Job Admin (FGI/FCS · Jobs 1-10)
+### API Group 8: Batch Job Admin (FGI/FCS · Jobs 1-10)
 
 
-#### API-27 GET /api/v1/jobs
+#### API-49 GET /api/v1/jobs
 
 | Item | Requirement |
 | --- | --- |
-| Purpose | รายการ batch job ทั้ง 11 entry points พร้อมสถานะรอบล่าสุด (หน้าจอ job-batch.html) |
+| Purpose | รายการ batch job ทั้ง 11 entry points พร้อมสถานะรอบล่าสุด (หน้าจอ Batch Job Console) |
 | Roles | 01 Admin |
 | Source | FGI/FCS |
 
@@ -2710,7 +3627,7 @@ Errors
 - 401
 - 403
 
-#### API-28 GET /api/v1/jobs/{jobNo}
+#### API-50 GET /api/v1/jobs/{jobNo}
 
 | Item | Requirement |
 | --- | --- |
@@ -2748,7 +3665,7 @@ Errors
 
 - 404
 
-#### API-29 PUT /api/v1/jobs/{jobNo}/params
+#### API-51 PUT /api/v1/jobs/{jobNo}/params
 
 | Item | Requirement |
 | --- | --- |
@@ -2784,7 +3701,7 @@ Errors
 - 422 - key นี้เป็นค่าคงที่ทางธุรกิจ แก้ผ่าน API ไม่ได้
 - 404
 
-#### API-30 POST /api/v1/jobs/{jobNo}/run
+#### API-52 POST /api/v1/jobs/{jobNo}/run
 
 | Item | Requirement |
 | --- | --- |
@@ -2823,7 +3740,7 @@ Errors
 - 409 - Job กำลังรันอยู่ ห้ามรันซ้อน
 - 422 - job ถูกปิดใช้งาน
 
-#### API-31 PUT /api/v1/jobs/{jobNo}/enabled
+#### API-53 PUT /api/v1/jobs/{jobNo}/enabled
 
 | Item | Requirement |
 | --- | --- |
@@ -2855,7 +3772,7 @@ Errors
 
 - 404
 
-#### API-32 GET /api/v1/jobs/{jobNo}/runs
+#### API-54 GET /api/v1/jobs/{jobNo}/runs
 
 | Item | Requirement |
 | --- | --- |
@@ -2891,10 +3808,10 @@ Errors
 
 - 404
 
-### API Group 6: Workflow ภายใน (K2 3.1.4 + FGI/FCS Job 8b)
+### API Group 9: Workflow ภายใน (K2 3.1.4 + FGI/FCS Job 8b)
 
 
-#### API-33 POST /api/v1/workflows/instances
+#### API-55 POST /api/v1/workflows/instances
 
 | Item | Requirement |
 | --- | --- |
@@ -2939,7 +3856,7 @@ Errors
 - 422 - ไม่ผ่าน Gen Flow Gate (ตอบเหตุผล + สถานะ W/N ที่ตั้งให้)
 - 401 - service token ไม่ถูกต้อง
 
-#### API-34 GET /api/v1/workflows/instances/{id}
+#### API-56 GET /api/v1/workflows/instances/{id}
 
 | Item | Requirement |
 | --- | --- |
@@ -2975,7 +3892,7 @@ Errors
 
 - 404
 
-#### API-35 GET /api/v1/workflows/summary
+#### API-57 GET /api/v1/workflows/summary
 
 | Item | Requirement |
 | --- | --- |
@@ -3011,10 +3928,10 @@ Errors
 
 - 401
 
-### API Group 7: Interface & Dashboard (FGI/FCS · tracking / watchdog)
+### API Group 10: Interface & Dashboard (FGI/FCS · tracking / watchdog)
 
 
-#### API-36 GET /api/v1/interfaces/tracking
+#### API-58 GET /api/v1/interfaces/tracking
 
 | Item | Requirement |
 | --- | --- |
@@ -3053,7 +3970,7 @@ Errors
 
 - 401
 
-#### API-37 POST /api/v1/interfaces/sta/ack
+#### API-59 POST /api/v1/interfaces/sta/ack
 
 | Item | Requirement |
 | --- | --- |
@@ -3091,7 +4008,7 @@ Errors
 - 401 - API key ไม่ถูกต้อง
 - 404 - ไม่พบ tracking
 
-#### API-38 GET /api/v1/interfaces/pending-ack
+#### API-60 GET /api/v1/interfaces/pending-ack
 
 | Item | Requirement |
 | --- | --- |
@@ -3126,7 +4043,7 @@ Errors
 
 - 401
 
-#### API-39 GET /api/v1/dashboard/summary
+#### API-61 GET /api/v1/dashboard/summary
 
 | Item | Requirement |
 | --- | --- |
@@ -3195,32 +4112,34 @@ Errors
 - ผลรวม % ชดเชย 100% ถูกตรวจทั้ง FE และ BE
 - ร้านยอดขายไม่ครบ 60 วันถูก flag ใน inbox/report และมีเหตุผลตรวจสอบย้อนกลับ
 - Jobs 1-10/8b รันซ้ำตาม runbook โดยไม่สร้างข้อมูลซ้ำหรือสูญหาย
-- API 39 เส้นผ่าน authentication/authorization, validation, audit, idempotency และ error contract
+- API 61 เส้นผ่าน authentication/authorization, validation, audit, idempotency และ error contract
 - ข้อมูล export/import ทุก interface ผ่าน golden-file test เรื่อง encoding/date/delimiter/field count
 - หน้าจอและ Excel report ให้ผลตรงกันภายใต้ filter เดียวกัน
 
-## 5.2 HTML traceability matrix
+## 5.2 Traceability matrix
 
-| ID | Source page | Scope | SRS section |
+| ID | Screen / Artifact | Scope | SRS section |
 | --- | --- | --- | --- |
-| FLOW-01 | flow-fgi.html | FGI/FCS batch pipeline A-E | 3.1, 3.3 |
-| FLOW-02 | k2-flow.html | K2 approval workflow | 3.1.3-3.1.4 |
-| FLOW-03 | plan-flow.html | Integrated target architecture/flow | 2.2, 3.1 |
-| DB-01 | fgi-database.html | FGI/FCS detailed entities | 3.2.3 |
-| DB-02 | k2-database.html | K2 detailed entities | 3.2.4 |
-| DB-03 | plan-database.html | 30-table target schema | 3.2.1-3.2.2 |
-| JOB-01 | job-batch.html | 11 entry points and console | 3.3 |
-| K2-01 | index.html | Dashboard | SCR-01 |
-| K2-02 | k2-create.html | Create document | SCR-02 |
-| K2-03 | k2-list-waiting.html | Task inbox | SCR-03 |
-| K2-04 | k2-list-related.html | Related documents | SCR-04 |
-| K2-05 | k2-list-abnormal.html | Abnormal assignment | SCR-05 / OPEN |
-| K2-06 | k2-document.html | Document detail/action | SCR-06 |
-| K2-07 | k2-report.html | Status report | SCR-07 |
-| K2-08 | k2-operators.html | Operator master | SCR-08 |
-| K2-09 | k2-factors.html | External factor master | SCR-09 |
-| K2-10 | k2-permissions.html | RBAC matrix | SCR-10 |
-| API-01 | plan-api.html | 39 REST endpoints | 3.5 |
+| FLOW-01 | Flow FGI/FCS | FGI/FCS batch pipeline A-E | 3.1, 3.3 |
+| FLOW-02 | Flow K2 | K2 approval workflow | 3.1.3-3.1.4 |
+| FLOW-03 | Integrated Target Flow | Integrated target architecture/flow | 2.2, 3.1 |
+| DB-01 | Database FGI/FCS | FGI/FCS detailed entities | 3.2.3 |
+| DB-02 | Database K2 | K2 detailed entities | 3.2.4 |
+| DB-03 | Target Database Schema | 34-table target schema | 3.2.1-3.2.2 |
+| JOB-01 | Batch Job Console | 11 entry points and console | 3.3 |
+| K2-01 | Overview / Dashboard | Dashboard | SCR-01 |
+| K2-02 | Create Document | Create document | SCR-02 |
+| K2-03 | Task Inbox | Task inbox | SCR-03 |
+| K2-04 | Related Documents | Related documents | SCR-04 |
+| K2-05 | Abnormal Assignment | Abnormal assignment | SCR-05 / OPEN |
+| K2-06 | Document Detail | Document detail/action | SCR-06 |
+| K2-07 | Status Report | Status report | SCR-07 |
+| K2-08 | Operator Master | Operator master | SCR-08 |
+| K2-09 | External Factor Master | External factor master | SCR-09 |
+| K2-10 | RBAC Matrix | RBAC matrix | SCR-10 |
+| K2-11 | Global Config | Global system configuration | SCR-11 |
+| K2-12 | Email Template | Notification email templates | SCR-12 |
+| API-01 | API Specification | 61 REST endpoints | 3.5 |
 
 
 # 6. Open Items and Decisions Required
@@ -3228,7 +4147,7 @@ Errors
 | ID | Topic | Decision required |
 | --- | --- | --- |
 | OPEN-01 | Document year | Prototype/CLAUDE use พ.ศ. 2569/xxxxx แต่เอกสาร inventory บางส่วนระบุ ค.ศ.; ต้องยืนยัน canonical storage/display |
-| OPEN-02 | Abnormal screen | k2-list-abnormal.html และ 2 API endpoints ถูก comment; ต้องตัดสินใจ keep/drop และปรับ role 05 |
+| OPEN-02 | Abnormal screen | หน้าจอข้อมูลผิดปกติและ 2 API endpoints ถูก comment; ต้องตัดสินใจ keep/drop และปรับ role 05 |
 | OPEN-03 | Job 8b schedule | เวลา scheduler จริงต้องยืนยันกับ Operations |
 | OPEN-04 | NULL growth_rate | Target เสนอรอตรวจสอบแทน auto-accept; ต้องมี Business sign-off |
 | OPEN-05 | Legacy date routing | เงื่อนไขร้านก่อน/หลัง 1/10/2557 จาก flow เดิมยังต้อง verify กับ SRS v3.1 |
@@ -3261,6 +4180,6 @@ Errors
 - FGI_FCS_Batch_Job_Technical_Document_Improved_v4.0.pdf
 - RDM-SRS-ประกันรายได้-K2-รายการหน้าจอ.md
 - ประกันรายได้-K2-รายการหน้าจอ.md
-- workflow.md / plan-flow.html / flow-fgi.html / k2-flow.html
-- database.md / plan-database.html / fgi-database.html / k2-database.html
-- job-batch.html / plan-api.html / K2 HTML pages / assets/sbp.js
+- Workflow design documents and Flow screens
+- Database design documents and Database screens
+- Batch Job, API Specification, Global Config, Email Template, K2 screens and shared shell

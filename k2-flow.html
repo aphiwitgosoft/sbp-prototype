@@ -43,7 +43,7 @@
         <div><h1 class="page-title">Flow K2 — Workflow อนุมัติประกันรายได้</h1>
           <p class="page-sub">กระบวนการตั้งแต่สร้างเอกสารร้านถูกกระทบจนอนุมัติชดเชย · อ้างอิง SRS 3.1.4 และใช้เป็นต้นแบบ workflow สำหรับระบบ BE/FE ใหม่</p></div>
         <div class="page-actions">
-          <span class="pill info" style="align-self:center;">7 ขั้นตอน · 8 สถานะ</span>
+          <span class="pill info" style="align-self:center;">5 ขั้นตอน · 6 สถานะ · ตัดบัญชี 04/05 (SDD v7.5)</span>
         </div>
       </div>
 
@@ -52,6 +52,12 @@
           หน้านี้อธิบายเฉพาะ flow ฝั่ง <b>K2</b> หลังจากมีเอกสารแล้ว ·
           งานต้นทาง batch ดูที่ <a href="flow-fgi.html" style="color:#2f6fed;font-weight:600;">Flow FGI/FCS</a> ·
           ภาพรวมระบบใหม่ที่รวมสองฝั่งดูที่ <a href="plan-flow.html" style="color:#2f6fed;font-weight:600;">Flow FGI/FCS + K2</a>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid #d68a10;background:#fff8ec;">
+        <div style="font-size:13px;color:#7a5b12;line-height:1.8;">
+          <b>ปรับตาม SDD v7.5 (ปรับกระบวนการบัญชีประกันรายได้):</b> ยกเลิกขั้นอนุมัติของบัญชี — <b>ตัด Section 04 (ฝ่ายบัญชี SBP) และ 05 (บัญชีปฏิบัติการภาค)</b> ออกจาก workflow · เอกสารจบที่ GM (≤100,000) หรือ AVP (&gt;100,000) · ทีมบัญชีตรวจสอบยอดผ่าน <b>รายงานตรวจสอบประกันรายได้ (SBP Mall)</b> → Export CSV to Batch → กระทบยอด SAP เอง (นอก workflow) · <i>แผนผัง BPMN ด้านล่างบางส่วนยังคงภาพ 7 ขั้นเดิมไว้เพื่ออ้างอิง</i>
         </div>
       </div>
 
@@ -69,13 +75,9 @@
           <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
           <div class="stp"><div class="node"><div class="circ blue">02</div><div class="lbl">GM ส่งเสริมธุรกิจฯ</div></div></div>
           <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
-          <div class="stp"><div class="node"><div class="circ blue">03</div><div class="lbl">ผู้บริหารสำนักฯ (AVP)<br><small style="color:#8a97a5;">วงเงิน &gt; 100,000</small></div></div></div>
+          <div class="stp"><div class="node"><div class="circ blue">03</div><div class="lbl">ผู้บริหารสำนักฯ (AVP)<br><small style="color:#8a97a5;">เฉพาะวงเงิน &gt; 100,000</small></div></div></div>
           <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
-          <div class="stp"><div class="node"><div class="circ blue">04</div><div class="lbl">ฝ่ายบัญชี SBP</div></div></div>
-          <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
-          <div class="stp"><div class="node"><div class="circ blue">05</div><div class="lbl">บัญชีปฏิบัติการภาค</div></div></div>
-          <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
-          <div class="stp end"><div class="node"><div class="circ">✓</div><div class="lbl">อนุมัติ · จบกระบวนการ</div></div></div>
+          <div class="stp end"><div class="node"><div class="circ">✓</div><div class="lbl">อนุมัติ · จบกระบวนการ<br><small style="color:#8a97a5;">≤100,000 จบที่ GM</small></div></div></div>
         </div>
         <p style="font-size:12.5px;color:var(--muted);margin:4px 0 0;">ระบบรับข้อมูลจากทีม Store Chain Unit เป็น text file รอบ <b>17:00 ของทุกวัน</b> ผ่าน Batch job · กรณีนอกเงื่อนไขสร้างเอกสารเองผ่านระบบ FS (รอ SBP Statement ~1 วัน)</p>
       </div>
@@ -259,6 +261,12 @@
           <text x="430" y="1240" text-anchor="middle" fill="#15803d" font-size="12.5" font-weight="700">จบ · เสร็จสิ้นดำเนินการ</text>
           <text x="430" y="1256" text-anchor="middle" fill="#4d7c5f" font-size="9.5">บัญชีภาคอนุมัติ (End)</text>
 
+          <!-- Overlay: ยกเลิกขั้นบัญชี 04/05 ตาม SDD v7.5 -->
+          <rect x="286" y="966" width="288" height="320" rx="12" fill="#ffffff" fill-opacity="0.64" stroke="#d68a10" stroke-width="1.6" stroke-dasharray="6 4"/>
+          <rect x="322" y="1104" width="216" height="34" rx="8" fill="#d68a10"/>
+          <text x="430" y="1126" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">ยกเลิกตาม SDD v7.5</text>
+          <text x="430" y="1162" text-anchor="middle" fill="#7a5b12" font-size="10">บัญชีตรวจผ่านรายงาน SBP Mall (นอก workflow)</text>
+
           <!-- ต่อฝั่ง batch หลังจบ -->
           <rect x="230" y="1288" width="400" height="58" rx="10" fill="#f7f9fc" stroke="#b9c3cf" stroke-width="1.3" stroke-dasharray="6 5"/>
           <text x="430" y="1312" text-anchor="middle" fill="#5d6b7a" font-size="10.5">หลังจบ workflow: Job 6 ส่งผลชดเชยเป็นไฟล์ FRBC0001 → Statement (STA)</text>
@@ -294,7 +302,6 @@
             <span class="branch b-end">เห็นควรไม่ชดเชย → จบ</span>
             <span class="branch b-end">หยุดชดเชยประกันรายได้ → จบ</span>
             <span class="branch b-go">ส่งฝ่ายส่งเสริมธุรกิจ SBP</span>
-            <span class="branch b-go">ส่งฝ่ายบัญชี SBP</span>
             <span class="branch b-go">ส่งเจ้าหน้าที่ SBP DSA</span>
           </div>
         </div>
@@ -323,7 +330,7 @@
           <div class="lane-b">
             <span class="task">พิจารณาตามวงเงิน</span>
             <span class="branch b-go">เห็นควรชดเชย · &gt; 100,000 → ผู้บริหารสำนักฯ (AVP)</span>
-            <span class="branch b-go">เห็นควรชดเชย · ≤ 100,000 → ฝ่ายบัญชี SBP</span>
+            <span class="branch b-end">เห็นควรชดเชย · ≤ 100,000 → เสร็จสิ้น (จบที่ GM)</span>
             <span class="branch b-go">เห็นควรไม่ชดเชย · &gt; 100,000 → ผู้บริหารสำนักฯ (AVP)</span>
             <span class="branch b-back">เห็นควรไม่ชดเชย · ≤ 100,000 → ฝ่าย SBP DSA</span>
             <span class="branch b-back">ส่งกลับ ฝ่ายส่งเสริมธุรกิจฯ</span>
@@ -334,27 +341,18 @@
           <div class="lane-h"><b>ผู้บริหารสำนักบริหาร SBP</b><span class="sc">AVP OPT · section_code 03</span></div>
           <div class="lane-b">
             <span class="task">พิจารณาวงเงินสูง (&gt; 100,000)</span>
-            <span class="branch b-go">เห็นควรชดเชย → ฝ่ายบัญชี SBP</span>
+            <span class="branch b-end">เห็นควรชดเชย → เสร็จสิ้น (End)</span>
             <span class="branch b-back">เห็นควรไม่ชดเชย → ฝ่าย SBP DSA</span>
             <span class="branch b-back">ส่งกลับ GM</span>
           </div>
         </div>
 
-        <div class="lane">
-          <div class="lane-h"><b>ฝ่ายบัญชี SBP</b><span class="sc">Manager Account Franchise · section_code 04</span></div>
+        <div class="lane endlane" style="opacity:.78;">
+          <div class="lane-h"><b>บัญชี — ตรวจสอบนอก workflow</b><span class="sc">SDD v7.5 · ยกเลิก section_code 04/05</span></div>
           <div class="lane-b">
-            <span class="task">ตรวจสอบบัญชี</span>
-            <span class="branch b-go">ส่งบัญชีปฏิบัติการภาค</span>
-            <span class="branch b-back">ส่งกลับ ฝ่าย SBP DSA</span>
-          </div>
-        </div>
-
-        <div class="lane endlane">
-          <div class="lane-h"><b>บัญชีปฏิบัติการภาค</b><span class="sc">Operation Account · section_code 05</span></div>
-          <div class="lane-b">
-            <span class="task">อนุมัติปิดงาน</span>
-            <span class="branch b-end">บัญชีภาคอนุมัติ → จบ workflow</span>
-            <span class="branch b-back">ส่งกลับ ฝ่ายบัญชี SBP</span>
+            <span class="task">รายงานตรวจสอบประกันรายได้ (SBP Mall)</span>
+            <span class="branch b-go">Export CSV to Batch → กระทบยอด SAP (FBL3H/SAPPOST)</span>
+            <span class="branch b-back">SBP ≠ SAP → เปิด SR แก้ข้อมูล</span>
           </div>
         </div>
 
@@ -371,13 +369,12 @@
         <div class="table-wrap"><table class="data" style="min-width:820px;">
           <thead><tr><th>ลำดับ</th><th>ผู้ดำเนินการ</th><th>section_code</th><th>ตัวเลือกส่งงาน / หมายเหตุ</th></tr></thead>
           <tbody>
-            <tr><td class="num">1</td><td>ฝ่าย SBP DSA (Manager Franchise)</td><td class="num">06</td><td>ไม่ชดเชย · หยุดชดเชย · ส่งเสริมธุรกิจ SBP · บัญชี SBP · เจ้าหน้าที่ SBP DSA</td></tr>
+            <tr><td class="num">1</td><td>ฝ่าย SBP DSA (Manager Franchise)</td><td class="num">06</td><td>ไม่ชดเชย · หยุดชดเชย · ส่งเสริมธุรกิจ SBP · เจ้าหน้าที่ SBP DSA</td></tr>
             <tr><td class="num">2</td><td>เจ้าหน้าที่ SBP DSA (Officer Franchise)</td><td class="num">08</td><td>มี view คำนวณเงินชดเชย → ส่งฝ่ายส่งเสริมธุรกิจฯ / ส่งกลับ DSA</td></tr>
             <tr><td class="num">3</td><td>ฝ่ายส่งเสริมธุรกิจฯ (Manager OPT)</td><td class="num">01</td><td>แก้ไขร้านเปิดใหม่ + คู่แข่ง + ปัจจัยได้ · เห็นควรชดเชย(→GM) / ไม่ชดเชย / ส่งกลับ DSA</td></tr>
-            <tr><td class="num">4</td><td>GM ส่งเสริมธุรกิจฯ (GM OPT)</td><td class="num">02</td><td>เห็นควรชดเชย: &gt;100,000 → AVP · ≤100,000 → บัญชี SBP &nbsp;|&nbsp; เห็นควรไม่ชดเชย: &gt;100,000 → AVP · ≤100,000 → SBP DSA &nbsp;|&nbsp; ส่งกลับส่งเสริมฯ</td></tr>
-            <tr><td class="num">5</td><td>ผู้บริหารสำนักบริหาร SBP (AVP OPT)</td><td class="num">03</td><td>เห็นควรชดเชย / ไม่ชดเชย / ส่งกลับ GM</td></tr>
-            <tr><td class="num">6</td><td>ฝ่ายบัญชี SBP (Manager Account Franchise)</td><td class="num">04</td><td>บัญชีปฏิบัติการภาค / ส่งกลับ SBP DSA</td></tr>
-            <tr><td class="num">7</td><td>บัญชีปฏิบัติการภาค (Operation Account)</td><td class="num">05</td><td>บัญชีภาคอนุมัติ = <b>จบ workflow</b> / ส่งกลับฝ่ายบัญชี</td></tr>
+            <tr><td class="num">4</td><td>GM ส่งเสริมธุรกิจฯ (GM OPT)</td><td class="num">02</td><td>เห็นควรชดเชย: &gt;100,000 → AVP · ≤100,000 → <b>เสร็จสิ้น</b> &nbsp;|&nbsp; เห็นควรไม่ชดเชย: &gt;100,000 → AVP · ≤100,000 → SBP DSA &nbsp;|&nbsp; ส่งกลับส่งเสริมฯ</td></tr>
+            <tr><td class="num">5</td><td>ผู้บริหารสำนักบริหาร SBP (AVP OPT)</td><td class="num">03</td><td>เห็นควรชดเชย → <b>เสร็จสิ้น</b> / ไม่ชดเชย / ส่งกลับ GM</td></tr>
+            <tr class="flag-red"><td class="num">—</td><td colspan="3" style="color:#8a97a5;">ตัด Section 04 (ฝ่ายบัญชี SBP) และ 05 (บัญชีปฏิบัติการภาค) ออกตาม SDD v7.5 — บัญชีตรวจสอบผ่านรายงาน SBP Mall นอก workflow</td></tr>
           </tbody>
         </table></div>
       </div>
@@ -394,8 +391,7 @@
             <tr><td class="num">01</td><td>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</td><td>Manager OPT</td><td>ฝ่ายส่งเสริมธุรกิจฯ</td><td>ฝ่าย SBP DSA</td></tr>
             <tr><td class="num">02</td><td>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</td><td>GM OPT</td><td>GM ส่งเสริมธุรกิจฯ</td><td>ฝ่ายส่งเสริมธุรกิจฯ</td></tr>
             <tr><td class="num">03</td><td>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</td><td>AVP OPT</td><td>ผู้บริหารสำนักบริหาร SBP</td><td>GM ส่งเสริมธุรกิจฯ</td></tr>
-            <tr><td class="num">04</td><td>รอฝ่ายบัญชี SBP ดำเนินการ</td><td>Manager Account Franchise</td><td>ฝ่ายบัญชี SBP</td><td>ฝ่าย SBP DSA</td></tr>
-            <tr><td class="num">05</td><td>รอบัญชีปฏิบัติการภาคดำเนินการ</td><td>Operation Account</td><td>บัญชีปฏิบัติการภาค</td><td>ฝ่ายบัญชี SBP</td></tr>
+            <tr class="flag-red"><td class="num">—</td><td colspan="4" style="color:#8a97a5;">สถานะ 04/05 (รอฝ่ายบัญชี / รอบัญชีปฏิบัติการภาค) ยกเลิกตาม SDD v7.5</td></tr>
             <tr class="flag-red"><td class="num">—</td><td>เสร็จสิ้น / ไม่ชดเชย / หยุดชดเชย (End)</td><td>— (จบกระบวนการ)</td><td>ผู้เกี่ยวข้องทั้งหมด</td><td>—</td></tr>
           </tbody>
         </table></div>
@@ -406,7 +402,7 @@
         <div style="display:flex;gap:12px;align-items:flex-start;">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
           <div style="font-size:13.5px;color:#45525f;line-height:1.7;">
-            <b style="color:#2b3440;">เงื่อนไขวงเงิน:</b> เงินชดเชย &gt; <b>100,000.00</b> บาท ส่งไปผู้บริหารสำนักบริหาร SBP (AVP) — <b>ใช้ทั้งกรณีเห็นควรชดเชยและเห็นควรไม่ชดเชย</b> · ไม่เกินเกณฑ์: เห็นควรชดเชยส่งฝ่ายบัญชี SBP / เห็นควรไม่ชดเชยส่งกลับฝ่าย SBP DSA · ดูมุมมองรายบทบาทได้ที่หน้า <a href="k2-document.html">เอกสารร้านถูกกระทบ</a>
+            <b style="color:#2b3440;">เงื่อนไขวงเงิน:</b> เงินชดเชย &gt; <b>100,000.00</b> บาท ส่งไปผู้บริหารสำนักบริหาร SBP (AVP) แล้ว<b>จบงาน</b> — <b>ใช้ทั้งกรณีเห็นควรชดเชยและเห็นควรไม่ชดเชย</b> · ไม่เกินเกณฑ์: เห็นควรชดเชย <b>จบที่ GM (เสร็จสิ้น)</b> / เห็นควรไม่ชดเชยส่งกลับฝ่าย SBP DSA · <b>ตัดขั้นบัญชี 04/05 ตาม SDD v7.5</b> — บัญชีตรวจผ่านรายงาน SBP Mall · ดูมุมมองรายบทบาทได้ที่หน้า <a href="k2-document.html">เอกสารร้านถูกกระทบ</a>
           </div>
         </div>
       </div>

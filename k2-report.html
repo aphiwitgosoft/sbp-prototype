@@ -49,48 +49,50 @@
             <div style="display:flex;gap:8px;"><input placeholder="เลือกรหัสร้าน" style="flex:1;"><button class="btn btn-soft btn-sm" data-ack="เปิด Pop Up เลือกร้านที่ถูกกระทบ"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg></button></div>
           </div>
           <div class="field"><label>ชื่อร้านที่ถูกกระทบ</label><input placeholder="แสดงอัตโนมัติหลังเลือกรหัสร้าน" readonly></div>
+          <div class="field"><label>รหัสร้านเปิดกระทบ (ร้านเปิดใหม่)</label><input class="num" inputmode="numeric" placeholder="ระบุรหัสร้านเปิดใหม่ (ตัวเลข)"></div>
           <div class="field"><label>เดือน/ปี (เริ่มต้น)</label><input type="month" class="num"></div>
           <div class="field"><label>ถึง (สิ้นสุด)</label><input type="month" class="num"></div>
           <div class="field"><label>ประเภทร้าน (เลือกได้มากกว่า 1)</label>
-            <div class="ckgrid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-              <label><input type="checkbox"> FR Type A</label>
-              <label><input type="checkbox"> FR Type B</label>
-              <label><input type="checkbox"> FR Type C</label>
-              <label><input type="checkbox"> FR Type พนักงาน</label>
+            <div class="ckgrid" style="grid-template-columns:repeat(4,minmax(0,1fr));">
+              <label><input type="checkbox"> A</label>
+              <label><input type="checkbox"> B</label>
+              <label><input type="checkbox"> C</label>
+              <label><input type="checkbox"> D</label>
             </div>
           </div>
-          <div class="field"><label>ภาค (เลือกได้มากกว่า 1)</label>
-            <div class="ckgrid">
-              <label><input type="checkbox"> BE</label>
-              <label><input type="checkbox"> BN</label>
-              <label><input type="checkbox"> BS</label>
-              <label><input type="checkbox"> BW</label>
-              <label><input type="checkbox"> RC</label>
-              <label><input type="checkbox"> RE</label>
-              <label><input type="checkbox"> RN</label>
-              <label><input type="checkbox"> RS</label>
-            </div>
-          </div>
-          <div class="field"><label>สถานะ (ค้นหาได้ทีละ 1 สถานะ)</label>
-            <select>
-              <option>ทั้งหมด</option>
-              <option>รอฝ่าย SBP DSA ดำเนินการ</option>
-              <option>รอเจ้าหน้าที่ SBP DSA ดำเนินการ</option>
+          <div class="field"><label>สถานะ <span style="color:#c0392b">*</span> (บังคับ · เลือก 1 สถานะ)</label>
+            <select required>
+              <option value="" selected disabled>— เลือกสถานะ —</option>
               <option>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</option>
               <option>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</option>
               <option>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</option>
-              <option>รอฝ่ายบัญชี SBP ดำเนินการ</option>
-              <option>รอบัญชีปฏิบัติการภาคดำเนินการ</option>
+              <option>รอฝ่าย SBP DSA ดำเนินการ</option>
+              <option>รอเจ้าหน้าที่ SBP DSA ดำเนินการ</option>
               <option>เสร็จสิ้นดำเนินการ</option>
             </select>
           </div>
-          <div class="field"><label>ผลการพิจารณา (อนุมัติ/ไม่อนุมัติ)</label>
-            <select>
-              <option>ทั้งหมด</option>
-              <option>อนุมัติ (เห็นควรชดเชย)</option>
-              <option>ไม่อนุมัติ (เห็นควรไม่ชดเชย / หยุดชดเชย)</option>
-              <option>ยังไม่พิจารณา (-)</option>
-            </select>
+          <div class="field"><label>ผลการพิจารณา <span style="color:#c0392b">*</span> (บังคับ)</label>
+            <div class="ckgrid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+              <label><input type="radio" name="verdict" required> ประกันรายได้</label>
+              <label><input type="radio" name="verdict"> ไม่ประกันรายได้</label>
+            </div>
+          </div>
+          <div class="field col-2"><label>ภาค (เลือกได้มากกว่า 1 · เพิ่มภาคใหม่อัตโนมัติ)</label>
+            <div class="ckgrid" style="grid-template-columns:repeat(5,minmax(0,1fr));">
+              <label><input type="checkbox"> BE</label>
+              <label><input type="checkbox"> BS</label>
+              <label><input type="checkbox"> NEU</label>
+              <label><input type="checkbox"> REU</label>
+              <label><input type="checkbox"> RSU</label>
+              <label><input type="checkbox"> BG</label>
+              <label><input type="checkbox"> BW</label>
+              <label><input type="checkbox"> RC</label>
+              <label><input type="checkbox"> RN</label>
+              <label><input type="checkbox"> BN</label>
+              <label><input type="checkbox"> NEL</label>
+              <label><input type="checkbox"> REL</label>
+              <label><input type="checkbox"> RSL</label>
+            </div>
           </div>
           <div class="field col-2"><label>Period Statement (From – To)</label>
             <div style="display:flex;gap:8px;"><input type="month" class="num" style="flex:1;" aria-label="Period Statement From"><input type="month" class="num" style="flex:1;" aria-label="Period Statement To"></div>
@@ -98,7 +100,8 @@
         </div>
         <div class="toolbar" style="justify-content:flex-end;margin:18px 0 0;">
           <button class="btn btn-muted btn-sm" data-ack="เคลียร์ค่าเริ่มใหม่">เคลียร์ค่าเริ่มใหม่</button>
-          <button class="btn btn-primary btn-sm" data-ack="ค้นหาข้อมูลตามเงื่อนไข (เฉพาะที่มีเลขที่เอกสาร)" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg> ค้นหาข้อมูล</button>
+          <button class="btn btn-soft btn-sm" data-ack="แสดงตัวอย่างรายงานตรวจสอบประกันรายได้ตามเงื่อนไข" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> Preview Report</button>
+          <button class="btn btn-primary btn-sm" data-ack="ส่งออก CSV เข้า Batch เรียบร้อย — ทีมบัญชีนำไปตรวจสอบเทียบกับ SAP" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg> Export CSV to Batch</button>
         </div>
       </div>
 
@@ -132,11 +135,11 @@
             <tr><td class="num">00788</td><td>รัตนอุทิศ ซ.13</td><td>RS</td><td>FR Type B</td><td class="num">05/2569</td><td class="num">01/03/2566</td><td class="num">05/2569</td><td class="num">00990</td><td>เซเว่นฯ รัตนาธิเบศร์ 12</td><td>RS</td><td>FR Type A</td><td class="num">48,200.00</td><td><span class="pill wait">รอฝ่าย SBP DSA ดำเนินการ</span></td><td>สมชาย ใจดี</td><td>-</td><td class="num">2</td><td class="num">1</td><td class="num">12/06/2569</td><td class="num">2569/00123</td></tr>
             <tr class="flag-red"><td class="num">01045</td><td>บางบัวทอง ก.ม.8</td><td>BW</td><td>FR Type C</td><td class="num">05/2569</td><td class="num">15/07/2565</td><td class="num">05/2569</td><td class="num">01200</td><td>เซเว่นฯ บางบัวทอง 14</td><td>BW</td><td>FR Type A</td><td class="num">31,500.00</td><td><span class="pill violet">รอเจ้าหน้าที่ SBP DSA ดำเนินการ</span></td><td>มาลี ศรีสุข</td><td>-</td><td class="num">5</td><td class="num">1</td><td class="num">10/06/2569</td><td class="num">2569/00131</td></tr>
             <tr><td class="num">00256</td><td>ปากเกร็ด สถานี</td><td>RN</td><td>FR Type B</td><td class="num">05/2569</td><td class="num">20/01/2566</td><td class="num">05/2569</td><td class="num">00501</td><td>เซเว่นฯ แจ้งวัฒนะ 28</td><td>RN</td><td>FR Type A</td><td class="num">66,400.00</td><td><span class="pill info">รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</span></td><td>วีรพล มั่นคง</td><td>คำนวณเงินชดเชยเรียบร้อย</td><td class="num">1</td><td class="num">2</td><td class="num">11/06/2569</td><td class="num">2569/00140</td></tr>
-            <tr><td class="num">01133</td><td>แคราย พลาซ่า</td><td>RS</td><td>FR Type พนักงาน</td><td class="num">04/2569</td><td class="num">05/09/2564</td><td class="num">04/2569</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="num">25,650.00</td><td><span class="pill ok">เสร็จสิ้นดำเนินการ</span></td><td>พัชริดา พงศ์วรงค์ชัย</td><td>บัญชีภาคอนุมัติ</td><td class="num">0</td><td class="num">1</td><td class="num">02/06/2569</td><td class="num">2569/00152</td></tr>
+            <tr><td class="num">01133</td><td>แคราย พลาซ่า</td><td>RS</td><td>FR Type พนักงาน</td><td class="num">04/2569</td><td class="num">05/09/2564</td><td class="num">04/2569</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="num">25,650.00</td><td><span class="pill ok">เสร็จสิ้นดำเนินการ</span></td><td>พัชริดา พงศ์วรงค์ชัย</td><td>เห็นควรชดเชย</td><td class="num">0</td><td class="num">1</td><td class="num">02/06/2569</td><td class="num">2569/00152</td></tr>
             <tr><td class="num">00342</td><td>ติวานนท์ 25</td><td>BN</td><td>FR Type A</td><td class="num">05/2569</td><td class="num">11/11/2565</td><td class="num">05/2569</td><td class="num">00877</td><td>เซเว่นฯ ติวานนท์ 40</td><td>BN</td><td>FR Type B</td><td class="num">52,300.00</td><td><span class="pill orange">รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</span></td><td>สมชาย ใจดี</td><td>เห็นควรชดเชย</td><td class="num">3</td><td class="num">1</td><td class="num">09/06/2569</td><td class="num">2569/00157</td></tr>
             <tr><td class="num">01055</td><td>บางพลัด จรัญฯ 79</td><td>BS</td><td>FR Type A</td><td class="num">05/2569</td><td class="num">22/02/2566</td><td class="num">05/2569</td><td class="num">01340</td><td>เซเว่นฯ จรัญสนิทวงศ์ 81</td><td>BS</td><td>FR Type A</td><td class="num">104,500.00</td><td><span class="pill navy">รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</span></td><td>จันทราภรณ์ บรรจือ</td><td>เห็นควรชดเชย (&gt; 100,000)</td><td class="num">2</td><td class="num">1</td><td class="num">08/06/2569</td><td class="num">2569/00194</td></tr>
-            <tr><td class="num">00694</td><td>สามัคคี ซ.58</td><td>BE</td><td>FR Type B</td><td class="num">05/2569</td><td class="num">30/05/2565</td><td class="num">05/2569</td><td class="num">00912</td><td>เซเว่นฯ สามัคคี 60</td><td>BE</td><td>FR Type C</td><td class="num">22,150.00</td><td><span class="pill teal">รอฝ่ายบัญชี SBP ดำเนินการ</span></td><td>มาลี ศรีสุข</td><td>เห็นควรชดเชย</td><td class="num">1</td><td class="num">1</td><td class="num">06/06/2569</td><td class="num">2569/00168</td></tr>
-            <tr><td class="num">00623</td><td>สนามบินน้ำ 9</td><td>RC</td><td>FR Type C</td><td class="num">05/2569</td><td class="num">18/04/2566</td><td class="num">05/2569</td><td class="num">01108</td><td>เซเว่นฯ สนามบินน้ำ 11</td><td>RC</td><td>FR Type B</td><td class="num">27,800.00</td><td><span class="pill muted">รอบัญชีปฏิบัติการภาคดำเนินการ</span></td><td>วีรพล มั่นคง</td><td>เห็นควรชดเชย</td><td class="num">2</td><td class="num">2</td><td class="num">05/06/2569</td><td class="num">2569/00190</td></tr>
+            <tr><td class="num">00694</td><td>สามัคคี ซ.58</td><td>BE</td><td>FR Type B</td><td class="num">05/2569</td><td class="num">30/05/2565</td><td class="num">05/2569</td><td class="num">00912</td><td>เซเว่นฯ สามัคคี 60</td><td>BE</td><td>FR Type C</td><td class="num">22,150.00</td><td><span class="pill ok">เสร็จสิ้นดำเนินการ</span></td><td>มาลี ศรีสุข</td><td>เห็นควรชดเชย</td><td class="num">1</td><td class="num">1</td><td class="num">06/06/2569</td><td class="num">2569/00168</td></tr>
+            <tr><td class="num">00623</td><td>สนามบินน้ำ 9</td><td>RC</td><td>FR Type C</td><td class="num">05/2569</td><td class="num">18/04/2566</td><td class="num">05/2569</td><td class="num">01108</td><td>เซเว่นฯ สนามบินน้ำ 11</td><td>RC</td><td>FR Type B</td><td class="num">27,800.00</td><td><span class="pill ok">เสร็จสิ้นดำเนินการ</span></td><td>วีรพล มั่นคง</td><td>เห็นควรชดเชย</td><td class="num">2</td><td class="num">2</td><td class="num">05/06/2569</td><td class="num">2569/00190</td></tr>
             <tr class="flag-red"><td class="num">00415</td><td>ประชาชื่น 12</td><td>BN</td><td>FR Type B</td><td class="num">05/2569</td><td class="num">09/10/2566</td><td class="num">05/2569</td><td class="num">00733</td><td>เซเว่นฯ ประชาชื่น 18</td><td>BN</td><td>FR Type A</td><td class="num">24,600.00</td><td><span class="pill wait">รอฝ่าย SBP DSA ดำเนินการ</span></td><td>สมชาย ใจดี</td><td>-</td><td class="num">6</td><td class="num">2</td><td class="num">04/06/2569</td><td class="num">2569/00171</td></tr>
             <tr><td class="num">01260</td><td>ไทรม้า สถานีรถไฟฟ้า</td><td>RE</td><td>FR Type พนักงาน</td><td class="num">05/2569</td><td class="num">27/06/2565</td><td class="num">05/2569</td><td class="num">01415</td><td>เซเว่นฯ ไทรม้า 7</td><td>RE</td><td>FR Type B</td><td class="num">36,000.00</td><td><span class="pill info">รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</span></td><td>พัชริดา พงศ์วรงค์ชัย</td><td>-</td><td class="num">4</td><td class="num">1</td><td class="num">03/06/2569</td><td class="num">2569/00205</td></tr>
           </tbody>
@@ -158,9 +161,7 @@
       { label: 'รอฝ่ายส่งเสริมธุรกิจ SBP', dot: '#2563eb', value: 2 },
       { label: 'รอ GM ส่งเสริมธุรกิจ SBP', dot: '#ea580c', value: 1 },
       { label: 'รอผู้บริหารสำนักบริหาร SBP', dot: '#4f46e5', value: 1 },
-      { label: 'รอฝ่ายบัญชี SBP', dot: '#0f9f90', value: 1 },
-      { label: 'รอบัญชีปฏิบัติการภาค', dot: '#64748b', value: 1 },
-      { label: 'เสร็จสิ้นดำเนินการ', dot: '#16a34a', value: 1 }
+      { label: 'เสร็จสิ้นดำเนินการ', dot: '#16a34a', value: 3 }
     ];
     var REGION_DATA = [
       { label: 'BE', value: 22150 }, { label: 'BN', value: 76900 },

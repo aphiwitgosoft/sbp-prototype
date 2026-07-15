@@ -50,21 +50,21 @@
 
   /* ---------- module navigation (global) ---------- */
   var MODULES = [
-    { key:'home',        label:'Overview',                href:'index.html',        icon:I.home,      group:'ระบบประกันรายได้' },
-    { key:'k2-create',   label:'สร้างเอกสาร',             href:'k2-create.html',    icon:I.plus,      group:'ระบบประกันรายได้' },
-    { key:'k2-docs',     label:'เอกสาร',                  icon:I.badge,             group:'ระบบประกันรายได้', children:[
+    { key:'home',        label:'Overview',                href:'index.html',        icon:I.home,      group:'ระบบประกันรายได้ (SBP Mall)' },
+    { key:'k2-create',   label:'สร้างเอกสาร',             href:'k2-create.html',    icon:I.plus,      group:'ระบบประกันรายได้ (SBP Mall)' },
+    { key:'k2-docs',     label:'เอกสาร',                  icon:I.badge,             group:'ระบบประกันรายได้ (SBP Mall)', children:[
       { key:'k2-list-waiting',  label:'รอดำเนินการ',   href:'k2-list-waiting.html' },
       { key:'k2-list-related',  label:'ที่เกี่ยวข้อง',  href:'k2-list-related.html' }
       // ปิดเมนูชั่วคราว — รอตัดสินใจว่าจะใช้หน้าข้อมูลผิดปกติหรือไม่ (ไฟล์ k2-list-abnormal.html ยังอยู่ครบ)
       // ,{ key:'k2-list-abnormal', label:'ข้อมูลผิดปกติ',  href:'k2-list-abnormal.html' }
     ]},
-    { key:'k2-report',   label:'รายงานสรุปสถานะ',         href:'k2-report.html',    icon:I.statement, group:'ระบบประกันรายได้' },
-    { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ระบบประกันรายได้' },
-    { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ระบบประกันรายได้' },
-    { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ระบบประกันรายได้' },
-    { key:'system-config', label:'ตั้งค่าระบบ (Config)',   href:'system-config.html', icon:I.cog,    group:'ระบบประกันรายได้' },
-    { key:'job-batch',   label:'Batch Job',                href:'job-batch.html',    icon:I.clock,     group:'ระบบประกันรายได้' },
-    { key:'plan-email',  label:'Email Template',            href:'plan-email.html',   icon:I.mail,      group:'ระบบประกันรายได้' },
+    { key:'k2-report',   label:'รายงานสรุปสถานะ',         href:'k2-report.html',    icon:I.statement, group:'ระบบประกันรายได้ (SBP Mall)' },
+    { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ระบบประกันรายได้ (SBP Mall)' },
+    { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ระบบประกันรายได้ (SBP Mall)' },
+    { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ระบบประกันรายได้ (SBP Mall)' },
+    { key:'system-config', label:'ตั้งค่าระบบ (Config)',   href:'system-config.html', icon:I.cog,    group:'ระบบประกันรายได้ (SBP Mall)' },
+    { key:'job-batch',   label:'Batch Job',                href:'job-batch.html',    icon:I.clock,     group:'ระบบประกันรายได้ (SBP Mall)' },
+    { key:'plan-email',  label:'Email Template',            href:'plan-email.html',   icon:I.mail,      group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'flow-fgi',    label:'Flow FGI/FCS',             href:'flow-fgi.html',     icon:I.flow,      group:'Flow' },
     { key:'k2-flow',     label:'Flow K2',                  href:'k2-flow.html',      icon:I.route,     group:'Flow' },
     { key:'plan-flow',   label:'Flow FGI/FCS + K2',        href:'plan-flow.html',    icon:I.flow,      group:'Flow' },
@@ -472,7 +472,7 @@
     operator: [
       { key: 'name', label: 'ชื่อผู้ปฏิบัติงาน (employee_name)', col: 'ชื่อผู้ปฏิบัติงาน', wide: true },
       { key: 'email', label: 'E-Mail (employee_email)', col: 'E-Mail', wide: true },
-      { key: 'position', label: 'ชื่อตำแหน่ง (section_code)', col: 'ชื่อตำแหน่ง', type: 'select', options: ['ฝ่าย SBP DSA', 'เจ้าหน้าที่ SBP DSA', 'ส่งเสริมธุรกิจพันธมิตรฯ', 'GM ส่งเสริมธุรกิจฯ', 'ผู้บริหารสำนักบริหาร SBP (AVP)', 'ฝ่ายบัญชี SBP', 'บัญชีปฏิบัติการภาค'] },
+      { key: 'position', label: 'ชื่อตำแหน่ง (section_code)', col: 'ชื่อตำแหน่ง', type: 'select', options: ['ฝ่าย SBP DSA', 'เจ้าหน้าที่ SBP DSA', 'ส่งเสริมธุรกิจพันธมิตรฯ', 'GM ส่งเสริมธุรกิจฯ', 'ผู้บริหารสำนักบริหาร SBP (AVP)'] },
       { key: 'zone', label: 'ภาคที่รับผิดชอบ (zone_code)', col: 'ภาคที่รับผิดชอบ', type: 'select', options: ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS', '-'] },
       { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
     ],

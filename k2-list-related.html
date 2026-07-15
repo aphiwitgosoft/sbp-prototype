@@ -12,6 +12,17 @@
   .stat[data-fstatus]:hover{border-color:#c7d7f5; transform:translateY(-1px);}
   .stat[data-fstatus].active{border-color:var(--primary); box-shadow:0 0 0 3px rgba(47,111,237,.14);}
   .stat .sl{white-space:nowrap;}
+  /* โหมด "ที่เกี่ยวข้อง": กราฟวงกลมสรุปสัดส่วนสถานะ + การ์ดพิเศษ (แทนการ์ดสถานะ 6 ใบ) */
+  .rel-stats{display:flex; gap:16px; flex-wrap:wrap; align-items:stretch; margin-bottom:16px;}
+  .rel-donut{display:flex; align-items:center; gap:20px; padding:16px 22px; background:#fff; border:1px solid #e8eef6; border-radius:14px; flex:2 1 460px;}
+  .rel-donut .legend-row{flex:1; min-width:220px;}
+  .rel-donut .lg{cursor:pointer; padding:4px 8px; border-radius:8px; transition:background .15s, color .15s;}
+  .rel-donut .lg:hover{background:#f2f6fd;}
+  .rel-donut .lg.active{background:#eaf1fe; color:var(--primary);}
+  .rel-donut .lg.active b{color:var(--primary);}
+  .rel-specials{display:flex; flex-direction:column; gap:12px; flex:1 1 260px;}
+  .rel-specials .stat{flex:1; margin:0;}
+  @media (max-width:720px){ .rel-donut{flex-direction:column; align-items:flex-start;} }
   .bg-slate{background:linear-gradient(135deg,#94a3b8,#64748b);}
   .bg-orange{background:linear-gradient(135deg,#fb923c,#ea580c);}
   .pill.orange{background:#ffedd5; color:#c2410c;}
@@ -75,8 +86,6 @@
                   <option>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</option>
                   <option>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</option>
                   <option>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</option>
-                  <option>รอฝ่ายบัญชี SBP ดำเนินการ</option>
-                  <option>รอบัญชีปฏิบัติการภาคดำเนินการ</option>
                   <option>เสร็จสิ้นดำเนินการ</option>
                 </select>
               </div>
@@ -159,8 +168,6 @@
                   <option>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</option>
                   <option>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</option>
                   <option>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</option>
-                  <option>รอฝ่ายบัญชี SBP ดำเนินการ</option>
-                  <option>รอบัญชีปฏิบัติการภาคดำเนินการ</option>
                   <option>เสร็จสิ้นดำเนินการ</option>
                 </select>
               </div>
@@ -254,7 +261,7 @@
       var fsFieldR = document.getElementById('fStatusR').closest('.ffield');
       if (fsFieldR) fsFieldR.style.display = 'none';
       document.getElementById('pageTitle').textContent = 'เอกสารประกันรายได้ — ที่เกี่ยวข้องกับท่าน';
-      document.getElementById('pageSub').textContent = 'ระบบประกันรายได้ · เอกสารที่ท่านเคยดำเนินการหรือมีส่วนเกี่ยวข้อง · คลิกการ์ดสถานะเพื่อกรองตาราง';
+      document.getElementById('pageSub').textContent = 'ระบบประกันรายได้ · เอกสารที่ท่านเคยดำเนินการหรือมีส่วนเกี่ยวข้อง · คลิกสถานะบนกราฟวงกลมเพื่อกรองตาราง';
       document.body.setAttribute('data-crumb', 'เอกสาร · ที่เกี่ยวข้อง');
       document.title = 'เอกสารที่เกี่ยวข้อง · SBP Management System';
     } else {
@@ -265,20 +272,18 @@
       if (fsField) fsField.style.display = 'none';
     }
 
-    /* ---- สถานะเอกสาร 8 ค่า ตาม SRS 3.1.6 / workflow_status_document.md (ดู workflow.md) ---- */
+    /* ---- สถานะเอกสาร 6 ค่า (ตัดบัญชี 04/05 ตาม SDD v7.5) ตาม SRS 3.1.6 / workflow_status_document.md (ดู workflow.md) ---- */
     var STATUSES = [
       { label: 'รอฝ่าย SBP DSA ดำเนินการ', pill: 'wait' },            // 06
       { label: 'รอเจ้าหน้าที่ SBP DSA ดำเนินการ', pill: 'violet' },     // 08
       { label: 'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'info' },    // 01
       { label: 'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'orange' },  // 02
       { label: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill: 'navy' },  // 03 (เฉพาะ > 100,000)
-      { label: 'รอฝ่ายบัญชี SBP ดำเนินการ', pill: 'teal' },             // 04
-      { label: 'รอบัญชีปฏิบัติการภาคดำเนินการ', pill: 'muted' },        // 05
       { label: 'เสร็จสิ้นดำเนินการ', pill: 'ok' }                       // End
     ];
     var DONE = 'เสร็จสิ้นดำเนินการ';
-    // ลำดับถ่วงน้ำหนัก 20 ตำแหน่ง — 200 แถว => 06:40 · 08:20 · 01:30 · 02:20 · 03:10 · 04:20 · 05:20 · เสร็จสิ้น:40
-    var PATTERN = [0, 7, 2, 1, 7, 3, 5, 0, 6, 7, 2, 4, 0, 5, 7, 6, 3, 0, 2, 1];
+    // ลำดับถ่วงน้ำหนัก 20 ตำแหน่ง (6 สถานะ · ตัดบัญชี 04/05 ตาม SDD v7.5) — 06:50 · 08:30 · 01:40 · 02:30 · 03:20 · เสร็จสิ้น:30 (ต่อ 200 แถว)
+    var PATTERN = [0, 2, 5, 1, 3, 0, 2, 4, 0, 1, 5, 2, 3, 0, 1, 4, 2, 0, 3, 5];
     var REGIONS = ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS'];       // ตาม SRS 3.1.7 (มี RC ไม่มี RW)
     var TYPES = ['FR Type A', 'FR Type B', 'FR Type C', 'FR Type พนักงาน']; // ตาม SRS 3.1.7
     var PLACES = ['รัตนอุทิศ', 'บางบัวทอง', 'ปากเกร็ด', 'แคราย', 'ติวานนท์', 'งามวงศ์วาน', 'ท่าอิฐ', 'สามัคคี', 'ประชาชื่น', 'ลาดปลาดุก',
@@ -296,25 +301,21 @@
       money: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'
     };
     var STATUS_META = {
-      'รอฝ่าย SBP DSA ดำเนินการ': { bg: 'bg-amber', icon: ICO.clock },
-      'รอเจ้าหน้าที่ SBP DSA ดำเนินการ': { bg: 'bg-violet', icon: ICO.shield },
-      'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ': { bg: 'bg-blue', icon: ICO.user },
-      'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ': { bg: 'bg-orange', icon: ICO.user },
-      'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ': { bg: 'bg-navy', icon: ICO.user },
-      'รอฝ่ายบัญชี SBP ดำเนินการ': { bg: 'bg-teal', icon: ICO.money },
-      'รอบัญชีปฏิบัติการภาคดำเนินการ': { bg: 'bg-slate', icon: ICO.archive },
-      'เสร็จสิ้นดำเนินการ': { bg: 'bg-green', icon: ICO.check }
+      'รอฝ่าย SBP DSA ดำเนินการ': { bg: 'bg-amber', icon: ICO.clock, color: '#f59e0b' },
+      'รอเจ้าหน้าที่ SBP DSA ดำเนินการ': { bg: 'bg-violet', icon: ICO.shield, color: '#7c3aed' },
+      'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ': { bg: 'bg-blue', icon: ICO.user, color: '#2563eb' },
+      'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ': { bg: 'bg-orange', icon: ICO.user, color: '#ea580c' },
+      'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ': { bg: 'bg-navy', icon: ICO.user, color: '#4f46e5' },
+      'เสร็จสิ้นดำเนินการ': { bg: 'bg-green', icon: ICO.check, color: '#16a34a' }
     };
 
-    /* ---- บทบาท workflow 7 ขั้น — inbox ของแต่ละบทบาท = สถานะ "รอ<role>ดำเนินการ" ค่าเดียว ---- */
+    /* ---- บทบาท workflow 5 ขั้น (ตัดบัญชี 04/05 ตาม SDD v7.5) — inbox ของแต่ละบทบาท = สถานะ "รอ<role>ดำเนินการ" ค่าเดียว ---- */
     var ROLES = [
       { code: '06', short: 'ฝ่าย SBP DSA', name: 'ฝ่าย SBP DSA (Manager Franchise · section_code 06)', wait: 'รอฝ่าย SBP DSA ดำเนินการ' },
       { code: '08', short: 'จนท. SBP DSA', name: 'เจ้าหน้าที่ SBP DSA (Officer Franchise · section_code 08)', wait: 'รอเจ้าหน้าที่ SBP DSA ดำเนินการ' },
       { code: '01', short: 'ฝ่ายส่งเสริมธุรกิจฯ', name: 'ฝ่ายส่งเสริมธุรกิจฯ (Manager OPT · section_code 01)', wait: 'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ' },
       { code: '02', short: 'GM OPT', name: 'GM ส่งเสริมธุรกิจฯ (GM OPT · section_code 02)', wait: 'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ' },
-      { code: '03', short: 'AVP OPT', name: 'ผู้บริหารสำนักบริหาร SBP (AVP OPT · section_code 03)', wait: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ' },
-      { code: '04', short: 'ฝ่ายบัญชี SBP', name: 'ฝ่ายบัญชี SBP (Manager Account Franchise · section_code 04)', wait: 'รอฝ่ายบัญชี SBP ดำเนินการ' },
-      { code: '05', short: 'บัญชีปฏิบัติการภาค', name: 'บัญชีปฏิบัติการภาค (Operation Account · section_code 05)', wait: 'รอบัญชีปฏิบัติการภาคดำเนินการ' }
+      { code: '03', short: 'AVP OPT', name: 'ผู้บริหารสำนักบริหาร SBP (AVP OPT · section_code 03)', wait: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ' }
     ];
     var currentRole = ROLES[0];
 
@@ -345,6 +346,10 @@
       var v = MODE === 'related' ? relatedKey : specialKey;
       Array.prototype.forEach.call(document.querySelectorAll('#statGrid .stat[data-fstatus]'), function (s) {
         s.classList.toggle('active', s.getAttribute('data-fstatus') === v);
+      });
+      // โหมดที่เกี่ยวข้อง: ไฮไลต์แถว legend ของกราฟวงกลมที่ถูกเลือกด้วย
+      Array.prototype.forEach.call(document.querySelectorAll('#statGrid [data-lstatus]'), function (s) {
+        s.classList.toggle('active', s.getAttribute('data-lstatus') === v);
       });
     }
 
@@ -629,32 +634,79 @@
       syncStatActive();
     }
 
-    // โหมดที่เกี่ยวข้อง: การ์ดครบทุกสถานะ (คลิกกรองตาม dropdown สถานะ)
+    // โหมดที่เกี่ยวข้อง: กราฟวงกลมสรุปสัดส่วนสถานะ (คลิก legend เพื่อกรอง) + การ์ดพิเศษ 3 ใบ
     function renderRelatedStats() {
       var grid = document.getElementById('statGrid');
+      grid.className = 'rel-stats';
       grid.innerHTML = '';
       function count(fn) { return related.rows.filter(fn).length; }
-      // 12 การ์ด: รวม 1 + สถานะ 8 + มุมมองพิเศษ 3 (คลิกเพื่อกรอง — แทน filter สถานะที่เอาออก)
-      var cards = [{ key: '', bg: 'bg-blue', icon: ICO.doc, value: related.rows.length, label: 'เอกสารที่เกี่ยวข้องทั้งหมด', title: 'แสดงทุกสถานะ (ล้างตัวกรอง)' }];
-      STATUSES.forEach(function (s) {
+
+      // ---- กราฟวงกลม: สัดส่วนเอกสารตามสถานะ 6 ค่า (แทนการ์ดสถานะ 6 ใบเดิม) ----
+      var sd = STATUSES.map(function (s) {
         var m = STATUS_META[s.label];
-        cards.push({ key: s.label, bg: m.bg, icon: m.icon, label: s.label,
-          value: count(function (tr) { return pillText(tr) === s.label; }) });
+        return { key: s.label, color: m.color,
+          value: count(function (tr) { return pillText(tr) === s.label; }) };
       });
-      cards.push({ key: 'flag60', bg: 'bg-rose', icon: ICO.warn, value: count(SPECIALS.flag60), label: 'ยอดขายไม่ครบ 60 วัน (แถวแดง)' });
-      cards.push({ key: 'over3', bg: 'bg-orange', icon: ICO.clock, value: count(SPECIALS.over3), label: 'รอเกิน 3 วัน' });
-      cards.push({ key: 'over100k', bg: 'bg-navy', icon: ICO.money, value: count(SPECIALS.over100k), label: 'วงเงิน > 100,000' });
-      cards.forEach(function (c) {
+      var total = sd.reduce(function (a, x) { return a + x.value; }, 0) || 1;
+      var donutCard = document.createElement('div');
+      donutCard.className = 'rel-donut';
+      var chart = document.createElement('div');
+      chart.className = 'donut-wrap';
+      chart.innerHTML = donutSVG(sd.map(function (x) { return x.value; }),
+        sd.map(function (x) { return x.color; }), total, 'เอกสาร');
+      var legend = document.createElement('div');
+      legend.className = 'legend-row';
+      sd.forEach(function (x) {
+        var lg = document.createElement('div');
+        lg.className = 'lg';
+        lg.setAttribute('data-lstatus', x.key);
+        lg.innerHTML = '<i style="background:' + x.color + '"></i>' + esc(x.key) + '<b>' + x.value + '</b>';
+        lg.addEventListener('click', function () {
+          relatedKey = (relatedKey === x.key) ? '' : x.key;   // คลิกซ้ำ = ล้างตัวกรอง
+          if (!relatedKey) { related.clearFilters(); related.setSpecial(null); }
+          else { related.statusSelect.value = x.key; related.setSpecial(null); }
+        });
+        legend.appendChild(lg);
+      });
+      donutCard.appendChild(chart);
+      donutCard.appendChild(legend);
+      grid.appendChild(donutCard);
+      requestAnimationFrame(function () {
+        chart.querySelectorAll('.donutSeg').forEach(function (s) { s.style.strokeDashoffset = '0'; });
+      });
+
+      // ---- การ์ดพิเศษ 3 ใบ: มุมมองที่มีผลจริงกับงาน (คลิกเพื่อกรอง) ----
+      var specials = document.createElement('div');
+      specials.className = 'rel-specials';
+      [
+        { key: 'flag60', bg: 'bg-rose', icon: ICO.warn, value: count(SPECIALS.flag60), label: 'ยอดขายไม่ครบ 60 วัน (แถวแดง)' },
+        { key: 'over3', bg: 'bg-orange', icon: ICO.clock, value: count(SPECIALS.over3), label: 'รอเกิน 3 วัน' },
+        { key: 'over100k', bg: 'bg-navy', icon: ICO.money, value: count(SPECIALS.over100k), label: 'วงเงิน > 100,000' }
+      ].forEach(function (c) {
         var d = statCard(c);
         d.addEventListener('click', function () {
-          relatedKey = c.key;
-          if (!c.key) { related.clearFilters(); related.setSpecial(null); return; }
-          if (SPECIALS[c.key]) { related.statusSelect.value = ''; related.setSpecial(SPECIALS[c.key]); }
-          else { related.statusSelect.value = c.key; related.setSpecial(null); }
+          relatedKey = (relatedKey === c.key) ? '' : c.key;   // คลิกซ้ำ = ล้างตัวกรอง
+          if (!relatedKey) { related.clearFilters(); related.setSpecial(null); return; }
+          related.statusSelect.value = '';
+          related.setSpecial(SPECIALS[c.key]);
         });
-        grid.appendChild(d);
+        specials.appendChild(d);
       });
+      grid.appendChild(specials);
       syncStatActive();
+    }
+
+    // สร้าง SVG กราฟวงกลม (โครงเดียวกับ donut() ใน sbp.js — ใช้ class เดิมให้สไตล์/อนิเมชันตรงกัน)
+    function donutSVG(vals, cols, total, center) {
+      var r = 52, c = 2 * Math.PI * r, cx = 70, cy = 70, acc = 0, segs = '';
+      vals.forEach(function (v, i) {
+        var len = v / total * c, rot = acc / total * 360 - 90;
+        segs += '<circle class="donutSeg" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + cols[i % cols.length] + '" stroke-width="15" stroke-dasharray="' + len.toFixed(2) + ' ' + (c - len).toFixed(2) + '" stroke-dashoffset="' + len.toFixed(2) + '" transform="rotate(' + rot.toFixed(2) + ' ' + cx + ' ' + cy + ')" style="transition-delay:' + (i * 120) + 'ms"/>';
+        acc += v;
+      });
+      return '<svg viewBox="0 0 140 140" width="150" height="150">' + segs +
+        '<text x="70" y="65" text-anchor="middle" class="donutBig">' + total.toLocaleString() + '</text>' +
+        '<text x="70" y="85" text-anchor="middle" class="donutSub">' + center + '</text></svg>';
     }
 
     /* ---- ตัวสลับบทบาท + stepper 7 ขั้น (เฉพาะโหมดรอดำเนินการ) ---- */

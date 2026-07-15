@@ -30,7 +30,7 @@ Each page declares context via body attributes and provides an **empty** sidebar
 
 `data-page`/`data-module` equal the filename base; `data-crumb` is the breadcrumb leaf. Use `k2-document.html` as the template for new pages — `index.html` deviates (different title suffix, no `data-crumb`). Page-specific CSS goes in an inline `<style>` in that page's head; page-specific JS in an inline `<script>` **after** the `sbp.js` include (so `window.SBP.toast` exists). There are no per-page asset files.
 
-**Adding a page = 2 steps**: (1) create the HTML file following the contract above, (2) add an entry to the `MODULES` array in `assets/sbp.js` (~line 50) — `{key, label, href, icon, group}`. `MODULES` is the single registry driving the sidebar and breadcrumb; sidebar groups render in first-appearance order (current groups: `ระบบประกันรายได้`, `Flow`, `Database`, `Plan` — the former `ผู้ดูแลระบบ` and `Job` items were merged into `ระบบประกันรายได้`).
+**Adding a page = 2 steps**: (1) create the HTML file following the contract above, (2) add an entry to the `MODULES` array in `assets/sbp.js` (~line 50) — `{key, label, href, icon, group}`. `MODULES` is the single registry driving the sidebar and breadcrumb; sidebar groups render in first-appearance order (current groups: `ระบบประกันรายได้ (SBP Mall)`, `Flow`, `Database`, `Plan` — the former `ผู้ดูแลระบบ` and `Job` items were merged into `ระบบประกันรายได้ (SBP Mall)`; the `(SBP Mall)` suffix signals this is the SBP Mall web front per the SDD).
 
 A module entry may instead carry `children: [{key, label, href}]` (no top-level `href`) to render a collapsible submenu — used by `เอกสาร` → รอดำเนินการ (`k2-list-waiting.html`) / ที่เกี่ยวข้อง (`k2-list-related.html`). A third child ข้อมูลผิดปกติ (`k2-list-abnormal.html`) is commented out in MODULES (and its index.html shortcuts) pending a keep-or-drop decision — the page file still works. The two k2-list-waiting/related pages are near-identical copies differing only in a hardcoded `MODE` const, `<title>`, and body attrs — apply fixes to both. Active-child detection order: exact `file+query` match → `key` equals `data-page` → same file. `k2-document.html` is intentionally not in the sidebar (reached by clicking table rows).
 
@@ -78,7 +78,7 @@ Core architectural premise recorded there: the new system merges **EAI and K2 in
 
 ## Domain rules encoded in the prototype
 
-- 7-step approval workflow by section_code: 06 (ฝ่าย SBP DSA) → 08 (เจ้าหน้าที่ SBP DSA) → 01 (ฝ่ายส่งเสริมธุรกิจฯ) → 02 (GM OPT) → 03 (AVP OPT) → 04 (ฝ่ายบัญชี SBP) → 05 (บัญชีปฏิบัติการภาค). Compensation > 100,000 THB routes through AVP; ≤ 100,000 skips to ฝ่ายบัญชี SBP.
+- 5-step approval workflow by section_code (SDD v7.5 cut accounting steps 04/05): 06 (ฝ่าย SBP DSA) → 08 (เจ้าหน้าที่ SBP DSA) → 01 (ฝ่ายส่งเสริมธุรกิจฯ) → 02 (GM OPT) → 03 (AVP OPT). Compensation > 100,000 THB routes through AVP (03) then ends; ≤ 100,000 ends at GM (02). Document statuses: 6 values (5 "รอ…ดำเนินการ" + "เสร็จสิ้นดำเนินการ"). Accounting verifies via the SBP Mall report (Preview + Export CSV to Batch) outside the workflow.
 - Document numbers: `YYYY/xxxxx` with Buddhist-era year (e.g. 2569/00123).
 - Stores with < 60 days of sales data show as red `tr.flag-red` rows ("ผิดปกติ").
 - %ชดเชย allocations across new stores must total exactly 100%.

@@ -13,6 +13,7 @@
 - ไฟล์ภายใน `BPM06001O_` (48 ฟิลด์) / `BPM06002O_` / `BPM06003O_` ที่เคยส่งผ่าน EAI ไป K2 → แทนด้วย FK `compensation_documents.impact_process_id` เชื่อมตรงในฐานข้อมูลเดียวกัน
 - K2 engine ภายนอก → แทนด้วยตาราง `workflow_instances` + `workflow_tasks` ภายใน
 - ตาราง tracking เดิม `FGI_CONFIRM_RECEIVE_DATA` → แทนด้วย `interface_transactions` (typed FK)
+- **SDD v7.5:** ตัดขั้นบัญชี 04/05 ออกจาก workflow — `workflow_sections` เหลือ 5 แถวใช้งาน (06/08/01/02/03) · `document_statuses` เหลือ 6 ค่า (ตัด "รอฝ่ายบัญชี SBP" / "รอบัญชีปฏิบัติการภาค") · บัญชีตรวจสอบผ่านรายงาน SBP Mall + กระทบ SAP นอกระบบ
 
 ## ภาพรวม
 
@@ -55,7 +56,7 @@
 | `document_new_stores` | K2 | id | `doc_no` → compensation_documents | ร้านเปิดใหม่ · `distance_km` · %ชดเชย (**ผลรวมต้อง = 100%**) |
 | `document_competitors` | K2 | id | `doc_no` · `competitor_code` → competitors | คู่แข่งในเอกสาร · `source_system` = ALM (จาก pipeline) / USER (ผู้ใช้เพิ่มเอง) |
 | `document_external_factors` | K2 | id | `doc_no` · `factor_code` → external_factors | ปัจจัยภายนอกที่ใช้ในเอกสาร + ช่วงวันที่ |
-| `consideration_logs` | K2 | id | `doc_no` → compensation_documents | ประวัติพิจารณาทุกขั้น (ผู้พิจารณา · Section · ผล · เวลา) · `result_category` (APPROVE/REJECT/PENDING) สำหรับ filter อนุมัติ/ไม่อนุมัติ หน้ารายงาน (k2-report) |
+| `consideration_logs` | K2 | id | `doc_no` → compensation_documents | ประวัติพิจารณาทุกขั้น (ผู้พิจารณา · Section · ผล · เวลา) · `result_category` (APPROVE/REJECT/PENDING) สำหรับ filter **ประกันรายได้/ไม่ประกันรายได้** หน้ารายงานตรวจสอบประกันรายได้ (k2-report · SDD v7.5) |
 | `document_attachments` | K2 | id | `doc_no` → compensation_documents | ไฟล์แนบ ≤ 5MB ต่อไฟล์ · แยกตาม Section ที่แนบ |
 | `compensation_histories` | K2 | id | `store_code` · `ref_doc_no` | ประวัติชดเชยต่อร้าน/รอบ · `submit_account_month` เดือนส่งบัญชี (→ ไฟล์ FRBC0001 ของ Job 6) |
 | `workflow_instances` | ใหม่ | `instance_id` | `doc_no` → compensation_documents | instance ของ workflow ภายใน (แทน K2 engine) · สถานะ instance แทน workflow_generation_status=Y |
@@ -67,7 +68,7 @@
 |---|---|---|---|---|
 | `stores` | FGI/FCS | `store_code` | ← impacted_stores (subset SP) · ← `document_new_stores.new_store_code` | master สาขา 7-Eleven ทุกประเภท (SP / เปิดใหม่ / ปิด renovate) — แหล่งค้นหาร้านของหน้า `k2-create.html` (API `/stores/search`) |
 | `impacted_stores` | K2 | `store_code` | = `impacted_store_code` ของโซน A (สะพานหลักสองระบบ) · subset SP ของ `stores` | ข้อมูลร้าน SP master |
-| `workflow_sections` / `document_statuses` | K2 | `section_code` / `status_code` | อ้างโดย compensation_documents · workflow_tasks · status_email_rules | ขั้นตอน 06/08/01/02/03/04/05 · สถานะเอกสาร |
+| `workflow_sections` / `document_statuses` | K2 | `section_code` / `status_code` | อ้างโดย compensation_documents · workflow_tasks · status_email_rules | ขั้นตอน **06/08/01/02/03 (5 ขั้น · ตัดบัญชี 04/05 ตาม SDD v7.5)** · สถานะเอกสาร **6 ค่า** — แถวบัญชี (04/05) และสถานะ "รอฝ่ายบัญชี/รอบัญชีปฏิบัติการภาค" ยกเลิกใช้งาน |
 | `roles` / `menus` / `menu_permissions` | K2 · SRS 3.1.1 | `role_code` / `menu_code` (composite) | menu_permissions = composite PK | สิทธิ์เมนู 8 role (00–10) — แหล่งข้อมูล RBAC ของ Auth · **CRUD ได้จากหน้าจอ 3.1.1** (`k2-permissions.html`) ผ่าน API `/roles` `/menus` `/menu-permissions` · `roles.role_desc` + `is_system` กันลบ/แก้รหัส role หลัก · `menus.menu_group` (MAIN/MASTER) + `sort_order` + `is_system` · เพิ่ม role/เมนูใหม่ = สร้างแถว `can_access=false` ทุกช่อง · ลบ = cascade ลบสิทธิ์ · ทุกการเปลี่ยนแปลงต้องระบุเหตุผลและลง `audit_logs` |
 | `operator_assignments` | K2 · SRS 3.1.8 | id | `section_code` · `zone_code` · `employee_id` → employees | ผู้ปฏิบัติงานต่อ section_code/zone_code · เลือกชื่อผ่าน popup ค้นหาพนักงาน |
 | `employees` | FGI/FCS | `employee_id` | ← `user_accounts.employee_id` · ← operator_assignments (เลือกผ่าน popup) | master พนักงานองค์กร (HR) — batch join อยู่แล้ว · ป้อน popup ค้นหาพนักงาน (API `/employees/search`) หน้า 3.1.8 |

@@ -57,10 +57,10 @@
         <div style="margin-top:12px;"><button class="btn btn-soft btn-sm" data-ack="เปิดข้อมูลยอดขายเพิ่มเติม (new tab)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg> ข้อมูลยอดขายเพิ่มเติม</button></div>
       </div>
 
-      <!-- ส่วน แนวโน้มยอดขาย ก่อน–หลัง สาขาใหม่เปิด (2 คอลัมน์) -->
-      <div class="charts-row" style="grid-template-columns:1.3fr 1fr; margin-bottom:0; align-items:stretch;">
-        <div class="card" style="margin:0;">
-          <div class="card-head"><h2>แนวโน้มยอดขายรายวัน</h2><span class="pill fail" style="margin-left:auto;">−12.45%</span></div>
+      <!-- ส่วน แนวโน้มยอดขายรายวัน (1/2) + แผนที่ AllMap (1/2) -->
+      <div class="charts-row" style="grid-template-columns:1fr 1fr; margin-bottom:18px; align-items:start;">
+        <div class="card" style="margin:0;min-width:0;">
+          <div class="card-head" style="flex-wrap:wrap;"><h2>แนวโน้มยอดขายรายวัน</h2><span class="pill info" style="margin-left:auto;">ก่อน 42,450</span><span class="pill fail">หลัง 37,163</span><span class="pill fail">−12.45%</span></div>
           <div style="font-size:12px; color:var(--muted); margin:-2px 0 8px;">ก่อน–หลังวันสาขาใหม่เปิด (00990) · <code>/documents/{docNo}/sales</code></div>
           <div style="overflow-x:auto;">
 <svg viewBox="0 0 380 196" width="100%" style="min-width:300px;display:block;" role="img" aria-label="แนวโน้มยอดขายรายวัน" font-family="Prompt,Sarabun,sans-serif">
@@ -85,22 +85,42 @@
             <span><i style="display:inline-block;width:15px;height:0;border-top:2px dashed #94a3b8;vertical-align:middle;"></i> ค่าเฉลี่ยช่วง</span>
           </div>
         </div>
-        <div class="card" style="margin:0;">
-          <div class="card-head"><h2>ยอดขายเฉลี่ยต่อวัน</h2></div>
-          <div style="font-size:12px; color:var(--muted); margin:-2px 0 8px;">เปรียบเทียบก่อน vs หลังสาขาใหม่เปิด (บาท/วัน)</div>
-          <div style="overflow-x:auto;">
-<svg viewBox="0 0 320 196" width="100%" style="min-width:240px;display:block;" role="img" aria-label="เปรียบเทียบยอดขายเฉลี่ยก่อน-หลัง" font-family="Prompt,Sarabun,sans-serif">
-  <line x1="34" y1="166" x2="304" y2="166" stroke="#dde5ef" stroke-width="1.2"/>
-  <text x="30" y="168" text-anchor="end" font-size="8.5" fill="#c0ccd8" font-family="Sarabun,sans-serif">30k</text>
-  <rect x="62" y="64.6" width="84" height="101.4" rx="6" fill="#2f6fed"/><text x="104" y="56.6" text-anchor="middle" font-size="14" font-weight="800" fill="#2b3440" font-family="Sarabun,sans-serif">42,450</text>
-  <rect x="174" y="107.7" width="84" height="58.3" rx="6" fill="#dc2626"/><text x="216" y="99.7" text-anchor="middle" font-size="14" font-weight="800" fill="#2b3440" font-family="Sarabun,sans-serif">37,163</text>
-  <text x="104" y="184" text-anchor="middle" font-size="11.5" fill="#55677d" font-family="Prompt,Sarabun,sans-serif">ก่อนเปิด</text>
-  <text x="216" y="184" text-anchor="middle" font-size="11.5" fill="#55677d" font-family="Prompt,Sarabun,sans-serif">หลังเปิด</text>
-  <path d="M148 36 C 160 22, 160 22, 172 36" fill="none" stroke="#c0392b" stroke-width="1.4" marker-end="url(#dn)"/>
-  <defs><marker id="dn" markerWidth="8" markerHeight="8" refX="4" refY="6" orient="auto"><path d="M1,1 L4,6 L7,1" fill="none" stroke="#c0392b" stroke-width="1.4"/></marker></defs>
-  <g transform="translate(118,6)"><rect x="0" y="0" width="84" height="26" rx="8" fill="#fdecec" stroke="#e2a3a3" stroke-width="1"/><text x="42" y="17" text-anchor="middle" font-size="13.5" font-weight="800" fill="#c0392b">−12.45%</text></g>
-</svg>
+        <div class="card" style="margin:0;min-width:0;">
+          <div class="card-head"><h2>แผนที่ (POI จากระบบ AllMap)</h2>
+            <button class="btn btn-soft btn-sm" style="margin-left:auto;" data-ack="เปิด ALLMAP ตรวจสอบข้อมูล POI (เปิดแท็บใหม่)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg> Link To ALLMAP</button>
           </div>
+          <div class="flow-svg-wrap" style="padding:0;overflow:hidden;">
+            <svg viewBox="0 0 760 440" width="100%" role="img" aria-label="แผนที่ร้านถูกกระทบ">
+              <rect width="760" height="440" fill="#eaf1ea"/>
+              <rect x="40" y="40" width="150" height="110" rx="10" fill="#d7ecd2"/>
+              <rect x="560" y="250" width="170" height="160" rx="10" fill="#cfe6f5"/>
+              <g fill="#e2e8ea"><rect x="220" y="60" width="120" height="90" rx="6"/><rect x="430" y="70" width="110" height="80" rx="6"/><rect x="230" y="280" width="120" height="100" rx="6"/><rect x="430" y="300" width="90" height="90" rx="6"/></g>
+              <g stroke="#c4ccc6" stroke-width="26" fill="none" stroke-linecap="round"><path d="M0 220H760"/><path d="M380 0V440"/><path d="M0 70L760 360"/></g>
+              <g stroke="#ffffff" stroke-width="17" fill="none" stroke-linecap="round"><path d="M0 220H760"/><path d="M380 0V440"/><path d="M0 70L760 360"/></g>
+              <g stroke="#f4c84a" stroke-width="2" stroke-dasharray="10 10" fill="none"><path d="M0 220H760"/><path d="M380 0V440"/></g>
+              <circle cx="380" cy="220" r="150" fill="rgba(47,111,237,.08)" stroke="#2f6fed" stroke-width="2" stroke-dasharray="7 7"/>
+              <text x="380" y="84" text-anchor="middle" fill="#2f6fed" font-size="12" font-family="Tahoma,sans-serif">รัศมีชดเชย 1 กม.</text>
+              <circle cx="380" cy="218" r="17" fill="#ef4444" opacity=".32"><animate attributeName="r" values="17;42;17" dur="2.4s" repeatCount="indefinite"/><animate attributeName="opacity" values=".4;0;.4" dur="2.4s" repeatCount="indefinite"/></circle>
+              <!-- new store 1 -->
+              <path d="M242 150 L250 166 L258 150 Z" fill="#16a34a"/><circle cx="250" cy="140" r="13" fill="#16a34a" stroke="#fff" stroke-width="2"/><text x="250" y="145" text-anchor="middle" fill="#fff" font-size="12" font-weight="700" font-family="Tahoma,sans-serif">1</text>
+              <!-- new store 2 -->
+              <path d="M492 300 L500 316 L508 300 Z" fill="#16a34a"/><circle cx="500" cy="290" r="13" fill="#16a34a" stroke="#fff" stroke-width="2"/><text x="500" y="295" text-anchor="middle" fill="#fff" font-size="12" font-weight="700" font-family="Tahoma,sans-serif">2</text>
+              <!-- competitor -->
+              <path d="M292 335 L300 349 L308 335 Z" fill="#f59e0b"/><circle cx="300" cy="326" r="12" fill="#f59e0b" stroke="#fff" stroke-width="2"/><text x="300" y="330" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="Tahoma,sans-serif">C</text>
+              <!-- impacted 7-11 -->
+              <path d="M367 233 L380 255 L393 233 Z" fill="#ef4444"/><circle cx="380" cy="218" r="18" fill="#ef4444" stroke="#fff" stroke-width="2.5"/><text x="380" y="222" text-anchor="middle" fill="#fff" font-size="10" font-weight="700" font-family="Tahoma,sans-serif">7-11</text>
+              <!-- callout -->
+              <g><rect x="296" y="150" width="168" height="28" rx="8" fill="#1f2937"/><text x="380" y="168" text-anchor="middle" fill="#fff" font-size="11" font-family="Tahoma,sans-serif">มีร้าน 7-11 เปิดกระทบ จำนวน 2 ร้าน</text><path d="M374 178 l6 7 6 -7 z" fill="#1f2937"/></g>
+              <g><circle cx="712" cy="40" r="15" fill="#fff" stroke="#cbd5e1"/><text x="712" y="45" text-anchor="middle" font-size="12" font-weight="700" fill="#ef4444" font-family="Tahoma,sans-serif">N</text></g>
+            </svg>
+          </div>
+          <div class="flow-legend" style="margin:14px 0 6px;">
+            <div class="lg"><span style="width:13px;height:13px;border-radius:50%;background:#ef4444;display:inline-block;"></span> ร้าน 7-11 ถูกกระทบ</div>
+            <div class="lg"><span style="width:13px;height:13px;border-radius:50%;background:#16a34a;display:inline-block;"></span> ร้านเปิดใหม่ (ปักหมุดตามลำดับ)</div>
+            <div class="lg"><span style="width:13px;height:13px;border-radius:50%;background:#f59e0b;display:inline-block;"></span> ร้านคู่แข่ง (ALLMAP)</div>
+            <div class="lg"><span style="width:18px;border-top:2px dashed #2f6fed;display:inline-block;"></span> รัศมีชดเชย</div>
+          </div>
+          <p style="font-size:12.5px;color:var(--muted);margin:0;">รัศมี 1 กม. (กรุงเทพฯ/ปริมณฑล) · 2 กม. (ต่างจังหวัด) · 200 ม. (กรณีไม่มีสิทธิ์ในระบบ) — แสดง POI ร้านเปิดใหม่ทุก Type, ร้านถูกกระทบ (รวมปิด renovate) และร้านคู่แข่งที่ ALLMAP ส่งมา</p>
         </div>
       </div>
 
@@ -121,47 +141,14 @@
             <tr><td class="num">2</td><td class="num">01180</td><td>สาขาซอยวัดกู้</td><td>RS</td><td>บริษัท</td><td>บ.ซีพี ออลล์ จำกัด</td><td>ซีพี ออลล์</td><td class="num">02/02/2567</td><td class="num">-</td><td class="num">1.40</td><td class="num"><input class="pct-input num" value="50.00" disabled>%</td><td class="num comp-cell">24,100.00</td></tr>
           </tbody>
         </table></div>
+        <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px 14px;margin:12px 0 2px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;">
+          <span style="color:var(--muted);">ผลรวมเงินชดเชยทุกร้าน</span>
+          <b class="num" style="color:#16a34a;font-size:15.5px;">72,300.00 ฿</b>
+          <span class="chip"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#2f6fed;vertical-align:middle;margin-right:5px;"></i>ร้าน 00990 · 66.7%</span>
+          <span class="chip"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#15b6a6;vertical-align:middle;margin-right:5px;"></i>ร้าน 01180 · 33.3%</span>
+        </div>
         <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">สูตรคำนวณ: เงินชดเชยร้านเปิดใหม่ = เงินชดเชยร้านถูกกระทบ × %ชดเชย &nbsp;·&nbsp; ผลรวม %ชดเชยทุกรายการต้องเท่ากับ 100%</p>
         <p style="font-size:12px;color:var(--muted);margin:6px 0 0;">ประเภทร้านทั้งหมด 8 ชนิด: FR Type A · FR Type B · FR Type C · FR Type C r · บริษัท · FR Type พนักงาน · FR Type PTT · FR Type BGC</p>
-      </div>
-
-      <!-- ส่วน แผนที่ -->
-      <div class="card">
-        <div class="card-head"><h2>แผนที่ (POI จากระบบ AllMap)</h2>
-          <button class="btn btn-soft btn-sm" style="margin-left:auto;" data-ack="เปิด ALLMAP ตรวจสอบข้อมูล POI (เปิดแท็บใหม่)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg> Link To ALLMAP</button>
-        </div>
-        <div class="flow-svg-wrap" style="padding:0;overflow:hidden;">
-          <svg viewBox="0 0 760 440" width="100%" role="img" aria-label="แผนที่ร้านถูกกระทบ">
-            <rect width="760" height="440" fill="#eaf1ea"/>
-            <rect x="40" y="40" width="150" height="110" rx="10" fill="#d7ecd2"/>
-            <rect x="560" y="250" width="170" height="160" rx="10" fill="#cfe6f5"/>
-            <g fill="#e2e8ea"><rect x="220" y="60" width="120" height="90" rx="6"/><rect x="430" y="70" width="110" height="80" rx="6"/><rect x="230" y="280" width="120" height="100" rx="6"/><rect x="430" y="300" width="90" height="90" rx="6"/></g>
-            <g stroke="#c4ccc6" stroke-width="26" fill="none" stroke-linecap="round"><path d="M0 220H760"/><path d="M380 0V440"/><path d="M0 70L760 360"/></g>
-            <g stroke="#ffffff" stroke-width="17" fill="none" stroke-linecap="round"><path d="M0 220H760"/><path d="M380 0V440"/><path d="M0 70L760 360"/></g>
-            <g stroke="#f4c84a" stroke-width="2" stroke-dasharray="10 10" fill="none"><path d="M0 220H760"/><path d="M380 0V440"/></g>
-            <circle cx="380" cy="220" r="150" fill="rgba(47,111,237,.08)" stroke="#2f6fed" stroke-width="2" stroke-dasharray="7 7"/>
-            <text x="380" y="84" text-anchor="middle" fill="#2f6fed" font-size="12" font-family="Tahoma,sans-serif">รัศมีชดเชย 1 กม.</text>
-            <circle cx="380" cy="218" r="17" fill="#ef4444" opacity=".32"><animate attributeName="r" values="17;42;17" dur="2.4s" repeatCount="indefinite"/><animate attributeName="opacity" values=".4;0;.4" dur="2.4s" repeatCount="indefinite"/></circle>
-            <!-- new store 1 -->
-            <path d="M242 150 L250 166 L258 150 Z" fill="#16a34a"/><circle cx="250" cy="140" r="13" fill="#16a34a" stroke="#fff" stroke-width="2"/><text x="250" y="145" text-anchor="middle" fill="#fff" font-size="12" font-weight="700" font-family="Tahoma,sans-serif">1</text>
-            <!-- new store 2 -->
-            <path d="M492 300 L500 316 L508 300 Z" fill="#16a34a"/><circle cx="500" cy="290" r="13" fill="#16a34a" stroke="#fff" stroke-width="2"/><text x="500" y="295" text-anchor="middle" fill="#fff" font-size="12" font-weight="700" font-family="Tahoma,sans-serif">2</text>
-            <!-- competitor -->
-            <path d="M292 335 L300 349 L308 335 Z" fill="#f59e0b"/><circle cx="300" cy="326" r="12" fill="#f59e0b" stroke="#fff" stroke-width="2"/><text x="300" y="330" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="Tahoma,sans-serif">C</text>
-            <!-- impacted 7-11 -->
-            <path d="M367 233 L380 255 L393 233 Z" fill="#ef4444"/><circle cx="380" cy="218" r="18" fill="#ef4444" stroke="#fff" stroke-width="2.5"/><text x="380" y="222" text-anchor="middle" fill="#fff" font-size="10" font-weight="700" font-family="Tahoma,sans-serif">7-11</text>
-            <!-- callout -->
-            <g><rect x="296" y="150" width="168" height="28" rx="8" fill="#1f2937"/><text x="380" y="168" text-anchor="middle" fill="#fff" font-size="11" font-family="Tahoma,sans-serif">มีร้าน 7-11 เปิดกระทบ จำนวน 2 ร้าน</text><path d="M374 178 l6 7 6 -7 z" fill="#1f2937"/></g>
-            <g><circle cx="712" cy="40" r="15" fill="#fff" stroke="#cbd5e1"/><text x="712" y="45" text-anchor="middle" font-size="12" font-weight="700" fill="#ef4444" font-family="Tahoma,sans-serif">N</text></g>
-          </svg>
-        </div>
-        <div class="flow-legend" style="margin:14px 0 6px;">
-          <div class="lg"><span style="width:13px;height:13px;border-radius:50%;background:#ef4444;display:inline-block;"></span> ร้าน 7-11 ถูกกระทบ</div>
-          <div class="lg"><span style="width:13px;height:13px;border-radius:50%;background:#16a34a;display:inline-block;"></span> ร้านเปิดใหม่ (ปักหมุดตามลำดับ)</div>
-          <div class="lg"><span style="width:13px;height:13px;border-radius:50%;background:#f59e0b;display:inline-block;"></span> ร้านคู่แข่ง (ALLMAP)</div>
-          <div class="lg"><span style="width:18px;border-top:2px dashed #2f6fed;display:inline-block;"></span> รัศมีชดเชย</div>
-        </div>
-        <p style="font-size:12.5px;color:var(--muted);margin:0;">รัศมี 1 กม. (กรุงเทพฯ/ปริมณฑล) · 2 กม. (ต่างจังหวัด) · 200 ม. (กรณีไม่มีสิทธิ์ในระบบ) — แสดง POI ร้านเปิดใหม่ทุก Type, ร้านถูกกระทบ (รวมปิด renovate) และร้านคู่แข่งที่ ALLMAP ส่งมา</p>
       </div>
 
       <!-- ส่วน ร้านคู่แข่งเปิดกระทบ -->
@@ -232,8 +219,8 @@
         <div class="table-wrap"><table class="data" id="tblCompHistory" style="min-width:880px;">
           <thead><tr><th>ครั้ง</th><th>เดือน/ปีที่กระทบ</th><th>จำนวนเงินที่ชดเชย</th><th>เดือน/ปีที่ส่งบัญชี</th><th>สถานะเอกสาร</th><th>ผลการพิจารณา</th><th class="col-action">เอกสาร</th></tr></thead>
           <tbody>
-            <tr data-href="k2-document.html" title="คลิกเพื่อเปิดเอกสาร"><td class="num">1</td><td class="num">11/2566</td><td class="num">48,200.00</td><td class="num">12/2566</td><td>เสร็จสิ้น</td><td>ฝ่าย OPT พิจารณา (ชดเชย)</td><td class="col-action"><button class="icon-btn" data-href="k2-document.html" title="เปิดเอกสาร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg></button></td></tr>
-            <tr data-href="k2-document.html" title="คลิกเพื่อเปิดเอกสาร"><td class="num">2</td><td class="num">05/2569</td><td class="num">48,200.00</td><td class="num">-</td><td>รอฝ่าย OPT ดำเนินการ</td><td>-</td><td class="col-action"><button class="icon-btn" data-href="k2-document.html" title="เปิดเอกสาร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg></button></td></tr>
+            <tr data-href="k2-document.html" title="คลิกเพื่อเปิดเอกสาร"><td class="num">1</td><td class="num">11/2566</td><td class="num">48,200.00</td><td class="num">12/2566</td><td>เสร็จสิ้นดำเนินการ</td><td>ฝ่ายส่งเสริมธุรกิจ SBP พิจารณา (ชดเชย)</td><td class="col-action"><button class="icon-btn" data-href="k2-document.html" title="เปิดเอกสาร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg></button></td></tr>
+            <tr data-href="k2-document.html" title="คลิกเพื่อเปิดเอกสาร"><td class="num">2</td><td class="num">05/2569</td><td class="num">48,200.00</td><td class="num">-</td><td>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</td><td>-</td><td class="col-action"><button class="icon-btn" data-href="k2-document.html" title="เปิดเอกสาร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg></button></td></tr>
           </tbody>
         </table></div>
       </div>
@@ -244,8 +231,8 @@
         <div class="table-wrap"><table class="data" id="tblDecisionHistory" style="min-width:880px;">
           <thead><tr><th>ชื่อผู้พิจารณา</th><th>ตำแหน่ง</th><th>ผลการพิจารณา</th><th>รายละเอียดการพิจารณา</th><th>วัน/เวลา</th></tr></thead>
           <tbody>
-            <tr title="คลิกเพื่อดูรายละเอียด"><td>Chantaporn Banchuen</td><td>ฝ่าย บธฟ</td><td>ฝ่าย OPT พิจารณา</td><td>เห็นควรชดเชยตามเกณฑ์</td><td class="num">15/12/2566 11.45.09 น.</td></tr>
-            <tr title="คลิกเพื่อดูรายละเอียด"><td>Somchai Jaidee</td><td>ฝ่าย SBP DSA</td><td>ส่งฝ่ายบัญชี SBP</td><td>ตรวจสอบเอกสารครบถ้วน</td><td class="num">12/06/2569 09.20.33 น.</td></tr>
+            <tr title="คลิกเพื่อดูรายละเอียด"><td>Chantaporn Banchuen</td><td>ฝ่าย บธฟ</td><td>ฝ่ายส่งเสริมธุรกิจ SBP พิจารณา</td><td>เห็นควรชดเชยตามเกณฑ์</td><td class="num">15/12/2566 11.45.09 น.</td></tr>
+            <tr title="คลิกเพื่อดูรายละเอียด"><td>Somchai Jaidee</td><td>ฝ่าย SBP DSA</td><td>ส่งฝ่ายส่งเสริมธุรกิจ SBP</td><td>ตรวจสอบเอกสารครบถ้วน</td><td class="num">12/06/2569 09.20.33 น.</td></tr>
           </tbody>
         </table></div>
       </div>
@@ -333,7 +320,6 @@
         { label:'เห็นควรไม่ชดเชย', note:'เอกสารเสร็จสิ้น', req:true },
         { label:'หยุดชดเชยประกันรายได้', note:'เอกสารเสร็จสิ้น' },
         { label:'ส่งฝ่ายส่งเสริมธุรกิจ SBP' },
-        { label:'ส่งฝ่ายบัญชี SBP ดำเนินการ', req:true },
         { label:'ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ' } ] },
       { key:'sbpdsa-officer', role:'เจ้าหน้าที่ SBP DSA (Officer Franchise · section_code 08)', status:'รอเจ้าหน้าที่ SBP DSA ดำเนินการ', pill:'violet', edit:['sec-calc'], opts:[
         { label:'คำนวณเงินชดเชยเรียบร้อย → ส่งฝ่ายส่งเสริมธุรกิจฯ' },
@@ -347,15 +333,10 @@
         { label:'เห็นควรไม่ชดเชย', money:'reject' },
         { label:'ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP' } ] },
       { key:'avp', role:'ผู้บริหารสำนักบริหาร SBP (AVP OPT · section_code 03)', status:'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill:'info', edit:[], opts:[
-        { label:'เห็นควรชดเชย → ฝ่ายบัญชี SBP' },
+        { label:'เห็นควรชดเชย → เสร็จสิ้นดำเนินการ', end:true },
         { label:'เห็นควรไม่ชดเชย → รอฝ่าย SBP DSA' },
-        { label:'ส่งกลับ GM ส่งเสริมธุรกิจฯ' } ] },
-      { key:'acct-mgr', role:'ฝ่ายบัญชี SBP (Manager Account Franchise · section_code 04)', status:'รอฝ่ายบัญชี SBP ดำเนินการ', pill:'info', edit:[], opts:[
-        { label:'บัญชีปฏิบัติการภาคดำเนินการ' },
-        { label:'ส่งกลับฝ่าย SBP DSA ดำเนินการ' } ] },
-      { key:'acct-op', role:'บัญชีปฏิบัติการภาค (Operation Account · section_code 05)', status:'รอบัญชีปฏิบัติการภาคดำเนินการ', pill:'info', edit:[], opts:[
-        { label:'บัญชีภาคอนุมัติ (จบ workflow)', end:true },
-        { label:'ส่งกลับฝ่ายบัญชี SBP ดำเนินการ' } ] }
+        { label:'ส่งกลับ GM ส่งเสริมธุรกิจฯ' } ] }
+      /* ตัดบทบาทบัญชี 04/05 ตาม SDD v7.5 — บัญชีตรวจผ่านรายงาน SBP Mall นอก workflow */
     ];
 
     function $(id){ return document.getElementById(id); }
@@ -391,7 +372,7 @@
       var total = money();
       r.opts.forEach(function(o, idx){
         var note = o.note ? o.note : '';
-        if (o.money === 'approve') note = (total > 100000 ? 'ส่ง ผู้บริหารสำนักบริหาร SBP (วงเงิน > 100,000)' : 'ส่ง ฝ่ายบัญชี SBP (วงเงิน ≤ 100,000)');
+        if (o.money === 'approve') note = (total > 100000 ? 'ส่ง ผู้บริหารสำนักบริหาร SBP (วงเงิน > 100,000)' : 'เสร็จสิ้นดำเนินการ (จบที่ GM · วงเงิน ≤ 100,000)');
         if (o.money === 'reject')  note = (total > 100000 ? 'ส่ง ผู้บริหารสำนักบริหาร SBP (วงเงิน > 100,000)' : 'ส่ง ฝ่าย SBP DSA (วงเงิน ≤ 100,000)');
         if (o.req) note = (note ? note + ' · ' : '') + 'บังคับกรอกความคิดเห็น';
         if (o.end) note = (note ? note + ' · ' : '') + 'จบกระบวนการ';
@@ -413,7 +394,7 @@
       ROLES.forEach(function(r,i){ var o=document.createElement('option'); o.value=r.key; o.textContent=(i+1)+'. '+r.role; sel.appendChild(o); });
       sel.addEventListener('change', function(){ render(sel.value); toast('สลับมุมมองเป็น: '+roleByKey(sel.value).role.split(' (')[0], 'ok'); });
 
-      /* stepper ปุ่มกด 06 › 08 › 01 › 02 › 03 › 04 › 05 (เหมือนหน้า k2-list-waiting.html) */
+      /* stepper ปุ่มกด 06 › 08 › 01 › 02 › 03 (เหมือนหน้า k2-list-waiting.html) */
       var steps = $('wfSteps');
       ROLES.forEach(function(r,i){
         if (i){ var a=document.createElement('span'); a.className='wf-arrow'; a.textContent='›'; steps.appendChild(a); }

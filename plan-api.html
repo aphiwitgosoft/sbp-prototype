@@ -137,7 +137,7 @@
         sum:'ค้นหาเอกสารที่เกี่ยวข้อง — บังคับระบุปี และคืนเฉพาะเอกสารที่มีเลขที่แล้ว (กติกา SRS)',
         flow:['validate: ต้องระบุ year เสมอ ไม่งั้นตอบ 400','ค้น compensation_documents ตามเงื่อนไข (เลขที่ / ร้าน / สถานะ / เดือน)','คืนแบบแบ่งหน้า'],
         db:[['compensation_documents','R','เอกสารตามเงื่อนไข'],['impacted_stores','R','ข้อมูลร้าน']],
-        req:'Query: ?year=2569&storeCode=00788&status=06&page=1\n(status = section ที่รออยู่ 06/08/01/02/03/04/05 หรือ END)',
+        req:'Query: ?year=2569&storeCode=00788&status=06&page=1\n(status = section ที่รออยู่ 06/08/01/02/03 หรือ END)',
         res:'{\n  "page": 1, "total": 6,\n  "items": [{ "docNo": "2569/00123", "status": "รอฝ่าย SBP DSA ดำเนินการ", ... }]\n}',
         err:['400 — กรุณาระบุปีที่ต้องการค้นหา (กติกา SRS)','401'] },
       { m:'GET', p:'/api/v1/documents/{docNo}', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
@@ -162,8 +162,8 @@
         res:'200 OK — เอกสารฉบับล่าสุด (โครงเดียวกับ GET)',
         err:['403 — ไม่มีสิทธิ์แก้ส่วนนี้ในขั้นปัจจุบัน','422 — "%ชดเชย ... รวมกันแล้วไม่เท่ากับ 100%" (ข้อความตรงตาม SRS)'] },
       { m:'POST', p:'/api/v1/documents/{docNo}/actions', ref:'k2', refT:'K2 · 3.1.4', roles:'เจ้าของ task ปัจจุบัน',
-        sum:'ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 7 ขั้น · กฎวงเงิน 100,000 ใช้ทั้งกรณีชดเชยและไม่ชดเชย',
-        flow:['ตรวจว่าผู้ใช้เป็นเจ้าของ workflow_tasks ขั้นปัจจุบัน','validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว','คำนวณขั้นถัดไปตามตารางเส้นทาง (workflow.md): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 06 ส่งข้าม 04 ได้ · 02 ชดเชย/ไม่ชดเชย > 100,000 → 03 · ชดเชย ≤ 100,000 → 04 · ไม่ชดเชย ≤ 100,000 → กลับ 06 · ทุกขั้นมีเส้นส่งกลับ','insert consideration_logs + ปิด task เดิม เปิด task ใหม่','ส่งอีเมล TO/CC ตาม status_email_rules'],
+        sum:'ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · กฎวงเงิน 100,000 ใช้ทั้งกรณีชดเชยและไม่ชดเชย',
+        flow:['ตรวจว่าผู้ใช้เป็นเจ้าของ workflow_tasks ขั้นปัจจุบัน','validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว','คำนวณขั้นถัดไปตามตารางเส้นทาง (workflow.md): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 02 ชดเชย/ไม่ชดเชย > 100,000 → 03 → จบ · ชดเชย ≤ 100,000 → เสร็จสิ้น (จบที่ GM) · ไม่ชดเชย ≤ 100,000 → กลับ 06 · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ','insert consideration_logs + ปิด task เดิม เปิด task ใหม่','ส่งอีเมล TO/CC ตาม status_email_rules'],
         db:[['workflow_tasks','R/W','ปิดงานเดิม เปิดงานขั้นถัดไป'],['compensation_documents','W','อัปเดต Status + CurSection'],['consideration_logs','W','บันทึกผลพิจารณา'],['status_email_rules','R','ผู้รับอีเมล']],
         req:'{\n  "action": "COMPENSATE",\n  // ตัวเลือกตามขั้นปัจจุบัน เช่น COMPENSATE / NOT_COMPENSATE / STOP\n  // CALC_DONE (08) / SEND_BACK / SKIP_TO_ACCT (06→04)\n  "comment": "เห็นควรชดเชยตามหลักเกณฑ์"\n}',
         res:'{\n  "docNo": "2569/00123",\n  "nextSection": "02",\n  "status": "รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ"\n}',
@@ -209,14 +209,14 @@
       { m:'GET', p:'/api/v1/document-statuses', ref:'k2', refT:'K2 · 3.1.3 / 3.1.7', roles:'ทุก role',
         sum:'รายการสถานะเอกสารทั้งหมด — เติม dropdown ตัวกรองสถานะในหน้าค้นหาเอกสาร (k2-list-related) และรายงาน (k2-report)',
         flow:['อ่าน document_statuses ทั้งหมดเรียงตามลำดับ workflow'],
-        db:[['document_statuses','R','สถานะเอกสาร (06/08/01/02/03/04/05/END)']],
+        db:[['document_statuses','R','สถานะเอกสาร (06/08/01/02/03/END)']],
         req:'(ไม่มี body)',
         res:'{\n  "items": [{ "statusCode": "06", "statusName": "รอฝ่าย SBP DSA ดำเนินการ" }]\n}',
         err:['401'] },
       { m:'GET', p:'/api/v1/workflow-sections', ref:'k2', refT:'K2 · master section', roles:'ทุก role',
-        sum:'รายการ Section 7 ขั้น — dropdown เลือกตำแหน่ง/ขั้น (หน้า 3.1.8) และตัวกรองตาม section',
-        flow:['อ่าน workflow_sections ทั้งหมดเรียงตามลำดับ 06→08→01→02→03→04→05'],
-        db:[['workflow_sections','R','ขั้นตอน 06/08/01/02/03/04/05']],
+        sum:'รายการ Section 5 ขั้น — dropdown เลือกตำแหน่ง/ขั้น (หน้า 3.1.8) และตัวกรองตาม section',
+        flow:['อ่าน workflow_sections ทั้งหมดเรียงตามลำดับ 06→08→01→02→03'],
+        db:[['workflow_sections','R','ขั้นตอน 06/08/01/02/03']],
         req:'(ไม่มี body)',
         res:'{\n  "items": [{ "sectionCode": "06", "sectionName": "ฝ่าย SBP DSA" }]\n}',
         err:['401'] }
@@ -454,19 +454,19 @@
     ]},
 
     { name:'รายงาน', refT:'K2 · SRS 3.1.7', eps:[
-      { m:'GET', p:'/api/v1/reports/status-summary', ref:'k2', refT:'K2 · 3.1.7', roles:'04 / 06 Report Admin',
-        sum:'รายงานสรุปสถานะ 19 คอลัมน์ — บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)',
-        flow:['validate ปี (ไม่ระบุ → 400)','query compensation_documents + compensation_histories ตามเงื่อนไข','กรอง result (APPROVE/REJECT/PENDING) จากผลพิจารณาล่าสุดใน consideration_logs — filter "อนุมัติ/ไม่อนุมัติ" หน้า k2-report','คืนแบบแบ่งหน้า 19 คอลัมน์ตามหน้าจอ k2-report.html'],
-        db:[['compensation_documents','R','สถานะเอกสาร'],['compensation_histories','R','ยอด/งวดชดเชย'],['impacted_stores','R','ข้อมูลร้าน'],['consideration_logs','R','ผลพิจารณาล่าสุด (กรองอนุมัติ/ไม่อนุมัติ)']],
-        req:'Query: ?year=2569&month=6&zone=RS&status=END&result=APPROVE&page=1\n(result = APPROVE | REJECT | PENDING — อนุมัติ / ไม่อนุมัติ / ยังไม่พิจารณา)',
+      { m:'GET', p:'/api/v1/reports/status-summary', ref:'k2', refT:'K2 · 3.1.7 + SDD v7.5', roles:'บัญชี / 06 Report Admin',
+        sum:'รายงานตรวจสอบประกันรายได้ (SBP Mall) — Preview Report · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)',
+        flow:['validate ปี (ไม่ระบุ → 400)','query compensation_documents + compensation_histories ตามเงื่อนไข (status 6 ค่า · region 13 · storeType A-D · รหัสถูกกระทบ/เปิดกระทบ)','กรอง result (APPROVE/REJECT) จากผลพิจารณาล่าสุดใน consideration_logs — filter "ประกันรายได้/ไม่ประกันรายได้" หน้า k2-report','คืนแบบแบ่งหน้าตามหน้าจอ k2-report.html'],
+        db:[['compensation_documents','R','สถานะเอกสาร'],['compensation_histories','R','ยอด/งวดชดเชย'],['impacted_stores','R','ข้อมูลร้าน'],['consideration_logs','R','ผลพิจารณาล่าสุด (กรองประกัน/ไม่ประกัน)']],
+        req:'Query: ?year=2569&status=รอฝ่ายส่งเสริมธุรกิจ SBP&result=APPROVE&region=RSU&storeType=A&impactedStoreCode=00233&newStoreCode=22864&page=1\n(result = APPROVE | REJECT — ประกันรายได้ / ไม่ประกันรายได้)',
         res:'{\n  "page": 1, "total": 212,\n  "items": [{ "docNo": "2569/00098", "storeCode": "00788", "status": "เสร็จสิ้นดำเนินการ", "compensateAmount": 85000.00, ... }]\n}',
         err:['400 — กรุณาระบุปีที่ต้องการค้นหา'] },
       { m:'GET', p:'/api/v1/reports/status-summary/export', ref:'k2', refT:'K2 · 3.1.7', roles:'04 / 06 Report Admin',
-        sum:'Export รายงานเป็นไฟล์ Excel เงื่อนไขเดียวกับเส้นค้นหา',
-        flow:['เงื่อนไขเดียวกับ status-summary','สร้างไฟล์ .xlsx แล้ว stream กลับ'],
+        sum:'Export CSV to Batch — ส่งไฟล์ CSV เข้า Batch ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไขเดียวกับเส้นค้นหา',
+        flow:['เงื่อนไขเดียวกับ status-summary','สร้างไฟล์ CSV แล้วส่งเข้า Batch (ทีมบัญชีนำไปกระทบ SAP)'],
         db:[['compensation_documents / compensation_histories','R','ข้อมูลชุดเดียวกับรายงาน']],
-        req:'Query: ?year=2569&month=6&result=APPROVE\n(เงื่อนไขชุดเดียวกับเส้นค้นหา รวม result อนุมัติ/ไม่อนุมัติ)',
-        res:'200 OK\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\nContent-Disposition: attachment; filename="status-summary-2569-06.xlsx"',
+        req:'Query: ?year=2569&result=APPROVE&region=RSU&storeType=A\n(เงื่อนไขชุดเดียวกับเส้นค้นหา รวม result ประกันรายได้/ไม่ประกันรายได้)',
+        res:'200 OK\nContent-Type: text/csv; charset=utf-8\nContent-Disposition: attachment; filename="insurance-verification-2569.csv"\nX-Batch-Job: queued',
         err:['400 — ไม่ระบุปี'] }
     ]},
 
@@ -673,9 +673,9 @@
     'POST /api/v1/email-templates/reset-all':
       '-- รีเซ็ตทั้ง 8 ฉบับ ; บันทึก audit เฉพาะฉบับที่เปลี่ยนจริง\nUPDATE email_templates SET subject = default_subject, body = default_body, is_customized = FALSE\nWHERE is_customized = TRUE;\n\nINSERT INTO audit_logs (table_name, ref_key, action_type, reason, updated_by, updated_at)\nSELECT :tableName, template_code, :actionReset, :reason, :actor, :now\nFROM email_templates WHERE is_customized = FALSE;',
     'GET /api/v1/reports/status-summary':
-      '-- ต้องระบุ :year เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว\nSELECT d.doc_no, d.impacted_store_code, s.store_name, d.status_code,\n       h.compensate_amount, h.submit_account_month, cl.result_category\nFROM compensation_documents d\nJOIN impacted_stores s ON s.store_code = d.impacted_store_code\nLEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no\nLEFT JOIN LATERAL (\n  SELECT result_category FROM consideration_logs\n  WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1\n) cl ON TRUE\nWHERE d.doc_year = :year\n  AND (:month  IS NULL OR d.impact_month = :month)\n  AND (:zone   IS NULL OR s.zone_code = :zone)\n  AND (:status IS NULL OR d.status_code = :status)\n  AND (:result IS NULL OR cl.result_category = :result)   -- APPROVE / REJECT / PENDING (filter อนุมัติ/ไม่อนุมัติ)\nORDER BY d.doc_no\nLIMIT :size OFFSET :offset;',
+      '-- ต้องระบุ :year เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว\nSELECT d.doc_no, d.impacted_store_code, s.store_name, d.status_code,\n       h.compensate_amount, h.submit_account_month, cl.result_category\nFROM compensation_documents d\nJOIN impacted_stores s ON s.store_code = d.impacted_store_code\nLEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no\nLEFT JOIN LATERAL (\n  SELECT result_category FROM consideration_logs\n  WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1\n) cl ON TRUE\nWHERE d.doc_year = :year\n  AND (:month  IS NULL OR d.impact_month = :month)\n  AND (:zone   IS NULL OR s.zone_code = :zone)\n  AND (:status IS NULL OR d.status_code = :status)\n  AND (:result IS NULL OR cl.result_category = :result)   -- APPROVE / REJECT (filter ประกันรายได้/ไม่ประกันรายได้)\nORDER BY d.doc_no\nLIMIT :size OFFSET :offset;',
     'GET /api/v1/reports/status-summary/export':
-      '-- เงื่อนไขเดียวกับ status-summary (รวม :result อนุมัติ/ไม่อนุมัติ) แล้ว stream เป็นไฟล์ .xlsx\nSELECT d.doc_no, d.impacted_store_code, d.status_code, h.compensate_amount, h.submit_account_month\nFROM compensation_documents d\nLEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no\nLEFT JOIN LATERAL (\n  SELECT result_category FROM consideration_logs\n  WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1\n) cl ON TRUE\nWHERE d.doc_year = :year\n  AND (:month  IS NULL OR d.impact_month = :month)\n  AND (:result IS NULL OR cl.result_category = :result)\nORDER BY d.doc_no;',
+      '-- เงื่อนไขเดียวกับ status-summary (รวม :result ประกัน/ไม่ประกัน) แล้ว stream เป็นไฟล์ .csv เข้า Batch\nSELECT d.doc_no, d.impacted_store_code, d.status_code, h.compensate_amount, h.submit_account_month\nFROM compensation_documents d\nLEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no\nLEFT JOIN LATERAL (\n  SELECT result_category FROM consideration_logs\n  WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1\n) cl ON TRUE\nWHERE d.doc_year = :year\n  AND (:month  IS NULL OR d.impact_month = :month)\n  AND (:result IS NULL OR cl.result_category = :result)\nORDER BY d.doc_no;',
     'GET /api/v1/jobs':
       'SELECT c.job_no, c.job_name, c.cron, c.enabled,\n       h.status, h.rows_affected, h.started_at\nFROM job_configs c\nLEFT JOIN LATERAL (\n  SELECT status, rows_affected, started_at FROM job_run_histories\n  WHERE job_no = c.job_no ORDER BY started_at DESC LIMIT 1\n) h ON TRUE\nORDER BY c.job_no;',
     'GET /api/v1/jobs/{jobNo}':
@@ -761,7 +761,7 @@
       { id:'p1', type:'proc', x:240, y:300, w:340, text:'ปิด task เดิม + INSERT consideration_logs' },
       { id:'d3', type:'dec', x:240, y:404, w:300, h:78, text:'section = 06\nและผล = ไม่ชดเชย/หยุดชดเชย?' },
       { id:'endE', type:'termOk', x:560, y:404, w:240, text:'เสร็จสิ้นดำเนินการ (END)' },
-      { id:'p2', type:'proc', x:240, y:514, w:400, h:66, text:'> 100,000 → AVP OPT (03)\n≤ 100,000 → ฝ่ายบัญชี SBP (04)\nอื่น ๆ → ขั้นถัดไปตามลำดับ' },
+      { id:'p2', type:'proc', x:240, y:514, w:400, h:66, text:'> 100,000 → AVP OPT (03) → จบ\n≤ 100,000 → จบที่ GM (02)\nตัดขั้นบัญชี 04/05 (SDD v7.5)' },
       { id:'p3', type:'proc', x:240, y:612, w:400, h:58, text:'เปิด workflow_tasks ใหม่ + UPDATE สถานะ\n+ ส่งอีเมล (status_email_rules)' },
       { id:'end2', type:'termOk', x:240, y:694, w:320, text:'200 · nextSection / status' }
     ], edges:[

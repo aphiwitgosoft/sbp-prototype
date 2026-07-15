@@ -39,7 +39,7 @@
 
       <div class="page-head">
         <div><h1 class="page-title">Flow FGI/FCS + K2 — ระบบใหม่</h1>
-          <p class="page-sub">รวมงานเบื้องหลัง FGI/FCS (11 jobs) เข้ากับ Workflow อนุมัติ 7 ขั้นของ K2 เป็นระบบเดียว · สถาปัตยกรรมใหม่แยก Frontend / Backend</p></div>
+          <p class="page-sub">รวมงานเบื้องหลัง FGI/FCS (11 jobs) เข้ากับ Workflow อนุมัติ 5 ขั้นของ K2 เป็นระบบเดียว (ตัดขั้นบัญชี 04/05 ตาม SDD v7.5) · สถาปัตยกรรมใหม่แยก Frontend / Backend</p></div>
         <div class="page-actions">
           <span class="pill info" style="align-self:center;">Target Architecture</span>
         </div>
@@ -49,7 +49,7 @@
         <div style="font-size:13px;color:#45525f;line-height:1.9;">
           <b style="color:#2b3440;">วิธีอ่าน ref ที่มา:</b>
           <span class="ref fgi">FGI/FCS</span> = มาจากเอกสาร Batch Job Technical Document v4.0 (Jobs 1–10 + 8b) ·
-          <span class="ref k2">K2</span> = มาจาก SRS ประกันรายได้-K2 v3.1 (หน้าจอ / workflow 7 ขั้น) ·
+          <span class="ref k2">K2</span> = มาจาก SRS ประกันรายได้-K2 v3.1 (หน้าจอ / workflow 5 ขั้น) ·
           <span class="ref new">ใหม่</span> = ส่วนที่ออกแบบเพิ่มสำหรับระบบใหม่ ·
           <span class="ref mix">ทั้งสอง</span> = พฤติกรรมรวมจากสองระบบ<br>
           หน้าที่เกี่ยวข้อง: <a href="plan-database.html" style="color:#2f6fed;font-weight:600;">DB FGI/FCS + K2</a> ·
@@ -60,9 +60,9 @@
 
       <div class="db-stat-grid">
         <div class="db-stat"><b>11</b><span>Batch Entry Points</span></div>
-        <div class="db-stat"><b>7</b><span>Approval Sections</span></div>
-        <div class="db-stat"><b>30</b><span>Tables ใน Schema รวม</span></div>
-        <div class="db-stat"><b>46</b><span>REST API Endpoints</span></div>
+        <div class="db-stat"><b>5</b><span>Approval Sections</span></div>
+        <div class="db-stat"><b>34</b><span>Tables ใน Schema รวม</span></div>
+        <div class="db-stat"><b>61</b><span>REST API Endpoints</span></div>
       </div>
 
       <div class="card">
@@ -84,8 +84,8 @@
             <code>doc_no · ไม่มีไฟล์ภายใน</code>
           </div>
           <div class="journey-step k2">
-            <span class="journey-no">4</span><h3>อนุมัติ 7 ขั้น</h3>
-            <p>Workflow ภายในเดินงาน 06→08→01→02→03→04→05 พร้อมส่งกลับและแจ้งอีเมล</p>
+            <span class="journey-no">4</span><h3>อนุมัติ 5 ขั้น</h3>
+            <p>Workflow ภายในเดินงาน 06→08→01→02→03 พร้อมส่งกลับและแจ้งอีเมล · บัญชีตรวจผ่านรายงาน SBP Mall (SDD v7.5)</p>
             <code>workflow_instance · task</code>
           </div>
           <div class="journey-step out">
@@ -144,7 +144,7 @@
           <text x="666" y="262" font-size="12.5" font-weight="600" fill="#2b3440">Workflow Engine (ภายใน)</text>
           <rect x="666" y="270" width="88" height="17" rx="8" fill="#f1ecfe"/><text x="710" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#6d28d9">K2 · SRS 3.1.4</text>
           <rect x="760" y="270" width="130" height="17" rx="8" fill="#e8f0fe"/><text x="825" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">แทน K2 REST (Job 8b)</text>
-          <text x="666" y="306" font-size="10.5" fill="#5d6b7a">7 ขั้น 06→08→01→02→03→04→05 · กฎ 100,000</text>
+          <text x="666" y="306" font-size="10.5" fill="#5d6b7a">5 ขั้น 06→08→01→02→03 · กฎ 100,000 · บัญชีนอก flow</text>
 
           <!-- row 2 -->
           <rect x="64" y="336" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#96b4f0" stroke-width="1.5"/>
@@ -229,10 +229,10 @@
             <div class="tl-t">6. เปิด Workflow ตาม Gen Flow Gate <span class="ref mix">FGI/FCS Job 8b → K2</span> <span class="ref new">เปลี่ยนกลไก</span></div>
             <div class="tl-meta">เกณฑ์คงเดิมทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เดิมยิง K2 REST StartInstance / ใหม่เรียก POST /workflows/instances ภายใน แล้วตั้ง workflow_generation_status=Y</div></div>
 
-          <div class="flow-stage"><span>C</span> ผู้ใช้ตรวจสอบและอนุมัติ · Section 06–05</div>
+          <div class="flow-stage"><span>C</span> ผู้ใช้ตรวจสอบและอนุมัติ · Section 06–03</div>
           <div class="tl-item active"><span class="tl-dot"></span>
             <div class="tl-t">7. ขั้นที่ 1–2: ฝ่าย SBP DSA ตรวจสอบ + คำนวณเงินชดเชย <span class="ref k2">K2 · Section 06 → 08</span></div>
-            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · พิจารณา: ชดเชย / ไม่ชดเชย / หยุดชดเชย · บันทึก consideration_logs + อีเมลตาม status_email_rules · ทุกขั้นของ Section 06–05 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
+            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · พิจารณา: ชดเชย / ไม่ชดเชย / หยุดชดเชย · บันทึก consideration_logs + อีเมลตาม status_email_rules · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">8. ขั้นที่ 3: ฝ่ายส่งเสริมธุรกิจฯ ปรับข้อมูล <span class="ref k2">K2 · Section 01</span></div>
@@ -240,11 +240,11 @@
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">9. ขั้นที่ 4–5: GM → AVP ตามวงเงิน <span class="ref k2">K2 · Section 02 → 03</span></div>
-            <div class="tl-meta">กฎวงเงิน: ยอดชดเชย &gt; 100,000 บาท ต้องผ่านผู้บริหารสำนักบริหาร SBP (AVP) · ≤ 100,000 ข้ามไปฝ่ายบัญชีได้เลย</div></div>
+            <div class="tl-meta">กฎวงเงิน: ยอดชดเชย &gt; 100,000 บาท ต้องผ่านผู้บริหารสำนักบริหาร SBP (AVP) แล้วจบงาน · ≤ 100,000 จบที่ GM (ไม่มีขั้นบัญชี · ตัด 04/05 ตาม SDD v7.5)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
-            <div class="tl-t">10. ขั้นที่ 6–7: บัญชี SBP → บัญชีปฏิบัติการภาค <span class="ref k2">K2 · Section 04 → 05</span></div>
-            <div class="tl-meta">ตรวจการเงินและอนุมัติปิดงาน (End) · สถานะเอกสารครบตาม document_statuses + compensation_histories</div></div>
+            <div class="tl-t">10. บัญชีตรวจสอบนอก workflow <span class="ref new">SDD v7.5</span></div>
+            <div class="tl-meta">ยกเลิกหน้าจอ Approve ของบัญชี — เมื่อเอกสารเสร็จสิ้น ทีมบัญชีเปิดรายงานตรวจสอบประกันรายได้ (SBP Mall) → Export CSV to Batch → กระทบยอด SAP (FBL3H/SAPPOST) เอง · กรณี SBP ≠ SAP เปิด SR แก้รายครั้ง</div></div>
 
           <div class="flow-stage"><span>D</span> ส่งผลออกและเฝ้าระวัง ACK · Jobs 6 และ 10</div>
           <div class="tl-item"><span class="tl-dot"></span>

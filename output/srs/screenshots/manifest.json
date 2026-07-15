@@ -38,19 +38,19 @@
   {
     "file": "plan-database.html",
     "width": 1440,
-    "height": 3930,
+    "height": 4324,
     "output": "plan-database.png"
   },
   {
     "file": "job-batch.html",
     "width": 1440,
-    "height": 2953,
+    "height": 3572,
     "output": "job-batch.png"
   },
   {
     "file": "k2-create.html",
     "width": 1440,
-    "height": 1009,
+    "height": 1033,
     "output": "k2-create.png"
   },
   {
@@ -74,13 +74,13 @@
   {
     "file": "k2-document.html",
     "width": 1440,
-    "height": 3917,
+    "height": 4375,
     "output": "k2-document.png"
   },
   {
     "file": "k2-report.html",
     "width": 1440,
-    "height": 1863,
+    "height": 1949,
     "output": "k2-report.png"
   },
   {
@@ -102,9 +102,21 @@
     "output": "k2-permissions.png"
   },
   {
+    "file": "system-config.html",
+    "width": 1440,
+    "height": 2059,
+    "output": "system-config.png"
+  },
+  {
+    "file": "plan-email.html",
+    "width": 1440,
+    "height": 3770,
+    "output": "plan-email.png"
+  },
+  {
     "file": "plan-api.html",
     "width": 1440,
-    "height": 3749,
+    "height": 4782,
     "output": "plan-api.png"
   }
 ]

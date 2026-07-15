@@ -113,7 +113,7 @@
           <thead><tr><th>Template</th><th>ชื่อ</th><th>จุดที่ส่งใน Flow</th><th>ผู้รับ (TO)</th><th>แหล่งกติกาผู้รับ</th><th>ความถี่</th></tr></thead>
           <tbody>
             <tr><td><span class="tpl-code">EM-01</span></td><td>แจ้งผู้ดำเนินการลำดับถัดไป</td><td>Stage C — ทุกครั้งที่เอกสารเปลี่ยนสถานะ (ส่งดำเนินการ)</td><td>ผู้ดำเนินการ Step ถัดไป</td><td>status_email_rules (SRS 3.1.5)</td><td>ตามเหตุการณ์</td></tr>
-            <tr><td><span class="tpl-code">EM-02</span></td><td>เอกสารเสร็จสิ้นดำเนินการ (End)</td><td>Stage C — เห็นควรไม่ชดเชย / หยุดชดเชย / บัญชีภาคอนุมัติ</td><td>ผู้เกี่ยวข้องทั้งหมด</td><td>status_email_rules</td><td>ตามเหตุการณ์</td></tr>
+            <tr><td><span class="tpl-code">EM-02</span></td><td>เอกสารเสร็จสิ้นดำเนินการ (End)</td><td>Stage C — เห็นควรไม่ชดเชย / หยุดชดเชย / อนุมัติชดเชย (GM ≤100k · AVP &gt;100k)</td><td>ผู้เกี่ยวข้องทั้งหมด</td><td>status_email_rules</td><td>ตามเหตุการณ์</td></tr>
             <tr><td><span class="tpl-code">EM-03</span></td><td>เอกสารถูกส่งกลับ (Back-flow)</td><td>Stage C — เลือกผลพิจารณา "ส่งกลับ" ทุกขั้น</td><td>ผู้ดำเนินการที่ถูกส่งกลับหา</td><td>status_email_rules</td><td>ตามเหตุการณ์</td></tr>
             <tr><td><span class="tpl-code">EM-04</span></td><td>เตือนงานค้างรายสัปดาห์</td><td>Reminder Job — อ่านงานค้างจาก workflow_tasks</td><td>ผู้ดำเนินการที่มีงานค้าง</td><td>status_email_rules + config</td><td>ทุกวันจันทร์ 10:00 (แก้ได้)</td></tr>
             <tr><td><span class="tpl-code">EM-05</span></td><td>Escalation งานค้าง 30/45/60 วัน</td><td>Workflow Engine ตรวจ waiting_days ของ workflow_tasks</td><td>หัวหน้า Section / GM OPT</td><td>เกณฑ์ escalation (config)</td><td>เมื่อครบ 30/45/60 วัน</td></tr>
@@ -159,8 +159,6 @@
               <option value="01" selected>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ (01)</option>
               <option value="02">รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ (02)</option>
               <option value="03">รอผู้บริหารสำนักบริหาร SBP ดำเนินการ (03)</option>
-              <option value="04">รอฝ่ายบัญชี SBP ดำเนินการ (04)</option>
-              <option value="05">รอบัญชีปฏิบัติการภาคดำเนินการ (05)</option>
             </select>
             <span class="pill wait" id="em01Status">รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</span>
           </div>
@@ -205,7 +203,7 @@
         <div class="card" data-tpl="EM-02">
           <div class="card-head"><h2><span class="tpl-code">EM-02</span> &nbsp;เอกสารเสร็จสิ้นดำเนินการ (End)</h2><span class="flowpoint" style="margin-left:auto;">✉ Stage C · จบ workflow</span></div>
           <div class="tpl-meta">
-            <div class="m"><span class="k">Trigger</span><span class="v">เห็นควรไม่ชดเชย (06) · หยุดชดเชยประกันรายได้ (06) · บัญชีภาคอนุมัติ (05)</span></div>
+            <div class="m"><span class="k">Trigger</span><span class="v">เห็นควรไม่ชดเชย (06) · หยุดชดเชยประกันรายได้ (06) · เห็นควรชดเชย ≤100,000 (02) · เห็นควรชดเชย (03 AVP)</span></div>
             <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = ผู้เกี่ยวข้องทั้งหมดในเอกสาร (ทุก section ที่เคยดำเนินการ)</span></div>
             <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">document_statuses · compensation_histories · consideration_logs</span></div>
           </div>
@@ -213,12 +211,12 @@
             <div class="mail-top">
               <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">To</span><span class="v">ผู้เกี่ยวข้องทั้งหมดของเอกสาร <span class="mf">{{stakeholder_list}}</span></span></div>
-              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] เอกสารประกันรายได้ 2569/00123 — เสร็จสิ้นดำเนินการ (บัญชีภาคอนุมัติ)</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] เอกสารประกันรายได้ 2569/00123 — เสร็จสิ้นดำเนินการ (อนุมัติชดเชย)</span></div>
             </div>
             <div class="mail-body">
               เรียน ผู้เกี่ยวข้องทุกท่าน<br>
               เอกสารประกันรายได้เลขที่ <span class="mf">2569/00123</span> ร้าน <span class="mf">รัตนอุทิศ ซ.13</span> (<span class="mf">00788</span>)
-              ได้ <b>เสร็จสิ้นดำเนินการ</b> ด้วยผลพิจารณา "<span class="mf">บัญชีภาคอนุมัติ</span>"
+              ได้ <b>เสร็จสิ้นดำเนินการ</b> ด้วยผลพิจารณา "<span class="mf">เห็นควรชดเชย</span>"
               <table class="det">
                 <tr><td>ผลสุดท้าย</td><td><span class="mf">อนุมัติชดเชย</span></td></tr>
                 <tr><td>จำนวนเงินชดเชย</td><td><span class="mf">48,200.00</span> บาท</td></tr>
@@ -446,9 +444,8 @@
       '08': { status:'รอเจ้าหน้าที่ SBP DSA ดำเนินการ',      to:'เจ้าหน้าที่ SBP DSA', toMail:'sbp-dsa-officer@cpall.co.th', cc:'ฝ่าย SBP DSA', ccMail:'sbp-dsa-mgr@cpall.co.th',    action:'เจ้าหน้าที่ SBP DSA ดำเนินการ',     actor:'ฝ่าย SBP DSA' },
       '01': { status:'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ',   to:'ฝ่ายส่งเสริมธุรกิจ SBP', toMail:'sbp-opt-mgr@cpall.co.th', cc:'ฝ่าย SBP DSA', ccMail:'sbp-dsa-mgr@cpall.co.th',    action:'คำนวณเงินชดเชยเรียบร้อย',           actor:'เจ้าหน้าที่ SBP DSA' },
       '02': { status:'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ',   to:'GM ส่งเสริมธุรกิจ SBP', toMail:'sbp-opt-gm@cpall.co.th', cc:'ฝ่ายส่งเสริมธุรกิจ SBP', ccMail:'sbp-opt-mgr@cpall.co.th', action:'เห็นควรชดเชย',                    actor:'ฝ่ายส่งเสริมธุรกิจ SBP' },
-      '03': { status:'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', to:'ผู้บริหารสำนักบริหาร SBP', toMail:'sbp-avp@cpall.co.th', cc:'GM ส่งเสริมธุรกิจ SBP', ccMail:'sbp-opt-gm@cpall.co.th', action:'เห็นควรชดเชย (> 100,000 บาท)',     actor:'GM ส่งเสริมธุรกิจ SBP' },
-      '04': { status:'รอฝ่ายบัญชี SBP ดำเนินการ',            to:'ฝ่ายบัญชี SBP', toMail:'sbp-account@cpall.co.th',     cc:'ฝ่าย SBP DSA', ccMail:'sbp-dsa-mgr@cpall.co.th',    action:'เห็นควรชดเชย (≤ 100,000 บาท)',     actor:'GM ส่งเสริมธุรกิจ SBP' },
-      '05': { status:'รอบัญชีปฏิบัติการภาคดำเนินการ',        to:'บัญชีปฏิบัติการภาค', toMail:'region-account-rs@cpall.co.th', cc:'ฝ่ายบัญชี SBP', ccMail:'sbp-account@cpall.co.th', action:'บัญชีปฏิบัติการภาคดำเนินการ',    actor:'ฝ่ายบัญชี SBP' }
+      '03': { status:'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', to:'ผู้บริหารสำนักบริหาร SBP', toMail:'sbp-avp@cpall.co.th', cc:'GM ส่งเสริมธุรกิจ SBP', ccMail:'sbp-opt-gm@cpall.co.th', action:'เห็นควรชดเชย (> 100,000 บาท)',     actor:'GM ส่งเสริมธุรกิจ SBP' }
+      /* ตัดสถานะบัญชี 04/05 ตาม SDD v7.5 — บัญชีตรวจสอบผ่านรายงาน SBP Mall นอก workflow */
     };
     var sel = document.getElementById('em01Select');
     function set(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; }

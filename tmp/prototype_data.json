@@ -2148,6 +2148,149 @@
             "413 — ไฟล์เกิน 5MB",
             "415 — ชนิดไฟล์ไม่อนุญาต"
           ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/documents/{docNo}/sales",
+          "ref": "k2",
+          "refT": "K2 · 3.1.6",
+          "roles": "ตามสิทธิ์เมนู",
+          "sum": "ข้อมูลยอดขายเพิ่มเติมของเอกสาร (4 หน้าต่าง × 15 วัน) — ปุ่ม \"ข้อมูลยอดขายเพิ่มเติม\" ในหน้าเอกสาร k2-document.html",
+          "flow": [
+            "หา impact_process_id ของเอกสารจาก compensation_documents",
+            "อ่าน fgi_impact_sales_summaries (หัว) + sales_transactions (รายวัน) ของงวดนั้น (โซน A)",
+            "คืน growth_rate_diff · total_working_days + แถวยอดขายรายวันแยก 4 หน้าต่าง"
+          ],
+          "db": [
+            [
+              "compensation_documents",
+              "R",
+              "หา impact_process_id ของเอกสาร"
+            ],
+            [
+              "fgi_impact_sales_summaries",
+              "R",
+              "หัวยอดขาย · growth_rate_diff · total_working_days"
+            ],
+            [
+              "sales_transactions",
+              "R",
+              "ยอดขายรายวัน 4 หน้าต่าง × 15 วัน"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"growthRateDiff\": -12.45,\n  \"totalWorkingDays\": 60,\n  \"windows\": [\n    { \"label\": \"ก่อนเปิด 15 วัน\",\n      \"rows\": [ { \"date\": \"2026-05-01\", \"amount\": 42500.00 } ] }\n  ]\n}",
+          "err": [
+            "404 — ไม่พบเอกสารหรือยอดขายของงวดนี้",
+            "401"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ข้อมูลอ้างอิง (Lookup / Reference)",
+      "refT": "K2 + FGI/FCS · master สำหรับ dropdown",
+      "eps": [
+        {
+          "m": "GET",
+          "p": "/api/v1/stores/search",
+          "ref": "mix",
+          "refT": "FGI/FCS master + K2",
+          "roles": "ตามสิทธิ์เมนูเอกสาร",
+          "sum": "ค้นหาร้าน (แว่นขยายในหน้า k2-create.html) — ร้านถูกกระทบ (SP) หรือร้านเปิดใหม่ 7-Eleven ตาม type",
+          "flow": [
+            "รับ q (รหัส/ชื่อร้าน) + type (impacted | new)",
+            "type=impacted → ค้น impacted_stores (ร้าน SP)",
+            "type=new → ค้น stores (master สาขา 7-Eleven ทุกประเภท)",
+            "คืนรายการสั้นสำหรับ popup เลือก (คงเลขศูนย์นำหน้ารหัสร้าน)"
+          ],
+          "db": [
+            [
+              "stores",
+              "R",
+              "master สาขา 7-Eleven — ร้านเปิดใหม่ (โซน C)"
+            ],
+            [
+              "impacted_stores",
+              "R",
+              "ร้าน SP — ร้านถูกกระทบ"
+            ]
+          ],
+          "req": "Query: ?q=00788&type=impacted\n(type = impacted | new)",
+          "res": "{\n  \"items\": [{ \"storeCode\": \"00788\", \"storeName\": \"รัตนอุทิศ ซ.13\", \"storeType\": \"SP\" }]\n}",
+          "err": [
+            "401"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/competitors",
+          "ref": "k2",
+          "refT": "K2 · master คู่แข่ง",
+          "roles": "ตาม section ปัจจุบัน",
+          "sum": "รายการร้านคู่แข่ง master 24 ราย — dropdown ตอนกดปุ่ม \"เพิ่ม\" ตารางร้านคู่แข่งเปิดกระทบ (k2-document.html)",
+          "flow": [
+            "query competitors ทั้งหมด / ตามคำค้น",
+            "คืนรหัส + ชื่อคู่แข่งสำหรับเลือกใส่ document_competitors"
+          ],
+          "db": [
+            [
+              "competitors",
+              "R",
+              "master ร้านคู่แข่ง 24 ราย (108 Shop, Lotus Express, CJ …)"
+            ]
+          ],
+          "req": "Query: ?q=lotus",
+          "res": "{\n  \"items\": [{ \"competitorCode\": \"C007\", \"competitorName\": \"Lotus Express\" }]\n}",
+          "err": [
+            "401"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/document-statuses",
+          "ref": "k2",
+          "refT": "K2 · 3.1.3 / 3.1.7",
+          "roles": "ทุก role",
+          "sum": "รายการสถานะเอกสารทั้งหมด — เติม dropdown ตัวกรองสถานะในหน้าค้นหาเอกสาร (k2-list-related) และรายงาน (k2-report)",
+          "flow": [
+            "อ่าน document_statuses ทั้งหมดเรียงตามลำดับ workflow"
+          ],
+          "db": [
+            [
+              "document_statuses",
+              "R",
+              "สถานะเอกสาร (06/08/01/02/03/04/05/END)"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"items\": [{ \"statusCode\": \"06\", \"statusName\": \"รอฝ่าย SBP DSA ดำเนินการ\" }]\n}",
+          "err": [
+            "401"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/workflow-sections",
+          "ref": "k2",
+          "refT": "K2 · master section",
+          "roles": "ทุก role",
+          "sum": "รายการ Section 7 ขั้น — dropdown เลือกตำแหน่ง/ขั้น (หน้า 3.1.8) และตัวกรองตาม section",
+          "flow": [
+            "อ่าน workflow_sections ทั้งหมดเรียงตามลำดับ 06→08→01→02→03→04→05"
+          ],
+          "db": [
+            [
+              "workflow_sections",
+              "R",
+              "ขั้นตอน 06/08/01/02/03/04/05"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"items\": [{ \"sectionCode\": \"06\", \"sectionName\": \"ฝ่าย SBP DSA\" }]\n}",
+          "err": [
+            "401"
+          ]
         }
       ]
     },
@@ -2475,6 +2618,239 @@
         },
         {
           "m": "GET",
+          "p": "/api/v1/roles",
+          "ref": "k2",
+          "refT": "K2 · 3.1.1",
+          "roles": "01 Admin, 02 HQ",
+          "sum": "รายการ Role ทั้งหมด (ตารางกลุ่มผู้ใช้งานในหน้าจอ 3.1.1 และ dropdown ที่อื่น)",
+          "flow": [
+            "อ่าน roles ทั้งหมดเรียงตาม role_code"
+          ],
+          "db": [
+            [
+              "roles",
+              "R",
+              "role_code · role_name · role_desc · is_system"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"items\": [{ \"roleCode\": \"01\", \"roleName\": \"Admin\", \"roleDesc\": \"ผู้ดูแลระบบ BPM ...\", \"isSystem\": true }]\n}",
+          "err": [
+            "401",
+            "403"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/roles",
+          "ref": "new",
+          "refT": "ใหม่ · หน้าจอ 3.1.1",
+          "roles": "01 Admin, 02 HQ",
+          "sum": "เพิ่ม Role ใหม่ — ระบบสร้างสิทธิ์เมนูเริ่มต้นเป็น \"ไม่มีสิทธิ์\" ทุกเมนู",
+          "flow": [
+            "validate role_code ไม่ซ้ำ",
+            "insert roles (is_system = false)",
+            "insert menu_permissions ทุกเมนู can_access = false",
+            "บันทึก audit_logs"
+          ],
+          "db": [
+            [
+              "roles",
+              "W",
+              "role ใหม่"
+            ],
+            [
+              "menu_permissions",
+              "W",
+              "สิทธิ์เริ่มต้น false ทุกเมนู"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit การเพิ่ม"
+            ]
+          ],
+          "req": "{\n  \"roleCode\": \"11\",\n  \"roleName\": \"Zone Viewer\",\n  \"roleDesc\": \"ดูเอกสารเฉพาะภาคของตน\"\n}",
+          "res": "201 Created",
+          "err": [
+            "409 — รหัส Role ซ้ำกับที่มีอยู่",
+            "403"
+          ]
+        },
+        {
+          "m": "PUT",
+          "p": "/api/v1/roles/{roleCode}",
+          "ref": "new",
+          "refT": "ใหม่ · หน้าจอ 3.1.1",
+          "roles": "01 Admin, 02 HQ",
+          "sum": "แก้ชื่อ/คำอธิบาย Role — ต้องระบุเหตุผล บันทึก audit เสมอ",
+          "flow": [
+            "ตรวจ role มีอยู่",
+            "update roles (role_code ของ role ระบบแก้ไม่ได้)",
+            "บันทึก audit_logs (ค่าเดิม/ใหม่ + เหตุผล)"
+          ],
+          "db": [
+            [
+              "roles",
+              "W",
+              "ชื่อ/คำอธิบายใหม่"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit การแก้ไข"
+            ]
+          ],
+          "req": "{\n  \"roleName\": \"Report Admin\",\n  \"roleDesc\": \"สำหรับดูเมนูรายงานทุกภาค\",\n  \"reason\": \"ขยายขอบเขตการดูรายงาน\"\n}",
+          "res": "200 OK",
+          "err": [
+            "404 — ไม่พบ Role",
+            "403"
+          ]
+        },
+        {
+          "m": "DELETE",
+          "p": "/api/v1/roles/{roleCode}",
+          "ref": "new",
+          "refT": "ใหม่ · หน้าจอ 3.1.1",
+          "roles": "01 Admin, 02 HQ",
+          "sum": "ลบ Role — ลบไม่ได้ถ้าเป็น Role ระบบ (is_system) หรือยังมีผู้ใช้อ้างอยู่",
+          "flow": [
+            "ตรวจ is_system = false และไม่มี user_accounts อ้างถึง",
+            "ลบ menu_permissions ของ role ทั้งหมด แล้วลบ roles",
+            "บันทึก audit_logs พร้อมเหตุผล"
+          ],
+          "db": [
+            [
+              "roles",
+              "W",
+              "ลบ role"
+            ],
+            [
+              "menu_permissions",
+              "W",
+              "ลบสิทธิ์ของ role (cascade)"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit การลบ"
+            ]
+          ],
+          "req": "{ \"reason\": \"ยุบรวมกับ Role 04\" }",
+          "res": "204 No Content",
+          "err": [
+            "409 — Role หลักของระบบ (00–10) ลบไม่ได้",
+            "409 — ยังมีผู้ใช้อยู่ใน Role นี้ ลบไม่ได้",
+            "403"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/menus",
+          "ref": "new",
+          "refT": "ใหม่ · หน้าจอ 3.1.1",
+          "roles": "01 Admin, 02 HQ",
+          "sum": "เพิ่มเมนูใหม่เข้าระบบ — สิทธิ์เริ่มต้นเป็น \"ไม่มีสิทธิ์\" ทุก Role",
+          "flow": [
+            "validate ชื่อเมนูไม่ว่าง / menu_group อยู่ในเซ็ต MAIN, MASTER",
+            "insert menus (running menu_code + sort_order ท้ายกลุ่ม)",
+            "insert menu_permissions ทุก role can_access = false",
+            "บันทึก audit_logs"
+          ],
+          "db": [
+            [
+              "menus",
+              "W",
+              "เมนูใหม่ (menu_group + sort_order)"
+            ],
+            [
+              "menu_permissions",
+              "W",
+              "สิทธิ์เริ่มต้น false ทุก role"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit การเพิ่ม"
+            ]
+          ],
+          "req": "{\n  \"menuName\": \"รายงานผลชดเชยรายเดือน\",\n  \"menuGroup\": \"MAIN\"\n}",
+          "res": "201 Created\n{ \"menuCode\": \"M07\" }",
+          "err": [
+            "422 — กรุณาระบุชื่อเมนู",
+            "403"
+          ]
+        },
+        {
+          "m": "PUT",
+          "p": "/api/v1/menus/{menuCode}",
+          "ref": "new",
+          "refT": "ใหม่ · หน้าจอ 3.1.1",
+          "roles": "01 Admin, 02 HQ",
+          "sum": "แก้ชื่อ/กลุ่ม/ลำดับเมนู — ต้องระบุเหตุผล บันทึก audit เสมอ",
+          "flow": [
+            "ตรวจเมนูมีอยู่",
+            "update menus",
+            "บันทึก audit_logs (ค่าเดิม/ใหม่ + เหตุผล)"
+          ],
+          "db": [
+            [
+              "menus",
+              "W",
+              "ชื่อ/กลุ่ม/ลำดับใหม่"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit การแก้ไข"
+            ]
+          ],
+          "req": "{\n  \"menuName\": \"รายงานสรุปสถานะ (ใหม่)\",\n  \"sortOrder\": 5,\n  \"reason\": \"ปรับชื่อให้ตรงรายงานฉบับปรับปรุง\"\n}",
+          "res": "200 OK",
+          "err": [
+            "404 — ไม่พบเมนู",
+            "403"
+          ]
+        },
+        {
+          "m": "DELETE",
+          "p": "/api/v1/menus/{menuCode}",
+          "ref": "new",
+          "refT": "ใหม่ · หน้าจอ 3.1.1",
+          "roles": "01 Admin, 02 HQ",
+          "sum": "ลบเมนูพร้อมสิทธิ์ทุก Role ของเมนูนั้น (cascade) — เมนูระบบลบไม่ได้",
+          "flow": [
+            "ตรวจ is_system = false",
+            "ลบ menu_permissions ของเมนู แล้วลบ menus",
+            "บันทึก audit_logs พร้อมเหตุผล"
+          ],
+          "db": [
+            [
+              "menus",
+              "W",
+              "ลบเมนู"
+            ],
+            [
+              "menu_permissions",
+              "W",
+              "ลบสิทธิ์ทุก role ของเมนู (cascade)"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit การลบ"
+            ]
+          ],
+          "req": "{ \"reason\": \"ยุบรวมกับเมนูรายงานสรุปสถานะ\" }",
+          "res": "204 No Content",
+          "err": [
+            "409 — เมนูหลักของระบบลบไม่ได้",
+            "403"
+          ]
+        },
+        {
+          "m": "GET",
           "p": "/api/v1/audit-logs",
           "ref": "k2",
           "refT": "K2 · 3.1.8 / 3.1.9",
@@ -2501,6 +2877,322 @@
       ]
     },
     {
+      "name": "System Config (Global)",
+      "refT": "ใหม่ · system_configs",
+      "eps": [
+        {
+          "m": "GET",
+          "p": "/api/v1/configs",
+          "ref": "new",
+          "refT": "ใหม่ · Global Config",
+          "roles": "01 Admin",
+          "sum": "รายการค่ากำหนดกลางทั้งหมด กรองตามหมวด/คำค้นได้ (หน้าจอ system-config.html)",
+          "flow": [
+            "query system_configs ตาม category / คำค้น",
+            "คืนครบทุก field รวม value_type · unit · is_editable"
+          ],
+          "db": [
+            [
+              "system_configs",
+              "R",
+              "ค่ากำหนดกลางทั้งหมด (ตารางใหม่)"
+            ]
+          ],
+          "req": "Query: ?category=WORKFLOW&q=escalation",
+          "res": "{\n  \"items\": [{\n    \"configKey\": \"workflow.escalation_days\",\n    \"category\": \"WORKFLOW\",\n    \"value\": \"[30, 45, 60]\",\n    \"valueType\": \"JSON\",\n    \"unit\": \"วัน\",\n    \"description\": \"ลำดับวัน escalation งานค้าง\",\n    \"isEditable\": true\n  }]\n}",
+          "err": [
+            "401",
+            "403"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/configs/{key}",
+          "ref": "new",
+          "refT": "ใหม่ · Global Config",
+          "roles": "ทุก role (อ่าน) / service token",
+          "sum": "อ่านค่ากำหนดรายตัว — เส้นที่ทุก service เรียกตอนใช้งานจริง พร้อม cache 5 นาที",
+          "flow": [
+            "อ่าน system_configs ด้วย config_key",
+            "ตอบพร้อม header Cache-Control (TTL 5 นาที) — service ฝั่งเรียก cache ตาม",
+            "ค่า BOOLEAN/NUMBER/JSON ตอบเป็น typed value ตาม value_type ไม่ใช่ string ล้วน"
+          ],
+          "db": [
+            [
+              "system_configs",
+              "R",
+              "ค่ารายตัว"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"configKey\": \"workflow.avp_amount_threshold\",\n  \"value\": 100000,\n  \"valueType\": \"NUMBER\",\n  \"unit\": \"บาท\"\n}",
+          "err": [
+            "404 — ไม่พบ config key นี้",
+            "401"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/configs",
+          "ref": "new",
+          "refT": "ใหม่ · Global Config",
+          "roles": "01 Admin",
+          "sum": "เพิ่มค่ากำหนดใหม่ — key ห้ามซ้ำ และ validate ค่าตาม value_type",
+          "flow": [
+            "validate config_key รูปแบบ dot notation และไม่ซ้ำ",
+            "validate ค่า parse ได้ตาม value_type (NUMBER/BOOLEAN/JSON/CRON)",
+            "ปฏิเสธค่าที่เป็น secret (รหัสผ่าน/API key ต้องอยู่ Secret Manager)",
+            "insert + บันทึก audit_logs (ADD)"
+          ],
+          "db": [
+            [
+              "system_configs",
+              "W",
+              "แถวใหม่"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit การเพิ่ม"
+            ]
+          ],
+          "req": "{\n  \"configKey\": \"report.export_max_rows\",\n  \"category\": \"DOCUMENT\",\n  \"value\": \"50000\",\n  \"valueType\": \"NUMBER\",\n  \"unit\": \"แถว\",\n  \"description\": \"จำนวนแถวสูงสุดต่อไฟล์ export\"\n}",
+          "res": "201 Created",
+          "err": [
+            "409 — Config Key นี้มีอยู่แล้ว",
+            "422 — ค่าไม่ตรงกับชนิดข้อมูล (value_type)"
+          ]
+        },
+        {
+          "m": "PUT",
+          "p": "/api/v1/configs/{key}",
+          "ref": "new",
+          "refT": "ใหม่ · Global Config",
+          "roles": "01 Admin",
+          "sum": "แก้ค่ากำหนด — ต้องระบุเหตุผล · ค่าคงที่ทางธุรกิจ (is_editable=false) แก้ผ่าน API ไม่ได้",
+          "flow": [
+            "ตรวจ is_editable — ค่าคงที่ทางธุรกิจ (รัศมี · วงเงิน 100,000 · เกณฑ์ 60 วัน · เกณฑ์ −10 ตามข้อ 8.2) ตอบ 422",
+            "validate ค่าใหม่ตาม value_type + ต้องระบุ reason เสมอ",
+            "update + บันทึก audit_logs (EDIT · old_value → new_value · เหตุผล)",
+            "broadcast invalidate cache ให้ทุก service อ่านค่าใหม่ทันที"
+          ],
+          "db": [
+            [
+              "system_configs",
+              "W",
+              "ค่าใหม่"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit ผู้แก้ + ค่าเดิม/ใหม่ + เหตุผล"
+            ]
+          ],
+          "req": "{\n  \"value\": \"[30, 45, 60]\",\n  \"reason\": \"เพิ่มขั้นเตือน 45 วันตามมติที่ประชุม\"   // บังคับ\n}",
+          "res": "200 OK",
+          "err": [
+            "422 — key นี้เป็นค่าคงที่ทางธุรกิจ แก้ผ่าน API ไม่ได้",
+            "422 — กรุณาระบุเหตุผลการแก้ไขข้อมูล",
+            "404"
+          ]
+        },
+        {
+          "m": "DELETE",
+          "p": "/api/v1/configs/{key}",
+          "ref": "new",
+          "refT": "ใหม่ · Global Config",
+          "roles": "01 Admin",
+          "sum": "ลบค่ากำหนด — ลบได้เฉพาะ key ที่ไม่ใช่ค่าระบบ และต้องระบุเหตุผล",
+          "flow": [
+            "ตรวจ is_editable = true (ค่าคงที่ทางธุรกิจ/ค่าระบบลบไม่ได้)",
+            "ลบ + บันทึก audit_logs (DELETE + เหตุผล)",
+            "broadcast invalidate cache"
+          ],
+          "db": [
+            [
+              "system_configs",
+              "W",
+              "ลบแถว"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit + เหตุผล"
+            ]
+          ],
+          "req": "{ \"reason\": \"เลิกใช้หลังย้ายไปกำหนดใน job_configs\" }",
+          "res": "204 No Content",
+          "err": [
+            "409 — ค่าระบบ/ค่าคงที่ทางธุรกิจ ลบไม่ได้",
+            "404"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Email Template (Notification)",
+      "refT": "ใหม่ · email_templates",
+      "eps": [
+        {
+          "m": "GET",
+          "p": "/api/v1/email-templates",
+          "ref": "new",
+          "refT": "ใหม่ · Notification",
+          "roles": "01 Admin",
+          "sum": "รายการ 8 email template (EM-01–08) พร้อมสถานะว่าถูกแก้จาก Default หรือยัง (หน้าจอ plan-email.html)",
+          "flow": [
+            "query email_templates ทั้ง 8 รหัส",
+            "join จุดส่งใน flow (status_email_rules) เพื่อแสดงผู้รับ TO/CC ที่ล็อกไว้",
+            "คืน subject/body ปัจจุบัน + is_customized"
+          ],
+          "db": [
+            [
+              "email_templates",
+              "R",
+              "เนื้อหา template ทั้งหมด (ตารางใหม่)"
+            ],
+            [
+              "status_email_rules",
+              "R",
+              "ผู้รับ TO/CC ที่ล็อกต่อสถานะ"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"items\": [{\n    \"templateCode\": \"EM-01\",\n    \"name\": \"แจ้งผู้ดำเนินการลำดับถัดไป\",\n    \"subject\": \"[SBPGI] เอกสารประกันรายได้ {{doc_no}} — {{next_status}}\",\n    \"isCustomized\": false\n  }]\n}",
+          "err": [
+            "401",
+            "403"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/email-templates/{code}",
+          "ref": "new",
+          "refT": "ใหม่ · Notification",
+          "roles": "01 Admin",
+          "sum": "อ่าน template รายตัว (EM-01–08) พร้อมชุดตัวแปร merge ที่ใช้ได้ในฉบับนั้น",
+          "flow": [
+            "อ่าน email_templates ด้วย template_code",
+            "คืน subject/body + รายการตัวแปร merge ที่รองรับ + ผู้รับ TO/CC (อ่านอย่างเดียว)"
+          ],
+          "db": [
+            [
+              "email_templates",
+              "R",
+              "เนื้อหารายตัว"
+            ],
+            [
+              "status_email_rules",
+              "R",
+              "ผู้รับ TO/CC (ล็อก)"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "{\n  \"templateCode\": \"EM-01\",\n  \"subject\": \"[SBPGI] เอกสารประกันรายได้ {{doc_no}} — {{next_status}}\",\n  \"body\": \"<p>เรียน {{next_actor}} ...</p>\",\n  \"variables\": [\"doc_no\", \"store_code\", \"next_status\", \"doc_url\"],\n  \"lockedRecipients\": { \"to\": \"ผู้ดำเนินการลำดับถัดไป\", \"cc\": \"ตาม status_email_rules\" }\n}",
+          "err": [
+            "404 — ไม่พบ template code นี้",
+            "401"
+          ]
+        },
+        {
+          "m": "PUT",
+          "p": "/api/v1/email-templates/{code}",
+          "ref": "new",
+          "refT": "ใหม่ · Notification",
+          "roles": "01 Admin",
+          "sum": "บันทึกเนื้อหา template — แก้ได้เฉพาะ subject/body และตัวแปร · ผู้รับ From/To/Cc แก้ผ่านเส้นนี้ไม่ได้ (ล็อกตาม status_email_rules)",
+          "flow": [
+            "validate ใช้เฉพาะตัวแปร merge ที่รองรับของ template นั้น",
+            "ปฏิเสธการแก้ From/To/Cc — ผู้รับกำหนดที่ status_email_rules เท่านั้น",
+            "update email_templates + set is_customized = true",
+            "บันทึก audit_logs (EDIT · old → new · เหตุผล)"
+          ],
+          "db": [
+            [
+              "email_templates",
+              "W",
+              "subject/body ใหม่"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit ผู้แก้ + ค่าเดิม/ใหม่ + เหตุผล"
+            ]
+          ],
+          "req": "{\n  \"subject\": \"[SBPGI] เอกสาร {{doc_no}} — {{next_status}}\",\n  \"body\": \"<p>เรียน {{next_actor}} ...</p>\",\n  \"reason\": \"เพิ่มลิงก์เปิดเอกสาร {{doc_url}}\"   // บังคับ\n}",
+          "res": "200 OK",
+          "err": [
+            "422 — ใช้ตัวแปร merge ที่ไม่รองรับใน template นี้",
+            "422 — แก้ผู้รับ From/To/Cc ผ่านเส้นนี้ไม่ได้",
+            "422 — กรุณาระบุเหตุผลการแก้ไข",
+            "404"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/email-templates/{code}/reset",
+          "ref": "new",
+          "refT": "ใหม่ · Notification",
+          "roles": "01 Admin",
+          "sum": "รีเซ็ต template ฉบับเดียวกลับเป็น Default (ปุ่ม \"รีเซ็ต\" รายตัวในหน้าจอ)",
+          "flow": [
+            "คืน subject/body เป็นชุด Default ของ template นั้น",
+            "set is_customized = false",
+            "บันทึก audit_logs (RESET + เหตุผล)"
+          ],
+          "db": [
+            [
+              "email_templates",
+              "W",
+              "คืนค่า Default"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit การรีเซ็ต"
+            ]
+          ],
+          "req": "{ \"reason\": \"ยกเลิกถ้อยคำที่ทดลองปรับ\" }",
+          "res": "200 OK",
+          "err": [
+            "404 — ไม่พบ template code นี้",
+            "401"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/email-templates/reset-all",
+          "ref": "new",
+          "refT": "ใหม่ · Notification",
+          "roles": "01 Admin",
+          "sum": "รีเซ็ต template ทั้ง 8 ฉบับกลับเป็น Default พร้อมกัน (ปุ่ม \"รีเซ็ตทั้งหมดเป็น Default\")",
+          "flow": [
+            "คืน subject/body ของทุก template เป็นชุด Default",
+            "set is_customized = false ทุกฉบับ",
+            "บันทึก audit_logs หนึ่งรายการต่อ template ที่เปลี่ยนจริง"
+          ],
+          "db": [
+            [
+              "email_templates",
+              "W",
+              "คืนค่า Default ทั้ง 8"
+            ],
+            [
+              "audit_logs",
+              "W",
+              "audit ต่อ template ที่เปลี่ยน"
+            ]
+          ],
+          "req": "{ \"reason\": \"ล้างค่าทดสอบทั้งหมดก่อนส่งมอบ\" }",
+          "res": "200 OK\n{ \"resetCount\": 3 }",
+          "err": [
+            "401",
+            "403"
+          ]
+        }
+      ]
+    },
+    {
       "name": "รายงาน",
       "refT": "K2 · SRS 3.1.7",
       "eps": [
@@ -2514,6 +3206,7 @@
           "flow": [
             "validate ปี (ไม่ระบุ → 400)",
             "query compensation_documents + compensation_histories ตามเงื่อนไข",
+            "กรอง result (APPROVE/REJECT/PENDING) จากผลพิจารณาล่าสุดใน consideration_logs — filter \"อนุมัติ/ไม่อนุมัติ\" หน้า k2-report",
             "คืนแบบแบ่งหน้า 19 คอลัมน์ตามหน้าจอ k2-report.html"
           ],
           "db": [
@@ -2531,9 +3224,14 @@
               "impacted_stores",
               "R",
               "ข้อมูลร้าน"
+            ],
+            [
+              "consideration_logs",
+              "R",
+              "ผลพิจารณาล่าสุด (กรองอนุมัติ/ไม่อนุมัติ)"
             ]
           ],
-          "req": "Query: ?year=2569&month=6&zone=RS&status=END&page=1",
+          "req": "Query: ?year=2569&month=6&zone=RS&status=END&result=APPROVE&page=1\n(result = APPROVE | REJECT | PENDING — อนุมัติ / ไม่อนุมัติ / ยังไม่พิจารณา)",
           "res": "{\n  \"page\": 1, \"total\": 212,\n  \"items\": [{ \"docNo\": \"2569/00098\", \"storeCode\": \"00788\", \"status\": \"เสร็จสิ้นดำเนินการ\", \"compensateAmount\": 85000.00, ... }]\n}",
           "err": [
             "400 — กรุณาระบุปีที่ต้องการค้นหา"
@@ -2557,7 +3255,7 @@
               "ข้อมูลชุดเดียวกับรายงาน"
             ]
           ],
-          "req": "Query: ?year=2569&month=6",
+          "req": "Query: ?year=2569&month=6&result=APPROVE\n(เงื่อนไขชุดเดียวกับเส้นค้นหา รวม result อนุมัติ/ไม่อนุมัติ)",
           "res": "200 OK\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\nContent-Disposition: attachment; filename=\"status-summary-2569-06.xlsx\"",
           "err": [
             "400 — ไม่ระบุปี"

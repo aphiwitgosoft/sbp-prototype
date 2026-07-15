@@ -1,0 +1,106 @@
+import type { FcSpec } from '@/components/charts/FlowchartSVG';
+
+/** flowchart spec ของ 4 endpoint ซับซ้อน (พอร์ตจาก plan-api.html FLOWCHART_BY_PATH) */
+export const FLOWCHARTS: Record<string, FcSpec> = {
+  'POST /api/v1/documents/{docNo}/actions': {
+    w: 720, h: 724,
+    nodes: [
+      { id: 't1', type: 'term', x: 240, y: 22, w: 320, text: 'POST · ส่งผลพิจารณา (เจ้าของงานปัจจุบัน)' },
+      { id: 'd1', type: 'dec', x: 240, y: 112, text: 'เป็นเจ้าของงานขั้นนี้?' },
+      { id: 'e403', type: 'err', x: 540, y: 112, w: 240, text: '403 · ไม่ใช่เจ้าของงานขั้นนี้' },
+      { id: 'd2', type: 'dec', x: 240, y: 212, text: 'เลือกผลการพิจารณาแล้ว?' },
+      { id: 'e422', type: 'err', x: 560, y: 212, w: 290, text: '422 · “ท่านยังไม่เลือกผลการพิจารณา…”' },
+      { id: 'p1', type: 'proc', x: 240, y: 300, w: 340, text: 'ปิด task เดิม + INSERT consideration_logs' },
+      { id: 'd3', type: 'dec', x: 240, y: 404, w: 300, h: 78, text: 'section = 06\nและผล = ไม่ชดเชย/หยุดชดเชย?' },
+      { id: 'endE', type: 'termOk', x: 560, y: 404, w: 240, text: 'เสร็จสิ้นดำเนินการ (END)' },
+      { id: 'p2', type: 'proc', x: 240, y: 514, w: 400, h: 66, text: '> 100,000 → AVP OPT (03)\n≤ 100,000 → ฝ่ายบัญชี SBP (04)\nอื่น ๆ → ขั้นถัดไปตามลำดับ' },
+      { id: 'p3', type: 'proc', x: 240, y: 612, w: 400, h: 58, text: 'เปิด workflow_tasks ใหม่ + UPDATE สถานะ\n+ ส่งอีเมล (status_email_rules)' },
+      { id: 'end2', type: 'termOk', x: 240, y: 694, w: 320, text: '200 · nextSection / status' },
+    ],
+    edges: [
+      { from: 't1', to: 'd1' },
+      { from: 'd1', to: 'e403', dir: 'right', label: 'ไม่' },
+      { from: 'd1', to: 'd2', label: 'ใช่' },
+      { from: 'd2', to: 'e422', dir: 'right', label: 'ไม่' },
+      { from: 'd2', to: 'p1', label: 'ใช่' },
+      { from: 'p1', to: 'd3' },
+      { from: 'd3', to: 'endE', dir: 'right', label: 'ใช่' },
+      { from: 'd3', to: 'p2', label: 'ไม่' },
+      { from: 'p2', to: 'p3' },
+      { from: 'p3', to: 'end2' },
+    ],
+  },
+
+  'POST /api/v1/workflows/instances': {
+    w: 720, h: 734,
+    nodes: [
+      { id: 't1', type: 'term', x: 250, y: 22, w: 340, text: 'Batch Scheduler เรียก (service token)' },
+      { id: 'd1', type: 'dec', x: 250, y: 110, text: 'service token ถูกต้อง?' },
+      { id: 'e401', type: 'err', x: 560, y: 110, w: 220, text: '401 · service token ไม่ถูกต้อง' },
+      { id: 'd2', type: 'dec', x: 250, y: 214, w: 300, h: 78, text: 'branch type ∈\n{FAM,FB1,FC1,FB2,FVB,FVC}?' },
+      { id: 'pN', type: 'proc', x: 560, y: 214, w: 260, h: 56, text: 'set workflow_generation_status = N\n→ ไม่สร้าง flow' },
+      { id: 'd3', type: 'dec', x: 250, y: 336, w: 340, h: 98, text: 'ผ่านเกณฑ์ที่เหลือ?\nopt_dv_user_id ≠ ว่าง · new ≠ impacted juristic\ngrowth_rate_diff ≤ −10 · sales_status ∈ {Y,N}' },
+      { id: 'pW', type: 'proc', x: 590, y: 336, w: 240, h: 56, text: 'คง workflow_generation_status = W\n→ 422 (รอบถัดไปลองใหม่)' },
+      { id: 'p1', type: 'proc', x: 250, y: 474, w: 400, h: 66, text: 'สร้าง compensation_documents (ถ้ายังไม่มี)\n+ workflow_instances + workflow_tasks (06)' },
+      { id: 'p2', type: 'proc', x: 250, y: 578, w: 400, h: 56, text: 'set workflow_generation_status = Y\n+ ส่งอีเมลสรุปราย DV' },
+      { id: 'end', type: 'termOk', x: 250, y: 672, w: 380, text: '201 · instanceId / docNo / flagGenFlow = Y' },
+    ],
+    edges: [
+      { from: 't1', to: 'd1' },
+      { from: 'd1', to: 'e401', dir: 'right', label: 'ไม่' },
+      { from: 'd1', to: 'd2', label: 'ใช่' },
+      { from: 'd2', to: 'pN', dir: 'right', label: 'ไม่' },
+      { from: 'd2', to: 'd3', label: 'ใช่' },
+      { from: 'd3', to: 'pW', dir: 'right', label: 'ไม่' },
+      { from: 'd3', to: 'p1', label: 'ใช่' },
+      { from: 'p1', to: 'p2' },
+      { from: 'p2', to: 'end' },
+    ],
+  },
+
+  'POST /api/v1/documents': {
+    w: 680, h: 604,
+    nodes: [
+      { id: 't1', type: 'term', x: 230, y: 22, w: 320, text: 'รับคำขอสร้างเอกสาร (MANUAL / FS)' },
+      { id: 'd1', type: 'dec', x: 230, y: 112, w: 300, h: 74, text: 'ร้าน + เดือนที่กระทบ\nมีเอกสารอยู่แล้ว?' },
+      { id: 'e409', type: 'err', x: 520, y: 112, w: 250, text: '409 · ร้าน/เดือนนี้มีเอกสารแล้ว' },
+      { id: 'd2', type: 'dec', x: 230, y: 226, text: 'ข้อมูลบังคับครบ?' },
+      { id: 'e422', type: 'err', x: 500, y: 226, w: 210, text: '422 · ข้อมูลบังคับไม่ครบ' },
+      { id: 'p1', type: 'proc', x: 230, y: 318, w: 360, text: 'ออกเลขที่ YYYY/xxxxx (running ต่อปี เริ่ม 00001)' },
+      { id: 'p2', type: 'proc', x: 230, y: 404, w: 380, h: 58, text: 'INSERT compensation_documents\n+ workflow_instances + workflow_tasks (06)' },
+      { id: 'p3', type: 'proc', x: 230, y: 498, w: 340, text: 'ส่งอีเมลตาม status_email_rules' },
+      { id: 'end', type: 'termOk', x: 230, y: 568, w: 220, text: '201 · docNo' },
+    ],
+    edges: [
+      { from: 't1', to: 'd1' },
+      { from: 'd1', to: 'e409', dir: 'right', label: 'ใช่' },
+      { from: 'd1', to: 'd2', label: 'ไม่' },
+      { from: 'd2', to: 'e422', dir: 'right', label: 'ไม่' },
+      { from: 'd2', to: 'p1', label: 'ใช่' },
+      { from: 'p1', to: 'p2' },
+      { from: 'p2', to: 'p3' },
+      { from: 'p3', to: 'end' },
+    ],
+  },
+
+  'POST /api/v1/jobs/{jobNo}/run': {
+    w: 620, h: 524,
+    nodes: [
+      { id: 't1', type: 'term', x: 210, y: 22, w: 320, text: 'POST · สั่งรัน Job นอกรอบ (Admin)' },
+      { id: 'd1', type: 'dec', x: 210, y: 112, text: 'Job เปิดใช้งานอยู่?' },
+      { id: 'e422', type: 'err', x: 470, y: 112, w: 220, text: '422 · Job ถูกปิดใช้งาน' },
+      { id: 'd2', type: 'dec', x: 210, y: 218, w: 260, h: 74, text: 'มีรอบสถานะ RUNNING\nของ Job นี้อยู่?' },
+      { id: 'e409', type: 'err', x: 480, y: 218, w: 240, text: '409 · ห้ามรันซ้อน (Job 1 · temp table)' },
+      { id: 'p1', type: 'proc', x: 210, y: 336, w: 340, h: 56, text: 'INSERT job_run_histories (RUNNING)\n+ enqueue Batch Scheduler' },
+      { id: 'end', type: 'termOk', x: 210, y: 436, w: 320, text: '202 · ตอบ runId (ให้ FE poll)' },
+    ],
+    edges: [
+      { from: 't1', to: 'd1' },
+      { from: 'd1', to: 'e422', dir: 'right', label: 'ไม่' },
+      { from: 'd1', to: 'd2', label: 'ใช่' },
+      { from: 'd2', to: 'e409', dir: 'right', label: 'ใช่' },
+      { from: 'd2', to: 'p1', label: 'ไม่' },
+      { from: 'p1', to: 'end' },
+    ],
+  },
+};

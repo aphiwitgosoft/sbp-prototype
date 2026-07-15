@@ -62,12 +62,39 @@ SCREENSHOT_SLICE_DIR = OUT / "screenshots" / "slices"
 
 TEMPLATE_CODE = "RDM-TEM-SRS Template-3.1"
 DOC_VERSION = "3.2 Draft"
-RELEASE_DATE = "02/07/2026"
+RELEASE_DATE = "07/07/2026"
+TARGET_TABLE_COUNT = 34
+
+SCREEN_LABELS = {
+    "index.html": "Overview / Dashboard",
+    "flow-fgi.html": "Flow FGI/FCS",
+    "k2-flow.html": "Flow K2",
+    "plan-flow.html": "Integrated Target Flow",
+    "fgi-database.html": "Database FGI/FCS",
+    "k2-database.html": "Database K2",
+    "plan-database.html": "Target Database Schema",
+    "job-batch.html": "Batch Job Console",
+    "k2-create.html": "Create Document",
+    "k2-list-waiting.html": "Task Inbox",
+    "k2-list-related.html": "Related Documents",
+    "k2-list-abnormal.html": "Abnormal Assignment",
+    "k2-document.html": "Document Detail",
+    "k2-report.html": "Status Report",
+    "k2-operators.html": "Operator Master",
+    "k2-factors.html": "External Factor Master",
+    "k2-permissions.html": "RBAC Matrix",
+    "system-config.html": "Global Config",
+    "plan-email.html": "Email Template",
+    "plan-api.html": "API Specification",
+}
 
 
 def clean(value: Any) -> str:
     text = "" if value is None else str(value)
     text = html_lib.unescape(text)
+    for filename, label in SCREEN_LABELS.items():
+        text = re.sub(rf"\(\s*{re.escape(filename)}\s*\)", f"({label})", text)
+        text = text.replace(filename, label)
     replacements = {
         "\u2010": "-",
         "\u2011": "-",
@@ -219,6 +246,7 @@ class Block:
 class Model:
     def __init__(self):
         self.blocks: list[Block] = []
+        self.figure_counter = 0
 
     def heading(self, text: str, level: int = 1):
         self.blocks.append(Block("heading", clean(text), level=level))
@@ -264,11 +292,15 @@ class Model:
     def image(self, path: Path, caption: str = ""):
         self.blocks.append(Block("image", path=path, caption=caption))
 
+    def figure(self, path: Path, title: str):
+        self.figure_counter += 1
+        self.image(path, f"รูปที่ {self.figure_counter}: {clean(title)}")
+
 
 def screenshot_slices(html_file: str, max_height: int = 1500) -> list[Path]:
     source = SCREENSHOT_FULL_DIR / html_file.replace(".html", ".png")
     if not source.exists():
-        raise RuntimeError(f"Missing screen capture: {source}")
+        raise RuntimeError(f"Missing captured image: {source}")
     SCREENSHOT_SLICE_DIR.mkdir(parents=True, exist_ok=True)
     stem = source.stem
     with PILImage.open(source) as image:
@@ -287,14 +319,11 @@ def screenshot_slices(html_file: str, max_height: int = 1500) -> list[Path]:
 
 def add_screen_capture(model: Model, html_file: str, title: str):
     slices = screenshot_slices(html_file)
-    model.note(
-        f"PROTO Screen Capture: {title} ({html_file}) - ภาพจาก localhost ที่ viewport 1440 px "
-        f"แบ่งตามความสูงเนื้อหาจริงจำนวน {len(slices)} ส่วน"
-    )
     for index, image_path in enumerate(slices, 1):
-        model.image(
+        suffix = f" - ส่วนที่ {index}/{len(slices)}" if len(slices) > 1 else ""
+        model.figure(
             image_path,
-            f"Screen Capture: {title} - ส่วนที่ {index}/{len(slices)} ({html_file})",
+            f"{title}{suffix}",
         )
 
 
@@ -302,6 +331,8 @@ def build_model() -> Model:
     data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
     jobs = data["jobs"]
     api_groups = data["apiGroups"]
+    endpoint_total = sum(len(group["eps"]) for group in api_groups)
+    api_group_total = len(api_groups)
     db_rows = parse_plan_database()
     fgi_entities = parse_db_entities("fgi-database.html", ("db-entity",))
     k2_entities = parse_db_entities("k2-database.html", ("ent",))
@@ -312,7 +343,7 @@ def build_model() -> Model:
     model.heading("1. SRS Overview", 1)
     model.heading("1.1 Purpose", 2)
     model.para(
-        "เอกสารนี้กำหนดความต้องการของระบบประกันรายได้ SBPGI แบบรวม โดยสกัดจากต้นแบบ HTML "
+        "เอกสารนี้กำหนดความต้องการของระบบประกันรายได้ SBPGI แบบรวม โดยสกัดจากต้นแบบหน้าจอ "
         "เอกสาร SRS K2 Version 3.1 เอกสาร Batch Job Technical Document Version 4.0 "
         "และเอกสารออกแบบ Flow/Database ที่อยู่ใน Repository เดียวกัน"
     )
@@ -325,8 +356,8 @@ def build_model() -> Model:
         ["Tag", "ความหมาย", "การใช้งาน"],
         [
             ["REQ", "ข้อกำหนดที่มีแหล่งอ้างอิงจาก SRS หรือเอกสาร Batch", "ต้องพัฒนาและทดสอบตามข้อความที่กำหนด"],
-            ["DES", "Target design ที่เพิ่มในหน้าจอ plan-flow / plan-database / plan-api", "ต้องผ่าน Architecture และ Business sign-off"],
-            ["PROTO", "พฤติกรรมหรือข้อมูลตัวอย่างใน HTML prototype", "ใช้ยืนยัน UX ไม่ใช่ข้อมูล Production"],
+            ["DES", "Target design ที่เพิ่มในหน้าจอ plan-flow / plan-database / plan-api / system-config / plan-email", "ต้องผ่าน Architecture และ Business sign-off"],
+            ["PROTO", "พฤติกรรมหรือข้อมูลตัวอย่างใน prototype", "ใช้ยืนยัน UX ไม่ใช่ข้อมูล Production"],
             ["OPEN", "ประเด็นขัดแย้งหรือยังไม่ตัดสินใจ", "ห้ามถือเป็นข้อยุติจนกว่าจะมีผู้อนุมัติ"],
         ],
         [0.12, 0.38, 0.5],
@@ -335,10 +366,11 @@ def build_model() -> Model:
     for text in [
         "REQ: RDM-SRS ประกันรายได้-K2 Version 3.1 เป็นแหล่งอ้างอิงหลักของหน้าจอและ workflow ฝั่ง K2",
         "REQ: FGI_FCS_Batch_Job_Technical_Document_Improved_v4.0 เป็นแหล่งอ้างอิงหลักของ Jobs 1-10 และ Job 8b",
-        "DES: workflow.md และ plan-flow.html เป็น Target flow ของระบบใหม่ที่รวม EAI และ K2 เข้า SBPGI",
-        "DES: database.md และ plan-database.html เป็น Target schema 30 ตาราง",
-        "DES: plan-api.html เป็น REST API target 39 endpoints",
-        "PROTO: HTML ทุกหน้าและ assets/sbp.js ใช้ยืนยัน fields, actions, modal schema, labels และ navigation",
+        "DES: เอกสาร workflow และหน้าจอ Flow เป็น Target flow ของระบบใหม่ที่รวม EAI และ K2 เข้า SBPGI",
+        f"DES: เอกสาร database และหน้าจอ Database เป็น Target schema {TARGET_TABLE_COUNT} ตาราง",
+        f"DES: หน้าจอ API Specification เป็น REST API target {endpoint_total} endpoints / {api_group_total} กลุ่ม",
+        "DES: หน้าจอ Global Config และ Email Template เป็นหน้าจอเสริมสำหรับค่ากำหนดกลางและ Notification Service",
+        "PROTO: Prototype ทุกหน้าจอและ shared shell ใช้ยืนยัน fields, actions, modal schema, labels และ navigation",
     ]:
         model.bullet(text)
 
@@ -353,7 +385,7 @@ def build_model() -> Model:
     model.table(
         ["Layer", "องค์ประกอบ", "หน้าที่"],
         [
-            ["Frontend", "Web SPA จากต้นแบบ HTML", "Dashboard, K2 forms, report, batch monitor และ administration"],
+            ["Frontend", "Web SPA จากต้นแบบหน้าจอ", "Dashboard, K2 forms, report, batch monitor และ administration"],
             ["Backend", "Auth/RBAC, Document, Workflow, Batch Scheduler, Interface, Report/Notification", "ให้บริการ REST API /api/v1 และ orchestration ภายใน"],
             ["Database", "Schema รวม Zone A/B/C", "เก็บ pipeline, เอกสาร/workflow, master/config และ audit"],
             ["External", "QSSI, ALLMAP, IAS/MIS, STA, SAP, SMTP", "คง file/SFTP/API ตามขอบเขตระบบภายนอก"],
@@ -451,7 +483,7 @@ def build_model() -> Model:
     if migration_rows:
         model.table(["Connection", "Legacy", "Target", "Source"], migration_rows, [0.22, 0.28, 0.35, 0.15])
     else:
-        model.para("รายละเอียดอ้างอิง plan-flow.html และ workflow.md")
+        model.para("รายละเอียดอ้างอิงเอกสาร workflow และหน้าจอ Flow")
     model.heading("3.1.6 Flow controls", 3)
     for rule in [
         "รายการที่ข้อมูลยอดขายไม่ครบ 60 วันต้องแสดงเป็นข้อมูลผิดปกติและแถวสีแดง",
@@ -462,7 +494,7 @@ def build_model() -> Model:
     ]:
         model.bullet(rule)
     if (ROOT / "Flow ประกันรายได้.png").exists():
-        model.image(ROOT / "Flow ประกันรายได้.png", "Figure 1: Approve Flow เดิม ใช้ประกอบการเทียบพฤติกรรม")
+        model.figure(ROOT / "Flow ประกันรายได้.png", "Approve Flow เดิม ใช้ประกอบการเทียบพฤติกรรม")
 
     model.pagebreak()
     model.heading("3.2 Database Requirements", 2)
@@ -471,7 +503,7 @@ def build_model() -> Model:
     add_screen_capture(model, "plan-database.html", "Database FGI/FCS + K2 - Target Schema")
     model.heading("3.2.1 Data architecture", 3)
     model.para(
-        "Target database เป็น schema รวม 30 ตาราง แบ่งเป็น Zone A: FGI/FCS impact pipeline, "
+        f"Target database เป็น schema รวม {TARGET_TABLE_COUNT} ตาราง แบ่งเป็น Zone A: FGI/FCS impact pipeline, "
         "Zone B: K2 documents/workflow และ Zone C: shared master/config/audit "
         "โดยใช้ชื่อ table/column แบบ English lower_snake_case"
     )
@@ -507,6 +539,8 @@ def build_model() -> Model:
         "doc_no ต้อง unique และรูปแบบ YYYY/xxxxx; running แยกต่อปี",
         "document_new_stores.compensation_percent รวมต่อเอกสารต้องเท่ากับ 100%",
         "ใช้ foreign key จริงระหว่าง compensation_documents.impact_process_id และ fgi_impact_processes.id",
+        "system_configs เป็นแหล่งค่ากำหนดกลางแบบ key-value; ค่าธุรกิจที่ is_editable=false แก้ผ่าน UI/API ไม่ได้",
+        "email_templates เก็บเฉพาะ subject/body และตัวแปร merge; ผู้รับ From/To/Cc ต้องอ้าง status_email_rules",
         "ใช้ enum/check constraint สำหรับ W/P/Y/N, Y/W/N, I/C/A/N/S/Z และ task status",
         "ใช้ optimistic locking กับเอกสาร/workflow ที่มีการแก้พร้อมกัน",
         "ทุก master mutation ต้องบันทึก audit_logs ค่าเดิม ค่าใหม่ เหตุผล ผู้แก้ และเวลา",
@@ -530,7 +564,7 @@ def build_model() -> Model:
     add_screen_capture(model, "job-batch.html", "Batch Job Console - Job 1 Detail")
     model.heading("3.3.1 Batch console", 3)
     model.para(
-        "หน้า job-batch.html เป็น Job Scheduler Console สำหรับ Admin แสดง pipeline A-E, รายการ 11 entry points, "
+        "หน้า Batch Job Console สำหรับ Admin แสดง pipeline A-E, รายการ 11 entry points, "
         "สถานะรอบล่าสุด/ถัดไป, เปิดปิดงาน, พารามิเตอร์, manual run, flow, database และ run history"
     )
     model.table(
@@ -719,10 +753,38 @@ def build_model() -> Model:
                 "การเปลี่ยนสิทธิ์ต้อง audit และมีผลกับ token/session ตามนโยบาย",
             ],
         },
+        {
+            "id": "SCR-11",
+            "file": "system-config.html",
+            "name": "ตั้งค่าระบบ (Global Config)",
+            "purpose": "จัดการค่ากำหนดกลางที่ใช้ร่วมทั้งระบบ เช่น รัศมีผลกระทบ เกณฑ์ข้อมูล วงเงินอนุมัติ token และ notification switch",
+            "actors": "Admin และผู้ดูแลระบบที่ได้รับมอบหมาย",
+            "rules": [
+                "config_key ต้องเป็น dot notation และห้ามซ้ำ",
+                "value_type ต้อง validate ค่า NUMBER, STRING, BOOLEAN, JSON หรือ CRON ก่อนบันทึก",
+                "ค่าที่ is_editable=false เป็นค่าคงที่ทางธุรกิจ แก้หรือลบผ่าน UI/API ไม่ได้",
+                "ห้ามเก็บ secret เช่น password, API key หรือ connection string ใน system_configs",
+                "ทุกการเพิ่ม แก้ ลบ และ invalidate cache ต้องบันทึก audit_logs พร้อมเหตุผล",
+            ],
+        },
+        {
+            "id": "SCR-12",
+            "file": "plan-email.html",
+            "name": "Email Template",
+            "purpose": "กำหนดเนื้อหาอีเมล 8 template ของ Notification Service และผูกจุดส่งกับ workflow/batch",
+            "actors": "Admin และผู้ดูแล notification",
+            "rules": [
+                "รองรับ template EM-01 ถึง EM-08 ครอบคลุม workflow transition, reminder, escalation, batch error และ STA ACK watchdog",
+                "แก้ไขได้เฉพาะ subject/body และตัวแปร merge ที่รองรับของ template นั้น",
+                "From/To/Cc ต้องล็อกตาม status_email_rules หรือ config ต่อ job ไม่ให้แก้ใน template",
+                "ต้องรีเซ็ตกลับ Default ได้ทั้งราย template และทั้งหมด",
+                "ทุกการแก้ไขหรือรีเซ็ตต้องบันทึก audit_logs พร้อมเหตุผล",
+            ],
+        },
     ]
     for screen in screens:
         inv = page_inventory(screen["file"])
-        model.heading(f"{screen['id']} {screen['name']} ({screen['file']})", 3)
+        model.heading(f"{screen['id']} {screen['name']}", 3)
         add_screen_capture(model, screen["file"], screen["name"])
         model.table(
             ["Item", "Requirement"],
@@ -743,10 +805,10 @@ def build_model() -> Model:
         model.heading("Business rules / acceptance", 4)
         for rule in screen["rules"]:
             model.bullet(rule)
-    model.heading("3.4.11 Shared UI contract", 3)
+    model.heading("3.4.13 Shared UI contract", 3)
     for rule in [
-        "ทุกหน้าต้องมี data-page, data-nav, data-module, optional data-crumb, aside#sidebar และ main.content",
-        "Header/sidebar ถูกสร้างโดย assets/sbp.js; ห้ามทำซ้ำในแต่ละหน้า",
+        "ทุกหน้าจอต้องมี metadata สำหรับ page, nav, module, breadcrumb, sidebar mount และ main content",
+        "Header/sidebar ถูกสร้างโดย shared shell; ห้ามทำซ้ำในแต่ละหน้า",
         "Schema modal อ้างชื่อ table header แบบ exact match; การเปลี่ยน label ต้องแก้ mapping และทดสอบ add/view/edit/delete",
         "รองรับ desktop และ responsive layout; ตารางกว้างต้องเลื่อนแนวนอนโดยไม่ตัดข้อมูล",
         "ข้อความ popup/validation ภาษาไทยและ source tag (FGI/FCS), (K2), (ใหม่) ต้องคงตามข้อกำหนด",
@@ -836,38 +898,40 @@ def build_model() -> Model:
         "ผลรวม % ชดเชย 100% ถูกตรวจทั้ง FE และ BE",
         "ร้านยอดขายไม่ครบ 60 วันถูก flag ใน inbox/report และมีเหตุผลตรวจสอบย้อนกลับ",
         "Jobs 1-10/8b รันซ้ำตาม runbook โดยไม่สร้างข้อมูลซ้ำหรือสูญหาย",
-        "API 39 เส้นผ่าน authentication/authorization, validation, audit, idempotency และ error contract",
+        f"API {endpoint_total} เส้นผ่าน authentication/authorization, validation, audit, idempotency และ error contract",
         "ข้อมูล export/import ทุก interface ผ่าน golden-file test เรื่อง encoding/date/delimiter/field count",
         "หน้าจอและ Excel report ให้ผลตรงกันภายใต้ filter เดียวกัน",
     ]:
         model.bullet(rule)
-    model.heading("5.2 HTML traceability matrix", 2)
+    model.heading("5.2 Traceability matrix", 2)
     trace_rows = [
-        ["FLOW-01", "flow-fgi.html", "FGI/FCS batch pipeline A-E", "3.1, 3.3"],
-        ["FLOW-02", "k2-flow.html", "K2 approval workflow", "3.1.3-3.1.4"],
-        ["FLOW-03", "plan-flow.html", "Integrated target architecture/flow", "2.2, 3.1"],
-        ["DB-01", "fgi-database.html", "FGI/FCS detailed entities", "3.2.3"],
-        ["DB-02", "k2-database.html", "K2 detailed entities", "3.2.4"],
-        ["DB-03", "plan-database.html", "30-table target schema", "3.2.1-3.2.2"],
-        ["JOB-01", "job-batch.html", "11 entry points and console", "3.3"],
-        ["K2-01", "index.html", "Dashboard", "SCR-01"],
-        ["K2-02", "k2-create.html", "Create document", "SCR-02"],
-        ["K2-03", "k2-list-waiting.html", "Task inbox", "SCR-03"],
-        ["K2-04", "k2-list-related.html", "Related documents", "SCR-04"],
-        ["K2-05", "k2-list-abnormal.html", "Abnormal assignment", "SCR-05 / OPEN"],
-        ["K2-06", "k2-document.html", "Document detail/action", "SCR-06"],
-        ["K2-07", "k2-report.html", "Status report", "SCR-07"],
-        ["K2-08", "k2-operators.html", "Operator master", "SCR-08"],
-        ["K2-09", "k2-factors.html", "External factor master", "SCR-09"],
-        ["K2-10", "k2-permissions.html", "RBAC matrix", "SCR-10"],
-        ["API-01", "plan-api.html", "39 REST endpoints", "3.5"],
+        ["FLOW-01", "Flow FGI/FCS", "FGI/FCS batch pipeline A-E", "3.1, 3.3"],
+        ["FLOW-02", "Flow K2", "K2 approval workflow", "3.1.3-3.1.4"],
+        ["FLOW-03", "Integrated Target Flow", "Integrated target architecture/flow", "2.2, 3.1"],
+        ["DB-01", "Database FGI/FCS", "FGI/FCS detailed entities", "3.2.3"],
+        ["DB-02", "Database K2", "K2 detailed entities", "3.2.4"],
+        ["DB-03", "Target Database Schema", f"{TARGET_TABLE_COUNT}-table target schema", "3.2.1-3.2.2"],
+        ["JOB-01", "Batch Job Console", "11 entry points and console", "3.3"],
+        ["K2-01", "Overview / Dashboard", "Dashboard", "SCR-01"],
+        ["K2-02", "Create Document", "Create document", "SCR-02"],
+        ["K2-03", "Task Inbox", "Task inbox", "SCR-03"],
+        ["K2-04", "Related Documents", "Related documents", "SCR-04"],
+        ["K2-05", "Abnormal Assignment", "Abnormal assignment", "SCR-05 / OPEN"],
+        ["K2-06", "Document Detail", "Document detail/action", "SCR-06"],
+        ["K2-07", "Status Report", "Status report", "SCR-07"],
+        ["K2-08", "Operator Master", "Operator master", "SCR-08"],
+        ["K2-09", "External Factor Master", "External factor master", "SCR-09"],
+        ["K2-10", "RBAC Matrix", "RBAC matrix", "SCR-10"],
+        ["K2-11", "Global Config", "Global system configuration", "SCR-11"],
+        ["K2-12", "Email Template", "Notification email templates", "SCR-12"],
+        ["API-01", "API Specification", f"{endpoint_total} REST endpoints", "3.5"],
     ]
-    model.table(["ID", "Source page", "Scope", "SRS section"], trace_rows, [0.12, 0.28, 0.42, 0.18])
+    model.table(["ID", "Screen / Artifact", "Scope", "SRS section"], trace_rows, [0.12, 0.28, 0.42, 0.18])
 
     model.heading("6. Open Items and Decisions Required", 1)
     open_items = [
         ["OPEN-01", "Document year", "Prototype/CLAUDE use พ.ศ. 2569/xxxxx แต่เอกสาร inventory บางส่วนระบุ ค.ศ.; ต้องยืนยัน canonical storage/display"],
-        ["OPEN-02", "Abnormal screen", "k2-list-abnormal.html และ 2 API endpoints ถูก comment; ต้องตัดสินใจ keep/drop และปรับ role 05"],
+        ["OPEN-02", "Abnormal screen", "หน้าจอข้อมูลผิดปกติและ 2 API endpoints ถูก comment; ต้องตัดสินใจ keep/drop และปรับ role 05"],
         ["OPEN-03", "Job 8b schedule", "เวลา scheduler จริงต้องยืนยันกับ Operations"],
         ["OPEN-04", "NULL growth_rate", "Target เสนอรอตรวจสอบแทน auto-accept; ต้องมี Business sign-off"],
         ["OPEN-05", "Legacy date routing", "เงื่อนไขร้านก่อน/หลัง 1/10/2557 จาก flow เดิมยังต้อง verify กับ SRS v3.1"],
@@ -900,9 +964,9 @@ def build_model() -> Model:
         "FGI_FCS_Batch_Job_Technical_Document_Improved_v4.0.pdf",
         "RDM-SRS-ประกันรายได้-K2-รายการหน้าจอ.md",
         "ประกันรายได้-K2-รายการหน้าจอ.md",
-        "workflow.md / plan-flow.html / flow-fgi.html / k2-flow.html",
-        "database.md / plan-database.html / fgi-database.html / k2-database.html",
-        "job-batch.html / plan-api.html / K2 HTML pages / assets/sbp.js",
+        "Workflow design documents and Flow screens",
+        "Database design documents and Database screens",
+        "Batch Job, API Specification, Global Config, Email Template, K2 screens and shared shell",
     ]
     for ref in refs:
         model.bullet(ref)
@@ -917,7 +981,7 @@ def make_md(model: Model):
         "",
         f"Version {DOC_VERSION}",
         "",
-        "> Generated from repository requirements and HTML prototype. See source-of-truth and open-item sections.",
+        "> Generated from repository requirements and prototype screens. See source-of-truth and open-item sections.",
         "",
     ]
     for block in model.blocks:
@@ -1270,7 +1334,7 @@ def build_docx(model: Model):
         "3.2 Draft",
         RELEASE_DATE,
         "SBPGI Project Team",
-        "Consolidate Flow, Database, Batch Job, K2 screens and API with full HTML screen captures",
+        "Consolidate Flow, Database, Batch Job, K2 screens and API with full figures",
         "",
         "",
     ]
@@ -1610,7 +1674,7 @@ def build_pdf(model: Model):
                 "3.2 Draft",
                 RELEASE_DATE,
                 "SBPGI Project Team",
-                "Consolidate Flow, Database, Batch Job, K2 screens and API with full HTML screen captures",
+                "Consolidate Flow, Database, Batch Job, K2 screens and API with full figures",
                 "",
                 "",
             ]
