@@ -1764,7 +1764,7 @@
   ],
   "apiGroups": [
     {
-      "name": "Auth & สิทธิ์ผู้ใช้",
+      "name": "Auth & สิทธิ์ผู้ใช้ (platform reference)",
       "refT": "K2 · SRS 3.1.1",
       "eps": [
         {
@@ -1940,7 +1940,7 @@
               "ข้อมูลร้าน"
             ]
           ],
-          "req": "Query: ?year=2569&storeCode=00788&status=06&page=1\n(status = section ที่รออยู่ 06/08/01/02/03/04/05 หรือ END)",
+          "req": "Query: ?year=2569&storeCode=00788&status=06&page=1\n(status = section ที่รออยู่ 06/08/01/02/03 หรือ END)",
           "res": "{\n  \"page\": 1, \"total\": 6,\n  \"items\": [{ \"docNo\": \"2569/00123\", \"status\": \"รอฝ่าย SBP DSA ดำเนินการ\", ... }]\n}",
           "err": [
             "400 — กรุณาระบุปีที่ต้องการค้นหา (กติกา SRS)",
@@ -2062,11 +2062,11 @@
           "ref": "k2",
           "refT": "K2 · 3.1.4",
           "roles": "เจ้าของ task ปัจจุบัน",
-          "sum": "ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 7 ขั้น · กฎวงเงิน 100,000 ใช้ทั้งกรณีชดเชยและไม่ชดเชย",
+          "sum": "ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · กฎวงเงิน 100,000 ใช้ทั้งกรณีชดเชยและไม่ชดเชย",
           "flow": [
             "ตรวจว่าผู้ใช้เป็นเจ้าของ workflow_tasks ขั้นปัจจุบัน",
             "validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว",
-            "คำนวณขั้นถัดไปตามตารางเส้นทาง (workflow.md): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 06 ส่งข้าม 04 ได้ · 02 ชดเชย/ไม่ชดเชย > 100,000 → 03 · ชดเชย ≤ 100,000 → 04 · ไม่ชดเชย ≤ 100,000 → กลับ 06 · ทุกขั้นมีเส้นส่งกลับ",
+            "คำนวณขั้นถัดไปตามตารางเส้นทาง (workflow.md): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 02 ชดเชย/ไม่ชดเชย > 100,000 → 03 → จบ · ชดเชย ≤ 100,000 → เสร็จสิ้น (จบที่ GM) · ไม่ชดเชย ≤ 100,000 → กลับ 06 · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ",
             "insert consideration_logs + ปิด task เดิม เปิด task ใหม่",
             "ส่งอีเมล TO/CC ตาม status_email_rules"
           ],
@@ -2092,10 +2092,10 @@
               "ผู้รับอีเมล"
             ]
           ],
-          "req": "{\n  \"action\": \"COMPENSATE\",\n  // ตัวเลือกตามขั้นปัจจุบัน เช่น COMPENSATE / NOT_COMPENSATE / STOP\n  // CALC_DONE (08) / SEND_BACK / SKIP_TO_ACCT (06→04)\n  \"comment\": \"เห็นควรชดเชยตามหลักเกณฑ์\"\n}",
+          "req": "{\n  \"action\": \"COMPENSATE\",\n  // ตัวเลือกตามขั้นปัจจุบัน เช่น COMPENSATE / NOT_COMPENSATE / STOP\n  // CALC_DONE (08) / SEND_BACK\n  \"comment\": \"เห็นควรชดเชยตามหลักเกณฑ์\"\n}",
           "res": "{\n  \"docNo\": \"2569/00123\",\n  \"nextSection\": \"02\",\n  \"status\": \"รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ\"\n}",
           "err": [
-            "422 — \"ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูล ก่อนกดส่งดำเนินการ\"",
+            "422 — \"ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ\"",
             "403 — ไม่ใช่เจ้าของงานขั้นนี้",
             "409 — งานถูกดำเนินการไปแล้วโดยผู้อื่น"
           ]
@@ -2133,20 +2133,57 @@
           "flow": [
             "รับ multipart/form-data (file + sectionCode)",
             "ตรวจขนาด ≤ 5MB และชนิดไฟล์ที่อนุญาต",
-            "บันทึกไฟล์ + insert document_attachments"
+            "sanitize filename + คำนวณ sha256",
+            "run AV scan",
+            "เก็บ binary ใน object storage และบันทึก metadata document_attachments"
           ],
           "db": [
             [
               "document_attachments",
               "W",
-              "เมทาดาต้าไฟล์ + section ที่แนบ"
+              "เมทาดาต้าไฟล์ + bucket/object_key/sha256/scan_status"
             ]
           ],
           "req": "multipart/form-data\n  file: (binary ≤ 5MB)\n  sectionCode: \"06\"",
-          "res": "201 Created\n{ \"attachId\": 771, \"fileName\": \"หนังสือแจ้งผล.pdf\" }",
+          "res": "201 Created\n{ \"attachId\": 771, \"fileName\": \"หนังสือแจ้งผล.pdf\", \"scanStatus\": \"CLEAN\" }",
           "err": [
             "413 — ไฟล์เกิน 5MB",
-            "415 — ชนิดไฟล์ไม่อนุญาต"
+            "415 — ชนิดไฟล์ไม่อนุญาต",
+            "422 — ไฟล์แนบไม่ผ่านการตรวจสอบความปลอดภัย"
+          ]
+        },
+        {
+          "m": "GET",
+          "p": "/api/v1/documents/{docNo}/attachments/{attachId}/download",
+          "ref": "k2",
+          "refT": "K2 · 3.1.6",
+          "roles": "ตามสิทธิ์อ่านเอกสาร",
+          "sum": "ดาวน์โหลดไฟล์แนบผ่าน BE stream โดยตรวจสิทธิ์เอกสารและ scanStatus=CLEAN ก่อนส่ง binary",
+          "flow": [
+            "ตรวจสิทธิ์อ่านเอกสารและ attachment ต้องผูกกับ docNo",
+            "ตรวจ scan_status = CLEAN",
+            "อ่าน object storage ผ่าน bucket/object_key",
+            "stream ผ่าน BE พร้อม Content-Disposition; ไม่ expose permanent bucket URL"
+          ],
+          "db": [
+            [
+              "document_attachments",
+              "R",
+              "metadata + object key + scan status"
+            ],
+            [
+              "object storage",
+              "R",
+              "binary file"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "200 binary stream\nContent-Disposition: attachment; filename=\"หนังสือแจ้งผล.pdf\"",
+          "err": [
+            "403 — ไม่มีสิทธิ์อ่านเอกสาร",
+            "404 — ไม่พบไฟล์แนบ",
+            "409 — ไฟล์ยังไม่พร้อมให้ดาวน์โหลด",
+            "422 — ไฟล์ไม่ผ่านการตรวจสอบความปลอดภัย"
           ]
         },
         {
@@ -2260,7 +2297,7 @@
             [
               "document_statuses",
               "R",
-              "สถานะเอกสาร (06/08/01/02/03/04/05/END)"
+              "สถานะเอกสาร (06/08/01/02/03/END)"
             ]
           ],
           "req": "(ไม่มี body)",
@@ -2275,15 +2312,15 @@
           "ref": "k2",
           "refT": "K2 · master section",
           "roles": "ทุก role",
-          "sum": "รายการ Section 7 ขั้น — dropdown เลือกตำแหน่ง/ขั้น (หน้า 3.1.8) และตัวกรองตาม section",
+          "sum": "รายการ Section 5 ขั้น — dropdown เลือกตำแหน่ง/ขั้น (หน้า 3.1.8) และตัวกรองตาม section",
           "flow": [
-            "อ่าน workflow_sections ทั้งหมดเรียงตามลำดับ 06→08→01→02→03→04→05"
+            "อ่าน workflow_sections ทั้งหมดเรียงตามลำดับ 06→08→01→02→03"
           ],
           "db": [
             [
               "workflow_sections",
               "R",
-              "ขั้นตอน 06/08/01/02/03/04/05"
+              "ขั้นตอน 06/08/01/02/03"
             ]
           ],
           "req": "(ไม่มี body)",
@@ -3200,14 +3237,14 @@
           "m": "GET",
           "p": "/api/v1/reports/status-summary",
           "ref": "k2",
-          "refT": "K2 · 3.1.7",
-          "roles": "04 / 06 Report Admin",
-          "sum": "รายงานสรุปสถานะ 19 คอลัมน์ — บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)",
+          "refT": "K2 · 3.1.7 + SDD v7.5",
+          "roles": "บัญชี / 06 Report Admin",
+          "sum": "รายงานตรวจสอบประกันรายได้ (SBP Mall) — Preview Report · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)",
           "flow": [
             "validate ปี (ไม่ระบุ → 400)",
-            "query compensation_documents + compensation_histories ตามเงื่อนไข",
-            "กรอง result (APPROVE/REJECT/PENDING) จากผลพิจารณาล่าสุดใน consideration_logs — filter \"อนุมัติ/ไม่อนุมัติ\" หน้า k2-report",
-            "คืนแบบแบ่งหน้า 19 คอลัมน์ตามหน้าจอ k2-report.html"
+            "query compensation_documents + compensation_histories ตามเงื่อนไข (status 6 ค่า · region 13 · storeType A-D · รหัสถูกกระทบ/เปิดกระทบ)",
+            "กรอง result (APPROVE/REJECT) จากผลพิจารณาล่าสุดใน consideration_logs — filter \"ประกันรายได้/ไม่ประกันรายได้\" หน้า k2-report",
+            "คืนแบบแบ่งหน้าตามหน้าจอ k2-report.html"
           ],
           "db": [
             [
@@ -3228,10 +3265,10 @@
             [
               "consideration_logs",
               "R",
-              "ผลพิจารณาล่าสุด (กรองอนุมัติ/ไม่อนุมัติ)"
+              "ผลพิจารณาล่าสุด (กรองประกัน/ไม่ประกัน)"
             ]
           ],
-          "req": "Query: ?year=2569&month=6&zone=RS&status=END&result=APPROVE&page=1\n(result = APPROVE | REJECT | PENDING — อนุมัติ / ไม่อนุมัติ / ยังไม่พิจารณา)",
+          "req": "Query: ?year=2569&status=รอฝ่ายส่งเสริมธุรกิจ SBP&result=APPROVE&region=RSU&storeType=A&impactedStoreCode=00233&newStoreCode=22864&page=1\n(result = APPROVE | REJECT — ประกันรายได้ / ไม่ประกันรายได้)",
           "res": "{\n  \"page\": 1, \"total\": 212,\n  \"items\": [{ \"docNo\": \"2569/00098\", \"storeCode\": \"00788\", \"status\": \"เสร็จสิ้นดำเนินการ\", \"compensateAmount\": 85000.00, ... }]\n}",
           "err": [
             "400 — กรุณาระบุปีที่ต้องการค้นหา"
@@ -3243,10 +3280,10 @@
           "ref": "k2",
           "refT": "K2 · 3.1.7",
           "roles": "04 / 06 Report Admin",
-          "sum": "Export รายงานเป็นไฟล์ Excel เงื่อนไขเดียวกับเส้นค้นหา",
+          "sum": "Export CSV to Batch — ส่งไฟล์ CSV เข้า Batch ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไขเดียวกับเส้นค้นหา",
           "flow": [
             "เงื่อนไขเดียวกับ status-summary",
-            "สร้างไฟล์ .xlsx แล้ว stream กลับ"
+            "สร้างไฟล์ CSV แล้วส่งเข้า Batch (ทีมบัญชีนำไปกระทบ SAP)"
           ],
           "db": [
             [
@@ -3255,8 +3292,8 @@
               "ข้อมูลชุดเดียวกับรายงาน"
             ]
           ],
-          "req": "Query: ?year=2569&month=6&result=APPROVE\n(เงื่อนไขชุดเดียวกับเส้นค้นหา รวม result อนุมัติ/ไม่อนุมัติ)",
-          "res": "200 OK\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\nContent-Disposition: attachment; filename=\"status-summary-2569-06.xlsx\"",
+          "req": "Query: ?year=2569&result=APPROVE&region=RSU&storeType=A\n(เงื่อนไขชุดเดียวกับเส้นค้นหา รวม result ประกันรายได้/ไม่ประกันรายได้)",
+          "res": "200 OK\nContent-Type: text/csv; charset=utf-8\nContent-Disposition: attachment; filename=\"insurance-verification-2569.csv\"\nX-Batch-Job: queued",
           "err": [
             "400 — ไม่ระบุปี"
           ]
@@ -3303,7 +3340,7 @@
           "ref": "fgi",
           "refT": "FGI/FCS",
           "roles": "01 Admin",
-          "sum": "รายละเอียด job หนึ่งตัว: พารามิเตอร์ (แยกแก้ได้/คงที่), flow, ตารางที่ใช้",
+          "sum": "รายละเอียด job หนึ่งตัว: schedule, input/configurable parameters, output, current status และ run controls",
           "flow": [
             "อ่าน job_configs + เมทาดาต้า job (จากเอกสาร v4.0)"
           ],

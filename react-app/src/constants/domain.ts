@@ -1,6 +1,6 @@
 import type { PillKind } from '@/types';
 
-/** 7 บทบาท workflow (section_code) — inbox ของแต่ละบทบาท = สถานะ "รอ<role>ดำเนินการ" */
+/** 5 บทบาท workflow (section_code) — inbox ของแต่ละบทบาท = สถานะ "รอ<role>ดำเนินการ" */
 export interface WorkflowRole {
   code: string;
   short: string;
@@ -14,11 +14,9 @@ export const WORKFLOW_ROLES: WorkflowRole[] = [
   { code: '01', short: 'ฝ่ายส่งเสริมธุรกิจฯ', name: 'ฝ่ายส่งเสริมธุรกิจฯ (Manager OPT · 01)', wait: 'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ' },
   { code: '02', short: 'GM OPT', name: 'GM ส่งเสริมธุรกิจฯ (GM OPT · 02)', wait: 'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ' },
   { code: '03', short: 'AVP OPT', name: 'ผู้บริหารสำนักบริหาร SBP (AVP OPT · 03)', wait: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ' },
-  { code: '04', short: 'ฝ่ายบัญชี SBP', name: 'ฝ่ายบัญชี SBP (Manager Account · 04)', wait: 'รอฝ่ายบัญชี SBP ดำเนินการ' },
-  { code: '05', short: 'บัญชีปฏิบัติการภาค', name: 'บัญชีปฏิบัติการภาค (Operation Account · 05)', wait: 'รอบัญชีปฏิบัติการภาคดำเนินการ' },
 ];
 
-/** 8 สถานะเอกสาร + สีของ pill */
+/** 6 สถานะเอกสาร + สีของ pill */
 export interface DocStatus {
   code: string;
   label: string;
@@ -31,7 +29,5 @@ export const DOC_STATUSES: DocStatus[] = [
   { code: '01', label: 'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'info' },
   { code: '02', label: 'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'orange' },
   { code: '03', label: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill: 'navy' },
-  { code: '04', label: 'รอฝ่ายบัญชี SBP ดำเนินการ', pill: 'teal' },
-  { code: '05', label: 'รอบัญชีปฏิบัติการภาคดำเนินการ', pill: 'muted' },
-  { code: 'END', label: 'เสร็จสิ้นดำเนินการ', pill: 'ok' },
+  { code: '99', label: 'เสร็จสิ้นดำเนินการ', pill: 'ok' },
 ];

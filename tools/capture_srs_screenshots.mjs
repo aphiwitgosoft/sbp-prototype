@@ -94,6 +94,8 @@ async function capture(file) {
   await cdp.open();
   await cdp.send("Page.enable");
   await cdp.send("Runtime.enable");
+  await cdp.send("Network.enable");
+  await cdp.send("Network.clearBrowserCache");
   await cdp.send("Emulation.setDeviceMetricsOverride", {
     width: 1440,
     height: 1000,
@@ -101,7 +103,7 @@ async function capture(file) {
     mobile: false,
   });
   const loaded = cdp.wait("Page.loadEventFired");
-  await cdp.send("Page.navigate", { url: `http://127.0.0.1:8000/${file}` });
+  await cdp.send("Page.navigate", { url: `http://127.0.0.1:8000/${file}?srs=${Date.now()}` });
   await loaded;
   await cdp.send("Runtime.evaluate", {
     expression: "document.fonts ? document.fonts.ready.then(() => true) : true",

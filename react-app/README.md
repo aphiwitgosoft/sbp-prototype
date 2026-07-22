@@ -51,7 +51,7 @@ react-app/
 |---|---|---|
 | Overview (dashboard) | `/` | ✅ `dashboard/summary` + กราฟ + module grid |
 | สร้างเอกสาร | `/create` | ✅ 2 แท็บ (Create New / FS) + ค้นหาร้าน `stores/search` |
-| เอกสาร รอ/ที่เกี่ยวข้อง | `/documents/waiting` `/related` | ✅ role switcher + stepper 7 ขั้น + stat 8 การ์ด |
+| เอกสาร รอ/ที่เกี่ยวข้อง | `/documents/waiting` `/related` | ✅ role switcher + stepper 5 ขั้น + status 6 ค่า |
 | รายละเอียดเอกสาร | `/documents/:docNo` | ✅ role switcher + แผนที่ AllMap + กราฟยอดขาย + คำนวณ + ไฟล์แนบ + timeline |
 | รายงานสรุปสถานะ | `/report` | ✅ ฟอร์มกรอง + กราฟ + ตาราง **19 คอลัมน์** |
 | ผู้ปฏิบัติงาน / ปัจจัย | `/operators` `/factors` | ✅ **CRUD** (modal) + ประวัติแก้ไข (audit_logs) |
@@ -60,7 +60,7 @@ react-app/
 | สิทธิ์การเข้าถึงเมนู | `/permissions` | ✅ matrix **toggle** + **Roles CRUD** |
 | Flow (fgi/k2/combined) | `/flow/*` | ✅ Flowchart (SVG) + stage strip + lane compare |
 | DB (fgi/k2/combined) | `/db/*` | ✅ Zone Map + Data Spine + **Data Dictionary 34 ตาราง** + cross-keys |
-| API | `/api` | ✅ catalog **61 เส้น** → modal (Flow · Request/Response · Database+SQL · Flowchart) |
+| API | `/api` | ✅ catalog **62 เส้น** → modal (Flow · Request/Response · Database+SQL · Flowchart) |
 
 > ทุกหน้าต่อ mock API (MSW) · CRUD จริง (mutate in-memory) · path ทั้งหมดมาจาก `src/constants/{routes,api}.ts`
 

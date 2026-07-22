@@ -106,12 +106,10 @@ export default function K2Document() {
     '01': ['เห็นควรชดเชย', 'เห็นควรไม่ชดเชย / ส่งกลับ'],
     '02': ['เห็นควรชดเชย', 'เห็นควรไม่ชดเชย', 'ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP'],
     '03': ['เห็นควรชดเชย', 'เห็นควรไม่ชดเชย', 'ส่งกลับ GM ส่งเสริมฯ'],
-    '04': ['บัญชีปฏิบัติการภาคดำเนินการ', 'ส่งกลับฝ่าย SBP DSA'],
-    '05': ['บัญชีภาคอนุมัติ', 'ส่งกลับฝ่ายบัญชี SBP'],
   };
 
   function submit() {
-    if (!decision) { toast('ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูล ก่อนกดส่งดำเนินการ'); return; }
+    if (!decision) { toast('ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ'); return; }
     toast(`ส่งผล: ${decision} (POST /documents/{docNo}/actions)`, 'ok');
     setDecision(''); setComment('');
   }
@@ -218,7 +216,7 @@ export default function K2Document() {
               <table className="data">
                 <thead><tr><th>ครั้ง</th><th>เดือน/ปีที่กระทบ</th><th>จำนวนเงินที่ชดเชย</th><th>เดือน/ปีที่ส่งบัญชี</th><th>สถานะเอกสาร</th><th>ผลการพิจารณา</th></tr></thead>
                 <tbody>
-                  <tr><td className="num">1</td><td className="num">04/2569</td><td className="num">{fmt(25650)}</td><td className="num">05/2569</td><td><Pill kind="ok">เสร็จสิ้น</Pill></td><td>บัญชีภาคอนุมัติ</td></tr>
+                  <tr><td className="num">1</td><td className="num">04/2569</td><td className="num">{fmt(25650)}</td><td className="num">05/2569</td><td><Pill kind="ok">เสร็จสิ้น</Pill></td><td>เห็นควรชดเชย</td></tr>
                   <tr><td className="num">2</td><td className="num">{data.impactedStore.region ? '05/2569' : '-'}</td><td className="num">{fmt(data.compensateAmount)}</td><td>-</td><td><Pill kind={statusPill(data.status)}>{data.status}</Pill></td><td>อยู่ระหว่างพิจารณา</td></tr>
                 </tbody>
               </table>

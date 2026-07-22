@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLDD Document Portal - SBP Income Guarantee</title>
+  <style>
+    :root { --ink:#1b2733; --muted:#66717f; --line:#d7e0ea; --head:#eef4fa; --accent:#1e6bb8; --soft:#f7fafc; }
+    body { margin:0; font-family: Arial, Tahoma, sans-serif; color:var(--ink); background:#fff; }
+    header { padding:28px 36px 22px; border-bottom:1px solid var(--line); background:linear-gradient(180deg,#f8fbff,#fff); }
+    h1 { margin:0 0 8px; font-size:28px; color:#0b2545; }
+    h2 { margin:28px 0 10px; font-size:20px; color:#174c7f; }
+    p { margin:6px 0; color:var(--muted); line-height:1.55; }
+    main { padding:22px 36px 42px; max-width:1280px; }
+    .quick { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px; margin-top:18px; }
+    .quick a { display:block; padding:14px; border:1px solid var(--line); border-radius:8px; text-decoration:none; color:var(--ink); background:#fff; }
+    .quick strong { display:block; color:var(--accent); margin-bottom:4px; }
+    .summary { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; margin:18px 0 8px; }
+    .metric { border:1px solid var(--line); border-radius:8px; padding:12px; background:var(--soft); }
+    .metric b { display:block; font-size:22px; color:#0b2545; }
+    table { border-collapse:collapse; width:100%; table-layout:fixed; margin-bottom:18px; }
+    th, td { border:1px solid var(--line); padding:9px 10px; vertical-align:top; font-size:14px; }
+    th { text-align:left; background:var(--head); color:#24384b; }
+    td strong { display:block; color:#0b2545; }
+    td span { display:block; color:var(--muted); margin-top:3px; }
+    small { color:var(--muted); }
+    .links a { display:inline-block; margin:0 6px 6px 0; padding:5px 8px; border:1px solid #b9cbe0; border-radius:6px; text-decoration:none; color:#155c9f; background:#fff; }
+    .note { padding:12px 14px; border-left:4px solid var(--accent); background:#f3f8fd; color:#31465a; }
+    @media (max-width: 860px) { header, main { padding-left:18px; padding-right:18px; } .quick, .summary { grid-template-columns:1fr; } table { table-layout:auto; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>LLDD Document Portal</h1>
+    <p>SBP Mall - ระบบประกันรายได้ | Phase 4.3 Operating Management</p>
+    <div class="summary">
+      <div class="metric"><b>40</b><small>LLDD documents</small></div>
+      <div class="metric"><b>16</b><small>FE documents</small></div>
+      <div class="metric"><b>22</b><small>BE/API/Job documents</small></div>
+      <div class="metric"><b>759</b><small>estimated hours</small></div>
+    </div>
+    <div class="quick">
+      <a href="pdf/LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management.pdf"><strong>Start here</strong>Main LLDD index PDF</a>
+      <a href="pdf/LLDD-API.pdf"><strong>API LLDD</strong>REST contract and endpoint catalog</a>
+      <a href="pdf/LLDD-Database.pdf"><strong>Database LLDD</strong>Target schema and data dictionary</a>
+      <a href="#document-detail-roles"><strong>Document Detail Roles</strong>5 role-specific FE specs</a>
+      <a href="#be-api"><strong>BE API</strong>Common and document APIs</a>
+      <a href="#be-jobs"><strong>Batch Jobs</strong>Job 1-10 and 8b specs</a>
+    </div>
+  </header>
+  <main>
+    <p class="note">วิธีใช้: เอกสาร PDF อยู่ในโฟลเดอร์ pdf, Markdown อยู่ในโฟลเดอร์ md และเอกสาร Word อยู่ในโฟลเดอร์ word โดยแต่ละโฟลเดอร์คงโครงสร้าง FE/BE/Jobs เหมือนกัน</p>
+    <p class="note">Batch Monitor scope: LLDD-FE-Batch-Monitor ทำจริงเฉพาะ 2 tab คือ แบบฟอร์มพารามิเตอร์ และประวัติการรัน; flowchart การทำงานและฐานข้อมูลที่ใช้เป็น reference สำหรับ dev เท่านั้น ไม่ใช่ FE deliverable ของหน้านี้</p>
+    <p class="note">แผนทีม 6 คน: Kittisak &lt;New&gt; Kaeowika, Peerakorn &lt;Pete&gt; Sakunkaewphithak, Chidchanok &lt;lin&gt; Saengamnat (FE); Butsaba &lt;But&gt; Podamrong, Tunyatorn &lt;Vava&gt; Kiatkongphongsa, และ Aphiwit &lt;Bank&gt; Khammoon (BE) ระหว่าง 29/07/2026 - 27/08/2026 โดย 1 week = 5 วัน, 1 วัน = 6 ชั่วโมง และภาระงานรายคนมากกว่า 3 แต่ไม่เกิน 4.5 work weeks</p>
+
+    <h2 id="reference-docs">Reference Design Documents</h2>
+    <table><thead><tr><th>Document</th><th>Owner</th><th>Scope</th><th>Open</th></tr></thead><tbody>
+<tr><td><strong>LLDD-API</strong><span>LLDD API - REST API and Integration Contract</span></td><td>BE/FE</td><td>REST conventions, endpoint catalog, request lifecycle, SQL/repository pattern</td><td class="links"><a href="pdf/LLDD-API.pdf">PDF</a><a href="word/LLDD-API.docx">DOCX</a></td></tr>
+<tr><td><strong>LLDD-Database</strong><span>LLDD Database - Target Schema and Data Dictionary</span></td><td>BE/DB</td><td>34-table target schema, data zones/spine, DDL reference, indexes, transaction rules, seed data</td><td class="links"><a href="pdf/LLDD-Database.pdf">PDF</a><a href="word/LLDD-Database.docx">DOCX</a></td></tr>
+    </tbody></table>
+
+    <h2 id="fe-core">FE Core Documents</h2>
+    <table><thead><tr><th>Document</th><th>Track</th><th>Owner</th><th>Estimate</th><th>Open</th></tr></thead><tbody>
+<tr><td><strong>FE-Integration-Contracts</strong><span>LLDD FE - Integration Contracts</span></td><td>FE</td><td>Chidchanok &lt;lin&gt; Saengamnat</td><td>18h</td><td class="links"><a href="pdf/FE/LLDD-FE-Integration-Contracts.pdf">PDF</a><a href="word/FE/LLDD-FE-Integration-Contracts.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Foundation</strong><span>LLDD FE - Application Foundation and Shared UI</span></td><td>FE</td><td>Chidchanok &lt;lin&gt; Saengamnat</td><td>42h</td><td class="links"><a href="pdf/FE/LLDD-FE-Foundation.pdf">PDF</a><a href="word/FE/LLDD-FE-Foundation.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Overview</strong><span>LLDD FE - Overview Dashboard</span></td><td>FE</td><td>Chidchanok &lt;lin&gt; Saengamnat</td><td>39h</td><td class="links"><a href="pdf/FE/LLDD-FE-Overview.pdf">PDF</a><a href="word/FE/LLDD-FE-Overview.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Document-Lists</strong><span>LLDD FE - Document Lists</span></td><td>FE</td><td>Peerakorn &lt;Pete&gt; Sakunkaewphithak</td><td>42h</td><td class="links"><a href="pdf/FE/LLDD-FE-Document-Lists.pdf">PDF</a><a href="word/FE/LLDD-FE-Document-Lists.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Create-Document</strong><span>LLDD FE - Create Document</span></td><td>FE</td><td>Kittisak &lt;New&gt; Kaeowika</td><td>30h</td><td class="links"><a href="pdf/FE/LLDD-FE-Create-Document.pdf">PDF</a><a href="word/FE/LLDD-FE-Create-Document.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Document-Detail</strong><span>LLDD FE - Document Detail and Action</span></td><td>FE</td><td>Kittisak &lt;New&gt; Kaeowika</td><td>72h</td><td class="links"><a href="pdf/FE/LLDD-FE-Document-Detail.pdf">PDF</a><a href="word/FE/LLDD-FE-Document-Detail.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Testing-Delivery</strong><span>LLDD FE - Testing and Delivery</span></td><td>FE</td><td>Peerakorn &lt;Pete&gt; Sakunkaewphithak</td><td>24h</td><td class="links"><a href="pdf/FE/LLDD-FE-Testing-Delivery.pdf">PDF</a><a href="word/FE/LLDD-FE-Testing-Delivery.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Report</strong><span>LLDD FE - Status Summary Report</span></td><td>FE</td><td>Peerakorn &lt;Pete&gt; Sakunkaewphithak</td><td>30h</td><td class="links"><a href="pdf/FE/LLDD-FE-Report.pdf">PDF</a><a href="word/FE/LLDD-FE-Report.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Master-Config</strong><span>LLDD FE - Master and Config</span></td><td>FE</td><td>Peerakorn &lt;Pete&gt; Sakunkaewphithak</td><td>30h</td><td class="links"><a href="pdf/FE/LLDD-FE-Master-Config.pdf">PDF</a><a href="word/FE/LLDD-FE-Master-Config.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Batch-Monitor</strong><span>LLDD FE - Batch Job Monitor</span></td><td>FE</td><td>Kittisak &lt;New&gt; Kaeowika</td><td>24h</td><td class="links"><a href="pdf/FE/LLDD-FE-Batch-Monitor.pdf">PDF</a><a href="word/FE/LLDD-FE-Batch-Monitor.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Email-Template</strong><span>LLDD FE - Email Template and Notification Config</span></td><td>FE</td><td>Chidchanok &lt;lin&gt; Saengamnat</td><td>21h</td><td class="links"><a href="pdf/FE/LLDD-FE-Email-Template.pdf">PDF</a><a href="word/FE/LLDD-FE-Email-Template.docx">DOCX</a></td></tr>
+    </tbody></table>
+
+    <h2 id="document-detail-roles">Document Detail Role Pack</h2>
+    <p>เอกสารชุดนี้แยกจาก LLDD-FE-Document-Detail เพื่อให้อ่านง่ายตาม role ที่ login จริง</p>
+    <table><thead><tr><th>Document</th><th>Track</th><th>Owner</th><th>Estimate</th><th>Open</th></tr></thead><tbody>
+<tr><td><strong>FE-Document-Detail-Role-06-SBP-DSA</strong><span>LLDD FE - Document Detail Role 06 SBP DSA</span></td><td>FE</td><td>Kittisak &lt;New&gt; Kaeowika</td><td>included<br><small>in Document Detail</small></td><td class="links"><a href="pdf/FE/LLDD-FE-Document-Detail-Role-06-SBP-DSA.pdf">PDF</a><a href="word/FE/LLDD-FE-Document-Detail-Role-06-SBP-DSA.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Document-Detail-Role-08-SBP-DSA-Officer</strong><span>LLDD FE - Document Detail Role 08 SBP DSA Officer</span></td><td>FE</td><td>Kittisak &lt;New&gt; Kaeowika</td><td>included<br><small>in Document Detail</small></td><td class="links"><a href="pdf/FE/LLDD-FE-Document-Detail-Role-08-SBP-DSA-Officer.pdf">PDF</a><a href="word/FE/LLDD-FE-Document-Detail-Role-08-SBP-DSA-Officer.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Document-Detail-Role-01-Business-Promotion</strong><span>LLDD FE - Document Detail Role 01 Business Promotion</span></td><td>FE</td><td>Kittisak &lt;New&gt; Kaeowika</td><td>included<br><small>in Document Detail</small></td><td class="links"><a href="pdf/FE/LLDD-FE-Document-Detail-Role-01-Business-Promotion.pdf">PDF</a><a href="word/FE/LLDD-FE-Document-Detail-Role-01-Business-Promotion.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Document-Detail-Role-02-GM-Business-Promotion</strong><span>LLDD FE - Document Detail Role 02 GM Business Promotion</span></td><td>FE</td><td>Kittisak &lt;New&gt; Kaeowika</td><td>included<br><small>in Document Detail</small></td><td class="links"><a href="pdf/FE/LLDD-FE-Document-Detail-Role-02-GM-Business-Promotion.pdf">PDF</a><a href="word/FE/LLDD-FE-Document-Detail-Role-02-GM-Business-Promotion.docx">DOCX</a></td></tr>
+<tr><td><strong>FE-Document-Detail-Role-03-AVP-SBP</strong><span>LLDD FE - Document Detail Role 03 AVP SBP</span></td><td>FE</td><td>Kittisak &lt;New&gt; Kaeowika</td><td>included<br><small>in Document Detail</small></td><td class="links"><a href="pdf/FE/LLDD-FE-Document-Detail-Role-03-AVP-SBP.pdf">PDF</a><a href="word/FE/LLDD-FE-Document-Detail-Role-03-AVP-SBP.docx">DOCX</a></td></tr>
+    </tbody></table>
+
+    <h2 id="be-api">BE API Documents</h2>
+    <table><thead><tr><th>Document</th><th>Track</th><th>Owner</th><th>Estimate</th><th>Open</th></tr></thead><tbody>
+<tr><td><strong>BE-API-Common-Contracts</strong><span>LLDD BE - API Common Contracts</span></td><td>BE</td><td>Butsaba &lt;But&gt; Podamrong</td><td>15h</td><td class="links"><a href="pdf/BE/LLDD-BE-API-Common-Contracts.pdf">PDF</a><a href="word/BE/LLDD-BE-API-Common-Contracts.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-API-Dashboard-Summary</strong><span>LLDD BE - API Dashboard Summary</span></td><td>BE</td><td>Butsaba &lt;But&gt; Podamrong</td><td>18h</td><td class="links"><a href="pdf/BE/LLDD-BE-API-Dashboard-Summary.pdf">PDF</a><a href="word/BE/LLDD-BE-API-Dashboard-Summary.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-API-Document-List-Search</strong><span>LLDD BE - API Document List and Search</span></td><td>BE</td><td>Butsaba &lt;But&gt; Podamrong</td><td>21h</td><td class="links"><a href="pdf/BE/LLDD-BE-API-Document-List-Search.pdf">PDF</a><a href="word/BE/LLDD-BE-API-Document-List-Search.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-API-Document-Create-Update</strong><span>LLDD BE - API Document Create and Update</span></td><td>BE</td><td>Tunyatorn &lt;Vava&gt; Kiatkongphongsa</td><td>27h</td><td class="links"><a href="pdf/BE/LLDD-BE-API-Document-Create-Update.pdf">PDF</a><a href="word/BE/LLDD-BE-API-Document-Create-Update.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-API-Document-Detail-Aggregate</strong><span>LLDD BE - API Document Detail Aggregate</span></td><td>BE</td><td>Butsaba &lt;But&gt; Podamrong</td><td>27h</td><td class="links"><a href="pdf/BE/LLDD-BE-API-Document-Detail-Aggregate.pdf">PDF</a><a href="word/BE/LLDD-BE-API-Document-Detail-Aggregate.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-API-Document-Workflow-Actions</strong><span>LLDD BE - API Document Workflow Actions</span></td><td>BE</td><td>Butsaba &lt;But&gt; Podamrong</td><td>24h</td><td class="links"><a href="pdf/BE/LLDD-BE-API-Document-Workflow-Actions.pdf">PDF</a><a href="word/BE/LLDD-BE-API-Document-Workflow-Actions.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-API-Workflow-Instances</strong><span>LLDD BE - Workflow Engine and API Workflow Instances</span></td><td>BE</td><td>Tunyatorn &lt;Vava&gt; Kiatkongphongsa</td><td>21h</td><td class="links"><a href="pdf/BE/LLDD-BE-API-Workflow-Instances.pdf">PDF</a><a href="word/BE/LLDD-BE-API-Workflow-Instances.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-API-Attachment-Sales-Timeline</strong><span>LLDD BE - API Attachment Sales and Timeline</span></td><td>BE</td><td>Tunyatorn &lt;Vava&gt; Kiatkongphongsa</td><td>21h</td><td class="links"><a href="pdf/BE/LLDD-BE-API-Attachment-Sales-Timeline.pdf">PDF</a><a href="word/BE/LLDD-BE-API-Attachment-Sales-Timeline.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-API-Lookup-RBAC-Email</strong><span>LLDD BE - API Lookup RBAC and Email Template</span></td><td>BE</td><td>Tunyatorn &lt;Vava&gt; Kiatkongphongsa</td><td>30h</td><td class="links"><a href="pdf/BE/LLDD-BE-API-Lookup-RBAC-Email.pdf">PDF</a><a href="word/BE/LLDD-BE-API-Lookup-RBAC-Email.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-API-Report-Master-Config</strong><span>LLDD BE - API Report Master Config</span></td><td>BE</td><td>Tunyatorn &lt;Vava&gt; Kiatkongphongsa</td><td>30h</td><td class="links"><a href="pdf/BE/LLDD-BE-API-Report-Master-Config.pdf">PDF</a><a href="word/BE/LLDD-BE-API-Report-Master-Config.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-Job-Batch-Email-SRM</strong><span>LLDD BE - Job Batch Email and SRM Integration</span></td><td>BE</td><td>Butsaba &lt;But&gt; Podamrong</td><td>24h</td><td class="links"><a href="pdf/BE/LLDD-BE-Job-Batch-Email-SRM.pdf">PDF</a><a href="word/BE/LLDD-BE-Job-Batch-Email-SRM.docx">DOCX</a></td></tr>
+    </tbody></table>
+
+    <h2 id="be-jobs">BE Batch Job Documents</h2>
+    <table><thead><tr><th>Document</th><th>Track</th><th>Owner</th><th>Estimate</th><th>Open</th></tr></thead><tbody>
+<tr><td><strong>BE-Job-1-ImportQSSI</strong><span>LLDD BE - Job 1 ImportQSSI</span></td><td>BE</td><td>Aphiwit &lt;Bank&gt; Khammoon</td><td>13h</td><td class="links"><a href="pdf/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.pdf">PDF</a><a href="word/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-Job-2-ImportImpactStore</strong><span>LLDD BE - Job 2 ImportImpactStore</span></td><td>BE</td><td>Aphiwit &lt;Bank&gt; Khammoon</td><td>13h</td><td class="links"><a href="pdf/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.pdf">PDF</a><a href="word/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-Job-3-ImportImpactCompetitor</strong><span>LLDD BE - Job 3 ImportImpactCompetitor</span></td><td>BE</td><td>Aphiwit &lt;Bank&gt; Khammoon</td><td>10h</td><td class="links"><a href="pdf/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.pdf">PDF</a><a href="word/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-Job-4-PrepareImpactStoreToIAS</strong><span>LLDD BE - Job 4 PrepareImpactStoreToIAS</span></td><td>BE</td><td>Aphiwit &lt;Bank&gt; Khammoon</td><td>13h</td><td class="links"><a href="pdf/BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS.pdf">PDF</a><a href="word/BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-Job-5-ImportImpactSaleFromIAS</strong><span>LLDD BE - Job 5 ImportImpactSaleFromIAS</span></td><td>BE</td><td>Aphiwit &lt;Bank&gt; Khammoon</td><td>13h</td><td class="links"><a href="pdf/BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.pdf">PDF</a><a href="word/BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-Job-6-ExportImpactStoreToFS</strong><span>LLDD BE - Job 6 ExportImpactStoreToFS</span></td><td>BE</td><td>Aphiwit &lt;Bank&gt; Khammoon</td><td>15h</td><td class="links"><a href="pdf/BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.pdf">PDF</a><a href="word/BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-Job-7-SyncCompetitorToDocument</strong><span>LLDD BE - Job 7 SyncCompetitorToDocument</span></td><td>BE</td><td>Aphiwit &lt;Bank&gt; Khammoon</td><td>10h</td><td class="links"><a href="pdf/BE/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument.pdf">PDF</a><a href="word/BE/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-Job-8-CreateCompensationDocument</strong><span>LLDD BE - Job 8 CreateCompensationDocument</span></td><td>BE</td><td>Aphiwit &lt;Bank&gt; Khammoon</td><td>13h</td><td class="links"><a href="pdf/BE/Jobs/LLDD-BE-Job-8-CreateCompensationDocument.pdf">PDF</a><a href="word/BE/Jobs/LLDD-BE-Job-8-CreateCompensationDocument.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-Job-8b-StartInternalWorkflow</strong><span>LLDD BE - Job 8b StartInternalWorkflow</span></td><td>BE</td><td>Aphiwit &lt;Bank&gt; Khammoon</td><td>10h</td><td class="links"><a href="pdf/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.pdf">PDF</a><a href="word/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-Job-9-SyncNewStoreToDocument</strong><span>LLDD BE - Job 9 SyncNewStoreToDocument</span></td><td>BE</td><td>Aphiwit &lt;Bank&gt; Khammoon</td><td>10h</td><td class="links"><a href="pdf/BE/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument.pdf">PDF</a><a href="word/BE/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument.docx">DOCX</a></td></tr>
+<tr><td><strong>BE-Job-10-NotifyNoReceiveData</strong><span>LLDD BE - Job 10 NotifyNoReceiveData</span></td><td>BE</td><td>Aphiwit &lt;Bank&gt; Khammoon</td><td>9h</td><td class="links"><a href="pdf/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.pdf">PDF</a><a href="word/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.docx">DOCX</a></td></tr>
+    </tbody></table>
+  </main>
+</body>
+</html>

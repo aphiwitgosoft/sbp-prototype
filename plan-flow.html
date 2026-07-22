@@ -62,7 +62,7 @@
         <div class="db-stat"><b>11</b><span>Batch Entry Points</span></div>
         <div class="db-stat"><b>5</b><span>Approval Sections</span></div>
         <div class="db-stat"><b>34</b><span>Tables ใน Schema รวม</span></div>
-        <div class="db-stat"><b>61</b><span>REST API Endpoints</span></div>
+        <div class="db-stat"><b>62</b><span>REST API Endpoints</span></div>
       </div>
 
       <div class="card">
@@ -119,7 +119,7 @@
 
           <!-- API -->
           <rect x="200" y="128" width="600" height="48" rx="12" fill="#0f172a"/>
-          <text x="500" y="149" text-anchor="middle" font-size="13" font-weight="700" fill="#86efac">REST API  /api/v1 · JSON + JWT · 61 เส้น</text>
+          <text x="500" y="149" text-anchor="middle" font-size="13" font-weight="700" fill="#86efac">REST API  /api/v1 · JSON + JWT · 62 เส้น</text>
           <text x="500" y="166" text-anchor="middle" font-size="10.5" fill="#9fb3cd">รายละเอียดทุกเส้นดูหน้า “API”</text>
 
           <line x1="500" y1="176" x2="500" y2="200" stroke="#8493a5" stroke-width="1.8" marker-end="url(#aa)"/>
@@ -196,6 +196,9 @@
           จุดเปลี่ยนสำคัญ: <b>ไม่มี BPM/K2 engine ภายนอกอีกต่อไป</b> — การเปิดและเดิน workflow ทำโดย Workflow Engine ใน Backend เอง
           (แทนไฟล์ BPM06001O/2O/3O + K2 REST StartInstance ของ Job 8/8b/9) ส่วน interface กับระบบภายนอก (QSSI, ALLMAP, IAS, STA) คงกลไกไฟล์/SFTP เดิมไว้เพราะเป็นระบบของทีมอื่น
         </p>
+        <p style="font-size:12.5px;color:var(--muted);margin:8px 2px 0;">
+          สัญญากลางที่ผูกกับ workflow: ดู <code>LLDD-BE-API-Common-Contracts</code> และ <code>LLDD-FE-Integration-Contracts</code> ก่อน implement ทุกจุดที่เรียก workflow API — <code>POST /documents/{docNo}/actions</code> รับ <code>{result, comment}</code> และคืน <code>{nextSection, statusCode, status}</code>; <code>POST /workflows/instances</code> ใช้ service token และ Gen Flow Gate W/Y/N อยู่ที่ BE Workflow Engine
+        </p>
       </div>
 
       <!-- ===== end-to-end flow ===== -->
@@ -227,12 +230,12 @@
 
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">6. เปิด Workflow ตาม Gen Flow Gate <span class="ref mix">FGI/FCS Job 8b → K2</span> <span class="ref new">เปลี่ยนกลไก</span></div>
-            <div class="tl-meta">เกณฑ์คงเดิมทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เดิมยิง K2 REST StartInstance / ใหม่เรียก POST /workflows/instances ภายใน แล้วตั้ง workflow_generation_status=Y</div></div>
+            <div class="tl-meta">เกณฑ์คงเดิมทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เดิมยิง K2 REST StartInstance / ใหม่เรียก POST /workflows/instances ภายในด้วย service token; ผ่าน gate ตั้ง Y, branch type นอกเซ็ตตั้ง N, ข้อมูลยังไม่พร้อมคง W เพื่อ rerun</div></div>
 
           <div class="flow-stage"><span>C</span> ผู้ใช้ตรวจสอบและอนุมัติ · Section 06–03</div>
           <div class="tl-item active"><span class="tl-dot"></span>
             <div class="tl-t">7. ขั้นที่ 1–2: ฝ่าย SBP DSA ตรวจสอบ + คำนวณเงินชดเชย <span class="ref k2">K2 · Section 06 → 08</span></div>
-            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · พิจารณา: ชดเชย / ไม่ชดเชย / หยุดชดเชย · บันทึก consideration_logs + อีเมลตาม status_email_rules · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
+            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · ส่งพิจารณาด้วย POST /documents/{docNo}/actions payload เดียว {result, comment}; result เป็น 6-enum verbatim · บันทึก consideration_logs + อีเมลตาม status_email_rules · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">8. ขั้นที่ 3: ฝ่ายส่งเสริมธุรกิจฯ ปรับข้อมูล <span class="ref k2">K2 · Section 01</span></div>
@@ -271,7 +274,7 @@
                 <td><span class="ref mix">FGI/FCS → K2</span></td></tr>
               <tr><td>เปิด Workflow</td>
                 <td class="int-old">Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded — ความเสี่ยง P0)</td>
-                <td class="int-new">Workflow Engine ภายใน · POST /workflows/instances · เกณฑ์ Gen Flow Gate คงเดิมทุกข้อ</td>
+                <td class="int-new">Workflow Engine ภายใน · POST /workflows/instances · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ</td>
                 <td><span class="ref mix">FGI/FCS → K2</span></td></tr>
               <tr><td>รับ ACK ผลประมวลจาก STA</td>
                 <td class="int-old">รอ STA อัปเดต return_code ใน tracking · Job 10 ตรวจทุกเช้า</td>

@@ -23,14 +23,12 @@ const PIPELINE = [
   { label: '01 · รอฝ่ายส่งเสริมธุรกิจ SBP', dot: '#2563eb', value: 18 },
   { label: '02 · รอ GM ส่งเสริมธุรกิจ SBP', dot: '#ea580c', value: 9 },
   { label: '03 · รอผู้บริหารสำนักบริหาร SBP', dot: '#4f46e5', value: 4 },
-  { label: '04 · รอฝ่ายบัญชี SBP', dot: '#0f9f90', value: 14 },
-  { label: '05 · รอบัญชีปฏิบัติการภาค', dot: '#64748b', value: 11 },
   { label: 'เสร็จสิ้นดำเนินการ (เดือนนี้)', dot: '#16a34a', value: 73 },
 ];
 
 const DOC = ROUTES.document('2569/00123');
 const MODULES_CARDS: { to: string; icon: LucideIcon; bg: string; title: string; code: string; desc: string; cta: string }[] = [
-  { to: ROUTES.docsWaiting, icon: ShieldCheck, bg: 'bg-success', title: 'เอกสาร — รอดำเนินการ / ที่เกี่ยวข้อง', code: 'Workflow Inbox', desc: 'inbox ต่อบทบาท: เห็นเฉพาะเอกสารสถานะ "รอ<บทบาทของท่าน>ดำเนินการ" พร้อมสลับมุมมอง 7 ขั้นตอน ค้นหา กรอง และเปิดเอกสารเพื่อพิจารณา/ส่งดำเนินการ', cta: 'เข้าสู่งาน' },
+  { to: ROUTES.docsWaiting, icon: ShieldCheck, bg: 'bg-success', title: 'เอกสาร — รอดำเนินการ / ที่เกี่ยวข้อง', code: 'Workflow Inbox', desc: 'inbox ต่อบทบาท: เห็นเฉพาะเอกสารสถานะ "รอ<บทบาทของท่าน>ดำเนินการ" พร้อมสลับมุมมอง 5 ขั้นตอน ค้นหา กรอง และเปิดเอกสารเพื่อพิจารณา/ส่งดำเนินการ', cta: 'เข้าสู่งาน' },
   { to: ROUTES.create, icon: FilePlus2, bg: 'bg-primary', title: 'สร้างเอกสาร', code: 'Create New / FS', desc: 'สร้างเอกสารร้านถูกกระทบกรณีนอกเงื่อนไขของระบบ (เลขที่ YYYY/Running 5 หลัก) และสร้างผ่านระบบ Finance & Account Unit (FS) รอ SBP Statement ส่งกลับ ~1 วัน', cta: 'สร้างเอกสาร' },
   { to: DOC, icon: Package, bg: 'bg-brandteal', title: 'เอกสารข้อมูลร้านถูกกระทบ', code: 'Workflow Document', desc: 'หน้าจอหลักของกระบวนการ — ข้อมูลร้านถูกกระทบ ร้านเปิดใหม่ แผนที่ ALLMAP ร้านคู่แข่ง ปัจจัยอื่น ๆ ประวัติการชดเชย ผลการพิจารณา เอกสารแนบ คำนวณเงิน และส่งดำเนินการตาม Role', cta: 'เปิดเอกสาร' },
   { to: ROUTES.report, icon: FileText, bg: 'bg-violet-500', title: 'รายงานสรุปสถานะ', code: 'Report · Export Excel', desc: 'ค้นหา ติดตาม และ Export รายงานเอกสารประกันรายได้ ตามรหัสร้าน ภาค ประเภทร้าน สถานะ และ Period Statement (ผลลัพธ์ 19 คอลัมน์)', cta: 'ออกรายงาน' },
@@ -40,7 +38,7 @@ const MODULES_CARDS: { to: string; icon: LucideIcon; bg: string; title: string; 
 ];
 
 const ACTIVITY: { kind: PillKind; label: string; text: string; time: string }[] = [
-  { kind: 'ok', label: 'เสร็จสิ้น', text: 'บัญชีภาคอนุมัติ เอกสาร 2569/00152 แคราย พลาซ่า → เสร็จสิ้นดำเนินการ', time: '09:24' },
+  { kind: 'ok', label: 'เสร็จสิ้น', text: 'อนุมัติเอกสาร 2569/00152 แคราย พลาซ่า → เสร็จสิ้นดำเนินการ', time: '09:24' },
   { kind: 'violet', label: 'คำนวณเงิน', text: 'คำนวณเงินชดเชยเรียบร้อย เอกสาร 2569/00140 → รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ', time: '08:50' },
   { kind: 'navy', label: 'AVP', text: 'เอกสาร 2569/00194 วงเงิน 104,500 บาท → รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', time: '08:12' },
   { kind: 'fail', label: 'แถวแดง', text: 'ร้านยอดขายไม่ครบ 60 วัน 5 รายการ ในคิวรอฝ่าย SBP DSA ดำเนินการ', time: '07:40' },
@@ -54,7 +52,7 @@ export default function Overview() {
         <ShieldCheck className="pointer-events-none absolute -right-3 -top-4 h-48 w-48 text-white/10" strokeWidth={1} />
         <h1 className="relative text-[26px] font-semibold">สวัสดี, คุณภัชริดา</h1>
         <p className="relative mt-2 max-w-3xl text-[13.5px] leading-relaxed text-white/85">
-          ระบบประกันรายได้ — ชดเชยรายได้ร้าน 7-11 Franchise ที่ได้รับผลกระทบจากร้านเปิดใหม่ในรัศมีใกล้เคียง เอกสารเดินตาม Workflow 7 ขั้นตอน (06 → 08 → 01 → 02 → 03 → 04 → 05) จนเสร็จสิ้นดำเนินการ · วงเงิน &gt; 100,000 ผ่าน AVP
+          ระบบประกันรายได้ — ชดเชยรายได้ร้าน 7-11 Franchise ที่ได้รับผลกระทบจากร้านเปิดใหม่ในรัศมีใกล้เคียง เอกสารเดินตาม Workflow 5 ขั้นตอน (06 → 08 → 01 → 02 → 03) จนเสร็จสิ้นดำเนินการ · วงเงิน &gt; 100,000 ผ่าน AVP
         </p>
         <div className="relative mt-5 flex flex-wrap gap-3">
           <Link to={ROUTES.docsWaiting} className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-[13.5px] font-medium text-primary hover:bg-white/90">

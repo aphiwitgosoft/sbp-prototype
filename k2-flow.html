@@ -57,7 +57,7 @@
 
       <div class="card" style="border-left:5px solid #d68a10;background:#fff8ec;">
         <div style="font-size:13px;color:#7a5b12;line-height:1.8;">
-          <b>ปรับตาม SDD v7.5 (ปรับกระบวนการบัญชีประกันรายได้):</b> ยกเลิกขั้นอนุมัติของบัญชี — <b>ตัด Section 04 (ฝ่ายบัญชี SBP) และ 05 (บัญชีปฏิบัติการภาค)</b> ออกจาก workflow · เอกสารจบที่ GM (≤100,000) หรือ AVP (&gt;100,000) · ทีมบัญชีตรวจสอบยอดผ่าน <b>รายงานตรวจสอบประกันรายได้ (SBP Mall)</b> → Export CSV to Batch → กระทบยอด SAP เอง (นอก workflow) · <i>แผนผัง BPMN ด้านล่างบางส่วนยังคงภาพ 7 ขั้นเดิมไว้เพื่ออ้างอิง</i>
+          <b>ปรับตาม SDD v7.5 (ปรับกระบวนการบัญชีประกันรายได้):</b> ยกเลิกขั้นอนุมัติของบัญชี — <b>ตัด Section 04 (ฝ่ายบัญชี SBP) และ 05 (บัญชีปฏิบัติการภาค)</b> ออกจาก workflow · เอกสารจบที่ GM (≤100,000) หรือ AVP (&gt;100,000) · ทีมบัญชีตรวจสอบยอดผ่าน <b>รายงานตรวจสอบประกันรายได้ (SBP Mall)</b> → Export CSV to Batch → กระทบยอด SAP เอง (นอก workflow) · แผนผังด้านล่างใช้ baseline 5 ขั้น 06→08→01→02→03
         </div>
       </div>
 
@@ -111,7 +111,7 @@
             <path d="M964,512 L568,512" marker-end="url(#ah)"/>
             <!-- วงเงิน > 100,000 → AVP -->
             <line x1="535" y1="864" x2="672" y2="864" marker-end="url(#ah)"/>
-            <!-- AVP เห็นควรชดเชย → 04 -->
+            <!-- AVP เห็นควรชดเชย -> จบ -->
             <path d="M780,898 L780,1040 L564,1040" marker-end="url(#ah)"/>
             <!-- End2 → หมายเหตุ batch -->
             <line x1="430" y1="1270" x2="430" y2="1284" stroke-dasharray="3 4"/>
@@ -150,22 +150,22 @@
             <text x="440" y="456">คำนวณเงินชดเชยเรียบร้อย</text>
             <text x="440" y="696">เห็นควรชดเชย</text>
             <text x="440" y="944">เห็นควรชดเชย · ≤ 100,000</text>
-            <text x="440" y="1074">ส่งบัญชีปฏิบัติการภาค</text>
-            <text x="440" y="1194">บัญชีภาคอนุมัติ</text>
+            <text x="440" y="1074">ส่วนบัญชีเดิมถูกยกเลิก</text>
+            <text x="440" y="1194">บัญชีตรวจนอก workflow</text>
             <text x="544" y="252">เห็นควรไม่ชดเชย / หยุดชดเชย</text>
             <text x="544" y="852">&gt; 100,000 (ทั้งชดเชย/ไม่ชดเชย)</text>
             <text x="700" y="297">ส่งข้ามขั้นจาก 06 (ไม่ผ่าน 08)</text>
             <text x="760" y="506">→ ฝ่ายส่งเสริมฯ (01)</text>
-            <text x="620" y="1062">→ ฝ่ายบัญชี SBP (04)</text>
-            <text x="792" y="956">เห็นควรชดเชย → 04</text>
+            <text x="620" y="1062">→ จบงาน / รายงาน SBP Mall</text>
+            <text x="792" y="956">เห็นควรชดเชย → จบ</text>
           </g>
           <g font-size="10.5" fill="#b45309">
             <text x="150" y="386">08 ส่งกลับ → 06</text>
             <text x="150" y="616">01 ไม่ชดเชย / ส่งกลับ → 06</text>
             <text x="150" y="856">02 ไม่ชดเชย · ≤ 100,000 → 06</text>
-            <text x="150" y="1006">04 ส่งกลับ → 06</text>
+            <text x="150" y="1006">ยกเลิก 04/05</text>
             <text x="612" y="650" transform="rotate(-90 612 650)">02 ส่งกลับ → 01</text>
-            <text x="238" y="1122">05 ส่งกลับ → 04</text>
+            <text x="238" y="1122">บัญชีนอก workflow</text>
             <text x="606" y="912">AVP ไม่ชดเชย → 06</text>
             <text x="618" y="757">AVP ส่งกลับ → 02</text>
             <text x="160" y="106">จาก AVP (ไม่ชดเชย)</text>
@@ -259,7 +259,7 @@
           <!-- End2 (อนุมัติ) -->
           <rect x="300" y="1218" width="260" height="52" rx="26" fill="#e7f7ee" stroke="#16a34a" stroke-width="1.6"/>
           <text x="430" y="1240" text-anchor="middle" fill="#15803d" font-size="12.5" font-weight="700">จบ · เสร็จสิ้นดำเนินการ</text>
-          <text x="430" y="1256" text-anchor="middle" fill="#4d7c5f" font-size="9.5">บัญชีภาคอนุมัติ (End)</text>
+          <text x="430" y="1256" text-anchor="middle" fill="#4d7c5f" font-size="9.5">GM / AVP อนุมัติ (End)</text>
 
           <!-- Overlay: ยกเลิกขั้นบัญชี 04/05 ตาม SDD v7.5 -->
           <rect x="286" y="966" width="288" height="320" rx="12" fill="#ffffff" fill-opacity="0.64" stroke="#d68a10" stroke-width="1.6" stroke-dasharray="6 4"/>

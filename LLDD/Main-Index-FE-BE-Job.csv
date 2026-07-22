@@ -1,0 +1,34 @@
+﻿หัวข้อ,owner,startdate,enddate
+FE - Integration Contracts,Chidchanok <lin> Saengamnat,29/07/2026,31/07/2026
+FE - Application Foundation and Shared UI,Chidchanok <lin> Saengamnat,03/08/2026,11/08/2026
+FE - Overview Dashboard,Chidchanok <lin> Saengamnat,12/08/2026,20/08/2026
+FE - Document Lists,Peerakorn <Pete> Sakunkaewphithak,29/07/2026,06/08/2026
+FE - Create Document,Kittisak <New> Kaeowika,29/07/2026,04/08/2026
+FE - Document Detail and Action,Kittisak <New> Kaeowika,05/08/2026,20/08/2026
+FE - Status Summary Report,Peerakorn <Pete> Sakunkaewphithak,07/08/2026,13/08/2026
+FE - Master and Config,Peerakorn <Pete> Sakunkaewphithak,14/08/2026,20/08/2026
+FE - Batch Job Monitor,Kittisak <New> Kaeowika,21/08/2026,26/08/2026
+FE - Email Template and Notification Config,Chidchanok <lin> Saengamnat,20/08/2026,25/08/2026
+FE - Testing and Delivery,Peerakorn <Pete> Sakunkaewphithak,21/08/2026,26/08/2026
+BE - API Common Contracts,Butsaba <But> Podamrong,29/07/2026,31/07/2026
+BE - API Dashboard Summary,Butsaba <But> Podamrong,31/07/2026,05/08/2026
+BE - API Document List and Search,Butsaba <But> Podamrong,05/08/2026,10/08/2026
+BE - API Document Create and Update,Tunyatorn <Vava> Kiatkongphongsa,29/07/2026,04/08/2026
+BE - API Document Detail Aggregate,Butsaba <But> Podamrong,11/08/2026,17/08/2026
+BE - API Document Workflow Actions,Butsaba <But> Podamrong,17/08/2026,21/08/2026
+BE - Workflow Engine and API Workflow Instances,Tunyatorn <Vava> Kiatkongphongsa,04/08/2026,07/08/2026
+BE - API Attachment Sales and Timeline,Tunyatorn <Vava> Kiatkongphongsa,10/08/2026,13/08/2026
+BE - API Lookup RBAC and Email Template,Tunyatorn <Vava> Kiatkongphongsa,13/08/2026,20/08/2026
+BE - API Report Master Config,Tunyatorn <Vava> Kiatkongphongsa,20/08/2026,27/08/2026
+BE - Job Batch Email and SRM Integration,Butsaba <But> Podamrong,21/08/2026,27/08/2026
+Job 1 ImportQSSI,Aphiwit <Bank> Khammoon,29/07/2026,31/07/2026
+Job 2 ImportImpactStore,Aphiwit <Bank> Khammoon,31/07/2026,04/08/2026
+Job 3 ImportImpactCompetitor,Aphiwit <Bank> Khammoon,04/08/2026,05/08/2026
+Job 4 PrepareImpactStoreToIAS,Aphiwit <Bank> Khammoon,06/08/2026,10/08/2026
+Job 5 ImportImpactSaleFromIAS,Aphiwit <Bank> Khammoon,10/08/2026,12/08/2026
+Job 6 ExportImpactStoreToFS,Aphiwit <Bank> Khammoon,12/08/2026,14/08/2026
+Job 7 SyncCompetitorToDocument,Aphiwit <Bank> Khammoon,14/08/2026,18/08/2026
+Job 8 CreateCompensationDocument,Aphiwit <Bank> Khammoon,18/08/2026,20/08/2026
+Job 8b StartInternalWorkflow,Aphiwit <Bank> Khammoon,20/08/2026,24/08/2026
+Job 9 SyncNewStoreToDocument,Aphiwit <Bank> Khammoon,24/08/2026,25/08/2026
+Job 10 NotifyNoReceiveData,Aphiwit <Bank> Khammoon,26/08/2026,27/08/2026

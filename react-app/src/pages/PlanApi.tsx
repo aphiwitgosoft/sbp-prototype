@@ -105,10 +105,10 @@ export default function PlanApi() {
 
   return (
     <>
-      <PageHead title="API Specification" sub="REST /api/v1 · 61 เส้น 10 กลุ่ม · คลิกเส้นเพื่อดูรายละเอียด (Flow · SQL · Flowchart)" />
+      <PageHead title="API Specification" sub="REST /api/v1 · 62 เส้น 10 กลุ่ม · คลิกเส้นเพื่อดูรายละเอียด (Flow · SQL · Flowchart)" />
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {[['61', 'เส้น API ทั้งหมด'], ['10', 'กลุ่มตามโดเมน'], ['JWT', 'Bearer Token · Role 00–10'], ['JSON', 'UTF-8 ทุกเส้น']].map(([n, l]) => (
+        {[['62', 'เส้น API ทั้งหมด'], ['10', 'กลุ่มตามโดเมน'], ['JWT', 'Bearer Token · Role 00–10'], ['JSON', 'UTF-8 ทุกเส้น']].map(([n, l]) => (
           <div key={l} className="rounded-card border border-line bg-card p-4 text-center shadow-card">
             <div className="text-2xl font-bold text-primary">{n}</div>
             <div className="mt-1 text-[12px] text-muted">{l}</div>

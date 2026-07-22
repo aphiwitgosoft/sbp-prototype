@@ -34,6 +34,20 @@ For target BE/FE database design, use English `lower_snake_case` for table and c
 
 No automated tests exist. Manually verify changed pages in a browser, including sidebar rendering, breadcrumbs, modals, tabs, tables, SVG charts, and responsive behavior. When editing table headers used by modal schemas, confirm view/edit/add/delete flows still work because schema mapping depends on exact header text.
 
+## Recommended Codex Skills
+
+Use the relevant installed Codex skill when the task matches these project needs:
+
+- Browser: verify HTML prototype pages, localhost previews, responsive layout, modals, tabs, tables, sidebar behavior, screenshots, and click-through flows.
+- PDF: read, extract, render, or visually verify source PDFs and exported SRS/LLDD PDFs.
+- Documents/Word: create, edit, render, or verify `.docx` SRS/LLDD deliverables.
+- Spreadsheets: create or inspect `.xlsx`, `.csv`, or tabular export files when the task involves spreadsheet formatting, formulas, or charts.
+- OpenAI Docs: answer Codex/OpenAI API usage questions, current model guidance, or Codex configuration questions from official sources.
+- Image generation: create bitmap visual assets only when explicitly needed; prefer existing HTML/CSS/SVG for prototype UI and diagrams.
+- Figma: use only when the user explicitly asks to read, implement, or create Figma designs.
+
+Plain HTML/CSS/JS edits do not require a separate skill, but browser verification is expected after visual or interaction changes.
+
 ## Commit & Pull Request Guidelines
 
 Git history is minimal and uses short messages such as `update` and `Initial commit: SBP prototype HTML pages`. Prefer concise imperative commit messages, for example `Update K2 report filters`.

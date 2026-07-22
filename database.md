@@ -40,8 +40,8 @@
 
 | ตาราง | ที่มา | PK | FK / ความสัมพันธ์หลัก | บทบาท |
 |---|---|---|---|---|
-| `fgi_impact_stores` | FGI/FCS | id | `impact_process_id` → fgi_impact_processes · `impacted_store_code` → impacted_stores | คู่ร้านกระทบ–เปิดใหม่ · `verify_status` (W/P/Y/N) · `workflow_generation_status` (W/Y/N) |
-| `fgi_impact_processes` ★ | FGI/FCS | id | `impacted_store_code` · แม่ของตารางรายรอบทั้งหมด | **hub รอบชดเชย** · `action_status` (Y/W/N) · `last_compensation_amount` |
+| `fgi_impact_stores` | FGI/FCS | id | `impact_process_id` → fgi_impact_processes · `impacted_store_code` → impacted_stores | คู่ร้านกระทบ–เปิดใหม่ · `sales_request_status` (W/P/Y/E) · ข้อมูล %/ยอดชดเชยต่อคู่ร้าน |
+| `fgi_impact_processes` ★ | FGI/FCS | id | `impacted_store_code` · แม่ของตารางรายรอบทั้งหมด | **hub รอบชดเชย** · `action_status` (Y/W/N) · `last_compensation_amount` · source of truth ของ `workflow_generation_status` (W/Y/N) |
 | `fgi_impact_sales_summaries` | FGI/FCS | id | `impact_process_id` → fgi_impact_processes · → sales_transactions (1:N) | หัวยอดขาย · `growth_rate_diff` · `total_working_days` (เกณฑ์ 60 วัน) |
 | `sales_transactions` | FGI/FCS | id | `sales_summary_id` → fgi_impact_sales_summaries | ยอดขายรายวันจาก IAS · 4 หน้าต่าง × 15 วัน · sales_diff/outlier ≥ 50 แบบจับคู่ |
 | `fgi_impact_competitors` | FGI/FCS | id | `impact_process_id` → fgi_impact_processes · → document_competitors (นำเข้า) | คู่แข่งจาก ALLMAP (data_source=ALM) · งวดล่าสุดต่อร้าน |
@@ -54,7 +54,7 @@
 |---|---|---|---|---|
 | `compensation_documents` | K2 | `doc_no` (YYYY/xxxxx) | `status_code` · `current_section_code` · `impacted_store_code` · **`impact_process_id` (ใหม่)** | เอกสารประกันรายได้ — หัวใจโซน B · FK ใหม่เชื่อม hub โซน A แทนไฟล์ 48 ฟิลด์ |
 | `document_new_stores` | K2 | id | `doc_no` → compensation_documents | ร้านเปิดใหม่ · `distance_km` · %ชดเชย (**ผลรวมต้อง = 100%**) |
-| `document_competitors` | K2 | id | `doc_no` · `competitor_code` → competitors | คู่แข่งในเอกสาร · `source_system` = ALM (จาก pipeline) / USER (ผู้ใช้เพิ่มเอง) |
+| `document_competitors` | K2 | id | `doc_no` · `competitor_code` → competitors | คู่แข่งในเอกสาร · `source_system` = ALLMAP (จาก pipeline) / USER (ผู้ใช้เพิ่มเอง) |
 | `document_external_factors` | K2 | id | `doc_no` · `factor_code` → external_factors | ปัจจัยภายนอกที่ใช้ในเอกสาร + ช่วงวันที่ |
 | `consideration_logs` | K2 | id | `doc_no` → compensation_documents | ประวัติพิจารณาทุกขั้น (ผู้พิจารณา · Section · ผล · เวลา) · `result_category` (APPROVE/REJECT/PENDING) สำหรับ filter **ประกันรายได้/ไม่ประกันรายได้** หน้ารายงานตรวจสอบประกันรายได้ (k2-report · SDD v7.5) |
 | `document_attachments` | K2 | id | `doc_no` → compensation_documents | ไฟล์แนบ ≤ 5MB ต่อไฟล์ · แยกตาม Section ที่แนบ |
@@ -68,7 +68,7 @@
 |---|---|---|---|---|
 | `stores` | FGI/FCS | `store_code` | ← impacted_stores (subset SP) · ← `document_new_stores.new_store_code` | master สาขา 7-Eleven ทุกประเภท (SP / เปิดใหม่ / ปิด renovate) — แหล่งค้นหาร้านของหน้า `k2-create.html` (API `/stores/search`) |
 | `impacted_stores` | K2 | `store_code` | = `impacted_store_code` ของโซน A (สะพานหลักสองระบบ) · subset SP ของ `stores` | ข้อมูลร้าน SP master |
-| `workflow_sections` / `document_statuses` | K2 | `section_code` / `status_code` | อ้างโดย compensation_documents · workflow_tasks · status_email_rules | ขั้นตอน **06/08/01/02/03 (5 ขั้น · ตัดบัญชี 04/05 ตาม SDD v7.5)** · สถานะเอกสาร **6 ค่า** — แถวบัญชี (04/05) และสถานะ "รอฝ่ายบัญชี/รอบัญชีปฏิบัติการภาค" ยกเลิกใช้งาน |
+| `workflow_sections` / `document_statuses` | K2 | `section_code` / `status_code` | อ้างโดย compensation_documents · workflow_tasks · status_email_rules | ขั้นตอน **06/08/01/02/03 (5 ขั้น · ตัดบัญชี 04/05 ตาม SDD v7.5)** · สถานะเอกสาร **6 ค่า: 06/08/01/02/03/99** โดย 99 = เสร็จสิ้นดำเนินการ — แถวบัญชี (04/05) และสถานะ "รอฝ่ายบัญชี/รอบัญชีปฏิบัติการภาค" ยกเลิกใช้งาน |
 | `roles` / `menus` / `menu_permissions` | K2 · SRS 3.1.1 | `role_code` / `menu_code` (composite) | menu_permissions = composite PK | สิทธิ์เมนู 8 role (00–10) — แหล่งข้อมูล RBAC ของ Auth · **CRUD ได้จากหน้าจอ 3.1.1** (`k2-permissions.html`) ผ่าน API `/roles` `/menus` `/menu-permissions` · `roles.role_desc` + `is_system` กันลบ/แก้รหัส role หลัก · `menus.menu_group` (MAIN/MASTER) + `sort_order` + `is_system` · เพิ่ม role/เมนูใหม่ = สร้างแถว `can_access=false` ทุกช่อง · ลบ = cascade ลบสิทธิ์ · ทุกการเปลี่ยนแปลงต้องระบุเหตุผลและลง `audit_logs` |
 | `operator_assignments` | K2 · SRS 3.1.8 | id | `section_code` · `zone_code` · `employee_id` → employees | ผู้ปฏิบัติงานต่อ section_code/zone_code · เลือกชื่อผ่าน popup ค้นหาพนักงาน |
 | `employees` | FGI/FCS | `employee_id` | ← `user_accounts.employee_id` · ← operator_assignments (เลือกผ่าน popup) | master พนักงานองค์กร (HR) — batch join อยู่แล้ว · ป้อน popup ค้นหาพนักงาน (API `/employees/search`) หน้า 3.1.8 |
@@ -78,9 +78,26 @@
 | `status_email_rules` | K2 · SRS 3.1.5 | `status_code` | `to_section_code` · `cc_section_code` → workflow_sections | ผู้รับอีเมล TO/CC เมื่อเปลี่ยนสถานะ — ใช้โดย Notification Service |
 | `email_templates` | ใหม่ | `template_code` (EM-01–08) | อ่านคู่กับ status_email_rules โดย Notification Service | **เนื้อหา 8 email template** (subject/body + ตัวแปร merge) แก้ได้จากหน้า `plan-email.html` — ยกจากเดิมที่เก็บ localStorage มา persist จริงฝั่ง server · From/To/Cc ล็อกตาม `status_email_rules` (rules = ผู้รับ, templates = เนื้อหา) · ประวัติแก้ไข/รีเซ็ต → `audit_logs` · ถ้อยคำ template เป็น beyond SRS (SRS กำหนดเฉพาะผู้รับ/จังหวะส่ง) |
 | `user_accounts` | ใหม่ | `employee_id` | `role_code` → roles | บัญชีผู้ใช้ + role สำหรับ JWT (เดิมพึ่งระบบ BPM) |
-| `job_configs` | ใหม่ | `job_no` | ← job_run_histories | cron + พารามิเตอร์ที่แก้ได้ของ 11 jobs (หน้า Batch Monitor) |
+| `job_configs` | ใหม่ | `job_no` | ← job_run_histories | schema reference สำหรับ cron + พารามิเตอร์ที่แก้ได้ของ 11 jobs; ไม่ใช่ scope ให้ FE ทำ tab Database ที่ใช้ |
 | `job_run_histories` | ใหม่ | `run_id` | `job_no` → job_configs | ประวัติรันต่อรอบ (เวลา · แถว · ไฟล์ · ผล) — เดิมอยู่ใน log ไฟล์ |
 | `system_configs` | ใหม่ | `config_key` | อ่านโดยทุก service · ประวัติแก้ไข → audit_logs | **Global config แบบ key–value** (หน้าจอ `system-config.html`) — `config_key` เป็น dot notation (`impact.radius_bkk_km`, `workflow.avp_amount_threshold`) · `category` (IMPACT/WORKFLOW/DOCUMENT/AUTH/NOTIFICATION/BATCH) · `value_type` (NUMBER/STRING/BOOLEAN/JSON/CRON) ใช้ validate ก่อนบันทึก · `is_editable=false` = ค่าคงที่ทางธุรกิจ (รัศมี 1/2 กม. · วงเงิน 100,000 · เกณฑ์ 60 วัน · เกณฑ์ −10 ตามข้อ 8.2) แก้ผ่าน UI/API ไม่ได้ · **ห้ามเก็บ secret** (อยู่ Secret Manager — P0) · service cache 5 นาที + invalidate เมื่อแก้ไข · พารามิเตอร์เฉพาะราย job ยังอยู่ `job_configs` |
+
+> Batch Monitor scope note: ตาราง `job_configs` และ `job_run_histories` เป็น schema reference สำหรับ dev/BE เท่านั้น ไม่ใช่ scope ให้ `LLDD/FE/LLDD-FE-Batch-Monitor.*` ต้องทำหน้า database หรือใส่ DB mapping รายละเอียด; เอกสาร FE หน้านั้นทำเฉพาะ tab `แบบฟอร์มพารามิเตอร์` และ `ประวัติการรัน`.
+
+## Canonical Column Contract
+
+DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่อด้านล่างตรงกัน; ชื่อในคอลัมน์ “ยกเลิกใช้” ห้ามปรากฏใน implementation ใหม่
+
+| ตาราง | ชื่อ canonical | ยกเลิกใช้ |
+|---|---|---|
+| `menu_permissions` | `role_code`, `menu_code`, `can_access` | `can_view`, `can_create`, `can_update`, `can_delete` |
+| `user_accounts` | `employee_id`, `role_code`, `section_code`, `username`, `is_active` | `password_hash`, `account_status`; credential ตรวจโดย platform SSO/AD/LDAP |
+| `workflow_instances` | `instance_id`, `doc_no`, `instance_status`, `started_at`, `started_by` | `status`; `instance_id` ต้องส่งเข้าตอน insert |
+| `system_configs` | `config_key`, `category`, `config_value`, `value_type`, `unit`, `description`, `is_editable` | `secret_flag` และ secret ทุกชนิด |
+| `sales_transactions` | `txn_date`, `window_no`, `sales_amount`, `sales_diff`, `is_outlier` | `sale_date`, `window_code`, `net_sales` |
+| `consideration_logs` | `result`, `result_category`, `detail`, `consider_by`, `action_datetime` | `result_code`, `comment`, `considered_by`, `considered_at` |
+| `interface_transactions` | PK `id`, เวลา ACK `acked_at` | API อาจ alias เป็น `trackingId`/`receiveDate` แต่ SQL ต้องอ้าง `id`/`acked_at` |
+| `fgi_impact_processes` | `workflow_generation_status` | ห้าม duplicate สถานะเดียวกันใน `fgi_impact_stores` |
 
 ## กุญแจเชื่อมข้ามระบบ (Cross-System Keys)
 
@@ -89,7 +106,7 @@
 2. **`*.impact_process_id → fgi_impact_processes.id`** — hub กลางของคู่ร้าน ยอดขาย และคู่แข่งในหนึ่งรอบชดเชย (ใหม่)
 3. **`compensation_documents.impact_process_id → fgi_impact_processes`** — FK ใหม่ **1 รอบชดเชย : 1 เอกสาร** แทนการส่งไฟล์ BPM06001O (48 ฟิลด์) ข้ามระบบ (ใหม่)
 4. **`workflow_instances.doc_no → compensation_documents`** — เปิด instance เมื่อผ่าน Gen Flow Gate · สถานะ instance แทน `workflow_generation_status = Y` ของเดิม (ใหม่)
-5. **`document_competitors.source_system = 'ALM'`** — แถวจาก fgi_impact_competitors (Jobs 3/7 เดิม) แยกจากที่ผู้ใช้เพิ่มเอง (USER)
+5. **`document_competitors.source_system = 'ALLMAP'`** — แถวจาก fgi_impact_competitors (Jobs 3/7 เดิม) แยกจากที่ผู้ใช้เพิ่มเอง (USER)
 6. **`compensation_histories.submit_account_month`** — งวดที่ส่งเข้าไฟล์ FRBC0001 ไป STA (Job 6) · สถานะ I/C/A/N/S/Z ตามเดิม
 7. **`interface_transactions`** — FK แยกประเภทเป็นคอลัมน์ (impact_process_id / sales_summary_id / doc_no) + `data_name` เป็น enum — เลิก `parseInt(impacted_store_code)` ที่ทำเลขศูนย์นำหน้าหาย (ใหม่)
 
@@ -107,5 +124,5 @@
 ## เอกสารที่เกี่ยวข้อง
 
 - Flow ที่ใช้ตารางเหล่านี้: [workflow.md](workflow.md) · `plan-flow.html`
-- API ที่อ่าน/เขียนตาราง: [api.md](api.md) · `plan-api.html` (61 endpoints 10 กลุ่ม — รวม roles/menus CRUD 7 เส้นของหน้าจอ 3.1.1, System Config 5 เส้น และกลุ่ม Lookup 4 เส้น: `/stores/search` `/competitors` `/document-statuses` `/workflow-sections`)
+- API ที่อ่าน/เขียนตาราง: [api.md](api.md) · `plan-api.html` (62 endpoints 10 กลุ่ม — รวม roles/menus CRUD 7 เส้นของหน้าจอ 3.1.1, System Config 5 เส้น, กลุ่ม Lookup 4 เส้น และ `GET /documents/{docNo}/sales`)
 - Schema ต้นทางแยกระบบ: `fgi-database.html` (FGI/FCS) · `k2-database.html` (K2, 16 ตาราง + ER diagram)

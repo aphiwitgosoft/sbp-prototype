@@ -60,6 +60,16 @@
         </div>
       </div>
 
+      <div class="card" style="border-left:5px solid #16a34a;">
+        <div style="font-size:13px;color:#45525f;line-height:1.9;">
+          <b style="color:#2b3440;">Scope note:</b>
+          หน้านี้เป็น Target Schema Reference ของระบบรวม ไม่ใช่รายการ deliverable ของหน้า FE Batch Monitor.
+          ตารางกลุ่ม batch เช่น <code>job_configs</code> และ <code>job_run_histories</code> มีไว้ให้ BE/dev ใช้อ้างอิง schema เท่านั้น;
+          งาน FE Batch Monitor ทำจริงเฉพาะ 2 tab คือ <b>แบบฟอร์มพารามิเตอร์</b> และ <b>ประวัติการรัน</b>
+          ไม่ต้องออกแบบ tab Flowchart การทำงาน หรือ Database ที่ใช้จากหน้านี้
+        </div>
+      </div>
+
       <div class="db-stat-grid">
         <div class="db-stat"><b>34</b><span>ตารางใน Target Schema</span></div>
         <div class="db-stat"><b>3</b><span>Data Zones</span></div>
@@ -214,7 +224,7 @@
 
             <rect x="744" y="506" width="304" height="40" rx="8" fill="#f2fbf5" stroke="#15803d" stroke-width="1.4" stroke-dasharray="5 4"/>
             <text x="756" y="523" font-size="11.5" font-weight="700" fill="#15803d" font-family="Menlo,monospace">job_configs · job_run_histories</text>
-            <text x="756" y="538" font-size="9.5" fill="#5d6b7a">ใหม่ — พารามิเตอร์ 11 jobs + ประวัติรัน (หน้า Batch Monitor)</text>
+            <text x="756" y="538" font-size="9.5" fill="#5d6b7a">ใหม่ — schema reference สำหรับ batch config + run history</text>
 
             <rect x="744" y="556" width="304" height="40" rx="8" fill="#f2fbf5" stroke="#15803d" stroke-width="1.4" stroke-dasharray="5 4"/>
             <text x="756" y="573" font-size="11.5" font-weight="700" fill="#15803d" font-family="Menlo,monospace">system_configs</text>
@@ -251,8 +261,8 @@
             <thead><tr><th>ตาราง</th><th>โซน</th><th>ที่มา</th><th>PK</th><th>FK / ความสัมพันธ์หลัก</th><th>บทบาท</th></tr></thead>
             <tbody>
               <tr class="zone-row a"><td colspan="6">Zone A · FGI/FCS — Impact Pipeline และ External Interfaces</td></tr>
-              <tr><td class="tb">fgi_impact_stores</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · impacted_store_code → impacted_stores</td><td>คู่ร้านกระทบ–เปิดใหม่ · verify_status (W/P/Y/N) · workflow_generation_status (W/Y/N)</td></tr>
-              <tr><td class="tb">fgi_impact_processes</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impacted_store_code · แม่ของตารางรายรอบทั้งหมด</td><td>hub รอบชดเชย · action_status (Y/W/N) · last_compensation_amount</td></tr>
+              <tr><td class="tb">fgi_impact_stores</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · impacted_store_code → impacted_stores</td><td>คู่ร้านกระทบ–เปิดใหม่ · sales_request_status (W/P/Y/E) · ข้อมูล %/ยอดชดเชยต่อคู่ร้าน</td></tr>
+              <tr><td class="tb">fgi_impact_processes</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impacted_store_code · แม่ของตารางรายรอบทั้งหมด</td><td>hub รอบชดเชย · action_status · last_compensation_amount · source of truth ของ workflow_generation_status (W/Y/N)</td></tr>
               <tr><td class="tb">fgi_impact_sales_summaries</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · → sales_transactions (1:N)</td><td>หัวยอดขาย · growth_rate_diff · total_working_days (เกณฑ์ 60 วัน)</td></tr>
               <tr><td class="tb">sales_transactions</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>sales_summary_id → fgi_impact_sales_summaries</td><td>ยอดขายรายวันจาก IAS · sales_diff/outlier ≥ 50 แบบจับคู่</td></tr>
               <tr><td class="tb">fgi_impact_competitors</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · → document_competitors (นำเข้า)</td><td>คู่แข่งจาก ALLMAP (data_source=ALM) · งวดล่าสุดต่อร้าน</td></tr>
@@ -261,7 +271,7 @@
               <tr class="zone-row b"><td colspan="6">Zone B · K2 — เอกสารประกันรายได้และ Workflow ภายใน</td></tr>
               <tr><td class="tb">compensation_documents</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">doc_no (YYYY/xxxxx)</td><td>status_code · current_section_code · impacted_store_code · <b>impact_process_id (ใหม่)</b></td><td>เอกสารประกันรายได้ — หัวใจโซน B · FK ใหม่เชื่อม hub โซน A แทนไฟล์ 48 ฟิลด์</td></tr>
               <tr><td class="tb">document_new_stores</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no → compensation_documents</td><td>ร้านเปิดใหม่ · distance_km · %ชดเชย (ผลรวมต้อง 100%)</td></tr>
-              <tr><td class="tb">document_competitors</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no · competitor_code → competitors</td><td>คู่แข่งในเอกสาร · source_system ALM/USER</td></tr>
+              <tr><td class="tb">document_competitors</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no · competitor_code → competitors</td><td>คู่แข่งในเอกสาร · source_system ALLMAP/USER</td></tr>
               <tr><td class="tb">document_external_factors</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no · factor_code → external_factors</td><td>ปัจจัยภายนอกที่ใช้ในเอกสาร + ช่วงวันที่</td></tr>
               <tr><td class="tb">consideration_logs</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no → compensation_documents</td><td>ประวัติพิจารณา (ผู้พิจารณา · Section · ผล · เวลา) · result_category (APPROVE/REJECT/PENDING) สำหรับ filter ประกันรายได้/ไม่ประกันรายได้ หน้ารายงานตรวจสอบประกันรายได้ (k2-report · SDD v7.5)</td></tr>
               <tr><td class="tb">document_attachments</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>doc_no → compensation_documents</td><td>ไฟล์แนบ ≤ 5MB ต่อไฟล์ · Section ที่แนบ</td></tr>
@@ -271,7 +281,7 @@
               <tr class="zone-row c"><td colspan="6">Zone C · Shared — Master, RBAC, Configuration และ Audit</td></tr>
               <tr><td class="tb">stores</td><td>C</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">store_code</td><td>← impacted_stores (subset SP) · ← document_new_stores.new_store_code</td><td>master สาขา 7-Eleven ทุกประเภท (SP / เปิดใหม่ / ปิด renovate) — แหล่งค้นหาร้านของหน้า k2-create (API /stores/search)</td></tr>
               <tr><td class="tb">impacted_stores</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">store_code</td><td>= impacted_store_code ของโซน A (สะพานหลักสองระบบ) · subset SP ของ stores</td><td>ข้อมูลร้าน SP master</td></tr>
-              <tr><td class="tb">workflow_sections / document_statuses</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">section_code / status_code</td><td>อ้างโดย compensation_documents · workflow_tasks · status_email_rules</td><td>ขั้นตอน 06/08/01/02/03 (5 ขั้น · ตัดบัญชี 04/05 ตาม SDD v7.5) · สถานะเอกสาร 6 ค่า</td></tr>
+              <tr><td class="tb">workflow_sections / document_statuses</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">section_code / status_code</td><td>อ้างโดย compensation_documents · workflow_tasks · status_email_rules</td><td>ขั้นตอน 06/08/01/02/03 (5 ขั้น · ตัดบัญชี 04/05 ตาม SDD v7.5) · สถานะเอกสาร 6 ค่า: 06, 08, 01, 02, 03 และ 99 (เสร็จสิ้น)</td></tr>
               <tr><td class="tb">roles / menus / menu_permissions</td><td>C</td><td><span class="ref k2">K2 · 3.1.1</span></td><td class="num">role_code / menu_code (composite)</td><td>menu_permissions = composite PK</td><td>สิทธิ์เมนู 8 role (00–10) — แหล่งข้อมูล RBAC ของ Auth · CRUD ผ่านหน้าจอ 3.1.1 (API /roles /menus /menu-permissions) · is_system กันลบ role/เมนูหลัก · menus มี menu_group (MAIN/MASTER) + sort_order · ประวัติลง audit_logs</td></tr>
               <tr><td class="tb">operator_assignments</td><td>C</td><td><span class="ref k2">K2 · 3.1.8</span></td><td class="num">id</td><td>section_code · zone_code · employee_id → employees</td><td>ผู้ปฏิบัติงานต่อ section_code/zone_code · เลือกชื่อผ่าน popup ค้นหาพนักงาน</td></tr>
               <tr><td class="tb">employees</td><td>C</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">employee_id</td><td>← user_accounts.employee_id · ← operator_assignments (เลือกผ่าน popup)</td><td>master พนักงานองค์กร (HR) — batch join อยู่แล้ว · ป้อน popup ค้นหาพนักงาน (API /employees/search) หน้า 3.1.8</td></tr>
@@ -281,9 +291,27 @@
               <tr><td class="tb">status_email_rules</td><td>C</td><td><span class="ref k2">K2 · 3.1.5</span></td><td class="num">status_code</td><td>to_section_code · cc_section_code → workflow_sections</td><td>ผู้รับอีเมลเมื่อเปลี่ยนสถานะ — ใช้โดย Notification Service</td></tr>
               <tr><td class="tb">email_templates</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">template_code (EM-01–08)</td><td>อ่านคู่กับ status_email_rules โดย Notification Service</td><td>เนื้อหา 8 email template (subject/body + ตัวแปร merge) แก้ได้จากหน้า plan-email.html · From/To/Cc ล็อกตาม status_email_rules · ประวัติแก้ไข/รีเซ็ต → audit_logs · ถ้อยคำเป็น beyond SRS (SRS กำหนดเฉพาะผู้รับ/จังหวะส่ง)</td></tr>
               <tr><td class="tb">user_accounts</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">employee_id</td><td>role_code → roles</td><td>บัญชีผู้ใช้สำหรับ JWT (เดิมพึ่งระบบ BPM)</td></tr>
-              <tr><td class="tb">job_configs</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">job_no</td><td>← job_run_histories</td><td>cron + พารามิเตอร์ที่แก้ได้ของ 11 jobs (หน้า Batch Monitor)</td></tr>
+              <tr><td class="tb">job_configs</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">job_no</td><td>← job_run_histories</td><td>schema reference สำหรับ cron + พารามิเตอร์ที่แก้ได้ของ 11 jobs; ไม่ใช่ scope ให้ FE ทำ tab Database ที่ใช้</td></tr>
               <tr><td class="tb">job_run_histories</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">run_id</td><td>job_no → job_configs</td><td>ประวัติรันต่อรอบ (เวลา · แถว · ไฟล์ · ผล) — เดิมอยู่ใน log ไฟล์</td></tr>
               <tr><td class="tb">system_configs</td><td>C</td><td><span class="ref new">ใหม่</span></td><td class="num">config_key</td><td>อ่านโดยทุก service · ประวัติแก้ไข → audit_logs</td><td>Global config แบบ key–value (หน้า system-config.html) · category (IMPACT/WORKFLOW/DOCUMENT/AUTH/NOTIFICATION/BATCH) · value_type (NUMBER/STRING/BOOLEAN/JSON/CRON) · is_editable กันแก้ค่าคงที่ทางธุรกิจ (ข้อ 8.2) · ห้ามเก็บ secret (อยู่ Secret Manager) · cache 5 นาที + invalidate เมื่อแก้ไข</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>2.1 Canonical Column Contract</h2><span class="pill warn">DDL = API SQL = Job SQL</span></div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>ตาราง</th><th>ชื่อ canonical</th><th>ชื่อที่ยกเลิกใช้</th></tr></thead>
+            <tbody>
+              <tr><td class="tb">menu_permissions</td><td>role_code, menu_code, can_access</td><td>can_view / can_create / can_update / can_delete</td></tr>
+              <tr><td class="tb">user_accounts</td><td>employee_id, role_code, section_code, username, is_active</td><td>password_hash / account_status; credential ตรวจโดย platform</td></tr>
+              <tr><td class="tb">workflow_instances</td><td>instance_id, doc_no, instance_status, started_at, started_by</td><td>status และ insert โดยไม่ระบุ instance_id</td></tr>
+              <tr><td class="tb">system_configs</td><td>category, config_value, value_type, unit, description, is_editable</td><td>secret_flag และ inline secret</td></tr>
+              <tr><td class="tb">sales_transactions</td><td>txn_date, window_no, sales_amount, sales_diff, is_outlier</td><td>sale_date / window_code / net_sales</td></tr>
+              <tr><td class="tb">consideration_logs</td><td>result, result_category, detail, consider_by, action_datetime</td><td>result_code / comment / considered_by / considered_at</td></tr>
+              <tr><td class="tb">interface_transactions</td><td>id, acked_at</td><td>tracking_id / receive_date ใช้ได้เฉพาะชื่อ alias ใน API</td></tr>
             </tbody>
           </table>
         </div>
@@ -298,7 +326,7 @@
           <li><b>*.impact_process_id → fgi_impact_processes.id</b> — hub กลางของคู่ร้าน ยอดขาย และคู่แข่งในหนึ่งรอบชดเชย ลดการ join ด้วย business key หลายคอลัมน์ <span class="ref new">ใหม่</span></li>
           <li><b>compensation_documents.impact_process_id → fgi_impact_processes</b> — FK ใหม่ 1 รอบชดเชย : 1 เอกสาร แทนการส่งไฟล์ BPM06001O (48 ฟิลด์) ข้ามระบบ <span class="ref new">ใหม่</span></li>
           <li><b>workflow_instances.doc_no → compensation_documents</b> — เปิด instance เมื่อผ่าน Gen Flow Gate · สถานะ instance ทำหน้าที่แทน workflow_generation_status = Y ของเดิม <span class="ref new">ใหม่</span></li>
-          <li><b>document_competitors.source_system = 'ALM'</b> — แถวที่มาจาก fgi_impact_competitors (Jobs 3/7 เดิม) แยกจากที่ผู้ใช้เพิ่มเอง (USER) <span class="ref fgi">FGI/FCS</span></li>
+          <li><b>document_competitors.source_system = 'ALLMAP'</b> — แถวที่มาจาก fgi_impact_competitors (Jobs 3/7 เดิม) แยกจากที่ผู้ใช้เพิ่มเอง (USER) <span class="ref fgi">FGI/FCS</span></li>
           <li><b>compensation_histories.submit_account_month</b> — งวดที่ส่งเข้าไฟล์ FRBC0001 ไป STA (Job 6) · สถานะ I/C/A/N/S/Z ตามเดิม <span class="ref fgi">FGI/FCS</span></li>
           <li><b>interface_transactions</b> — คอลัมน์ FK แยกประเภท (impact_process_id / sales_summary_id / doc_no) + data_name เป็น enum — เลิก parseInt(impacted_store_code) ที่ทำเลขศูนย์นำหน้าหาย <span class="ref new">ใหม่</span></li>
         </ul>

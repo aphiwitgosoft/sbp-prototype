@@ -37,7 +37,7 @@
 
       <div class="page-head">
         <div><h1 class="page-title">API Specification</h1>
-          <p class="page-sub">REST API ทั้งหมด 61 เส้น 10 กลุ่ม (+2 เส้นข้อมูลผิดปกติ comment รอตัดสินใจ) สำหรับ Frontend SPA และงานภายใน · ทุกเส้นระบุ ref ที่มา (FGI/FCS หรือ K2), Flow, Database และ Request/Response</p></div>
+          <p class="page-sub">REST API ทั้งหมด 62 เส้น 10 กลุ่มเป็น reference contract สำหรับ Frontend SPA และงานภายใน (+2 เส้นข้อมูลผิดปกติ comment รอตัดสินใจ) · Auth Group 1 เป็น platform reference นอกงาน implement Login/Auth ของ SBP Mall</p></div>
         <div class="page-actions">
           <button class="btn btn-ghost" data-ack="ดาวน์โหลด OpenAPI 3.0 (ตัวอย่าง)">Export OpenAPI</button>
         </div>
@@ -45,7 +45,7 @@
 
       <div class="stat-grid">
         <div class="stat"><div class="si bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v4c0 1.5-2 3-2 3s2 1.5 2 3v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4c0 1.5 2 3 2 3s-2 1.5-2 3v4a2 2 0 0 1-2 2h-1"/></svg></div>
-          <div><div class="sv num">61</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
+          <div><div class="sv num">62</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
         <div class="stat"><div class="si bg-teal"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 10h18M9 5v14"/></svg></div>
           <div><div class="sv num">10</div><div class="sl">กลุ่มตามโดเมน</div></div></div>
         <div class="stat"><div class="si bg-amber"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></div>
@@ -59,11 +59,45 @@
         <div style="font-size:13px;color:#45525f;line-height:2;">
           <b style="color:#2b3440;">มาตรฐานกลาง (ทุกเส้น):</b>
           Base URL <code class="ep-path">/api/v1</code> · Auth: <code class="ep-path">Authorization: Bearer &lt;JWT&gt;</code> ยกเว้น login/refresh และเส้น callback ภายนอก (API key) ·
+          Auth Group 1 เป็น platform-provided/reference contract; FE ใช้ <code class="ep-path">/auth/me</code> และ <code class="ep-path">/me/menus</code> เมื่อ platform token/menu service พร้อม ·
           แบ่งหน้า <code class="ep-path">?page=1&amp;size=20</code> ตอบ <code class="ep-path">{"page","size","total","items":[]}</code> ·
           Error ตอบรูปแบบเดียวกันทุกเส้น: <code class="ep-path">{"code":"DOC_409","message":"ข้อความภาษาไทยตรงตาม SRS"}</code> — ข้อความ popup ต้องตรงตัวตามเอกสาร ·
           วันที่ใช้ ISO-8601 + ปี ค.ศ. ใน payload (FE แปลงแสดงเป็น พ.ศ.) ·
+          code namespace แยกกันชัดเจน: <code class="ep-path">roleCode</code> = RBAC role, <code class="ep-path">sectionCode</code> = workflow section, <code class="ep-path">statusCode</code> = document status lookup ·
           ref ที่มา: <span class="ref fgi">FGI/FCS</span> เอกสาร Batch v4.0 · <span class="ref k2">K2</span> SRS v3.1 · <span class="ref new">ใหม่</span> เพิ่มในระบบใหม่ · <span class="ref mix">ผสม</span>
           — ดูภาพรวมที่ <a href="plan-flow.html" style="color:#2f6fed;font-weight:600;">Flow FGI/FCS + K2</a> · ตารางที่ <a href="plan-database.html" style="color:#2f6fed;font-weight:600;">DB รวม</a>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid #16a34a;">
+        <div style="font-size:13px;color:#45525f;line-height:1.9;">
+          <b style="color:#2b3440;">Batch Job scope note:</b>
+          กลุ่ม Batch Job Admin ในหน้านี้เป็น endpoint reference สำหรับ FE Batch Monitor เฉพาะ 2 tab คือ
+          <b>แบบฟอร์มพารามิเตอร์</b> และ <b>ประวัติการรัน</b>.
+          ไม่ออกแบบ tab Flowchart การทำงาน, งานที่ต้องทำแบบ step-by-step, หรือ Database ที่ใช้ของ batch job ในหน้านี้;
+          รายละเอียดเหล่านั้นให้ดูเอกสาร BE/Runbook/Database reference แยก
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>สัญญากลาง API/FE</h2><span class="pill info">ทุก endpoint และทุก FE hook ต้องอ้างชุดนี้</span></div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>หมวด</th><th>Contract กลาง</th><th>ใช้โดย</th></tr></thead>
+            <tbody>
+              <tr><td>Transport</td><td>Base URL <code>/api/v1</code> · JSON <code>application/json; charset=utf-8</code> · multipart เฉพาะ attachments</td><td>BE controller · FE API client</td></tr>
+              <tr><td>Auth</td><td>User endpoint ใช้ <code>Authorization: Bearer &lt;JWT&gt;</code>; internal workflow/batch callback ใช้ service token; Auth Group 1 เป็น platform reference</td><td>Platform/IAM · BE middleware · FE session</td></tr>
+              <tr><td>Error</td><td>ทุก error คืน <code>{"code","message"}</code> เท่านั้น · <code>message</code> เป็นไทย verbatim ตาม SRS ถ้ามีข้อความกำหนด</td><td>BE error handler · FE แสดงตรง ๆ</td></tr>
+              <tr><td>HTTP status</td><td>400 validation · 401 auth · 403 forbidden/RBAC · 404 not found · 409 duplicate/current-task conflict · 422 business rule · 413/415 attachment</td><td>BE AppError · FE error state</td></tr>
+              <tr><td>Pagination</td><td>GET list รับ <code>page,size</code> และคืน <code>{"page","size","total","items"}</code></td><td>BE query · FE DataTable/Pager</td></tr>
+              <tr><td>Format</td><td><code>docNo</code> = พ.ศ. <code>YYYY/xxxxx</code> · <code>storeCode/newStoreCode</code> string 5 หลัก · date/month payload เป็น ISO ค.ศ. · amount/percent เป็น number 2 decimals</td><td>BE validate/serialize · FE format display</td></tr>
+              <tr><td>Transition</td><td><code>POST /documents/{docNo}/actions</code> รับ <code>{result, comment}</code> และคืน <code>{nextSection, statusCode, message}</code>; positive path คือ <code>06→08→01→02→03→99</code>, โดย <code>99</code> = เสร็จสิ้นและ <code>nextSection=null</code>; Section 02 ยอด ≤100,000 จบเป็น 99</td><td>BE Workflow Action · FE DecisionPanel</td></tr>
+              <tr><td>Code namespace</td><td><code>roleCode</code> ใช้กับ RBAC role 00/01/02/03/04/05/06/10 · <code>sectionCode</code> ใช้กับ workflow section 06/08/01/02/03 · <code>statusCode</code> ใช้กับ document status lookup เท่านั้น</td><td>BE DTO/schema · FE constants</td></tr>
+              <tr><td>RBAC/Menu</td><td><code>/me/menus</code> เป็น source ของ sidebar/route guard · detail API คืน <code>permissions.canEditSections</code> และ <code>permissions.canAction</code></td><td>BE RBAC/task-owner guard · FE UI gating</td></tr>
+              <tr><td>Audit/Reason</td><td>mutation master/config/email/RBAC ต้องมี <code>reason</code>; workflow ลง <code>consideration_logs</code>; batch ลง <code>job_run_histories</code></td><td>BE transaction · FE required reason field</td></tr>
+              <tr><td>LLDD กลาง</td><td><code>LLDD-BE-API-Common-Contracts</code> + <code>LLDD-FE-Integration-Contracts</code></td><td>ทุก LLDD รายหน้า/ราย endpoint</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -92,9 +126,9 @@
 (function () {
   "use strict";
 
-  /* ===== API catalog: 61 เส้น 10 กลุ่ม (กลุ่มข้อมูลผิดปกติถูก comment รอตัดสินใจ) ===== */
+  /* ===== API catalog: 62 เส้น 10 กลุ่ม (กลุ่มข้อมูลผิดปกติถูก comment รอตัดสินใจ) ===== */
   var GROUPS = [
-    { name:'Auth & สิทธิ์ผู้ใช้', refT:'K2 · SRS 3.1.1', eps:[
+    { name:'Auth & สิทธิ์ผู้ใช้ (platform reference)', refT:'K2 · SRS 3.1.1', eps:[
       { m:'POST', p:'/api/v1/auth/login', ref:'k2', refT:'K2 · 3.1.1', roles:'ทุกคน (public)',
         sum:'เข้าสู่ระบบด้วยบัญชีพนักงาน แลก JWT พร้อม role และ section สำหรับใช้ทุกเส้นถัดไป',
         flow:['ตรวจ username/password กับ AD/LDAP ขององค์กร','โหลด user_accounts + role (00–10) และ section_code ของผู้ใช้','ออก accessToken (30 นาที) + refreshToken (8 ชั่วโมง)'],
@@ -131,21 +165,21 @@
         flow:['อ่าน sectionCode ของผู้ใช้จาก JWT','query workflow_tasks สถานะ OPEN ของ section นั้น','join compensation_documents + impacted_stores คืน 9 คอลัมน์ตามหน้าจอ'],
         db:[['workflow_tasks','R','งานค้างต่อ section (ตารางใหม่ — inbox)'],['compensation_documents','R','ข้อมูลเอกสาร'],['impacted_stores','R','ชื่อ/ภาคของร้าน']],
         req:'Query: ?page=1&size=20&q=00788\n(q = เลขที่เอกสาร / รหัสร้าน / ชื่อร้าน)',
-        res:'{\n  "page": 1, "total": 24,\n  "items": [{\n    "docNo": "2569/00123",\n    "storeCode": "00788",\n    "storeName": "รัตนอุทิศ ซ.13",\n    "impactMonth": "2026-06",\n    "status": "รอฝ่าย SBP DSA ดำเนินการ",\n    "currentSection": "06",\n    "waitingDays": 3\n  }]\n}',
+        res:'{\n  "page": 1, "total": 24,\n  "items": [{\n    "docNo": "2569/00123",\n    "storeCode": "00788",\n    "storeName": "รัตนอุทิศ ซ.13",\n    "impactMonth": "2026-06",\n    "statusCode": "06",\n    "currentSection": "06",\n    "waitingDays": 3\n  }]\n}',
         err:['401'] },
       { m:'GET', p:'/api/v1/documents', ref:'k2', refT:'K2 · 3.1.3 / 3.1.7', roles:'ตามสิทธิ์เมนู',
         sum:'ค้นหาเอกสารที่เกี่ยวข้อง — บังคับระบุปี และคืนเฉพาะเอกสารที่มีเลขที่แล้ว (กติกา SRS)',
         flow:['validate: ต้องระบุ year เสมอ ไม่งั้นตอบ 400','ค้น compensation_documents ตามเงื่อนไข (เลขที่ / ร้าน / สถานะ / เดือน)','คืนแบบแบ่งหน้า'],
         db:[['compensation_documents','R','เอกสารตามเงื่อนไข'],['impacted_stores','R','ข้อมูลร้าน']],
         req:'Query: ?year=2569&storeCode=00788&status=06&page=1\n(status = section ที่รออยู่ 06/08/01/02/03 หรือ END)',
-        res:'{\n  "page": 1, "total": 6,\n  "items": [{ "docNo": "2569/00123", "status": "รอฝ่าย SBP DSA ดำเนินการ", ... }]\n}',
+        res:'{\n  "page": 1, "total": 6,\n  "items": [{ "docNo": "2569/00123", "statusCode": "06", ... }]\n}',
         err:['400 — กรุณาระบุปีที่ต้องการค้นหา (กติกา SRS)','401'] },
       { m:'GET', p:'/api/v1/documents/{docNo}', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
         sum:'เอกสารฉบับเต็ม 12 ส่วนย่อย (k2-document.html) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน',
         flow:['โหลดเอกสาร + ร้านใหม่ + คู่แข่ง + ปัจจัย + ไฟล์แนบ + สรุปชดเชย ในคำขอเดียว','คำนวณ permissions: ส่วนไหนแก้ได้ตาม role + current_section_code (data-editrole เดิม)','FE ใช้ธงนี้แสดงป้าย "อ่านอย่างเดียว" ต่อส่วน'],
         db:[['compensation_documents','R','หัวเอกสาร'],['document_new_stores / document_competitors / document_external_factors','R','ส่วนย่อย'],['document_attachments / consideration_logs','R','ไฟล์แนบ + ประวัติ']],
         req:'(ไม่มี body)',
-        res:'{\n  "docNo": "2569/00123",\n  "status": "รอฝ่าย SBP DSA ดำเนินการ",\n  "currentSection": "06",\n  "impactedStore": { "storeCode": "00788", ... },\n  "newStores": [ { "storeCode": "15211", "compensatePercent": 60.0 } ],\n  "competitors": [ ... ],\n  "factors": [ ... ],\n  "compensation": { "amount": 95000.00, "salesDropPercent": 12.5 },\n  "permissions": { "canEditSections": ["competitor","factor"], "canAction": true }\n}',
+        res:'{\n  "docNo": "2569/00123",\n  "statusCode": "06",\n  "currentSection": "06",\n  "impactedStore": { "storeCode": "00788", ... },\n  "newStores": [ { "storeCode": "15211", "compensatePercent": 60.0 } ],\n  "competitors": [ ... ],\n  "factors": [ ... ],\n  "compensation": { "amount": 95000.00, "salesDropPercent": 12.5 },\n  "permissions": { "canEditSections": ["competitor","factor"], "canAction": true }\n}',
         err:['404 — ไม่พบเอกสาร','401'] },
       { m:'POST', p:'/api/v1/documents', ref:'k2', refT:'K2 · 3.1.6', roles:'02 HQ, 03 User Admin',
         sum:'สร้างเอกสารใหม่นอกเงื่อนไข หรือสร้างเอกสารที่ FS (สองแท็บของ k2-create.html)',
@@ -158,16 +192,16 @@
         sum:'บันทึกแก้ไขส่วนย่อยของเอกสาร (ร้านใหม่ / คู่แข่ง / ปัจจัย) ตามสิทธิ์ของขั้นที่ถืออยู่',
         flow:['ตรวจว่า role + section ปัจจุบันมีสิทธิ์แก้ส่วนที่ส่งมา (เช่น Section 01 แก้คู่แข่ง/ปัจจัยได้)','validate %ชดเชยของร้านใหม่รวมกันต้องเท่ากับ 100%','บันทึกและคืนเอกสารล่าสุด'],
         db:[['document_new_stores','R/W','%ชดเชย · ระยะห่าง'],['document_competitors','R/W','คู่แข่ง'],['document_external_factors','R/W','ปัจจัยภายนอก']],
-        req:'{\n  "newStores": [ { "newStoreId": 88, "compensatePercent": 60.0 },\n                 { "newStoreId": 89, "compensatePercent": 40.0 } ]\n}',
+        req:'{\n  "newStores": [ { "newStoreCode": "00990", "compensatePercent": 60.0 },\n                 { "newStoreCode": "00991", "compensatePercent": 40.0 } ]\n}',
         res:'200 OK — เอกสารฉบับล่าสุด (โครงเดียวกับ GET)',
         err:['403 — ไม่มีสิทธิ์แก้ส่วนนี้ในขั้นปัจจุบัน','422 — "%ชดเชย ... รวมกันแล้วไม่เท่ากับ 100%" (ข้อความตรงตาม SRS)'] },
       { m:'POST', p:'/api/v1/documents/{docNo}/actions', ref:'k2', refT:'K2 · 3.1.4', roles:'เจ้าของ task ปัจจุบัน',
         sum:'ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · กฎวงเงิน 100,000 ใช้ทั้งกรณีชดเชยและไม่ชดเชย',
         flow:['ตรวจว่าผู้ใช้เป็นเจ้าของ workflow_tasks ขั้นปัจจุบัน','validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว','คำนวณขั้นถัดไปตามตารางเส้นทาง (workflow.md): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 02 ชดเชย/ไม่ชดเชย > 100,000 → 03 → จบ · ชดเชย ≤ 100,000 → เสร็จสิ้น (จบที่ GM) · ไม่ชดเชย ≤ 100,000 → กลับ 06 · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ','insert consideration_logs + ปิด task เดิม เปิด task ใหม่','ส่งอีเมล TO/CC ตาม status_email_rules'],
         db:[['workflow_tasks','R/W','ปิดงานเดิม เปิดงานขั้นถัดไป'],['compensation_documents','W','อัปเดต Status + CurSection'],['consideration_logs','W','บันทึกผลพิจารณา'],['status_email_rules','R','ผู้รับอีเมล']],
-        req:'{\n  "action": "COMPENSATE",\n  // ตัวเลือกตามขั้นปัจจุบัน เช่น COMPENSATE / NOT_COMPENSATE / STOP\n  // CALC_DONE (08) / SEND_BACK / SKIP_TO_ACCT (06→04)\n  "comment": "เห็นควรชดเชยตามหลักเกณฑ์"\n}',
-        res:'{\n  "docNo": "2569/00123",\n  "nextSection": "02",\n  "status": "รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ"\n}',
-        err:['422 — "ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูล ก่อนกดส่งดำเนินการ"','403 — ไม่ใช่เจ้าของงานขั้นนี้','409 — งานถูกดำเนินการไปแล้วโดยผู้อื่น'] },
+        req:'{\n  "result": "เห็นควรชดเชย",\n  // 6-enum verbatim: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้\n  // / ส่งฝ่ายส่งเสริมธุรกิจ SBP / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ\n  "comment": "เห็นควรชดเชยตามหลักเกณฑ์"\n}',
+        res:'{\n  "nextSection": "02",\n  "statusCode": "02",\n  "message": "ส่งดำเนินการสำเร็จ"\n}',
+        err:['422 — "ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ"','403 — ไม่ใช่เจ้าของงานขั้นนี้','409 — งานถูกดำเนินการไปแล้วโดยผู้อื่น'] },
       { m:'GET', p:'/api/v1/documents/{docNo}/timeline', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
         sum:'ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร)',
         flow:['อ่าน consideration_logs เรียงตามเวลา'],
@@ -177,11 +211,18 @@
         err:['404'] },
       { m:'POST', p:'/api/v1/documents/{docNo}/attachments', ref:'k2', refT:'K2 · 3.1.6', roles:'ตาม section ปัจจุบัน',
         sum:'แนบไฟล์เข้าเอกสาร — จำกัด 5MB ต่อไฟล์ตาม SRS',
-        flow:['รับ multipart/form-data (file + sectionCode)','ตรวจขนาด ≤ 5MB และชนิดไฟล์ที่อนุญาต','บันทึกไฟล์ + insert document_attachments'],
-        db:[['document_attachments','W','เมทาดาต้าไฟล์ + section ที่แนบ']],
+        flow:['รับ multipart/form-data (file + sectionCode)','ตรวจขนาด ≤ 5MB และชนิดไฟล์ที่อนุญาต','sanitize filename + คำนวณ sha256','run AV scan','เก็บ binary ใน object storage และบันทึก metadata document_attachments'],
+        db:[['document_attachments','W','เมทาดาต้าไฟล์ + bucket/object_key/sha256/scan_status']],
         req:'multipart/form-data\n  file: (binary ≤ 5MB)\n  sectionCode: "06"',
-        res:'201 Created\n{ "attachId": 771, "fileName": "หนังสือแจ้งผล.pdf" }',
-        err:['413 — ไฟล์เกิน 5MB','415 — ชนิดไฟล์ไม่อนุญาต'] },
+        res:'201 Created\n{ "attachId": 771, "fileName": "หนังสือแจ้งผล.pdf", "scanStatus": "CLEAN" }',
+        err:['413 — ไฟล์เกิน 5MB','415 — ชนิดไฟล์ไม่อนุญาต','422 — ไฟล์แนบไม่ผ่านการตรวจสอบความปลอดภัย'] },
+      { m:'GET', p:'/api/v1/documents/{docNo}/attachments/{attachId}/download', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์อ่านเอกสาร',
+        sum:'ดาวน์โหลดไฟล์แนบผ่าน BE stream โดยตรวจสิทธิ์เอกสารและ scanStatus=CLEAN ก่อนส่ง binary',
+        flow:['ตรวจสิทธิ์อ่านเอกสารและ attachment ต้องผูกกับ docNo','ตรวจ scan_status = CLEAN','อ่าน object storage ผ่าน bucket/object_key','stream ผ่าน BE พร้อม Content-Disposition; ไม่ expose permanent bucket URL'],
+        db:[['document_attachments','R','metadata + object key + scan status'],['object storage','R','binary file']],
+        req:'(ไม่มี body)',
+        res:'200 binary stream\nContent-Disposition: attachment; filename="หนังสือแจ้งผล.pdf"',
+        err:['403 — ไม่มีสิทธิ์อ่านเอกสาร','404 — ไม่พบไฟล์แนบ','409 — ไฟล์ยังไม่พร้อมให้ดาวน์โหลด','422 — ไฟล์ไม่ผ่านการตรวจสอบความปลอดภัย'] },
       { m:'GET', p:'/api/v1/documents/{docNo}/sales', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
         sum:'ข้อมูลยอดขายเพิ่มเติมของเอกสาร (4 หน้าต่าง × 15 วัน) — ปุ่ม "ข้อมูลยอดขายเพิ่มเติม" ในหน้าเอกสาร k2-document.html',
         flow:['หา impact_process_id ของเอกสารจาก compensation_documents','อ่าน fgi_impact_sales_summaries (หัว) + sales_transactions (รายวัน) ของงวดนั้น (โซน A)','คืน growth_rate_diff · total_working_days + แถวยอดขายรายวันแยก 4 หน้าต่าง'],
@@ -209,7 +250,7 @@
       { m:'GET', p:'/api/v1/document-statuses', ref:'k2', refT:'K2 · 3.1.3 / 3.1.7', roles:'ทุก role',
         sum:'รายการสถานะเอกสารทั้งหมด — เติม dropdown ตัวกรองสถานะในหน้าค้นหาเอกสาร (k2-list-related) และรายงาน (k2-report)',
         flow:['อ่าน document_statuses ทั้งหมดเรียงตามลำดับ workflow'],
-        db:[['document_statuses','R','สถานะเอกสาร (06/08/01/02/03/END)']],
+        db:[['document_statuses','R','สถานะเอกสาร (06/08/01/02/03/99; 99=เสร็จสิ้น)']],
         req:'(ไม่มี body)',
         res:'{\n  "items": [{ "statusCode": "06", "statusName": "รอฝ่าย SBP DSA ดำเนินการ" }]\n}',
         err:['401'] },
@@ -226,8 +267,8 @@
     { name:'ข้อมูลผิดปกติ / แจกงาน', refT:'K2 + FGI/FCS', eps:[
       { m:'GET', p:'/api/v1/abnormal-stores', ref:'mix', refT:'FGI/FCS (ข้อมูล) + K2 (หน้าจอ)', roles:'05 Assign Job',
         sum:'รายการร้านข้อมูลผิดปกติ (ยอดขาย < 60 วัน) จาก pipeline batch — หน้าจอ k2-list-abnormal.html',
-        flow:['query fgi_impact_sales_summaries ที่ total_working_days ≠ 60','join ข้อมูลร้าน + ผู้รับผิดชอบปัจจุบัน','FE แสดงเป็นแถวแดง (flag-red) ตามหน้าจอเดิม'],
-        db:[['fgi_impact_sales_summaries','R','เกณฑ์วันทำการ ≠ 60 (โซน A)'],['fgi_impact_stores','R','ข้อมูลคู่ร้าน']],
+        flow:['query fgi_impact_sales_summaries ที่ total_working_days < 60','join ข้อมูลร้าน + ผู้รับผิดชอบปัจจุบัน','FE แสดงเป็นแถวแดง (flag-red) ตามหน้าจอเดิม'],
+        db:[['fgi_impact_sales_summaries','R','เกณฑ์วันทำการ < 60 (โซน A)'],['fgi_impact_stores','R','ข้อมูลคู่ร้าน']],
         req:'Query: ?page=1&size=20',
         res:'{\n  "items": [{\n    "storeCode": "01045",\n    "storeName": "บางบัวทอง ก.ม.8",\n    "workingDays": 42,\n    "impactMonth": "2026-06",\n    "assignee": null\n  }]\n}',
         err:['401','403'] },
@@ -458,7 +499,7 @@
         sum:'รายงานตรวจสอบประกันรายได้ (SBP Mall) — Preview Report · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)',
         flow:['validate ปี (ไม่ระบุ → 400)','query compensation_documents + compensation_histories ตามเงื่อนไข (status 6 ค่า · region 13 · storeType A-D · รหัสถูกกระทบ/เปิดกระทบ)','กรอง result (APPROVE/REJECT) จากผลพิจารณาล่าสุดใน consideration_logs — filter "ประกันรายได้/ไม่ประกันรายได้" หน้า k2-report','คืนแบบแบ่งหน้าตามหน้าจอ k2-report.html'],
         db:[['compensation_documents','R','สถานะเอกสาร'],['compensation_histories','R','ยอด/งวดชดเชย'],['impacted_stores','R','ข้อมูลร้าน'],['consideration_logs','R','ผลพิจารณาล่าสุด (กรองประกัน/ไม่ประกัน)']],
-        req:'Query: ?year=2569&status=รอฝ่ายส่งเสริมธุรกิจ SBP&result=APPROVE&region=RSU&storeType=A&impactedStoreCode=00233&newStoreCode=22864&page=1\n(result = APPROVE | REJECT — ประกันรายได้ / ไม่ประกันรายได้)',
+        req:'Query: ?year=2569&statusCode=06&result=APPROVE&region=RSU&storeType=A&impactedStoreCode=00233&newStoreCode=22864&page=1\n(result = APPROVE | REJECT — ประกันรายได้ / ไม่ประกันรายได้)',
         res:'{\n  "page": 1, "total": 212,\n  "items": [{ "docNo": "2569/00098", "storeCode": "00788", "status": "เสร็จสิ้นดำเนินการ", "compensateAmount": 85000.00, ... }]\n}',
         err:['400 — กรุณาระบุปีที่ต้องการค้นหา'] },
       { m:'GET', p:'/api/v1/reports/status-summary/export', ref:'k2', refT:'K2 · 3.1.7', roles:'04 / 06 Report Admin',
@@ -472,44 +513,44 @@
 
     { name:'Batch Job Admin', refT:'FGI/FCS · Jobs 1–10', eps:[
       { m:'GET', p:'/api/v1/jobs', ref:'fgi', refT:'FGI/FCS', roles:'01 Admin',
-        sum:'รายการ batch job ทั้ง 11 entry points พร้อมสถานะรอบล่าสุด (หน้าจอ job-batch.html)',
-        flow:['อ่าน job_configs ทั้งหมด','join ผลรันล่าสุดจาก job_run_histories'],
-        db:[['job_configs','R','cron + enabled + params (ตารางใหม่)'],['job_run_histories','R','ผลรันล่าสุด']],
+        sum:'รายการ batch job ทั้ง 11 entry points พร้อมสถานะรอบล่าสุด — reference contract สำหรับแบบฟอร์มพารามิเตอร์และประวัติการรันเท่านั้น',
+        flow:[],
+        db:[],
         req:'(ไม่มี body)',
         res:'{\n  "items": [{\n    "jobNo": "6",\n    "name": "ExportImpactStoreToFS",\n    "cron": "0 17 * * *",\n    "enabled": true,\n    "lastRun": { "status": "SUCCESS", "rows": 1254, "startedAt": "2026-07-01T17:00:00" }\n  }]\n}',
         err:['401','403'] },
       { m:'GET', p:'/api/v1/jobs/{jobNo}', ref:'fgi', refT:'FGI/FCS', roles:'01 Admin',
-        sum:'รายละเอียด job หนึ่งตัว: พารามิเตอร์ (แยกแก้ได้/คงที่), flow, ตารางที่ใช้',
-        flow:['อ่าน job_configs + เมทาดาต้า job (จากเอกสาร v4.0)'],
-        db:[['job_configs','R','พารามิเตอร์ปัจจุบัน']],
+        sum:'รายละเอียด job หนึ่งตัวสำหรับ tab แบบฟอร์มพารามิเตอร์: schedule, input/configurable parameters, output และ current status',
+        flow:[],
+        db:[],
         req:'(ไม่มี body)',
         res:'{\n  "jobNo": "1",\n  "name": "ImportQSSI",\n  "params": [\n    { "key": "sftpPort", "value": "218", "editable": true },\n    { "key": "encoding", "value": "WINDOWS-874", "editable": false }\n  ]\n}',
         err:['404'] },
       { m:'PUT', p:'/api/v1/jobs/{jobNo}/params', ref:'fgi', refT:'FGI/FCS + ข้อ 8.2', roles:'01 Admin',
-        sum:'แก้พารามิเตอร์ที่แก้ได้ของ job (เวลารัน, path, เกณฑ์) — ค่าคงที่ทางธุรกิจแก้ผ่าน API ไม่ได้',
-        flow:['validate: แก้ได้เฉพาะ key ที่ editable (เกณฑ์ธุรกิจ เช่น −10, 50, 60 ต้องขออนุมัติตามข้อ 8.2 — ตอบ 422)','update job_configs + บันทึก audit_logs'],
-        db:[['job_configs','W','พารามิเตอร์ใหม่'],['audit_logs','W','audit ผู้แก้ + ค่าเดิม/ใหม่']],
+        sum:'แก้พารามิเตอร์ที่ editable ของ job — ค่าคงที่ทางธุรกิจแก้ผ่าน UI/API ไม่ได้',
+        flow:[],
+        db:[],
         req:'{\n  "params": { "cron": "0 18 * * *", "batchSize": 20000 }\n}',
         res:'200 OK',
         err:['422 — key นี้เป็นค่าคงที่ทางธุรกิจ แก้ผ่าน API ไม่ได้','404'] },
       { m:'POST', p:'/api/v1/jobs/{jobNo}/run', ref:'fgi', refT:'FGI/FCS · Runbook 7.1', roles:'01 Admin',
-        sum:'สั่งรัน job นอกรอบ พร้อมระบุงวดข้อมูล — มี guard กันรันซ้อน',
-        flow:['ตรวจ job เปิดใช้งานอยู่','ตรวจไม่มีรอบที่กำลังรัน (สำคัญมากกับ Job 1 — temp table ใช้ร่วม ห้ามซ้อน)','enqueue ให้ Batch Scheduler + insert job_run_histories สถานะ RUNNING','ตอบ 202 พร้อม runId ให้ FE ตาม poll ได้'],
-        db:[['job_run_histories','W','รอบใหม่สถานะ RUNNING'],['job_configs','R','ตรวจ enabled']],
+        sum:'สั่งรัน job นอกรอบ พร้อมระบุงวดข้อมูล — รายละเอียด flow การทำงานอยู่ในเอกสาร BE/Runbook ไม่ใช่ tab ที่ต้องทำใน FE Batch Monitor',
+        flow:[],
+        db:[],
         req:'{\n  "period": "2026-07"   // งวดข้อมูล (YYYY-MM)\n}',
         res:'202 Accepted\n{ "runId": 4451 }',
         err:['409 — Job กำลังรันอยู่ ห้ามรันซ้อน','422 — job ถูกปิดใช้งาน'] },
       { m:'PUT', p:'/api/v1/jobs/{jobNo}/enabled', ref:'fgi', refT:'FGI/FCS', roles:'01 Admin',
         sum:'เปิด/ปิดการทำงานของ job ตามรอบเวลา',
-        flow:['update job_configs.enabled + audit'],
-        db:[['job_configs','W','ธง enabled'],['audit_logs','W','audit']],
+        flow:[],
+        db:[],
         req:'{ "enabled": false, "reason": "ปิดชั่วคราวช่วงปิดงบ" }',
         res:'200 OK',
         err:['404'] },
       { m:'GET', p:'/api/v1/jobs/{jobNo}/runs', ref:'fgi', refT:'FGI/FCS', roles:'01 Admin',
-        sum:'ประวัติการรันของ job (แท็บประวัติในหน้า Batch Monitor)',
-        flow:['query job_run_histories เรียงล่าสุดก่อน แบ่งหน้า'],
-        db:[['job_run_histories','R','เวลา · แถว · ไฟล์ · ผล · หมายเหตุ']],
+        sum:'ประวัติการรันของ job สำหรับ tab ประวัติการรันในหน้า Batch Monitor',
+        flow:[],
+        db:[],
         req:'Query: ?page=1&size=20',
         res:'{\n  "items": [{\n    "runId": 4451, "status": "SUCCESS", "rows": 48220,\n    "file": "mrs1-mrs5 (4 ไฟล์)", "startedAt": "2026-07-01T06:00:00", "durationSec": 252\n  }]\n}',
         err:['404'] }
@@ -518,10 +559,10 @@
     { name:'Workflow ภายใน', refT:'K2 3.1.4 + FGI/FCS Job 8b', eps:[
       { m:'POST', p:'/api/v1/workflows/instances', ref:'mix', refT:'แทน K2 StartInstance (Job 8b)', roles:'service token (ภายใน)',
         sum:'เปิด workflow ให้รายการที่ผ่าน Gen Flow Gate — เส้นภายในที่ Batch Scheduler เรียกแทนการยิง K2 REST เดิม',
-        flow:['ตรวจ service token (ไม่ใช่ JWT ผู้ใช้)','ตรวจ Gen Flow Gate เกณฑ์เดิมทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · opt_dv_user_id ไม่ว่าง · new_store_juristic_name ≠ impacted_store_juristic_name · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N}','ไม่ผ่าน: branch type นอกเซ็ต → workflow_generation_status=N · กรณีอื่นคง W (ตอบ 422 พร้อมเหตุผล)','ผ่าน: สร้าง compensation_documents (ถ้ายังไม่มี) + workflow_instances + workflow_tasks แรก (06) แล้วตั้ง workflow_generation_status=Y','ส่งอีเมลสรุปราย DV (พฤติกรรมเดิมของ Job 8b)'],
-        db:[['fgi_impact_stores','R/W','ตรวจ gate + อัปเดต workflow_generation_status W→Y/N'],['compensation_documents','W','เอกสารอัตโนมัติ (ถ้ายังไม่มี)'],['workflow_instances / workflow_tasks','W','เปิด instance + งานแรก']],
-        req:'{\n  "impactProcessId": 88123\n}',
-        res:'201 Created\n{\n  "instanceId": 501,\n  "docNo": "2569/00124",\n  "flagGenFlow": "Y"\n}',
+        flow:['ตรวจ service token (ไม่ใช่ JWT ผู้ใช้)','lock fgi_impact_processes แล้วตรวจ Gen Flow Gate ทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · opt_dv_user_id ไม่ว่าง · juristic ร้านใหม่ต่างจากร้านถูกกระทบ · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N}','ไม่ผ่าน: branch type นอกเซ็ต → workflow_generation_status=N · กรณีอื่นคง W (ตอบ 422 พร้อมเหตุผล)','ผ่าน: ใช้ compensation_documents ที่ Job 8 สร้างแล้ว + workflow_instances + workflow_tasks แรก (06) แล้วตั้ง workflow_generation_status=Y','ส่งอีเมลสรุปราย DV หลัง commit'],
+        db:[['fgi_impact_processes','R/W','source of truth ของ workflow_generation_status W→Y/N'],['impacted_stores / stores / fgi_impact_stores / fgi_impact_sales_summaries','R','คอลัมน์ gate จากตารางจริง'],['compensation_documents','R','เอกสารอัตโนมัติจาก Job 8'],['workflow_instances / workflow_tasks','W','เปิด instance + งานแรก']],
+        req:'{\n  "impactProcessId": 88123,\n  "sourceJobNo": "8b",\n  "requestId": "job8b-88123-256907"\n}',
+        res:'201 Created\n{\n  "docNo": "2569/00124",\n  "instanceId": "WF-2569-00124",\n  "workflowGenerationStatus": "Y",\n  "firstSection": "06",\n  "statusCode": "06"\n}',
         err:['422 — ไม่ผ่าน Gen Flow Gate (ตอบเหตุผล + สถานะ W/N ที่ตั้งให้)','401 — service token ไม่ถูกต้อง'] },
       { m:'GET', p:'/api/v1/workflows/instances/{id}', ref:'new', refT:'ใหม่', roles:'01 Admin / เจ้าของงาน',
         sum:'สถานะ instance และงานขั้นปัจจุบัน (ใช้ debug/ติดตาม)',
@@ -532,8 +573,8 @@
         err:['404'] },
       { m:'GET', p:'/api/v1/workflows/summary', ref:'fgi', refT:'FGI/FCS · Monitoring 7.4', roles:'01 Admin',
         sum:'ตัวเลขเฝ้าระวังตามเอกสาร: นับ workflow_generation_status W/Y/N, จำนวน start ล้มเหลว, งานค้างต่อขั้น',
-        flow:['aggregate จาก fgi_impact_stores + workflow_instances/workflow_tasks'],
-        db:[['fgi_impact_stores','R','นับ W/Y/N'],['workflow_tasks','R','งานค้างต่อ section']],
+        flow:['aggregate จาก fgi_impact_processes + workflow_instances/workflow_tasks'],
+        db:[['fgi_impact_processes','R','นับ W/Y/N'],['workflow_tasks','R','งานค้างต่อ section']],
         req:'(ไม่มี body)',
         res:'{\n  "genFlow": { "W": 12, "Y": 58, "N": 4 },\n  "failedStarts": 0,\n  "openTasksBySection": { "06": 24, "02": 7 }\n}',
         err:['401'] }
@@ -577,37 +618,40 @@
   GROUPS.forEach(function(g){ g.eps.forEach(function(e){ e._g = g.name; FLAT.push(e); }); });
 
   function mthCls(m){ return m === 'GET' ? 'get' : m === 'POST' ? 'post' : m === 'PUT' ? 'put' : 'del'; }
+  function isBatchJobReference(e){ return e._g === 'Batch Job Admin'; }
 
-  /* ===== ตัวอย่าง SQL ต่อ endpoint (key = 'METHOD path') — ใช้ในแท็บ Database ===== */
+  /* ===== ตัวอย่าง SQL ต่อ endpoint (key = 'METHOD path') — ใช้ในแท็บ Database; ยกเว้นกลุ่ม Batch Job Admin ที่เป็น reference only ===== */
   var SQL_BY_PATH = {
     'POST /api/v1/auth/login':
-      'SELECT u.employee_id, u.password_hash, u.role_code, u.section_code, r.role_name\nFROM user_accounts u JOIN roles r ON r.role_code = u.role_code\nWHERE u.username = :username AND u.is_active = TRUE;\n-- ตรวจรหัสผ่านกับ AD/LDAP → ออก JWT (access 30 นาที / refresh 8 ชม.)',
+      '-- Platform SSO/AD/LDAP ตรวจ credential และส่ง employeeId ที่ยืนยันแล้วให้ SBPGI; SBPGI ไม่เก็บ password_hash\nSELECT u.employee_id, u.role_code, u.section_code, r.role_name, e.emp_name, e.emp_mail, e.zone_code\nFROM user_accounts u\nJOIN roles r ON r.role_code = u.role_code\nJOIN employees e ON e.employee_id = u.employee_id\nWHERE u.employee_id = :employeeIdFromPlatform AND u.is_active = TRUE AND e.is_active = TRUE;\n-- ออก JWT (access 30 นาที / refresh 8 ชม.) หลัง map local authorization สำเร็จ',
     'POST /api/v1/auth/refresh':
       'SELECT employee_id, is_active FROM user_accounts\nWHERE employee_id = :empId AND is_active = TRUE;\n-- refreshToken ยังไม่ถูกเพิกถอน → ออก accessToken ใหม่',
     'GET /api/v1/auth/me':
-      'SELECT employee_id, emp_name, role_code, section_code, zone_code\nFROM user_accounts WHERE employee_id = :empIdFromJwt;',
+      'SELECT u.employee_id, e.emp_name, e.emp_mail, u.role_code, u.section_code, e.zone_code\nFROM user_accounts u JOIN employees e ON e.employee_id = u.employee_id\nWHERE u.employee_id = :empIdFromJwt AND u.is_active = TRUE;',
     'GET /api/v1/me/menus':
       'SELECT m.menu_code, m.menu_name, m.menu_group\nFROM menu_permissions mp JOIN menus m ON m.menu_code = mp.menu_code\nWHERE mp.role_code = :roleFromJwt AND mp.can_access = TRUE\nORDER BY m.menu_group, m.sort_order;',
     'GET /api/v1/tasks':
-      'SELECT t.doc_no, d.status_code, t.section_code, s.store_code, s.store_name, d.impact_month, t.opened_at\nFROM workflow_tasks t\nJOIN compensation_documents d ON d.doc_no = t.doc_no\nJOIN impacted_stores s ON s.store_code = d.impacted_store_code\nWHERE t.section_code = :sectionFromJwt AND t.status = :statusOpen\nORDER BY t.opened_at\nLIMIT :size OFFSET :offset;',
+      'SELECT t.doc_no, d.status_code, t.section_code, s.store_code, s.store_name, d.impact_month, t.opened_at\nFROM workflow_tasks t\nJOIN compensation_documents d ON d.doc_no = t.doc_no\nJOIN stores s ON s.store_code = d.impacted_store_code\nWHERE t.section_code = :sectionFromJwt AND t.task_status = :statusOpen\nORDER BY t.opened_at\nLIMIT :size OFFSET :offset;',
     'GET /api/v1/documents':
-      '-- ต้องระบุ :year เสมอ ไม่งั้นตอบ 400 (กติกา SRS)\nSELECT d.doc_no, d.status_code, d.impacted_store_code, s.store_name, d.impact_month\nFROM compensation_documents d\nJOIN impacted_stores s ON s.store_code = d.impacted_store_code\nWHERE d.doc_year = :year\n  AND (:storeCode IS NULL OR d.impacted_store_code = :storeCode)\n  AND (:status    IS NULL OR d.current_section_code = :status)\nORDER BY d.doc_no DESC\nLIMIT :size OFFSET :offset;',
+      '-- ต้องระบุ :year เสมอ ไม่งั้นตอบ 400 (กติกา SRS)\nSELECT d.doc_no, d.status_code, d.impacted_store_code, s.store_name, d.impact_month\nFROM compensation_documents d\nJOIN stores s ON s.store_code = d.impacted_store_code\nWHERE d.be_year = :year\n  AND (:storeCode IS NULL OR d.impacted_store_code = :storeCode)\n  AND (:status    IS NULL OR d.status_code = :status)\nORDER BY d.doc_no DESC\nLIMIT :size OFFSET :offset;',
     'GET /api/v1/documents/{docNo}':
       '-- โหลดเอกสารฉบับเต็ม 12 ส่วนในคำขอเดียว\nSELECT * FROM compensation_documents      WHERE doc_no = :docNo;\nSELECT * FROM document_new_stores          WHERE doc_no = :docNo;\nSELECT * FROM document_competitors         WHERE doc_no = :docNo;\nSELECT * FROM document_external_factors    WHERE doc_no = :docNo;\nSELECT * FROM document_attachments         WHERE doc_no = :docNo;\nSELECT * FROM consideration_logs           WHERE doc_no = :docNo ORDER BY action_datetime;',
     'POST /api/v1/documents':
-      '-- กันซ้ำ: ร้าน + เดือน ต้องยังไม่มีเอกสาร\nSELECT 1 FROM compensation_documents\nWHERE impacted_store_code = :storeCode AND impact_month = :month;\n\n-- ออกเลขที่ YYYY/xxxxx (running ต่อปี) แล้วสร้างเอกสาร + เปิด workflow งานแรก (Section 06)\nINSERT INTO compensation_documents (doc_no, doc_year, impacted_store_code, impact_month, status_code, current_section_code)\nVALUES (:docNo, :year, :storeCode, :month, :statusInit, :section06);\nINSERT INTO workflow_instances (doc_no, status) VALUES (:docNo, :active);\nINSERT INTO workflow_tasks (instance_id, doc_no, section_code, status)\nVALUES (:instanceId, :docNo, :section06, :statusOpen);',
+      '-- กันซ้ำ: เอกสารจาก impact_process เดียวกันต้องมีได้รายการเดียว\nSELECT 1 FROM compensation_documents\nWHERE impact_process_id = :impactProcessId;\n\n-- ออกเลขที่ YYYY/xxxxx (running ต่อปี) แล้วสร้างเอกสาร + เปิด workflow งานแรก (Section 06)\nINSERT INTO compensation_documents (doc_no, be_year, running_no, impact_process_id, impacted_store_code, impact_month, status_code, current_section_code, created_by)\nVALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :statusInit, :section06, :empId);\nINSERT INTO workflow_instances (instance_id, doc_no, instance_status, started_at, started_by)\nVALUES (:instanceId, :docNo, :active, :now, :empId);\nINSERT INTO workflow_tasks (instance_id, doc_no, section_code, task_status)\nVALUES (:instanceId, :docNo, :section06, :statusOpen);',
     'PUT /api/v1/documents/{docNo}':
-      '-- ตรวจสิทธิ์ตาม role + current_section ก่อน · %ชดเชยร้านใหม่รวมกันต้อง = 100% (ไม่งั้น 422)\nUPDATE document_new_stores       SET compensate_percent = :pct   WHERE id = :newStoreId  AND doc_no = :docNo;\nUPDATE document_competitors      SET impact_date = :date         WHERE id = :competitorId AND doc_no = :docNo;\nUPDATE document_external_factors SET date_from = :from, date_to = :to WHERE id = :factorId AND doc_no = :docNo;',
+      '-- ตรวจสิทธิ์ตาม role + current_section ก่อน · %ชดเชยร้านใหม่รวมกันต้อง = 100% (ไม่งั้น 422)\n-- optimistic concurrency: mutation ทุกชุดต้องส่ง versionNo ล่าสุด; ไม่ตรงคืน 409 STALE_VERSION\nUPDATE compensation_documents SET version_no = version_no + 1, updated_at = :now, updated_by = :empId\nWHERE doc_no = :docNo AND version_no = :versionNo;\nUPDATE document_new_stores       SET compensate_percent = :pct   WHERE new_store_code = :newStoreCode AND doc_no = :docNo;\nUPDATE document_competitors      SET impact_date = :date         WHERE id = :competitorId AND doc_no = :docNo;\nUPDATE document_external_factors SET date_from = :from, date_to = :to WHERE id = :factorId AND doc_no = :docNo;',
     'POST /api/v1/documents/{docNo}/actions':
-      '-- ตรวจเป็นเจ้าของงานขั้นปัจจุบัน + ต้องเลือกผลแล้ว (ไม่งั้น 422)\nUPDATE workflow_tasks SET status = :statusClosed, action_result = :action, closed_at = :now\nWHERE doc_no = :docNo AND section_code = :curSection AND status = :statusOpen;\n\nINSERT INTO consideration_logs (doc_no, section_code, consider_by, result, detail, action_datetime)\nVALUES (:docNo, :curSection, :empId, :action, :comment, :now);\n\n-- คำนวณขั้นถัดไป (กฎวงเงิน 100,000) → เปิดงานใหม่ + อัปเดตสถานะเอกสาร\nUPDATE compensation_documents SET status_code = :nextStatus, current_section_code = :nextSection WHERE doc_no = :docNo;\nINSERT INTO workflow_tasks (instance_id, doc_no, section_code, status)\nVALUES (:instanceId, :docNo, :nextSection, :statusOpen);\n\nSELECT to_section_code, cc_section_code FROM status_email_rules WHERE status_code = :nextStatus;',
+      '-- ตรวจเป็นเจ้าของงานขั้นปัจจุบัน + ต้องเลือก result แล้ว (ไม่งั้น 422)\n-- result รับ 6-enum verbatim เท่านั้น: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / ส่งฝ่ายส่งเสริมธุรกิจ SBP / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ\nUPDATE workflow_tasks SET task_status = :statusClosed, action_result = :result, closed_at = :now\nWHERE doc_no = :docNo AND section_code = :curSection AND task_status = :statusOpen;\n\nINSERT INTO consideration_logs (doc_no, section_code, consider_by, result, detail, action_datetime)\nVALUES (:docNo, :curSection, :empId, :result, :comment, :now);\n\n-- คำนวณขั้นถัดไป (กฎวงเงิน 100,000) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock\nUPDATE compensation_documents SET status_code = :nextStatus, current_section_code = :nextSection, version_no = version_no + 1, updated_at = :now, updated_by = :empId\nWHERE doc_no = :docNo AND version_no = :versionNo;\nINSERT INTO workflow_tasks (instance_id, doc_no, section_code, task_status)\nVALUES (:instanceId, :docNo, :nextSection, :statusOpen);\n\nSELECT r.status_code, d.status_name, r.to_section_code, r.cc_section_code\nFROM status_email_rules r JOIN document_statuses d ON d.status_code = r.status_code\nWHERE r.status_code = :nextStatus;',
     'GET /api/v1/documents/{docNo}/timeline':
       'SELECT section_code, consider_by, result, detail, action_datetime\nFROM consideration_logs\nWHERE doc_no = :docNo\nORDER BY action_datetime;',
     'POST /api/v1/documents/{docNo}/attachments':
-      '-- ตรวจขนาด ≤ 5MB และชนิดไฟล์ที่อนุญาตก่อน (ชั้น service)\nINSERT INTO document_attachments (doc_no, section_code, file_name, file_size, storage_path, uploaded_by, uploaded_at)\nVALUES (:docNo, :sectionCode, :fileName, :fileSize, :path, :empId, :now);',
+      '-- ตรวจขนาด ≤ 5MB, sanitize filename, sha256, AV scan=CLEAN ก่อน commit metadata\nINSERT INTO document_attachments (doc_no, section_code, file_name, mime_type, file_size, storage_provider, bucket, object_key, sha256, scan_status, uploaded_by, uploaded_at)\nVALUES (:docNo, :sectionCode, :fileName, :mimeType, :fileSize, :storageProvider, :bucket, :objectKey, :sha256, :scanClean, :empId, :now);',
+    'GET /api/v1/documents/{docNo}/attachments/{attachId}/download':
+      '-- ตรวจสิทธิ์อ่านเอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน stream ผ่าน BE\nSELECT attach_id, bucket, object_key, file_name, mime_type, scan_status\nFROM document_attachments\nWHERE doc_no = :docNo AND attach_id = :attachId;',
     'GET /api/v1/documents/{docNo}/sales':
       '-- หา impact_process_id ของเอกสาร แล้วอ่านยอดขาย 4 หน้าต่าง × 15 วัน\nSELECT ss.id AS sales_summary_id, ss.growth_rate_diff, ss.total_working_days\nFROM compensation_documents d\nJOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id\nWHERE d.doc_no = :docNo;\n\nSELECT window_no, txn_date, sales_amount, sales_diff, is_outlier\nFROM sales_transactions\nWHERE sales_summary_id = :salesSummaryId\nORDER BY window_no, txn_date;',
     'GET /api/v1/stores/search':
-      '-- type = impacted → ร้าน SP ; type = new → สาขา 7-Eleven ทุกประเภท\n-- type = impacted:\nSELECT store_code, store_name, \'SP\' AS store_type FROM impacted_stores\nWHERE store_code LIKE :q OR store_name LIKE :q\nLIMIT 20;\n-- type = new:\nSELECT store_code, store_name, store_type FROM stores\nWHERE store_code LIKE :q OR store_name LIKE :q\nLIMIT 20;',
+      '-- type = impacted → ร้าน SP ; type = new → สาขา 7-Eleven ทุกประเภท\n-- type = impacted:\nSELECT s.store_code, s.store_name, \'SP\' AS store_type FROM impacted_stores i\nJOIN stores s ON s.store_code = i.store_code\nWHERE s.store_code LIKE :q OR s.store_name LIKE :q\nLIMIT 20;\n-- type = new:\nSELECT store_code, store_name, store_type FROM stores\nWHERE store_code LIKE :q OR store_name LIKE :q\nLIMIT 20;',
     'GET /api/v1/competitors':
       'SELECT competitor_code, competitor_name\nFROM competitors\nWHERE :q IS NULL OR competitor_name LIKE :q\nORDER BY competitor_name;',
     'GET /api/v1/document-statuses':
@@ -621,7 +665,7 @@
     'PUT /api/v1/operators/{id}':
       '-- ต้องระบุ :reason เสมอ (กติกา SRS)\nUPDATE operator_assignments SET emp_mail = :empMail, zone_code = :zoneCode WHERE id = :id;\n\nINSERT INTO audit_logs (table_name, ref_key, action_type, old_value, new_value, reason, updated_by, updated_at)\nVALUES (:tableName, :id, :actionEdit, :oldValue, :newValue, :reason, :actor, :now);',
     'DELETE /api/v1/operators/{id}':
-      '-- ตรวจไม่ถืองานค้างก่อนลบ (ไม่งั้น 409)\nSELECT 1 FROM workflow_tasks WHERE assignee_employee_id = :empId AND status = :statusOpen;\n\nDELETE FROM operator_assignments WHERE id = :id;\n\nINSERT INTO audit_logs (table_name, ref_key, action_type, old_value, reason, updated_by, updated_at)\nVALUES (:tableName, :id, :actionDelete, :oldValue, :reason, :actor, :now);',
+      '-- ตรวจไม่ถืองานค้างก่อนลบ (ไม่งั้น 409)\nSELECT 1 FROM workflow_tasks WHERE assignee_employee_id = :empId AND task_status = :statusOpen;\n\nDELETE FROM operator_assignments WHERE id = :id;\n\nINSERT INTO audit_logs (table_name, ref_key, action_type, old_value, reason, updated_by, updated_at)\nVALUES (:tableName, :id, :actionDelete, :oldValue, :reason, :actor, :now);',
     'GET /api/v1/factors':
       'SELECT factor_code, factor_name, factor_remark\nFROM external_factors\nWHERE :q IS NULL OR factor_name LIKE :q\nORDER BY factor_code;',
     'POST /api/v1/factors':
@@ -673,35 +717,23 @@
     'POST /api/v1/email-templates/reset-all':
       '-- รีเซ็ตทั้ง 8 ฉบับ ; บันทึก audit เฉพาะฉบับที่เปลี่ยนจริง\nUPDATE email_templates SET subject = default_subject, body = default_body, is_customized = FALSE\nWHERE is_customized = TRUE;\n\nINSERT INTO audit_logs (table_name, ref_key, action_type, reason, updated_by, updated_at)\nSELECT :tableName, template_code, :actionReset, :reason, :actor, :now\nFROM email_templates WHERE is_customized = FALSE;',
     'GET /api/v1/reports/status-summary':
-      '-- ต้องระบุ :year เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว\nSELECT d.doc_no, d.impacted_store_code, s.store_name, d.status_code,\n       h.compensate_amount, h.submit_account_month, cl.result_category\nFROM compensation_documents d\nJOIN impacted_stores s ON s.store_code = d.impacted_store_code\nLEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no\nLEFT JOIN LATERAL (\n  SELECT result_category FROM consideration_logs\n  WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1\n) cl ON TRUE\nWHERE d.doc_year = :year\n  AND (:month  IS NULL OR d.impact_month = :month)\n  AND (:zone   IS NULL OR s.zone_code = :zone)\n  AND (:status IS NULL OR d.status_code = :status)\n  AND (:result IS NULL OR cl.result_category = :result)   -- APPROVE / REJECT (filter ประกันรายได้/ไม่ประกันรายได้)\nORDER BY d.doc_no\nLIMIT :size OFFSET :offset;',
+      '-- ต้องระบุ :year เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว\nSELECT d.doc_no, d.impacted_store_code, s.store_name, d.status_code,\n       h.compensate_amount, h.submit_account_month, cl.result_category\nFROM compensation_documents d\nJOIN stores s ON s.store_code = d.impacted_store_code\nLEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no\nLEFT JOIN LATERAL (\n  SELECT result_category FROM consideration_logs\n  WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1\n) cl ON TRUE\nWHERE d.be_year = :year\n  AND (:month  IS NULL OR h.submit_account_month = :month)\n  AND (:zone   IS NULL OR s.zone_code = :zone)\n  AND (:statusCode IS NULL OR d.status_code = :statusCode)\n  AND (:result IS NULL OR cl.result_category = :result)   -- APPROVE / REJECT (filter ประกันรายได้/ไม่ประกันรายได้)\nORDER BY d.doc_no\nLIMIT :size OFFSET :offset;',
     'GET /api/v1/reports/status-summary/export':
-      '-- เงื่อนไขเดียวกับ status-summary (รวม :result ประกัน/ไม่ประกัน) แล้ว stream เป็นไฟล์ .csv เข้า Batch\nSELECT d.doc_no, d.impacted_store_code, d.status_code, h.compensate_amount, h.submit_account_month\nFROM compensation_documents d\nLEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no\nLEFT JOIN LATERAL (\n  SELECT result_category FROM consideration_logs\n  WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1\n) cl ON TRUE\nWHERE d.doc_year = :year\n  AND (:month  IS NULL OR d.impact_month = :month)\n  AND (:result IS NULL OR cl.result_category = :result)\nORDER BY d.doc_no;',
-    'GET /api/v1/jobs':
-      'SELECT c.job_no, c.job_name, c.cron, c.enabled,\n       h.status, h.rows_affected, h.started_at\nFROM job_configs c\nLEFT JOIN LATERAL (\n  SELECT status, rows_affected, started_at FROM job_run_histories\n  WHERE job_no = c.job_no ORDER BY started_at DESC LIMIT 1\n) h ON TRUE\nORDER BY c.job_no;',
-    'GET /api/v1/jobs/{jobNo}':
-      'SELECT job_no, job_name, cron, enabled, params\nFROM job_configs\nWHERE job_no = :jobNo;',
-    'PUT /api/v1/jobs/{jobNo}/params':
-      '-- แก้ได้เฉพาะ key ที่ editable (เกณฑ์ธุรกิจ −10/50/60 ต้องขออนุมัติ ข้อ 8.2 → 422)\nUPDATE job_configs SET params = :params WHERE job_no = :jobNo;\n\nINSERT INTO audit_logs (table_name, ref_key, action_type, old_value, new_value, updated_by, updated_at)\nVALUES (:tableName, :jobNo, :actionEdit, :oldValue, :newValue, :actor, :now);',
-    'POST /api/v1/jobs/{jobNo}/run':
-      '-- guard กันรันซ้อน: ต้องไม่มีรอบ RUNNING (สำคัญกับ Job 1 — temp table ใช้ร่วม)\nSELECT 1 FROM job_run_histories WHERE job_no = :jobNo AND status = :statusRunning;\n\nINSERT INTO job_run_histories (job_no, period, status, started_at)\nVALUES (:jobNo, :period, :statusRunning, :now)\nRETURNING run_id;',
-    'PUT /api/v1/jobs/{jobNo}/enabled':
-      'UPDATE job_configs SET enabled = :enabled WHERE job_no = :jobNo;\n\nINSERT INTO audit_logs (table_name, ref_key, action_type, old_value, new_value, reason, updated_by, updated_at)\nVALUES (:tableName, :jobNo, :actionEdit, :oldValue, :newValue, :reason, :actor, :now);',
-    'GET /api/v1/jobs/{jobNo}/runs':
-      'SELECT run_id, status, rows_affected, file_name, started_at, duration_sec\nFROM job_run_histories\nWHERE job_no = :jobNo\nORDER BY started_at DESC\nLIMIT :size OFFSET :offset;',
+      '-- เงื่อนไขเดียวกับ status-summary (รวม :result ประกัน/ไม่ประกัน) แล้ว stream เป็นไฟล์ .csv เข้า Batch\nSELECT d.doc_no, d.impacted_store_code, d.status_code, h.compensate_amount, h.submit_account_month\nFROM compensation_documents d\nLEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no\nLEFT JOIN LATERAL (\n  SELECT result_category FROM consideration_logs\n  WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1\n) cl ON TRUE\nWHERE d.be_year = :year\n  AND (:month  IS NULL OR h.submit_account_month = :month)\n  AND (:result IS NULL OR cl.result_category = :result)\nORDER BY d.doc_no;',
     'POST /api/v1/workflows/instances':
-      '-- Gen Flow Gate: ตรวจเกณฑ์เดิมทุกข้อก่อนเปิด workflow\nSELECT impact_process_id, workflow_generation_status, new_store_juristic_name,\n       impacted_store_juristic_name, growth_rate_diff, sales_status, branch_type, opt_dv_user_id\nFROM fgi_impact_stores\nWHERE impact_process_id = :impactProcessId;\n\n-- ผ่าน gate → สร้างเอกสาร (ถ้ายังไม่มี) + เปิด instance + งานแรก แล้วตั้งสถานะ Y\nINSERT INTO compensation_documents (doc_no, impact_process_id, status_code, current_section_code)\nVALUES (:docNo, :impactProcessId, :statusInit, :section06);\nINSERT INTO workflow_instances (doc_no, status) VALUES (:docNo, :active);\nINSERT INTO workflow_tasks (instance_id, doc_no, section_code, status)\nVALUES (:instanceId, :docNo, :section06, :statusOpen);\nUPDATE fgi_impact_stores SET workflow_generation_status = :flagY WHERE impact_process_id = :impactProcessId;',
+      '-- Gen Flow Gate: workflow_generation_status มี source of truth ที่ fgi_impact_processes\nSELECT p.id AS impact_process_id, p.workflow_generation_status, ist.opt_dv_user_id,\n       impacted.juristic_name AS impacted_store_juristic_name, ns.juristic_name AS new_store_juristic_name,\n       ss.growth_rate_diff, ss.sales_status, ns.branch_type\nFROM fgi_impact_processes p\nJOIN impacted_stores ist ON ist.store_code = p.impacted_store_code\nJOIN stores impacted ON impacted.store_code = p.impacted_store_code\nJOIN fgi_impact_stores pair ON pair.impact_process_id = p.id\nJOIN stores ns ON ns.store_code = pair.new_store_code\nLEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = p.id\nWHERE p.id = :impactProcessId FOR UPDATE OF p;\n\n-- branch_type นอก allowlist → ตั้ง N ถาวร; gate อื่นไม่พร้อมคง W\nUPDATE fgi_impact_processes SET workflow_generation_status = :flagN\nWHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagN;\n\n-- ผ่าน gate → ใช้เอกสารที่ Job 8 สร้างแล้ว เปิด instance + งานแรก แล้วตั้ง Y ใน transaction เดียว\nINSERT INTO workflow_instances (instance_id, doc_no, instance_status, started_at, started_by)\nSELECT :instanceId, d.doc_no, :active, :now, :serviceActor\nFROM compensation_documents d WHERE d.impact_process_id = :impactProcessId AND :gateDecision = :flagY\nON CONFLICT (doc_no) DO NOTHING;\nINSERT INTO workflow_tasks (instance_id, doc_no, section_code, task_status)\nSELECT :instanceId, d.doc_no, :section06, :statusOpen\nFROM compensation_documents d WHERE d.impact_process_id = :impactProcessId AND :gateDecision = :flagY\nON CONFLICT DO NOTHING;\nUPDATE fgi_impact_processes SET workflow_generation_status = :flagY\nWHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagY;',
     'GET /api/v1/workflows/instances/{id}':
-      'SELECT i.instance_id, i.doc_no, i.status, t.section_code, t.opened_at\nFROM workflow_instances i\nLEFT JOIN workflow_tasks t ON t.instance_id = i.instance_id AND t.status = :statusOpen\nWHERE i.instance_id = :id;',
+      'SELECT i.instance_id, i.doc_no, i.instance_status, t.section_code, t.opened_at\nFROM workflow_instances i\nLEFT JOIN workflow_tasks t ON t.instance_id = i.instance_id AND t.task_status = :statusOpen\nWHERE i.instance_id = :id;',
     'GET /api/v1/workflows/summary':
-      'SELECT workflow_generation_status, COUNT(*) AS cnt\nFROM fgi_impact_stores\nGROUP BY workflow_generation_status;\n\nSELECT section_code, COUNT(*) AS open_tasks\nFROM workflow_tasks WHERE status = :statusOpen\nGROUP BY section_code;',
+      'SELECT workflow_generation_status, COUNT(*) AS cnt\nFROM fgi_impact_processes\nGROUP BY workflow_generation_status;\n\nSELECT section_code, COUNT(*) AS open_tasks\nFROM workflow_tasks WHERE task_status = :statusOpen\nGROUP BY section_code;',
     'GET /api/v1/interfaces/tracking':
-      'SELECT tracking_id, data_name, doc_no, sent_at, return_code, receive_date\nFROM interface_transactions\nWHERE (:dataName IS NULL OR data_name = :dataName)\n  AND (:pending  IS NULL OR return_code IS NULL)\nORDER BY sent_at DESC\nLIMIT :size OFFSET :offset;',
+      'SELECT id AS tracking_id, data_name, doc_no, sent_at, return_code, acked_at AS receive_date\nFROM interface_transactions\nWHERE (:dataName IS NULL OR data_name = :dataName)\n  AND (:pending  IS NULL OR return_code IS NULL)\nORDER BY sent_at DESC\nLIMIT :size OFFSET :offset;',
     'POST /api/v1/interfaces/sta/ack':
-      '-- callback จากระบบ STA (API key) → บันทึก ACK\nUPDATE interface_transactions\nSET return_code = :returnCode, receive_date = :receiveDate\nWHERE tracking_id = :trackingId;',
+      '-- callback จากระบบ STA (API key) → บันทึก ACK\nUPDATE interface_transactions\nSET return_code = :returnCode, acked_at = :receiveDate, status = :statusAcked, completed_at = :receiveDate\nWHERE id = :trackingId;',
     'GET /api/v1/interfaces/pending-ack':
       '-- เกณฑ์ watchdog Job 10: return_code NULL · interface แบบไฟล์ · อายุ ≥ 1 วัน\nSELECT data_name, doc_no, sent_at, (CURRENT_DATE - sent_at::date) AS age_days\nFROM interface_transactions\nWHERE return_code IS NULL\n  AND data_name IN (:staDatasets)\n  AND sent_at < CURRENT_DATE - 1\nORDER BY sent_at;',
     'GET /api/v1/dashboard/summary':
-      '-- รวมตัวเลขหน้า Dashboard (cache 5 นาที)\nSELECT COUNT(*) AS waiting_tasks       FROM workflow_tasks WHERE status = :statusOpen;\nSELECT COUNT(*) AS stores_this_month   FROM compensation_documents WHERE impact_month = :thisMonth;\nSELECT SUM(compensate_amount) AS compensation_this_month FROM compensation_histories WHERE submit_account_month = :thisMonth;\nSELECT COUNT(*) AS abnormal_stores     FROM fgi_impact_sales_summaries WHERE total_working_days <> 60;'
+      '-- รวมตัวเลขหน้า Dashboard (cache 5 นาที)\nSELECT COUNT(*) AS waiting_tasks       FROM workflow_tasks WHERE task_status = :statusOpen;\nSELECT COUNT(*) AS stores_this_month   FROM compensation_documents WHERE impact_month = :thisMonth;\nSELECT SUM(compensate_amount) AS compensation_this_month FROM compensation_histories WHERE submit_account_month = :thisMonth;\nSELECT COUNT(*) AS abnormal_stores     FROM fgi_impact_sales_summaries WHERE total_working_days < 60;'
   };
 
   /* ===== Flowchart (inline SVG · เฉพาะ endpoint ที่ซับซ้อน) ===== */
@@ -763,7 +795,7 @@
       { id:'endE', type:'termOk', x:560, y:404, w:240, text:'เสร็จสิ้นดำเนินการ (END)' },
       { id:'p2', type:'proc', x:240, y:514, w:400, h:66, text:'> 100,000 → AVP OPT (03) → จบ\n≤ 100,000 → จบที่ GM (02)\nตัดขั้นบัญชี 04/05 (SDD v7.5)' },
       { id:'p3', type:'proc', x:240, y:612, w:400, h:58, text:'เปิด workflow_tasks ใหม่ + UPDATE สถานะ\n+ ส่งอีเมล (status_email_rules)' },
-      { id:'end2', type:'termOk', x:240, y:694, w:320, text:'200 · nextSection / status' }
+      { id:'end2', type:'termOk', x:240, y:694, w:320, text:'200 · nextSection / statusCode' }
     ], edges:[
       { from:'t1', to:'d1' },
       { from:'d1', to:'e403', dir:'right', label:'ไม่' },
@@ -787,7 +819,7 @@
       { id:'pW', type:'proc', x:590, y:336, w:240, h:56, text:'คง workflow_generation_status = W\n→ 422 (รอบถัดไปลองใหม่)' },
       { id:'p1', type:'proc', x:250, y:474, w:400, h:66, text:'สร้าง compensation_documents (ถ้ายังไม่มี)\n+ workflow_instances + workflow_tasks (06)' },
       { id:'p2', type:'proc', x:250, y:578, w:400, h:56, text:'set workflow_generation_status = Y\n+ ส่งอีเมลสรุปราย DV' },
-      { id:'end', type:'termOk', x:250, y:672, w:380, text:'201 · instanceId / docNo / flagGenFlow = Y' }
+      { id:'end', type:'termOk', x:250, y:672, w:380, text:'201 · instanceId / docNo / workflowGenerationStatus = Y' }
     ], edges:[
       { from:'t1', to:'d1' },
       { from:'d1', to:'e401', dir:'right', label:'ไม่' },
@@ -819,23 +851,6 @@
       { from:'p1', to:'p2' },
       { from:'p2', to:'p3' },
       { from:'p3', to:'end' }
-    ]},
-
-    'POST /api/v1/jobs/{jobNo}/run': { w:620, h:524, nodes:[
-      { id:'t1', type:'term', x:210, y:22, w:320, text:'POST · สั่งรัน Job นอกรอบ (Admin)' },
-      { id:'d1', type:'dec', x:210, y:112, text:'Job เปิดใช้งานอยู่?' },
-      { id:'e422', type:'err', x:470, y:112, w:220, text:'422 · Job ถูกปิดใช้งาน' },
-      { id:'d2', type:'dec', x:210, y:218, w:260, h:74, text:'มีรอบสถานะ RUNNING\nของ Job นี้อยู่?' },
-      { id:'e409', type:'err', x:480, y:218, w:240, text:'409 · ห้ามรันซ้อน (Job 1 · temp table)' },
-      { id:'p1', type:'proc', x:210, y:336, w:340, h:56, text:'INSERT job_run_histories (RUNNING)\n+ enqueue Batch Scheduler' },
-      { id:'end', type:'termOk', x:210, y:436, w:320, text:'202 · ตอบ runId (ให้ FE poll)' }
-    ], edges:[
-      { from:'t1', to:'d1' },
-      { from:'d1', to:'e422', dir:'right', label:'ไม่' },
-      { from:'d1', to:'d2', label:'ใช่' },
-      { from:'d2', to:'e409', dir:'right', label:'ใช่' },
-      { from:'d2', to:'p1', label:'ไม่' },
-      { from:'p1', to:'end' }
     ]}
   };
 
@@ -871,7 +886,8 @@
       '<span class="chip time">สิทธิ์: ' + esc(e.roles) + '</span>' +
       '<span class="chip job">' + esc(e._g) + '</span>';
       
-    var flow = e.flow.map(function(f){ return '<li>' + esc(f) + '</li>'; }).join('');
+    var isBatchRef = isBatchJobReference(e);
+    var flow = (e.flow || []).map(function(f){ return '<li>' + esc(f) + '</li>'; }).join('');
     
     var db = e.db.map(function(d){
       var cls = d[1] === 'R' ? 'info' : (d[1] === 'W' ? 'ok' : 'violet');
@@ -882,11 +898,11 @@
     var errs = e.err.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('');
     var sqlCode = SQL_BY_PATH[e.m + ' ' + e.p] || '-- (ตัวอย่าง SQL อยู่ระหว่างจัดทำ)';
 
-    var chart = FLOWCHART_BY_PATH[e.m + ' ' + e.p];
+    var chart = isBatchRef ? null : FLOWCHART_BY_PATH[e.m + ' ' + e.p];
     var tabsHtml =
       '<div class="tabs" id="apiTabs">' +
         '<button type="button" class="tab active" data-tab="t-req">1. Request / Response</button>' +
-        '<button type="button" class="tab" data-tab="t-db">2. Database + SQL</button>' +
+        (isBatchRef ? '' : '<button type="button" class="tab" data-tab="t-db">2. Database + SQL</button>') +
         (chart ? '<button type="button" class="tab" data-tab="t-chart">3. Flowchart</button>' : '') +
       '</div>';
 
@@ -902,7 +918,7 @@
         '</div>' +
       '</div>';
 
-    var tabDb =
+    var tabDb = isBatchRef ? '' :
       '<div data-tabpane="t-db" hidden>' +
         '<div class="ep-sec" style="margin-top:0;">' +
           '<h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">Database ที่เกี่ยวข้อง</h4>' +
@@ -916,7 +932,10 @@
       '</div>';
 
     // Flow อธิบายนอกแท็บ (ไม่อยู่ใน tab อีกต่อไป)
-    var flowSection =
+    var flowSection = isBatchRef ?
+      '<div class="ep-sec" style="margin:4px 0 20px; padding:12px 14px; border-left:4px solid #16a34a; background:#f6fbf7; color:#45525f; font-size:13.5px; line-height:1.75;">' +
+        '<b style="color:#2b3440;">Batch Job scope note:</b> กลุ่มนี้เป็น endpoint reference สำหรับ 2 tab ของ FE Batch Monitor เท่านั้น — แบบฟอร์มพารามิเตอร์ และประวัติการรัน. รายละเอียด flowchart การทำงานและ database ที่ใช้ให้ดูเอกสาร BE/Runbook/Database reference แยก ไม่ใช่ tab หรือ deliverable ที่ต้องทำในหน้านี้' +
+      '</div>' :
       '<div class="ep-sec" style="margin:4px 0 20px;">' +
         '<h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">ลำดับการทำงานของ API เส้นนี้ (Flow)' +
           (chart ? ' <span class="pill info" style="font-size:10.5px;">มี Flowchart ในแท็บ 3</span>' : '') +

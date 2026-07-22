@@ -4,7 +4,7 @@
 แต่ละหน้าระบุ: sections, ปุ่ม, กราฟ, ตาราง (คอลัมน์ครบ), ฟอร์ม/ฟิลด์, modal, และ component ที่ต้องสร้าง
 
 > ป้ายกำกับ UI ภาษาไทยคัดลอกจากหน้าจริงแบบ verbatim — ข้อความ popup/validation ต้องตรงตาม SRS ห้าม paraphrase
-> อ้างอิงกติกาธุรกิจ (workflow 7 ขั้น, วงเงิน 100,000, %ชดเชยรวม 100%, 60 วัน = แถวแดง) — ดู `CLAUDE.md` / skill `sbp-prototype`
+> อ้างอิงกติกาธุรกิจ (workflow 5 ขั้น 06→08→01→02→03 — SDD v7.5 ตัดบัญชี 04/05, วงเงิน 100,000: >100k จบที่ AVP · ≤100k จบที่ GM, %ชดเชยรวม 100%, 60 วัน = แถวแดง) — ดู `CLAUDE.md` / skill `sbp-prototype`
 
 ---
 
@@ -60,13 +60,13 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 ## k2-list-waiting.html — เอกสาร · รอดำเนินการ  ⟷  k2-list-related.html — เอกสาร · ที่เกี่ยวข้อง
 > **ฝาแฝด** — ต่างแค่ `<title>`, body attrs, และ const `MODE` (`waiting`/`related`) → พอร์ตเป็น `<DocumentListPage mode>` ตัวเดียว
 - **Route:** `/k2/documents/waiting` · `/k2/documents/related`
-- **S1 RoleWorkflowBar** (sticky, เฉพาะ mode=waiting): dropdown `#roleSwitch` (7 role `code · name`) + stepper คลิกได้ `06›08›01›02›03›04›05` + hint
+- **S1 RoleWorkflowBar** (sticky, เฉพาะ mode=waiting): dropdown role profile 5 ขั้น (`code · name`) + stepper คลิกได้ `06›08›01›02›03` + hint
 - **S2 head:** title/sub สลับตาม mode
-- **S3 Stat cards (คลิกกรองตาราง):** waiting = 4 การ์ด (ทั้งหมด / flag60 แถวแดง / รอเกิน 3 วัน / วงเงิน>100,000 เข้า AVP); related = 12 การ์ด (ทั้งหมด + 8 สถานะ + 3 special)
+- **S3 Stat cards (คลิกกรองตาราง):** waiting = 4 การ์ด (ทั้งหมด / flag60 แถวแดง / รอเกิน 3 วัน / วงเงิน>100,000 เข้า AVP); related = 10 การ์ด (ทั้งหมด + 6 สถานะ + 3 special)
 - **S4 Filter bar:** ค้นหา, สถานะ(ซ่อนใน waiting), ภาค(8), ประเภทร้าน, ช่วงวันที่สร้าง, ยอดขายลดลง% (min–max), เงินชดเชย (min–max), รอ(วัน) (min–max), `ล้างตัวกรอง`
 - **ตาราง `#tblK2`/`#tblRelated`** (คลิกแถว→k2-document, sortable): `ครั้งที่ | เลขที่เอกสาร | รหัสร้าน | ชื่อร้านถูกกระทบ | ภาค | ยอดขายที่ลดลง(%) | จำนวนเงินที่ชดเชย | สถานะ(pill) | รอ (วัน)` · `tr.flag-red` = ยอดขายไม่ครบ 60 วัน
 - **Pager** + note card ("แดง = ยอดขายไม่ครบ 60 วัน · text file 17:00/วัน · Approve A → SAP")
-- **TODO:** `<DocumentListPage mode>`, `<RoleWorkflowBar>` (render เฉพาะ waiting), `<WorkflowStepper>`, `<StatCardGrid>`(clickable, active), `<DocumentFilterBar>`, `<RangeInput>`, `<DocumentTable>`, `<StatusPill>` (map 8 สถานะ), `<Pager>`, hook mock data (เปลี่ยนเป็น API)
+- **TODO:** `<DocumentListPage mode>`, `<RoleWorkflowBar>` (render เฉพาะ waiting), `<WorkflowStepper>`, `<StatCardGrid>`(clickable, active), `<DocumentFilterBar>`, `<RangeInput>`, `<DocumentTable>`, `<StatusPill>` (map 6 สถานะ), `<Pager>`, hook mock data (เปลี่ยนเป็น API)
 
 ## k2-list-abnormal.html — ข้อมูลผิดปกติ / แจกงาน  *(ปิดชั่วคราวใน MODULES — ไฟล์ยังใช้ได้)*
 - **Route:** `/k2/documents/abnormal` · **crumb:** `ข้อมูลผิดปกติ / แจกงาน`
@@ -178,10 +178,10 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 
 ## k2-flow.html — Flow K2 (Workflow อนุมัติ, SRS 3.1.4)
 - **Route:** `/flows/k2` · **crumb:** `Flow K2`
-- **S1 head** (pill `7 ขั้นตอน · 8 สถานะ`) · **S2 IntroCard**
-- **S3 HappyPathStepper:** `S › 06 › 08 › 01 › 02 › 03(>100,000) › 04 › 05 › ✓`
+- **S1 head** (pill `5 ขั้นตอน · 6 สถานะ`) · **S2 IntroCard**
+- **S3 HappyPathStepper:** `S › 06 › 08 › 01 › 02 › 03(เฉพาะ >100,000) › ✓`
 - **S4 K2Flowchart:** BPMN hand-SVG (task/decision D1–D3/end; solid=ส่งต่อ/ข้ามขั้น, dashed amber=ส่งกลับ/ไม่ชดเชย; กล่องแจ้งเตือนอัตโนมัติ + escalation 30/45/60) + legend
-- **S5 Swimlane:** 8 lane (ระบบ→06→08→01→02→03→04→05) แต่ละ lane มี task + branch chips (b-go/b-back/b-end)
+- **S5 Swimlane:** 6 lane (ระบบ→06→08→01→02→03) แต่ละ lane มี task + branch chips (b-go/b-back/b-end)
 - **S6 ตาราง Transitions:** `ลำดับ | ผู้ดำเนินการ | section_code | ตัวเลือกส่งงาน / หมายเหตุ` (7 แถว)
 - **S7 ตาราง State/Email:** `State | สถานะเอกสาร | ผู้ดำเนินการ | อีเมลถึง (TO) | สำเนา (CC)` (9 แถว) · **S8 note วงเงิน**
 - **TODO:** `<FlowPage>`, `<HappyPathStepper>`, `<K2Flowchart>` (static SVG), `<Swimlane>`/`<BranchChip>`, `<DataTable>`(×2), `<InfoCard>`
@@ -189,8 +189,8 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 ## plan-flow.html — Flow FGI/FCS + K2 (ระบบใหม่, คู่ของ workflow.md)
 - **Route:** `/plan/flow` · **crumb:** `Flow FGI/FCS + K2`
 - **S1 head** (pill `Target Architecture`) · **S2 RefLegendCard** (chip fgi/k2/new/mix + cross-links)
-- **S3 Stat cards (4):** 11 / 7 / 30 tables / 46 endpoints  *(หมายเหตุ: SVG เขียน 61 — ตัวเลขไม่ตรงกัน ควรตรวจกับ api.md)*
-- **S4 JourneyStrip (5 ขั้น):** รับข้อมูล → วิเคราะห์ → สร้างเอกสาร → อนุมัติ 7 ขั้น → ส่งผล+ติดตาม + rule grid
+- **S3 Stat cards (4):** 11 / 7 / 34 tables / 62 endpoints
+- **S4 JourneyStrip (5 ขั้น):** รับข้อมูล → วิเคราะห์ → สร้างเอกสาร → อนุมัติ 5 ขั้น → ส่งผล+ติดตาม + rule grid
 - **S5 ArchitectureDiagram** hand-SVG (FE SPA → REST → 6 Backend services → DB รวม → External 5 ระบบ)
 - **S6 Timeline 12 ขั้น** (Stage A–D) พร้อม ref chips
 - **S7 MigrationTable:** `จุดเชื่อมต่อ | กลไกเดิม | กลไกใหม่ | ที่มา` (7) · **S8 ตารางพฤติกรรม flow เดิม** (4) · **S9 NoticeCard**
@@ -230,9 +230,9 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 
 # กลุ่ม: Plan
 
-## plan-api.html — API Specification (61 เส้น 10 กลุ่ม, คู่ของ api.md)
+## plan-api.html — API Specification (62 เส้น 10 กลุ่ม, คู่ของ api.md)
 - **Route:** `/plan-api` · **crumb:** `API`
-- **S1 head:** ปุ่ม `Export OpenAPI`(toast) · **S2 Stat (4):** 61/10/JWT/JSON
+- **S1 head:** ปุ่ม `Export OpenAPI`(toast) · **S2 Stat (4):** 62/10/JWT/JSON
 - **S3 ConventionsCard** (base `/api/v1`, JWT, pagination, error shape, ISO-8601) · **S5 RecommendationsCard**
 - **S4 ApiCatalog:** 10 กลุ่ม (Auth 4 / เอกสาร 9 / Lookup 4 / *[ผิดปกติ 2 comment]* / Master 20 / Config 5 / Email 5 / รายงาน 2 / Batch 6 / Workflow 3 / Interface 4), ตารางต่อกลุ่ม `Method | Path | ทำอะไร | ที่มา` — คลิกแถว→modal
 - **EndpointDetailModal:** chips (ที่มา/สิทธิ์/กลุ่ม) → Flow (นอกแท็บ) → **Tabs:** `1 Request/Response` (2 คอลัมน์ + Error list) · `2 Database + SQL` (ตาราง R/W + `<pre>` SQL จาก `SQL_BY_PATH`) · `3 Flowchart` (เฉพาะ 4 เส้น: actions/instances/documents/jobs run — `renderFlow` SVG)

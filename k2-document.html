@@ -436,7 +436,7 @@
       /* ส่งดำเนินการ — validate ผลการพิจารณา + ความคิดเห็น */
       $('btnDecSend').addEventListener('click', function(){
         var sel = document.querySelector('#decisionOptions input[name="route"]:checked');
-        if (!sel){ popup('ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูล ก่อนกดส่งดำเนินการ'); return; }
+        if (!sel){ popup('ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ'); return; }
         if (sel.getAttribute('data-req')==='1' && !$('decComment').value.trim()){ popup('กรุณากรอกความคิดเห็นเพิ่มเติม (บังคับกรอกสำหรับผลการพิจารณานี้) ก่อนส่งดำเนินการ'); return; }
         toast('ส่งดำเนินการตามผลการพิจารณาเรียบร้อย', 'ok');
       });

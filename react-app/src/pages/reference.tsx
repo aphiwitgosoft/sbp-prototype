@@ -57,26 +57,22 @@ function Section({ heading, items }: { heading: string; items: ReactNode[] }) {
 
 /* ---------------- Flow ---------------- */
 const K2_FLOW: FcSpec = {
-  w: 680, h: 600,
+  w: 680, h: 440,
   nodes: [
     { id: 's06', type: 'proc', x: 210, y: 32, w: 300, text: '06 · ฝ่าย SBP DSA (ตรวจสอบ)' },
     { id: 's08', type: 'proc', x: 210, y: 110, w: 300, text: '08 · เจ้าหน้าที่ SBP DSA (คำนวณเงินชดเชย)' },
     { id: 's01', type: 'proc', x: 210, y: 188, w: 300, text: '01 · ฝ่ายส่งเสริมธุรกิจฯ (ปรับข้อมูล)' },
     { id: 's02', type: 'dec', x: 210, y: 284, w: 300, h: 76, text: '02 · GM OPT\nชดเชย > 100,000?' },
     { id: 's03', type: 'proc', x: 520, y: 284, w: 240, text: '03 · AVP OPT' },
-    { id: 's04', type: 'proc', x: 210, y: 412, w: 300, text: '04 · ฝ่ายบัญชี SBP' },
-    { id: 's05', type: 'proc', x: 210, y: 490, w: 300, text: '05 · บัญชีปฏิบัติการภาค' },
-    { id: 'end', type: 'termOk', x: 210, y: 562, w: 240, text: 'เสร็จสิ้นดำเนินการ' },
+    { id: 'end', type: 'termOk', x: 210, y: 410, w: 240, text: '99 · เสร็จสิ้นดำเนินการ' },
   ],
   edges: [
     { from: 's06', to: 's08' },
     { from: 's08', to: 's01' },
     { from: 's01', to: 's02' },
     { from: 's02', to: 's03', dir: 'right', label: '> 100,000' },
-    { from: 's03', to: 's04' },
-    { from: 's02', to: 's04', label: '≤ 100,000' },
-    { from: 's04', to: 's05' },
-    { from: 's05', to: 'end' },
+    { from: 's03', to: 'end', label: 'อนุมัติ' },
+    { from: 's02', to: 'end', label: '≤ 100,000' },
   ],
 };
 
@@ -91,7 +87,7 @@ const FGI_FLOW: FcSpec = {
     { id: 'd1', type: 'dec', x: 220, y: 402, w: 300, h: 74, text: 'ผ่าน Gen Flow Gate?' },
     { id: 'eN', type: 'err', x: 540, y: 402, w: 240, text: 'workflow_generation_status = N / W' },
     { id: 'p5', type: 'proc', x: 220, y: 500, w: 360, text: 'Job 8b · เปิด Workflow (06) + Job 6 ส่ง STA' },
-    { id: 'end', type: 'termOk', x: 220, y: 578, w: 300, text: 'เข้าสู่ K2 Approval (7 ขั้น)' },
+    { id: 'end', type: 'termOk', x: 220, y: 578, w: 300, text: 'เข้าสู่ Approval Workflow (5 ขั้น)' },
   ],
   edges: [
     { from: 't1', to: 'p1' }, { from: 'p1', to: 'p2' }, { from: 'p2', to: 'p3' }, { from: 'p3', to: 'p4' },
@@ -182,7 +178,7 @@ export function FlowFgi() {
 
 export function K2Flow() {
   return (
-    <Reference title="Flow K2 (Approval Workflow)" sub="เส้นทางพิจารณา 7 ขั้น · 06→08→01→02→03→04→05" chips={['K2', '7 ขั้น']}>
+    <Reference title="Flow K2 (Approval Workflow)" sub="เส้นทางพิจารณา 5 ขั้น · 06→08→01→02→03" chips={['K2', '5 ขั้น']}>
       <Card className="mb-4">
         <CardHead title="แผนภาพเส้นทางพิจารณา (Flowchart)" right={<Chip>กฎวงเงิน 100,000</Chip>} />
         <div className="overflow-x-auto rounded-xl border border-line bg-slate-50/60 p-3.5">
@@ -192,7 +188,7 @@ export function K2Flow() {
       <Section
         heading="กติกา routing"
         items={[
-          'ชดเชย/ไม่ชดเชย > 100,000 ต้องผ่าน AVP (03) · ชดเชย ≤ 100,000 ข้ามไปฝ่ายบัญชี SBP (04)',
+          'ชดเชย > 100,000 ต้องผ่าน AVP (03) แล้วจบงาน · ชดเชย ≤ 100,000 จบที่ GM (02)',
           '06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · ทุกขั้นมีเส้นส่งกลับ (back-flow)',
           'ผลพิจารณาบันทึก consideration_logs + ส่งอีเมลตาม status_email_rules',
         ]}
@@ -204,13 +200,11 @@ export function K2Flow() {
             <thead><tr><th>Section</th><th>ผู้ดำเนินการ</th><th>ตัวเลือกส่งงาน / เงื่อนไข</th><th>สถานะถัดไป</th></tr></thead>
             <tbody>
               {[
-                ['06', 'ฝ่าย SBP DSA', 'ไม่ชดเชย/หยุดชดเชย · ส่ง 01 · ส่ง 04(ข้าม) · ส่ง 08', 'เสร็จสิ้น / 01 / 04 / 08'],
+                ['06', 'ฝ่าย SBP DSA', 'ไม่ชดเชย/หยุดชดเชย · ส่ง 01 · ส่ง 08', '99 / 01 / 08'],
                 ['08', 'เจ้าหน้าที่ SBP DSA', 'คำนวณเงินชดเชยเรียบร้อย · ส่งกลับ', '01 / 06'],
                 ['01', 'ฝ่ายส่งเสริมธุรกิจฯ', 'เห็นควรชดเชย · ไม่ชดเชย/ส่งกลับ', '02 / 06'],
-                ['02', 'GM OPT', 'ชดเชย > 100,000 → 03 · ≤ 100,000 → 04 · ไม่ชดเชย ≤ 100k → 06', '03 / 04 / 06'],
-                ['03', 'AVP OPT', 'เห็นควรชดเชย · ไม่ชดเชย · ส่งกลับ', '04 / 06 / 02'],
-                ['04', 'ฝ่ายบัญชี SBP', 'ส่งบัญชีปฏิบัติการภาค · ส่งกลับ', '05 / 06'],
-                ['05', 'บัญชีปฏิบัติการภาค', 'บัญชีภาคอนุมัติ · ส่งกลับ', 'เสร็จสิ้น / 04'],
+                ['02', 'GM OPT', 'ชดเชย > 100,000 → 03 · ≤ 100,000 → จบ · ไม่ชดเชย/ส่งกลับ', '03 / 99 / 06'],
+                ['03', 'AVP OPT', 'เห็นควรชดเชย → จบ · ไม่ชดเชย · ส่งกลับ', '99 / 06 / 02'],
               ].map((r, i) => (
                 <tr key={i}><td className="num font-medium">{r[0]}</td><td>{r[1]}</td><td className="text-[12px]">{r[2]}</td><td className="num">{r[3]}</td></tr>
               ))}
@@ -230,9 +224,7 @@ export function K2Flow() {
                 ['01', 'รอฝ่ายส่งเสริมธุรกิจ SBP', 'ฝ่ายส่งเสริมธุรกิจฯ', '-'],
                 ['02', 'รอ GM ส่งเสริมธุรกิจ SBP', 'GM OPT', 'ฝ่ายส่งเสริมธุรกิจฯ'],
                 ['03', 'รอผู้บริหารสำนักบริหาร SBP', 'AVP OPT', 'GM OPT'],
-                ['04', 'รอฝ่ายบัญชี SBP', 'ฝ่ายบัญชี SBP', '-'],
-                ['05', 'รอบัญชีปฏิบัติการภาค', 'บัญชีปฏิบัติการภาค', 'ฝ่ายบัญชี SBP'],
-                ['END', 'เสร็จสิ้นดำเนินการ', 'ฝ่าย SBP DSA', 'ฝ่ายบัญชี SBP'],
+                ['99', 'เสร็จสิ้นดำเนินการ', 'ฝ่าย SBP DSA', '-'],
                 ['BACK', 'ส่งกลับ', 'ผู้ดำเนินการขั้นก่อนหน้า', '-'],
               ].map((r, i) => (
                 <tr key={i}><td className="num font-medium">{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td className="text-muted">{r[3]}</td></tr>
@@ -250,7 +242,7 @@ export function PlanFlow() {
   return (
     <Reference title="Flow FGI/FCS + K2 (รวม)" sub="flow ต้นทางถึงปลายทางของระบบใหม่ SBPGI (รวม EAI + K2)" chips={['12 ขั้น', 'workflow.md']}>
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {[['11', 'Batch Jobs (1–10 + 8b)'], ['7', 'ขั้น workflow อนุมัติ'], ['34', 'ตารางใน DB รวม'], ['61', 'REST API endpoints']].map(([n, l]) => (
+        {[['11', 'Batch Jobs (1–10 + 8b)'], ['5', 'ขั้น workflow อนุมัติ'], ['34', 'ตารางใน DB รวม'], ['62', 'REST API endpoints']].map(([n, l]) => (
           <div key={l} className="rounded-card border border-line bg-card p-4 text-center shadow-card">
             <div className="text-2xl font-bold text-primary">{n}</div>
             <div className="mt-1 text-[12px] text-muted">{l}</div>

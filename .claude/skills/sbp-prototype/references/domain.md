@@ -83,6 +83,6 @@ EM-04/05 รับพฤติกรรมมาจาก Approve Flow เดิ
 
 - **รวม EAI + K2 เข้า SBPGI**: ตัดไฟล์ภายใน `BPM06001O_/2O_/3O_` (Jobs 7/8/9) และ K2 REST StartInstance (Job 8b) → Document Service เขียน DB ตรง + Workflow Engine ภายใน
 - Interface ภายนอก **คงเดิม** (ระบบของทีมอื่น): QSSI (SFTP) · ALLMAP (SQL Server) · IAS/MIS (ไฟล์ AMS06001O/I) · STA (FRBC0001 + ACK, เพิ่ม `POST /interfaces/sta/ack`) · SMTP
-- Flow 12 ขั้น 4 Stage (A รับข้อมูล Jobs 1–5 · B สร้างเอกสาร+เปิด workflow · C พิจารณา 7 ขั้น · D ส่งออก+watchdog Jobs 6/10) → `workflow.md`
+- Flow 12 ขั้น 4 Stage (A รับข้อมูล Jobs 1–5 · B สร้างเอกสาร+เปิด workflow · C พิจารณา 5 ขั้น · D ส่งออก+watchdog Jobs 6/10) → `workflow.md`
 - Schema 34 ตาราง 3 โซน (A=FGI/FCS · B=K2 docs/workflow · C=shared master/config) + Data Spine 4 ID (`impact_process_id` → `doc_no` → `instance_id` → `task_id`) → `database.md`
 - P0 สำคัญ: ครอบ Job 4 ด้วย transaction · ย้าย credential ไป Secret Manager · ห้ามเก็บ secret ใน `system_configs`
