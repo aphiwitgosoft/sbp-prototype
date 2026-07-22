@@ -462,7 +462,7 @@
       no:'5', name:'ImportImpactSaleFromIAS', th:'รับยอดขายจาก IAS + คำนวณ Growth', tag:'IMPORT + CALC', tagCls:'imp', phase:'B',
       cls:'fgi.main.ImportImpactSaleFromIAS', script:'FGI_ImportImpactStoreSale.sh', cron:'30 16 7-16 * *', cronTh:'วันที่ 7–16 เวลา 16:30',
       out:'AMS06001I (รับเข้า)',
-      desc:'อ่านไฟล์ตอบกลับยอดขาย AMS06001I จาก IAS บันทึกยอดขายรายวันลง sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วตัดสิน verify_status = Y / N จาก growth_rate_diff',
+      desc:'อ่านไฟล์ตอบกลับยอดขาย AMS06001I จาก IAS บันทึกยอดขายรายวันลง sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff',
       params:[
         ['กำหนดการรัน (Cron)','30 16 7-16 * *','text',1,'30 นาทีหลัง Job 4'],
         ['Input File','AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์)','text',0,'impacted_store_code | OPENDATE_N | SALES_DATE | SALES_AMOUNT'],
@@ -477,16 +477,16 @@
         {k:'d', t:'เป็นงวดที่ยังไม่นำเข้า?', no:'จบ (idempotency guard กันนำเข้าซ้ำ)', noKind:'end', d:''},
         {k:'p', t:'เปิด transaction ต่อไฟล์ แล้ว insert sales_transactions แถวดิบ', d:'ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน'},
         {k:'p', t:'total_working_days = จำนวนแถวดิบทั้งหมด', d:'นับรวมแถวนอกหน้าต่างคำนวณด้วย (raw count)'},
-        {k:'d', t:'ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept)', no:'Pre-accept: verify_status = Y ทันที', d:'pre-accept เมื่ออายุร้าน < 12ด.15ว. หรือวันทำการ ≠ 60'},
+        {k:'d', t:'ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept)', no:'Pre-accept: sales_status = Y ทันที', d:'pre-accept เมื่ออายุร้าน < 12ด.15ว. หรือวันทำการ ≠ 60'},
         {k:'p', t:'คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (|sales_diff| ≥ 50)', d:'4 หน้าต่าง × 15 วัน ไม่รวมวันเปิดร้านใหม่ / ธงรวมอดีต-ปัจจุบันต้องตรงกัน'},
-        {k:'d', t:'NVL(growth_rate_diff, −1) < 0 ?', no:'verify_status = N (ไม่เข้าเกณฑ์ชดเชย)', d:'NULL ถูกแทนด้วย −1 = accept อัตโนมัติ (ความเสี่ยง P1)'},
-        {k:'p', t:'verify_status = Y แล้ว insert tracking IMPORT_SALES_FROM_IAS', d:''},
+        {k:'d', t:'NVL(growth_rate_diff, −1) < 0 ?', no:'sales_status = N (ไม่เข้าเกณฑ์ชดเชย)', d:'NULL ถูกแทนด้วย −1 = accept อัตโนมัติ (ความเสี่ยง P1)'},
+        {k:'p', t:'sales_status = Y แล้ว insert tracking IMPORT_SALES_FROM_IAS', d:''},
         {k:'io', t:'ย้ายไฟล์เข้า backup', d:''},
         {k:'end', t:'จบ'}
       ],
       tables:[
         ['sales_transactions','W','ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา)'],
-        ['fgi_impact_sales_summaries','R/W','อัปเดต total_working_days, growth_rate_diff, verify_status Y/N'],
+        ['fgi_impact_sales_summaries','R/W','อัปเดต total_working_days, growth_rate_diff, sales_status Y/N'],
         ['interface_transactions','W','tracking: data_name=IMPORT_SALES_FROM_IAS · typed FK = sales_summary_id']
       ],
       rels:[
@@ -655,7 +655,8 @@
       flow:[
         {k:'start', t:'เริ่ม'},
         {k:'p', t:'updateBeforeSelect: ตั้ง W → Y เมื่อพบ K2 process เดิมอยู่แล้ว', d:'กันเปิด workflow ซ้ำ'},
-        {k:'d', t:'ผ่าน Gen Flow Gate ครบทุกเงื่อนไข?', no:'branch type นอกเซ็ต → N / กรณีอื่นคง W ไว้', d:'W + branch type + DV ไม่ว่าง + juristic ต่างกัน + growth ≤ −10 + sales status Y/N'},
+        {k:'d', t:'พบเงื่อนไขไม่ผ่านถาวร?', no:'ไม่มี — ตรวจความพร้อมของข้อมูลต่อ', d:'branch type นอกเซ็ต / เกินระยะ / DV ว่าง / juristic เดียวกัน / growth > −10 → N'},
+        {k:'d', t:'ข้อมูล Gate พร้อมครบ?', no:'ข้อมูล distance/juristic/growth/sales status ยังไม่พร้อม → คง W', d:'distance, juristic และ growth ไม่เป็น NULL · sales status Y/N'},
         {k:'io', t:'POST K2 REST StartInstance (HTTP + Basic Auth)', d:'endpoint sesomapua01.7eleven.cp.co.th:81'},
         {k:'d', t:'HTTP 200 และ body มีคำว่า "Running"?', no:'log ล้มเหลว คงค่า W ไว้ reconcile — ไม่มี auto-retry', noKind:'err', d:''},
         {k:'p', t:'workflow_generation_status = Y (เปิด workflow สำเร็จ)', d:'flag เขียนแบบ auto-commit — ไม่มี transaction'},

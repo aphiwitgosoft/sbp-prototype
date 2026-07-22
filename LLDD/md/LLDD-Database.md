@@ -273,7 +273,7 @@ CREATE TABLE fgi_impact_stores (
     impacted_store_code VARCHAR(5) NOT NULL REFERENCES impacted_stores(store_code),
     new_store_code VARCHAR(5) NOT NULL REFERENCES stores(store_code),
     impact_month CHAR(7) NOT NULL, distance_km NUMERIC(8,3),
-    sales_request_status CHAR(1) NOT NULL DEFAULT 'W' CHECK (sales_request_status IN ('W','P','Y','E')),
+    verify_status CHAR(1) NOT NULL DEFAULT 'W' CHECK (verify_status IN ('W','P','Y','N')),
     forecast_compensate_percent NUMERIC(7,4), adjust_compensate_percent NUMERIC(7,4),
     forecast_compensation_amount NUMERIC(14,2), adjust_compensation_amount NUMERIC(14,2),
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

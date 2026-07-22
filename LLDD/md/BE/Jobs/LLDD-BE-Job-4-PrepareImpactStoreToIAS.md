@@ -88,7 +88,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 ```sql
 SELECT s.id, s.impact_process_id, s.impacted_store_code, s.new_store_code, s.impact_month
 FROM fgi_impact_stores s
-WHERE s.sales_request_status = 'W'
+WHERE s.verify_status = 'W'
 ORDER BY s.id
 FOR UPDATE SKIP LOCKED;
 ```
@@ -97,8 +97,8 @@ FOR UPDATE SKIP LOCKED;
 
 ```sql
 UPDATE fgi_impact_stores
-SET sales_request_status = 'P', updated_at = CURRENT_TIMESTAMP
-WHERE id = ANY(:impact_store_ids) AND sales_request_status = 'W';
+SET verify_status = 'P', updated_at = CURRENT_TIMESTAMP
+WHERE id = ANY(:impact_store_ids) AND verify_status = 'W';
 
 INSERT INTO interface_transactions
     (run_id, data_name, direction, status, impact_process_id, business_key, period_key,
@@ -353,7 +353,7 @@ export async function runLlddBeJob4Prepareimpactstoretoias(ctx, services) {
 | Step | Description |
 | --- | --- |
 | 1 | เริ่ม |
-| 2 | lock รายการ sales_request_status=W (FOR UPDATE SKIP LOCKED) |
+| 2 | lock รายการ verify_status=W (FOR UPDATE SKIP LOCKED) |
 | 3 | สร้าง temporary file และ validate record count (ยังไม่เปลี่ยน W→P) |
 | 4 | fsync + atomic rename + SHA-256 (ไฟล์ต้อง durable ก่อนเริ่ม DB transaction) |
 | 5 | transaction: update W→P + insert outbox READY (fail แล้ว rollback ทั้งสถานะและ outbox) |

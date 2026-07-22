@@ -325,13 +325,14 @@ ORDER BY m.menu_group, m.sort_order;
 | --- | --- |
 | 1 | อ่าน sectionCode ของผู้ใช้จาก JWT |
 | 2 | query workflow_tasks สถานะ OPEN ของ section นั้น |
-| 3 | join compensation_documents + impacted_stores คืน 9 คอลัมน์ตามหน้าจอ |
+| 3 | join compensation_documents + stores + fgi_impact_sales_summaries คืน 9 คอลัมน์ตามหน้าจอและ salesDataDays สำหรับ red flag |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
 | workflow_tasks | R | งานค้างต่อ section (ตารางใหม่ — inbox) |
 | compensation_documents | R | ข้อมูลเอกสาร |
-| impacted_stores | R | ชื่อ/ภาคของร้าน |
+| stores | R | ชื่อและภาคของร้าน |
+| fgi_impact_sales_summaries | R | อัตรายอดขายลดลงและจำนวนวันข้อมูลยอดขาย |
 
 #### Request / Query / Header
 
@@ -346,13 +347,17 @@ Query: ?page=1&size=20&q=00788
 {
   "page": 1, "total": 24,
   "items": [{
+    "roundNo": 1,
     "docNo": "2569/00123",
-    "storeCode": "00788",
-    "storeName": "รัตนอุทิศ ซ.13",
-    "impactMonth": "2026-06",
+    "impactedStoreCode": "00788",
+    "impactedStoreName": "รัตนอุทิศ ซ.13",
+    "regionCode": "BE",
+    "salesDeclinePercent": 12.5,
+    "totalCompensationAmount": 48200.00,
     "statusCode": "06",
     "currentSection": "06",
-    "waitingDays": 3
+    "daysPending": 3,
+    "salesDataDays": 58
   }]
 }
 ```
@@ -364,10 +369,21 @@ Query: ?page=1&size=20&q=00788
 SQL Reference
 
 ```sql
-SELECT t.doc_no, d.status_code, t.section_code, s.store_code, s.store_name, d.impact_month, t.opened_at
+SELECT d.round_no AS "roundNo",
+       d.doc_no AS "docNo",
+       d.impacted_store_code AS "impactedStoreCode",
+       s.store_name AS "impactedStoreName",
+       s.region_code AS "regionCode",
+       GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) AS "salesDeclinePercent",
+       d.total_compensation_amount AS "totalCompensationAmount",
+       d.status_code AS "statusCode",
+       d.current_section_code AS "currentSection",
+       GREATEST(CURRENT_DATE - t.opened_at::date, 0) AS "daysPending",
+       ss.total_working_days AS "salesDataDays"
 FROM workflow_tasks t
 JOIN compensation_documents d ON d.doc_no = t.doc_no
 JOIN stores s ON s.store_code = d.impacted_store_code
+LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
 WHERE t.section_code = :sectionFromJwt AND t.task_status = :statusOpen
 ORDER BY t.opened_at
 LIMIT :size OFFSET :offset;
@@ -400,7 +416,7 @@ LIMIT :size OFFSET :offset;
 #### Request / Query / Header
 
 ```json
-Query: ?year=2569&storeCode=00788&status=06&page=1
+Query: ?year=2569&impactedStoreCode=00788&status=06&page=1
 (status = section ที่รออยู่ 06/08/01/02/03 หรือ END)
 ```
 
@@ -413,6 +429,8 @@ Query: ?year=2569&storeCode=00788&status=06&page=1
 }
 ```
 
+items[] ใช้ field ชุดเดียวกับ §6.2.1 GET /api/v1/tasks สำหรับ list response ของ SCR-03/04
+
 | Error / Condition |
 | --- |
 | 400 — กรุณาระบุปีที่ต้องการค้นหา (กติกา SRS) |
@@ -422,12 +440,24 @@ SQL Reference
 
 ```sql
 -- ต้องระบุ :year เสมอ ไม่งั้นตอบ 400 (กติกา SRS)
-SELECT d.doc_no, d.status_code, d.impacted_store_code, s.store_name, d.impact_month
+SELECT d.round_no AS "roundNo",
+       d.doc_no AS "docNo",
+       d.impacted_store_code AS "impactedStoreCode",
+       s.store_name AS "impactedStoreName",
+       s.region_code AS "regionCode",
+       GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) AS "salesDeclinePercent",
+       d.total_compensation_amount AS "totalCompensationAmount",
+       d.status_code AS "statusCode",
+       d.current_section_code AS "currentSection",
+       CASE WHEN t.task_status = :statusOpen THEN GREATEST(CURRENT_DATE - t.opened_at::date, 0) ELSE 0 END AS "daysPending",
+       ss.total_working_days AS "salesDataDays"
 FROM compensation_documents d
 JOIN stores s ON s.store_code = d.impacted_store_code
+LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
+LEFT JOIN workflow_tasks t ON t.doc_no = d.doc_no AND t.task_status = :statusOpen
 WHERE d.be_year = :year
-  AND (:storeCode IS NULL OR d.impacted_store_code = :storeCode)
-  AND (:status    IS NULL OR d.status_code = :status)
+  AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)
+  AND (:status            IS NULL OR d.status_code = :status)
 ORDER BY d.doc_no DESC
 LIMIT :size OFFSET :offset;
 ```
@@ -3158,10 +3188,11 @@ Query: ?page=1&size=20
 | Step | Flow |
 | --- | --- |
 | 1 | ตรวจ service token (ไม่ใช่ JWT ผู้ใช้) |
-| 2 | lock fgi_impact_processes แล้วตรวจ Gen Flow Gate ทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · opt_dv_user_id ไม่ว่าง · juristic ร้านใหม่ต่างจากร้านถูกกระทบ · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} |
-| 3 | ไม่ผ่าน: branch type นอกเซ็ต → workflow_generation_status=N · กรณีอื่นคง W (ตอบ 422 พร้อมเหตุผล) |
-| 4 | ผ่าน: ใช้ compensation_documents ที่ Job 8 สร้างแล้ว + workflow_instances + workflow_tasks แรก (06) แล้วตั้ง workflow_generation_status=Y |
-| 5 | ส่งอีเมลสรุปราย DV หลัง commit |
+| 2 | lock fgi_impact_processes แล้วตรวจ Gen Flow Gate ทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · ระยะทางตามเกณฑ์ · opt_dv_user_id ไม่ว่าง · juristic ร้านใหม่ต่างจากร้านถูกกระทบ · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} |
+| 3 | fail ถาวร: branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10 → workflow_generation_status=N |
+| 4 | ข้อมูลต้นทางยังไม่พร้อม: distance/juristic/growth เป็น NULL หรือ sales_status ไม่ใช่ Y/N → คง W (ตอบ 422 พร้อมเหตุผล) |
+| 5 | ผ่าน: ใช้ compensation_documents ที่ Job 8 สร้างแล้ว + workflow_instances + workflow_tasks แรก (06) แล้วตั้ง workflow_generation_status=Y |
+| 6 | ส่งอีเมลสรุปราย DV หลัง commit |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
@@ -3204,7 +3235,7 @@ SQL Reference
 -- Gen Flow Gate: workflow_generation_status มี source of truth ที่ fgi_impact_processes
 SELECT p.id AS impact_process_id, p.workflow_generation_status, ist.opt_dv_user_id,
        impacted.juristic_name AS impacted_store_juristic_name, ns.juristic_name AS new_store_juristic_name,
-       ss.growth_rate_diff, ss.sales_status, ns.branch_type
+       ss.growth_rate_diff, ss.sales_status, ns.branch_type, pair.distance_km, impacted.region_code
 FROM fgi_impact_processes p
 JOIN impacted_stores ist ON ist.store_code = p.impacted_store_code
 JOIN stores impacted ON impacted.store_code = p.impacted_store_code
@@ -3213,7 +3244,7 @@ JOIN stores ns ON ns.store_code = pair.new_store_code
 LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = p.id
 WHERE p.id = :impactProcessId FOR UPDATE OF p;
 
--- branch_type นอก allowlist → ตั้ง N ถาวร; gate อื่นไม่พร้อมคง W
+-- fail ถาวร (branch/distance over/missing DV/same juristic/growth > -10) → N; เฉพาะ distance/juristic/growth NULL หรือ sales_status ยังไม่พร้อมจึงคง W
 UPDATE fgi_impact_processes SET workflow_generation_status = :flagN
 WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagN;
 

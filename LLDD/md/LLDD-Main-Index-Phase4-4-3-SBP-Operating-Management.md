@@ -46,7 +46,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | FE | FE - Create Document | 30 | 29/07/2026 | 04/08/2026 | Kittisak <New> Kaeowika | LLDD-FE-Create-Document |
 | FE | FE - Document Detail and Action | 72 | 05/08/2026 | 20/08/2026 | Kittisak <New> Kaeowika | LLDD-FE-Document-Detail |
 | FE | FE - Status Summary Report | 30 | 07/08/2026 | 13/08/2026 | Peerakorn <Pete> Sakunkaewphithak | LLDD-FE-Report |
-| FE | FE - Master and Config | 30 | 14/08/2026 | 20/08/2026 | Peerakorn <Pete> Sakunkaewphithak | LLDD-FE-Master-Config |
+| FE | FE - Master Config | 30 | 14/08/2026 | 20/08/2026 | Peerakorn <Pete> Sakunkaewphithak | LLDD-FE-Master-Config |
 | FE | FE - Batch Job Monitor | 24 | 21/08/2026 | 26/08/2026 | Kittisak <New> Kaeowika | LLDD-FE-Batch-Monitor |
 | FE | FE - Email Template and Notification Config | 21 | 20/08/2026 | 25/08/2026 | Chidchanok <lin> Saengamnat | LLDD-FE-Email-Template |
 | FE | FE - Testing and Delivery | 24 | 21/08/2026 | 26/08/2026 | Peerakorn <Pete> Sakunkaewphithak | LLDD-FE-Testing-Delivery |
@@ -69,7 +69,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Role | Owner | Hours | Start Date | End Date | Work Focus |
 | --- | --- | --- | --- | --- | --- |
 | FE | Kittisak <New> Kaeowika | 126 | 29/07/2026 | 26/08/2026 | FE document journey: Create Document -> Document Detail/Action -> Batch Monitor |
-| FE | Peerakorn <Pete> Sakunkaewphithak | 126 | 29/07/2026 | 26/08/2026 | FE list, reporting and admin journey: Document Lists -> Report -> Master/Config -> Testing/Delivery |
+| FE | Peerakorn <Pete> Sakunkaewphithak | 126 | 29/07/2026 | 26/08/2026 | FE list, reporting and admin journey: Document Lists -> Report -> Master Config -> Testing/Delivery |
 | FE | Chidchanok <lin> Saengamnat | 120 | 29/07/2026 | 25/08/2026 | FE shared contracts and experience: Integration Contracts -> Foundation -> Overview -> Email Template/Notification Config |
 | BE | Butsaba <But> Podamrong | 129 | 29/07/2026 | 27/08/2026 | BE common/read/action/operations: Common Contracts -> Dashboard/List -> Detail Aggregate -> Workflow Actions -> Batch/Email/SRM |
 | BE | Tunyatorn <Vava> Kiatkongphongsa | 129 | 29/07/2026 | 27/08/2026 | BE command/workflow/support APIs: Create/Update -> Workflow Instances -> Attachment/Sales/Timeline -> Lookup/RBAC/Email -> Report/Master/Config |
@@ -86,7 +86,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Create Document | 30 | 29/07/2026 | 04/08/2026 | Create form shell, Tab: สร้างเอกสารทั่วไป, Tab: เอกสารจาก FS ผ่าน hidden iframe |
 | Document Detail and Action | 72 | 05/08/2026 | 20/08/2026 | Document header, Store impact/new-store/factor sections, Role-based visible/editable sections |
 | Status Summary Report | 30 | 07/08/2026 | 13/08/2026 | Report filters, Summary table, Preview/detail modal |
-| Master and Config | 30 | 14/08/2026 | 20/08/2026 | Operator master, External factor master, Menu permission, System/Global Config (SCR-11) |
+| Master Config | 30 | 14/08/2026 | 20/08/2026 | Operator master, External factor master, Menu permission, System/Global Config (SCR-11) |
 | Batch Job Monitor | 24 | 21/08/2026 | 26/08/2026 | Job selector/list สำหรับเลือก job ที่ต้องดูรายละเอียด, Tab: แบบฟอร์มพารามิเตอร์, Tab: ประวัติการรัน |
 | Email Template and Notification Config | 21 | 20/08/2026 | 25/08/2026 | Email template list, Template edit form, Variable helper |
 | Testing and Delivery | 24 | 21/08/2026 | 26/08/2026 | Manual regression, Responsive pass, API contract verification |
@@ -141,6 +141,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- | --- |
 | Common API/FE contracts | BE/FE | LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts เป็นสัญญากลางของทุกหน้า FE และทุก service BE |
 | API contract | BE/FE | ทุกหน้า FE และทุก service BE |
+| Master Config contract | FE/BE | LLDD-FE-Master-Config ใช้ LLDD-BE-API-Report-Master-Config สำหรับ Operator, External Factor, Menu Permission, System Config และ Audit |
 | Auth/JWT platform และ menu service | Platform/SSO/IAM | FE Foundation เรียก /auth/me + /me/menus; BE validate Authorization: Bearer <JWT> |
 | Mock/fixture data | BE | FE development และ SIT |
 | Screenshots/prototype | FE | UI implementation |
@@ -150,6 +151,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 - Main LLDD Index
 - Common contract LLDD สำหรับ API/FE integration
+- LLDD-FE-Master-Config สำหรับ Operator, External Factor, Menu Permission และ System/Global Config
 - Detailed FE LLDD per SBP Mall page group
 - Detailed BE LLDD per SBP Mall API group and Jobs 1-10 + 8b
 - Screenshots embedded only for SBP Mall implementation pages

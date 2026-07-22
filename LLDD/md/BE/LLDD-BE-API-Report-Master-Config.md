@@ -592,7 +592,7 @@ Export CSV
     {
       "key": "UPLOAD_MAX_MB",
       "value": 5,
-      "valueType": "INTEGER",
+      "valueType": "NUMBER",
       "editable": true,
       "description": "ขนาดไฟล์สูงสุด"
     }
@@ -638,7 +638,7 @@ Export CSV
 {
   "key": "UPLOAD_MAX_MB",
   "value": 5,
-  "valueType": "INTEGER",
+  "valueType": "NUMBER",
   "editable": true,
   "description": "ขนาดไฟล์สูงสุด"
 }
@@ -664,7 +664,7 @@ Export CSV
 {
   "key": "UPLOAD_WARN_MB",
   "value": 4,
-  "valueType": "INTEGER",
+  "valueType": "NUMBER",
   "editable": true,
   "description": "ระดับเตือนขนาดไฟล์",
   "reason": "เพิ่มค่าเตือน"
@@ -688,7 +688,7 @@ Export CSV
 {
   "key": "UPLOAD_WARN_MB",
   "value": 4,
-  "valueType": "INTEGER",
+  "valueType": "NUMBER",
   "editable": true
 }
 ```
@@ -730,7 +730,7 @@ Export CSV
 {
   "key": "UPLOAD_MAX_MB",
   "value": 6,
-  "valueType": "INTEGER",
+  "valueType": "NUMBER",
   "editable": true
 }
 ```

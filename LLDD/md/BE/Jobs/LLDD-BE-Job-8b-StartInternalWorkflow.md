@@ -35,8 +35,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 8b StartInte
 | Scheduler | หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ตาม period | แก้ไขได้ | แยกเพื่อ rerun ได้อิสระ; Operations ตรวจ deployment schedule/queue เท่านั้น |
 | Workflow API | POST /api/v1/workflows/instances | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | internal service token; ไม่ใช่ K2 REST |
 | เกณฑ์ Growth Rate | growth_rate_diff <= -10 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | คง business rule เดิม |
-| Branch Type ผ่าน Gate | FAM, FB1, FC1, FB2, FVB, FVC | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | นอกเซ็ตนี้ตั้ง N |
-| เงื่อนไข Gate อื่น | workflow_generation_status=W · DV ไม่ว่าง · juristic ต่างกัน · sales_status in {Y,N} | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ |  |
+| Branch Type ผ่าน Gate | FAM, FB1, FC1, FB2, FVB, FVC | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | นอกเซ็ตหรือระยะทางเกินเกณฑ์ให้ตั้ง N |
+| เงื่อนไข Gate อื่น | workflow_generation_status=W · DV ไม่ว่าง · juristic ต่างกัน · sales_status in {Y,N} | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | DV หาย, นิติบุคคลเดียวกัน หรือ growth ไม่ถึงเกณฑ์เป็น N; distance/juristic/growth/sales status ที่ยังไม่มีค่าเท่านั้นจึงคง W |
 
 ## 5.1 Input / Progress / Output Contract
 
@@ -104,11 +104,13 @@ WITH locked_process AS (
                     WHEN impacted.region_code = ANY(:bangkok_metro_region_codes) THEN 1.000
                     ELSE 2.000
                   END) THEN 'N'
-             WHEN ist.opt_dv_user_id IS NULL OR BTRIM(ist.opt_dv_user_id) = '' THEN 'W'
+             WHEN BOOL_OR(pair.distance_km IS NULL) THEN 'W'
+             WHEN ist.opt_dv_user_id IS NULL OR BTRIM(ist.opt_dv_user_id) = '' THEN 'N'
              WHEN impacted.juristic_name IS NULL OR BOOL_OR(ns.juristic_name IS NULL) THEN 'W'
-             WHEN BOOL_OR(impacted.juristic_name = ns.juristic_name) THEN 'W'
-             WHEN ss.growth_rate_diff IS NULL OR ss.growth_rate_diff > -10 THEN 'W'
-             WHEN ss.sales_status NOT IN ('Y','N') THEN 'W'
+             WHEN BOOL_OR(impacted.juristic_name = ns.juristic_name) THEN 'N'
+             WHEN ss.growth_rate_diff IS NULL THEN 'W'
+             WHEN ss.growth_rate_diff > -10 THEN 'N'
+             WHEN ss.sales_status IS NULL OR ss.sales_status NOT IN ('Y','N') THEN 'W'
              ELSE 'Y'
            END AS gate_decision
     FROM locked_process lp
@@ -383,12 +385,13 @@ export async function runLlddBeJob8BStartinternalworkflow(ctx, services) {
 | --- | --- |
 | 1 | เริ่ม |
 | 2 | อ่าน candidate ที่มี compensation_documents แล้วและ workflow_generation_status=W |
-| 3 | ผ่าน Gen Flow Gate ครบทุกเงื่อนไข? \| No: branch type นอกเซ็ต -> N / กรณีอื่นคง W (คงเกณฑ์เดิมทุกข้อ) |
-| 4 | POST /api/v1/workflows/instances (service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST) |
-| 5 | insert workflow_instances + workflow_tasks แรก Section 06 |
-| 6 | workflow_generation_status = Y (เปิด workflow สำเร็จ) |
-| 7 | ส่งอีเมลสรุปราย DV ผ่าน Notification Service |
-| 8 | จบ |
+| 3 | พบเงื่อนไขไม่ผ่านถาวร? \| No: ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ (branch type, distance, missing DV, same juristic หรือ growth > -10 -> N) |
+| 4 | ข้อมูล Gate พร้อมครบ? \| No: distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W (คง W เฉพาะข้อมูลต้นทางที่ยังรอเติมเพื่อให้ rerun ได้) |
+| 5 | POST /api/v1/workflows/instances (service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST) |
+| 6 | insert workflow_instances + workflow_tasks แรก Section 06 |
+| 7 | workflow_generation_status = Y (เปิด workflow สำเร็จ) |
+| 8 | ส่งอีเมลสรุปราย DV ผ่าน Notification Service |
+| 9 | จบ |
 
 ## 10. Acceptance Criteria
 

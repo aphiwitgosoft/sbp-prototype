@@ -118,7 +118,7 @@
           <g>
             <rect x="32" y="56" width="304" height="40" rx="8" fill="#fff" stroke="#96b4f0" stroke-width="1.4"/>
             <text x="44" y="73" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">fgi_impact_stores</text>
-            <text x="44" y="88" font-size="9.5" fill="#8493a5">คู่ร้านกระทบ–เปิดใหม่ · impact_process_id · verify_status / workflow_generation_status</text>
+            <text x="44" y="88" font-size="9.5" fill="#8493a5">คู่ร้านกระทบ–เปิดใหม่ · impact_process_id · verify_status</text>
 
             <rect x="32" y="106" width="304" height="40" rx="8" fill="#eef4ff" stroke="#1d4ed8" stroke-width="1.8"/>
             <text x="44" y="123" font-size="11.5" font-weight="700" fill="#1d4ed8" font-family="Menlo,monospace">fgi_impact_processes ★</text>
@@ -261,7 +261,7 @@
             <thead><tr><th>ตาราง</th><th>โซน</th><th>ที่มา</th><th>PK</th><th>FK / ความสัมพันธ์หลัก</th><th>บทบาท</th></tr></thead>
             <tbody>
               <tr class="zone-row a"><td colspan="6">Zone A · FGI/FCS — Impact Pipeline และ External Interfaces</td></tr>
-              <tr><td class="tb">fgi_impact_stores</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · impacted_store_code → impacted_stores</td><td>คู่ร้านกระทบ–เปิดใหม่ · sales_request_status (W/P/Y/E) · ข้อมูล %/ยอดชดเชยต่อคู่ร้าน</td></tr>
+              <tr><td class="tb">fgi_impact_stores</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · impacted_store_code → impacted_stores</td><td>คู่ร้านกระทบ–เปิดใหม่ · verify_status (W/P/Y/N) · ข้อมูล %/ยอดชดเชยต่อคู่ร้าน</td></tr>
               <tr><td class="tb">fgi_impact_processes</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impacted_store_code · แม่ของตารางรายรอบทั้งหมด</td><td>hub รอบชดเชย · action_status · last_compensation_amount · source of truth ของ workflow_generation_status (W/Y/N)</td></tr>
               <tr><td class="tb">fgi_impact_sales_summaries</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · → sales_transactions (1:N)</td><td>หัวยอดขาย · growth_rate_diff · total_working_days (เกณฑ์ 60 วัน)</td></tr>
               <tr><td class="tb">sales_transactions</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">id</td><td>sales_summary_id → fgi_impact_sales_summaries</td><td>ยอดขายรายวันจาก IAS · sales_diff/outlier ≥ 50 แบบจับคู่</td></tr>
@@ -308,10 +308,11 @@
               <tr><td class="tb">menu_permissions</td><td>role_code, menu_code, can_access</td><td>can_view / can_create / can_update / can_delete</td></tr>
               <tr><td class="tb">user_accounts</td><td>employee_id, role_code, section_code, username, is_active</td><td>password_hash / account_status; credential ตรวจโดย platform</td></tr>
               <tr><td class="tb">workflow_instances</td><td>instance_id, doc_no, instance_status, started_at, started_by</td><td>status และ insert โดยไม่ระบุ instance_id</td></tr>
-              <tr><td class="tb">system_configs</td><td>category, config_value, value_type, unit, description, is_editable</td><td>secret_flag และ inline secret</td></tr>
+              <tr><td class="tb">system_configs</td><td>config_key, category, config_value, value_type, unit, description, is_editable</td><td>secret_flag และ inline secret</td></tr>
               <tr><td class="tb">sales_transactions</td><td>txn_date, window_no, sales_amount, sales_diff, is_outlier</td><td>sale_date / window_code / net_sales</td></tr>
               <tr><td class="tb">consideration_logs</td><td>result, result_category, detail, consider_by, action_datetime</td><td>result_code / comment / considered_by / considered_at</td></tr>
               <tr><td class="tb">interface_transactions</td><td>id, acked_at</td><td>tracking_id / receive_date ใช้ได้เฉพาะชื่อ alias ใน API</td></tr>
+              <tr><td class="tb">fgi_impact_processes</td><td>workflow_generation_status (W/Y/N)</td><td>ห้าม duplicate สถานะเดียวกันใน fgi_impact_stores</td></tr>
             </tbody>
           </table>
         </div>

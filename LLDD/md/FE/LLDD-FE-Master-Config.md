@@ -1,4 +1,4 @@
-# LLDD FE - Master and Config
+# LLDD FE - Master Config
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
@@ -50,9 +50,9 @@ _รูปที่ 6: Screenshot: system-config-02.png_
 
 ## 4. Implementation Flow Diagram (Reference)
 
-![รูปที่ 7: Implementation flow reference: LLDD FE - Master and Config](../../assets/flows/FE-LLDD-FE-Master-Config.png)
+![รูปที่ 7: Implementation flow reference: LLDD FE - Master Config](../../assets/flows/FE-LLDD-FE-Master-Config.png)
 
-_รูปที่ 7: Implementation flow reference: LLDD FE - Master and Config_
+_รูปที่ 7: Implementation flow reference: LLDD FE - Master Config_
 
 ## 5. Field, Format, and Validation
 
@@ -113,7 +113,7 @@ _รูปที่ 7: Implementation flow reference: LLDD FE - Master and Confi
 | --- | --- | --- | --- |
 | key | string | required; unique; immutable | configuration key |
 | value | string \| number \| boolean | required; validate by valueType | typed control, never secret input |
-| valueType | enum STRING\|INTEGER\|DECIMAL\|BOOLEAN\|URL | required | drives editor and validation |
+| valueType | enum NUMBER\|STRING\|BOOLEAN\|JSON\|CRON | required | drives editor and validation |
 | editable | boolean | response only | false disables edit/delete |
 | description | string | required | explain runtime impact |
 | reason | string | required for mutation | audit dialog before submit |
@@ -135,7 +135,7 @@ _รูปที่ 7: Implementation flow reference: LLDD FE - Master and Confi
 | Progress | Open master page; Load table; Open modal; Validate required/reason |
 | Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
-### 5.90 Master and Config Component Contract
+### 5.90 Master Config Component Contract
 
 | ID | Component / Scope | Single responsibility | Definition of done |
 | --- | --- | --- | --- |
@@ -146,7 +146,7 @@ _รูปที่ 7: Implementation flow reference: LLDD FE - Master and Confi
 | C05 | CRUD modal | ใช้ modal mode ADD/EDIT/DELETE แยก initial values, validation และ confirm copy | เปลี่ยน mode ไม่ทิ้ง stale field และปุ่ม submit กัน double request |
 | C06 | Audit/reason | บังคับ reason สำหรับ mutation และแสดง auditId/updatedBy/updatedAt หลังบันทึก | mutation ที่ไม่มี reason ไม่ออก request และ evidence trace กลับ audit log ได้ |
 
-### 5.91 Master and Config API Adapter Map
+### 5.91 Master Config API Adapter Map
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
@@ -164,7 +164,7 @@ _รูปที่ 7: Implementation flow reference: LLDD FE - Master and Confi
 | POST /api/v1/configs | SCR-11 เพิ่มค่าระบบที่ไม่ใช่ secret | Save permission (toggle permission) |
 | PUT /api/v1/configs/{key} | SCR-11 แก้ค่าระบบที่ editable=true | Add/Edit/Delete (modal action) |
 
-### 5.92 Master and Config Interaction State Machine
+### 5.92 Master Config Interaction State Machine
 
 | Action | Trigger | API / State transition | Expected visible result |
 | --- | --- | --- | --- |
@@ -172,7 +172,7 @@ _รูปที่ 7: Implementation flow reference: LLDD FE - Master and Confi
 | Search employee | แว่นขยาย | GET /api/v1/employees/search | select employee |
 | Save permission | toggle permission | PUT /api/v1/menu-permissions/{menuCode} | save matrix |
 
-### 5.93 Master and Config Feature Failure Checks
+### 5.93 Master Config Feature Failure Checks
 
 | Case | Feature-specific scenario | Expected evidence |
 | --- | --- | --- |
@@ -683,7 +683,7 @@ SCR-11 list ค่าระบบ
     {
       "key": "MAX_ATTACHMENT_MB",
       "value": 5,
-      "valueType": "INTEGER",
+      "valueType": "NUMBER",
       "editable": false,
       "description": "ขนาดไฟล์แนบสูงสุด",
       "updatedAt": "2026-07-22T10:00:00+07:00"
@@ -717,7 +717,7 @@ SCR-11 เพิ่มค่าระบบที่ไม่ใช่ secret
 {
   "key": "REPORT_PAGE_SIZE",
   "value": 20,
-  "valueType": "INTEGER",
+  "valueType": "NUMBER",
   "description": "จำนวนแถวเริ่มต้น",
   "reason": "เพิ่มค่า report"
 }
@@ -777,7 +777,7 @@ SCR-11 แก้ค่าระบบที่ editable=true
 {
   "key": "REPORT_PAGE_SIZE",
   "value": 50,
-  "valueType": "INTEGER",
+  "valueType": "NUMBER",
   "editable": true,
   "message": "saved",
   "auditId": 906

@@ -517,11 +517,13 @@ ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;""",
                     WHEN impacted.region_code = ANY(:bangkok_metro_region_codes) THEN 1.000
                     ELSE 2.000
                   END) THEN 'N'
-             WHEN ist.opt_dv_user_id IS NULL OR BTRIM(ist.opt_dv_user_id) = '' THEN 'W'
+             WHEN BOOL_OR(pair.distance_km IS NULL) THEN 'W'
+             WHEN ist.opt_dv_user_id IS NULL OR BTRIM(ist.opt_dv_user_id) = '' THEN 'N'
              WHEN impacted.juristic_name IS NULL OR BOOL_OR(ns.juristic_name IS NULL) THEN 'W'
-             WHEN BOOL_OR(impacted.juristic_name = ns.juristic_name) THEN 'W'
-             WHEN ss.growth_rate_diff IS NULL OR ss.growth_rate_diff > -10 THEN 'W'
-             WHEN ss.sales_status NOT IN ('Y','N') THEN 'W'
+             WHEN BOOL_OR(impacted.juristic_name = ns.juristic_name) THEN 'N'
+             WHEN ss.growth_rate_diff IS NULL THEN 'W'
+             WHEN ss.growth_rate_diff > -10 THEN 'N'
+             WHEN ss.sales_status IS NULL OR ss.sales_status NOT IN ('Y','N') THEN 'W'
              ELSE 'Y'
            END AS gate_decision
     FROM locked_process lp
@@ -567,14 +569,23 @@ WHERE id = :impact_process_id
        COALESCE(s.adjust_compensation_amount, s.forecast_compensation_amount) AS compensation_amount
 FROM fgi_impact_stores s
 JOIN compensation_documents d ON d.impact_process_id = s.impact_process_id
-WHERE s.impact_month = :impact_month;""",
-        "write": """INSERT INTO document_new_stores
+WHERE s.impact_month = :impact_month
+  AND COALESCE(s.adjust_compensate_percent, s.forecast_compensate_percent) IS NOT NULL
+  AND COALESCE(s.adjust_compensate_percent, s.forecast_compensate_percent) BETWEEN 0 AND 100;""",
+        "write": """-- validateAllocationValues ต้องยืนยัน source_row_count = valid_row_count ก่อนคำสั่งนี้;
+-- ถ้าค่า percent เป็น NULL/นอกช่วง ให้ throw COMPENSATE_PERCENT_INVALID และ rollback ก่อน upsert/prune.
+INSERT INTO document_new_stores
     (doc_no, new_store_code, compensate_percent, compensation_amount, source_system, updated_at)
-VALUES (:doc_no, :new_store_code, :compensate_percent, :compensation_amount, 'FGI', CURRENT_TIMESTAMP)
+SELECT :doc_no, :new_store_code, :compensate_percent, :compensation_amount, 'FGI', CURRENT_TIMESTAMP
+WHERE :compensate_percent IS NOT NULL
+  AND :compensate_percent BETWEEN 0 AND 100
 ON CONFLICT (doc_no, new_store_code)
 DO UPDATE SET compensate_percent = EXCLUDED.compensate_percent,
               compensation_amount = EXCLUDED.compensation_amount,
-              updated_at = CURRENT_TIMESTAMP;
+              updated_at = CURRENT_TIMESTAMP
+RETURNING doc_no, new_store_code;
+
+-- Service ต้องได้ RETURNING 1 แถวต่อ source row; ไม่ครบให้ rollback และห้าม prune.
 
 DELETE FROM document_new_stores dns
 WHERE dns.doc_no = :doc_no
@@ -592,7 +603,7 @@ SELECT CASE WHEN ABS(SUM(compensate_percent) - 100) <= 0.0001 THEN TRUE ELSE FAL
 FROM document_new_stores
 WHERE doc_no = :doc_no;""",
         "idempotency": "UNIQUE(doc_no,new_store_code); upsert + prune เฉพาะ source_system=FGI ให้ target ตรง impact set ปัจจุบัน โดยไม่ลบแถว USER",
-        "transaction": "upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking INTERNAL_DB_WRITE ใน transaction เดียว; ไม่ครบให้ rollback",
+        "transaction": "validate source percent ต้องไม่เป็น NULL และอยู่ 0..100 ก่อน upsert; จากนั้น upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking INTERNAL_DB_WRITE ใน transaction เดียว; invalid/ไม่ครบให้ rollback ก่อน prune",
         "security": "internal service account least privilege; ไม่มี SFTP/BPM credential หรือ editable external endpoint",
         "steps": "loadNewStoreAllocations|validateAllocationValues|upsertDocumentNewStores|reconcileAllocationTotals",
     },
@@ -1484,7 +1495,7 @@ def master_config_screen_blocks() -> list[dict[str, Any]]:
         table(["Field", "Type", "Required / Rule", "UI behavior"], [
             ["key", "string", "required; unique; immutable", "configuration key"],
             ["value", "string | number | boolean", "required; validate by valueType", "typed control, never secret input"],
-            ["valueType", "enum STRING|INTEGER|DECIMAL|BOOLEAN|URL", "required", "drives editor and validation"],
+            ["valueType", "enum NUMBER|STRING|BOOLEAN|JSON|CRON", "required", "drives editor and validation"],
             ["editable", "boolean", "response only", "false disables edit/delete"],
             ["description", "string", "required", "explain runtime impact"],
             ["reason", "string", "required for mutation", "audit dialog before submit"],
@@ -3089,15 +3100,16 @@ def topics() -> list[Topic]:
                 ("docNo", "YYYY/xxxxx", "optional search", "ถ้าคลิก row ส่งไป detail"),
                 ("year", "พ.ศ. YYYY", "required สำหรับ /documents", "default current year"),
                 ("status", "status code/string", "optional single select", "ใช้ filter chip"),
-                ("table.docNo", "YYYY/xxxxx", "column 1", "เลขที่เอกสารและลิงก์เปิด detail"),
-                ("table.impactedStoreCode", "string 5 digits", "column 2", "รหัสร้านถูกกระทบ; คง leading zero"),
-                ("table.impactedStoreName", "string", "column 3", "ชื่อร้านถูกกระทบ"),
-                ("table.impactMonth", "YYYY-MM", "column 4", "FE แสดงเดือน/ปี พ.ศ."),
-                ("table.statusCode/statusName", "code + label", "column 5", "เก็บ code และ resolve label จาก dictionary"),
-                ("table.operatorName", "string|null", "column 6", "ผู้ถือ task ปัจจุบันหรือ '-'"),
-                ("table.daysPending", "integer", "column 7; >=0", "จำนวนวันรอดำเนินการ"),
-                ("table.totalCompensationAmount", "decimal", "column 8; >=0", "format #,##0.00"),
-                ("table.salesDataDays", "integer", "column 9; <60 = abnormal", "row สีแดงและ label ผิดปกติ"),
+                ("table.roundNo", "integer", "column 1", "ครั้งที่ (รอบชดเชยของร้าน)"),
+                ("table.docNo", "YYYY/xxxxx", "column 2", "เลขที่เอกสารและลิงก์เปิด detail"),
+                ("table.impactedStoreCode", "string 5 digits", "column 3", "รหัสร้านถูกกระทบ; คง leading zero"),
+                ("table.impactedStoreName", "string", "column 4", "ชื่อร้านถูกกระทบ"),
+                ("table.regionCode", "string", "column 5", "ภาค"),
+                ("table.salesDeclinePercent", "decimal", "column 6", "ยอดขายที่ลดลง (%)"),
+                ("table.totalCompensationAmount", "decimal", "column 7; >=0", "จำนวนเงินที่ชดเชย; format #,##0.00"),
+                ("table.statusCode/statusName", "code + label", "column 8", "สถานะ; เก็บ code และ resolve label จาก dictionary"),
+                ("table.daysPending", "integer", "column 9; >=0", "รอ (วัน)"),
+                ("table.salesDataDays", "integer", "internal (ไม่ใช่คอลัมน์แสดง)", "<60 = แถวผิดปกติสีแดง (red-flag)"),
             ],
             [
                 ("Search", "ปุ่มค้นหา", "GET /api/v1/tasks หรือ /documents", "reload table"),
@@ -3105,8 +3117,8 @@ def topics() -> list[Topic]:
                 ("Open detail", "click row", "navigate /documents/:docNo", "เปิดเอกสาร"),
             ],
             [
-                ApiSpec("GET", "/api/v1/tasks", "รายการเอกสารรอดำเนินการ", {"page": 1, "size": 20, "status": "06"}, {"page": 1, "size": 20, "total": 24, "items": [{"docNo": "2569/00123", "impactedStoreCode": "01234", "impactedStoreName": "สาขาตัวอย่าง", "impactMonth": "2026-06", "statusCode": "06", "statusName": "รอฝ่าย SBP DSA ดำเนินการ", "operatorName": "สมชาย ใจดี", "daysPending": 3, "totalCompensationAmount": 48200.0, "salesDataDays": 58}]}),
-                ApiSpec("GET", "/api/v1/documents", "ค้นหาเอกสารที่เกี่ยวข้อง ต้องระบุปี", {"year": 2569, "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 342, "items": [{"docNo": "2569/00124", "impactedStoreCode": "01235", "impactedStoreName": "สาขาตัวอย่าง 2", "impactMonth": "2026-06", "statusCode": "99", "statusName": "เสร็จสิ้น", "operatorName": None, "daysPending": 0, "totalCompensationAmount": 72500.0, "salesDataDays": 60}]}),
+                ApiSpec("GET", "/api/v1/tasks", "รายการเอกสารรอดำเนินการ", {"page": 1, "size": 20, "status": "06"}, {"page": 1, "size": 20, "total": 24, "items": [{"roundNo": 1, "docNo": "2569/00123", "impactedStoreCode": "01234", "impactedStoreName": "สาขาตัวอย่าง", "regionCode": "BE", "salesDeclinePercent": 12.5, "statusCode": "06", "statusName": "รอฝ่าย SBP DSA ดำเนินการ", "totalCompensationAmount": 48200.0, "daysPending": 3, "salesDataDays": 58}]}),
+                ApiSpec("GET", "/api/v1/documents", "ค้นหาเอกสารที่เกี่ยวข้อง ต้องระบุปี", {"year": 2569, "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 342, "items": [{"roundNo": 2, "docNo": "2569/00124", "impactedStoreCode": "01235", "impactedStoreName": "สาขาตัวอย่าง 2", "regionCode": "BS", "salesDeclinePercent": 18.0, "statusCode": "99", "statusName": "เสร็จสิ้น", "totalCompensationAmount": 72500.0, "daysPending": 0, "salesDataDays": 60}]}),
             ],
             ["Read route mode", "Bind filter values", "Call list API", "Render table", "Apply abnormal row style", "Navigate to detail on row click"],
             ["ตาราง 9 คอลัมน์หลักครบ", "ปีเป็น required เมื่อใช้ /documents", "ยอดขายไม่ครบ 60 วันแสดงแดง", "pagination คง filter เดิม"],
@@ -3276,7 +3288,7 @@ def topics() -> list[Topic]:
         ),
         Topic(
             "FE/LLDD-FE-Master-Config",
-            "LLDD FE - Master and Config",
+            "LLDD FE - Master Config",
             "FE",
             6.5,
             55,
@@ -3307,9 +3319,9 @@ def topics() -> list[Topic]:
                 ApiSpec("DELETE", "/api/v1/factors/{code}", "SCR-09 ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน", {"reason": "ยกเลิกค่า master"}, {"factorCode": "F001", "deleted": True, "auditId": 907}),
                 ApiSpec("GET", "/api/v1/menu-permissions", "อ่าน matrix สิทธิ์เมนูทุก role", {"roleCode": "04"}, {"items": [{"menuCode": "k2-report", "roleCode": "04", "canView": True}]}),
                 ApiSpec("PUT", "/api/v1/menu-permissions/{menuCode}", "บันทึกสิทธิ์เมนูรายเมนู", {"roleCode": "04", "canView": True, "reason": "ปรับสิทธิ์รายงาน"}, {"message": "saved"}),
-                ApiSpec("GET", "/api/v1/configs", "SCR-11 list ค่าระบบ", {"q": "ATTACHMENT", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 1, "items": [{"key": "MAX_ATTACHMENT_MB", "value": 5, "valueType": "INTEGER", "editable": False, "description": "ขนาดไฟล์แนบสูงสุด", "updatedAt": "2026-07-22T10:00:00+07:00"}]}),
-                ApiSpec("POST", "/api/v1/configs", "SCR-11 เพิ่มค่าระบบที่ไม่ใช่ secret", {"key": "REPORT_PAGE_SIZE", "value": 20, "valueType": "INTEGER", "description": "จำนวนแถวเริ่มต้น", "reason": "เพิ่มค่า report"}, {"key": "REPORT_PAGE_SIZE", "message": "saved", "auditId": 905}),
-                ApiSpec("PUT", "/api/v1/configs/{key}", "SCR-11 แก้ค่าระบบที่ editable=true", {"value": 50, "reason": "เพิ่มจำนวนแถว"}, {"key": "REPORT_PAGE_SIZE", "value": 50, "valueType": "INTEGER", "editable": True, "message": "saved", "auditId": 906}),
+                ApiSpec("GET", "/api/v1/configs", "SCR-11 list ค่าระบบ", {"q": "ATTACHMENT", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 1, "items": [{"key": "MAX_ATTACHMENT_MB", "value": 5, "valueType": "NUMBER", "editable": False, "description": "ขนาดไฟล์แนบสูงสุด", "updatedAt": "2026-07-22T10:00:00+07:00"}]}),
+                ApiSpec("POST", "/api/v1/configs", "SCR-11 เพิ่มค่าระบบที่ไม่ใช่ secret", {"key": "REPORT_PAGE_SIZE", "value": 20, "valueType": "NUMBER", "description": "จำนวนแถวเริ่มต้น", "reason": "เพิ่มค่า report"}, {"key": "REPORT_PAGE_SIZE", "message": "saved", "auditId": 905}),
+                ApiSpec("PUT", "/api/v1/configs/{key}", "SCR-11 แก้ค่าระบบที่ editable=true", {"value": 50, "reason": "เพิ่มจำนวนแถว"}, {"key": "REPORT_PAGE_SIZE", "value": 50, "valueType": "NUMBER", "editable": True, "message": "saved", "auditId": 906}),
             ],
             ["Open master page", "Load table", "Open modal", "Validate required/reason", "Call API", "Reload table/audit"],
             ["แก้ master ต้องมี reason", "factorCode ซ้ำไม่ได้", "permission toggle save ได้", "config type validate"],
@@ -3611,9 +3623,10 @@ def topics() -> list[Topic]:
                 ("impactProcessId", "integer/string", "required", "อ้าง fgi_impact_processes และ compensation_documents ที่ Job 8 สร้างแล้ว"),
                 ("sourceJobNo", "string", "required fixed 8b", "ใช้ trace job_run_histories และ audit"),
                 ("requestId", "uuid", "required", "idempotency key ต่อ impactProcessId + sourceJobNo"),
-                ("workflow_generation_status", "W|Y|N", "computed", "W=รอ rerun, Y=เปิด workflow สำเร็จ, N=ไม่เข้าเกณฑ์ถาวร เช่น branch type นอกเซ็ต"),
-                ("branchType", "FAM|FB1|FC1|FB2|FVB|FVC", "required by gate", "นอกเซ็ตตั้ง workflow_generation_status=N"),
-                ("growthRateDiff", "number", "<= -10 required by gate", "ไม่ผ่านด้วยข้อมูลยังไม่พร้อมให้คง W และคืน 422 พร้อมเหตุผล"),
+                ("workflow_generation_status", "W|Y|N", "computed", "W=ข้อมูลยังไม่พร้อมเพื่อ rerun, Y=เปิด workflow สำเร็จ, N=ไม่เข้าเกณฑ์ถาวร"),
+                ("branchType/distanceKm", "enum/number|null", "required by gate", "branch นอกเซ็ตหรือระยะเกินตั้ง N; ระยะยังไม่มีค่าคง W"),
+                ("growthRateDiff", "number|null", "<= -10 required by gate", "NULL คง W; ค่ามากกว่า -10 ตั้ง N แบบถาวร"),
+                ("dvUserId/juristic", "string|null", "DV required; juristic must differ", "DV ว่างหรือ juristic เดียวกันตั้ง N; juristic ยังไม่พร้อมคง W"),
                 ("salesStatus", "Y|N", "required by gate", "ค่าอื่นคง W และคืน 422"),
             ],
             [
@@ -3631,8 +3644,8 @@ def topics() -> list[Topic]:
                 "Load impact process and current workflow_generation_status",
                 "Reject if status is already Y and return existing doc/instance idempotently",
                 "Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N",
-                "If branch type outside allowlist, update workflow_generation_status=N and return 200 with reason for permanent skip",
-                "If required data is missing/not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun",
+                "If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason",
+                "If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun",
                 "If gate passes, require compensation_documents from Job 8, create workflow_instances/workflow_tasks first section 06, then update fgi_impact_processes.workflow_generation_status=Y in one transaction",
                 "Enqueue notification summary outside transaction after commit",
             ],
@@ -3641,10 +3654,10 @@ def topics() -> list[Topic]:
                 "Job 8b ต้องเรียก API/service นี้และไม่ duplicate Gen Flow Gate",
                 "ไม่เรียก K2 REST StartInstance และไม่สร้างไฟล์ BPM06001O/2O/3O",
                 "ผ่าน gate แล้ว transaction ต้องมี document + instance + first task + Y ครบ หรือ rollback ทั้งหมด",
-                "branch type นอกเซ็ตต้องตั้ง N แบบถาวร; ข้อมูลยังไม่พร้อมต้องคง W",
+                "fail ถาวร (branch type, distance over threshold, missing DV, same juristic, growth not met) ต้องตั้ง N; เฉพาะข้อมูล distance/juristic/growth/sales status ยังไม่พร้อมจึงคง W",
                 "idempotent rerun ไม่สร้าง docNo/instance/task ซ้ำ",
             ],
-            ["gate pass creates workflow", "branch type invalid sets N", "missing DV keeps W", "duplicate request returns existing instance", "transaction rollback on task insert failure", "service token missing returns 401"],
+            ["gate pass creates workflow", "branch type/distance over threshold sets N", "distance NULL keeps W", "missing DV sets N", "same juristic sets N", "growth NULL keeps W but growth > -10 sets N", "sales status NULL keeps W", "duplicate request returns existing instance", "transaction rollback on task insert failure", "service token missing returns 401"],
         ),
         Topic(
             "BE/LLDD-BE-API-Attachment-Sales-Timeline",
@@ -3974,7 +3987,7 @@ def main_doc_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
     ]
     continuity = {
         FE_OWNER_KITTISAK: "FE document journey: Create Document -> Document Detail/Action -> Batch Monitor",
-        FE_OWNER_PEERAKORN: "FE list, reporting and admin journey: Document Lists -> Report -> Master/Config -> Testing/Delivery",
+        FE_OWNER_PEERAKORN: "FE list, reporting and admin journey: Document Lists -> Report -> Master Config -> Testing/Delivery",
         FE_OWNER: "FE shared contracts and experience: Integration Contracts -> Foundation -> Overview -> Email Template/Notification Config",
         BE_OWNER_BUTSABA: "BE common/read/action/operations: Common Contracts -> Dashboard/List -> Detail Aggregate -> Workflow Actions -> Batch/Email/SRM",
         BE_OWNER: "BE command/workflow/support APIs: Create/Update -> Workflow Instances -> Attachment/Sales/Timeline -> Lookup/RBAC/Email -> Report/Master/Config",
@@ -4060,13 +4073,14 @@ def main_doc_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
         table(["Dependency", "Owner", "ใช้โดย"], [
             ["Common API/FE contracts", "BE/FE", "LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts เป็นสัญญากลางของทุกหน้า FE และทุก service BE"],
             ["API contract", "BE/FE", "ทุกหน้า FE และทุก service BE"],
+            ["Master Config contract", "FE/BE", "LLDD-FE-Master-Config ใช้ LLDD-BE-API-Report-Master-Config สำหรับ Operator, External Factor, Menu Permission, System Config และ Audit"],
             ["Auth/JWT platform และ menu service", "Platform/SSO/IAM", "FE Foundation เรียก /auth/me + /me/menus; BE validate Authorization: Bearer <JWT>"],
             ["Mock/fixture data", "BE", "FE development และ SIT"],
             ["Screenshots/prototype", "FE", "UI implementation"],
             ["Business rules", "BA/BE", "validation/action/report"],
         ]),
         h(1, "10. Deliverable Checklist"),
-        bullets(["Main LLDD Index", "Common contract LLDD สำหรับ API/FE integration", "Detailed FE LLDD per SBP Mall page group", "Detailed BE LLDD per SBP Mall API group and Jobs 1-10 + 8b", "Screenshots embedded only for SBP Mall implementation pages", "Implementation flow diagrams embedded as reference, not Flow page deliverables"]),
+        bullets(["Main LLDD Index", "Common contract LLDD สำหรับ API/FE integration", "LLDD-FE-Master-Config สำหรับ Operator, External Factor, Menu Permission และ System/Global Config", "Detailed FE LLDD per SBP Mall page group", "Detailed BE LLDD per SBP Mall API group and Jobs 1-10 + 8b", "Screenshots embedded only for SBP Mall implementation pages", "Implementation flow diagrams embedded as reference, not Flow page deliverables"]),
     ]
 
 
@@ -4164,6 +4178,10 @@ def api_endpoint_detail_blocks(groups: list[dict[str, Any]], sql_by_path: dict[s
             blocks.extend([
                 payload("Request / Query / Header", api_doc_text(endpoint.get("req", "(ไม่มี body)"))),
                 payload("Response", api_doc_text(endpoint.get("res", ""))),
+            ])
+            if endpoint.get("resNote"):
+                blocks.append(p(api_doc_text(endpoint["resNote"])))
+            blocks.extend([
                 table(
                     ["Error / Condition"],
                     [[api_doc_text(err)] for err in endpoint.get("err", [])],

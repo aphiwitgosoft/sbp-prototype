@@ -445,16 +445,16 @@ export interface MenuItem { menuCode: string; label: string; group: string; pare
 
 /* ---- Tasks / Documents ---- */
 export interface TaskItem {
-  docNo: string;                 // '2569/00123'
-  round: number;                 // ครั้งที่
-  storeCode: string; storeName: string;
-  region: string;                // REGIONS8
-  salesDropPct: number;          // ยอดขายที่ลดลง (%)
-  compensation: number;          // จำนวนเงินที่ชดเชย (บาท)
-  status: DocStatus;             // 1 ใน 6 ค่า verbatim
-  waitingDays: number;           // รอ (วัน)
-  flagRed: boolean;              // ยอดขาย < 60 วัน → tr.flag-red
-  createdAt: string;             // ISO ค.ศ.
+  docNo: string;                    // '2569/00123'
+  roundNo: number;                  // ครั้งที่
+  impactedStoreCode: string; impactedStoreName: string;
+  regionCode: string;               // REGIONS8
+  salesDeclinePercent: number;      // ยอดขายที่ลดลง (%)
+  totalCompensationAmount: number;  // จำนวนเงินที่ชดเชย (บาท)
+  status: DocStatus;                // 1 ใน 6 ค่า verbatim
+  daysPending: number;              // รอ (วัน)
+  salesDataDays: number;            // < 60 วัน → tr.flag-red (internal red-flag)
+  createdAt: string;                // ISO ค.ศ.
 }
 
 export interface DocumentDetail {

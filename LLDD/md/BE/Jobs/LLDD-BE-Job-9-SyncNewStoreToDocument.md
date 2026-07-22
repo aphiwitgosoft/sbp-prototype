@@ -33,7 +33,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 9 SyncNewSto
 | --- | --- | --- | --- |
 | กำหนดการรัน (Cron) | 30 17 7-31 * * | แก้ไขได้ | ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน |
 | Target table | document_new_stores | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | upsert ด้วย doc_no / new_store_code |
-| กฎ Forecast / Percent | NVL(adjust_n, forecast_n) | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ค่า adjust มาก่อน forecast เสมอ |
+| กฎ Forecast / Percent | NVL(adjust_n, forecast_n) | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ค่า adjust มาก่อน forecast เสมอ; NULL หรือค่านอกช่วง 0..100 ต้อง reject ก่อน upsert |
 | เงื่อนไขเลือกข้อมูล | ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ |  |
 
 ## 5.1 Input / Progress / Output Contract
@@ -62,7 +62,7 @@ query eligible new-store rows, filter process errors, write outbound new-store p
 | Input identity | New-store compensation rows linked to active impact-process records, plus BPM/export SFTP parameters. | snapshot input file/business key/period in run record |
 | Output identity | New-store sync payload/output and confirm-receive rows keyed by NEW_STORE_INFO_ID/month/year. | reconcile input, success, reject and skipped counts |
 | Dedup proof | UNIQUE(doc_no,new_store_code); upsert + prune เฉพาะ source_system=FGI ให้ target ตรง impact set ปัจจุบัน โดยไม่ลบแถว USER | rerun fixture produces no duplicate target business key |
-| Transaction proof | upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking INTERNAL_DB_WRITE ใน transaction เดียว; ไม่ครบให้ rollback | injected failure leaves no partial committed state outside documented boundary |
+| Transaction proof | validate source percent ต้องไม่เป็น NULL และอยู่ 0..100 ก่อน upsert; จากนั้น upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking INTERNAL_DB_WRITE ใน transaction เดียว; invalid/ไม่ครบให้ rollback ก่อน prune | injected failure leaves no partial committed state outside documented boundary |
 | Security proof | internal service account least privilege; ไม่มี SFTP/BPM credential หรือ editable external endpoint | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
@@ -81,7 +81,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | --- | --- |
 | Repository | documentNewStoreRepository |
 | Idempotency / dedup | UNIQUE(doc_no,new_store_code); upsert + prune เฉพาะ source_system=FGI ให้ target ตรง impact set ปัจจุบัน โดยไม่ลบแถว USER |
-| Transaction boundary | upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking INTERNAL_DB_WRITE ใน transaction เดียว; ไม่ครบให้ rollback |
+| Transaction boundary | validate source percent ต้องไม่เป็น NULL และอยู่ 0..100 ก่อน upsert; จากนั้น upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking INTERNAL_DB_WRITE ใน transaction เดียว; invalid/ไม่ครบให้ rollback ก่อน prune |
 | Security | internal service account least privilege; ไม่มี SFTP/BPM credential หรือ editable external endpoint |
 
 #### Input / candidate query
@@ -92,19 +92,28 @@ SELECT d.doc_no, s.new_store_code,
        COALESCE(s.adjust_compensation_amount, s.forecast_compensation_amount) AS compensation_amount
 FROM fgi_impact_stores s
 JOIN compensation_documents d ON d.impact_process_id = s.impact_process_id
-WHERE s.impact_month = :impact_month;
+WHERE s.impact_month = :impact_month
+  AND COALESCE(s.adjust_compensate_percent, s.forecast_compensate_percent) IS NOT NULL
+  AND COALESCE(s.adjust_compensate_percent, s.forecast_compensate_percent) BETWEEN 0 AND 100;
 ```
 
 #### Write / upsert query
 
 ```sql
+-- validateAllocationValues ต้องยืนยัน source_row_count = valid_row_count ก่อนคำสั่งนี้;
+-- ถ้าค่า percent เป็น NULL/นอกช่วง ให้ throw COMPENSATE_PERCENT_INVALID และ rollback ก่อน upsert/prune.
 INSERT INTO document_new_stores
     (doc_no, new_store_code, compensate_percent, compensation_amount, source_system, updated_at)
-VALUES (:doc_no, :new_store_code, :compensate_percent, :compensation_amount, 'FGI', CURRENT_TIMESTAMP)
+SELECT :doc_no, :new_store_code, :compensate_percent, :compensation_amount, 'FGI', CURRENT_TIMESTAMP
+WHERE :compensate_percent IS NOT NULL
+  AND :compensate_percent BETWEEN 0 AND 100
 ON CONFLICT (doc_no, new_store_code)
 DO UPDATE SET compensate_percent = EXCLUDED.compensate_percent,
               compensation_amount = EXCLUDED.compensation_amount,
-              updated_at = CURRENT_TIMESTAMP;
+              updated_at = CURRENT_TIMESTAMP
+RETURNING doc_no, new_store_code;
+
+-- Service ต้องได้ RETURNING 1 แถวต่อ source row; ไม่ครบให้ rollback และห้าม prune.
 
 DELETE FROM document_new_stores dns
 WHERE dns.doc_no = :doc_no
@@ -357,10 +366,11 @@ export async function runLlddBeJob9Syncnewstoretodocument(ctx, services) {
 | 1 | เริ่ม |
 | 2 | query ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync |
 | 3 | มี compensation_documents ของ impact_process_id แล้ว? \| No: คงสถานะรอ sync / log pending |
-| 4 | upsert document_new_stores (forecast/percent = NVL(adjust_n, forecast_n)) |
-| 5 | validate allocation percent รวมต่อ doc_no (ต้องรวมได้ 100 ก่อน submit workflow) |
-| 6 | บันทึก interface_transactions เป็น INTERNAL_DB_WRITE (ไม่สร้างไฟล์ BPM06002O) |
-| 7 | จบ |
+| 4 | compensate_percent ครบและอยู่ในช่วง 0..100 ทุกแถว? \| No: COMPENSATE_PERCENT_INVALID + rollback ก่อน upsert/prune (COALESCE(adjust_compensate_percent, forecast_compensate_percent) ต้องไม่เป็น NULL) |
+| 5 | upsert document_new_stores (forecast/percent = NVL(adjust_n, forecast_n)) |
+| 6 | validate allocation percent รวมต่อ doc_no (ต้องรวมได้ 100 ก่อน submit workflow) |
+| 7 | บันทึก interface_transactions เป็น INTERNAL_DB_WRITE (ไม่สร้างไฟล์ BPM06002O) |
+| 8 | จบ |
 
 ## 10. Acceptance Criteria
 

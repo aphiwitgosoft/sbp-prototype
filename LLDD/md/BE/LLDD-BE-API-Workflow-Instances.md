@@ -35,9 +35,10 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | impactProcessId | integer/string | required | อ้าง fgi_impact_processes และ compensation_documents ที่ Job 8 สร้างแล้ว |
 | sourceJobNo | string | required fixed 8b | ใช้ trace job_run_histories และ audit |
 | requestId | uuid | required | idempotency key ต่อ impactProcessId + sourceJobNo |
-| workflow_generation_status | W\|Y\|N | computed | W=รอ rerun, Y=เปิด workflow สำเร็จ, N=ไม่เข้าเกณฑ์ถาวร เช่น branch type นอกเซ็ต |
-| branchType | FAM\|FB1\|FC1\|FB2\|FVB\|FVC | required by gate | นอกเซ็ตตั้ง workflow_generation_status=N |
-| growthRateDiff | number | <= -10 required by gate | ไม่ผ่านด้วยข้อมูลยังไม่พร้อมให้คง W และคืน 422 พร้อมเหตุผล |
+| workflow_generation_status | W\|Y\|N | computed | W=ข้อมูลยังไม่พร้อมเพื่อ rerun, Y=เปิด workflow สำเร็จ, N=ไม่เข้าเกณฑ์ถาวร |
+| branchType/distanceKm | enum/number\|null | required by gate | branch นอกเซ็ตหรือระยะเกินตั้ง N; ระยะยังไม่มีค่าคง W |
+| growthRateDiff | number\|null | <= -10 required by gate | NULL คง W; ค่ามากกว่า -10 ตั้ง N แบบถาวร |
+| dvUserId/juristic | string\|null | DV required; juristic must differ | DV ว่างหรือ juristic เดียวกันตั้ง N; juristic ยังไม่พร้อมคง W |
 | salesStatus | Y\|N | required by gate | ค่าอื่นคง W และคืน 422 |
 
 ## 5.1 Input / Progress / Output Contract
@@ -61,13 +62,13 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | Step | Behavior specific to this LLDD | Failure/test evidence |
 | --- | --- | --- |
 | 1 | Validate service token and idempotency key | gate pass creates workflow |
-| 2 | Load impact process and current workflow_generation_status | branch type invalid sets N |
-| 3 | Reject if status is already Y and return existing doc/instance idempotently | missing DV keeps W |
-| 4 | Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N | duplicate request returns existing instance |
-| 5 | If branch type outside allowlist, update workflow_generation_status=N and return 200 with reason for permanent skip | transaction rollback on task insert failure |
-| 6 | If required data is missing/not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun | service token missing returns 401 |
-| 7 | If gate passes, require compensation_documents from Job 8, create workflow_instances/workflow_tasks first section 06, then update fgi_impact_processes.workflow_generation_status=Y in one transaction | gate pass creates workflow |
-| 8 | Enqueue notification summary outside transaction after commit | branch type invalid sets N |
+| 2 | Load impact process and current workflow_generation_status | branch type/distance over threshold sets N |
+| 3 | Reject if status is already Y and return existing doc/instance idempotently | distance NULL keeps W |
+| 4 | Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N | missing DV sets N |
+| 5 | If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason | same juristic sets N |
+| 6 | If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun | growth NULL keeps W but growth > -10 sets N |
+| 7 | If gate passes, require compensation_documents from Job 8, create workflow_instances/workflow_tasks first section 06, then update fgi_impact_processes.workflow_generation_status=Y in one transaction | sales status NULL keeps W |
+| 8 | Enqueue notification summary outside transaction after commit | duplicate request returns existing instance |
 
 ## 6. Button / User Action Mapping
 
@@ -233,8 +234,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | 2 | Load impact process and current workflow_generation_status |
 | 3 | Reject if status is already Y and return existing doc/instance idempotently |
 | 4 | Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N |
-| 5 | If branch type outside allowlist, update workflow_generation_status=N and return 200 with reason for permanent skip |
-| 6 | If required data is missing/not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun |
+| 5 | If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason |
+| 6 | If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun |
 | 7 | If gate passes, require compensation_documents from Job 8, create workflow_instances/workflow_tasks first section 06, then update fgi_impact_processes.workflow_generation_status=Y in one transaction |
 | 8 | Enqueue notification summary outside transaction after commit |
 
@@ -244,7 +245,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 - Job 8b ต้องเรียก API/service นี้และไม่ duplicate Gen Flow Gate
 - ไม่เรียก K2 REST StartInstance และไม่สร้างไฟล์ BPM06001O/2O/3O
 - ผ่าน gate แล้ว transaction ต้องมี document + instance + first task + Y ครบ หรือ rollback ทั้งหมด
-- branch type นอกเซ็ตต้องตั้ง N แบบถาวร; ข้อมูลยังไม่พร้อมต้องคง W
+- fail ถาวร (branch type, distance over threshold, missing DV, same juristic, growth not met) ต้องตั้ง N; เฉพาะข้อมูล distance/juristic/growth/sales status ยังไม่พร้อมจึงคง W
 - idempotent rerun ไม่สร้าง docNo/instance/task ซ้ำ
 
 ## 11. Developer Test Checklist
@@ -252,8 +253,12 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | No | Test |
 | --- | --- |
 | 1 | gate pass creates workflow |
-| 2 | branch type invalid sets N |
-| 3 | missing DV keeps W |
-| 4 | duplicate request returns existing instance |
-| 5 | transaction rollback on task insert failure |
-| 6 | service token missing returns 401 |
+| 2 | branch type/distance over threshold sets N |
+| 3 | distance NULL keeps W |
+| 4 | missing DV sets N |
+| 5 | same juristic sets N |
+| 6 | growth NULL keeps W but growth > -10 sets N |
+| 7 | sales status NULL keeps W |
+| 8 | duplicate request returns existing instance |
+| 9 | transaction rollback on task insert failure |
+| 10 | service token missing returns 401 |

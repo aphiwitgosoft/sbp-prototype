@@ -221,7 +221,7 @@
 
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">4. รับยอดขาย + คำนวณ Growth Rate <span class="ref fgi">FGI/FCS · Job 5</span></div>
-            <div class="tl-meta">16:30 รับ AMS06001I → sales_transactions → คำนวณ sales_diff 4 หน้าต่าง × 15 วัน (outlier |sales_diff| ≥ 50) → verify_status Y/N · ระบบใหม่เพิ่ม review case ที่ growth_rate_diff เป็น NULL (แก้ P1 auto-accept)</div></div>
+            <div class="tl-meta">16:30 รับ AMS06001I → sales_transactions → คำนวณ sales_diff 4 หน้าต่าง × 15 วัน (outlier |sales_diff| ≥ 50) → sales_status Y/N · ระบบใหม่เพิ่ม review case ที่ growth_rate_diff เป็น NULL (แก้ P1 auto-accept)</div></div>
 
           <div class="flow-stage"><span>B</span> เชื่อม FGI/FCS เข้าสู่ระบบเอกสารและ Workflow</div>
           <div class="tl-item done"><span class="tl-dot"></span>
@@ -230,7 +230,7 @@
 
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">6. เปิด Workflow ตาม Gen Flow Gate <span class="ref mix">FGI/FCS Job 8b → K2</span> <span class="ref new">เปลี่ยนกลไก</span></div>
-            <div class="tl-meta">เกณฑ์คงเดิมทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เดิมยิง K2 REST StartInstance / ใหม่เรียก POST /workflows/instances ภายในด้วย service token; ผ่าน gate ตั้ง Y, branch type นอกเซ็ตตั้ง N, ข้อมูลยังไม่พร้อมคง W เพื่อ rerun</div></div>
+            <div class="tl-meta">เกณฑ์คงเดิมทุกข้อ: คู่ร้านผ่านกฎรัศมี ≤1 กม.(กทม./ปริมณฑล) หรือ ≤2 กม.(ต่างจังหวัด) · workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เดิมยิง K2 REST StartInstance / ใหม่เรียก POST /workflows/instances ภายในด้วย service token; ผ่าน gate ตั้ง Y; fail ถาวร (branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10) ตั้ง N; เฉพาะ distance/juristic/growth เป็น NULL หรือ sales_status ยังไม่พร้อมจึงคง W เพื่อ rerun</div></div>
 
           <div class="flow-stage"><span>C</span> ผู้ใช้ตรวจสอบและอนุมัติ · Section 06–03</div>
           <div class="tl-item active"><span class="tl-dot"></span>

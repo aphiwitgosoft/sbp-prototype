@@ -48,15 +48,16 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | docNo | YYYY/xxxxx | optional search | ถ้าคลิก row ส่งไป detail |
 | year | พ.ศ. YYYY | required สำหรับ /documents | default current year |
 | status | status code/string | optional single select | ใช้ filter chip |
-| table.docNo | YYYY/xxxxx | column 1 | เลขที่เอกสารและลิงก์เปิด detail |
-| table.impactedStoreCode | string 5 digits | column 2 | รหัสร้านถูกกระทบ; คง leading zero |
-| table.impactedStoreName | string | column 3 | ชื่อร้านถูกกระทบ |
-| table.impactMonth | YYYY-MM | column 4 | FE แสดงเดือน/ปี พ.ศ. |
-| table.statusCode/statusName | code + label | column 5 | เก็บ code และ resolve label จาก dictionary |
-| table.operatorName | string\|null | column 6 | ผู้ถือ task ปัจจุบันหรือ '-' |
-| table.daysPending | integer | column 7; >=0 | จำนวนวันรอดำเนินการ |
-| table.totalCompensationAmount | decimal | column 8; >=0 | format #,##0.00 |
-| table.salesDataDays | integer | column 9; <60 = abnormal | row สีแดงและ label ผิดปกติ |
+| table.roundNo | integer | column 1 | ครั้งที่ (รอบชดเชยของร้าน) |
+| table.docNo | YYYY/xxxxx | column 2 | เลขที่เอกสารและลิงก์เปิด detail |
+| table.impactedStoreCode | string 5 digits | column 3 | รหัสร้านถูกกระทบ; คง leading zero |
+| table.impactedStoreName | string | column 4 | ชื่อร้านถูกกระทบ |
+| table.regionCode | string | column 5 | ภาค |
+| table.salesDeclinePercent | decimal | column 6 | ยอดขายที่ลดลง (%) |
+| table.totalCompensationAmount | decimal | column 7; >=0 | จำนวนเงินที่ชดเชย; format #,##0.00 |
+| table.statusCode/statusName | code + label | column 8 | สถานะ; เก็บ code และ resolve label จาก dictionary |
+| table.daysPending | integer | column 9; >=0 | รอ (วัน) |
+| table.salesDataDays | integer | internal (ไม่ใช่คอลัมน์แสดง) | <60 = แถวผิดปกติสีแดง (red-flag) |
 
 ## 5.1 Input / Progress / Output Contract
 
@@ -74,7 +75,7 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | C02 | Related document list | ค้นหาเอกสารจาก /documents โดยบังคับปีและแสดงเอกสารที่เกี่ยวข้องตาม permission | ไม่ call API เมื่อไม่มีปี และ empty result ไม่แสดงข้อมูลจาก query ก่อนหน้า |
 | C03 | Search/filter/status filter | serialize docNo/year/status/store filters ลง query state และ restore เมื่อย้อนกลับจาก detail | Search/Clear/refresh ให้ผลซ้ำได้และ pagination ใช้ filter ชุดเดียวกัน |
 | C04 | Pagination/row action | ควบคุม page/size/sort และ row navigation โดยใช้ docNo เป็น stable key | เปลี่ยนหน้าไม่ reset filter และเปิด detail ของ row ที่เลือกถูกเลขเอกสาร |
-| C05 | Red flag for sales data < 60 days | คำนวณ presentation flag จาก salesDataDays < 60 โดยไม่ใช้ waitingDays แทน | แถวผิดปกติเป็นสีแดงพร้อม accessible label เฉพาะเมื่อยอดขายไม่ครบ 60 วัน |
+| C05 | Red flag for sales data < 60 days | คำนวณ presentation flag จาก salesDataDays < 60 โดยไม่ใช้ daysPending แทน | แถวผิดปกติเป็นสีแดงพร้อม accessible label เฉพาะเมื่อยอดขายไม่ครบ 60 วัน |
 
 ### 5.91 Document Lists API Adapter Map
 
@@ -142,15 +143,16 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
   "total": 24,
   "items": [
     {
+      "roundNo": 1,
       "docNo": "2569/00123",
       "impactedStoreCode": "01234",
       "impactedStoreName": "สาขาตัวอย่าง",
-      "impactMonth": "2026-06",
+      "regionCode": "BE",
+      "salesDeclinePercent": 12.5,
       "statusCode": "06",
       "statusName": "รอฝ่าย SBP DSA ดำเนินการ",
-      "operatorName": "สมชาย ใจดี",
-      "daysPending": 3,
       "totalCompensationAmount": 48200.0,
+      "daysPending": 3,
       "salesDataDays": 58
     }
   ]
@@ -165,15 +167,16 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | size | integer | Yes | 1..100; default 20 |
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items | array<object> | Yes | JSON array; element type shown in Type column |
+| items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].docNo | string | Yes | พ.ศ. YYYY/xxxxx |
 | items[].impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | items[].impactedStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].impactMonth | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| items[].regionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].salesDeclinePercent | number | Yes | number 0..100 with 2 decimals |
 | items[].statusCode | string | Yes | canonical code; do not replace with display label |
 | items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].operatorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].daysPending | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].totalCompensationAmount | number | Yes | number >= 0 with 2 decimals |
+| items[].daysPending | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].salesDataDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### GET /api/v1/documents
@@ -207,15 +210,16 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
   "total": 342,
   "items": [
     {
+      "roundNo": 2,
       "docNo": "2569/00124",
       "impactedStoreCode": "01235",
       "impactedStoreName": "สาขาตัวอย่าง 2",
-      "impactMonth": "2026-06",
+      "regionCode": "BS",
+      "salesDeclinePercent": 18.0,
       "statusCode": "99",
       "statusName": "เสร็จสิ้น",
-      "operatorName": null,
-      "daysPending": 0,
       "totalCompensationAmount": 72500.0,
+      "daysPending": 0,
       "salesDataDays": 60
     }
   ]
@@ -230,15 +234,16 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | size | integer | Yes | 1..100; default 20 |
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items | array<object> | Yes | JSON array; element type shown in Type column |
+| items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].docNo | string | Yes | พ.ศ. YYYY/xxxxx |
 | items[].impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | items[].impactedStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].impactMonth | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| items[].regionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].salesDeclinePercent | number | Yes | number 0..100 with 2 decimals |
 | items[].statusCode | string | Yes | canonical code; do not replace with display label |
 | items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].operatorName | string \| null | No | UTF-8; use value domain described by endpoint purpose |
-| items[].daysPending | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].totalCompensationAmount | number | Yes | number >= 0 with 2 decimals |
+| items[].daysPending | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].salesDataDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ## 9. Processing Flow
