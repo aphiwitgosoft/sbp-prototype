@@ -17,10 +17,11 @@
 
 ## ภาพรวม
 
-- **34 ตาราง** ใน Target Schema เดียว (1 schema ใช้ร่วมกัน)
+- **29 ตาราง** ใน Target Schema เดียว (1 schema ใช้ร่วมกัน)
 - **3 Data Zones**: A = FGI/FCS Impact Pipeline · B = K2 เอกสาร & Workflow · C = Master/Config ใช้ร่วม
 - **4 Core IDs** ใช้ trace งาน (Data Spine)
 - มาตรฐานชื่อ: อังกฤษ `lower_snake_case` ทั้ง schema · ป้ายที่มา (FGI/FCS), (K2), (ใหม่) ต้องคงไว้เสมอ
+- **ตัดสินใจ 2026-08-05:** RBAC (`roles`/`menus`/`menu_permissions`/`user_accounts`) และผู้ปฏิบัติงาน (`operator_assignments`) **ไม่สร้างใน SBPGI** — ใช้ระบบสิทธิ์/ผู้ใช้ของระบบ SBP เดิม (ดูหัวข้อ "ตารางที่ตัดออก" ท้าย Zone C) · เดิมนับเป็น 34 ตาราง
 
 ## Data Spine — เส้นทางข้อมูลหลัก
 
@@ -32,9 +33,9 @@
 | 2 | B | `doc_no` | เอกสารประกันรายได้รูปแบบ `YYYY/xxxxx` (ปี พ.ศ.) เชื่อมกลับ impact process |
 | 3 | B | `instance_id` | Workflow instance หนึ่งชุดต่อเอกสาร ติดตามตั้งแต่เริ่มถึงจบ |
 | 4 | B | `task_id` | งานของแต่ละ Section และผู้รับผิดชอบ — แหล่งข้อมูลหน้า inbox |
-| 5 | C | `employee_id` / `role_code` | ผู้ใช้ สิทธิ์เมนู และผู้ปฏิบัติงานที่อ้างร่วมกันทุกขั้น |
+| 5 | C | `employee_id` | ผู้ปฏิบัติงานที่อ้างร่วมกันทุกขั้น — ตัวตน/สิทธิ์เมนูมาจากระบบ SBP เดิม (auth-backend) ผ่าน user-context header ไม่ใช่ตารางใน SBPGI |
 
-## Data Dictionary (34 ตาราง)
+## Data Dictionary (29 ตาราง)
 
 ### Zone A · FGI/FCS — Impact Pipeline และ External Interfaces
 
@@ -69,20 +70,29 @@
 | `stores` | FGI/FCS | `store_code` | ← impacted_stores (subset SP) · ← `document_new_stores.new_store_code` | master สาขา 7-Eleven ทุกประเภท (SP / เปิดใหม่ / ปิด renovate) — แหล่งค้นหาร้านของหน้า `k2-create.html` (API `/stores/search`) |
 | `impacted_stores` | K2 | `store_code` | = `impacted_store_code` ของโซน A (สะพานหลักสองระบบ) · subset SP ของ `stores` | ข้อมูลร้าน SP master |
 | `workflow_sections` / `document_statuses` | K2 | `section_code` / `status_code` | อ้างโดย compensation_documents · workflow_tasks · status_email_rules | ขั้นตอน **06/08/01/02/03 (5 ขั้น · ตัดบัญชี 04/05 ตาม SDD v7.5)** · สถานะเอกสาร **6 ค่า: 06/08/01/02/03/99** โดย 99 = เสร็จสิ้นดำเนินการ — แถวบัญชี (04/05) และสถานะ "รอฝ่ายบัญชี/รอบัญชีปฏิบัติการภาค" ยกเลิกใช้งาน |
-| `roles` / `menus` / `menu_permissions` | K2 · SRS 3.1.1 | `role_code` / `menu_code` (composite) | menu_permissions = composite PK | สิทธิ์เมนู 8 role (00–10) — แหล่งข้อมูล RBAC ของ Auth · **CRUD ได้จากหน้าจอ 3.1.1** (`k2-permissions.html`) ผ่าน API `/roles` `/menus` `/menu-permissions` · `roles.role_desc` + `is_system` กันลบ/แก้รหัส role หลัก · `menus.menu_group` (MAIN/MASTER) + `sort_order` + `is_system` · เพิ่ม role/เมนูใหม่ = สร้างแถว `can_access=false` ทุกช่อง · ลบ = cascade ลบสิทธิ์ · ทุกการเปลี่ยนแปลงต้องระบุเหตุผลและลง `audit_logs` |
-| `operator_assignments` | K2 · SRS 3.1.8 | id | `section_code` · `zone_code` · `employee_id` → employees | ผู้ปฏิบัติงานต่อ section_code/zone_code · เลือกชื่อผ่าน popup ค้นหาพนักงาน |
-| `employees` | FGI/FCS | `employee_id` | ← `user_accounts.employee_id` · ← operator_assignments (เลือกผ่าน popup) | master พนักงานองค์กร (HR) — batch join อยู่แล้ว · ป้อน popup ค้นหาพนักงาน (API `/employees/search`) หน้า 3.1.8 |
+| `employees` | FGI/FCS | `employee_id` | ← `workflow_tasks.assignee_employee_id` | master พนักงานองค์กร (HR) — batch join อยู่แล้ว · การ resolve ผู้รับผิดชอบต่อ section/พื้นที่ใช้ user–group ของระบบเดิม (auth-backend) ไม่ใช่ตารางใน SBPGI |
 | `external_factors` | K2 · SRS 3.1.9 | `factor_code` | ← document_external_factors | ปัจจัยภายนอก master · รหัสห้ามซ้ำ |
 | `competitors` | K2 | `competitor_code` | ← document_competitors | ร้านคู่แข่ง 24 ราย (108 Shop, Lotus Express, CJ …) |
-| `audit_logs` | K2 | id | `table_name` + `ref_key` (generic) | ประวัติแก้ไข master แบบหลายรายการ: `action_type` · `old_value` → `new_value` · `reason` · `updated_by` · `updated_at` (= MaintainMasterHistory เดิม — แผงประวัติท้ายหน้าจอ 3.1.8/3.1.9) |
+| `audit_logs` | K2 | id | `table_name` + `ref_key` (generic) | ประวัติแก้ไข master แบบหลายรายการ: `action_type` · `old_value` → `new_value` · `reason` · `updated_by` · `updated_at` (= MaintainMasterHistory เดิม — แผงประวัติท้ายหน้าจอ 3.1.9) |
 | `status_email_rules` | K2 · SRS 3.1.5 | `status_code` | `to_section_code` · `cc_section_code` → workflow_sections | ผู้รับอีเมล TO/CC เมื่อเปลี่ยนสถานะ — ใช้โดย Notification Service |
 | `email_templates` | ใหม่ | `template_code` (EM-01–08) | อ่านคู่กับ status_email_rules โดย Notification Service | **เนื้อหา 8 email template** (subject/body + ตัวแปร merge) แก้ได้จากหน้า `plan-email.html` — ยกจากเดิมที่เก็บ localStorage มา persist จริงฝั่ง server · From/To/Cc ล็อกตาม `status_email_rules` (rules = ผู้รับ, templates = เนื้อหา) · ประวัติแก้ไข/รีเซ็ต → `audit_logs` · ถ้อยคำ template เป็น beyond SRS (SRS กำหนดเฉพาะผู้รับ/จังหวะส่ง) |
-| `user_accounts` | ใหม่ | `employee_id` | `role_code` → roles | บัญชีผู้ใช้ + role สำหรับ JWT (เดิมพึ่งระบบ BPM) |
 | `job_configs` | ใหม่ | `job_no` | ← job_run_histories | schema reference สำหรับ cron + พารามิเตอร์ที่แก้ได้ของ 11 jobs; ไม่ใช่ scope ให้ FE ทำ tab Database ที่ใช้ |
 | `job_run_histories` | ใหม่ | `run_id` | `job_no` → job_configs | ประวัติรันต่อรอบ (เวลา · แถว · ไฟล์ · ผล) — เดิมอยู่ใน log ไฟล์ |
-| `system_configs` | ใหม่ | `config_key` | อ่านโดยทุก service · ประวัติแก้ไข → audit_logs | **Global config แบบ key–value** (หน้าจอ `system-config.html`) — `config_key` เป็น dot notation (`impact.radius_bkk_km`, `workflow.avp_amount_threshold`) · `category` (IMPACT/WORKFLOW/DOCUMENT/AUTH/NOTIFICATION/BATCH) · `value_type` (NUMBER/STRING/BOOLEAN/JSON/CRON) ใช้ validate ก่อนบันทึก · `is_editable=false` = ค่าคงที่ทางธุรกิจ (รัศมี 1/2 กม. · วงเงิน 100,000 · เกณฑ์ 60 วัน · เกณฑ์ −10 ตามข้อ 8.2) แก้ผ่าน UI/API ไม่ได้ · **ห้ามเก็บ secret** (อยู่ Secret Manager — P0) · service cache 5 นาที + invalidate เมื่อแก้ไข · พารามิเตอร์เฉพาะราย job ยังอยู่ `job_configs` |
+| `system_configs` | ใหม่ | `config_key` | อ่านโดยทุก service · ประวัติแก้ไข → audit_logs | **Global config แบบ key–value** (หน้าจอ `system-config.html`) — `config_key` เป็น dot notation (`impact.radius_bkk_km`, `workflow.gm_amount_limit`, `workflow.avp_amount_limit`) · `category` (IMPACT/WORKFLOW/DOCUMENT/AUTH/NOTIFICATION/BATCH) · `value_type` (NUMBER/STRING/BOOLEAN/JSON/CRON) ใช้ validate ก่อนบันทึก · `is_editable=false` = ค่าคงที่ทางธุรกิจ (รัศมี 1/2 กม. · วงเงิน GM 50,000 / AVP 300,000 ตาม SDD GI 24/02/2026 — แทน `workflow.avp_amount_threshold` 100,000 เดิม · เกณฑ์ 60 วัน · เกณฑ์ −10 ตามข้อ 8.2) แก้ผ่าน UI/API ไม่ได้ · **ห้ามเก็บ secret** (อยู่ Secret Manager — P0) · service cache 5 นาที + invalidate เมื่อแก้ไข · พารามิเตอร์เฉพาะราย job ยังอยู่ `job_configs` |
 
 > Batch Monitor scope note: ตาราง `job_configs` และ `job_run_histories` เป็น schema reference สำหรับ dev/BE เท่านั้น ไม่ใช่ scope ให้ `LLDD/FE/LLDD-FE-Batch-Monitor.*` ต้องทำหน้า database หรือใส่ DB mapping รายละเอียด; เอกสาร FE หน้านั้นทำเฉพาะ tab `แบบฟอร์มพารามิเตอร์` และ `ประวัติการรัน`.
+
+### ตารางที่ตัดออก — ใช้ระบบ SBP เดิมแทน (ตัดสินใจ 2026-08-05)
+
+SBPGI เป็น backend ใหม่ที่จะเสียบเข้าสถาปัตยกรรม SBP ปัจจุบัน (FE → BFF → backend ต่อโดเมน) ซึ่งมีระบบผู้ใช้/สิทธิ์อยู่แล้ว จึง**ไม่สร้างตาราง RBAC/ผู้ปฏิบัติงานของตัวเอง** — หน้าจอ `k2-permissions.html` (SRS 3.1.1) และ `k2-operators.html` (SRS 3.1.8) ถูกถอดออกจาก sidebar ของ prototype (ไฟล์ยังเก็บไว้อ้างอิง):
+
+| ตารางที่ตัด (5) | แทนด้วยของระบบเดิม |
+|---|---|
+| `roles` / `menus` / `menu_permissions` | auth-backend (ABS): `groups` / `menus` / permissions ต่อ URL (`canView/canManage/canExport/canOther`) — จัดการผ่านหน้า `/setting/manage-user-rights` ของ FE เดิม · BFF ส่งสิทธิ์มากับ header `x-user-permissions` |
+| `user_accounts` | AWS Cognito + auth-backend `users`/`user_group_memberships` — SBPGI รับตัวตนจาก BFF ผ่าน header `x-user-id`/`x-user-group-id` ไม่เก็บบัญชีเอง |
+| `operator_assignments` | จับกลุ่มผู้ปฏิบัติงานต่อ section/พื้นที่ด้วย group + scope ของ auth-backend (แบบเดียวกับ `business_user_group` ของ store-backend) · การผูกผู้อนุมัติรายเอกสารใช้ pattern prepared approvers ของ workflow engine เดิม (`@srm/glb-workflow` — `AddPreparedApproverUseCase`) |
+
+ผลที่ตาม: 8 role (00–10) ของ SRS ถูก map เป็น group ใน auth-backend · `workflow_tasks.assignee_employee_id` ยังอยู่ (เก็บผลการ resolve แล้ว) แต่แหล่งข้อมูลการ resolve คือระบบเดิม · การแก้สิทธิ์/กลุ่มลง audit ของระบบเดิม ไม่ใช่ `audit_logs` ของ SBPGI
 
 ## Canonical Column Contract
 
@@ -90,8 +100,6 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 
 | ตาราง | ชื่อ canonical | ยกเลิกใช้ |
 |---|---|---|
-| `menu_permissions` | `role_code`, `menu_code`, `can_access` | `can_view`, `can_create`, `can_update`, `can_delete` |
-| `user_accounts` | `employee_id`, `role_code`, `section_code`, `username`, `is_active` | `password_hash`, `account_status`; credential ตรวจโดย platform SSO/AD/LDAP |
 | `workflow_instances` | `instance_id`, `doc_no`, `instance_status`, `started_at`, `started_by` | `status`; `instance_id` ต้องส่งเข้าตอน insert |
 | `system_configs` | `config_key`, `category`, `config_value`, `value_type`, `unit`, `description`, `is_editable` | `secret_flag` และ secret ทุกชนิด |
 | `sales_transactions` | `txn_date`, `window_no`, `sales_amount`, `sales_diff`, `is_outlier` | `sale_date`, `window_code`, `net_sales` |
@@ -124,5 +132,5 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 ## เอกสารที่เกี่ยวข้อง
 
 - Flow ที่ใช้ตารางเหล่านี้: [workflow.md](workflow.md) · `plan-flow.html`
-- API ที่อ่าน/เขียนตาราง: [api.md](api.md) · `plan-api.html` (62 endpoints 10 กลุ่ม — รวม roles/menus CRUD 7 เส้นของหน้าจอ 3.1.1, System Config 5 เส้น, กลุ่ม Lookup 4 เส้น และ `GET /documents/{docNo}/sales`)
+- API ที่อ่าน/เขียนตาราง: [api.md](api.md) · `plan-api.html` (44 endpoints 9 กลุ่ม — กลุ่ม Auth/RBAC และ Master ผู้ปฏิบัติงาน/สิทธิ์ถูกตัดไปใช้ระบบเดิม · รวม System Config 5 เส้น, กลุ่ม Lookup 4 เส้น และ `GET /documents/{docNo}/sales`)
 - Schema ต้นทางแยกระบบ: `fgi-database.html` (FGI/FCS) · `k2-database.html` (K2, 16 ตาราง + ER diagram)

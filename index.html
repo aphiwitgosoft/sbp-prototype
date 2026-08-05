@@ -22,7 +22,7 @@
       <section class="hero">
         <svg class="hero-mark" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.1"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3ZM9 12l2 2 4-4"/></svg>
         <h1>สวัสดี, คุณภัชริดา</h1>
-        <p>ระบบประกันรายได้ — ชดเชยรายได้ร้าน 7-11 Franchise ที่ได้รับผลกระทบจากร้านเปิดใหม่ในรัศมีใกล้เคียง เอกสารเดินตาม Workflow 5 ขั้นตอน (06 → 08 → 01 → 02 → 03) จนเสร็จสิ้นดำเนินการ · วงเงิน &gt; 100,000 ผ่าน AVP · บัญชีตรวจผ่านรายงาน SBP Mall (SDD v7.5)</p>
+        <p>ระบบประกันรายได้ — ชดเชยรายได้ร้าน 7-11 Franchise ที่ได้รับผลกระทบจากร้านเปิดใหม่ในรัศมีใกล้เคียง เอกสารเดินตาม Workflow 5 ขั้นตอน (06 → 08 → 01 → 02 → 03) จนเสร็จสิ้นดำเนินการ · วงเงิน ≤ 50,000 จบที่ GM · 50,001–300,000 ผ่าน AVP (SDD GI 24/02/2026) · บัญชีตรวจผ่านรายงาน SBP Mall (SDD v7.5)</p>
         <div class="hero-actions">
           <button class="btn btn-light" data-href="k2-list-waiting.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/></svg> งานรอท่านดำเนินการ</button>
           <button class="btn btn-ghost" data-href="k2-document.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.5 2.5V6L9 3.5m0 16.5 6-2.5m-6 2.5V3.5m6 16.5 5.5 2.5V6L15 3.5m0 16.5V3.5"/></svg> เอกสารร้านถูกกระทบ</button>
@@ -101,12 +101,14 @@
           <span class="mgo">ออกรายงาน <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
         </a>
 
+        <!-- ตัดออกถาวร 2026-08-05 — กำหนดชื่อผู้ปฏิบัติงาน ใช้ระบบ SBP เดิม (group+scope ของ auth-backend + prepared approvers) · ไฟล์ k2-operators.html เก็บไว้อ้างอิง
         <a class="mod-card" href="k2-operators.html">
           <div class="mh"><div class="mi bg-amber"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 14v3M19 21v.01"/></svg></div>
             <div><div class="mt">กำหนดชื่อผู้ปฏิบัติงาน</div><div class="mcode">Master · operator_assignments</div></div></div>
           <div class="md">กำหนดว่าพนักงานคนใดรับผิดชอบตำแหน่งหรือขั้นตอนใดใน Workflow บันทึกประวัติการเพิ่ม/แก้ไขใน audit_logs</div>
           <span class="mgo">จัดการข้อมูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
         </a>
+        -->
 
         <a class="mod-card" href="k2-factors.html">
           <div class="mh"><div class="mi bg-blue"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3ZM4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></div>
@@ -115,12 +117,14 @@
           <span class="mgo">จัดการข้อมูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
         </a>
 
+        <!-- ตัดออกถาวร 2026-08-05 — สิทธิ์การเข้าถึงเมนู ใช้ระบบ SBP เดิม (auth-backend: groups/menus/permissions · หน้า /setting/manage-user-rights) · ไฟล์ k2-permissions.html เก็บไว้อ้างอิง
         <a class="mod-card" href="k2-permissions.html">
           <div class="mh"><div class="mi bg-rose"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></div>
             <div><div class="mt">สิทธิ์การเข้าถึงเมนู</div><div class="mcode">RBAC · SRS 3.1.1</div></div></div>
           <div class="md">ตารางสิทธิ์ 8 กลุ่มบทบาท (00 Default – 10 UserViewer) ต่อเมนูของระบบ ใช้เป็นแหล่งข้อมูล RBAC ของ Auth ในระบบใหม่</div>
           <span class="mgo">ดูสิทธิ์ <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
         </a>
+        -->
 
       </div>
 
@@ -128,7 +132,7 @@
         <div class="card" style="margin:0;">
           <div class="card-head"><h2>กิจกรรมล่าสุด</h2></div>
           <div style="display:flex;flex-direction:column;gap:2px;">
-            <div style="display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f8;"><span class="pill ok">เสร็จสิ้น</span><span style="flex:1;color:#45525f;">GM อนุมัติชดเชย (≤100,000) เอกสาร 2569/00152 แคราย พลาซ่า → เสร็จสิ้นดำเนินการ</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">09:24</span></div>
+            <div style="display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f8;"><span class="pill ok">เสร็จสิ้น</span><span style="flex:1;color:#45525f;">GM อนุมัติชดเชย (≤50,000) เอกสาร 2569/00152 แคราย พลาซ่า → เสร็จสิ้นดำเนินการ</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">09:24</span></div>
             <div style="display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f8;"><span class="pill violet">คำนวณเงิน</span><span style="flex:1;color:#45525f;">คำนวณเงินชดเชยเรียบร้อย เอกสาร 2569/00140 → รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">08:50</span></div>
             <div style="display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f8;"><span class="pill navy" style="background:#e3e6fb;color:#3730a3;">AVP</span><span style="flex:1;color:#45525f;">เอกสาร 2569/00194 วงเงิน 104,500 บาท → รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">08:12</span></div>
             <div style="display:flex;gap:12px;align-items:center;padding:11px 0;"><span class="pill fail">แถวแดง</span><span style="flex:1;color:#45525f;">ร้านยอดขายไม่ครบ 60 วัน 5 รายการ ในคิวรอฝ่าย SBP DSA ดำเนินการ</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">07:40</span></div>

@@ -59,9 +59,12 @@
       // ,{ key:'k2-list-abnormal', label:'ข้อมูลผิดปกติ',  href:'k2-list-abnormal.html' }
     ]},
     { key:'k2-report',   label:'รายงานสรุปสถานะ',         href:'k2-report.html',    icon:I.statement, group:'ระบบประกันรายได้ (SBP Mall)' },
-    { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ระบบประกันรายได้ (SBP Mall)' },
+    // ตัดออกถาวร 2026-08-05 — กำหนดผู้ปฏิบัติงาน (SRS 3.1.8) และสิทธิ์การเข้าถึงเมนู (SRS 3.1.1) ใช้ระบบ SBP เดิม
+    // (auth-backend/ABS: groups/menus/permissions · หน้า /setting/manage-user-rights + prepared approvers ของ @srm/glb-workflow)
+    // ไฟล์ k2-operators.html / k2-permissions.html ยังเก็บไว้อ้างอิง
+    // { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ระบบประกันรายได้ (SBP Mall)' },
-    { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ระบบประกันรายได้ (SBP Mall)' },
+    // { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'system-config', label:'ตั้งค่าระบบ (Config)',   href:'system-config.html', icon:I.cog,    group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'job-batch',   label:'Batch Job',                href:'job-batch.html',    icon:I.clock,     group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'plan-email',  label:'Email Template',            href:'plan-email.html',   icon:I.mail,      group:'ระบบประกันรายได้ (SBP Mall)' },

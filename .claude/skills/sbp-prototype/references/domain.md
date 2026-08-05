@@ -11,7 +11,7 @@
 ## ค่าคงที่ธุรกิจ (ห้ามเปลี่ยนโดยไม่มี business sign-off)
 
 - เลขที่เอกสาร `YYYY/xxxxx` — **ปี พ.ศ.** เช่น `2569/00123` (running เริ่ม 00001)
-- วงเงิน AVP (SDD v7.5): ชดเชย **> 100,000 บาท ต้องผ่าน AVP (03) แล้วจบ** · ≤ 100,000 **จบที่ GM (02)**
+- วงเงินอนุมัติ (SDD GI 24/02/2026 — แทนเกณฑ์เดียว 100,000): ชดเชย **≤ 50,000 บาท จบที่ GM (02)** · **50,001–300,000 ต้องผ่าน AVP สำนัก SBPM (03) แล้วจบ** · เกิน 300,000 รอ confirm · เปิดเรื่องซ้ำได้เองหลังหยุด/ไม่เห็นควรชดเชย (ไม่ต้องเปิด SR) · ยอด 0: เดือน 1–3 ส่งต่อ 01, เดือนที่ 4 หยุดชดเชย
 - **%ชดเชยของร้านเปิดใหม่ทุกร้านในเอกสารรวมกันต้อง = 100%**
 - ข้อมูลยอดขาย **< 60 วัน = "ผิดปกติ"** → แถวแดง `tr.flag-red` (เป็น flag ของข้อมูล **ไม่ใช่สถานะ workflow**)
 - หน้าต่างคำนวณยอดขาย **4 × 15 วัน** · outlier เมื่อ |sales_diff| **≥ 50** แบบจับคู่
@@ -28,8 +28,8 @@
 | 06 | ฝ่าย SBP DSA (Manager Franchise) | จุดเริ่ม · ไม่ชดเชย/หยุดชดเชย = จบ · ส่งต่อได้หลายทาง |
 | 08 | เจ้าหน้าที่ SBP DSA (Officer Franchise) | มี view **คำนวณเงินชดเชย** (เฉพาะขั้นนี้) |
 | 01 | ฝ่ายส่งเสริมธุรกิจฯ (Manager OPT) | แก้ร้านเปิดใหม่/คู่แข่ง/ปัจจัยภายนอกได้ (%รวม = 100%) |
-| 02 | GM ส่งเสริมธุรกิจฯ (GM OPT) | แยกเส้นตามวงเงิน 100,000 · **≤ 100,000 อนุมัติ = จบ workflow** |
-| 03 | ผู้บริหารสำนักบริหาร SBP (AVP OPT) | เฉพาะยอด > 100,000 (แม้ "ไม่ชดเชย" ก็ต้องผ่านตามวงเงิน) · อนุมัติ = **จบ workflow** |
+| 02 | GM ส่งเสริมธุรกิจฯ (GM OPT) | แยกเส้นตามวงเงิน SDD GI · **≤ 50,000 อนุมัติ = จบ workflow** · เห็นควรไม่ชดเชย = จบทันที |
+| 03 | ผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) | เฉพาะยอด 50,001–300,000 · อนุมัติ = **จบ workflow** (เกิน 300,000 รอ confirm) |
 
 ขั้นบัญชี 04 (ฝ่ายบัญชี SBP) / 05 (บัญชีปฏิบัติการภาค) **ถูกตัดตาม SDD v7.5** — บัญชีตรวจสอบผ่านรายงาน SBP Mall (Preview + Export CSV to Batch) แล้วกระทบยอด SAP นอกระบบ
 
@@ -40,7 +40,7 @@ inbox ของแต่ละ role = เอกสารสถานะ "รอ\
 **Validation ปุ่มส่งดำเนินการ** — ต้องเลือกผลพิจารณาอย่างน้อย 1 ข้อ มิฉะนั้น popup verbatim:
 "ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูล ก่อนกดส่งดำเนินการ" · กรณีเลือกไม่ชดเชย/ส่งฝ่ายบัญชี ความคิดเห็นเป็น required · **ปุ่มบันทึกไม่ validate**
 
-## 8 Role กลุ่มสิทธิ์ (SRS 3.1.1 — หน้า k2-permissions.html)
+## 8 Role กลุ่มสิทธิ์ (SRS 3.1.1 — ตารางอ้างอิงใน k2-permissions.html · หน้าถอดจาก sidebar แล้ว 2026-08-05 — สิทธิ์จริงใช้ group ของ auth-backend ระบบเดิม)
 
 | Code | Role | หมายเหตุ |
 |---|---|---|
@@ -84,5 +84,5 @@ EM-04/05 รับพฤติกรรมมาจาก Approve Flow เดิ
 - **รวม EAI + K2 เข้า SBPGI**: ตัดไฟล์ภายใน `BPM06001O_/2O_/3O_` (Jobs 7/8/9) และ K2 REST StartInstance (Job 8b) → Document Service เขียน DB ตรง + Workflow Engine ภายใน
 - Interface ภายนอก **คงเดิม** (ระบบของทีมอื่น): QSSI (SFTP) · ALLMAP (SQL Server) · IAS/MIS (ไฟล์ AMS06001O/I) · STA (FRBC0001 + ACK, เพิ่ม `POST /interfaces/sta/ack`) · SMTP
 - Flow 12 ขั้น 4 Stage (A รับข้อมูล Jobs 1–5 · B สร้างเอกสาร+เปิด workflow · C พิจารณา 5 ขั้น · D ส่งออก+watchdog Jobs 6/10) → `workflow.md`
-- Schema 34 ตาราง 3 โซน (A=FGI/FCS · B=K2 docs/workflow · C=shared master/config) + Data Spine 4 ID (`impact_process_id` → `doc_no` → `instance_id` → `task_id`) → `database.md`
+- Schema 29 ตาราง 3 โซน (A=FGI/FCS · B=K2 docs/workflow · C=shared master/config · RBAC/ผู้ปฏิบัติงานใช้ระบบ SBP เดิม) + Data Spine 4 ID (`impact_process_id` → `doc_no` → `instance_id` → `task_id`) → `database.md`
 - P0 สำคัญ: ครอบ Job 4 ด้วย transaction · ย้าย credential ไป Secret Manager · ห้ามเก็บ secret ใน `system_configs`

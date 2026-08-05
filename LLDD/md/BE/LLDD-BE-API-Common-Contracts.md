@@ -2,6 +2,8 @@
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
+> ปรับตาม SDD GI 24/02/2026 + การตัดสินใจใช้ระบบสิทธิ์เดิม 2026-08-05 — auth ผ่าน BFF ระบบ SBP เดิม (`x-api-key` + `x-user-id`/`x-user-group-id`/`x-user-permissions` · Cognito cookie) แทน JWT ที่ SBPGI ออกเอง · เส้น `/auth/*`, `/me/menus` และ RBAC mutation ตัดออก
+
 ## 1. Overview
 
 | รายการ | รายละเอียด |
@@ -16,7 +18,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 ## 2. Screen / Functional Scope
 
 - Base URL, content type, charset and request tracing
-- Auth/JWT platform validation and service-token exception
+- Auth ผ่าน BFF ระบบเดิม (user context header) and service-token exception — SBPGI ไม่ validate JWT เอง
 - Standard success envelopes for list/detail/mutation
 - Standard error envelope and HTTP status mapping
 - Field format for date/month/docNo/storeCode/amount/percent
@@ -36,7 +38,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Common Contr
 | --- | --- | --- | --- |
 | Base URL | /api/v1 | required | ทุก endpoint ใช้ prefix นี้ |
 | Content-Type | application/json; charset=utf-8 | required for JSON | multipart เฉพาะ attachments |
-| Authorization | Bearer <JWT> | required for user endpoints | validate signature/expiry/role; platform provides token |
+| x-api-key + x-user-id / x-user-group-id / x-user-permissions | user context header จาก BFF ระบบเดิม (Cognito token อยู่ httpOnly cookie ฝั่ง BFF) | required for user endpoints | BE validate `x-api-key` แล้วอ่าน identity/สิทธิ์จาก header ที่ BFF แนบมา; FE ไม่แตะ token (ตัดสินใจ 2026-08-05 — แทน Bearer JWT เดิม) |
 | X-Service-Token | opaque service token | required for internal workflow/batch callbacks | ใช้กับ /workflows/instances และ external callback ที่ไม่ใช่ user JWT |
 | X-Request-Id | uuid/string | optional but logged | ถ้าไม่ส่ง BE generate แล้วคืนใน log/trace |
 | ErrorEnvelope | {code,message} | message Thai verbatim | ห้ามเพิ่ม error shape อื่นใน endpoint รายตัว |
@@ -48,7 +50,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Common Contr
 | amount/percent | number | 2 decimal | format display อยู่ FE; BE validate precision/range |
 | result | verbatim from actionOptions | required for /actions | ต้องเป็นค่าที่ BE ส่งมาใน role profile ของเอกสารนั้น |
 | ActionResponse | {statusCode,nextSection,message} | required for /actions | FE resolve label จาก /document-statuses; mutation response ไม่คืน label ไทยซ้ำ |
-| reason | text | required for master/config/email/RBAC mutation | write audit_logs ใน transaction เดียว |
+| reason | text | required for master/config/email mutation (RBAC mutation ตัดออก — จัดการในระบบ SBP เดิม) | write audit_logs ใน transaction เดียว |
 
 ### 5.1 Error and Popup Catalog
 
@@ -66,7 +68,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Common Contr
 | FILE_TYPE_UNSUPPORTED | 415 | extension/content type ไม่อยู่ใน allowlist | ชนิดไฟล์ไม่อนุญาตให้อัปโหลด |
 | FILE_SCAN_BLOCKED | 422 | AV scan พบไวรัสหรือ scan failed | ไฟล์แนบไม่ผ่านการตรวจสอบความปลอดภัย |
 | FORBIDDEN | 403 | ไม่มีสิทธิ์เมนู/เอกสาร/task | กรุณาติดต่อผู้ดูแลระบบ |
-| DUPLICATE_DOCUMENT | 409 | business key ซ้ำตอนสร้างเอกสาร | ร้านนี้ในเดือนนี้มีเอกสารอยู่แล้ว |
+| DUPLICATE_DOCUMENT | 409 | business key ซ้ำกับเอกสาร **active (ยังไม่จบ)** ตอนสร้างเอกสาร — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดใหม่ได้ (SDD GI) | ร้านนี้ในเดือนนี้มีเอกสารอยู่แล้ว |
 | CONFLICT | 409 | resource/task ถูกเปลี่ยนหรือเงื่อนไขปัจจุบันไม่ตรงกับคำขอ | ข้อมูลมีการเปลี่ยนแปลง กรุณาโหลดข้อมูลล่าสุดแล้วดำเนินการใหม่ |
 | STALE_VERSION | 409 | versionNo ที่ส่งมาไม่ตรงกับ compensation_documents.version_no | ข้อมูลถูกแก้ไขโดยผู้ใช้อื่น กรุณาโหลดข้อมูลล่าสุดแล้วลองอีกครั้ง |
 | FS_BRIDGE_UNAVAILABLE | FE | hidden iframe ไม่ตอบ FS_FORM_READY ภายในเวลาที่กำหนด | ไม่สามารถเชื่อมต่อแบบฟอร์ม FS ได้ กรุณาลองอีกครั้ง |
@@ -76,18 +78,18 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Common Contr
 
 ### 5.2 Endpoint Role Matrix
 
-Matrix นี้เป็น baseline สำหรับ BE authorization guard; menu-level visibility ยังคงมาจาก menu_permissions
+Matrix นี้เป็น baseline สำหรับ BE authorization guard; menu-level visibility มาจาก `x-user-permissions` ของ auth-backend ระบบเดิม (2026-08-05 — เดิม menu_permissions ใน SBPGI)
 
 | Endpoint group | Endpoint pattern | Allowed roles / identity |
 | --- | --- | --- |
-| Current user/menu | /auth/me, /me/menus | authenticated user |
+| ~~Current user/menu~~ | ~~/auth/me, /me/menus~~ | **ตัดออก** — ใช้ BFF ระบบเดิม: /auth/profile, /users/current, /menus |
 | Task inbox | GET /tasks | authenticated user with assigned task access |
 | Document read/list/timeline/sales | GET /documents*, GET /documents/{docNo}/timeline, GET /documents/{docNo}/sales | document participant or report/admin role explicitly granted |
 | Document create | POST /documents | 02 HQ, 03 User Admin, 01 Admin |
 | Document update/action/attachment upload | PUT /documents/{docNo}, POST /documents/{docNo}/actions, POST /documents/{docNo}/attachments | current action owner; admin override only with policy and audit reason |
 | Attachment download | GET /documents/{docNo}/attachments/{attachId}/download | same as document read; attachment belongs to doc and scanStatus=CLEAN |
 | Lookup | /stores/search, /competitors, /document-statuses | authenticated user with related menu access |
-| Master/RBAC/config | /operators*, /factors*, /menu-permissions*, /roles*, /menus*, /configs* | admin/HQ roles according to menu_permissions |
+| Master/config | /factors*, /configs* (~~/operators*, /menu-permissions*, /roles*, /menus*~~ ตัดออก — ใช้ระบบ SBP เดิม) | admin/HQ roles according to `x-user-permissions` |
 | Reports | /reports/status-summary* | admin/HQ/report roles and accounting service user |
 | Internal workflow/interface | /workflows/instances, /interfaces/* callback | service token or API key only |
 
@@ -96,7 +98,7 @@ Matrix นี้เป็น baseline สำหรับ BE authorization guard;
 | Stage | Contract for implementation |
 | --- | --- |
 | Input | ALL /api/v1/*; GET /api/v1/*; POST /api/v1/documents/{docNo}/actions |
-| Progress | Request enters logging middleware and request id is attached; Auth middleware validates JWT or service token by endpoint allowlist; RBAC guard checks role/menu/current workflow task owner; Validate params/query/body with shared schema conventions |
+| Progress | Request enters logging middleware and request id is attached; Auth middleware validates x-api-key + user context header (จาก BFF ระบบเดิม) or service token by endpoint allowlist; RBAC guard checks role/menu/current workflow task owner; Validate params/query/body with shared schema conventions |
 | Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
 ### 5.90 Endpoint Implementation Contract
@@ -104,16 +106,16 @@ Matrix นี้เป็น baseline สำหรับ BE authorization guard;
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
 | ALL /api/v1/* | Standard error envelope | Request enters logging middleware and request id is attached | ทุก endpoint ต้องใช้ common contract นี้ |
-| GET /api/v1/* | Standard list envelope เมื่อ endpoint เป็นรายการ | Auth middleware validates JWT or service token by endpoint allowlist | ไม่มี endpoint คืน error shape อื่นนอกจาก `{code,message}` |
+| GET /api/v1/* | Standard list envelope เมื่อ endpoint เป็นรายการ | Auth middleware validates x-api-key + user context header (จาก BFF ระบบเดิม) or service token by endpoint allowlist | ไม่มี endpoint คืน error shape อื่นนอกจาก `{code,message}` |
 | POST /api/v1/documents/{docNo}/actions | Document action contract กลาง; ตัวอย่าง currentSection=01 จึงเปลี่ยนไป 02 | RBAC guard checks role/menu/current workflow task owner | 401/403/404/409/422/413/415 mapping คงที่และ test ได้ |
-| GET /api/v1/me/menus | RBAC/menu contract กลาง | Validate params/query/body with shared schema conventions | GET list ทุกเส้นคืน `{page,size,total,items}` |
+| ~~GET /api/v1/me/menus~~ — ตัดออก ใช้ `GET /menus` + `GET /groups/current-user/permissions` ของระบบเดิม | RBAC/menu contract กลาง (ระบบเดิมเป็นเจ้าของ) | Validate params/query/body with shared schema conventions | GET list ทุกเส้นคืน `{page,size,total,items}` |
 
 ### 5.91 Backend Execution Sequence
 
 | Step | Behavior specific to this LLDD | Failure/test evidence |
 | --- | --- | --- |
-| 1 | Request enters logging middleware and request id is attached | missing JWT 401 |
-| 2 | Auth middleware validates JWT or service token by endpoint allowlist | role forbidden 403 |
+| 1 | Request enters logging middleware and request id is attached | missing x-api-key/user context header 401 |
+| 2 | Auth middleware validates x-api-key + user context header (จาก BFF ระบบเดิม) or service token by endpoint allowlist | role forbidden 403 |
 | 3 | RBAC guard checks role/menu/current workflow task owner | validation error 400 |
 | 4 | Validate params/query/body with shared schema conventions | not found 404 |
 | 5 | Service executes business rule and document action if relevant | duplicate conflict 409 |
@@ -125,7 +127,7 @@ Matrix นี้เป็น baseline สำหรับ BE authorization guard;
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
-| Authenticate user endpoint | middleware | auth.verifyJwt | req.user = employeeId/roleCode/sectionCode |
+| Authenticate user endpoint | middleware | auth.verifyUserContext (x-api-key + header จาก BFF ระบบเดิม) | req.user = employeeId/groupId/permissions/sectionCode |
 | Authorize menu/role | middleware/service | rbac.requireMenu/requireRole | 403 FORBIDDEN เมื่อไม่มีสิทธิ์ |
 | Validate request | controller | zod schema | 400 VALIDATION envelope |
 | Return list | repository/service | PageResponse<T> | pagination shape เดียวกัน |
@@ -239,9 +241,9 @@ Document action contract กลาง; ตัวอย่าง currentSection=0
 | nextSection | string | Yes | canonical code; do not replace with display label |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/me/menus
+### GET /api/v1/me/menus — ตัดออก (ใช้ระบบ SBP เดิม)
 
-RBAC/menu contract กลาง
+RBAC/menu contract กลาง — **ตัดออก 2026-08-05**: FE ใช้ `GET /menus` + `GET /groups/current-user/permissions` (`canView/canManage/canExport/canOther` ต่อ URL) ของ auth-backend ระบบเดิมแทน · โครงด้านล่างเก็บไว้เป็น reference เดิมเท่านั้น
 
 #### Query Params
 
@@ -287,7 +289,7 @@ RBAC/menu contract กลาง
 | Step | Description |
 | --- | --- |
 | 1 | Request enters logging middleware and request id is attached |
-| 2 | Auth middleware validates JWT or service token by endpoint allowlist |
+| 2 | Auth middleware validates x-api-key + user context header (จาก BFF ระบบเดิม) or service token by endpoint allowlist |
 | 3 | RBAC guard checks role/menu/current workflow task owner |
 | 4 | Validate params/query/body with shared schema conventions |
 | 5 | Service executes business rule and document action if relevant |
@@ -309,7 +311,7 @@ RBAC/menu contract กลาง
 
 | No | Test |
 | --- | --- |
-| 1 | missing JWT 401 |
+| 1 | missing x-api-key/user context header 401 |
 | 2 | role forbidden 403 |
 | 3 | validation error 400 |
 | 4 | not found 404 |

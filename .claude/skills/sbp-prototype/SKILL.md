@@ -30,7 +30,7 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 | 2 | `RDM-SRS-ประกันรายได้-K2-รายการหน้าจอ.md` (455 บรรทัด) | รายละเอียดต่อหน้าจอ: ฟิลด์ validation ข้อความ popup ตาราง role |
 | 3 | `ประกันรายได้-K2-รายการหน้าจอ.md` (160 บรรทัด) | ฉบับย่อ keyed ตามเลข section SRS + section_code + 8 role — **ไม่ใช่ไฟล์ซ้ำ** กับข้อ 2 |
 | 4 | `FGI_FCS_Batch_Job_Technical_Document_Improved_v4.0.pdf` | แหล่งความจริงเดียวของ batch Jobs 1–10 + 8b (ใช้กับ `job-batch.html`) |
-| 5 | `database.md` / `workflow.md` / `api.md` | **living docs** — การออกแบบระบบใหม่ (schema 34 ตาราง / flow 12 ขั้น / API 62 เส้น 10 กลุ่ม) canonical กว่า HTML เมื่อขัดแย้ง |
+| 5 | `database.md` / `workflow.md` / `api.md` | **living docs** — การออกแบบระบบใหม่ (schema 29 ตาราง / flow 12 ขั้น / API 44 เส้น 9 กลุ่ม — RBAC/ผู้ปฏิบัติงานใช้ระบบ SBP เดิม · ตัดสินใจ 2026-08-05) canonical กว่า HTML เมื่อขัดแย้ง |
 | 6 | `PLAN-checklist-prototype.md` | checklist สถานะ implement — **ภายในขัดแย้งกันเอง** เช็ค HTML จริงก่อนเชื่อ |
 
 `SRS_Income_Compensation_v3.1.md` เป็น markdown แปลงจาก SRS pdf · `workflow_status_document.md` = ตารางสถานะ/อีเมล
@@ -50,7 +50,7 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 **แก้ email template** — หน้า `plan-email.html` มี WYSIWYG editor ในตัว (toolbar + ชิปตัวแปร + ตาราง + sticky save)
 โครงสร้าง 8 templates (EM-01–08) และ internals ของ editor: [references/architecture.md](references/architecture.md) §plan-email
 
-**แก้สิทธิ์/role** — หน้า `k2-permissions.html` · 8 role (00–10) ดูตารางใน [references/domain.md](references/domain.md) · CRUD ผ่านตาราง `roles`/`menus`/`menu_permissions` ทุกการแก้ต้องมีเหตุผลลง `audit_logs`
+**แก้สิทธิ์/role** — **ตัดสินใจ 2026-08-05: ใช้ระบบ SBP เดิม** (auth-backend/ABS: groups/menus/permissions ต่อ URL · จัดการผ่านหน้า `/setting/manage-user-rights` ของ FE เดิม) — SBPGI ไม่มีตาราง `roles`/`menus`/`menu_permissions`/`user_accounts`/`operator_assignments` และไม่มีหน้า/เมนู `k2-permissions.html` · `k2-operators.html` แล้ว (ไฟล์เก็บไว้อ้างอิง · 8 role ดูตารางใน [references/domain.md](references/domain.md) — map เป็น group ของระบบเดิม)
 
 **เรื่องหน้าข้อมูลผิดปกติ (`k2-list-abnormal.html`)** — ปิดชั่วคราวรอตัดสินใจ: comment อยู่ที่ MODULES, index.html shortcuts, กลุ่ม API 2 เส้นใน plan-api.html · ไฟล์ยังอยู่ครบ เปิดคืนได้โดย uncomment
 

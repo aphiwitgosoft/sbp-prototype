@@ -1,13 +1,13 @@
 # plan-fe.md — Spec สร้าง Frontend ระบบ SBPGI (React + Vite) ฉบับละเอียด
 
 > **เอกสารนี้คือ spec สมบูรณ์สำหรับ AI/นักพัฒนา สร้าง Frontend จริงจาก prototype HTML ในโฟลเดอร์นี้ — อ่านจบต้องสร้างได้โดยไม่ต้องถาม**
-> อ่านคู่กับ: `checklist-fe.md` (ลำดับงาน + เกณฑ์ตรวจรับ) · `REACT-TODO-CHECKLIST.md` (แตก component ต่อหน้า ครบทุกหน้า) · `api.md` (62 endpoint / 10 กลุ่ม) · `workflow.md` (flow/สถานะ) · `plan-be.md` (ฝั่ง Backend)
+> อ่านคู่กับ: `checklist-fe.md` (ลำดับงาน + เกณฑ์ตรวจรับ) · `REACT-TODO-CHECKLIST.md` (แตก component ต่อหน้า ครบทุกหน้า) · `api.md` (44 endpoint / 9 กลุ่ม — Auth/RBAC/ผู้ปฏิบัติงานตัดไปใช้ระบบ SBP เดิม · ตัดสินใจ 2026-08-05) · `workflow.md` (flow/สถานะ) · `database.md` (29 ตาราง) · `plan-be.md` (ฝั่ง Backend)
 > **prototype HTML = spec หน้าจอที่ผูกมัด** — layout, ป้ายข้อความไทย, สี, ตาราง, modal ต้องตรงกับหน้า `*.html` เดิม ข้อความ popup/validation ห้าม paraphrase (verbatim จาก SRS)
 
 **กติกาเหล็ก (ผิดข้อใดข้อหนึ่ง = ไม่ผ่าน — ซ้ำกับ checklist-fe.md โดยตั้งใจ):**
 1. workflow 5 ขั้น `06 → 08 → 01 → 02 → 03` เท่านั้น — **ห้ามอ้าง section 04/05 หรือสถานะบัญชีในทุกที่** (SDD v7.5 ตัดแล้ว)
 2. สถานะเอกสาร **6 ค่า** verbatim (ดู `DOC_STATUSES` ใน §7)
-3. กฎ 100,000: >100k → ผ่าน AVP(03) แล้ว**จบ** · ≤100k → **จบที่ GM(02)** — logic routing อยู่ BE, FE แค่แสดงผล
+3. กฎวงเงินอนุมัติ (SDD GI 24/02/2026 — แทนเกณฑ์เดียว 100,000 เดิม): **≤ 50,000 → จบที่ GM(02)** · **50,001–300,000 → ผ่าน AVP(03) แล้วจบ** · **เกิน 300,000 SDD ยังไม่ระบุเส้นทาง (รอ confirm)** — logic routing อยู่ BE, FE แค่แสดงผล · เห็นควรไม่ชดเชยที่ขั้น 01/02 = **จบกระบวนการทันที** (ไม่ตีกลับ 06 · ขั้น 03 คงเดิม รอ confirm)
 4. ข้อความไทย verbatim ห้าม paraphrase เช่น `ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ`
 5. ภาค 8 ค่า `BE BN BS BW RC RE RN RS` — **มี RC ไม่มี RW** (รายงานใช้อีกชุด 13 รหัส)
 6. %ชดเชยรวมทุกร้านเปิดใหม่ = **100%** พอดีก่อน submit
@@ -18,20 +18,33 @@
 
 ---
 
+## Alignment กับระบบ SBP เดิม (สรุปจาก SBP/srm-sps-spsap-web-frontend.md + SBP/srm-sps-spsap-sbp-bff.md)
+
+FE ของระบบ SBP ปัจจุบัน (repo `srm-sps-spsap-web-frontend` · package `sbp-portal`) คือ:
+- **Next.js 16 App Router** ตั้ง `output: "export"` — **static export ขึ้น S3/CloudFront** (ไม่มี API routes, middleware ไม่ทำงานบน S3, กันสิทธิ์ฝั่ง client ทั้งหมด)
+- **PrimeReact 10** (ห่อเป็น design system ภายใน `components/Form`/`Table`) + **Tailwind CSS 4** + Sass + **Zustand 5** (`loadingStore`/`permissionStore`/`userProfileStore`) + **@tanstack/react-query 5** + axios instance กลาง + **i18next** (default `th-TH`)
+- **build 3 portal จาก codebase เดียว** ด้วย env `NEXT_PUBLIC_APP_TARGET` = `sml` (SBP Mall) / `siv` (Investor) / `sbpm` (Company back office)
+- **Auth แบบ BFF cookie**: FE ไม่แตะ token — redirect `{bffUrl}/auth/login` ให้ BFF (NestJS + AWS Cognito OIDC) set token เข้ารหัสใน signed httpOnly cookie · axios `withCredentials` + interceptor 401 → `POST /auth/refresh` (lock + failedQueue) → retry · เมนูจาก `GET /menus` · สิทธิ์ต่อ URL จาก `GET /groups/current-user/permissions` (`canView/canManage/canExport/canOther`)
+
+> ⚠️ **ประเด็นตัดสินใจ (ยังไม่ตัดสิน — ห้ามแก้ spec ที่เหลือเอง):** spec ฉบับนี้เขียนเป็น **React + Vite SPA** (§1) ซึ่ง**ต่างจาก stack FE เดิม** (Next.js portal) — ต้องเลือกก่อนเริ่มสร้างจริงว่าจะ
+> **(ก)** คง React + Vite ตาม spec นี้/โค้ด `react-app/` ที่มีอยู่ (deploy แยกจาก portal เดิม) หรือ
+> **(ข)** ย้ายไปเป็นโมดูลหนึ่งใน Next.js portal เดิม (`sbpm` portal) เพื่อใช้ shell, auth flow, design system, และ pipeline S3/CloudFront ร่วมกัน
+> ระหว่างยังไม่ตัดสิน: ส่วน Stack (§1–3) คงตามเดิม แต่กลไก **Auth/เมนู/สิทธิ์ (§0, §5, §10) ยึดของระบบเดิมผ่าน BFF แล้ว** ไม่ว่าจะเลือกทางใด
+
 ## 0. สัญญากลาง FE/API Integration
 
 > LLDD อ้างอิง: `LLDD/FE/LLDD-FE-Integration-Contracts.md` + `LLDD/BE/LLDD-BE-API-Common-Contracts.md` · ทุก feature hook/component ต้องยึดสัญญานี้ก่อนอ่าน endpoint รายตัวใน `api.md`
 
 | หมวด | Contract ที่ FE ต้องยึด |
 |---|---|
-| API client | มี axios instance เดียวใน `shared/api/client.ts`; component/page ห้ามสร้าง client เองและห้าม set auth header เอง |
-| Auth | ใช้ access token ใน memory + refresh token ใน `localStorage`; 401 non-auth endpoint ต้อง refresh แบบ single-flight แล้ว replay request เดิม; refresh fail ให้ clear session + redirect `/login` |
+| API client | มี axios instance เดียวใน `shared/api/client.ts` ตั้ง `withCredentials: true`; component/page ห้ามสร้าง client เองและห้าม set auth header เอง (FE ไม่แตะ token — อยู่ใน httpOnly cookie ฝั่ง BFF) |
+| Auth | **ใช้ระบบ SBP เดิมผ่าน BFF (ตัดสินใจ 2026-08-05)** — ไม่มี login form ของตัวเอง: redirect `{bffUrl}/auth/login?redirectUrl=<origin>` (Cognito OIDC · token ใน httpOnly cookie); 401 non-auth endpoint ต้อง refresh แบบ single-flight `POST {bffUrl}/auth/refresh` แล้ว replay request เดิม (แบบ interceptor ของระบบเดิม); refresh fail ให้ redirect กลับ `{bffUrl}/auth/login` |
 | Error | type กลาง `ApiError { code: string; message: string }`; แสดง `message` จาก BE ตรง ๆ ผ่าน `apiErrorMessage()`; fallback ไทยใช้เฉพาะ network/no response |
 | Pagination | type กลาง `PageResponse<T> { page; size; total; items }`; `<DataTable>`/`<Pager>` ทุกหน้าใช้ shape นี้ |
 | Format | payload date/month เป็น ค.ศ. ISO; แสดงผลเป็น พ.ศ. ผ่าน `shared/lib/format.ts` เท่านั้น; `storeCode/newStoreCode` เป็น string 5 หลักเพื่อคง leading zero |
 | Workflow action | `DecisionPanel` ส่ง `POST /documents/{docNo}/actions` ด้วย `{result, comment}` เท่านั้น; result เป็น 6-enum ไทย verbatim; consume response `{nextSection,statusCode,status}` แล้ว invalidate detail/timeline/tasks |
-| RBAC/Menu | sidebar และ route guard ใช้ `/me/menus`; หน้า detail ใช้ `permissions.canEditSections`/`canAction` จาก BE; FE ไม่คำนวณ transition หรือ owner เอง |
-| Audit/Reason | master/config/email/RBAC mutation ต้องมีช่อง reason และส่งให้ BE; FE ไม่เขียน audit เอง |
+| RBAC/Menu | **ใช้ของระบบเดิมผ่าน BFF**: sidebar จาก `GET /menus` + route guard/ปุ่ม จาก `GET /groups/current-user/permissions` (`canView/canManage/canExport/canOther` ต่อ URL — เก็บใน permission store แล้วเช็คผ่าน `hasPermission(url, action)`); หน้า detail ใช้ `permissions.canEditSections`/`canAction` จาก `GET /documents/{docNo}` (ธงเชิง workflow ที่ SBPGI คำนวณเอง); FE ไม่คำนวณ transition หรือ owner เอง |
+| Audit/Reason | master/config/email mutation ต้องมีช่อง reason และส่งให้ BE; FE ไม่เขียน audit เอง (การแก้สิทธิ์/กลุ่มผู้ใช้ทำในระบบเดิม `/setting/manage-user-rights` — ลง audit ของระบบเดิม) |
 
 ## 1. Stack และเวอร์ชัน (ตัดสินใจแล้ว — ห้ามเปลี่ยนเอง)
 
@@ -40,9 +53,9 @@
 | Build | **Vite 5+** + **React 18+** + **TypeScript** (strict) | ตามโจทย์ |
 | Router | **react-router-dom v6** (createBrowserRouter) | route ต่อหน้า ตรงกับไฟล์ html เดิม |
 | Server state | **@tanstack/react-query v5** | cache/refetch ต่อ endpoint, retry, invalidate หลัง mutation |
-| Client state | **zustand** (เฉพาะ auth/session + UI เล็กน้อย) | ห้ามใช้ Redux — เกินจำเป็น |
+| Client state | **zustand** (user profile + permission store + UI เล็กน้อย — แนวเดียวกับ `userProfileStore`/`permissionStore` ของระบบเดิม) | ห้ามใช้ Redux — เกินจำเป็น |
 | Form | **react-hook-form** + **zod** (`@hookform/resolvers`) | validation message ไทย verbatim |
-| HTTP | **axios** instance เดียว (`shared/api/client.ts`) | interceptor JWT + refresh + error map |
+| HTTP | **axios** instance เดียว (`shared/api/client.ts`) | `withCredentials` (cookie BFF) + interceptor auto-refresh + error map — ไม่มี JWT ฝั่ง FE |
 | CSS | **CSS Modules + CSS variables** — **พอร์ต `assets/sbp.css` ตรง ๆ** เป็น `src/styles/tokens.css` + `global.css` | prototype คือ design spec; **ห้ามใช้ Tailwind/MUI/AntD** เพื่อให้หน้าตาตรง 100% |
 | Chart | **เขียน SVG component เอง** (พอร์ตจาก engine `data-chart` ใน sbp.js) | prototype ใช้ inline SVG ทั้งหมด ห้ามเพิ่ม chart lib |
 | Font | Google Fonts **Prompt + Sarabun** (link ใน index.html) | ตามเดิม |
@@ -69,9 +82,10 @@ pnpm dlx husky init   # + ตั้ง lint-staged ใน package.json
 
 `.env.development`:
 ```
-VITE_API_BASE=http://localhost:3000/api/v1
+VITE_API_BASE=http://localhost:3000/api/v1   # BFF ของระบบ SBP เดิม (ทุก request ผ่าน BFF — auth + proxy ไป SBPGI BE)
 VITE_FEATURE_ABNORMAL=false
 ```
+(`VITE_API_BASE` = base URL ของ BFF — ใช้ทั้งยิง API และประกอบ URL redirect `/auth/login`·`/auth/refresh`·`/auth/logout`)
 
 `vite.config.ts` (เต็ม — proxy กัน CORS ตอน dev + alias + vitest):
 ```ts
@@ -118,11 +132,11 @@ src/
     router.tsx                # ตาราง route ทั้งหมด (ข้อ 4) — lazy() ต่อ page
     providers/                # query-client.ts, toast, error-boundary
   features/                   # 1 โฟลเดอร์ = 1 โดเมน — ภายในมี api/ components/ hooks/ types/ ของตัวเอง
-    auth/                     #   LoginPage, store (zustand), RequireAuth/RequireRole, useAuth
+    auth/                     #   ไม่มี LoginPage — bootstrap session ผ่าน BFF, stores (profile+permission), RequireAuth/RequirePermission, useAuth
     dashboard/                #   HomePage + ActivityFeed + ModuleGrid
     documents/                #   DocListPage(waiting/related), DocumentPage 12 ส่วน, CreateDocPage, DecisionPanel, แนบไฟล์
     reports/                  #   ReportPage + Export CSV to Batch
-    masters/                  #   operators, factors, permissions (แชร์ EntityModal+AuditHistoryTable ผ่าน shared)
+    masters/                  #   factors (แชร์ EntityModal+AuditHistoryTable ผ่าน shared) — operators/permissions ตัดออก ใช้ระบบ SBP เดิม (2026-08-05)
     admin/                    #   system-config, email-templates, batch-jobs
     abnormal/                 #   AbnormalListPage (ปิดด้วย feature flag)
   shared/
@@ -146,99 +160,95 @@ Convention การตั้งชื่อ (บังคับสม่ำเ�
 
 ## 4. ตาราง Route (1:1 กับ prototype)
 
-| Route | หน้า prototype | Page component | สิทธิ์ | Endpoints หลัก |
+> ไม่มี route `/login` — auth ใช้ redirect ไป `{bffUrl}/auth/login` ของระบบเดิม (ดู §5) · คอลัมน์สิทธิ์ = role อ้างอิงตาม SRS (map เป็น group ของระบบเดิม) — **route guard จริงเช็ค `canView` ต่อ URL** จาก `GET /groups/current-user/permissions`
+
+| Route | หน้า prototype | Page component | สิทธิ์ (role อ้างอิง) | Endpoints หลัก |
 |---|---|---|---|---|
-| `/login` | *(ไม่มีใน prototype — ฟอร์มเรียบง่ายโทนเดียวกัน)* | LoginPage | public | `POST /auth/login` · `GET /auth/me` · `GET /me/menus` |
 | `/` | index.html | HomePage | ทุก role | `GET /dashboard/summary` |
 | `/documents/waiting` | k2-list-waiting.html | DocListPage mode=waiting | ทุก role | `GET /tasks` |
 | `/documents/related` | k2-list-related.html | DocListPage mode=related | ทุก role | `GET /documents` (ปี required) |
 | `/documents/create` | k2-create.html | CreateDocPage | 00/01/02 | `POST /documents` · `GET /stores/search` |
 | `/documents/:docNo` | k2-document.html | DocumentPage | ตาม role/section | `GET/PUT /documents/{docNo}` + ลูก ๆ |
 | `/reports/income-audit` | k2-report.html | ReportPage | 01/04/06 | `GET /reports/status-summary` (+`/export`) |
-| `/masters/operators` | k2-operators.html | OperatorsPage | 01/03 | `/operators` CRUD · `GET /employees/search` |
 | `/masters/factors` | k2-factors.html | FactorsPage | 01/03 | `/factors` CRUD |
-| `/masters/permissions` | k2-permissions.html | PermissionsPage | 01/03 | `/roles` `/menus` `/menu-permissions` |
 | `/admin/system-config` | system-config.html | SystemConfigPage | 01 | `/configs` CRUD |
 | `/admin/email-templates` | plan-email.html | EmailTemplatesPage | 01 | `/email-templates` |
 | `/admin/batch-jobs` | job-batch.html | BatchJobsPage | 01 | `/jobs` + params/enabled/run/runs |
 | `/documents/abnormal` | k2-list-abnormal.html | AbnormalListPage — **สร้างแต่ปิดด้วย flag** `VITE_FEATURE_ABNORMAL=false` | 05 | `GET /abnormal-stores` (commented) |
 
 หมายเหตุ route:
+- **หน้า `k2-operators.html` / `k2-permissions.html` ไม่พอร์ต** (ตัดสินใจ 2026-08-05) — กำหนดผู้ปฏิบัติงานและสิทธิ์เมนูใช้ระบบ SBP เดิม (auth-backend: groups/menus/permissions ต่อ URL · จัดการผ่านหน้า `/setting/manage-user-rights` ที่มีอยู่แล้ว)
 - `:docNo` มี `/` ข้างใน (`2569/00123`) → ใช้ route pattern `/documents/:year/:running` แล้วประกอบเป็น docNo ใน page (`${year}/${running}`) — ห้าม encode `/` เป็น `%2F`
 - หน้ากลุ่ม Flow/Database/Plan (`flow-fgi`, `k2-flow`, `plan-*`, `*-database`) เป็น**เอกสารออกแบบ ไม่พอร์ต**เข้าแอปจริง
 - **DocListPage ใช้ component เดียว 2 mode** (prototype เป็นไฟล์ฝาแฝด ต่างแค่ `MODE`): `waiting` → `GET /tasks` (inbox: เฉพาะสถานะ "รอ<role ตัวเอง>ดำเนินการ") · `related` → `GET /documents` (**บังคับเลือกปี พ.ศ. ก่อนค้นหา** — ไม่เลือก = ห้ามยิง API + error ใต้ช่องปี)
 
-## 5. Auth (JWT) — โค้ดอ้างอิง
+## 5. Auth — ใช้ระบบ SBP เดิมผ่าน BFF (Cognito · httpOnly cookie · ตัดสินใจ 2026-08-05)
 
-การไหล: `POST /auth/login` → `{accessToken(30 นาที), refreshToken(8 ชม.), user}` — access เก็บใน **memory (zustand)**, refresh ใน `localStorage` · หลัง login ยิง `GET /auth/me` + `GET /me/menus` → **สร้าง sidebar จาก response** (ห้าม hardcode เมนูต่อ role ฝั่ง FE; MODULES registry เป็นแค่ meta icon/route/label แล้ว filter ด้วย `menuCode` จาก API)
+**ไม่มี login form ของตัวเอง** — การไหลแบบเดียวกับ FE ระบบเดิม (`apiClient.ts` ของ `sbp-portal`):
+1. ผู้ใช้ยังไม่มี session (เรียก API แล้วได้ 401 และ refresh ไม่ผ่าน) → `window.location.assign(`${bffUrl}/auth/login?redirectUrl=${origin}`)` — BFF จัดการ OIDC กับ **AWS Cognito** แล้ว set token (เข้ารหัส) ใน **signed httpOnly cookie** เด้งกลับมา · FE **ไม่แตะ token เลย** (ไม่มี localStorage/memory token)
+2. ตอน boot แอป: ยิง `GET /users/current` (โปรไฟล์+group) → เก็บใน profile store · `GET /menus` → **สร้าง sidebar จาก response** (ห้าม hardcode เมนูต่อ role ฝั่ง FE; MODULES registry เป็นแค่ meta icon/route/label แล้ว filter ด้วยเมนูจาก API) · `GET /groups/current-user/permissions` → เก็บใน permission store
+3. ทุก request ใช้ axios `withCredentials: true` · 401 → auto-refresh single-flight แล้ว replay (ข้อ 5.2)
+4. Logout: เรียก `GET {bffUrl}/auth/logout` (BFF ลบ cookie + คืน `logoutUrl` ของ Cognito) → redirect ตาม response
 
-### 5.1 `features/auth/store.ts` (zustand)
+### 5.1 `features/auth/store.ts` (zustand — แนว `userProfileStore`/`permissionStore` ของระบบเดิม)
 ```ts
 import { create } from 'zustand';
-import type { UserInfo, MenuItem } from '@/shared/types/dto';
+import type { UserProfile, MenuItem, PermissionEntry } from '@/shared/types/dto';
 
 interface AuthState {
-  user: UserInfo | null;
-  accessToken: string | null;          // memory เท่านั้น — หายเมื่อ refresh หน้า → re-login ด้วย refreshToken
-  menus: MenuItem[];
-  setSession: (u: UserInfo, access: string, refresh: string) => void;
+  user: UserProfile | null;            // จาก GET /users/current — ไม่มี token ใด ๆ ฝั่ง FE (อยู่ใน httpOnly cookie)
+  menus: MenuItem[];                   // จาก GET /menus (BFF ระบบเดิม)
+  permissions: PermissionEntry[];      // จาก GET /groups/current-user/permissions
+  setUser: (u: UserProfile) => void;
   setMenus: (m: MenuItem[]) => void;
+  setPermissions: (p: PermissionEntry[]) => void;
+  hasPermission: (url: string, action: 'canView' | 'canManage' | 'canExport' | 'canOther') => boolean;
   clear: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null, accessToken: null, menus: [],
-  setSession: (user, accessToken, refresh) => {
-    localStorage.setItem('sbpgi.refreshToken', refresh);
-    set({ user, accessToken });
-  },
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: null, menus: [], permissions: [],
+  setUser: (user) => set({ user }),
   setMenus: (menus) => set({ menus }),
-  clear: () => { localStorage.removeItem('sbpgi.refreshToken'); set({ user: null, accessToken: null, menus: [] }); },
+  setPermissions: (permissions) => set({ permissions }),
+  hasPermission: (url, action) => !!get().permissions.find((p) => p.url === url)?.[action],
+  clear: () => set({ user: null, menus: [], permissions: [] }),
 }));
 
-export const useAuth = () => useAuthStore((s) => ({ user: s.user, isAuthed: !!s.accessToken, menus: s.menus }));
+export const useAuth = () => useAuthStore((s) => ({ user: s.user, isAuthed: !!s.user, menus: s.menus, hasPermission: s.hasPermission }));
 ```
 
-### 5.2 `shared/api/client.ts` (axios เต็ม — refresh single-flight)
+### 5.2 `shared/api/client.ts` (axios เต็ม — cookie BFF + refresh single-flight แบบระบบเดิม)
 ```ts
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { env } from '@/shared/lib/env';
-import { useAuthStore } from '@/features/auth/store';
 
 export interface ApiError { code: string; message: string }   // message = ไทยตาม SRS แสดงตรง ๆ
 
-export const api = axios.create({ baseURL: env.apiBase, timeout: 30_000 });
+/** session อยู่ใน httpOnly cookie ของ BFF — ห้าม set Authorization header เอง */
+export const api = axios.create({ baseURL: env.apiBase, timeout: 30_000, withCredentials: true });
 
-api.interceptors.request.use((cfg) => {
-  const token = useAuthStore.getState().accessToken;
-  if (token) cfg.headers.Authorization = `Bearer ${token}`;
-  return cfg;
-});
+export const redirectToLogin = () =>
+  window.location.assign(`${env.apiBase}/auth/login?redirectUrl=${encodeURIComponent(window.location.origin)}`);
 
-/* ---- refresh single-flight: 401 หลายเส้นพร้อมกัน → ยิง /auth/refresh ครั้งเดียว ---- */
-let refreshing: Promise<string> | null = null;
+/* ---- refresh single-flight: 401 หลายเส้นพร้อมกัน → ยิง /auth/refresh ครั้งเดียว (แบบ isRefreshing+failedQueue ของระบบเดิม) ---- */
+let refreshing: Promise<void> | null = null;
 
-async function refreshAccessToken(): Promise<string> {
-  const refreshToken = localStorage.getItem('sbpgi.refreshToken');
-  if (!refreshToken) throw new Error('no refresh token');
-  // ใช้ axios ดิบ (ไม่ใช่ instance) กัน interceptor วนซ้ำ
-  const { data } = await axios.post(`${env.apiBase}/auth/refresh`, { refreshToken });
-  useAuthStore.setState({ accessToken: data.accessToken });
-  return data.accessToken as string;
+async function refreshSession(): Promise<void> {
+  // ใช้ axios ดิบ (ไม่ใช่ instance) กัน interceptor วนซ้ำ — BFF อ่าน refresh_token จาก cookie เอง
+  await axios.post(`${env.apiBase}/auth/refresh`, null, { withCredentials: true });
 }
 
 api.interceptors.response.use(undefined, async (error: AxiosError<ApiError>) => {
   const cfg = error.config as InternalAxiosRequestConfig & { _retried?: boolean };
-  if (error.response?.status === 401 && !cfg._retried && !cfg.url?.includes('/auth/')) {
+  if (error.response?.status === 401 && !cfg._retried && !cfg.url?.includes('/auth/refresh')) {
     cfg._retried = true;
     try {
-      refreshing ??= refreshAccessToken().finally(() => { refreshing = null; });
-      const token = await refreshing;
-      cfg.headers.Authorization = `Bearer ${token}`;
-      return api(cfg);                                   // replay request เดิม
+      refreshing ??= refreshSession().finally(() => { refreshing = null; });
+      await refreshing;
+      return api(cfg);                                   // replay request เดิม (cookie ใหม่ติดไปเอง)
     } catch {
-      useAuthStore.getState().clear();
-      window.location.assign('/login');
+      redirectToLogin();                                 // refresh fail → กลับหน้า login ของ BFF
     }
   }
   return Promise.reject(error);
@@ -249,25 +259,30 @@ export const apiErrorMessage = (e: unknown): string =>
   (axios.isAxiosError<ApiError>(e) && e.response?.data?.message) || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
 ```
 
-### 5.3 RequireAuth / RequireRole
+### 5.3 RequireAuth / RequirePermission (สิทธิ์ต่อ URL — แทน RequireRole เดิม)
 ```tsx
-// features/auth/components/RequireAuth.tsx
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+// features/auth/components/RequireAuth.tsx — bootstrap session: โหลด /users/current + /menus + permissions ครั้งแรก
+import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/features/auth/store';
+import { redirectToLogin } from '@/shared/api/client';
 
 export function RequireAuth() {
-  const { isAuthed } = useAuth();
-  const loc = useLocation();
-  return isAuthed ? <Outlet /> : <Navigate to="/login" state={{ from: loc }} replace />;
+  const { user, isLoading, isError } = useBootstrapSession();  // useQuery 3 เส้น → setUser/setMenus/setPermissions
+  if (isLoading) return <PageSkeleton />;
+  if (isError || !user) { redirectToLogin(); return null; }    // 401 ใน interceptor จัดการ refresh ให้ก่อนแล้ว
+  return <Outlet />;
 }
 
-// features/auth/components/RequireRole.tsx
-export function RequireRole({ roles }: { roles: string[] }) {
-  const { user } = useAuth();
-  return user && roles.includes(user.roleCode) ? <Outlet /> : <Navigate to="/" replace />;
+// features/auth/components/RequirePermission.tsx — guard ต่อ URL ตาม canView ของระบบเดิม
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+
+export function RequirePermission() {
+  const { hasPermission } = useAuth();
+  const loc = useLocation();
+  return hasPermission(loc.pathname, 'canView') ? <Outlet /> : <AccessDenied />;  // แบบ component Permission/AccessDenied ของระบบเดิม
 }
 ```
-ใช้ใน `router.tsx`: `<RequireAuth>` ครอบทุก route ยกเว้น `/login` · `<RequireRole roles={['01','03']}>` ครอบกลุ่ม masters ฯลฯ ตามคอลัมน์สิทธิ์ใน §4
+ใช้ใน `router.tsx`: `<RequireAuth>` ครอบทุก route · `<RequirePermission>` ครอบ route ที่ต้องเช็คสิทธิ์ต่อ URL — ปุ่ม/การกระทำในหน้าเช็ค `hasPermission(url,'canManage'|'canExport')` เพิ่มตามจุด (คอลัมน์สิทธิ์ role ใน §4 เป็น mapping อ้างอิงตอนตั้งค่า group ในระบบเดิม)
 
 ## 6. ชั้น API + query keys
 
@@ -277,11 +292,12 @@ export function RequireRole({ roles }: { roles: string[] }) {
 - pagination: ส่ง `?page&size` รับ `{page,size,total,items}` → ผูกกับ `<Pager>`
 - วันที่จาก API = ISO + ค.ศ. → แปลงแสดง **พ.ศ.** ที่ `formatDateThai()` จุดเดียว
 
-### 6.1 `shared/api/query-keys.ts` (factory ครบ 10 กลุ่มตาม api.md)
+### 6.1 `shared/api/query-keys.ts` (factory ครบ 9 กลุ่มตาม api.md + ชุด auth ของระบบเดิม)
 ```ts
-export const authKeys = {
-  me: ['auth', 'me'] as const,
-  menus: ['auth', 'menus'] as const,
+export const authKeys = {                 // เส้นของระบบเดิมผ่าน BFF (ไม่ใช่ SBPGI)
+  profile: ['auth', 'profile'] as const,          // GET /users/current
+  menus: ['auth', 'menus'] as const,              // GET /menus
+  permissions: ['auth', 'permissions'] as const,  // GET /groups/current-user/permissions
 };
 export const taskKeys = {
   all: ['tasks'] as const,
@@ -301,13 +317,9 @@ export const lookupKeys = {
   sections: ['lookup', 'workflow-sections'] as const,
 };
 export const masterKeys = {
-  operators: ['masters', 'operators'] as const,
   factors: ['masters', 'factors'] as const,
-  employees: (q: string) => ['masters', 'employees', q] as const,
-  roles: ['masters', 'roles'] as const,
-  menus: ['masters', 'menus'] as const,
-  menuPermissions: ['masters', 'menu-permissions'] as const,
   auditLogs: (table: string) => ['masters', 'audit-logs', table] as const,
+  // operators/employees/roles/menus/menuPermissions ตัดออก — ใช้ระบบ SBP เดิม (2026-08-05)
 };
 export const configKeys = {
   all: ['configs'] as const,
@@ -338,12 +350,12 @@ export const dashboardKeys = {
 export const SECTIONS = [
   { code: '06', name: 'ฝ่าย SBP DSA' },
   { code: '08', name: 'เจ้าหน้าที่ SBP DSA' },
-  { code: '01', name: 'ฝ่ายส่งเสริมธุรกิจ SBP' },
+  { code: '01', name: 'หน่วยงานส่งเสริมธุรกิจ SBP' },   // SDD GI: เดิม "ฝ่ายส่งเสริมธุรกิจ SBP" — ขยายสิทธิ์เป็นเจ้าหน้าที่อาวุโสขึ้นไป (ยกเว้น GM) · ชื่อสถานะเอกสารของขั้นนี้คงเดิม
   { code: '02', name: 'GM ส่งเสริมธุรกิจ SBP' },
   { code: '03', name: 'ผู้บริหารสำนักบริหาร SBP (AVP)' },
 ] as const;
 
-/* สถานะเอกสาร 6 ค่า — string เต็ม verbatim ห้ามแก้แม้แต่วรรค */
+/* สถานะเอกสาร 6 ค่า — string เต็ม verbatim ห้ามแก้แม้แต่วรรค (SDD GI ยืนยันชื่อสถานะคงเดิม — เปลี่ยนเฉพาะชื่อปุ่ม/enum "ส่งหน่วยงานส่งเสริมธุรกิจ SBP") */
 export const DOC_STATUSES = [
   'รอฝ่าย SBP DSA ดำเนินการ',            // section 06
   'รอเจ้าหน้าที่ SBP DSA ดำเนินการ',      // section 08
@@ -364,7 +376,9 @@ export const STATUS_PILL: Record<DocStatus, string> = {
   'เสร็จสิ้นดำเนินการ': 'ok',
 };
 
-export const AVP_THRESHOLD = 100_000; // >100k → AVP(03) แล้วจบ · ≤100k → จบที่ GM(02) — ใช้แสดงป้ายเท่านั้น routing อยู่ BE
+/* วงเงินอนุมัติ (SDD GI 24/02/2026 — แทน AVP_THRESHOLD 100_000 เดิม) — ใช้แสดงป้ายเท่านั้น routing อยู่ BE */
+export const GM_APPROVE_LIMIT = 50_000;   // ≤50,000 → จบที่ GM(02)
+export const AVP_APPROVE_LIMIT = 300_000; // 50,001–300,000 → ผ่าน AVP(03) แล้วจบ · เกิน 300,000 รอ confirm (SDD ยังไม่ระบุเส้นทาง)
 
 /* ภาค 8 ค่า (ตัวกรองเอกสาร) — มี RC ไม่มี RW */
 export const REGIONS8 = ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS'] as const;
@@ -432,16 +446,16 @@ FE ต้อง enforce (BE ตรวจซ้ำ):
 /* ---- ห่อทุก list endpoint ---- */
 export interface PagedResponse<T> { page: number; size: number; total: number; items: T[] }
 
-/* ---- Auth ---- */
-export interface UserInfo {
-  employeeId: string; fullName: string;
-  roleCode: string;              // '00'..'10' (8 role groups)
-  roleName: string;
-  sectionCode?: '06' | '08' | '01' | '02' | '03';   // ขั้น workflow ของผู้ใช้ (ถ้ามีบทบาทพิจารณา)
-  email: string;
+/* ---- Auth (ของระบบ SBP เดิมผ่าน BFF — ตัดสินใจ 2026-08-05 · ไม่มี LoginResponse/token ฝั่ง FE) ---- */
+export interface UserProfile {                       // GET /users/current — shape ตาม auth-backend ระบบเดิม
+  employeeId: string; fullName: string; email: string;
+  group: { id: string; name: string };               // group ระบบเดิม (map 8 role SRS ตอนตั้งค่า)
+  sectionCode?: '06' | '08' | '01' | '02' | '03';    // ขั้น workflow ของผู้ใช้ (ถ้ามีบทบาทพิจารณา — SBPGI ผูกจาก group/HR)
 }
-export interface LoginResponse { accessToken: string; refreshToken: string; user: UserInfo }
-export interface MenuItem { menuCode: string; label: string; group: string; parentCode?: string }
+export interface MenuItem { url: string; label: string; sortOrder: number; parentUrl?: string }  // GET /menus (BFF)
+export interface PermissionEntry {                   // GET /groups/current-user/permissions — สิทธิ์ต่อ URL
+  url: string; canView: boolean; canManage: boolean; canExport: boolean; canOther: boolean;
+}
 
 /* ---- Tasks / Documents ---- */
 export interface TaskItem {
@@ -540,7 +554,7 @@ interface EntityField {
   type: 'text'|'email'|'select'|'textarea'|'date'|'month'|'number'|'readonly';
   options?: { value: string; label: string }[];
   required?: boolean;
-  visibleWhen?: (values: Record<string, unknown>) => boolean;  // เช่น ช่องภาคโผล่เมื่อตำแหน่ง=ฝ่ายส่งเสริมธุรกิจ SBP
+  visibleWhen?: (values: Record<string, unknown>) => boolean;  // ช่องโผล่ตามค่า field อื่น (เช่น หน่วยตาม value_type ใน system-config)
   lockedOnEdit?: boolean;                            // เช่น factor_code แก้ไม่ได้ตอน edit
 }
 interface EntityModalProps {
@@ -583,7 +597,7 @@ interface ColumnChartProps { values: number[]; labels: string[]; lastLabelOnly?:
 import { isFeatureEnabled } from '@/shared/lib/env';
 
 export interface ModuleEntry {
-  key: string;                 // = menuCode ที่ match กับ GET /me/menus
+  key: string;                 // match กับเมนู (url) จากผล GET /menus ของ BFF ระบบเดิม
   label: string; icon: string; group: string;
   route?: string;
   children?: { key: string; label: string; route: string }[];
@@ -601,30 +615,28 @@ export const MODULES: ModuleEntry[] = [
         : []),
     ] },
   { key: 'k2-report',      label: 'รายงานสรุปสถานะ',       route: '/reports/income-audit',  icon: 'statement', group: 'ระบบประกันรายได้ (SBP Mall)' },
-  { key: 'k2-operators',   label: 'กำหนดผู้ปฏิบัติงาน',    route: '/masters/operators',     icon: 'idcog',     group: 'ระบบประกันรายได้ (SBP Mall)' },
+  // k2-operators (กำหนดผู้ปฏิบัติงาน) และ k2-permissions (สิทธิ์การเข้าถึงเมนู) ตัดออก — ใช้ระบบ SBP เดิม (/setting/manage-user-rights · ตัดสินใจ 2026-08-05)
   { key: 'k2-factors',     label: 'กำหนดปัจจัยภายนอก',     route: '/masters/factors',       icon: 'db',        group: 'ระบบประกันรายได้ (SBP Mall)' },
-  { key: 'k2-permissions', label: 'สิทธิ์การเข้าถึงเมนู',   route: '/masters/permissions',   icon: 'lock',      group: 'ระบบประกันรายได้ (SBP Mall)' },
   { key: 'system-config',  label: 'ตั้งค่าระบบ (Config)',  route: '/admin/system-config',   icon: 'cog',       group: 'ระบบประกันรายได้ (SBP Mall)' },
   { key: 'job-batch',      label: 'Batch Job',             route: '/admin/batch-jobs',      icon: 'clock',     group: 'ระบบประกันรายได้ (SBP Mall)' },
   { key: 'plan-email',     label: 'Email Template',        route: '/admin/email-templates', icon: 'mail',      group: 'ระบบประกันรายได้ (SBP Mall)' },
 ];
 ```
 
-Sidebar render: group ตามลำดับ first-appearance · **filter รายการด้วย `menuCode` จากผล `GET /me/menus`** (MODULES เป็น meta เท่านั้น — เมนูที่ API ไม่ส่งมา = ไม่แสดง) · active-item: exact route match → key ตรง → same path prefix · submenu "เอกสาร" พับได้ · Breadcrumb: `Home › SBP Management System › <label ของ route>` (leaf จาก meta ของ route แทน `data-crumb`)
+Sidebar render: group ตามลำดับ first-appearance · **filter รายการด้วยเมนูจากผล `GET /menus` ของ BFF ระบบเดิม + เช็ค `canView` ต่อ URL** (MODULES เป็น meta เท่านั้น — เมนูที่ API ไม่ส่งมา = ไม่แสดง) · active-item: exact route match → key ตรง → same path prefix · submenu "เอกสาร" พับได้ · Breadcrumb: `Home › SBP Management System › <label ของ route>` (leaf จาก meta ของ route แทน `data-crumb`)
 
-## 11. Spec ต่อหน้า (ครบ 14 route)
+## 11. Spec ต่อหน้า (ครบ 11 route — ตัด /login, operators, permissions ออกแล้ว)
 
 > คอลัมน์/ป้าย verbatim เต็ม ๆ ดู REACT-TODO-CHECKLIST.md ต่อหน้า — ที่นี่สรุป endpoint + ฟอร์ม/validation + mutation + เงื่อนไข role ให้ครบพอสร้างได้
 
-### 11.1 `/login` — LoginPage
-- ฟอร์ม username/password (react-hook-form + zod: ทั้งสองช่อง required)
-- submit → `POST /auth/login` → `setSession()` → ยิง `GET /auth/me` + `GET /me/menus` → `setMenus()` → redirect ไป `state.from` หรือ `/`
-- login ผิด → แสดง `apiErrorMessage(e)` ใต้ฟอร์ม (ข้อความจาก BE ตรง ๆ) — ไม่ crash
-- หน้าตา: การ์ดกลางจอ โทน `--primary` เดียวกับแอป (ไม่มีใน prototype — ออกแบบเรียบง่าย)
+### 11.1 Auth bootstrap — **ไม่มีหน้า login ของตัวเอง** (ตัดสินใจ 2026-08-05)
+- ไม่มี LoginPage/ฟอร์ม username-password — ผู้ใช้ไม่มี session → `redirectToLogin()` พาไป `{bffUrl}/auth/login?redirectUrl=<origin>` (Cognito ผ่าน BFF ระบบเดิม) แล้วเด้งกลับพร้อม httpOnly cookie
+- หลังกลับมา `<RequireAuth>` bootstrap: `GET /users/current` + `GET /menus` + `GET /groups/current-user/permissions` → เก็บใน stores (§5.1) → เข้าแอป
+- ระหว่างโหลด/refresh แสดง `<PageSkeleton>` — 401/refresh fail → redirect BFF login (ไม่ crash)
 
 ### 11.2 `/` — HomePage (index.html)
 - โหลด: `GET /dashboard/summary` (`dashboardKeys.summary` — BE cache 5 นาที)
-- S1 Hero: `สวัสดี, คุณ<ชื่อจาก /auth/me>` + ปุ่ม `งานรอท่านดำเนินการ` (→`/documents/waiting`) · `เอกสารร้านถูกกระทบ`
+- S1 Hero: `สวัสดี, คุณ<ชื่อจาก GET /users/current>` + ปุ่ม `งานรอท่านดำเนินการ` (→`/documents/waiting`) · `เอกสารร้านถูกกระทบ`
 - S2 StatGrid 4 ใบ: เอกสารรอท่านดำเนินการ · สาขาประกันรายได้เดือนนี้ · ยอดชดเชยเดือนนี้ (ล้านบาท) · ยอดขายไม่ครบ 60 วัน
 - S3: `<ColumnChart>` "ยอดชดเชยประกันรายได้รายเดือน" + `<HBarChart>` "เอกสารค้างตามขั้นตอน Workflow" — **แถว = 5 section + เสร็จสิ้น เท่านั้น (ห้ามมี 04/05)** · ตัวเลข sync กับ stat cards
 - S4 `<ModuleGrid>` การ์ดทางลัด (card abnormal ซ่อนตาม flag) · S5 `<ActivityFeed>` + `<QuickLinks>`
@@ -634,10 +646,12 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 - mode `waiting` → `GET /tasks` (`taskKeys.list(params)`) — inbox เฉพาะสถานะของ role ตัวเอง · mode `related` → `GET /documents` (`documentKeys.list`)
 - **related: ปี พ.ศ. required** — ไม่เลือกแล้วกดค้นหา → error ใต้ช่องปี + **ไม่ยิง API** (enabled: false)
 - FilterBar: ปี* (dropdown พ.ศ.) · เดือน · สถานะ (select `DOC_STATUSES` — **ซ่อนใน waiting**) · ภาค (`REGIONS8` multi) · ประเภทร้าน (`SEARCH_STORE_TYPES` multi) · รหัส/ชื่อร้าน · เลขเอกสาร · ยอดขายลดลง% / เงินชดเชย / รอ(วัน) (RangeInput min–max) · ปุ่ม `ล้างตัวกรอง`
-- Stat cards คลิกกรองตาราง: waiting 4 ใบ (ทั้งหมด / flag60 / รอเกิน 3 วัน / วงเงิน>100,000 เข้า AVP) · related = ทั้งหมด + ต่อสถานะ
+- Stat cards คลิกกรองตาราง: waiting 4 ใบ (ทั้งหมด / flag60 / รอเกิน 3 วัน / วงเงิน >50,000 เข้า AVP — วงเงินใหม่ SDD GI) · related = ทั้งหมด + ต่อสถานะ
 - ตาราง: `ครั้งที่ | เลขที่เอกสาร | รหัสร้าน | ชื่อร้านถูกกระทบ | ภาค | ยอดขายที่ลดลง(%) | จำนวนเงินที่ชดเชย | สถานะ(pill) | รอ (วัน)` — sortable, `rowClassName` = flag-red, คลิกแถว → `/documents/:docNo`
+- **งานค้าง mode waiting (SDD GI 24/02/2026)**: ต้องมี FilterBar (ข้างบน) + **checkbox เลือกหลายเอกสาร** (`selectable` ของ `<DataTable>` + select-all) + ปุ่ม bulk action → **popup ยืนยันก่อนดำเนินการ** · เอกสารที่ 06 ลง "เห็นควรไม่ชดเชย" เดือนก่อน BE จะ auto-queue เข้า inbox เดือนถัดไปให้**เจ้าของงานคนเดิม** — FE แค่แสดงจาก `GET /tasks` ไม่คำนวณเอง
+- **สิทธิ์การมองเห็น (SDD GI)**: เจ้าหน้าที่/ฝ่าย SBP DSA เห็นเอกสารได้**ทุกสาขา** (ไม่จำกัดเฉพาะงานตน) — BE เป็นคนกรอง, FE ไม่ filter เพิ่ม · ทีมส่งเสริม/บัญชีตามสิทธิ์เดิม
 - `<Pager>` ผูก `?page&size` ↔ `PagedResponse<TaskItem>` + NoticeCard `แดง = ยอดขายไม่ครบ 60 วัน …`
-- ไม่มี mutation
+- mutation: เฉพาะ bulk action ของ waiting (ผ่าน endpoint action ตามชนิดงาน) — นอกนั้นไม่มี
 
 ### 11.4 `/documents/create` — CreateDocPage (k2-create.html)
 - S1 pill `เลขที่เอกสารถัดไป · <จาก API>` · Tabs 2 แท็บ
@@ -645,7 +659,8 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 - zod: ช่อง `*` ทั้งหมด required — message ไทยตามหน้าเดิม
 - mutation: `POST /documents` → toast เลขเอกสาร `YYYY/xxxxx` → invalidate `documentKeys.all`+`taskKeys.all` → navigate ไปเอกสาร
 - **Tab `สร้างเอกสารที่ FS`**: `รหัสร้านถูกกระทบ*` · `ชื่อร้าน` (readonly) · `เดือน/ปีที่ถูกกระทบ*` · `Period Statement (From–To)` · ปุ่ม `เคลียร์` / `ส่งสร้างที่ FS` → `POST /documents` (mode FS) + `<PendingStatementTable>` "เอกสารที่รอ SBP Statement ส่งกลับ": `รหัสร้าน | ชื่อร้านถูกกระทบ | เดือน/ปี | ส่งเข้า FS เมื่อ | สถานะ` (pill รอ/ส่งกลับแล้ว)
-- สิทธิ์: RequireRole 00/01/02
+- **เปิดเรื่องซ้ำได้ (SDD GI)**: `POST /documents` ตอบ 409 เฉพาะกรณีมีเอกสาร **active** ของร้าน+เดือนนั้น — เอกสารเดิมที่จบด้วย "หยุดชดเชย/เห็นควรไม่ชดเชย" สร้างใหม่ทับได้ (ทั้งเดือนเดียวกันและเดือนถัดไป · ไม่ต้องเปิด SR) — FE แสดง `message` จาก 409 ตรง ๆ ไม่ block ล่วงหน้า
+- สิทธิ์: role อ้างอิง 00/01/02 — guard จริงคือ `canView`/`canManage` ต่อ URL จากระบบเดิม
 
 ### 11.5 `/documents/:docNo` — DocumentPage ⭐ (k2-document.html — ซับซ้อนสุด)
 - โหลด `GET /documents/{docNo}` (`documentKeys.detail`) ครั้งเดียว → ได้ `myRoleView` + `editableSections` + `resultOptions` — **render 12 ส่วนตามธงจาก BE ไม่เดา role เอง** (แทนกลไก `data-editrole`/`data-roleonly`/`.edit-only` ของ prototype)
@@ -657,39 +672,37 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 - S7 คู่แข่ง (editable ตามธง): dropdown จาก `GET /competitors` · ป้ายที่มา ALM/USER · เพิ่ม/แก้/ลบ ผ่าน `<EntityModal>` → `PUT /documents/{docNo}`
 - S8 ปัจจัยอื่นๆ: dropdown จาก `GET /factors` · โครงเดียวกับ S7
 - S9 `<AttachmentsTable>` + ปุ่ม `แนบไฟล์` → validate ext+5MB ฝั่ง FE ก่อน → `POST /documents/{docNo}/attachments` (multipart) → invalidate detail
-- S10 `<CompensationCalcPanel>` readonly (ยอดตั้งต้น / %รวม / รวมร้านใหม่ / อำนาจอนุมัติ `≤100,000 GM · >100,000 AVP`) — **แสดงเฉพาะ view section 08 ตามธง API**
+- S10 `<CompensationCalcPanel>` readonly (ยอดตั้งต้น / %รวม / รวมร้านใหม่ / อำนาจอนุมัติ `≤50,000 GM · 50,001–300,000 AVP` — เกิน 300,000 รอ confirm · SDD GI) — **แสดงเฉพาะ view section 08 ตามธง API**
 - S11 `<CompensationHistoryTable>` (คลิก → เปิดเอกสารครั้งนั้น) · S12 `<DecisionHistoryTable>` + modal — จาก `GET /documents/{docNo}/timeline`
 - S13 `<DecisionPanel>`: radio จาก `resultOptions` + textarea `ความคิดเห็นเพิ่มเติม` + ปุ่ม `แนบรูป`/`บันทึก`/`ส่งดำเนินการ`
+  - ตัวเลือก "ส่งฝ่ายส่งเสริมธุรกิจ SBP" **เปลี่ยนชื่อเป็น "ส่งหน่วยงานส่งเสริมธุรกิจ SBP"** (SDD GI — label มาจาก `resultOptions` ของ BE, FE ห้าม hardcode ชื่อเก่า)
   - `ส่งดำเนินการ` ไม่เลือกผล → popup `MSG.NO_DECISION` — ไม่ยิง API
   - เลือกตัวเลือกที่ `commentRequired` (ไม่ชดเชย/หยุดชดเชย) แต่ comment ว่าง → popup เตือน — ไม่ยิง API
   - `บันทึก` → ไม่ validate, save draft ได้เสมอ
-  - ผ่าน → `POST /documents/{docNo}/actions` `{result, comment}` — **routing (กฎ 100k) อยู่ BE** → toast ok + invalidate detail+timeline+`taskKeys.all` → สถานะ/stepper ขยับ
+  - ผ่าน → `POST /documents/{docNo}/actions` `{result, comment}` — **routing อยู่ BE ทั้งหมด (SDD GI)**: วงเงิน GM 50,000 / AVP 300,000 (เกิน 300,000 รอ confirm) · เห็นควรไม่ชดเชยที่ขั้น 01/02 → เสร็จสิ้นทันที (ไม่ตีกลับ 06 · ขั้น 03 คงเดิม รอ confirm) · ยอดชดเชย 0: เดือน 1–3 ผู้ใช้กด "ส่งหน่วยงานส่งเสริมธุรกิจ SBP" ต่อ, เดือนที่ 4 กด "หยุดชดเชยรายได้" (BE ช่วย validate) → toast ok + invalidate detail+timeline+`taskKeys.all` → สถานะ/stepper ขยับ
 
 ### 11.6 `/reports/income-audit` — ReportPage (k2-report.html, SRS 3.1.7 + SDD v7.5)
-- ฟอร์ม `<ReportSearchForm>`: ปี* · เดือน/ปีเริ่ม–ถึง (month) · รหัสร้านกระทบ (+`StorePickerModal` → `GET /stores/search`) · ชื่อร้าน (readonly) · รหัสร้านเปิดใหม่ · สถานะ (select `DOC_STATUSES`) · **radio ผลการพิจารณา\* (บังคับ): `ประกันรายได้` / `ไม่ประกันรายได้`** · ภาค (checkbox `REPORT_REGIONS13`) · ประเภทร้าน (checkbox) · Period Statement From–To · ปุ่ม `เคลียร์` / `Preview Report`
+- ฟอร์ม `<ReportSearchForm>`: ปี* · เดือน/ปีเริ่ม–ถึง (month) · รหัสร้านกระทบ (+`StorePickerModal` → `GET /stores/search`) · ชื่อร้าน (readonly) · รหัสร้านเปิดใหม่ · สถานะ (select `DOC_STATUSES`) · **radio ผลการพิจารณา\* (บังคับ): `ประกันรายได้` / `ไม่ประกันรายได้`** · ภาค (checkbox `REPORT_REGIONS13` — **ภาคใหม่ที่เพิ่มในระบบต้องแสดงเป็น checkbox อัตโนมัติ**: render จาก lookup API ไม่ hardcode 13 ค่าใน UI · SDD GI/v7.5) · ประเภทร้าน (checkbox) · Period Statement From–To · ปุ่ม `เคลียร์` / `Preview Report`
 - ไม่เลือกปี → error + ไม่ยิง API (กฎเดียวกับ related)
-- `Preview Report` → `GET /reports/status-summary` (`reportKeys.statusSummary`) → `<SummaryLine>` (พบ N รายการ / ยอดชดเชยรวม / วงเงิน>100,000 / แถวแดง) + `<HBarChart>` ×2 (ตามสถานะ 6 ค่า / ยอดเงินตามภาค)
+- **`periodStatement` บังคับเมื่อสถานะ = `เสร็จสิ้นดำเนินการ`** (SDD GI) — zod refine: status เป็นเสร็จสิ้นฯ แต่ Period Statement ว่าง → error ใต้ช่อง + ไม่ยิง API
+- `Preview Report` → `GET /reports/status-summary` (`reportKeys.statusSummary`) → `<SummaryLine>` (พบ N รายการ / ยอดชดเชยรวม / วงเงิน >50,000 เข้า AVP / แถวแดง) + `<HBarChart>` ×2 (ตามสถานะ 6 ค่า / ยอดเงินตามภาค)
 - ตารางผล **19 คอลัมน์** (scroll ใน `.table-wrap`) ตาม checklist · flag-red · pill สถานะ · เงินคั่นหลักพัน · วันที่ พ.ศ.
 - ปุ่ม `Export CSV to Batch` → `GET /reports/status-summary/export` (query เดียวกับ preview) → ดาวน์โหลด CSV (UTF-8 BOM เปิด Excel ไทยไม่เพี้ยน)
 
-### 11.7 `/masters/operators` — OperatorsPage (k2-operators.html, SRS 3.1.8)
-- โหลด `GET /operators` (`masterKeys.operators`) · ตาราง `☑ | ชื่อผู้ปฏิบัติงาน | E-Mail | ชื่อตำแหน่ง | ภาคที่รับผิดชอบ | Action(view/edit/del)`
-- `<EntityModal>` schema: ชื่อ / อีเมล (type email) / ชื่อตำแหน่ง (select จาก `GET /workflow-sections`) / ภาค (select `REGIONS8` + `-`, `visibleWhen: ตำแหน่ง === 'ฝ่ายส่งเสริมธุรกิจ SBP'`) / เหตุผล (requireReason)
-- `<EmployeeSearchModal>`: ปุ่ม `ค้นหาพนักงาน (Pop Up)` → `GET /employees/search?q=` → เลือก → เติมฟอร์ม + toast
-- mutations: `POST /operators` · `PUT/DELETE /operators/{id}` (reason บังคับ) → invalidate `masterKeys.operators` + `masterKeys.auditLogs('operator_assignments')`
-- `<AuditHistoryTable>` ผูก `GET /audit-logs?table=operator_assignments` + `<SrsConditionsCard>`
+### 11.7 ~~`/masters/operators` — OperatorsPage~~ **ตัดออก — ใช้ระบบ SBP เดิม (ตัดสินใจ 2026-08-05)**
+- ไม่พอร์ต `k2-operators.html` (SRS 3.1.8) — กำหนดผู้ปฏิบัติงานทำผ่าน group + scope ของ auth-backend ระบบเดิม (หน้า `/setting/manage-user-rights`) · ผูกผู้อนุมัติรายเอกสารด้วย prepared approvers ของ workflow engine เดิม (`@srm/glb-workflow`)
+- API ที่เคยอ้าง (`/operators*` · `GET /employees/search`) ถูกตัดจาก api.md แล้ว — ค้นพนักงานใช้ employee backend เดิม
+- ข้อจำกัดจาก HR Connect (SDD GI): ผู้รักษาการ (acting) ตั้งเป็นผู้อนุมัติไม่ได้ (ระบบยึดตำแหน่งจริง) · พนักงานลาออกยังต้องเปิด SR แก้ชื่อผู้ดำเนินการ
 
 ### 11.8 `/masters/factors` — FactorsPage (k2-factors.html, SRS 3.1.9)
 - `GET /factors` · ตาราง `☑ | รหัสปัจจัย | ชื่อปัจจัย | รายละเอียดเพิ่มเติม | Action` + toolbar ค้นหา/`เคลียร์`
 - schema: `factor_code` (lockedOnEdit) / `factor_name` / `factor_remark` / เหตุผล — **แก้ได้เฉพาะชื่อ+รายละเอียด**
 - รหัสซ้ำ → BE ตอบ error → แสดง `message` ตรง ๆ · mutations CRUD `/factors` `/factors/{code}` → invalidate factors + auditLogs('external_factors')
 
-### 11.9 `/masters/permissions` — PermissionsPage (k2-permissions.html, SRS 3.1.1)
-- โหลด: `GET /roles` + `GET /menu-permissions` (`masterKeys.roles`/`menuPermissions`)
-- `<RolesTable>`: `Code | Role | คำอธิบาย | Action` — 8 role (00 Default … 10 UserViewer) · role `is_system` → ปุ่มลบ/แก้รหัส **disabled**
-- `<PermissionMatrix>` ×2 (เมนู main / เมนู master — master ตัด role 00, off = `✗`): cell toggle `✓/–` local state, cell dirty = amber + badge นับ dirty · ปุ่ม `บันทึกสิทธิ์` → `PUT /menu-permissions/{menuCode}` ต่อเมนูที่ dirty (optimistic update ได้เฉพาะจุดนี้)
-- CRUD role `/roles/{roleCode}` · CRUD เมนู `POST/PUT/DELETE /menus/{menuCode}` (ลบ = confirm cascade สิทธิ์ทุก role) · เพิ่ม/ลบ role → คอลัมน์ matrix sync
-- `<AuditLogTable>` + `<AcceptanceCriteriaCard>` (เฉพาะ Role 01/02 จัดการได้)
+### 11.9 ~~`/masters/permissions` — PermissionsPage~~ **ตัดออก — ใช้ระบบ SBP เดิม (ตัดสินใจ 2026-08-05)**
+- ไม่พอร์ต `k2-permissions.html` (SRS 3.1.1) — สิทธิ์เมนู/กลุ่มผู้ใช้จัดการผ่านหน้า `/setting/manage-user-rights` ของ FE เดิม (auth-backend: `/groups` · `/groups/{id}/permissions` · template — `canView/canManage/canExport/canOther` ต่อ URL)
+- 8 role ตาม SRS (00 Default … 10 UserViewer) map เป็น **group** ของระบบเดิมตอนตั้งค่า — ไม่มีตาราง/หน้า RBAC ใน SBPGI
+- ฝั่ง SBPGI FE เหลือแค่**ผู้บริโภคสิทธิ์**: `GET /menus` + `GET /groups/current-user/permissions` (ดู §5)
 
 ### 11.10 `/admin/system-config` — SystemConfigPage (system-config.html)
 - `GET /configs` (`configKeys.all`) · `<DonutChart>` สัดส่วนตามหมวด · ตาราง `☑ | Config Key | หมวดหมู่ | ค่า (Value) | ชนิดข้อมูล | หน่วย | คำอธิบาย | แก้ไขได้ | Action` + filter หมวด + ค้นหา
@@ -718,7 +731,7 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 
 ## 12. Best practices สากลที่บังคับใช้
 
-- **Testing pyramid**: unit (util/business rule — เยอะสุด) → component (Testing Library + **msw** mock ระดับ network — ห้าม mock axios ตรง ๆ) → e2e smoke (Playwright 1 เส้น: login → inbox → เปิดเอกสาร → ส่งดำเนินการ → toast)
+- **Testing pyramid**: unit (util/business rule — เยอะสุด) → component (Testing Library + **msw** mock ระดับ network — ห้าม mock axios ตรง ๆ) → e2e smoke (Playwright 1 เส้น: จำลอง session BFF (cookie/mock — ไม่มีหน้า login ของตัวเอง) → inbox → เปิดเอกสาร → ส่งดำเนินการ → toast)
 - **ErrorBoundary** ระดับ route + fallback ภาษาไทย · query error แสดงใน `<NoticeCard>` ไม่ crash ทั้งแอป
 - **`lazy()` + Suspense ต่อ page** (code-splitting ต่อ route) + `<PageSkeleton>` ระหว่างโหลด
 - **Accessibility**: label ทุก input · modal focus-trap + Esc ปิด · `aria-label` ปุ่มไอคอน · contrast ตาม token เดิม
@@ -730,15 +743,15 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 
 1. ห้ามเพิ่ม UI library / chart library / Tailwind
 2. ห้าม paraphrase ข้อความไทยใด ๆ จาก prototype/SRS
-3. ห้าม hardcode เมนูต่อ role ฝั่ง FE (ใช้ `/me/menus`)
-4. ห้ามใส่ logic routing workflow (กฎ 100k, ขั้นถัดไป) ใน FE — หน้าที่ BE
+3. ห้าม hardcode เมนู/สิทธิ์ต่อ role ฝั่ง FE (ใช้ `GET /menus` + `GET /groups/current-user/permissions` ของระบบเดิมผ่าน BFF)
+4. ห้ามใส่ logic routing workflow (กฎวงเงิน GM 50,000 / AVP 300,000, เห็นควรไม่ชดเชยจบทันที, ขั้นถัดไป) ใน FE — หน้าที่ BE
 5. ห้ามอ้าง section 04/05 หรือสถานะบัญชีในทุกที่ (SDD v7.5 ตัดแล้ว)
 6. วันที่แสดงผลเป็น พ.ศ. ผ่าน `formatDateThai()` เท่านั้น — ห้ามแปลงเองกระจายตามหน้า
 7. ห้าม import ข้าม feature · ห้าม barrel index.ts
 
 ## 14. Definition of Done (ทั้งโปรเจกต์ FE)
 
-1. ครบ 14 route ใช้งานได้จริงกับ BE (`plan-be.md`) ผ่าน `docker compose up` — เดิน workflow ครบทั้งเคส ≤100k และ >100k
+1. ครบ 11 route ใช้งานได้จริงกับ BE (`plan-be.md`) ผ่าน `docker compose up` — เดิน workflow ครบทั้งเคส ≤50,000 (จบที่ GM) และ 50,001–300,000 (ผ่าน AVP แล้วจบ) + เคสเห็นควรไม่ชดเชยที่ 01/02 จบทันที
 2. ทุกหน้าเทียบตากับหน้า prototype แล้วตรง: layout, สี pill/chip, ตาราง, ข้อความ (script grep เทียบ string สำคัญผ่าน)
 3. validation ครบ: popup verbatim · %รวม 100% · ปี required · ไฟล์ ≤5MB+ext · comment required เมื่อไม่ชดเชย
 4. CI เขียว (lint/tsc/test/build) · vitest ครอบ constants/format/DecisionPanel · Playwright e2e ผ่าน

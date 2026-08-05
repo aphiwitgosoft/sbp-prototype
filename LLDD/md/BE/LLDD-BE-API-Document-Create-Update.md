@@ -2,6 +2,8 @@
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
+> ปรับตาม SDD GI 24/02/2026 — duplicate guard 409 เฉพาะเอกสาร active: เอกสารเดิมที่จบด้วย "หยุดชดเชย/เห็นควรไม่ชดเชย" เปิดเรื่องใหม่ทับได้ ทั้งเดือนเดียวกันและเดือนถัดไป (ยกเลิกการเปิด SR)
+
 ## 1. Overview
 
 | รายการ | รายละเอียด |
@@ -51,7 +53,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 | Lock strategy | lock row sequence ด้วย `SELECT ... FOR UPDATE` หรือ database sequence ต่อปี | ห้ามอ่าน max(running_no)+1 แบบไม่มี lock |
 | Transaction boundary | generate docNo, insert compensation_documents, insert first workflow task และ audit ใน transaction เดียว | ถ้าสร้าง task ไม่สำเร็จต้อง rollback ทั้งชุด |
 | Gap policy | เลขที่ถูก commit แล้วห้าม reuse; rollback ก่อน commit ไม่ควรเผยแพร่ docNo ให้ client | ถ้าใช้ native sequence ที่เกิด gap ได้ต้องบันทึก policy นี้ใน runbook |
-| Duplicate guard | business key ซ้ำต้องคืน 409 ก่อน generate docNo ใหม่เมื่อเป็นไปได้ | business key อย่างน้อย impactedStoreCode+impactMonth+newStoreCode+roundNo+source |
+| Duplicate guard | business key ซ้ำกับเอกสาร **active (ยังไม่จบ)** ต้องคืน 409 ก่อน generate docNo ใหม่เมื่อเป็นไปได้ — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย ไม่ block การเปิดใหม่ (SDD GI) | business key อย่างน้อย impactedStoreCode+impactMonth+newStoreCode+roundNo+source; unique constraint ฝั่ง DB ต้องเป็น partial unique เฉพาะเอกสาร active หรือรวม roundNo ที่ increment ต่อรอบเปิดใหม่ |
 | Idempotency | requestId ใช้ trace/retry แต่ไม่แทน duplicate business key | ถ้า retry request เดิมหลัง success ให้คืน docNo เดิมเมื่อจับคู่ requestId ได้ |
 
 ### 5.2 Create Document Transaction Flow
@@ -59,7 +61,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 | Step | Service behavior | Rollback / error rule |
 | --- | --- | --- |
 | 1. Validate input | ตรวจ required, format, store exists, period, source, roundNo | invalid คืน 400/422 ก่อน lock sequence |
-| 2. Check duplicate | query business key บน compensation_documents | พบเอกสารเดิมคืน 409 DUPLICATE_DOCUMENT พร้อม docNo เดิมถ้าอนุญาตให้แสดง |
+| 2. Check duplicate | query business key บน compensation_documents เฉพาะเอกสาร active (ยังไม่ถึงสถานะเสร็จสิ้น) — เอกสารที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดใหม่ได้ (SDD GI) | พบเอกสาร active เดิมคืน 409 DUPLICATE_DOCUMENT พร้อม docNo เดิมถ้าอนุญาตให้แสดง |
 | 3. Start transaction | เปิด transaction และ lock sequence row ของปี พ.ศ. | lock timeout คืน 409/503 ตามมาตรฐาน platform |
 | 4. Generate docNo | เพิ่ม running_no และประกอบ doc_no | ยังไม่ส่ง response จนกว่า commit สำเร็จ |
 | 5. Insert document | insert compensation_documents และ child rows เริ่มต้น | fail ต้อง rollback sequence/document |
@@ -253,7 +255,7 @@ Update document partial sections
 
 ## 10. Acceptance Criteria
 
-- duplicate business key returns 409
+- duplicate business key (active document เท่านั้น) returns 409; reopen หลังจบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย ต้องสร้างได้ (SDD GI)
 - docNo format YYYY/xxxxx
 - compensatePercent sum=100
 - requestId trace does not replace business duplicate guard

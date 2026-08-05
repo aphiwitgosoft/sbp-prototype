@@ -2,6 +2,8 @@
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
+> ปรับตาม SDD GI 24/02/2026 (วงเงิน GM 50,000 / AVP 300,000 · เปิดเรื่องซ้ำ/งานค้าง) + การตัดสินใจใช้ระบบสิทธิ์เดิม 2026-08-05 (ตัดกลุ่ม Auth & RBAC/ผู้ปฏิบัติงาน — เหลือ 44 endpoints 9 กลุ่ม)
+
 ## 1. Purpose
 
 เอกสารนี้เป็น LLDD API ระดับรวมของระบบ SBPGI/SBP Mall ใช้เป็น master reference สำหรับ REST contract, auth, error, endpoint catalog, implementation pattern และ test scope ของ BE API LLDD รายกลุ่ม
@@ -11,9 +13,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Item | Detail |
 | --- | --- |
 | API base | /api/v1 |
-| Endpoint count | 62 endpoints, 10 groups |
+| Endpoint count | 44 endpoints, 9 groups (เดิม 62 endpoints 10 groups — ตัดกลุ่ม Auth 4 เส้น และเส้นผู้ปฏิบัติงาน/roles/menus/สิทธิ์เมนู 14 เส้น ไปใช้ระบบ SBP เดิม · ตัดสินใจ 2026-08-05) |
 | Detailed implementation docs | LLDD-BE-API-Common-Contracts, LLDD-BE-API-Dashboard-Summary, LLDD-BE-API-Document-List-Search, LLDD-BE-API-Document-Create-Update, LLDD-BE-API-Document-Detail-Aggregate, LLDD-BE-API-Document-Workflow-Actions, LLDD-BE-API-Workflow-Instances, LLDD-BE-API-Attachment-Sales-Timeline, LLDD-BE-API-Lookup-RBAC-Email, LLDD-BE-API-Report-Master-Config |
-| Out of scope | Login/Auth implementation ของ platform, SAP/SR process ภายนอก, abnormal-stores endpoints ที่ยัง comment รอตัดสินใจ |
+| Out of scope | Auth/RBAC/ผู้ปฏิบัติงานทั้งหมด (ใช้ระบบ SBP เดิม: Cognito + BFF + auth-backend/ABS — SBPGI รับ user context จาก header `x-api-key` + `x-user-id`/`x-user-group-id`/`x-user-permissions`), SAP/SR process ภายนอก, abnormal-stores endpoints ที่ยัง comment รอตัดสินใจ |
 
 ## 2.1 Input / Progress / Output Contract
 
@@ -28,7 +30,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Rule | Required behavior | Developer note |
 | --- | --- | --- |
 | Transport | JSON UTF-8 ทุก endpoint; multipart เฉพาะ attachment upload | FE shared API client เป็นจุดเดียวที่ตั้ง base URL/header |
-| Auth | User endpoint ใช้ Bearer JWT; internal workflow/interface ใช้ service token/API key | BE middleware ต้องแยก user token กับ service token ชัดเจน |
+| Auth | ผู้ใช้ login ผ่าน BFF ระบบเดิม (Cognito · token ใน httpOnly cookie ฝั่ง BFF) — SBPGI ตรวจ `x-api-key` + อ่าน user context จาก header `x-user-id`/`x-user-group-id`/`x-user-permissions` ที่ BFF แนบมา; internal workflow/interface ใช้ service token/API key | BE middleware ต้องแยก user context header กับ service token ชัดเจน; FE ไม่แตะ token |
 | Status convention | API ส่ง `statusCode`; FE resolve label จาก `/document-statuses` | ห้ามส่ง label ไทยแทน code ใน field ที่กำหนดเป็น canonical code |
 | Role namespace | `roleCode` = RBAC role, `sectionCode` = workflow section, `roleProfileCode` = P-06/P-08/P-01/P-02/P-03 | ป้องกันการชนความหมายของเลข 01/02/03/06/08 |
 | Pagination | GET list ใช้ `page,size` และคืน `{page,size,total,items}` | size max 100 ตาม common contract |
@@ -39,10 +41,10 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 | Group | Count | Endpoint pattern | Implementation focus |
 | --- | --- | --- | --- |
-| Auth & สิทธิ์ผู้ใช้ (platform reference) | 4 | /api/v1/auth/login, /api/v1/auth/refresh, /api/v1/auth/me, /api/v1/me/menus | K2 · SRS 3.1.1 |
+| ~~Auth & สิทธิ์ผู้ใช้~~ — ตัดออก ใช้ระบบ SBP เดิม (2026-08-05) | 0 (เดิม 4) | ~~/api/v1/auth/login, /api/v1/auth/refresh, /api/v1/auth/me, /api/v1/me/menus~~ → BFF ระบบเดิม: login redirect (Cognito·cookie) · /auth/refresh · /auth/profile + /users/current · /menus | K2 · SRS 3.1.1 — auth-backend เดิม |
 | งาน & เอกสารประกันรายได้ | 10 | /api/v1/tasks, /api/v1/documents, /api/v1/documents/{docNo}, /api/v1/documents ... | K2 · SRS 3.1.2 / 3.1.3 / 3.1.6 |
 | ข้อมูลอ้างอิง (Lookup / Reference) | 4 | /api/v1/stores/search, /api/v1/competitors, /api/v1/document-statuses, /api/v1/workflow-sections | K2 + FGI/FCS · master สำหรับ dropdown |
-| Master Data | 19 | /api/v1/operators, /api/v1/operators, /api/v1/operators/{id}, /api/v1/operators/{id} ... | K2 · SRS 3.1.8 / 3.1.9 |
+| Master Data | 5 (เดิม 19 — ตัดเส้น operators/employees/menu-permissions/roles/menus 14 เส้น ใช้ระบบ SBP เดิม) | /api/v1/factors, /api/v1/factors/{code}, /api/v1/audit-logs | K2 · SRS 3.1.9 (3.1.8 ใช้ระบบ SBP เดิม) |
 | System Config (Global) | 5 | /api/v1/configs, /api/v1/configs/{key}, /api/v1/configs, /api/v1/configs/{key} ... | ใหม่ · system_configs |
 | Email Template (Notification) | 5 | /api/v1/email-templates, /api/v1/email-templates/{code}, /api/v1/email-templates/{code}, /api/v1/email-templates/{code}/reset ... | ใหม่ · email_templates |
 | รายงาน | 2 | /api/v1/reports/status-summary, /api/v1/reports/status-summary/export | K2 · SRS 3.1.7 |
@@ -64,16 +66,18 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 ## 6. Detailed Endpoint Specification
 
-### 6.1 Auth & สิทธิ์ผู้ใช้ (platform reference)
+### 6.1 Auth & สิทธิ์ผู้ใช้ — ตัดออก · ใช้ระบบ SBP เดิม (auth-backend)
+
+> **ตัดออกทั้งกลุ่ม (ตัดสินใจ 2026-08-05)** — ระบบ SBP ปัจจุบันมี auth ครบแล้ว: FE login ผ่าน BFF (Cognito · httpOnly cookie) · refresh ด้วย `/auth/refresh` ของ BFF · ข้อมูลผู้ใช้จาก `/auth/profile` + `/users/current` · เมนู/สิทธิ์ต่อ URL จาก `/menus` + `/groups/current-user/permissions` ของ auth-backend (ABS) · SBPGI รับ user context จาก header `x-api-key` + `x-user-id`/`x-user-group-id`/`x-user-permissions` — สเปกด้านล่างเก็บไว้เป็น reference เดิมเท่านั้น ห้ามนำไป implement
 
 | Endpoint | Method | Path | Summary |
 | --- | --- | --- | --- |
-| 1 | POST | /api/v1/auth/login | เข้าสู่ระบบด้วยบัญชีพนักงาน แลก JWT พร้อม role และ section สำหรับใช้ทุกเส้นถัดไป |
-| 2 | POST | /api/v1/auth/refresh | ต่ออายุ accessToken โดยไม่ต้อง login ใหม่ |
-| 3 | GET | /api/v1/auth/me | ข้อมูลผู้ใช้ปัจจุบันจาก JWT — FE ใช้แสดงชื่อ/role มุมขวาบน |
-| 4 | GET | /api/v1/me/menus | เมนูที่ role ของผู้ใช้เข้าถึงได้ — FE ใช้สร้าง sidebar (แทนตารางสิทธิ์ 8 role ในหน้าจอ 3.1.1) |
+| 1 | POST | ~~/api/v1/auth/login~~ | เข้าสู่ระบบด้วยบัญชีพนักงาน แลก JWT พร้อม role และ section สำหรับใช้ทุกเส้นถัดไป — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 2 | POST | ~~/api/v1/auth/refresh~~ | ต่ออายุ accessToken โดยไม่ต้อง login ใหม่ — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 3 | GET | ~~/api/v1/auth/me~~ | ข้อมูลผู้ใช้ปัจจุบันจาก JWT — FE ใช้แสดงชื่อ/role มุมขวาบน — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 4 | GET | ~~/api/v1/me/menus~~ | เมนูที่ role ของผู้ใช้เข้าถึงได้ — FE ใช้สร้าง sidebar (แทนตารางสิทธิ์ 8 role ในหน้าจอ 3.1.1) — **ตัดออก ใช้ระบบ SBP เดิม** |
 
-#### 6.1.1 POST /api/v1/auth/login
+#### 6.1.1 POST /api/v1/auth/login — ตัดออก (ใช้ระบบ SBP เดิม)
 
 เข้าสู่ระบบด้วยบัญชีพนักงาน แลก JWT พร้อม role และ section สำหรับใช้ทุกเส้นถัดไป
 
@@ -138,7 +142,7 @@ WHERE u.employee_id = :employeeIdFromPlatform AND u.is_active = TRUE AND e.is_ac
 -- ออก JWT (access 30 นาที / refresh 8 ชม.) หลัง map local authorization สำเร็จ
 ```
 
-#### 6.1.2 POST /api/v1/auth/refresh
+#### 6.1.2 POST /api/v1/auth/refresh — ตัดออก (ใช้ระบบ SBP เดิม)
 
 ต่ออายุ accessToken โดยไม่ต้อง login ใหม่
 
@@ -188,7 +192,7 @@ WHERE employee_id = :empId AND is_active = TRUE;
 -- refreshToken ยังไม่ถูกเพิกถอน → ออก accessToken ใหม่
 ```
 
-#### 6.1.3 GET /api/v1/auth/me
+#### 6.1.3 GET /api/v1/auth/me — ตัดออก (ใช้ระบบ SBP เดิม)
 
 ข้อมูลผู้ใช้ปัจจุบันจาก JWT — FE ใช้แสดงชื่อ/role มุมขวาบน
 
@@ -239,7 +243,7 @@ FROM user_accounts u JOIN employees e ON e.employee_id = u.employee_id
 WHERE u.employee_id = :empIdFromJwt AND u.is_active = TRUE;
 ```
 
-#### 6.1.4 GET /api/v1/me/menus
+#### 6.1.4 GET /api/v1/me/menus — ตัดออก (ใช้ระบบ SBP เดิม)
 
 เมนูที่ role ของผู้ใช้เข้าถึงได้ — FE ใช้สร้าง sidebar (แทนตารางสิทธิ์ 8 role ในหน้าจอ 3.1.1)
 
@@ -302,7 +306,7 @@ ORDER BY m.menu_group, m.sort_order;
 | 3 | GET | /api/v1/documents/{docNo} | เอกสารฉบับเต็ม 12 ส่วนย่อย (k2-document.html) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน |
 | 4 | POST | /api/v1/documents | สร้างเอกสารใหม่นอกเงื่อนไข หรือสร้างเอกสารที่ FS (สองแท็บของ k2-create.html) |
 | 5 | PUT | /api/v1/documents/{docNo} | บันทึกแก้ไขส่วนย่อยของเอกสาร (ร้านใหม่ / คู่แข่ง / ปัจจัย) ตามสิทธิ์ของขั้นที่ถืออยู่ |
-| 6 | POST | /api/v1/documents/{docNo}/actions | ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · กฎวงเงิน 100,000 ใช้ทั้งกรณีชดเชยและไม่ชดเชย |
+| 6 | POST | /api/v1/documents/{docNo}/actions | ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · วงเงิน GM 50,000 / AVP 300,000 (SDD GI 24/02/2026) |
 | 7 | GET | /api/v1/documents/{docNo}/timeline | ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร) |
 | 8 | POST | /api/v1/documents/{docNo}/attachments | แนบไฟล์เข้าเอกสาร — จำกัด 5MB ต่อไฟล์ตาม SRS |
 | 9 | GET | /api/v1/documents/{docNo}/attachments/{attachId}/download | ดาวน์โหลดไฟล์แนบผ่าน BE stream โดยตรวจสิทธิ์เอกสารและ scanStatus=CLEAN ก่อนส่ง binary |
@@ -323,9 +327,10 @@ ORDER BY m.menu_group, m.sort_order;
 
 | Step | Flow |
 | --- | --- |
-| 1 | อ่าน sectionCode ของผู้ใช้จาก JWT |
-| 2 | query workflow_tasks สถานะ OPEN ของ section นั้น |
+| 1 | อ่าน sectionCode ของผู้ใช้จาก user context header (BFF ระบบเดิม) |
+| 2 | query workflow_tasks สถานะ OPEN ของ section นั้น — เจ้าหน้าที่/ฝ่าย SBP DSA เห็นเอกสารได้ทุกสาขา ไม่จำกัดเฉพาะงานตน (SDD GI) · ทีมส่งเสริม/บัญชีตามสิทธิ์เดิม |
 | 3 | join compensation_documents + stores + fgi_impact_sales_summaries คืน 9 คอลัมน์ตามหน้าจอและ salesDataDays สำหรับ red flag |
+| 4 | รองรับ filter เอกสาร + checkbox เลือกหลายเอกสารเพื่อ bulk action พร้อม popup ยืนยัน (หน้างานค้าง Step 1.0 To-Be · SDD GI) · เคสต่อเนื่อง (06 เห็นควรไม่ชดเชย) ระบบ auto-queue เข้าเดือนถัดไปพร้อม assignee คนเดิม |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
@@ -541,7 +546,7 @@ SELECT * FROM consideration_logs           WHERE doc_no = :docNo ORDER BY action
 
 | Step | Flow |
 | --- | --- |
-| 1 | ตรวจซ้ำ: ร้าน + เดือนที่ถูกกระทบ ต้องยังไม่มีเอกสาร |
+| 1 | ตรวจซ้ำ: 409 เฉพาะกรณีมีเอกสาร **active (ยังไม่จบ)** ของร้าน+เดือนนั้น — เอกสารเดิมที่จบด้วย "หยุดชดเชย/เห็นควรไม่ชดเชย" เปิดเรื่องใหม่ทับได้ ทั้งเดือนเดียวกันและเดือนถัดไป (SDD GI — ยกเลิกการเปิด SR) |
 | 2 | ออกเลขที่ YYYY/xxxxx (running ต่อปี เริ่ม 00001 — กติกา SRS) |
 | 3 | insert compensation_documents สถานะเริ่มต้น + เปิด workflow_instances / workflow_tasks แรก (Section 06) |
 | 4 | ส่งอีเมลตาม status_email_rules |
@@ -573,15 +578,16 @@ SELECT * FROM consideration_logs           WHERE doc_no = :docNo ORDER BY action
 
 | Error / Condition |
 | --- |
-| 409 — ร้านนี้ในเดือนนี้มีเอกสารอยู่แล้ว |
+| 409 — ร้านนี้ในเดือนนี้มีเอกสาร active อยู่แล้ว (เอกสารที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย ไม่นับ — SDD GI) |
 | 422 — ข้อมูลบังคับไม่ครบ |
 
 SQL Reference
 
 ```sql
--- กันซ้ำ: เอกสารจาก impact_process เดียวกันต้องมีได้รายการเดียว
+-- กันซ้ำเฉพาะเอกสาร active (SDD GI): เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดใหม่ทับได้
 SELECT 1 FROM compensation_documents
-WHERE impact_process_id = :impactProcessId;
+WHERE impact_process_id = :impactProcessId
+  AND status_code <> :statusDone;   -- 99 = เสร็จสิ้นดำเนินการ (จบด้วยไม่ชดเชย/หยุดชดเชยไม่ block การเปิดใหม่)
 
 -- ออกเลขที่ YYYY/xxxxx (running ต่อปี) แล้วสร้างเอกสาร + เปิด workflow งานแรก (Section 06)
 INSERT INTO compensation_documents (doc_no, be_year, running_no, impact_process_id, impacted_store_code, impact_month, status_code, current_section_code, created_by)
@@ -651,7 +657,7 @@ UPDATE document_external_factors SET date_from = :from, date_to = :to WHERE id =
 
 #### 6.2.6 POST /api/v1/documents/{docNo}/actions
 
-ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · กฎวงเงิน 100,000 ใช้ทั้งกรณีชดเชยและไม่ชดเชย
+ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · วงเงินอนุมัติ GM 50,000 / AVP 300,000 บาทต่อรายการ (SDD GI 24/02/2026 — แทนเกณฑ์เดียว 100,000 เดิม)
 
 | Item | Detail |
 | --- | --- |
@@ -666,8 +672,8 @@ UPDATE document_external_factors SET date_from = :from, date_to = :to WHERE id =
 | --- | --- |
 | 1 | ตรวจว่าผู้ใช้เป็นเจ้าของ workflow_tasks ขั้นปัจจุบัน |
 | 2 | validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว |
-| 3 | คำนวณขั้นถัดไปตามตารางเส้นทาง (ตารางเส้นทาง workflow): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 02 ชดเชย/ไม่ชดเชย > 100,000 → 03 → จบ · ชดเชย ≤ 100,000 → เสร็จสิ้น (จบที่ GM) · ไม่ชดเชย ≤ 100,000 → กลับ 06 · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ |
-| 4 | insert consideration_logs + ปิด task เดิม เปิด task ใหม่ |
+| 3 | คำนวณขั้นถัดไปตามตารางเส้นทาง (SDD GI 24/02/2026): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 01/02 ไม่ชดเชย → **เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น — ไม่ตีกลับเป็นทอด ๆ)** · 02 ชดเชย ≤ 50,000 → เสร็จสิ้น (จบที่ GM) · 50,001–300,000 → 03 (AVP) → จบ · เกิน 300,000 รอ confirm จาก SDD · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ |
+| 4 | insert consideration_logs + ปิด task เดิม เปิด task ใหม่ · กรณี 06 เห็นควรไม่ชดเชย: เดือนถัดไประบบ auto-queue งานเข้าหน้างานค้างพร้อม assignee คนเดิม (SDD GI) |
 | 5 | ส่งอีเมล TO/CC ตาม status_email_rules |
 
 | DB Object | R/W | Usage |
@@ -683,7 +689,7 @@ UPDATE document_external_factors SET date_from = :from, date_to = :to WHERE id =
 {
   "result": "เห็นควรชดเชย",
   // 6-enum verbatim: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้
-  // / ส่งฝ่ายส่งเสริมธุรกิจ SBP / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ
+  // / ส่งหน่วยงานส่งเสริมธุรกิจ SBP / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ
   "comment": "เห็นควรชดเชยตามหลักเกณฑ์"
 }
 ```
@@ -708,14 +714,14 @@ SQL Reference
 
 ```sql
 -- ตรวจเป็นเจ้าของงานขั้นปัจจุบัน + ต้องเลือก result แล้ว (ไม่งั้น 422)
--- result รับ 6-enum verbatim เท่านั้น: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / ส่งฝ่ายส่งเสริมธุรกิจ SBP / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ
+-- result รับ 6-enum verbatim เท่านั้น: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / ส่งหน่วยงานส่งเสริมธุรกิจ SBP / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ
 UPDATE workflow_tasks SET task_status = :statusClosed, action_result = :result, closed_at = :now
 WHERE doc_no = :docNo AND section_code = :curSection AND task_status = :statusOpen;
 
 INSERT INTO consideration_logs (doc_no, section_code, consider_by, result, detail, action_datetime)
 VALUES (:docNo, :curSection, :empId, :result, :comment, :now);
 
--- คำนวณขั้นถัดไป (กฎวงเงิน 100,000) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock
+-- คำนวณขั้นถัดไป (วงเงิน GM 50,000 / AVP 300,000 · SDD GI) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock
 UPDATE compensation_documents SET status_code = :nextStatus, current_section_code = :nextSection, version_no = version_no + 1, updated_at = :now, updated_by = :empId
 WHERE doc_no = :docNo AND version_no = :versionNo;
 INSERT INTO workflow_tasks (instance_id, doc_no, section_code, task_status)
@@ -1165,29 +1171,31 @@ ORDER BY sort_order;
 
 ### 6.4 Master Data
 
+> **ตัดสินใจ 2026-08-05:** เส้นผู้ปฏิบัติงาน (`/operators*` · `/employees/search`) และสิทธิ์เมนู (`/roles*` · `/menus*` · `/menu-permissions*`) รวม 14 เส้น **ตัดออก — ใช้ระบบ SBP เดิม (auth-backend/ABS)**: จัดการ group/สิทธิ์ผ่านหน้า `/setting/manage-user-rights` ของ FE เดิม · ค้นพนักงานผ่าน employee backend เดิม · กลุ่มนี้เหลือ 5 เส้น (factors 4 + audit-logs 1) — สเปกเส้นที่ตัดเก็บไว้เป็น reference เดิมเท่านั้น ห้ามนำไป implement
+
 | Endpoint | Method | Path | Summary |
 | --- | --- | --- | --- |
-| 1 | GET | /api/v1/operators | รายชื่อผู้ปฏิบัติงาน (operator_assignments) พร้อมค้นหา/แบ่งหน้า |
-| 2 | POST | /api/v1/operators | เพิ่มผู้ปฏิบัติงานใหม่ (จากหน้าค้นหาพนักงานด้วยแว่นขยาย) |
-| 3 | PUT | /api/v1/operators/{id} | แก้ไขข้อมูลผู้ปฏิบัติงาน |
-| 4 | DELETE | /api/v1/operators/{id} | ลบผู้ปฏิบัติงาน พร้อมบันทึกเหตุผล |
+| 1 | GET | ~~/api/v1/operators~~ | รายชื่อผู้ปฏิบัติงาน (operator_assignments) พร้อมค้นหา/แบ่งหน้า — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 2 | POST | ~~/api/v1/operators~~ | เพิ่มผู้ปฏิบัติงานใหม่ (จากหน้าค้นหาพนักงานด้วยแว่นขยาย) — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 3 | PUT | ~~/api/v1/operators/{id}~~ | แก้ไขข้อมูลผู้ปฏิบัติงาน — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 4 | DELETE | ~~/api/v1/operators/{id}~~ | ลบผู้ปฏิบัติงาน พร้อมบันทึกเหตุผล — **ตัดออก ใช้ระบบ SBP เดิม** |
 | 5 | GET | /api/v1/factors | รายการปัจจัยภายนอก (external_factors) |
 | 6 | POST | /api/v1/factors | เพิ่มปัจจัยภายนอก — รหัสห้ามซ้ำ (กติกา SRS) |
 | 7 | PUT | /api/v1/factors/{code} | แก้ไขปัจจัยภายนอก |
 | 8 | DELETE | /api/v1/factors/{code} | ลบปัจจัยภายนอก (ต้องไม่ถูกใช้ในเอกสารใด) |
-| 9 | GET | /api/v1/employees/search | ค้นหาพนักงานจากระบบ HR (popup แว่นขยายในหน้า 3.1.8) |
-| 10 | GET | /api/v1/menu-permissions | ตาราง matrix สิทธิ์เมนูทั้งหมด (8 role × เมนู) — หน้าจอสิทธิ์การเข้าถึงเมนู |
-| 11 | PUT | /api/v1/menu-permissions/{menuCode} | แก้สิทธิ์การเข้าถึงเมนูหนึ่งรายการต่อทุก role — บันทึก audit เสมอ |
-| 12 | GET | /api/v1/roles | รายการ Role ทั้งหมด (ตารางกลุ่มผู้ใช้งานในหน้าจอ 3.1.1 และ dropdown ที่อื่น) |
-| 13 | POST | /api/v1/roles | เพิ่ม Role ใหม่ — ระบบสร้างสิทธิ์เมนูเริ่มต้นเป็น "ไม่มีสิทธิ์" ทุกเมนู |
-| 14 | PUT | /api/v1/roles/{roleCode} | แก้ชื่อ/คำอธิบาย Role — ต้องระบุเหตุผล บันทึก audit เสมอ |
-| 15 | DELETE | /api/v1/roles/{roleCode} | ลบ Role — ลบไม่ได้ถ้าเป็น Role ระบบ (is_system) หรือยังมีผู้ใช้อ้างอยู่ |
-| 16 | POST | /api/v1/menus | เพิ่มเมนูใหม่เข้าระบบ — สิทธิ์เริ่มต้นเป็น "ไม่มีสิทธิ์" ทุก Role |
-| 17 | PUT | /api/v1/menus/{menuCode} | แก้ชื่อ/กลุ่ม/ลำดับเมนู — ต้องระบุเหตุผล บันทึก audit เสมอ |
-| 18 | DELETE | /api/v1/menus/{menuCode} | ลบเมนูพร้อมสิทธิ์ทุก Role ของเมนูนั้น (cascade) — เมนูระบบลบไม่ได้ |
+| 9 | GET | ~~/api/v1/employees/search~~ | ค้นหาพนักงานจากระบบ HR (popup แว่นขยายในหน้า 3.1.8) — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 10 | GET | ~~/api/v1/menu-permissions~~ | ตาราง matrix สิทธิ์เมนูทั้งหมด (8 role × เมนู) — หน้าจอสิทธิ์การเข้าถึงเมนู — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 11 | PUT | ~~/api/v1/menu-permissions/{menuCode}~~ | แก้สิทธิ์การเข้าถึงเมนูหนึ่งรายการต่อทุก role — บันทึก audit เสมอ — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 12 | GET | ~~/api/v1/roles~~ | รายการ Role ทั้งหมด (ตารางกลุ่มผู้ใช้งานในหน้าจอ 3.1.1 และ dropdown ที่อื่น) — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 13 | POST | ~~/api/v1/roles~~ | เพิ่ม Role ใหม่ — ระบบสร้างสิทธิ์เมนูเริ่มต้นเป็น "ไม่มีสิทธิ์" ทุกเมนู — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 14 | PUT | ~~/api/v1/roles/{roleCode}~~ | แก้ชื่อ/คำอธิบาย Role — ต้องระบุเหตุผล บันทึก audit เสมอ — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 15 | DELETE | ~~/api/v1/roles/{roleCode}~~ | ลบ Role — ลบไม่ได้ถ้าเป็น Role ระบบ (is_system) หรือยังมีผู้ใช้อ้างอยู่ — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 16 | POST | ~~/api/v1/menus~~ | เพิ่มเมนูใหม่เข้าระบบ — สิทธิ์เริ่มต้นเป็น "ไม่มีสิทธิ์" ทุก Role — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 17 | PUT | ~~/api/v1/menus/{menuCode}~~ | แก้ชื่อ/กลุ่ม/ลำดับเมนู — ต้องระบุเหตุผล บันทึก audit เสมอ — **ตัดออก ใช้ระบบ SBP เดิม** |
+| 18 | DELETE | ~~/api/v1/menus/{menuCode}~~ | ลบเมนูพร้อมสิทธิ์ทุก Role ของเมนูนั้น (cascade) — เมนูระบบลบไม่ได้ — **ตัดออก ใช้ระบบ SBP เดิม** |
 | 19 | GET | /api/v1/audit-logs | ประวัติการแก้ไขข้อมูล master แบบหลายรายการ (ใคร · ทำอะไร · ค่าเดิม→ใหม่ · เหตุผล · เมื่อไร) — แผงประวัติท้ายหน้าจอ 3.1.8 / 3.1.9 |
 
-#### 6.4.1 GET /api/v1/operators
+#### 6.4.1 GET /api/v1/operators — ตัดออก (ใช้ระบบ SBP เดิม)
 
 รายชื่อผู้ปฏิบัติงาน (operator_assignments) พร้อมค้นหา/แบ่งหน้า
 
@@ -1244,7 +1252,7 @@ ORDER BY emp_name
 LIMIT :size OFFSET :offset;
 ```
 
-#### 6.4.2 POST /api/v1/operators
+#### 6.4.2 POST /api/v1/operators — ตัดออก (ใช้ระบบ SBP เดิม)
 
 เพิ่มผู้ปฏิบัติงานใหม่ (จากหน้าค้นหาพนักงานด้วยแว่นขยาย)
 
@@ -1299,7 +1307,7 @@ INSERT INTO audit_logs (table_name, ref_key, action_type, new_value, updated_by,
 VALUES (:tableName, :empId, :actionAdd, :newValue, :actor, :now);
 ```
 
-#### 6.4.3 PUT /api/v1/operators/{id}
+#### 6.4.3 PUT /api/v1/operators/{id} — ตัดออก (ใช้ระบบ SBP เดิม)
 
 แก้ไขข้อมูลผู้ปฏิบัติงาน
 
@@ -1353,7 +1361,7 @@ INSERT INTO audit_logs (table_name, ref_key, action_type, old_value, new_value, 
 VALUES (:tableName, :id, :actionEdit, :oldValue, :newValue, :reason, :actor, :now);
 ```
 
-#### 6.4.4 DELETE /api/v1/operators/{id}
+#### 6.4.4 DELETE /api/v1/operators/{id} — ตัดออก (ใช้ระบบ SBP เดิม)
 
 ลบผู้ปฏิบัติงาน พร้อมบันทึกเหตุผล
 
@@ -1609,7 +1617,7 @@ INSERT INTO audit_logs (table_name, ref_key, action_type, old_value, reason, upd
 VALUES (:tableName, :code, :actionDelete, :oldValue, :reason, :actor, :now);
 ```
 
-#### 6.4.9 GET /api/v1/employees/search
+#### 6.4.9 GET /api/v1/employees/search — ตัดออก (ใช้ระบบ SBP เดิม)
 
 ค้นหาพนักงานจากระบบ HR (popup แว่นขยายในหน้า 3.1.8)
 
@@ -1659,7 +1667,7 @@ ORDER BY emp_name
 LIMIT 20;
 ```
 
-#### 6.4.10 GET /api/v1/menu-permissions
+#### 6.4.10 GET /api/v1/menu-permissions — ตัดออก (ใช้ระบบ SBP เดิม)
 
 ตาราง matrix สิทธิ์เมนูทั้งหมด (8 role × เมนู) — หน้าจอสิทธิ์การเข้าถึงเมนู
 
@@ -1714,7 +1722,7 @@ ORDER BY m.sort_order, mp.role_code;
 -- service ประกอบเป็น matrix ต่อเมนู (8 role × เมนู)
 ```
 
-#### 6.4.11 PUT /api/v1/menu-permissions/{menuCode}
+#### 6.4.11 PUT /api/v1/menu-permissions/{menuCode} — ตัดออก (ใช้ระบบ SBP เดิม)
 
 แก้สิทธิ์การเข้าถึงเมนูหนึ่งรายการต่อทุก role — บันทึก audit เสมอ
 
@@ -1768,7 +1776,7 @@ INSERT INTO audit_logs (table_name, ref_key, action_type, old_value, new_value, 
 VALUES (:tableName, :menuCode, :actionEdit, :oldValue, :newValue, :actor, :now);
 ```
 
-#### 6.4.12 GET /api/v1/roles
+#### 6.4.12 GET /api/v1/roles — ตัดออก (ใช้ระบบ SBP เดิม)
 
 รายการ Role ทั้งหมด (ตารางกลุ่มผู้ใช้งานในหน้าจอ 3.1.1 และ dropdown ที่อื่น)
 
@@ -1816,7 +1824,7 @@ FROM roles
 ORDER BY role_code;
 ```
 
-#### 6.4.13 POST /api/v1/roles
+#### 6.4.13 POST /api/v1/roles — ตัดออก (ใช้ระบบ SBP เดิม)
 
 เพิ่ม Role ใหม่ — ระบบสร้างสิทธิ์เมนูเริ่มต้นเป็น "ไม่มีสิทธิ์" ทุกเมนู
 
@@ -1877,7 +1885,7 @@ INSERT INTO audit_logs (table_name, ref_key, action_type, new_value, updated_by,
 VALUES (:tableName, :roleCode, :actionAdd, :newValue, :actor, :now);
 ```
 
-#### 6.4.14 PUT /api/v1/roles/{roleCode}
+#### 6.4.14 PUT /api/v1/roles/{roleCode} — ตัดออก (ใช้ระบบ SBP เดิม)
 
 แก้ชื่อ/คำอธิบาย Role — ต้องระบุเหตุผล บันทึก audit เสมอ
 
@@ -1933,7 +1941,7 @@ INSERT INTO audit_logs (table_name, ref_key, action_type, old_value, new_value, 
 VALUES (:tableName, :roleCode, :actionEdit, :oldValue, :newValue, :reason, :actor, :now);
 ```
 
-#### 6.4.15 DELETE /api/v1/roles/{roleCode}
+#### 6.4.15 DELETE /api/v1/roles/{roleCode} — ตัดออก (ใช้ระบบ SBP เดิม)
 
 ลบ Role — ลบไม่ได้ถ้าเป็น Role ระบบ (is_system) หรือยังมีผู้ใช้อ้างอยู่
 
@@ -1990,7 +1998,7 @@ INSERT INTO audit_logs (table_name, ref_key, action_type, old_value, reason, upd
 VALUES (:tableName, :roleCode, :actionDelete, :oldValue, :reason, :actor, :now);
 ```
 
-#### 6.4.16 POST /api/v1/menus
+#### 6.4.16 POST /api/v1/menus — ตัดออก (ใช้ระบบ SBP เดิม)
 
 เพิ่มเมนูใหม่เข้าระบบ — สิทธิ์เริ่มต้นเป็น "ไม่มีสิทธิ์" ทุก Role
 
@@ -2051,7 +2059,7 @@ INSERT INTO audit_logs (table_name, ref_key, action_type, new_value, updated_by,
 VALUES (:tableName, :menuCode, :actionAdd, :newValue, :actor, :now);
 ```
 
-#### 6.4.17 PUT /api/v1/menus/{menuCode}
+#### 6.4.17 PUT /api/v1/menus/{menuCode} — ตัดออก (ใช้ระบบ SBP เดิม)
 
 แก้ชื่อ/กลุ่ม/ลำดับเมนู — ต้องระบุเหตุผล บันทึก audit เสมอ
 
@@ -2107,7 +2115,7 @@ INSERT INTO audit_logs (table_name, ref_key, action_type, old_value, new_value, 
 VALUES (:tableName, :menuCode, :actionEdit, :oldValue, :newValue, :reason, :actor, :now);
 ```
 
-#### 6.4.18 DELETE /api/v1/menus/{menuCode}
+#### 6.4.18 DELETE /api/v1/menus/{menuCode} — ตัดออก (ใช้ระบบ SBP เดิม)
 
 ลบเมนูพร้อมสิทธิ์ทุก Role ของเมนูนั้น (cascade) — เมนูระบบลบไม่ได้
 
@@ -2324,11 +2332,13 @@ ORDER BY category, config_key;
 
 ```json
 {
-  "configKey": "workflow.avp_amount_threshold",
-  "value": 100000,
+  "configKey": "workflow.gm_amount_limit",
+  "value": 50000,
   "valueType": "NUMBER",
   "unit": "บาท"
 }
+// วงเงินตาม SDD GI 24/02/2026: workflow.gm_amount_limit = 50000 · workflow.avp_amount_limit = 300000
+// — แทน workflow.avp_amount_threshold = 100000 เดิม
 ```
 
 | Error / Condition |
@@ -2420,7 +2430,7 @@ VALUES (:tableName, :key, :actionAdd, :newValue, :actor, :now);
 
 | Step | Flow |
 | --- | --- |
-| 1 | ตรวจ is_editable — ค่าคงที่ทางธุรกิจ (รัศมี · วงเงิน 100,000 · เกณฑ์ 60 วัน · เกณฑ์ −10 ตามข้อ 8.2) ตอบ 422 |
+| 1 | ตรวจ is_editable — ค่าคงที่ทางธุรกิจ (รัศมี · วงเงิน GM 50,000 / AVP 300,000 (SDD GI) · เกณฑ์ 60 วัน · เกณฑ์ −10 ตามข้อ 8.2) ตอบ 422 |
 | 2 | validate ค่าใหม่ตาม value_type + ต้องระบุ reason เสมอ |
 | 3 | update + บันทึก audit_logs (EDIT · old_value → new_value · เหตุผล) |
 | 4 | broadcast invalidate cache ให้ทุก service อ่านค่าใหม่ทันที |
@@ -2824,8 +2834,8 @@ FROM email_templates WHERE is_customized = FALSE;
 
 | Step | Flow |
 | --- | --- |
-| 1 | validate ปี (ไม่ระบุ → 400) |
-| 2 | query compensation_documents + compensation_histories ตามเงื่อนไข (status 6 ค่า · region 13 · storeType A-D · รหัสถูกกระทบ/เปิดกระทบ) |
+| 1 | validate ปี (ไม่ระบุ → 400) · validate `periodStatement` — **บังคับเมื่อ status = เสร็จสิ้นดำเนินการ** (SDD GI · ปฏิทิน ค.ศ. หรือกรอกเอง) |
+| 2 | query compensation_documents + compensation_histories ตามเงื่อนไข (status 6 ค่า · region 13 รหัส + **ภาคใหม่แสดง checkbox เพิ่มอัตโนมัติ** (SDD v7.5) · storeType A-D · รหัสถูกกระทบ/เปิดกระทบ) |
 | 3 | กรอง result (APPROVE/REJECT) จากผลพิจารณาล่าสุดใน consideration_logs — filter "ประกันรายได้/ไม่ประกันรายได้" หน้า k2-report |
 | 4 | คืนแบบแบ่งหน้าตามหน้าจอ k2-report.html |
 
@@ -2841,6 +2851,7 @@ FROM email_templates WHERE is_customized = FALSE;
 ```json
 Query: ?year=2569&statusCode=06&result=APPROVE&region=RSU&storeType=A&impactedStoreCode=00233&newStoreCode=22864&page=1
 (result = APPROVE | REJECT — ประกันรายได้ / ไม่ประกันรายได้)
+(periodStatement = งวด statement — บังคับเมื่อ statusCode = เสร็จสิ้นดำเนินการ · SDD GI)
 ```
 
 #### Response
@@ -2855,6 +2866,7 @@ Query: ?year=2569&statusCode=06&result=APPROVE&region=RSU&storeType=A&impactedSt
 | Error / Condition |
 | --- |
 | 400 — กรุณาระบุปีที่ต้องการค้นหา |
+| 400 — ไม่ระบุ periodStatement เมื่อ status = เสร็จสิ้นดำเนินการ (SDD GI) |
 
 SQL Reference
 
@@ -3598,7 +3610,7 @@ SELECT COUNT(*) AS abnormal_stores     FROM fgi_impact_sales_summaries WHERE tot
 | Test group | Required cases |
 | --- | --- |
 | Common contract | 401, 403, 404, 409, 422, pagination envelope, error `{code,message}` |
-| Document workflow | create duplicate, submit no result, invalid result for role profile, current task conflict, threshold >100000 route |
+| Document workflow | create duplicate (active-only 409 + reopen หลังหยุด/ไม่ชดเชย), submit no result, invalid result for role profile, current task conflict, amount route ≤50,000 จบที่ GM / 50,001–300,000 → AVP (SDD GI), ไม่ชดเชยที่ 01/02 จบทันที |
 | Attachment | file >5MB, unsupported type, AV blocked, download not owner, download clean file |
 | Report | year required, result required, CSV export with same filter as preview |
 | Job admin | manual run when disabled, manual run while RUNNING, editable params only, run histories |
@@ -3616,5 +3628,5 @@ SELECT COUNT(*) AS abnormal_stores     FROM fgi_impact_sales_summaries WHERE tot
 | LLDD-BE-API-Document-Workflow-Actions | ออกแบบ APIs สำหรับรับผลพิจารณา ตรวจสิทธิ์ action และบันทึก audit/consideration log |
 | LLDD-BE-API-Workflow-Instances | ออกแบบ Workflow Engine ภายในและ POST /api/v1/workflows/instances สำหรับเปิด workflow จาก Job 8b แทน K2 REST StartInstance โดยเป็นเจ้าของ Gen Flow Gate W/Y/N |
 | LLDD-BE-API-Attachment-Sales-Timeline | ออกแบบ APIs สำหรับไฟล์แนบ ข้อมูลยอดขายเพิ่มเติม และ timeline/history |
-| LLDD-BE-API-Lookup-RBAC-Email | ออกแบบ APIs ที่ตกหล่นจาก shared lookup, RBAC/menu permission, audit log และ email template ของ SBP Mall |
+| LLDD-BE-API-Lookup-RBAC-Email | ออกแบบ APIs สำหรับ shared lookup, audit log และ email template — ส่วน RBAC/menu permission/ผู้ปฏิบัติงานถูกตัดออก ใช้ระบบ SBP เดิม (auth-backend · 2026-08-05) |
 | LLDD-BE-API-Report-Master-Config | ออกแบบ APIs สำหรับรายงาน Master Data และ System Config |

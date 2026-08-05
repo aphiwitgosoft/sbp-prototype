@@ -37,7 +37,7 @@
 
       <div class="page-head">
         <div><h1 class="page-title">API Specification</h1>
-          <p class="page-sub">REST API ทั้งหมด 62 เส้น 10 กลุ่มเป็น reference contract สำหรับ Frontend SPA และงานภายใน (+2 เส้นข้อมูลผิดปกติ comment รอตัดสินใจ) · Auth Group 1 เป็น platform reference นอกงาน implement Login/Auth ของ SBP Mall</p></div>
+          <p class="page-sub">REST API ทั้งหมด 44 เส้น 9 กลุ่มเป็น reference contract สำหรับ Frontend SPA และงานภายใน (+2 เส้นข้อมูลผิดปกติ comment รอตัดสินใจ) · กลุ่ม Auth/สิทธิ์เมนู และเส้นผู้ปฏิบัติงาน (รวม 18 เส้น) ตัดออก — ใช้ระบบ SBP เดิม (Cognito + BFF + auth-backend · ตัดสินใจ 2026-08-05)</p></div>
         <div class="page-actions">
           <button class="btn btn-ghost" data-ack="ดาวน์โหลด OpenAPI 3.0 (ตัวอย่าง)">Export OpenAPI</button>
         </div>
@@ -45,7 +45,7 @@
 
       <div class="stat-grid">
         <div class="stat"><div class="si bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v4c0 1.5-2 3-2 3s2 1.5 2 3v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4c0 1.5 2 3 2 3s-2 1.5-2 3v4a2 2 0 0 1-2 2h-1"/></svg></div>
-          <div><div class="sv num">62</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
+          <div><div class="sv num">44</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
         <div class="stat"><div class="si bg-teal"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 10h18M9 5v14"/></svg></div>
           <div><div class="sv num">10</div><div class="sl">กลุ่มตามโดเมน</div></div></div>
         <div class="stat"><div class="si bg-amber"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></div>
@@ -58,8 +58,8 @@
       <div class="card" style="border-left:5px solid var(--primary);">
         <div style="font-size:13px;color:#45525f;line-height:2;">
           <b style="color:#2b3440;">มาตรฐานกลาง (ทุกเส้น):</b>
-          Base URL <code class="ep-path">/api/v1</code> · Auth: <code class="ep-path">Authorization: Bearer &lt;JWT&gt;</code> ยกเว้น login/refresh และเส้น callback ภายนอก (API key) ·
-          Auth Group 1 เป็น platform-provided/reference contract; FE ใช้ <code class="ep-path">/auth/me</code> และ <code class="ep-path">/me/menus</code> เมื่อ platform token/menu service พร้อม ·
+          Base URL <code class="ep-path">/api/v1</code> · Auth: ผ่าน BFF ระบบ SBP เดิม — SBPGI ตรวจ <code class="ep-path">x-api-key</code> + user context header (<code class="ep-path">x-user-id</code>/<code class="ep-path">x-user-group-id</code>/<code class="ep-path">x-user-permissions</code>) · เส้น callback ภายนอกใช้ API key/service token ·
+          กลุ่ม Auth/สิทธิ์เมนู และเส้นผู้ปฏิบัติงาน <b>ตัดออก — ใช้ระบบ SBP เดิม</b> (Cognito + BFF + auth-backend · ตัดสินใจ 2026-08-05; sidebar/สิทธิ์ใช้ BFF <code class="ep-path">/menus</code> + <code class="ep-path">/groups/current-user/permissions</code>) ·
           แบ่งหน้า <code class="ep-path">?page=1&amp;size=20</code> ตอบ <code class="ep-path">{"page","size","total","items":[]}</code> ·
           Error ตอบรูปแบบเดียวกันทุกเส้น: <code class="ep-path">{"code":"DOC_409","message":"ข้อความภาษาไทยตรงตาม SRS"}</code> — ข้อความ popup ต้องตรงตัวตามเอกสาร ·
           วันที่ใช้ ISO-8601 + ปี ค.ศ. ใน payload (FE แปลงแสดงเป็น พ.ศ.) ·
@@ -86,14 +86,14 @@
             <thead><tr><th>หมวด</th><th>Contract กลาง</th><th>ใช้โดย</th></tr></thead>
             <tbody>
               <tr><td>Transport</td><td>Base URL <code>/api/v1</code> · JSON <code>application/json; charset=utf-8</code> · multipart เฉพาะ attachments</td><td>BE controller · FE API client</td></tr>
-              <tr><td>Auth</td><td>User endpoint ใช้ <code>Authorization: Bearer &lt;JWT&gt;</code>; internal workflow/batch callback ใช้ service token; Auth Group 1 เป็น platform reference</td><td>Platform/IAM · BE middleware · FE session</td></tr>
+              <tr><td>Auth</td><td>ผู้ใช้ login ผ่าน BFF ระบบเดิม (Cognito · cookie httpOnly) — SBPGI ตรวจ <code>x-api-key</code> + อ่าน user context จาก header ที่ BFF แนบมา (<code>x-user-id</code> / <code>x-user-group-id</code> / <code>x-user-permissions</code>); internal workflow/batch callback ใช้ service token</td><td>ระบบเดิม (BFF + auth-backend) · BE validate header · FE ไม่แตะ token</td></tr>
               <tr><td>Error</td><td>ทุก error คืน <code>{"code","message"}</code> เท่านั้น · <code>message</code> เป็นไทย verbatim ตาม SRS ถ้ามีข้อความกำหนด</td><td>BE error handler · FE แสดงตรง ๆ</td></tr>
               <tr><td>HTTP status</td><td>400 validation · 401 auth · 403 forbidden/RBAC · 404 not found · 409 duplicate/current-task conflict · 422 business rule · 413/415 attachment</td><td>BE AppError · FE error state</td></tr>
               <tr><td>Pagination</td><td>GET list รับ <code>page,size</code> และคืน <code>{"page","size","total","items"}</code></td><td>BE query · FE DataTable/Pager</td></tr>
               <tr><td>Format</td><td><code>docNo</code> = พ.ศ. <code>YYYY/xxxxx</code> · <code>storeCode/newStoreCode</code> string 5 หลัก · date/month payload เป็น ISO ค.ศ. · amount/percent เป็น number 2 decimals</td><td>BE validate/serialize · FE format display</td></tr>
-              <tr><td>Transition</td><td><code>POST /documents/{docNo}/actions</code> รับ <code>{result, comment}</code> และคืน <code>{nextSection, statusCode, message}</code>; positive path คือ <code>06→08→01→02→03→99</code>, โดย <code>99</code> = เสร็จสิ้นและ <code>nextSection=null</code>; Section 02 ยอด ≤100,000 จบเป็น 99</td><td>BE Workflow Action · FE DecisionPanel</td></tr>
+              <tr><td>Transition</td><td><code>POST /documents/{docNo}/actions</code> รับ <code>{result, comment}</code> และคืน <code>{nextSection, statusCode, message}</code>; positive path คือ <code>06→08→01→02→03→99</code>, โดย <code>99</code> = เสร็จสิ้นและ <code>nextSection=null</code>; Section 02 ยอด ≤50,000 จบเป็น 99 · 50,001–300,000 → 03 (SDD GI 24/02/2026)</td><td>BE Workflow Action · FE DecisionPanel</td></tr>
               <tr><td>Code namespace</td><td><code>roleCode</code> ใช้กับ RBAC role 00/01/02/03/04/05/06/10 · <code>sectionCode</code> ใช้กับ workflow section 06/08/01/02/03 · <code>statusCode</code> ใช้กับ document status lookup เท่านั้น</td><td>BE DTO/schema · FE constants</td></tr>
-              <tr><td>RBAC/Menu</td><td><code>/me/menus</code> เป็น source ของ sidebar/route guard · detail API คืน <code>permissions.canEditSections</code> และ <code>permissions.canAction</code></td><td>BE RBAC/task-owner guard · FE UI gating</td></tr>
+              <tr><td>RBAC/Menu</td><td>sidebar/route guard ใช้ของระบบเดิม: BFF <code>GET /menus</code> + <code>GET /groups/current-user/permissions</code> (canView/canManage/canExport/canOther ต่อ URL) · detail API ยังคืน <code>permissions.canEditSections</code> และ <code>permissions.canAction</code> (ธงเชิง workflow ที่ SBPGI คำนวณเอง)</td><td>ระบบเดิมคุมเมนู/สิทธิ์เข้าหน้า · BE task-owner guard · FE UI gating</td></tr>
               <tr><td>Audit/Reason</td><td>mutation master/config/email/RBAC ต้องมี <code>reason</code>; workflow ลง <code>consideration_logs</code>; batch ลง <code>job_run_histories</code></td><td>BE transaction · FE required reason field</td></tr>
               <tr><td>LLDD กลาง</td><td><code>LLDD-BE-API-Common-Contracts</code> + <code>LLDD-FE-Integration-Contracts</code></td><td>ทุก LLDD รายหน้า/ราย endpoint</td></tr>
             </tbody>
@@ -126,8 +126,11 @@
 (function () {
   "use strict";
 
-  /* ===== API catalog: 62 เส้น 10 กลุ่ม (กลุ่มข้อมูลผิดปกติถูก comment รอตัดสินใจ) ===== */
+  /* ===== API catalog: 44 เส้น 9 กลุ่ม (กลุ่ม Auth + เส้นผู้ปฏิบัติงาน/สิทธิ์เมนู 18 เส้นตัดออก — ใช้ระบบ SBP เดิม · กลุ่มข้อมูลผิดปกติ comment รอตัดสินใจ) ===== */
   var GROUPS = [
+    /* ตัดออกถาวร 2026-08-05 — Auth & สิทธิ์ผู้ใช้ทั้งกลุ่ม ใช้ระบบ SBP เดิม (Cognito + BFF + auth-backend/ABS):
+       login = redirect {bffUrl}/auth/login (cookie httpOnly) · refresh = BFF /auth/refresh · ข้อมูลผู้ใช้ = /auth/profile + /users/current
+       sidebar/สิทธิ์ต่อ URL = /menus + /groups/current-user/permissions · SBPGI รับ user context จาก header (x-user-id / x-user-group-id / x-user-permissions)
     { name:'Auth & สิทธิ์ผู้ใช้ (platform reference)', refT:'K2 · SRS 3.1.1', eps:[
       { m:'POST', p:'/api/v1/auth/login', ref:'k2', refT:'K2 · 3.1.1', roles:'ทุกคน (public)',
         sum:'เข้าสู่ระบบด้วยบัญชีพนักงาน แลก JWT พร้อม role และ section สำหรับใช้ทุกเส้นถัดไป',
@@ -158,6 +161,7 @@
         res:'{\n  "menus": [\n    { "code": "M02", "name": "เอกสาร · รอดำเนินการ", "group": "ระบบประกันรายได้" },\n    { "code": "M08", "name": "Batch Job", "group": "ระบบประกันรายได้" }\n  ]\n}',
         err:['401'] }
     ]},
+    */
 
     { name:'งาน & เอกสารประกันรายได้', refT:'K2 · SRS 3.1.2 / 3.1.3 / 3.1.6', eps:[
       { m:'GET', p:'/api/v1/tasks', ref:'k2', refT:'K2 · 3.1.2', roles:'role ที่มีสิทธิ์เมนูเอกสาร',
@@ -188,7 +192,7 @@
         db:[['compensation_documents','W','เอกสารใหม่'],['workflow_instances / workflow_tasks','W','เปิด workflow + งานแรก'],['status_email_rules','R','ผู้รับอีเมล TO/CC']],
         req:'{\n  "impactedStoreCode": "00788",\n  "impactMonth": "2026-06",\n  "source": "MANUAL"   // MANUAL | FS\n}',
         res:'201 Created\n{\n  "docNo": "2569/00124"\n}',
-        err:['409 — ร้านนี้ในเดือนนี้มีเอกสารอยู่แล้ว','422 — ข้อมูลบังคับไม่ครบ'] },
+        err:['409 — ร้านนี้ในเดือนนี้มีเอกสารที่ยังดำเนินการอยู่ (active) — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้ · SDD GI','422 — ข้อมูลบังคับไม่ครบ'] },
       { m:'PUT', p:'/api/v1/documents/{docNo}', ref:'k2', refT:'K2 · 3.1.6', roles:'ตาม section ปัจจุบัน',
         sum:'บันทึกแก้ไขส่วนย่อยของเอกสาร (ร้านใหม่ / คู่แข่ง / ปัจจัย) ตามสิทธิ์ของขั้นที่ถืออยู่',
         flow:['ตรวจว่า role + section ปัจจุบันมีสิทธิ์แก้ส่วนที่ส่งมา (เช่น Section 01 แก้คู่แข่ง/ปัจจัยได้)','validate %ชดเชยของร้านใหม่รวมกันต้องเท่ากับ 100%','บันทึกและคืนเอกสารล่าสุด'],
@@ -197,10 +201,10 @@
         res:'200 OK — เอกสารฉบับล่าสุด (โครงเดียวกับ GET)',
         err:['403 — ไม่มีสิทธิ์แก้ส่วนนี้ในขั้นปัจจุบัน','422 — "%ชดเชย ... รวมกันแล้วไม่เท่ากับ 100%" (ข้อความตรงตาม SRS)'] },
       { m:'POST', p:'/api/v1/documents/{docNo}/actions', ref:'k2', refT:'K2 · 3.1.4', roles:'เจ้าของ task ปัจจุบัน',
-        sum:'ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · กฎวงเงิน 100,000 ใช้ทั้งกรณีชดเชยและไม่ชดเชย',
-        flow:['ตรวจว่าผู้ใช้เป็นเจ้าของ workflow_tasks ขั้นปัจจุบัน','validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว','คำนวณขั้นถัดไปตามตารางเส้นทาง (workflow.md): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 02 ชดเชย/ไม่ชดเชย > 100,000 → 03 → จบ · ชดเชย ≤ 100,000 → เสร็จสิ้น (จบที่ GM) · ไม่ชดเชย ≤ 100,000 → กลับ 06 · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ','insert consideration_logs + ปิด task เดิม เปิด task ใหม่','ส่งอีเมล TO/CC ตาม status_email_rules'],
+        sum:'ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · วงเงิน GM 50,000 / AVP 300,000 (SDD GI 24/02/2026)',
+        flow:['ตรวจว่าผู้ใช้เป็นเจ้าของ workflow_tasks ขั้นปัจจุบัน','validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว','คำนวณขั้นถัดไปตามตารางเส้นทาง (workflow.md · SDD GI): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 01/02 เห็นควรไม่ชดเชย → เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น) · 02 ชดเชย ≤ 50,000 → เสร็จสิ้น (จบที่ GM) · 50,001–300,000 → 03 → จบ (เกิน 300,000 รอ confirm) · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ','insert consideration_logs + ปิด task เดิม เปิด task ใหม่ · กรณี 06 เห็นควรไม่ชดเชย ระบบตั้งงานเดือนถัดไปให้เจ้าของงานคนเดิม (SDD GI)','ส่งอีเมล TO/CC ตาม status_email_rules'],
         db:[['workflow_tasks','R/W','ปิดงานเดิม เปิดงานขั้นถัดไป'],['compensation_documents','W','อัปเดต Status + CurSection'],['consideration_logs','W','บันทึกผลพิจารณา'],['status_email_rules','R','ผู้รับอีเมล']],
-        req:'{\n  "result": "เห็นควรชดเชย",\n  // 6-enum verbatim: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้\n  // / ส่งฝ่ายส่งเสริมธุรกิจ SBP / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ\n  "comment": "เห็นควรชดเชยตามหลักเกณฑ์"\n}',
+        req:'{\n  "result": "เห็นควรชดเชย",\n  // 6-enum verbatim: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้\n  // / ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI — เดิม "ส่งฝ่ายส่งเสริมธุรกิจ SBP") / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ\n  "comment": "เห็นควรชดเชยตามหลักเกณฑ์"\n}',
         res:'{\n  "nextSection": "02",\n  "statusCode": "02",\n  "message": "ส่งดำเนินการสำเร็จ"\n}',
         err:['422 — "ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ"','403 — ไม่ใช่เจ้าของงานขั้นนี้','409 — งานถูกดำเนินการไปแล้วโดยผู้อื่น'] },
       { m:'GET', p:'/api/v1/documents/{docNo}/timeline', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
@@ -283,7 +287,9 @@
     ]},
     */
 
-    { name:'Master Data', refT:'K2 · SRS 3.1.8 / 3.1.9', eps:[
+    { name:'Master Data', refT:'K2 · SRS 3.1.9', eps:[
+    /* ตัดออกถาวร 2026-08-05 — ผู้ปฏิบัติงาน (SRS 3.1.8) ใช้ระบบ SBP เดิม: group+scope ของ auth-backend
+       (จัดการผ่านหน้า /setting/manage-user-rights) + prepared approvers ของ @srm/glb-workflow · หน้า k2-operators.html ถอดจาก sidebar แล้ว
       { m:'GET', p:'/api/v1/operators', ref:'k2', refT:'K2 · 3.1.8', roles:'03 User Admin',
         sum:'รายชื่อผู้ปฏิบัติงาน (operator_assignments) พร้อมค้นหา/แบ่งหน้า',
         flow:['query ตามเงื่อนไข (ชื่อ / section / zone)'],
@@ -312,6 +318,7 @@
         req:'{ "reason": "ย้ายหน่วยงาน" }',
         res:'204 No Content',
         err:['409 — ยังถืองานค้างอยู่ ต้องแจกงานใหม่ก่อน'] },
+    */
       { m:'GET', p:'/api/v1/factors', ref:'k2', refT:'K2 · 3.1.9', roles:'03 User Admin',
         sum:'รายการปัจจัยภายนอก (external_factors)',
         flow:['query ทั้งหมด / ตามคำค้น'],
@@ -340,6 +347,8 @@
         req:'{ "reason": "เลิกใช้" }',
         res:'204 No Content',
         err:['409 — ปัจจัยถูกใช้ในเอกสารอยู่ ลบไม่ได้'] },
+    /* ตัดออกถาวร 2026-08-05 — สิทธิ์การเข้าถึงเมนู (SRS 3.1.1) + ค้นหาพนักงาน ใช้ระบบ SBP เดิม:
+       auth-backend (/groups · /groups/{id}/permissions · /groups/permissions/template · /menus) + employee backend · หน้า k2-permissions.html ถอดจาก sidebar แล้ว
       { m:'GET', p:'/api/v1/employees/search', ref:'mix', refT:'K2 3.1.8 + master FGI/FCS', roles:'03 User Admin',
         sum:'ค้นหาพนักงานจากระบบ HR (popup แว่นขยายในหน้า 3.1.8)',
         flow:['ค้นจาก employees (ตาราง master ที่ฝั่ง batch ใช้ join อยู่แล้ว)','คืนรายการสั้นสำหรับ popup เลือก'],
@@ -410,8 +419,9 @@
         req:'{ "reason": "ยุบรวมกับเมนูรายงานสรุปสถานะ" }',
         res:'204 No Content',
         err:['409 — เมนูหลักของระบบลบไม่ได้','403'] },
-      { m:'GET', p:'/api/v1/audit-logs', ref:'k2', refT:'K2 · 3.1.8 / 3.1.9', roles:'01 Admin, 02 HQ, 03 User Admin',
-        sum:'ประวัติการแก้ไขข้อมูล master แบบหลายรายการ (ใคร · ทำอะไร · ค่าเดิม→ใหม่ · เหตุผล · เมื่อไร) — แผงประวัติท้ายหน้าจอ 3.1.8 / 3.1.9',
+    */
+      { m:'GET', p:'/api/v1/audit-logs', ref:'k2', refT:'K2 · 3.1.9', roles:'01 Admin, 02 HQ, 03 User Admin',
+        sum:'ประวัติการแก้ไขข้อมูล master แบบหลายรายการ (ใคร · ทำอะไร · ค่าเดิม→ใหม่ · เหตุผล · เมื่อไร) — แผงประวัติท้ายหน้าจอ 3.1.9',
         flow:['query audit_logs ตาม table_name (+ ref_key ถ้าระบุเฉพาะรายการ)','เรียงล่าสุดก่อน แบ่งหน้า'],
         db:[['audit_logs','R','ประวัติหลายรายการต่อข้อมูล (= MaintainMasterHistory เดิม)']],
         req:'Query: ?table=operator_assignments&refKey=12&page=1',
@@ -432,7 +442,7 @@
         flow:['อ่าน system_configs ด้วย config_key','ตอบพร้อม header Cache-Control (TTL 5 นาที) — service ฝั่งเรียก cache ตาม','ค่า BOOLEAN/NUMBER/JSON ตอบเป็น typed value ตาม value_type ไม่ใช่ string ล้วน'],
         db:[['system_configs','R','ค่ารายตัว']],
         req:'(ไม่มี body)',
-        res:'{\n  "configKey": "workflow.avp_amount_threshold",\n  "value": 100000,\n  "valueType": "NUMBER",\n  "unit": "บาท"\n}',
+        res:'{\n  "configKey": "workflow.gm_amount_limit",\n  "value": 50000,\n  "valueType": "NUMBER",\n  "unit": "บาท"\n}',
         err:['404 — ไม่พบ config key นี้','401'] },
       { m:'POST', p:'/api/v1/configs', ref:'new', refT:'ใหม่ · Global Config', roles:'01 Admin',
         sum:'เพิ่มค่ากำหนดใหม่ — key ห้ามซ้ำ และ validate ค่าตาม value_type',
@@ -443,7 +453,7 @@
         err:['409 — Config Key นี้มีอยู่แล้ว','422 — ค่าไม่ตรงกับชนิดข้อมูล (value_type)'] },
       { m:'PUT', p:'/api/v1/configs/{key}', ref:'new', refT:'ใหม่ · Global Config', roles:'01 Admin',
         sum:'แก้ค่ากำหนด — ต้องระบุเหตุผล · ค่าคงที่ทางธุรกิจ (is_editable=false) แก้ผ่าน API ไม่ได้',
-        flow:['ตรวจ is_editable — ค่าคงที่ทางธุรกิจ (รัศมี · วงเงิน 100,000 · เกณฑ์ 60 วัน · เกณฑ์ −10 ตามข้อ 8.2) ตอบ 422','validate ค่าใหม่ตาม value_type + ต้องระบุ reason เสมอ','update + บันทึก audit_logs (EDIT · old_value → new_value · เหตุผล)','broadcast invalidate cache ให้ทุก service อ่านค่าใหม่ทันที'],
+        flow:['ตรวจ is_editable — ค่าคงที่ทางธุรกิจ (รัศมี · วงเงิน GM 50,000/AVP 300,000 · เกณฑ์ 60 วัน · เกณฑ์ −10 ตามข้อ 8.2) ตอบ 422','validate ค่าใหม่ตาม value_type + ต้องระบุ reason เสมอ','update + บันทึก audit_logs (EDIT · old_value → new_value · เหตุผล)','broadcast invalidate cache ให้ทุก service อ่านค่าใหม่ทันที'],
         db:[['system_configs','W','ค่าใหม่'],['audit_logs','W','audit ผู้แก้ + ค่าเดิม/ใหม่ + เหตุผล']],
         req:'{\n  "value": "[30, 45, 60]",\n  "reason": "เพิ่มขั้นเตือน 45 วันตามมติที่ประชุม"   // บังคับ\n}',
         res:'200 OK',
@@ -638,11 +648,11 @@
     'GET /api/v1/documents/{docNo}':
       '-- โหลดเอกสารฉบับเต็ม 12 ส่วนในคำขอเดียว\nSELECT * FROM compensation_documents      WHERE doc_no = :docNo;\nSELECT * FROM document_new_stores          WHERE doc_no = :docNo;\nSELECT * FROM document_competitors         WHERE doc_no = :docNo;\nSELECT * FROM document_external_factors    WHERE doc_no = :docNo;\nSELECT * FROM document_attachments         WHERE doc_no = :docNo;\nSELECT * FROM consideration_logs           WHERE doc_no = :docNo ORDER BY action_datetime;',
     'POST /api/v1/documents':
-      '-- กันซ้ำ: เอกสารจาก impact_process เดียวกันต้องมีได้รายการเดียว\nSELECT 1 FROM compensation_documents\nWHERE impact_process_id = :impactProcessId;\n\n-- ออกเลขที่ YYYY/xxxxx (running ต่อปี) แล้วสร้างเอกสาร + เปิด workflow งานแรก (Section 06)\nINSERT INTO compensation_documents (doc_no, be_year, running_no, impact_process_id, impacted_store_code, impact_month, status_code, current_section_code, created_by)\nVALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :statusInit, :section06, :empId);\nINSERT INTO workflow_instances (instance_id, doc_no, instance_status, started_at, started_by)\nVALUES (:instanceId, :docNo, :active, :now, :empId);\nINSERT INTO workflow_tasks (instance_id, doc_no, section_code, task_status)\nVALUES (:instanceId, :docNo, :section06, :statusOpen);',
+      '-- กันซ้ำเฉพาะเอกสาร active (SDD GI): เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้\nSELECT 1 FROM compensation_documents\nWHERE impact_process_id = :impactProcessId AND status_code <> :statusDone;\n\n-- ออกเลขที่ YYYY/xxxxx (running ต่อปี) แล้วสร้างเอกสาร + เปิด workflow งานแรก (Section 06)\nINSERT INTO compensation_documents (doc_no, be_year, running_no, impact_process_id, impacted_store_code, impact_month, status_code, current_section_code, created_by)\nVALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :statusInit, :section06, :empId);\nINSERT INTO workflow_instances (instance_id, doc_no, instance_status, started_at, started_by)\nVALUES (:instanceId, :docNo, :active, :now, :empId);\nINSERT INTO workflow_tasks (instance_id, doc_no, section_code, task_status)\nVALUES (:instanceId, :docNo, :section06, :statusOpen);',
     'PUT /api/v1/documents/{docNo}':
       '-- ตรวจสิทธิ์ตาม role + current_section ก่อน · %ชดเชยร้านใหม่รวมกันต้อง = 100% (ไม่งั้น 422)\n-- optimistic concurrency: mutation ทุกชุดต้องส่ง versionNo ล่าสุด; ไม่ตรงคืน 409 STALE_VERSION\nUPDATE compensation_documents SET version_no = version_no + 1, updated_at = :now, updated_by = :empId\nWHERE doc_no = :docNo AND version_no = :versionNo;\nUPDATE document_new_stores       SET compensate_percent = :pct   WHERE new_store_code = :newStoreCode AND doc_no = :docNo;\nUPDATE document_competitors      SET impact_date = :date         WHERE id = :competitorId AND doc_no = :docNo;\nUPDATE document_external_factors SET date_from = :from, date_to = :to WHERE id = :factorId AND doc_no = :docNo;',
     'POST /api/v1/documents/{docNo}/actions':
-      '-- ตรวจเป็นเจ้าของงานขั้นปัจจุบัน + ต้องเลือก result แล้ว (ไม่งั้น 422)\n-- result รับ 6-enum verbatim เท่านั้น: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / ส่งฝ่ายส่งเสริมธุรกิจ SBP / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ\nUPDATE workflow_tasks SET task_status = :statusClosed, action_result = :result, closed_at = :now\nWHERE doc_no = :docNo AND section_code = :curSection AND task_status = :statusOpen;\n\nINSERT INTO consideration_logs (doc_no, section_code, consider_by, result, detail, action_datetime)\nVALUES (:docNo, :curSection, :empId, :result, :comment, :now);\n\n-- คำนวณขั้นถัดไป (กฎวงเงิน 100,000) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock\nUPDATE compensation_documents SET status_code = :nextStatus, current_section_code = :nextSection, version_no = version_no + 1, updated_at = :now, updated_by = :empId\nWHERE doc_no = :docNo AND version_no = :versionNo;\nINSERT INTO workflow_tasks (instance_id, doc_no, section_code, task_status)\nVALUES (:instanceId, :docNo, :nextSection, :statusOpen);\n\nSELECT r.status_code, d.status_name, r.to_section_code, r.cc_section_code\nFROM status_email_rules r JOIN document_statuses d ON d.status_code = r.status_code\nWHERE r.status_code = :nextStatus;',
+      '-- ตรวจเป็นเจ้าของงานขั้นปัจจุบัน + ต้องเลือก result แล้ว (ไม่งั้น 422)\n-- result รับ 6-enum verbatim เท่านั้น: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI) / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ\nUPDATE workflow_tasks SET task_status = :statusClosed, action_result = :result, closed_at = :now\nWHERE doc_no = :docNo AND section_code = :curSection AND task_status = :statusOpen;\n\nINSERT INTO consideration_logs (doc_no, section_code, consider_by, result, detail, action_datetime)\nVALUES (:docNo, :curSection, :empId, :result, :comment, :now);\n\n-- คำนวณขั้นถัดไป (วงเงิน GM 50,000 / AVP 300,000 · SDD GI) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock\nUPDATE compensation_documents SET status_code = :nextStatus, current_section_code = :nextSection, version_no = version_no + 1, updated_at = :now, updated_by = :empId\nWHERE doc_no = :docNo AND version_no = :versionNo;\nINSERT INTO workflow_tasks (instance_id, doc_no, section_code, task_status)\nVALUES (:instanceId, :docNo, :nextSection, :statusOpen);\n\nSELECT r.status_code, d.status_name, r.to_section_code, r.cc_section_code\nFROM status_email_rules r JOIN document_statuses d ON d.status_code = r.status_code\nWHERE r.status_code = :nextStatus;',
     'GET /api/v1/documents/{docNo}/timeline':
       'SELECT section_code, consider_by, result, detail, action_datetime\nFROM consideration_logs\nWHERE doc_no = :docNo\nORDER BY action_datetime;',
     'POST /api/v1/documents/{docNo}/attachments':
@@ -794,7 +804,7 @@
       { id:'p1', type:'proc', x:240, y:300, w:340, text:'ปิด task เดิม + INSERT consideration_logs' },
       { id:'d3', type:'dec', x:240, y:404, w:300, h:78, text:'section = 06\nและผล = ไม่ชดเชย/หยุดชดเชย?' },
       { id:'endE', type:'termOk', x:560, y:404, w:240, text:'เสร็จสิ้นดำเนินการ (END)' },
-      { id:'p2', type:'proc', x:240, y:514, w:400, h:66, text:'> 100,000 → AVP OPT (03) → จบ\n≤ 100,000 → จบที่ GM (02)\nตัดขั้นบัญชี 04/05 (SDD v7.5)' },
+      { id:'p2', type:'proc', x:240, y:514, w:400, h:66, text:'≤ 50,000 → จบที่ GM (02)\n50,001–300,000 → AVP สำนัก SBPM (03) → จบ\nตัดขั้นบัญชี 04/05 · วงเงินตาม SDD GI 24/02/2026' },
       { id:'p3', type:'proc', x:240, y:612, w:400, h:58, text:'เปิด workflow_tasks ใหม่ + UPDATE สถานะ\n+ ส่งอีเมล (status_email_rules)' },
       { id:'end2', type:'termOk', x:240, y:694, w:320, text:'200 · nextSection / statusCode' }
     ], edges:[

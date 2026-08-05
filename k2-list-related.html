@@ -278,7 +278,7 @@
       { label: 'รอเจ้าหน้าที่ SBP DSA ดำเนินการ', pill: 'violet' },     // 08
       { label: 'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'info' },    // 01
       { label: 'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'orange' },  // 02
-      { label: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill: 'navy' },  // 03 (เฉพาะ > 100,000)
+      { label: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill: 'navy' },  // 03 (เฉพาะ 50,001–300,000 · SDD GI)
       { label: 'เสร็จสิ้นดำเนินการ', pill: 'ok' }                       // End
     ];
     var DONE = 'เสร็จสิ้นดำเนินการ';
@@ -376,9 +376,9 @@
         var st = STATUSES[PATTERN[j % PATTERN.length]];
         var done = st.label === DONE;
         var drop = 5 + ((j * 53) % 1200) / 100;
-        // เอกสารที่รอ AVP ต้องมียอด > 100,000 เสมอ ตามกฎวงเงิน (SRS)
+        // เอกสารที่รอ AVP ต้องมียอดในช่วง 50,001–300,000 ตามวงเงิน SDD GI 24/02/2026
         var comp = st.pill === 'navy'
-          ? 100000.01 + ((j * 977) % 80000)
+          ? 50000.01 + ((j * 977) % 250000)
           : drop * (3000 + (j % 8) * 1000);
         // "ยอดขายไม่ครบ 60 วัน" เป็น flag ของข้อมูล (แถวแดง) ไม่ใช่สถานะ workflow
         var flag60 = !done && (j % 13 === 0);
@@ -608,7 +608,7 @@
     var SPECIALS = {
       flag60: function (tr) { return tr.getAttribute('data-flag60') === '1'; },
       over3: function (tr) { return parseFloat(tr.cells[8].textContent) > 3; },
-      over100k: function (tr) { return parseFloat(tr.getAttribute('data-comp')) > 100000; }
+      over100k: function (tr) { return parseFloat(tr.getAttribute('data-comp')) > 50000; }  // เข้าเส้น AVP ตาม SDD GI
     };
     function renderWaitingStats() {
       var grid = document.getElementById('statGrid');
@@ -620,7 +620,7 @@
           label: 'งานรอดำเนินการ · ' + currentRole.short, title: 'ทั้งหมดของบทบาทนี้ (ล้างตัวกรอง)' },
         { key: 'flag60', bg: 'bg-rose', icon: ICO.warn, value: count(SPECIALS.flag60), label: 'ยอดขายไม่ครบ 60 วัน (แถวแดง)' },
         { key: 'over3', bg: 'bg-amber', icon: ICO.clock, value: count(SPECIALS.over3), label: 'รอเกิน 3 วัน' },
-        { key: 'over100k', bg: 'bg-navy', icon: ICO.money, value: count(SPECIALS.over100k), label: 'วงเงิน > 100,000 (เข้าเส้น AVP)' }
+        { key: 'over100k', bg: 'bg-navy', icon: ICO.money, value: count(SPECIALS.over100k), label: 'วงเงิน > 50,000 (เข้าเส้น AVP · SDD GI)' }
       ];
       cards.forEach(function (c) {
         var d = statCard(c);
@@ -681,7 +681,7 @@
       [
         { key: 'flag60', bg: 'bg-rose', icon: ICO.warn, value: count(SPECIALS.flag60), label: 'ยอดขายไม่ครบ 60 วัน (แถวแดง)' },
         { key: 'over3', bg: 'bg-orange', icon: ICO.clock, value: count(SPECIALS.over3), label: 'รอเกิน 3 วัน' },
-        { key: 'over100k', bg: 'bg-navy', icon: ICO.money, value: count(SPECIALS.over100k), label: 'วงเงิน > 100,000' }
+        { key: 'over100k', bg: 'bg-navy', icon: ICO.money, value: count(SPECIALS.over100k), label: 'วงเงิน > 50,000 (AVP)' }
       ].forEach(function (c) {
         var d = statCard(c);
         d.addEventListener('click', function () {

@@ -62,7 +62,7 @@
         <div class="db-stat"><b>11</b><span>Batch Entry Points</span></div>
         <div class="db-stat"><b>5</b><span>Approval Sections</span></div>
         <div class="db-stat"><b>34</b><span>Tables ใน Schema รวม</span></div>
-        <div class="db-stat"><b>62</b><span>REST API Endpoints</span></div>
+        <div class="db-stat"><b>44</b><span>REST API Endpoints</span></div>
       </div>
 
       <div class="card">
@@ -97,7 +97,7 @@
         <div class="rule-grid">
           <div class="rule"><b>ตัดการส่งไฟล์ภายใน</b>FGI/FCS → Document/Workflow ใช้ DB และ service call โดยตรง</div>
           <div class="rule"><b>คง interface ภายนอก</b>ไฟล์/SFTP กับ QSSI, IAS และ STA ยังคงอยู่ เพราะเป็นขอบเขตระบบอื่น</div>
-          <div class="rule"><b>กติกาธุรกิจไม่เปลี่ยน</b>60 วัน, growth ≤ −10, %ชดเชย 100% และวงเงิน 100,000 ยังคงเดิม</div>
+          <div class="rule"><b>กติกาธุรกิจหลักคงเดิม</b>60 วัน, growth ≤ −10, %ชดเชย 100% · วงเงินอนุมัติปรับใหม่เป็น GM 50,000 / AVP 300,000 (SDD GI 24/02/2026)</div>
         </div>
       </div>
 
@@ -119,7 +119,7 @@
 
           <!-- API -->
           <rect x="200" y="128" width="600" height="48" rx="12" fill="#0f172a"/>
-          <text x="500" y="149" text-anchor="middle" font-size="13" font-weight="700" fill="#86efac">REST API  /api/v1 · JSON + JWT · 62 เส้น</text>
+          <text x="500" y="149" text-anchor="middle" font-size="13" font-weight="700" fill="#86efac">REST API  /api/v1 · JSON · 44 เส้น (ผ่าน BFF ระบบเดิม)</text>
           <text x="500" y="166" text-anchor="middle" font-size="10.5" fill="#9fb3cd">รายละเอียดทุกเส้นดูหน้า “API”</text>
 
           <line x1="500" y1="176" x2="500" y2="200" stroke="#8493a5" stroke-width="1.8" marker-end="url(#aa)"/>
@@ -130,10 +130,10 @@
           <rect x="218" y="212" width="42" height="18" rx="9" fill="#e7f7ee"/><text x="239" y="225" text-anchor="middle" font-size="10" font-weight="700" fill="#15803d">ใหม่</text>
 
           <!-- row 1 -->
-          <rect x="64" y="240" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#c8a2e8" stroke-width="1.5"/>
-          <text x="78" y="262" font-size="12.5" font-weight="600" fill="#2b3440">Auth &amp; RBAC</text>
-          <rect x="78" y="270" width="88" height="17" rx="8" fill="#f1ecfe"/><text x="122" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#6d28d9">K2 · SRS 3.1.1</text>
-          <text x="78" y="306" font-size="10.5" fill="#5d6b7a">JWT · Role 00–10 · สิทธิ์เมนูต่อ Role</text>
+          <rect x="64" y="240" width="284" height="84" rx="10" fill="#f6f8fb" stroke="#c4cdd8" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <text x="78" y="262" font-size="12.5" font-weight="600" fill="#8493a5">Auth &amp; RBAC — ใช้ระบบ SBP เดิม</text>
+          <rect x="78" y="270" width="120" height="17" rx="8" fill="#fff6e6"/><text x="138" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#b45309">ตัดสินใจ 2026-08-05</text>
+          <text x="78" y="306" font-size="10.5" fill="#8493a5">Cognito + BFF + auth-backend/ABS · ไม่สร้างใน SBPGI</text>
 
           <rect x="358" y="240" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#c8a2e8" stroke-width="1.5"/>
           <text x="372" y="262" font-size="12.5" font-weight="600" fill="#2b3440">Document &amp; Compensation Service</text>
@@ -144,7 +144,7 @@
           <text x="666" y="262" font-size="12.5" font-weight="600" fill="#2b3440">Workflow Engine (ภายใน)</text>
           <rect x="666" y="270" width="88" height="17" rx="8" fill="#f1ecfe"/><text x="710" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#6d28d9">K2 · SRS 3.1.4</text>
           <rect x="760" y="270" width="130" height="17" rx="8" fill="#e8f0fe"/><text x="825" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">แทน K2 REST (Job 8b)</text>
-          <text x="666" y="306" font-size="10.5" fill="#5d6b7a">5 ขั้น 06→08→01→02→03 · กฎ 100,000 · บัญชีนอก flow</text>
+          <text x="666" y="306" font-size="10.5" fill="#5d6b7a">5 ขั้น 06→08→01→02→03 · วงเงิน GM 50,000/AVP 300,000 · บัญชีนอก flow</text>
 
           <!-- row 2 -->
           <rect x="64" y="336" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#96b4f0" stroke-width="1.5"/>
@@ -243,7 +243,7 @@
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">9. ขั้นที่ 4–5: GM → AVP ตามวงเงิน <span class="ref k2">K2 · Section 02 → 03</span></div>
-            <div class="tl-meta">กฎวงเงิน: ยอดชดเชย &gt; 100,000 บาท ต้องผ่านผู้บริหารสำนักบริหาร SBP (AVP) แล้วจบงาน · ≤ 100,000 จบที่ GM (ไม่มีขั้นบัญชี · ตัด 04/05 ตาม SDD v7.5)</div></div>
+            <div class="tl-meta">กฎวงเงิน (SDD GI 24/02/2026): ยอดชดเชย ≤ 50,000 บาท จบที่ GM · 50,001–300,000 ต้องผ่านผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) แล้วจบงาน (เกิน 300,000 รอ confirm) · เห็นควรไม่ชดเชยที่ขั้น 01/02 จบทันที · ไม่มีขั้นบัญชี (ตัด 04/05 ตาม SDD v7.5)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">10. บัญชีตรวจสอบนอก workflow <span class="ref new">SDD v7.5</span></div>
@@ -294,8 +294,12 @@
                 <td><span class="ref fgi">FGI/FCS</span></td></tr>
               <tr><td>สิทธิ์ผู้ใช้และเมนู</td>
                 <td class="int-old">ตารางสิทธิ์ 8 role ในเอกสาร SRS (จัดการในระบบ BPM เดิม)</td>
-                <td class="int-new">Auth &amp; RBAC + JWT · menu_permissions ต่อ role · จัดการผ่านหน้าสิทธิ์การเข้าถึงเมนู</td>
+                <td class="int-new"><b>ใช้ระบบ SBP เดิม</b> — auth-backend (ABS): groups/menus/permissions ต่อ URL · จัดการผ่านหน้า /setting/manage-user-rights ที่มีอยู่แล้ว · 8 role map เป็น group · ไม่สร้างหน้า/ตารางใน SBPGI (ตัดสินใจ 2026-08-05)</td>
                 <td><span class="ref k2">K2 · 3.1.1</span></td></tr>
+              <tr><td>กำหนดผู้ปฏิบัติงาน</td>
+                <td class="int-old">หน้าจอ + ตารางผู้ปฏิบัติงานต่อ section/พื้นที่ (SRS 3.1.8 · ระบบ BPM เดิม)</td>
+                <td class="int-new"><b>ใช้ระบบ SBP เดิม</b> — group + scope ของ auth-backend · prepared approvers ของ workflow engine เดิม (@srm/glb-workflow) · ไม่สร้างหน้า/ตารางใน SBPGI</td>
+                <td><span class="ref k2">K2 · 3.1.8</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -334,7 +338,7 @@
 
       <div class="card" style="border-left:5px solid var(--primary);">
         <p style="margin:0; font-size:13px; color:#5d6b7a;">
-          กติกาธุรกิจทั้งหมด<b>คงเดิมตามเอกสารอ้างอิง</b> — เกณฑ์ Gen Flow Gate, กฎวงเงิน 100,000, หน้าต่างคำนวณ 4×15 วัน, เกณฑ์ outlier ≥ 50, QSSI 6 หมวด, %ชดเชยรวม 100% ฯลฯ
+          กติกาธุรกิจทั้งหมด<b>คงเดิมตามเอกสารอ้างอิง</b> — เกณฑ์ Gen Flow Gate, กฎวงเงิน GM 50,000/AVP 300,000 (SDD GI 24/02/2026), หน้าต่างคำนวณ 4×15 วัน, เกณฑ์ outlier ≥ 50, QSSI 6 หมวด, %ชดเชยรวม 100% ฯลฯ
           การเปลี่ยนแปลงจำกัดอยู่ที่<b>กลไกทางเทคนิค</b> (ไฟล์ภายใน → DB/API, K2 engine → Workflow ภายใน) และการแก้ความเสี่ยง P0/P1 ที่เอกสาร v4.0 ระบุ
           — การเปลี่ยนพฤติกรรมเชิงธุรกิจใด ๆ ต้องขออนุมัติแยกตามข้อ 8.2 ของเอกสาร
         </p>

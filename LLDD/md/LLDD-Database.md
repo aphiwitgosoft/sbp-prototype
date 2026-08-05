@@ -2,6 +2,8 @@
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
+> ปรับตาม SDD GI 24/02/2026 (วงเงิน GM 50,000 / AVP 300,000) + การตัดสินใจใช้ระบบสิทธิ์เดิม 2026-08-05 — ตัดตาราง `roles`/`menus`/`menu_permissions`/`user_accounts`/`operator_assignments` เหลือ 29 ตาราง
+
 ## 1. Purpose
 
 เอกสารนี้เป็น LLDD Database ระดับรวมของ target schema ระบบ SBPGI/SBP Mall ใช้เป็น reference สำหรับ BE API, Batch Job, migration, indexing, transaction และ data dictionary
@@ -14,6 +16,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 - ตัดขั้นบัญชี 04/05 ตาม SDD v7.5; workflow ใช้ section 06/08/01/02/03
 - มาตรฐานชื่อ table/column เป็น English lower_snake_case
 - ตาราง job_configs และ job_run_histories เป็น schema reference สำหรับ BE/dev; ไม่ใช่ scope ให้ FE Batch Monitor ทำ tab Database ที่ใช้
+- **ตัดสินใจ 2026-08-05:** RBAC/ผู้ปฏิบัติงาน (`roles`, `menus`, `menu_permissions`, `user_accounts`, `operator_assignments`) **ไม่สร้างใน SBPGI** — ใช้ระบบสิทธิ์/ผู้ใช้ของระบบ SBP เดิม (AWS Cognito + BFF + auth-backend/ABS · SBPGI รับ user context จาก header `x-user-id`/`x-user-group-id`/`x-user-permissions`) · schema เหลือ **29 ตาราง** (เดิม 34)
 
 ## 2.1 Input / Progress / Output Contract
 
@@ -29,7 +32,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- | --- | --- |
 | A | FGI/FCS Impact Pipeline and external interfaces | fgi_impact_processes, fgi_impact_stores, sales, interface_transactions | Batch Jobs 1-7, IAS/ALLMAP/QSSI/STA tracking |
 | B | K2 Document and internal workflow | compensation_documents, document_* tables, workflow_instances, workflow_tasks | Document APIs, workflow actions, FE detail/list/report |
-| C | Shared master/config/RBAC/audit | stores, roles, menus, configs, jobs, email templates, audit | Lookup, admin, job monitor, notification |
+| C | Shared master/config/audit (RBAC ใช้ระบบ SBP เดิม) | stores, configs, jobs, email templates, audit | Lookup, admin, job monitor, notification |
 
 | Order | Key | Meaning | Used by |
 | --- | --- | --- | --- |
@@ -37,7 +40,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | 2 | doc_no | เอกสาร YYYY/xxxxx ปี พ.ศ. | Document APIs, reports, attachments |
 | 3 | instance_id | workflow instance ต่อเอกสาร | Workflow engine |
 | 4 | task_id | งานต่อ section/assignee | Inbox/current task guard |
-| 5 | employee_id / role_code | identity/RBAC | menu, audit, assignment |
+| 5 | employee_id | identity — ตัวตน/สิทธิ์เมนูมาจากระบบ SBP เดิม (auth-backend) ผ่าน user-context header | audit, task assignment |
 
 ## 4. Data Dictionary
 
@@ -63,17 +66,17 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | C | impacted_stores | store_code | stores.store_code | SP impacted store subset |
 | C | workflow_sections | section_code | - | workflow sections 06/08/01/02/03 |
 | C | document_statuses | status_code | - | document status dictionary |
-| C | roles | role_code | - | RBAC roles 00-10 |
-| C | menus | menu_code | - | menu registry |
-| C | menu_permissions | role_code + menu_code | roles, menus | RBAC matrix |
-| C | operator_assignments | id | section_code, employee_id | operator by section/zone |
+| C | ~~roles~~ | role_code | - | **ตัดออก** — ใช้ `groups` ของ auth-backend เดิม (2026-08-05) |
+| C | ~~menus~~ | menu_code | - | **ตัดออก** — ใช้ `menus` ของ auth-backend เดิม |
+| C | ~~menu_permissions~~ | role_code + menu_code | roles, menus | **ตัดออก** — ใช้ permissions ต่อ URL ของ auth-backend เดิม |
+| C | ~~operator_assignments~~ | id | section_code, employee_id | **ตัดออก** — ใช้ group + scope ของ auth-backend + prepared approvers ของ workflow engine เดิม |
 | C | employees | employee_id | - | HR employee master |
 | C | external_factors | factor_code | - | external factor master |
 | C | competitors | competitor_code | - | competitor master |
 | C | audit_logs | id | table_name + ref_key | master/config/email audit |
 | C | status_email_rules | status_code | workflow_sections | notification recipients |
 | C | email_templates | template_code | - | notification templates |
-| C | user_accounts | employee_id | role_code | user account/JWT role |
+| C | ~~user_accounts~~ | employee_id | role_code | **ตัดออก** — ใช้ Cognito + auth-backend `users`/`user_group_memberships` เดิม |
 | C | job_configs | job_no | - | schema reference for batch schedule/config; not FE Database tab scope |
 | C | job_run_histories | run_id | job_no | job execution history |
 | C | system_configs | config_key | - | global config key-value |
@@ -82,8 +85,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 | Table | Canonical columns used by DDL and SQL | Rejected legacy vocabulary |
 | --- | --- | --- |
-| menu_permissions | role_code, menu_code, can_access | can_view/can_create/can_update/can_delete |
-| user_accounts | employee_id, role_code, section_code, username, is_active | password_hash/account_status |
+| ~~menu_permissions~~ (ตัดออก — ใช้ระบบ SBP เดิม) | role_code, menu_code, can_access | can_view/can_create/can_update/can_delete |
+| ~~user_accounts~~ (ตัดออก — ใช้ระบบ SBP เดิม) | employee_id, role_code, section_code, username, is_active | password_hash/account_status |
 | workflow_instances | instance_id, doc_no, instance_status, started_at, started_by | status or auto-generated instance id |
 | system_configs | config_key, category, config_value, value_type, unit, description, is_editable | secret_flag or inline secrets |
 | sales_transactions | txn_date, window_no, sales_amount, sales_diff, is_outlier | sale_date/window_code/net_sales |
@@ -91,11 +94,11 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | interface_transactions | id, acked_at | tracking_id/receive_date (API aliases only) |
 | fgi_impact_processes | workflow_generation_status | duplicate workflow flag on fgi_impact_stores |
 
-## 5. Executable DDL — 34 Tables
+## 5. Executable DDL — 29 Tables
 
-ส่วนนี้เป็น PostgreSQL DDL ครบทุกตารางใน Data Dictionary เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น สามารถใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม
+ส่วนนี้เป็น PostgreSQL DDL ครบทุกตารางใน Data Dictionary เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น สามารถใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม (เดิม 34 ตาราง — DDL ของ `roles`/`menus`/`menu_permissions`/`user_accounts`/`operator_assignments` ถูกตัดออกตามการตัดสินใจ 2026-08-05 ใช้ระบบสิทธิ์ของ SBP เดิม)
 
-### 5.1 Zone C — Shared Master, RBAC, Config and Operations
+### 5.1 Zone C — Shared Master, Config and Operations
 
 ```sql
 CREATE TABLE stores (
@@ -129,27 +132,8 @@ CREATE TABLE document_statuses (
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-CREATE TABLE roles (
-    role_code VARCHAR(10) PRIMARY KEY,
-    role_name VARCHAR(200) NOT NULL, role_desc VARCHAR(500),
-    is_system BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
-);
-
-CREATE TABLE menus (
-    menu_code VARCHAR(50) PRIMARY KEY,
-    menu_name VARCHAR(200) NOT NULL, menu_group VARCHAR(100),
-    route_path VARCHAR(255), sort_order INTEGER NOT NULL,
-    is_system BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
-);
-
-CREATE TABLE menu_permissions (
-    role_code VARCHAR(10) NOT NULL REFERENCES roles(role_code),
-    menu_code VARCHAR(50) NOT NULL REFERENCES menus(menu_code),
-    can_access BOOLEAN NOT NULL DEFAULT FALSE,
-    PRIMARY KEY (role_code, menu_code)
-);
+-- ตัดออก 2026-08-05: roles / menus / menu_permissions — ใช้ groups/menus/permissions ต่อ URL
+-- ของ auth-backend (ABS) ระบบ SBP เดิม (จัดการผ่านหน้า /setting/manage-user-rights)
 
 CREATE TABLE employees (
     employee_id VARCHAR(30) PRIMARY KEY,
@@ -162,15 +146,8 @@ CREATE TABLE employees (
 ALTER TABLE impacted_stores
     ADD CONSTRAINT fk_impacted_store_opt_dv FOREIGN KEY (opt_dv_user_id) REFERENCES employees(employee_id);
 
-CREATE TABLE operator_assignments (
-    id BIGSERIAL PRIMARY KEY,
-    section_code VARCHAR(2) NOT NULL REFERENCES workflow_sections(section_code),
-    employee_id VARCHAR(30) NOT NULL REFERENCES employees(employee_id),
-    emp_name VARCHAR(200) NOT NULL, emp_mail VARCHAR(255), zone_code VARCHAR(10),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_operator_scope UNIQUE (section_code, employee_id, zone_code)
-);
+-- ตัดออก 2026-08-05: operator_assignments — ใช้ group + scope ของ auth-backend เดิม
+-- และ prepared approvers ของ workflow engine เดิม (@srm/glb-workflow) แทน
 
 CREATE TABLE external_factors (
     factor_code VARCHAR(30) PRIMARY KEY,
@@ -205,14 +182,8 @@ CREATE TABLE status_email_rules (
     PRIMARY KEY (status_code, template_code)
 );
 
-CREATE TABLE user_accounts (
-    employee_id VARCHAR(30) PRIMARY KEY REFERENCES employees(employee_id),
-    role_code VARCHAR(10) NOT NULL REFERENCES roles(role_code),
-    section_code VARCHAR(2) REFERENCES workflow_sections(section_code),
-    username VARCHAR(100) NOT NULL UNIQUE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    last_login_at TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- ตัดออก 2026-08-05: user_accounts — ใช้ AWS Cognito + auth-backend users/user_group_memberships
+-- ระบบเดิม; SBPGI รับตัวตนจาก BFF ผ่าน header x-user-id/x-user-group-id ไม่เก็บบัญชีเอง
 
 CREATE TABLE job_configs (
     job_no VARCHAR(10) PRIMARY KEY,
@@ -504,9 +475,9 @@ RETURNING i.id, i.data_name, i.business_key;
 | --- | --- |
 | workflow_sections | 06, 08, 01, 02, 03 only |
 | document_statuses | 6 statuses: 5 waiting statuses + completed |
-| roles | 00, 01, 02, 03, 04, 05, 06, 10 per RBAC model |
+| ~~roles~~ | **ตัดออก** — 8 role (00–10) ของ SRS map เป็น group ใน auth-backend ระบบเดิม (2026-08-05) |
 | email_templates | EM-01..EM-08 |
-| system_configs | impact radius 1/2 km, workflow.avp_amount_threshold=100000, sales data threshold=60, growth rate threshold=-10 |
+| system_configs | impact radius 1/2 km, workflow.gm_amount_limit=50000, workflow.avp_amount_limit=300000 (SDD GI 24/02/2026 — แทน workflow.avp_amount_threshold=100000 เดิม), sales data threshold=60, growth rate threshold=-10 |
 | job_configs | Jobs 1-10 and 8b with enabled/schedule/default params as schema reference |
 
 ## 9. Migration and Verification Checklist
@@ -534,8 +505,8 @@ RETURNING i.id, i.data_name, i.business_key;
 | LLDD-BE-API-Document-Workflow-Actions | workflow_tasks(R/W), compensation_documents(W), consideration_logs(W), status_email_rules(R) |
 | LLDD-BE-API-Workflow-Instances | fgi_impact_processes / fgi_impact_stores(R/W), compensation_documents(R/W), workflow_instances(R/W), workflow_tasks(W) |
 | LLDD-BE-API-Attachment-Sales-Timeline | document_attachments(R/W), compensation_documents(R), fgi_impact_sales_summaries(R), sales_transactions(R) |
-| LLDD-BE-API-Lookup-RBAC-Email | stores / impacted_stores(R), document_statuses / workflow_sections(R), employees(R), roles / menus / menu_permissions(R/W) |
-| LLDD-BE-API-Report-Master-Config | compensation_documents(R), compensation_histories(R), consideration_logs(R), operator_assignments(R/W) |
+| LLDD-BE-API-Lookup-RBAC-Email | stores / impacted_stores(R), document_statuses / workflow_sections(R), employees(R), email_templates / audit_logs(R/W) — ~~roles / menus / menu_permissions~~ ตัดออก ใช้ระบบ SBP เดิม |
+| LLDD-BE-API-Report-Master-Config | compensation_documents(R), compensation_histories(R), consideration_logs(R), external_factors / system_configs(R/W) — ~~operator_assignments~~ ตัดออก ใช้ระบบ SBP เดิม |
 | LLDD-BE-Job-Batch-Email-SRM | job_configs(R/W), job_run_histories(R/W), interface_transactions(R/W), email_templates(R/W) |
 | LLDD-BE-Job-1-ImportQSSI | fcs_qssi_scores(W) |
 | LLDD-BE-Job-2-ImportImpactStore | fgi_impact_stores(W) |
