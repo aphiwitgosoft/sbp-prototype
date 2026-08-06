@@ -183,7 +183,6 @@
           <span class="edit-badge" style="margin-left:12px;"></span>
           <div class="edit-only" hidden style="display:flex;gap:8px;margin-left:12px;">
             <button class="btn btn-primary btn-sm" data-add-row="tblCompetitor"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่ม</button>
-            <button class="btn btn-muted btn-sm" data-ack="บันทึกข้อมูลร้านคู่แข่งเรียบร้อย" data-kind="ok">บันทึก</button>
           </div>
         </div>
         <!-- แถบดำเนินการกับรายการที่ติ๊กเลือก — แสดงเฉพาะบทบาทที่แก้ไขส่วนนี้ได้ และเมื่อเลือกอย่างน้อย 1 รายการ -->
@@ -196,10 +195,11 @@
         <div class="table-wrap"><table class="data" id="tblCompetitor" data-entity="competitor">
           <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ร้านคู่แข่ง</th><th>วันที่เปิดกระทบ</th><th>รายละเอียดเพิ่มเติม</th><th class="col-action">Action</th></tr></thead>
           <tbody>
-            <tr><td class="col-chk"><input type="checkbox" class="cbx"></td><td>Lotus Express</td><td class="num">10/10/2023</td><td>เปิดฝั่งตรงข้าม ระยะ 120 ม.</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
-            <tr><td class="col-chk"><input type="checkbox" class="cbx"></td><td>CJ Express</td><td class="num">05/01/2024</td><td>เปิดหัวซอยเดียวกัน</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="col-chk"><input type="checkbox" class="cbx"></td><td>01 · โลตัสเอ็กซ์เพรส (Lotus Express)</td><td class="num">10/10/2023</td><td>เปิดฝั่งตรงข้าม ระยะ 120 ม.</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="col-chk"><input type="checkbox" class="cbx"></td><td>06 · ซี.เจ. เอ็กซ์เพรส (CJ Express)</td><td class="num">05/01/2024</td><td>เปิดหัวซอยเดียวกัน</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
           </tbody>
         </table></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">ตัวเลือก “ร้านคู่แข่ง” ใน modal เพิ่ม/แก้ไข อ่านจาก master <a href="k2-competitors.html">กำหนดรายชื่อคู่แข่ง</a> (ตาราง <code>competitors</code> · รหัส · ชื่อไทย (ชื่ออังกฤษ)) — <b>ร้านคู่แข่ง</b> และ <b>วันที่เปิดกระทบ</b> เป็น require field</p>
       </div>
 
       <!-- ส่วน ปัจจัยอื่นๆ -->
@@ -208,7 +208,6 @@
           <span class="edit-badge" style="margin-left:auto;"></span>
           <div class="edit-only" hidden style="display:flex;gap:8px;margin-left:12px;">
             <button class="btn btn-primary btn-sm" data-add-row="tblFactorsDoc"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มข้อมูล</button>
-            <button class="btn btn-muted btn-sm" data-ack="บันทึกข้อมูลปัจจัยอื่นๆ เรียบร้อย" data-kind="ok">บันทึก</button>
           </div>
         </div>
         <div class="bulk-bar" data-bulk-for="tblFactorsDoc" hidden>
@@ -220,9 +219,10 @@
         <div class="table-wrap"><table class="data" id="tblFactorsDoc" data-entity="factordoc">
           <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ปัจจัยภายนอก</th><th>วันที่เริ่มต้น</th><th>วันที่สิ้นสุด</th><th>รายละเอียดเพิ่มเติม</th><th class="col-action">Action</th></tr></thead>
           <tbody>
-            <tr><td class="col-chk"><input type="checkbox" class="cbx"></td><td>การก่อสร้าง / ปิดถนน</td><td class="num">01/05/2026</td><td class="num">31/07/2026</td><td>ก่อสร้างสะพานกลับรถ กระทบการเข้าถึง</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="col-chk"><input type="checkbox" class="cbx"></td><td>F003 · การก่อสร้าง / ปิดถนน</td><td class="num">01/05/2026</td><td class="num">31/07/2026</td><td>ก่อสร้างสะพานกลับรถ กระทบการเข้าถึง</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
           </tbody>
         </table></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">ตัวเลือก “ปัจจัยภายนอก” ใน modal เพิ่ม/แก้ไข อ่านจาก master <a href="k2-factors.html">กำหนดปัจจัยภายนอก</a> (ตาราง <code>external_factors</code> · รหัสปัจจัย · ชื่อปัจจัย) — <b>ปัจจัยภายนอก</b> และ <b>วันที่เริ่มต้น</b> เป็น require field · วันที่สิ้นสุดต้องเท่ากับหรือมากกว่าวันที่เริ่มต้น</p>
       </div>
 
       <!-- ส่วน เอกสารแนบทั้งหมด -->

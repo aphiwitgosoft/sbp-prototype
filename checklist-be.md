@@ -231,7 +231,7 @@
 ### ✔ เกณฑ์ตรวจรับ Phase 3 — integration test เดินเรื่องจริง (supertest + postgres)
 
 **Scenario 1 — เส้นทางปกติ ≤ 50,000 (จบที่ GM):**
-1. login role 06 → `POST /documents` (ยอด 40,000) → 201 ได้ `docNo` รูป `2569/xxxxx` · เช็ค DB: status "รอฝ่าย SBP DSA ดำเนินการ" + task 06 เปิด
+1. login role 06 → `POST /documents` (ยอด 40,000) → 201 ได้ `docNo` รูป `2026/xxxxx` (ปี ค.ศ.) · เช็ค DB: status "รอฝ่าย SBP DSA ดำเนินการ" + task 06 เปิด
 2. `POST .../actions` result "ส่งเจ้าหน้าที่ SBP DSA" → 200 · status → รอ 08 · task 06 ปิด, task 08 เปิด
 3. login role 08 → actions "คำนวณเงินชดเชยเรียบร้อย" → รอ 01
 4. login role 01 → `PUT /documents/{docNo}` %ชดเชยรวม 100 → 200 · actions "เห็นควรชดเชย" → รอ 02

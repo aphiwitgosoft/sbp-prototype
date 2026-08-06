@@ -1,0 +1,108 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Tahoma, 'Sarabun', 'Noto Sans Thai', 'Helvetica Neue', sans-serif",
+    "fontSize": "15px",
+    "primaryColor": "#EAF2FF",
+    "primaryBorderColor": "#4A6FA5",
+    "primaryTextColor": "#1F2937",
+    "lineColor": "#5B6472",
+    "actorTextColor": "#111827",
+    "signalColor": "#3D3D3D",
+    "signalTextColor": "#1F2937",
+    "noteBkgColor": "#FFF3C4",
+    "noteBorderColor": "#E0B400",
+    "noteTextColor": "#4A3B00",
+    "activationBkgColor": "#BFEFEA",
+    "activationBorderColor": "#2BB3A3",
+    "labelBoxBkgColor": "#F1F5F9",
+    "labelBoxBorderColor": "#94A3B8",
+    "altSectionBkgColor": "#F8FAFC"
+  },
+  "sequence": {
+    "diagramMarginX": 40,
+    "diagramMarginY": 24,
+    "actorMargin": 90,
+    "boxMargin": 14,
+    "boxTextMargin": 6,
+    "noteMargin": 12,
+    "messageMargin": 42,
+    "mirrorActors": true,
+    "wrap": true,
+    "width": 200
+  }
+}}%%
+sequenceDiagram
+    autonumber
+
+    box rgb(245,235,255) AllMap
+        participant AllMap
+    end
+    box rgb(214,245,235) ระบบประกันรายได้ SBP GI
+        participant SBPGI
+    end
+    box rgb(255,237,213) MIS ยอดขาย
+        participant MIS
+    end
+    box rgb(214,243,252) STA
+        participant STA
+    end
+    box rgb(220,247,224) SAP บัญชี
+        participant SAP
+    end
+
+    AllMap->>SBPGI: ส่งข้อมูลร้านค้าที่ได้รับผลกระทบ
+
+    opt กรณีร้านค้าได้รับผลกระทบ แต่ไม่ได้ส่งข้อมูลสาขามาให้คำนวณ และต้องการชดเชยย้อนหลัง
+        Note over STA,SAP: API Endpoint /fgiService/updateCompensateFromFS
+        STA->>SBPGI: ส่งข้อมูลร้านค้าที่ได้รับผลกระทบ (API)
+        activate SBPGI
+        SBPGI->>SBPGI: นำเข้าข้อมูล เพื่อใช้ในการประมวลผล
+        SBPGI-->>STA: return Success
+        deactivate SBPGI
+    end
+
+    Note over SBPGI: Job FGI_ExportImpactStoreToAMS<br/>At 16:00 on every day-of-month from 7 through 16
+    Note over MIS: Filename AMS060010_
+    SBPGI->>MIS: วางไฟล์ข้อมูลร้านค้าที่ได้รับผลกระทบ
+    MIS->>MIS: ดึงไฟล์ข้อมูลร้านค้าที่ได้รับผลกระทบ
+    MIS->>MIS: ประมวลผล
+
+    Note over AllMap,SBPGI: Filename AMS06001I_
+    MIS->>SBPGI: วางไฟล์ยอดขายของร้านค้าที่ได้รับผลกระทบ
+    Note over SBPGI,MIS: Job FGI_ImportImpactStoreSale.sh<br/>At 16:30 on every day-of-month from 7 through 16<br/>Filename AMS06001I_
+    SBPGI->>SBPGI: นำเข้าข้อมูลยอดการขายจาก MIS
+
+    Note over SBPGI,MIS: Job FGI_ExportImpactStoreToSTA.sh<br/>At 17:00 on every day
+    Note over STA: Filename FRBC0001_
+    SBPGI->>STA: ประมวลผลวางไฟล์ข้อมูลร้านค้าที่ได้รับผลกระทบ
+    SBPGI->>SBPGI: บันทึกข้อมูลส่งออกของร้านค้าที่ได้รับผลกระทบ (STA)
+    STA->>STA: ประมวลผลข้อมูลจากไฟล์ FRBC0001_
+
+    alt กรณีอนุมัติชดเชยประกันรายได้ (Approve = A)
+        Note over STA: ตรวจสอบยอดการอนุมัติ
+        STA->>SAP: บันทึกบัญชี
+        SAP-->>STA: return Success
+    else กรณีหยุดชดเชยประกันรายได้ (Stop Flow = S)
+        STA->>STA: Stop Flow
+    else กรณีเป็นข้อมูลตั้งต้น (Initial = I)
+        STA->>STA: ตั้ง Flow ร้านค้าที่ได้รับผลกระทบ
+    end
+
+    Note over AllMap,SBPGI: Filename RT040035, RT040078
+    STA->>SBPGI: วางไฟล์ยอดชดเชยประกันรายได้
+    Note over SBPGI,MIS: API Endpoint /fgiService/updateCompensateFromFS<br/>ยอดเท่ากับศูนย์ = Z<br/>ยอดไม่เท่ากับศูนย์ = w
+    STA->>SBPGI: ส่งข้อมูล ยอดเงินประกันรายได้
+    activate SBPGI
+    SBPGI->>SBPGI: อัพเดทข้อมูลร้านค้าที่ได้รับผลกระทบ
+    SBPGI-->>STA: return Success
+    deactivate SBPGI
+
+    SBPGI->>SBPGI: (K2) นำเข้าข้อมูลร้านค้าที่ได้รับผลกระทบ
+    Note over AllMap,SBPGI: API Endpoint /fgiService/confirmDataFromBPM
+    SBPGI->>SBPGI: (K2) ตอบกลับ ได้รับข้อมูลจากระบบประกันรายได้<br/>และอัพเดทสถานะการตอบกลับข้อมูล
+
+    opt กรณีมีการ Adjust เงินชดเชยประกันรายได้
+        STA->>SBPGI: ส่งข้อมูล Adjust เงินชดเชยประกันรายได้
+        SBPGI->>SBPGI: อัพเดทข้อมูล Adjust
+    end

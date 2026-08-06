@@ -76,7 +76,7 @@ Dashboard summary API
 
 ```json
 {
-  "year": 2569
+  "year": 2026
 }
 ```
 

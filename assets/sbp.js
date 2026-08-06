@@ -569,11 +569,15 @@
       { key: 'editable', label: 'แก้ไขได้ (is_editable)', col: 'แก้ไขได้', type: 'select', options: ['แก้ได้', 'ค่าคงที่ (ต้องขออนุมัติ)'] },
       { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
     ],
+    /* master ปัจจัยภายนอก — จัดการที่หน้า k2-factors.html (ตาราง external_factors)
+       เพิ่ม/แก้ที่นั่นแล้ว dropdown "ปัจจัยอื่นๆ" ในหน้าเอกสารต้องเปลี่ยนตาม */
+    FACTOR_MASTER: ['F001 · ร้านคู่แข่งเปิดใหม่', 'F002 · ห้างค้าปลีกขนาดใหญ่',
+      'F003 · การก่อสร้าง / ปิดถนน', 'F004 · ทำเล/สถานีเปลี่ยน'],
     factor: [
-      { key: 'code', label: 'รหัสปัจจัยภายนอก (factor_code)', col: 'รหัสปัจจัย' },
-      { key: 'name', label: 'ชื่อปัจจัยภายนอก (factor_name)', col: 'ชื่อปัจจัย', wide: true },
+      { key: 'code', label: 'รหัสปัจจัยภายนอก (factor_code)', col: 'รหัสปัจจัย', req: true },
+      { key: 'name', label: 'ชื่อปัจจัยภายนอก (factor_name)', col: 'ชื่อปัจจัย', wide: true, req: true },
       { key: 'remark', label: 'รายละเอียดเพิ่มเติม (factor_remark)', col: 'รายละเอียดเพิ่มเติม', wide: true },
-      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
+      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true, reqOn: 'edit' }
     ],
     /* master รายชื่อคู่แข่ง — จัดการที่หน้า k2-competitors.html (ตรงตาม K2 เดิม 11 รายการ)
        เพิ่ม/แก้ที่นั่นแล้ว dropdown ในหน้าเอกสารต้องเปลี่ยนตาม (ระบบจริงอ่านจากตาราง competitors) */
@@ -582,25 +586,24 @@
       '07 · แม็กซ์แวลูทันใจ (Max Valu)', '08 · ซุปเปอร์ชีป (Super Cheap)', '09 · ลอว์สัน 108 (Lawson 108)',
       '10 · จอย (Joy)', '11 · อื่นๆ (Other)'],
     competitormaster: [
-      { key: 'code', label: 'รหัสคู่แข่ง (competitor_code) *', col: 'รหัสคู่แข่ง' },
-      { key: 'nameth', label: 'ชื่อคู่แข่ง (ไทย) *', col: 'ชื่อคู่แข่ง (ไทย)', wide: true },
-      { key: 'nameen', label: 'ชื่อคู่แข่ง (อังกฤษ) *', col: 'ชื่อคู่แข่ง (อังกฤษ)', wide: true },
+      { key: 'code', label: 'รหัสคู่แข่ง (competitor_code)', col: 'รหัสคู่แข่ง', req: true },
+      { key: 'nameth', label: 'ชื่อคู่แข่ง (ไทย)', col: 'ชื่อคู่แข่ง (ไทย)', wide: true, req: true, reqMsg: 'กรุณาระบุชื่อคู่แข่ง (ไทย)' },
+      { key: 'nameen', label: 'ชื่อคู่แข่ง (อังกฤษ)', col: 'ชื่อคู่แข่ง (อังกฤษ)', wide: true, req: true, reqMsg: 'กรุณาระบุชื่อคู่แข่ง (อังกฤษ)' },
       { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true },
-      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
+      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true, reqOn: 'edit' }
     ],
+    /* ในหน้าเอกสาร: เลือกจาก master เท่านั้น — ตัวเลือกต้องตรงกับ k2-competitors.html (รหัส · ชื่อไทย (ชื่ออังกฤษ)) */
     competitor: [
-      { key: 'name', label: 'ร้านคู่แข่ง (Master)', col: 'ร้านคู่แข่ง', wide: true, type: 'select',
-        options: ['โลตัสเอ็กซ์เพรส (Lotus Express)', 'มินิบิ๊กซี (Mini Big C)', 'ท็อปส์เดลี่ (Tops Daily)',
-          'แฟมิลี่มาร์ท (Family Mart)', 'จิฟฟี่ (Jiffy)', 'ซี.เจ. เอ็กซ์เพรส (CJ Express)',
-          'แม็กซ์แวลูทันใจ (Max Valu)', 'ซุปเปอร์ชีป (Super Cheap)', 'ลอว์สัน 108 (Lawson 108)',
-          'จอย (Joy)', 'อื่นๆ (Other)'] },
-      { key: 'date', label: 'วันที่เปิดกระทบ', col: 'วันที่เปิดกระทบ', type: 'date' },
+      { key: 'name', label: 'ร้านคู่แข่ง (เลือกจาก master รายชื่อคู่แข่ง)', col: 'ร้านคู่แข่ง', wide: true, type: 'select',
+        req: true, reqMsg: 'กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ', optionsFrom: 'COMPETITOR_MASTER' },
+      { key: 'date', label: 'วันที่เปิดกระทบ', col: 'วันที่เปิดกระทบ', type: 'date', req: true },
       { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true }
     ],
+    /* ในหน้าเอกสาร: เลือกจาก master เท่านั้น — ตัวเลือกต้องตรงกับ k2-factors.html (รหัสปัจจัย · ชื่อปัจจัย) */
     factordoc: [
-      { key: 'factor', label: 'ปัจจัยภายนอก', col: 'ปัจจัยภายนอก', wide: true, type: 'select',
-        options: ['ร้านคู่แข่งเปิดใหม่', 'ห้างค้าปลีกขนาดใหญ่', 'การก่อสร้าง / ปิดถนน', 'ทำเล/สถานีเปลี่ยน'] },
-      { key: 'start', label: 'วันที่เริ่มต้น', col: 'วันที่เริ่มต้น', type: 'date' },
+      { key: 'factor', label: 'ปัจจัยภายนอก (เลือกจาก master ปัจจัยภายนอก)', col: 'ปัจจัยภายนอก', wide: true, type: 'select',
+        req: true, reqMsg: 'กรุณาเลือกปัจจัยอื่นๆ ที่ท่านต้องการ', optionsFrom: 'FACTOR_MASTER' },
+      { key: 'start', label: 'วันที่เริ่มต้น', col: 'วันที่เริ่มต้น', type: 'date', req: true },
       { key: 'end', label: 'วันที่สิ้นสุด', col: 'วันที่สิ้นสุด', type: 'date' },
       { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true }
     ],
@@ -663,6 +666,8 @@
     var base = (ent && SCHEMAS[ent]) ? SCHEMAS[ent].map(function (f) { var o = {}; for (var k in f) o[k] = f[k]; return o; })
       : meta.headers.map(function (h) { return { key: 'c' + h.idx, label: h.label, col: h.label, type: h.status ? 'status' : 'text' }; });
     base.forEach(function (f) {
+      // dropdown ที่อ้าง master list (competitors / external_factors) — ดึงรายการจริงมาใช้ ณ เวลาเปิด modal
+      if (f.optionsFrom && SCHEMAS[f.optionsFrom]) f.options = SCHEMAS[f.optionsFrom].slice();
       f.colIdx = -1;
       if (f.col) for (var i = 0; i < meta.headers.length; i++) {
         if (clean(meta.headers[i].label) === clean(f.col)) { f.colIdx = meta.headers[i].idx; if (meta.headers[i].status) f.type = 'status'; break; }
@@ -708,19 +713,35 @@
     if (!m) return s || '';
     return m[3] + '/' + m[2] + '/' + (+m[1] + 543);
   }
+  /* require field: ป้าย * สีแดง + validate ตอนกดบันทึก (ข้อความ popup ตาม SRS ถ้ามี reqMsg) */
+  function reqMsgOf(f) {
+    if (f.reqMsg) return f.reqMsg;
+    var lb = String(f.label || '').replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\*/g, '').trim();
+    return ((f.type === 'select' || f.type === 'status') ? 'กรุณาเลือก' : 'กรุณาระบุ') + lb;
+  }
+  function markRequired(fields, mode) {
+    fields.forEach(function (f) { if (f.reqOn === mode) f.req = true; });
+    return fields;
+  }
   function buildField(f, value, sopts) {
     var wrap = cre('div', 'field' + (f.wide ? ' col-2' : ''));
-    wrap.appendChild(cre('label', null, esc(f.label)));
+    wrap.appendChild(cre('label', null, esc(f.label) + (f.req ? ' <span class="req" title="จำเป็นต้องระบุ">*</span>' : '')));
     var ctrl;
     if (f.type === 'status' || f.type === 'select') {
       ctrl = cre('select');
       var opts = f.type === 'status' ? (sopts && sopts.length ? sopts.slice() : [value]) : (f.options || []).slice();
       if (value && opts.indexOf(value) < 0) opts.unshift(value);
+      // require field แบบ dropdown ต้องเริ่มที่ค่าว่าง ไม่งั้นผู้ใช้ "ไม่เลือก" ไม่ได้ และ popup เตือนตาม SRS จะไม่มีวันขึ้น
+      if (f.req && f.type === 'select' && !value) { var ph = cre('option', null, '— กรุณาเลือก —'); ph.value = ''; ph.selected = true; ctrl.appendChild(ph); }
       opts.forEach(function (o) { var op = cre('option', null, esc(o)); op.value = o; if (o === value) op.selected = true; ctrl.appendChild(op); });
     } else if (f.type === 'date') {
       ctrl = cre('input'); ctrl.type = 'date'; ctrl.value = dateToISO(value);
     } else { ctrl = cre('input'); ctrl.type = 'text'; ctrl.value = value || ''; }
     ctrl.setAttribute('data-fk', f.key);
+    if (f.req) {
+      ctrl.setAttribute('required', 'required');
+      ['input', 'change'].forEach(function (ev) { ctrl.addEventListener(ev, function () { wrap.classList.remove('invalid'); }); });
+    }
     wrap.appendChild(ctrl); return wrap;
   }
   function renderForm(fields, row, sopts) {
@@ -777,13 +798,13 @@
     openModal({ title: 'รายละเอียดข้อมูล', sub: subtitleOf(fields, row), icon: I.eye, body: renderView(fields, row, table), footer: foot });
   }
   function openEdit(table, row) {
-    var meta = tableMeta(table), fields = resolveFields(table, meta), sopts = Object.keys(statusMap(table));
+    var meta = tableMeta(table), fields = markRequired(resolveFields(table, meta), 'edit'), sopts = Object.keys(statusMap(table));
     var body = renderForm(fields, row, sopts);
     openModal({ title: 'แก้ไขข้อมูล', sub: subtitleOf(fields, row), icon: I.edit, body: body,
       footer: [footBtn('ยกเลิก', 'btn-ghost', closeModal), footBtn('บันทึก', 'btn-primary', function () { commit(table, row, fields, body, 'edit'); })] });
   }
   function openAdd(table) {
-    var meta = tableMeta(table), fields = resolveFields(table, meta), sopts = Object.keys(statusMap(table));
+    var meta = tableMeta(table), fields = markRequired(resolveFields(table, meta), 'add'), sopts = Object.keys(statusMap(table));
     var body = renderForm(fields, null, sopts);
     openModal({ title: 'เพิ่มข้อมูล', icon: I.plus, body: body,
       footer: [footBtn('ยกเลิก', 'btn-ghost', closeModal), footBtn(svg(I.plus, '', 16) + ' เพิ่มข้อมูล', 'btn-primary', function () { commit(table, null, fields, body, 'add'); })] });
@@ -796,15 +817,24 @@
   }
   function commit(table, row, fields, form, mode) {
     var smap = statusMap(table), tb = table.querySelector('tbody'), target = row;
-    // ---- validation ตาม SRS (ร้านคู่แข่ง / ปัจจัยอื่นๆ) ----
+    // ---- validation ตาม SRS ----
     var ent = table.getAttribute('data-entity');
     function fv(k) { var el = form.querySelector('[data-fk="' + k + '"]'); return el ? (el.value || '').trim() : ''; }
-    function warn(msg) { var p = document.getElementById('k2pop'); if (p) { document.getElementById('k2popMsg').textContent = msg; p.classList.add('show'); } else toast(msg, 'del'); }
-    if (ent === 'competitor' && !fv('name')) { warn('กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ'); return; }
+    function warn(msg, key) {
+      if (key) {
+        var el = form.querySelector('[data-fk="' + key + '"]');
+        if (el) { if (el.parentNode) el.parentNode.classList.add('invalid'); try { el.focus(); } catch (e) {} }
+      }
+      var p = document.getElementById('k2pop');
+      if (p) { document.getElementById('k2popMsg').textContent = msg; p.classList.add('show'); } else toast(msg, 'del');
+    }
+    // require field — ทุก field ที่ประกาศ req/reqOn ในสคีมา
+    for (var vi = 0; vi < fields.length; vi++) {
+      if (fields[vi].req && !fv(fields[vi].key)) { warn(reqMsgOf(fields[vi]), fields[vi].key); return; }
+    }
     if (ent === 'factordoc') {
-      if (!fv('factor')) { warn('กรุณาเลือกปัจจัยอื่นๆ ที่ท่านต้องการ'); return; }
       var ds = pdate(fv('start')), de = pdate(fv('end'));
-      if (ds && de && de < ds) { warn('วันที่สิ้นสุดต้องมีค่าเท่ากับหรือมากกว่าวันที่เริ่มต้น'); return; }
+      if (ds && de && de < ds) { warn('วันที่สิ้นสุดต้องมีค่าเท่ากับหรือมากกว่าวันที่เริ่มต้น', 'end'); return; }
     }
     if (mode === 'add') {
       var tmpl = tb.querySelector('tr:last-child'); if (!tmpl) { closeModal(); return; }

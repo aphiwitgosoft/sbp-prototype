@@ -713,19 +713,19 @@
       };
     }
 
-    // หน้า "รอดำเนินการ" — เอกสารปีปัจจุบัน 2569 · เห็นเฉพาะสถานะ "รอ<บทบาท>ดำเนินการ" ของตน
+    // หน้า "รอดำเนินการ" — เอกสารปีปัจจุบัน 2026 (ค.ศ.) · เห็นเฉพาะสถานะ "รอ<บทบาท>ดำเนินการ" ของตน
     var waiting = initTable({
       tableId: 'tblK2', pagerId: 'pgK2', suffix: '',
-      total: 200, docPrefix: '2569/', docStart: 6,
+      total: 200, docPrefix: '2026/', docStart: 6,
       dateYear: 2026, dateMonth: 0, dateSpan: 181, iOffset: 0,
       extraMatch: roleMatch,
       onApply: syncStatActive
     });
 
-    // หน้า "ที่เกี่ยวข้อง" — เอกสารปีก่อน 2568 (ก.ค.–ธ.ค.) · เห็นทุกสถานะ
+    // หน้า "ที่เกี่ยวข้อง" — เอกสารปีก่อน 2025 (ค.ศ. · ก.ค.–ธ.ค.) · เห็นทุกสถานะ
     var related = initTable({
       tableId: 'tblRelated', pagerId: 'pgRelated', suffix: 'R',
-      total: 120, docPrefix: '2568/', docStart: 450,
+      total: 120, docPrefix: '2025/', docStart: 450,
       dateYear: 2025, dateMonth: 6, dateSpan: 184, iOffset: 11,
       onApply: syncStatActive
     });

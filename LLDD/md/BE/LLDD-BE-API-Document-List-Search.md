@@ -125,7 +125,7 @@ Document search API
 
 ```json
 {
-  "year": 2569,
+  "year": 2026,
   "storeCode": "00788",
   "status": "06",
   "page": 1

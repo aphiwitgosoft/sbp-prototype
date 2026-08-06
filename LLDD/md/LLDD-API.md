@@ -187,7 +187,7 @@ LIMIT :size OFFSET :offset;
 #### Request / Query / Header
 
 ```json
-Query: ?year=2569&impactedStoreCode=00788&status=06&page=1
+Query: ?year=2026&impactedStoreCode=00788&status=06&page=1
 (status = section ที่รออยู่ 06/08/01/02/03 หรือ END)
 ```
 
@@ -404,7 +404,7 @@ VALUES (:instanceId, :docNo, :section06, :statusOpen);
   "newStores": [ { "newStoreCode": "00990", "compensatePercent": 60.0 },
                  { "newStoreCode": "01180", "compensatePercent": 40.0 } ],
   // ส่งเฉพาะส่วนที่แก้ · อาร์เรย์ที่ส่งมาคือชุดเต็มของส่วนนั้น
-  "competitors": [ { "id": 12, "impactDate": "2566-10-10" } ]   // id 13 หายไป = ลบ
+  "competitors": [ { "id": 12, "impactDate": "2023-10-10" } ]   // id 13 หายไป = ลบ
 }
 ```
 
@@ -2017,7 +2017,7 @@ FROM email_template WHERE is_customized = FALSE;
 #### Request / Query / Header
 
 ```json
-Query: ?year=2569&statusCode=06&result=APPROVE&region=RSU&storeType=A&impactedStoreCode=00233&newStoreCode=22864&page=1
+Query: ?year=2026&statusCode=06&result=APPROVE&region=RSU&storeType=A&impactedStoreCode=00233&newStoreCode=22864&page=1
 (result = APPROVE | REJECT — ประกันรายได้ / ไม่ประกันรายได้)
 ```
 

@@ -103,12 +103,14 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 
 ## k2-report.html — รายงานสรุปสถานะ (SRS 3.1.7, 19 คอลัมน์)
 - **Route:** `/k2/report` · **crumb:** `รายงานสรุปสถานะ`
-- **S1 head:** ปุ่ม `Export Excel`(toast)
-- **S2 ฟอร์มค้นหา:** รหัสร้าน(+ปุ่ม picker), ชื่อร้าน(readonly), เดือน/ปีเริ่ม(month), ถึง(month), ประเภทร้าน(checkbox 4), ภาค(checkbox 8), สถานะ(select ทีละ 1), ผลการพิจารณา(select), Period Statement From–To · ปุ่ม `เคลียร์` · `ค้นหาข้อมูล`
+- **S1 head:** ไม่มีปุ่มด้านบน — `Preview Report` และ `Export` อยู่ในฟอร์มค้นหาเท่านั้น (2026-08-06)
+- **S2 ฟอร์มค้นหา (ลำดับตามผังจริง 2026-08-06):** รหัสร้านที่ถูกกระทบ(+ปุ่ม picker) | ชื่อร้าน(readonly) · รหัสร้านเปิดกระทบ | **ประเภทร้าน (checkbox `A/B/C/E`)** · **เดือน/ปีที่ถูกกระทบ (From – To) — 2 month input เรียงแถวเดียว เต็มความกว้าง (`col-2`) รูปแบบเดียวกับ Period Statement** · สถานะ\* (select ทีละ 1) | ผลการพิจารณา\* (radio ประกันรายได้/ไม่ประกันรายได้) · ภาค (checkbox 13 รหัส · `col-2`) · Period Statement From–To (`col-2` · บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ) · ปุ่ม `เคลียร์ค่าเริ่มใหม่` · `Preview Report` · `Export`
+- **S2.1 ความสูงคอนโทรล:** input / select / กล่อง checkbox-radio (`.ckgrid`) สูง **46px เท่ากันทุกช่อง** — `sbp.css` คุมด้วย `min-height:46px` (ยกเว้น `[type=checkbox]`/`[type=radio]` ที่ยังเป็น 15px) · กล่องหลายแถว (ภาค) ยืดตามเนื้อหา
 - **S3 Summary line:** พบ N รายการ / ยอดชดเชยรวม / วงเงินเข้า AVP / แถวแดง
-- **S4 Charts:** `<HBarChart>` "เอกสารตามสถานะ" (8 แถว, dot สี) · `<HBarChart>` "ยอดเงินชดเชยตามภาค" (8 ภาค, teal)
-- **S5 ตารางผล 19 คอลัมน์:** `รหัสร้านถูกกระทบ | ชื่อร้านถูกกระทบ | ภาค | ประเภทร้าน | เดือนปีที่ถูกกระทบ | วันที่โอนเป็นร้าน SP | Period Statement | รหัสร้านเปิดใหม่ | ชื่อร้านเปิดใหม่ | ภาค (ร้านใหม่) | ประเภทร้าน (ร้านใหม่) | ยอดเงินชดเชย | สถานะ | ชื่อ-นามสกุลผู้ดำเนินการ | ผลการพิจารณา | รอดำเนินการ (วัน) | ครั้งที่ | วันที่สร้าง | เลขที่เอกสาร` · `tr.flag-red` · pill สถานะ (wait/violet/info/orange/navy/teal/muted/ok)
-- **TODO:** `<K2ReportPage>`, `<ReportSearchForm>`, `<CheckboxGroup>`(×2), `<StorePickerModal>`, `<SummaryLine>`, `<HBarChart>`+`<ChartTooltip>`, `<ReportResultTable>`(19-col scroll), number formatter (คั่นหลักพันไทย)
+- **S4 Charts:** `<HBarChart>` "เอกสารตามสถานะ" (6 สถานะ, dot สี) · `<HBarChart>` "ยอดเงินชดเชยตามภาค" (13 ภาค, teal)
+- **S5 ตารางผล 19 คอลัมน์:** `รหัสร้านถูกกระทบ | ชื่อร้านถูกกระทบ | ภาค | ประเภทร้าน | เดือนปีที่ถูกกระทบ | วันที่โอนเป็นร้าน SP | Period Statement | รหัสร้านเปิดใหม่ | ชื่อร้านเปิดใหม่ | ภาค (ร้านใหม่) | ประเภทร้าน (ร้านใหม่) | ยอดเงินชดเชย | สถานะ | ชื่อ-นามสกุลผู้ดำเนินการ | ผลการพิจารณา | รอดำเนินการ (วัน) | ครั้งที่ | วันที่สร้าง | เลขที่เอกสาร` · **ทุกคอลัมน์ sort ได้** (`th[data-sort="text|num|date"]` → sorter กลางใน `sbp.js` คลิกสลับ asc/desc) · `tr.flag-red` · pill สถานะ
+- **TODO:** `<K2ReportPage>`, `<ReportSearchForm>`, `<CheckboxGroup>`(×2), `<MonthRangeInput>`(From–To ใช้ซ้ำทั้งเดือน/ปีที่ถูกกระทบและ Period Statement), `<StorePickerModal>`, `<SummaryLine>`, `<HBarChart>`+`<ChartTooltip>`, `<ReportResultTable>`(19-col scroll + sort ทุกคอลัมน์), number formatter (คั่นหลักพันไทย)
+- **ไม่มีในหน้านี้:** กล่องอธิบายขั้นตอนบัญชี/SAP (FBL3H · SAPPOST · SR/BSR) **ถูกลบออก 2026-08-06** — ปลายทางของปุ่ม Export อธิบายไว้ที่ `workflow.md` ขั้น 10 แทน
 
 ## k2-operators.html — กำหนดชื่อผู้ปฏิบัติงาน (3.1.8, operator_assignments)
 - **Route:** `/k2-operators` · **crumb:** `กำหนดชื่อผู้ปฏิบัติงาน`

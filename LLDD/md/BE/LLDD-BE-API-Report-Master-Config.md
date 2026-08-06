@@ -97,7 +97,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report Maste
 
 ```json
 {
-  "year": 2569,
+  "year": 2026,
   "status": "06",
   "result": "APPROVE",
   "region": [
@@ -155,7 +155,7 @@ Export CSV
 
 ```json
 {
-  "year": 2569,
+  "year": 2026,
   "status": "06",
   "result": "APPROVE",
   "region": [

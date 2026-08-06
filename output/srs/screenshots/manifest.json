@@ -38,13 +38,13 @@
   {
     "file": "job-batch.html",
     "width": 1440,
-    "height": 3572,
+    "height": 3588,
     "output": "job-batch.png"
   },
   {
     "file": "k2-create.html",
     "width": 1440,
-    "height": 1192,
+    "height": 1008,
     "output": "k2-create.png"
   },
   {
@@ -68,7 +68,7 @@
   {
     "file": "k2-report.html",
     "width": 1440,
-    "height": 2014,
+    "height": 2019,
     "output": "k2-report.png"
   },
   {

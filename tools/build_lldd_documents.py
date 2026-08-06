@@ -3078,7 +3078,7 @@ def topics() -> list[Topic]:
                 ("Click pending card", "card งานรอดำเนินการ", "navigate /documents/waiting", "เปิดรายการเอกสารรอ"),
             ],
             [
-                ApiSpec("GET", "/api/v1/dashboard/summary", "ดึงข้อมูล Dashboard", {"year": 2569}, {"waitingTasks": 24, "storesThisMonth": 342, "compensationThisMonth": 8420000.0, "abnormalStores": 5, "monthlyChart": [{"month": "ม.ค.", "amount": 7200000.0}], "statusChart": [{"statusCode": "06", "label": "รอฝ่าย SBP DSA ดำเนินการ", "count": 8}]}),
+                ApiSpec("GET", "/api/v1/dashboard/summary", "ดึงข้อมูล Dashboard", {"year": 2026}, {"waitingTasks": 24, "storesThisMonth": 342, "compensationThisMonth": 8420000.0, "abnormalStores": 5, "monthlyChart": [{"month": "ม.ค.", "amount": 7200000.0}], "statusChart": [{"statusCode": "06", "label": "รอฝ่าย SBP DSA ดำเนินการ", "count": 8}]}),
             ],
             ["Initial route `/`", "Call dashboard API", "Map KPI values", "Render charts", "Show error state if API fails"],
             ["KPI ตรงกับ API response", "กราฟไม่ blank", "ข้อความไม่ล้นใน mobile", "กด card แล้วไปหน้ารายการถูกต้อง"],
@@ -3116,7 +3116,7 @@ def topics() -> list[Topic]:
             ],
             [
                 ApiSpec("GET", "/api/v1/tasks", "รายการเอกสารรอดำเนินการ", {"page": 1, "size": 20, "status": "06"}, {"page": 1, "size": 20, "total": 24, "items": [{"roundNo": 1, "docNo": "2026/00123", "impactedStoreCode": "01234", "impactedStoreName": "สาขาตัวอย่าง", "regionCode": "BE", "salesDeclinePercent": 12.5, "statusCode": "06", "statusName": "รอฝ่าย SBP DSA ดำเนินการ", "totalCompensationAmount": 48200.0, "daysPending": 3, "salesDataDays": 58}]}),
-                ApiSpec("GET", "/api/v1/documents", "ค้นหาเอกสารที่เกี่ยวข้อง ต้องระบุปี", {"year": 2569, "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 342, "items": [{"roundNo": 2, "docNo": "2026/00124", "impactedStoreCode": "01235", "impactedStoreName": "สาขาตัวอย่าง 2", "regionCode": "BS", "salesDeclinePercent": 18.0, "statusCode": "99", "statusName": "เสร็จสิ้น", "totalCompensationAmount": 72500.0, "daysPending": 0, "salesDataDays": 60}]}),
+                ApiSpec("GET", "/api/v1/documents", "ค้นหาเอกสารที่เกี่ยวข้อง ต้องระบุปี", {"year": 2026, "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 342, "items": [{"roundNo": 2, "docNo": "2026/00124", "impactedStoreCode": "01235", "impactedStoreName": "สาขาตัวอย่าง 2", "regionCode": "BS", "salesDeclinePercent": 18.0, "statusCode": "99", "statusName": "เสร็จสิ้น", "totalCompensationAmount": 72500.0, "daysPending": 0, "salesDataDays": 60}]}),
             ],
             ["Read route mode", "Bind filter values", "Call list API", "Render table", "Apply abnormal row style", "Navigate to detail on row click"],
             ["ตาราง 9 คอลัมน์หลักครบ", "ปีเป็น required เมื่อใช้ /documents", "ยอดขายไม่ครบ 60 วันแสดงแดง", "pagination คง filter เดิม"],
@@ -3231,7 +3231,7 @@ def topics() -> list[Topic]:
             FE_OWNER_PEERAKORN,
             "สร้างรายงานตรวจสอบประกันรายได้พร้อม Preview และ Export CSV",
             ["k2-report-01.png", "k2-report-02.png"],
-            ["Report filters", "Summary table", "Preview/detail modal", "Export action", "Sample data verification"],
+            ["Report filters (layout 2026-08-06: รหัสร้าน|ชื่อร้าน · ร้านเปิดใหม่|ประเภทร้าน A/B/C/E · เดือน/ปี From-To เต็มแถว · สถานะ|ผลการพิจารณา · ภาค · Period Statement)", "Summary table (sortable 19 columns)", "Preview/detail modal", "Export action", "Sample data verification"],
             [
                 ("impactedStoreCode", "string 5 digits", "optional; numeric only when input", "คง leading zero; ปุ่มแว่นขยายเรียก popup เลือกร้านที่ถูกกระทบ"),
                 ("impactedStoreName", "string", "readonly", "แสดงอัตโนมัติหลังเลือกรหัสร้าน; ไม่ส่งเป็น filter หลักถ้ามี storeCode"),
@@ -3280,7 +3280,7 @@ def topics() -> list[Topic]:
                 ApiSpec("GET", "/api/v1/reports/status-summary", "Preview รายงานและข้อมูล chart/summary", {"impactedStoreCode": "00788", "newStoreCode": "00990", "impactMonthFrom": "2026-05", "impactMonthTo": "2026-05", "storeTypes": ["A", "B"], "status": "06", "resultCategory": "APPROVE", "regions": ["RS", "BN"], "statementPeriodFrom": "2026-05", "statementPeriodTo": "2026-05", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 10, "summary": {"totalItems": 10, "totalCompensationAmount": 439100.0, "overThresholdItems": 1, "abnormalSalesItems": 2}, "charts": {"status": [{"label": "รอฝ่าย SBP DSA ดำเนินการ", "value": 2}], "regionAmount": [{"region": "RS", "amount": 73850.0}]}, "items": [{"impactedStoreCode": "00788", "impactedStoreName": "รัตนอุทิศ ซ.13", "region": "RS", "storeType": "FR Type B", "impactMonth": "2026-05", "transferToSpDate": "2026-03-01", "statementPeriod": "2026-05", "newStoreCode": "00990", "newStoreName": "เซเว่นฯ รัตนาธิเบศร์ 12", "newStoreRegion": "RS", "newStoreType": "FR Type A", "compensationAmount": 48200.0, "statusName": "รอฝ่าย SBP DSA ดำเนินการ", "operatorName": "สมชาย ใจดี", "resultText": "-", "waitingDays": 2, "roundNo": 1, "createdDate": "2026-06-12", "docNo": "2026/00123"}]}),
                 ApiSpec("GET", "/api/v1/reports/status-summary/export", "Export CSV to Batch ด้วย filter เดียวกับ preview", {"sameAsPreview": True, "format": "csv"}, {"contentType": "text/csv; charset=utf-8", "fileName": "status-summary-2569.csv", "queuedToBatch": True}),
             ],
-            ["เปิดหน้า Report", "โหลด reference status/region/store type ถ้ามี API", "ผู้ใช้ระบุ filter", "Validate status/result และช่วงเดือน", "กด Preview แล้ว call report API", "แปลงวันที่ ค.ศ. จาก API เป็น พ.ศ. สำหรับแสดง", "render summary line, chart และ table 19 คอลัมน์", "กด Export แล้วส่ง filter เดียวกันไป export API"],
+            ["เปิดหน้า Report", "โหลด reference status/region/store type ถ้ามี API", "ผู้ใช้ระบุ filter", "Validate status/result และช่วงเดือน", "กด Preview แล้ว call report API", "แสดงวันที่เป็น ค.ศ. ตามระบบ SBP เดิม (ไม่แปลงเป็น พ.ศ. — ตัดสินใจ 2026-08-06)", "render summary line, chart และ table 19 คอลัมน์", "กด Export แล้วส่ง filter เดียวกันไป export API"],
             ["status และ resultCategory เป็น required ก่อน preview/export", "month range ทุกคู่ต้อง from <= to", "ตารางแสดง 19 คอลัมน์ครบและ export ออกครบ 19 คอลัมน์", "ยอดเงิน format #,##0.00 และ total summary ตรงกับผลรวม API", "แถวข้อมูลยอดขายไม่ครบ 60 วันใช้ class flag-red โดยอิง derived.salesDataDays < 60", "export ใช้ filter เดียวกับ preview ล่าสุด"],
             ["ไม่เลือก status แล้ว preview ต้อง block", "ไม่เลือก resultCategory แล้ว export ต้อง block", "impactMonthFrom > impactMonthTo ต้อง error REPORT_DATE_RANGE_INVALID", "ค้นหาด้วยร้านถูกกระทบ", "เลือกหลาย region/storeType", "render table 19 columns", "export csv utf-8", "empty result แสดง summary เป็น 0"],
         ),
@@ -3487,7 +3487,7 @@ def topics() -> list[Topic]:
                 ("Refresh cache", "internal", "cache.invalidateDashboard", "refresh after document/status change"),
             ],
             [
-                ApiSpec("GET", "/api/v1/dashboard/summary", "Dashboard summary API", {"year": 2569}, {"waitingTasks": 24, "storesThisMonth": 342, "compensationThisMonth": 8420000.0, "abnormalStores": 5, "monthlyChart": [], "statusChart": []}),
+                ApiSpec("GET", "/api/v1/dashboard/summary", "Dashboard summary API", {"year": 2026}, {"waitingTasks": 24, "storesThisMonth": 342, "compensationThisMonth": 8420000.0, "abnormalStores": 5, "monthlyChart": [], "statusChart": []}),
             ],
             ["Validate query", "Aggregate workflow_transaction (@srm/glb-workflow)/compensation_documents/compensation_histories", "Build chart datasets", "Cache response", "Return normalized JSON"],
             ["KPI ตรงกับ query", "cache TTL ไม่เกิน 5 นาที", "empty data คืน 0 ไม่คืน null"],
@@ -3513,7 +3513,7 @@ def topics() -> list[Topic]:
             ],
             [
                 ApiSpec("GET", "/api/v1/tasks", "Inbox tasks API", {"sectionCode": "06", "page": 1, "size": 20}, {"items": [{"docNo": "2026/00123", "waitingDays": 3}]}),
-                ApiSpec("GET", "/api/v1/documents", "Document search API", {"year": 2569, "storeCode": "00788", "status": "06", "page": 1}, {"items": [{"docNo": "2026/00123", "statusCode": "06"}]}),
+                ApiSpec("GET", "/api/v1/documents", "Document search API", {"year": 2026, "storeCode": "00788", "status": "06", "page": 1}, {"items": [{"docNo": "2026/00123", "statusCode": "06"}]}),
             ],
             ["Read JWT section/role", "Validate year for documents", "Build filter query", "Join impacted_stores", "Return page result"],
             ["year missing fails for /documents", "leading zero storeCode preserved", "pagination returns total", "status filter works"],
@@ -3761,8 +3761,8 @@ def topics() -> list[Topic]:
                 ("Master mutation", "POST/PUT/DELETE", "master.service.save", "audit log"),
             ],
             [
-                ApiSpec("GET", "/api/v1/reports/status-summary", "รายงานตรวจสอบประกันรายได้", {"year": 2569, "status": "06", "result": "APPROVE", "region": ["RSU"], "storeType": ["A"], "impactedStoreCode": "00788", "newStoreCode": "00990", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 0, "items": []}),
-                ApiSpec("GET", "/api/v1/reports/status-summary/export", "Export CSV", {"year": 2569, "status": "06", "result": "APPROVE", "region": ["RSU"], "storeType": ["A"], "impactedStoreCode": "00788", "newStoreCode": "00990"}, {"fileName": "status-summary.csv"}),
+                ApiSpec("GET", "/api/v1/reports/status-summary", "รายงานตรวจสอบประกันรายได้", {"year": 2026, "status": "06", "result": "APPROVE", "region": ["RSU"], "storeType": ["A"], "impactedStoreCode": "00788", "newStoreCode": "00990", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 0, "items": []}),
+                ApiSpec("GET", "/api/v1/reports/status-summary/export", "Export CSV", {"year": 2026, "status": "06", "result": "APPROVE", "region": ["RSU"], "storeType": ["A"], "impactedStoreCode": "00788", "newStoreCode": "00990"}, {"fileName": "status-summary.csv"}),
                 ApiSpec("GET", "/api/v1/operators", "อ่าน operator assignments", {"employeeId": "E001", "positionCode": "06", "active": True, "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 1, "items": [{"id": 101, "employeeId": "E001", "employeeName": "สมชาย ใจดี", "positionCode": "06", "zoneCode": "01", "active": True}]}),
                 ApiSpec("POST", "/api/v1/operators", "สร้าง operator assignment", {"employeeId": "E001", "positionCode": "06", "zoneCode": "01", "active": True, "reason": "มอบหมายผู้ปฏิบัติงาน"}, {"id": 101, "employeeId": "E001", "positionCode": "06", "zoneCode": "01", "active": True}),
                 ApiSpec("PUT", "/api/v1/operators/{id}", "แก้ operator assignment", {"positionCode": "08", "zoneCode": "01", "active": True, "reason": "ย้ายหน้าที่"}, {"id": 101, "employeeId": "E001", "positionCode": "08", "zoneCode": "01", "active": True}),

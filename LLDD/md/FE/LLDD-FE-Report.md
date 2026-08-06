@@ -15,8 +15,8 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ## 2. Screen / Functional Scope
 
-- Report filters
-- Summary table
+- Report filters (layout 2026-08-06: รหัสร้าน|ชื่อร้าน · ร้านเปิดใหม่|ประเภทร้าน A/B/C/E · เดือน/ปี From-To เต็มแถว · สถานะ|ผลการพิจารณา · ภาค · Period Statement)
+- Summary table (sortable 19 columns)
 - Preview/detail modal
 - Export action
 - Sample data verification
@@ -87,8 +87,8 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 
 | ID | Component / Scope | Single responsibility | Definition of done |
 | --- | --- | --- | --- |
-| C01 | Report filters | จัดการ filter store/month/type/status/result/region/statement period พร้อม dependency validation | status/result required และช่วง from-to ทุกคู่ตรวจผ่านก่อน Preview/Export |
-| C02 | Summary table | map response เป็น summary line, chart และตาราง 19 คอลัมน์ด้วย formatter กลาง | คอลัมน์/ยอดรวม/วันที่/leading zero ตรง response และข้อมูลยอดขายผิดปกติใช้ salesDataDays |
+| C01 | Report filters (layout 2026-08-06: รหัสร้าน\|ชื่อร้าน · ร้านเปิดใหม่\|ประเภทร้าน A/B/C/E · เดือน/ปี From-To เต็มแถว · สถานะ\|ผลการพิจารณา · ภาค · Period Statement) | จัดการ filter store/month/type/status/result/region/statement period พร้อม dependency validation | status/result required และช่วง from-to ทุกคู่ตรวจผ่านก่อน Preview/Export |
+| C02 | Summary table (sortable 19 columns) | map response เป็น summary line, chart และตาราง 19 คอลัมน์ด้วย formatter กลาง | คอลัมน์/ยอดรวม/วันที่/leading zero ตรง response และข้อมูลยอดขายผิดปกติใช้ salesDataDays |
 | C03 | Preview/detail modal | แสดง preview/detail โดยใช้ filter snapshot เดียวกับผลลัพธ์ที่กำลังดู | เปิดเอกสารถูก docNo และปิด modal แล้ว filter/table ไม่ reset |
 | C04 | Export action | ส่ง filter snapshot ล่าสุดไป export endpoint และจัดการ queued/download/error state | export ใช้เงื่อนไขเดียวกับ preview และชื่อไฟล์/content type ตรง response |
 | C05 | Sample data verification | รองรับ fixture สำหรับ 0 แถว, หลาย region/type, เกิน threshold และยอดขายไม่ครบ 60 วัน | sample verification ครอบคลุม chart/table/export parity โดยไม่ฝังข้อมูลทดสอบใน production |
@@ -367,7 +367,7 @@ Export CSV to Batch ด้วย filter เดียวกับ preview
 | 3 | ผู้ใช้ระบุ filter |
 | 4 | Validate status/result และช่วงเดือน |
 | 5 | กด Preview แล้ว call report API |
-| 6 | แปลงวันที่ ค.ศ. จาก API เป็น พ.ศ. สำหรับแสดง |
+| 6 | แสดงวันที่เป็น ค.ศ. ตามระบบ SBP เดิม (ไม่แปลงเป็น พ.ศ. — ตัดสินใจ 2026-08-06) |
 | 7 | render summary line, chart และ table 19 คอลัมน์ |
 | 8 | กด Export แล้วส่ง filter เดียวกันไป export API |
 
