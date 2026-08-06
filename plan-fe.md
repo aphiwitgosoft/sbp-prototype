@@ -149,7 +149,7 @@ Convention การตั้งชื่อ (ตาม repo เดิม):
 | `/sbpgi/reports/income-audit` | k2-report.html | `reports/income-audit/page.tsx` | 01/04/06 | `GET /reports/status-summary` (+`/export`) · `GET /zones` (checkbox ภาคอัตโนมัติ) |
 | `/sbpgi/masters/factors` | k2-factors.html | `masters/factors/page.tsx` | 01/03 | `/factors` CRUD |
 | `/sbpgi/admin/system-config` | system-config.html | `admin/system-config/page.tsx` | 01 | `/configs` CRUD |
-| `/sbpgi/admin/email-templates` | plan-email.html | `admin/email-templates/page.tsx` | 01 | `/email-templates` |
+| `/sbpgi/admin/email-templates` | email-template.html | `admin/email-templates/page.tsx` | 01 | `/email-templates` |
 | `/sbpgi/admin/batch-jobs` | job-batch.html | `admin/batch-jobs/page.tsx` | 01 | `/jobs` + params/enabled/run/runs |
 
 หมายเหตุ route:
@@ -597,7 +597,7 @@ export const MODULES: ModuleEntry[] = [
   { key: 'k2-factors',     label: 'กำหนดปัจจัยภายนอก',     route: '/masters/factors',       icon: 'db',        group: 'ระบบประกันรายได้ (SBP Mall)' },
   { key: 'system-config',  label: 'ตั้งค่าระบบ (Config)',  route: '/admin/system-config',   icon: 'cog',       group: 'ระบบประกันรายได้ (SBP Mall)' },
   { key: 'job-batch',      label: 'Batch Job',             route: '/admin/batch-jobs',      icon: 'clock',     group: 'ระบบประกันรายได้ (SBP Mall)' },
-  { key: 'plan-email',     label: 'Email Template',        route: '/admin/email-templates', icon: 'mail',      group: 'ระบบประกันรายได้ (SBP Mall)' },
+  { key: 'email-template',     label: 'Email Template',        route: '/admin/email-templates', icon: 'mail',      group: 'ระบบประกันรายได้ (SBP Mall)' },
 ];
 ```
 
@@ -688,7 +688,7 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 - `<EntityModal>` schema config — **validate ค่า ตาม `value_type`** (number/boolean/string/json — zod refine) ก่อน `PUT /configs/{key}` · `POST /configs` เพิ่ม · ปุ่ม `Invalidate Cache`
 - invalidate `configKeys.all` + auditLogs('system_configs')
 
-### 11.11 `/admin/email-templates` — EmailTemplatesPage (plan-email.html, EM-01–08)
+### 11.11 `/admin/email-templates` — EmailTemplatesPage (email-template.html, EM-01–08)
 - `GET /email-templates` (`emailKeys.all`) · ตาราง map (คลิกแถวเลื่อนไป card) + Tabs 3 กลุ่ม (Workflow EM-01–03 / เตือนงานค้าง EM-04–05 / Batch EM-06–08)
 - `<EmailTemplateCard>` ×8: meta grid + `<MailPreview>` (From/To/Cc/Subject + body) — **From/To/Cc read-only ตาม status_email_rules** · EM-01 มี selector 6 สถานะ live-rewrite preview
 - Editor: `<RichTextToolbar>` + `<MergeVariableChips>` ต่อ template (subject แทรก text, body แทรก atom) — ห้าม execCommand ตรง, ห้ามเพิ่ม lib ใหญ่เกินจำเป็น (contentEditable + Selection API เขียนเอง)

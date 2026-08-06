@@ -24,17 +24,17 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ## 3. Screenshot Reference
 
-![รูปที่ 1: Screenshot: plan-email-01.png](../../../output/srs/screenshots/slices/plan-email-01.png)
+![รูปที่ 1: Screenshot: email-template-01.png](../../../output/srs/screenshots/slices/email-template-01.png)
 
-_รูปที่ 1: Screenshot: plan-email-01.png_
+_รูปที่ 1: Screenshot: email-template-01.png_
 
-![รูปที่ 2: Screenshot: plan-email-02.png](../../../output/srs/screenshots/slices/plan-email-02.png)
+![รูปที่ 2: Screenshot: email-template-02.png](../../../output/srs/screenshots/slices/email-template-02.png)
 
-_รูปที่ 2: Screenshot: plan-email-02.png_
+_รูปที่ 2: Screenshot: email-template-02.png_
 
-![รูปที่ 3: Screenshot: plan-email-03.png](../../../output/srs/screenshots/slices/plan-email-03.png)
+![รูปที่ 3: Screenshot: email-template-03.png](../../../output/srs/screenshots/slices/email-template-03.png)
 
-_รูปที่ 3: Screenshot: plan-email-03.png_
+_รูปที่ 3: Screenshot: email-template-03.png_
 
 ## 4. Implementation Flow Diagram (Reference)
 

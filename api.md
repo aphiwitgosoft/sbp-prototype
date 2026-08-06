@@ -133,8 +133,9 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 - **เปิดเรื่องซ้ำได้ (SDD GI)** ใน `POST /documents`: 409 เฉพาะกรณีมีเอกสาร **active** ของร้าน+เดือนนั้น — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้ทั้งเดือนเดียวกันและเดือนถัดไป (ยกเลิกการเปิด SR) · กรณีเห็นควรไม่ชดเชย (06) เดือนถัดไประบบสร้างงานเข้า `GET /tasks` อัตโนมัติพร้อม assignee คนเดิม · ยอดชดเชย 0: เดือน 1–3 ส่งต่อ 01 · เดือนที่ 4 หยุดชดเชย
 - **งานค้าง (SDD GI)** ใน `GET /tasks`: รองรับ filter + เลือกหลายเอกสาร (bulk action) · เจ้าหน้าที่/ฝ่าย SBP DSA เห็นเอกสารได้ทุกสาขา (ไม่จำกัดงานตน) · ทีมส่งเสริม/บัญชีตามสิทธิ์เดิม
 - **filter `result`** ใน report = **ประกันรายได้ / ไม่ประกันรายได้** (SDD v7.5 · Radio บังคับ) อิง **ผลพิจารณาล่าสุด** (`consideration_logs.result_category` = APPROVE/REJECT) — ขั้นบัญชี 05 ที่เคยอ้างถูกตัดออกแล้ว
-- **%ชดเชยรวม = 100%** ใน `PUT /documents/{docNo}`
-- API payload ใช้ `newStoreCode` สำหรับรหัสร้านเปิดใหม่ 5 หลัก (เช่น `"00990"`) เพื่อคง leading zero; internal table `document_new_stores.id` เป็น key ภายใน ไม่ expose เป็น field code
+- **%ชดเชยรวม = 100%** ใน `PUT /documents/{docNo}` · **เงินชดเชยต่อร้านเปิดใหม่ = ยอดชดเชยของร้านถูกกระทบ × %ชดเชย** คำนวณและปัดเศษที่ **BE** แล้วส่งกลับเป็น `compensateAmount` (FE ห้ามคูณเอง — กันยอดปัดเศษไม่ตรงกับที่บัญชีใช้) · ผลรวม `compensateAmount` ทุกร้านต้องเท่ากับยอดชดเชยของร้านถูกกระทบพอดี — เป็นแหล่งข้อมูลของกราฟ "สัดส่วนเงินชดเชยรายร้านเปิดใหม่" ใน `k2-document.html` (ไม่มี endpoint แยกสำหรับกราฟ)
+- API payload ใช้ `newStoreCode` สำหรับรหัสร้านเปิดใหม่ 5 หลัก (เช่น `"00990"`) เพื่อคง leading zero **ทั้งใน response ของ `GET /documents/{docNo}` และ request ของ `PUT /documents/{docNo}`** (ห้ามใช้ `storeCode` ในสองเส้นนี้ — สงวนไว้ให้ร้านถูกกระทบ); internal table `document_new_stores.id` เป็น key ภายใน ไม่ expose เป็น field code
+- **ลบรายการที่เลือก (bulk remove)** ของร้านคู่แข่ง/ปัจจัยอื่นๆ ในหน้าเอกสาร ไม่มี endpoint แยก — FE ลบแถวใน state แล้วส่งอาร์เรย์ชุดใหม่ทั้งชุดผ่าน `PUT /documents/{docNo}` · BE ลบรายการที่หายไปจากอาร์เรย์ (DELETE ... NOT IN) ในทรานแซกชันเดียวกัน · ปุ่มลบ/checkbox แสดงเฉพาะ role ที่แก้ส่วนนั้นได้ (ปัจจุบันคือ section 01)
 - **เลขเอกสาร YYYY/xxxxx** (ปี พ.ศ. · running ต่อปี เริ่ม 00001)
 - **Gen Flow Gate** ใน `/workflows/instances` (เกณฑ์คงเดิมทุกข้อ — ดูขั้น 6 ใน `workflow.md`)
 - `POST /workflows/instances` เป็น BE internal Workflow Engine contract สำหรับ Job 8b เท่านั้น ไม่ใช่งาน FE/Flow page: request `{impactProcessId, sourceJobNo:"8b", requestId}`; ผ่าน gate → สร้าง/คืน `{docNo, instanceId, workflowGenerationStatus:"Y", firstSection:"06", statusCode:"06"}`; fail ถาวร (branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10) → ตั้ง `N`; เฉพาะ distance/juristic/growth เป็น NULL หรือ sales_status ยังไม่พร้อม → คง `W` และคืน 422/reason เพื่อ rerun
@@ -170,4 +171,4 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 
 - ตารางที่แต่ละเส้นอ่าน/เขียน: [database.md](database.md) · `plan-database.html` (34 ตาราง)
 - Flow ที่ API ขับเคลื่อน: [workflow.md](workflow.md) · `plan-flow.html`
-- Email จุดส่งในแต่ละสถานะ: `plan-email.html` (8 templates)
+- Email จุดส่งในแต่ละสถานะ: `email-template.html` (8 templates)

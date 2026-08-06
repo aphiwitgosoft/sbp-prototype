@@ -61,14 +61,14 @@ Entry แบบมี `children: [{key,label,href}]` (ไม่มี href บ�
 | | ~~`k2-operators.html`~~ / ~~`k2-permissions.html`~~ | **ถอดจาก sidebar 2026-08-05** — ผู้ปฏิบัติงาน (3.1.8) + สิทธิ์เมนู (3.1.1) ใช้ระบบ SBP เดิม (auth-backend) · ไฟล์เก็บไว้อ้างอิง |
 | Admin | `system-config.html` | Global config key–value (ตาราง `system_configs`) — **กลุ่ม ผู้ดูแลระบบ (Admin) ตั้งแต่ 2026-08-06** |
 | | `job-batch.html` | Batch console Jobs 1–10 + 8b (จากเอกสาร Batch v4.0) — กลุ่ม Admin |
-| | `plan-email.html` | Email templates EM-01–08 + WYSIWYG editor (ดูหัวข้อถัดไป) — กลุ่ม Admin |
+| | `email-template.html` | Email templates EM-01–08 + WYSIWYG editor (ดูหัวข้อถัดไป) — กลุ่ม Admin |
 | Flow | `flow-fgi.html` / `k2-flow.html` / `plan-flow.html` | FGI/FCS pipeline / K2 approval BPMN / flow รวมระบบใหม่ (คู่ของ workflow.md) |
 | Database | `fgi-database.html` / `k2-database.html` / `plan-database.html` | schema FGI/FCS / schema K2 16 ตาราง + ER / schema รวม 34 ตาราง (คู่ของ database.md · RBAC/ผู้ปฏิบัติงานตัดไปใช้ระบบเดิม) |
 | Plan | `plan-api.html` | REST API spec 47 เส้น 9 กลุ่ม (กลุ่ม Auth + เส้นสิทธิ์/ผู้ปฏิบัติงาน 18 เส้น comment ตัดถาวร — ใช้ระบบเดิม · กลุ่มข้อมูลผิดปกติ 2 เส้นถูกลบทิ้ง 2026-08-06) |
 
 หมายเหตุ: `k2-database.html` (ER + 16 ตาราง) และ BPMN ใน `k2-flow.html` เป็นของ**เพิ่มเกิน SRS** — ชื่อตาราง/FK ที่เพิ่มไม่ใช่ SRS-mandated
 
-## plan-email.html — internals ของ editor
+## email-template.html — internals ของ editor
 
 - 8 การ์ด template แต่ละใบมี `data-tpl="EM-0x"` · Subject = `.mail-row .v.subj` · เนื้อหา = `.mail-body`
 - กด "แก้ไข" → contenteditable + แถบ `.tpl-editor` (สร้างโดย JS) โผล่เหนือ `.mail` แบบ **sticky** ใต้ header

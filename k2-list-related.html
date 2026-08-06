@@ -155,7 +155,7 @@
             </div>
           </div>
           <div class="table-wrap"><table class="data" id="tblK2">
-            <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
+            <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">ผู้ดำเนินการ (เจ้าของงาน)</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
             <tbody><!-- 200 แถว mock ถูก generate ด้วยสคริปต์ท้ายหน้า --></tbody>
           </table></div>
           <div class="pager" id="pgK2"></div>
@@ -237,7 +237,7 @@
             </div>
           </div>
           <div class="table-wrap"><table class="data" id="tblRelated">
-            <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
+            <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">ผู้ดำเนินการ (เจ้าของงาน)</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
             <tbody><!-- 120 แถว mock ถูก generate ด้วยสคริปต์ท้ายหน้า --></tbody>
           </table></div>
           <div class="pager" id="pgRelated"></div>
@@ -295,6 +295,8 @@
     // ลำดับถ่วงน้ำหนัก 20 ตำแหน่ง (6 สถานะ · ตัดบัญชี 04/05 ตาม SDD v7.5) — 06:50 · 08:30 · 01:40 · 02:30 · 03:20 · เสร็จสิ้น:30 (ต่อ 200 แถว)
     var PATTERN = [0, 2, 5, 1, 3, 0, 2, 4, 0, 1, 5, 2, 3, 0, 1, 4, 2, 0, 3, 5];
     // ภาค 13 รหัส (SDD v7.5 — ชุดใหม่แทน 8 รหัสเดิมของ SRS 3.1.7) · ภาคใหม่เพิ่มอัตโนมัติจาก master `zones` (GET /zones)
+    // เจ้าของงาน (เจ้าหน้าที่ SBP DSA) — เคสต่อเนื่อง/เห็นควรไม่ชดเชย ระบบ auto-assign คนเดิม (SDD GI สไลด์ 48)
+    var OWNERS = ['Somchai Jaidee', 'Nattapong Wongsa', 'Kanjana Preechan', 'Wichai Thongdee', 'Pimchanok Sae-lim'];
     var REGIONS = ['BE', 'BS', 'NEU', 'REU', 'RSU', 'BG', 'BW', 'RC', 'RN', 'BN', 'NEL', 'REL', 'RSL'];
     var TYPES = ['FR Type A', 'FR Type B', 'FR Type C', 'FR Type พนักงาน']; // ตาม SRS 3.1.7
     var PLACES = ['รัตนอุทิศ', 'บางบัวทอง', 'ปากเกร็ด', 'แคราย', 'ติวานนท์', 'งามวงศ์วาน', 'ท่าอิฐ', 'สามัคคี', 'ประชาชื่น', 'ลาดปลาดุก',
@@ -393,18 +395,26 @@
           : drop * (3000 + (j % 8) * 1000);
         // "ยอดขายไม่ครบ 60 วัน" เป็น flag ของข้อมูล (แถวแดง) ไม่ใช่สถานะ workflow
         var flag60 = !done && (j % 13 === 0);
+        var roundNo = (j % 3) + 1;                      // ครั้งที่ของรอบชดเชย
+        var storeCode = pad(((j * 37) % 1450) + 120, 5); // รหัสร้าน — ใช้ผูกเจ้าของงานให้คงที่ต่อร้าน
+        // เคสต่อเนื่อง = ครั้งที่ 2 ขึ้นไป (เดือนก่อนหน้าฝ่าย SBP DSA เห็นควรไม่ชดเชย)
+        // → SDD GI สไลด์ 46/48/64: ระบบดึงเข้าหน้างานค้างเดือนถัดไป พร้อม "เจ้าของงานคนเดิม"
+        var carryOver = !done && roundNo > 1;
+        // เจ้าของงานผูกกับรหัสร้าน → ร้านเดิมได้เจ้าหน้าที่คนเดิมทุกครั้งที่ (จำลอง auto-assign)
+        var owner = OWNERS[parseInt(storeCode, 10) % OWNERS.length];
         var dt = docDate(i);
         html += '<tr' + (flag60 ? ' class="flag-red"' : '') + ' data-href="k2-document.html"'
           + ' data-date="' + dt.iso + '" data-type="' + TYPES[(j * 7) % TYPES.length] + '"'
           + ' data-flag60="' + (flag60 ? 1 : 0) + '"'
           + ' data-drop="' + drop.toFixed(2) + '" data-comp="' + comp.toFixed(2) + '">'
-          + '<td class="num">' + ((j % 3) + 1) + '</td>'
+          + '<td class="num">' + roundNo + '</td>'
           + '<td class="num">' + cfg.docPrefix + pad(cfg.docStart + i, 5) + '</td>'
-          + '<td class="num">' + pad(((j * 37) % 1450) + 120, 5) + '</td>'
+          + '<td class="num">' + storeCode + '</td>'
           + '<td>' + PLACES[j % PLACES.length] + ' ' + SUFFIX[Math.floor(j / PLACES.length) % SUFFIX.length] + '</td>'
           + '<td>' + REGIONS[(j * 3) % REGIONS.length] + '</td>'
           + '<td class="num">' + drop.toFixed(2) + '%</td>'
           + '<td class="num">' + money(comp) + '</td>'
+          + '<td>' + owner + (carryOver ? ' <span class="chip" title="เคสต่อเนื่อง (ครั้งที่ ' + roundNo + ') — ระบบส่งงานให้เจ้าของงานคนเดิมอัตโนมัติ · SDD GI สไลด์ 48">ต่อเนื่อง</span>' : '') + '</td>'
           + '<td><span class="pill ' + st.pill + '">' + esc(st.label) + '</span></td>'
           + '<td class="num">' + (done ? 0 : (j % 9) + 1) + '</td></tr>';
       }
@@ -412,7 +422,7 @@
       var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
 
       var emptyRow = document.createElement('tr');
-      emptyRow.innerHTML = '<td colspan="9" style="text-align:center;color:#8493a5;padding:28px 12px;">ไม่พบรายการตามเงื่อนไขที่กรอง</td>';
+      emptyRow.innerHTML = '<td colspan="10" style="text-align:center;color:#8493a5;padding:28px 12px;">ไม่พบรายการตามเงื่อนไขที่กรอง</td>';
       emptyRow.hidden = true;
       tbody.appendChild(emptyRow);
 

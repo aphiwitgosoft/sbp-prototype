@@ -767,7 +767,7 @@ Renderer แทนตัวแปร `{{var}}` จาก context · ผู้ร
 | workflow_sections | 7 (5 active + 04/05 `is_active=false`) | 04/05 เก็บไว้อ้างอิงประวัติเท่านั้น |
 | document_statuses | 6 | string ตรง workflow.md ทุกตัวอักษร · status_code 06/08/01/02/03/99 |
 | system_configs | ~15 | radius 1/2 กม. · `workflow.gm_amount_limit`=50000 + `workflow.avp_amount_limit`=300000 (SDD GI — แทน threshold 100000 เดิม) · เกณฑ์ 60 วัน · −10 (ทั้งหมด is_editable=false) + cache TTL, cron ต่าง ๆ |
-| email_templates + status_email_rules | 8 + 6 | EM-01–08 (subject/body default ตาม plan-email.html) |
+| email_templates + status_email_rules | 8 + 6 | EM-01–08 (subject/body default ตาม email-template.html) |
 | competitors / external_factors | 24 / ~10 | ตาม master ใน prototype |
 | employees | ~15 | master พนักงาน (dev) — ~~user_accounts~~ ตัดออก: ตัวตนมาจาก BFF/Cognito · dev จำลองด้วย header `x-user-id` ฯลฯ |
 | ~~operator_assignments~~ | — | **ตัดออก — ใช้ระบบเดิม** (group+scope ของ auth-backend + prepared approvers) — ไม่ seed |

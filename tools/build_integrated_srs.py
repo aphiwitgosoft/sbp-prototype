@@ -85,7 +85,7 @@ SCREEN_LABELS = {
     "k2-factors.html": "External Factor Master",
     "k2-permissions.html": "RBAC Matrix",
     "system-config.html": "Global Config",
-    "plan-email.html": "Email Template",
+    "email-template.html": "Email Template",
     "plan-api.html": "API Specification",
 }
 
@@ -697,7 +697,7 @@ SRS_ARTIFACT_LABELS = {
     "plan-api.html": "API specification screen",
     "plan-database.html": "Database design screen",
     "plan-flow.html": "Integrated flow screen",
-    "plan-email.html": "Email template screen",
+    "email-template.html": "Email template screen",
     "job-batch.html": "Batch job console",
     "system-config.html": "Global config screen",
     "index.html": "Portal screen",
@@ -1353,7 +1353,7 @@ def build_model() -> Model:
         "ระบบต้องรองรับการจัดการเนื้อหาและกฎการส่ง notification ตามรายการในหัวข้อนี้ "
         "โดยหน้าจอจัดการ template เป็นส่วนหนึ่งของขอบเขตผู้ดูแลระบบ"
     )
-    add_screen_capture(model, "plan-email.html", "Email Template Administration")
+    add_screen_capture(model, "email-template.html", "Email Template Administration")
     model.table(
         ["Item", "Requirement"],
         [

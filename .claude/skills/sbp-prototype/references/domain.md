@@ -63,7 +63,7 @@ inbox ของแต่ละ role = เอกสารสถานะ "รอ\
 - รหัสปัจจัยภายนอกห้ามซ้ำ
 - ~~สถานะแจกงานของหน้าข้อมูลผิดปกติ~~ — หน้าจอถูกลบทิ้ง 2026-08-06 · ข้อมูลผิดปกติเหลือเป็นธงแถวแดง (`salesDataDays < 60`) + stat card ในหน้ารอดำเนินการ
 
-## Email Templates (plan-email.html — 8 ฉบับ)
+## Email Templates (email-template.html — 8 ฉบับ)
 
 TO/CC ของ EM-01–03 ยึด `status_email_rules` (SRS 3.1.5) · **เนื้อหา/ถ้อยคำเป็นข้อเสนอระบบใหม่ beyond SRS** · ส่งจาก Notification Service กลาง UTF-8 (แทน TIS-620)
 

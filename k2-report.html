@@ -37,9 +37,6 @@
       <div class="page-head">
         <div><h1 class="page-title">รายงานสรุปสถานะ</h1>
           <p class="page-sub">ค้นหาและออกรายงานสรุปสถานะเอกสารประกันรายได้ (SRS 3.1.7 · ผลลัพธ์ 19 คอลัมน์) · ระบบประกันรายได้</p></div>
-        <div class="page-actions">
-          <button class="btn btn-primary" data-ack="ส่งออก CSV เข้า Batch เรียบร้อย — ทีมบัญชีนำไปตรวจสอบเทียบกับ SAP" data-kind="ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Export</button>
-        </div>
       </div>
 
       <div class="card">
@@ -61,7 +58,7 @@
             </div>
           </div>
           <div class="field"><label>สถานะ <span style="color:#c0392b">*</span> (บังคับ · เลือก 1 สถานะ)</label>
-            <select required>
+            <select required id="fStatus">
               <option value="" selected disabled>— เลือกสถานะ —</option>
               <option>รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</option>
               <option>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</option>
@@ -94,14 +91,25 @@
               <label><input type="checkbox"> RSL</label>
             </div>
           </div>
-          <div class="field col-2"><label>Period Statement (From – To)</label>
-            <div style="display:flex;gap:8px;"><input type="month" class="num" style="flex:1;" aria-label="Period Statement From"><input type="month" class="num" style="flex:1;" aria-label="Period Statement To"></div>
+          <div class="field col-2"><label>Period Statement (From – To) <span id="psStar" style="color:#c0392b;display:none;">*</span>
+              <small id="psHint" style="color:var(--muted);font-weight:400;"> — บังคับเมื่อเลือกสถานะ “เสร็จสิ้นดำเนินการ” (SDD)</small></label>
+            <div style="display:flex;gap:8px;"><input type="month" class="num" style="flex:1;" id="psFrom" aria-label="Period Statement From"><input type="month" class="num" style="flex:1;" id="psTo" aria-label="Period Statement To"></div>
           </div>
         </div>
         <div class="toolbar" style="justify-content:flex-end;margin:18px 0 0;">
           <button class="btn btn-muted btn-sm" data-ack="เคลียร์ค่าเริ่มใหม่">เคลียร์ค่าเริ่มใหม่</button>
           <button class="btn btn-soft btn-sm" data-ack="แสดงตัวอย่างรายงานตรวจสอบประกันรายได้ตามเงื่อนไข" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> Preview Report</button>
           <button class="btn btn-primary btn-sm" data-ack="ส่งออก CSV เข้า Batch เรียบร้อย — ทีมบัญชีนำไปตรวจสอบเทียบกับ SAP" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg> Export</button>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid #d68a10;background:#fff8ec;">
+        <div style="font-size:12.5px;color:#7a5b12;line-height:1.9;">
+          <b>บัญชีทำอะไรต่อกับผลลัพธ์หน้านี้ (นอกระบบ SBP · SDD v7.5):</b>
+          Preview Report ตรวจสอบยอด → <b>Export</b> ส่ง CSV เข้า Batch → <b>จัดเก็บสร้างรายการบันทึกบัญชี</b> และกระทบยอดกับ SAP ด้วย <code>FBL3H</code> (GL Line-Item Browser) แล้ว Post ด้วย <code>SAPPOST</code> · ตรวจสถานะที่ <code>FS/FSWEB</code> (STATUS = Completed)
+          · กรณี <b>SBP ผิดแต่ SAP ถูก</b> → เปิด <b>SR</b> ให้ทีมดูแล SBP แก้รายครั้งผ่านระบบ ticketing เดิม
+          · ข้อเสนอ SBP <b>Auto Update</b> จาก SAP โดยไม่ต้องเปิด SR = <b>BSR · Out of Scope</b> ของโครงการ Replacement SBP
+          <br><span style="color:#a5893f;">ขั้นตอนเหล่านี้ทำในระบบ SAP/ticketing ไม่มีหน้าจอในระบบประกันรายได้ — บันทึกไว้เพื่อให้เห็นปลายทางของปุ่ม Export</span>
         </div>
       </div>
 
@@ -151,6 +159,25 @@
   <div id="toast-stack"></div>
   <div id="chartTip"></div>
   <script src="assets/sbp.js"></script>
+  <script>
+  /* Period Statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ (SDD สไลด์ 42) */
+  (function () {
+    var st = document.getElementById('fStatus'), star = document.getElementById('psStar'),
+        hint = document.getElementById('psHint'), from = document.getElementById('psFrom'), to = document.getElementById('psTo');
+    if (!st || !from) return;
+    function sync() {
+      var need = st.value === 'เสร็จสิ้นดำเนินการ';
+      star.style.display = need ? '' : 'none';
+      from.required = to.required = need;
+      hint.textContent = need ? ' — บังคับกรอกเพราะเลือกสถานะ “เสร็จสิ้นดำเนินการ”' : ' — บังคับเมื่อเลือกสถานะ “เสร็จสิ้นดำเนินการ” (SDD)';
+      [from, to].forEach(function (el) { el.style.borderColor = need && !el.value ? '#e5b567' : ''; });
+    }
+    st.addEventListener('change', sync);
+    [from, to].forEach(function (el) { el.addEventListener('change', sync); });
+    sync();
+  })();
+  </script>
+
   <script>
   (function () {
     'use strict';

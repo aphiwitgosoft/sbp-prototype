@@ -1129,7 +1129,7 @@ ARTIFACT_LABELS = {
     "plan-api.html": "API specification screen",
     "plan-database.html": "Database design screen",
     "plan-flow.html": "Integrated flow screen",
-    "plan-email.html": "Email template screen",
+    "email-template.html": "Email template screen",
     "job-batch.html": "Batch job console",
     "system-config.html": "Global config screen",
     "index.html": "Portal screen",
@@ -3373,7 +3373,7 @@ def topics() -> list[Topic]:
             30,
             FE_OWNER,
             "สร้างหน้า Email Template และ Notification Config สำหรับอ่าน/แก้/preview/reset template อีเมลของระบบประกันรายได้ โดยแยกจากหน้า Batch Job Monitor",
-            ["plan-email-01.png", "plan-email-02.png", "plan-email-03.png"],
+            ["email-template-01.png", "email-template-02.png", "email-template-03.png"],
             ["Email template list", "Template edit form", "Variable helper", "Preview modal", "Reset default confirm", "Notification recipient config display"],
             [
                 ("templateCode", "EM-xx", "required", "เลือก template ที่ต้องแก้"),

@@ -42,13 +42,13 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 
 **แก้เรื่อง database** — อ่าน `database.md` → แก้ `database.md` + `plan-database.html` คู่กัน → ถ้ากระทบ API แก้ `api.md` + `plan-api.html` ด้วย
 
-**แก้เรื่อง flow/workflow** — อ่าน `workflow.md` → แก้ `workflow.md` + `plan-flow.html` คู่กัน → เช็คว่ากระทบ `plan-email.html` (จุดส่งอีเมล) หรือไม่
+**แก้เรื่อง flow/workflow** — อ่าน `workflow.md` → แก้ `workflow.md` + `plan-flow.html` คู่กัน → เช็คว่ากระทบ `email-template.html` (จุดส่งอีเมล) หรือไม่
 
 **แก้เรื่อง API** — อ่าน `api.md` → แก้ `api.md` + `plan-api.html` คู่กัน → ถ้ากระทบตาราง/flow แก้ `database.md`/`workflow.md` ด้วย
 โครง modal ต่อ endpoint ใน `plan-api.html`: Flow อธิบาย**นอกแท็บ** · แท็บ 1 Request/Response · แท็บ 2 Database + SQL (ตัวอย่าง SQL ต่อเส้นใน `SQL_BY_PATH` keyed `'METHOD path'` ครบทุกเส้น) · แท็บ 3 Flowchart **เฉพาะ 4 เส้นซับซ้อน** (spec ใน `FLOWCHART_BY_PATH` เรนเดอร์ด้วย `renderFlow()` inline SVG) — ดูรายละเอียดใน [references/architecture.md](references/architecture.md) §plan-api
 
-**แก้ email template** — หน้า `plan-email.html` มี WYSIWYG editor ในตัว (toolbar + ชิปตัวแปร + ตาราง + sticky save)
-โครงสร้าง 8 templates (EM-01–08) และ internals ของ editor: [references/architecture.md](references/architecture.md) §plan-email
+**แก้ email template** — หน้า `email-template.html` มี WYSIWYG editor ในตัว (toolbar + ชิปตัวแปร + ตาราง + sticky save)
+โครงสร้าง 8 templates (EM-01–08) และ internals ของ editor: [references/architecture.md](references/architecture.md) §email-template
 
 **แก้สิทธิ์/role** — **ตัดสินใจ 2026-08-05: ใช้ระบบ SBP เดิม** (auth-backend/ABS: groups/menus/permissions ต่อ URL · จัดการผ่านหน้า `/setting/manage-user-rights` ของ FE เดิม) — SBPGI ไม่มีตาราง `roles`/`menus`/`menu_permissions`/`user_accounts`/`operator_assignments` และไม่มีหน้า/เมนู `k2-permissions.html` · `k2-operators.html` แล้ว (ไฟล์เก็บไว้อ้างอิง · 8 role ดูตารางใน [references/domain.md](references/domain.md) — map เป็น group ของระบบเดิม)
 
@@ -56,5 +56,5 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 
 ## เอกสารอ้างอิงใน skill นี้
 
-- [references/architecture.md](references/architecture.md) — page contract, sbp.js hooks, styling, รายการหน้า, internals ของ plan-email editor
+- [references/architecture.md](references/architecture.md) — page contract, sbp.js hooks, styling, รายการหน้า, internals ของ email-template editor
 - [references/domain.md](references/domain.md) — กติกาธุรกิจ: workflow 5 ขั้น + transition, สถานะ 6 ค่า, 8 role, ค่าคงที่ธุรกิจ, email templates, ข้อเท็จจริง SRS ที่พลาดบ่อย

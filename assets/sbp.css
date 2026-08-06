@@ -108,6 +108,7 @@ body.sidebar-collapsed aside.sidebar{display:none;}
 .btn-soft{background:var(--primary-soft); color:var(--primary-dark);} .btn-soft:hover{background:#dcebff;}
 .btn-muted{background:#eef1f5; color:#9aa6b2; border-color:#e3e8ee;} .btn-muted:hover{background:#e7ebf0;}
 .btn-danger{background:#fee2e2; color:#c0392b; border-color:#f6cccc;} .btn-danger:hover{background:#fdd3d3;}
+.btn-warn{background:#fff4e0; color:#a45c00; border-color:#f3d7a6;} .btn-warn:hover{background:#ffe9c8; border-color:#e9c37e;}
 .btn-sm{padding:7px 13px; font-size:13px; border-radius:9px;}
 .btn-circle{width:44px; height:44px; border-radius:50%; border:none; background:linear-gradient(135deg,#1bc0af,#0fa091); color:#fff; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(21,182,166,.35);}
 .btn-circle:hover{filter:brightness(1.05);}

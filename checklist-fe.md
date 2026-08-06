@@ -284,7 +284,7 @@
 - [ ] `EntityModal` schema config — **validate ค่า ตาม `value_type`** (number/boolean/string/json) ก่อน `PUT /configs/{key}` · เพิ่ม `POST /configs` · ปุ่ม `Invalidate Cache`
 - [ ] `AuditHistoryTable` + `InfoCallout` (dot-notation key, cache 5 นาที)
 
-### 7.2 EmailTemplatesPage (§plan-email — EM-01–08)
+### 7.2 EmailTemplatesPage (§email-template — EM-01–08)
 - [ ] `EmailTemplatesPage.tsx` — `GET /email-templates` · ตาราง map (`Template | ชื่อ | จุดที่ส่งใน Flow | ผู้รับ (TO) | แหล่งกติกาผู้รับ | ความถี่` — คลิกแถวเลื่อนไป card) + Tabs 3 กลุ่ม (Workflow EM-01–03 / เตือนงานค้าง EM-04–05 / Batch EM-06–08)
 - [ ] `EmailTemplateCard.tsx` ×8 — meta grid + `MailPreview` (From/To/Cc/Subject + body) — **From/To/Cc read-only จาก status_email_rules** · EM-01 มี selector 6 สถานะ live-rewrite preview
 - [ ] Editor: `RichTextToolbar` (bold/italic/underline/strike, สี, list, table picker) + `MergeVariableChips` ต่อ template (subject แทรก text, body แทรก atom) — **ห้ามใช้ execCommand ตรง ห้ามเพิ่ม lib ใหญ่เกินจำเป็น**
@@ -351,7 +351,7 @@
 | `/masters/factors` | k2-factors.html | `GET/POST/PUT/DELETE /factors` · `GET /audit-logs` | 6 |
 | `/masters/permissions` | k2-permissions.html | `GET/PUT /menu-permissions` · `GET/POST/PUT/DELETE /roles` · `POST/PUT/DELETE /menus` · `GET /audit-logs` | 6 |
 | `/admin/system-config` | system-config.html | `GET/POST/PUT/DELETE /configs` | 7 |
-| `/admin/email-templates` | plan-email.html | `GET/PUT /email-templates` · `POST .../reset` · `POST /email-templates/reset-all` | 7 |
+| `/admin/email-templates` | email-template.html | `GET/PUT /email-templates` · `POST .../reset` · `POST /email-templates/reset-all` | 7 |
 | `/admin/batch-jobs` | job-batch.html | `GET /jobs` · `PUT /jobs/{no}/params` · `PUT /jobs/{no}/enabled` · `POST /jobs/{no}/run` · `GET /jobs/{no}/runs` | 7 |
 | `/documents/abnormal` | k2-list-abnormal.html *(feature flag)* | `GET /documents` (filter abnormal) + assign | 8 |
 

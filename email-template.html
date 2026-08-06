@@ -90,7 +90,7 @@
   .card.tpl-flash{outline:3px solid rgba(47,111,237,0);outline-offset:3px;animation:tplFlash 1.5s ease-out;}
 </style>
 </head>
-<body data-page="plan-email" data-nav="modules" data-module="plan-email" data-crumb="Email Template">
+<body data-page="email-template" data-nav="modules" data-module="email-template" data-crumb="Email Template">
   <div class="layout">
     <aside id="sidebar"></aside>
     <main class="content">
@@ -555,11 +555,14 @@
       box.innerHTML =
         '<span class="pill info" data-state>Default</span>' +
         '<button class="btn btn-soft btn-sm" data-edit>แก้ไข</button>' +
+        '<button class="btn btn-warn btn-sm" data-cancel hidden>ยกเลิก</button>' +
         '<button class="btn btn-ghost btn-sm" data-reset>รีเซ็ต</button>';
       card.querySelector('.card-head').appendChild(box);
       var stateEl = box.querySelector('[data-state]');
       var btnEdit = box.querySelector('[data-edit]');
+      var btnCancel = box.querySelector('[data-cancel]');
       var btnReset = box.querySelector('[data-reset]');
+      var snapshot = null;   /* ค่าก่อนเริ่มแก้ไข — ใช้คืนค่าเมื่อกด "ยกเลิก" */
 
       /* แถบเครื่องมือ + ชิปตัวแปร (แสดงเฉพาะโหมดแก้ไข ลอยติดขอบบนขณะเลื่อน) */
       var editor = document.createElement('div');
@@ -571,6 +574,7 @@
         '<div class="rt-toolbar">' + TOOLBAR_HTML +
           '<span class="rt-actions">' +
             '<button type="button" class="btn btn-primary btn-sm" data-act="save">บันทึก</button>' +
+            '<button type="button" class="btn btn-warn btn-sm" data-act="cancel">ยกเลิก</button>' +
             '<button type="button" class="btn btn-ghost btn-sm" data-act="reset">รีเซ็ต</button>' +
           '</span>' +
         '</div>' +
@@ -686,7 +690,9 @@
 
         if (b.hasAttribute('data-act')) {       /* บันทึก / รีเซ็ต (sticky) */
           hideGrid();
-          if (b.getAttribute('data-act') === 'save') btnEdit.click();
+          var act = b.getAttribute('data-act');
+          if (act === 'save') btnEdit.click();
+          else if (act === 'cancel') btnCancel.click();
           else btnReset.click();
           return;
         }
@@ -742,6 +748,7 @@
         btnEdit.textContent = on ? 'บันทึก' : 'แก้ไข';
         btnEdit.classList.toggle('btn-primary', on);
         btnEdit.classList.toggle('btn-soft', !on);
+        btnCancel.hidden = !on;   /* ยกเลิกใช้ได้เฉพาะตอนแก้ไข */
       }
       function reset(silent) {
         setEditing(false);
@@ -765,15 +772,23 @@
       btnEdit.addEventListener('click', function () {
         var startEditing = !card.classList.contains('tpl-editing');
         if (startEditing) {
+          snapshot = { subj: subj.innerHTML, body: body.innerHTML };   /* เก็บไว้ให้ปุ่มยกเลิกคืนค่า */
           setEditing(true);
           body.focus();
-          toast('พิมพ์แก้ได้โดยตรง · ใช้แถบเครื่องมือจัดรูปแบบ และคลิกชิปตัวแปรเพื่อแทรก แล้วกด "บันทึก"');
+          toast('พิมพ์แก้ได้โดยตรง · กด "บันทึก" เพื่อเก็บ · "ยกเลิก" เพื่อทิ้งการแก้ไขครั้งนี้ · "รีเซ็ต" เพื่อกลับค่า Default');
         } else {
           setEditing(false);
           try { localStorage.setItem(LS_PREFIX + key, JSON.stringify({ subj: subj.innerHTML, body: body.innerHTML })); } catch (e) {}
           setState(true);
           toast('บันทึก ' + key + ' แล้ว (เก็บในเบราว์เซอร์เครื่องนี้)', 'ok');
         }
+      });
+      /* ยกเลิก = ทิ้งการแก้ไขครั้งนี้ คืนค่าเท่าตอนก่อนกดแก้ไข (ไม่ใช่ค่า Default) */
+      btnCancel.addEventListener('click', function () {
+        if (snapshot) { subj.innerHTML = snapshot.subj; body.innerHTML = snapshot.body; }
+        setEditing(false);
+        snapshot = null;
+        toast('ยกเลิกการแก้ไข ' + key + ' — คืนค่าก่อนแก้ไขแล้ว');
       });
       btnReset.addEventListener('click', function () { reset(false); });
 

@@ -26,7 +26,7 @@ const pages = [
   "k2-factors.html",
   "k2-permissions.html",
   "system-config.html",
-  "plan-email.html",
+  "email-template.html",
   "plan-api.html",
 ];
 

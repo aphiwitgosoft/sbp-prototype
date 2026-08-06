@@ -75,7 +75,7 @@
     // กลุ่มผู้ดูแลระบบ (2026-08-06) — ย้าย Config / Batch Job / Email Template ออกจากกลุ่มงานประจำวัน
     { key:'system-config', label:'ตั้งค่าระบบ (Global Config)', href:'system-config.html', icon:I.cog,  group:'ผู้ดูแลระบบ (Admin)' },
     { key:'job-batch',   label:'Batch Job',                href:'job-batch.html',    icon:I.clock,     group:'ผู้ดูแลระบบ (Admin)' },
-    { key:'plan-email',  label:'Email Template',            href:'plan-email.html',   icon:I.mail,      group:'ผู้ดูแลระบบ (Admin)' },
+    { key:'email-template',  label:'Email Template',            href:'email-template.html',   icon:I.mail,      group:'ผู้ดูแลระบบ (Admin)' },
     { key:'flow-fgi',    label:'Flow FGI/FCS',             href:'flow-fgi.html',     icon:I.flow,      group:'Flow' },
     { key:'k2-flow',     label:'Flow K2',                  href:'k2-flow.html',      icon:I.route,     group:'Flow' },
     { key:'plan-flow',   label:'Flow FGI/FCS + K2',        href:'plan-flow.html',    icon:I.flow,      group:'Flow' },

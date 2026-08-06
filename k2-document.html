@@ -89,22 +89,22 @@
           </div>
         </div>
         <div class="card" style="margin:0;min-width:0;display:flex;flex-direction:column;">
-          <div class="card-head" style="flex-wrap:wrap;"><h2>สัดส่วนเงินชดเชยรายร้านเปิดใหม่</h2><span class="pill info" style="margin-left:auto;">รวม 72,300.00 ฿</span><span class="pill info">2 ร้าน</span></div>
-          <div style="font-size:12px; color:var(--muted); margin:-2px 0 8px;">เงินชดเชยร้านใหม่ = ฐานร้านถูกกระทบ 48,200 × %ชดเชย · <code>document_new_stores</code></div>
+          <div class="card-head" style="flex-wrap:wrap;"><h2>สัดส่วนเงินชดเชยรายร้านเปิดใหม่</h2><span class="pill info" style="margin-left:auto;">รวม 48,200.00 ฿</span><span class="pill info">2 ร้าน</span></div>
+          <div style="font-size:12px; color:var(--muted); margin:-2px 0 8px;">เงินชดเชยร้านใหม่ = ฐานร้านถูกกระทบ 48,200 × %ชดเชย · <code>GET /documents/{docNo}</code> → <code>newStores[]</code></div>
           <div style="display:flex; align-items:center; gap:22px; flex-wrap:wrap; flex:1;">
-            <div data-chart="donut" data-values="48200,24100" data-colors="#2f6fed,#15b6a6" data-center="รวม (฿)"></div>
+            <div data-chart="donut" data-values="28920,19280" data-colors="#2f6fed,#15b6a6" data-center="รวม (฿)"></div>
             <div style="display:flex; flex-direction:column; gap:12px; font-size:12.5px; color:#5d6b7a; min-width:0; flex:1;">
               <div style="display:flex; align-items:flex-start; gap:9px;">
                 <i style="width:12px;height:12px;border-radius:3px;background:#2f6fed;display:inline-block;margin-top:3px;flex:none;"></i>
-                <div style="min-width:0;"><b style="color:#2b3440;">ร้าน 00990 · สาขารัตนาธิเบศร์ 2</b> <span class="chip" style="margin-left:6px;">66.7%</span><br>
-                  %ชดเชย 100% → <b class="num" style="color:#2b3440;">48,200.00 ฿</b> · ระยะห่าง 0.85 กม.</div>
+                <div style="min-width:0;"><b style="color:#2b3440;">ร้าน 00990 · สาขารัตนาธิเบศร์ 2</b> <span class="chip" style="margin-left:6px;">60.0%</span><br>
+                  %ชดเชย 60% → <b class="num" style="color:#2b3440;">28,920.00 ฿</b> · ระยะห่าง 0.85 กม.</div>
               </div>
               <div style="display:flex; align-items:flex-start; gap:9px;">
                 <i style="width:12px;height:12px;border-radius:3px;background:#15b6a6;display:inline-block;margin-top:3px;flex:none;"></i>
-                <div style="min-width:0;"><b style="color:#2b3440;">ร้าน 01180 · สาขาซอยวัดกู้</b> <span class="chip" style="margin-left:6px;">33.3%</span><br>
-                  %ชดเชย 50% → <b class="num" style="color:#2b3440;">24,100.00 ฿</b> · ระยะห่าง 1.40 กม.</div>
+                <div style="min-width:0;"><b style="color:#2b3440;">ร้าน 01180 · สาขาซอยวัดกู้</b> <span class="chip" style="margin-left:6px;">40.0%</span><br>
+                  %ชดเชย 40% → <b class="num" style="color:#2b3440;">19,280.00 ฿</b> · ระยะห่าง 1.40 กม.</div>
               </div>
-              <p style="font-size:11.5px;color:var(--muted);margin:0;border-top:1px dashed var(--line);padding-top:9px;">สัดส่วนคิดจากเงินชดเชยจริงต่อร้าน (ตารางร้านเปิดใหม่ด้านล่าง) — ผลรวม %ชดเชยทุกรายการต้องเท่ากับ 100%</p>
+              <p style="font-size:11.5px;color:var(--muted);margin:0;border-top:1px dashed var(--line);padding-top:9px;">สัดส่วนคิดจากเงินชดเชยจริงต่อร้าน (ตารางร้านเปิดใหม่ด้านล่าง) — ผลรวม %ชดเชยทุกรายการต้องเท่ากับ 100% ผลรวมเงินจึงเท่ากับยอดชดเชยของร้านถูกกระทบพอดี</p>
             </div>
           </div>
         </div>
@@ -162,15 +162,15 @@
         <div class="table-wrap"><table class="data" id="tbldocument_new_stores" data-base="48200" style="min-width:1180px;">
           <thead><tr><th>ลำดับ</th><th>รหัสร้าน</th><th>ชื่อร้านเปิดใหม่</th><th>ภาค</th><th>ประเภทร้าน</th><th>เจ้าของร้าน</th><th>นิติบุคคล</th><th>วันที่เปิดร้าน</th><th>วันที่ปิดร้าน</th><th>ระยะห่าง (กม.)</th><th>%ชดเชย</th><th>เงินชดเชย (ร้านใหม่)</th></tr></thead>
           <tbody>
-            <tr><td class="num">1</td><td class="num">00990</td><td>สาขารัตนาธิเบศร์ 2</td><td>RS</td><td>FR Type A</td><td>นายอนันต์ ทวีสุข</td><td>บ.รัตนา รีเทล จำกัด</td><td class="num">16/11/2566</td><td class="num">-</td><td class="num">0.85</td><td class="num"><input class="pct-input num" value="100.00" disabled>%</td><td class="num comp-cell">48,200.00</td></tr>
-            <tr><td class="num">2</td><td class="num">01180</td><td>สาขาซอยวัดกู้</td><td>RS</td><td>บริษัท</td><td>บ.ซีพี ออลล์ จำกัด</td><td>ซีพี ออลล์</td><td class="num">02/02/2567</td><td class="num">-</td><td class="num">1.40</td><td class="num"><input class="pct-input num" value="50.00" disabled>%</td><td class="num comp-cell">24,100.00</td></tr>
+            <tr><td class="num">1</td><td class="num">00990</td><td>สาขารัตนาธิเบศร์ 2</td><td>RS</td><td>FR Type A</td><td>นายอนันต์ ทวีสุข</td><td>บ.รัตนา รีเทล จำกัด</td><td class="num">16/11/2566</td><td class="num">-</td><td class="num">0.85</td><td class="num"><input class="pct-input num" value="60.00" disabled>%</td><td class="num comp-cell">28,920.00</td></tr>
+            <tr><td class="num">2</td><td class="num">01180</td><td>สาขาซอยวัดกู้</td><td>RS</td><td>บริษัท</td><td>บ.ซีพี ออลล์ จำกัด</td><td>ซีพี ออลล์</td><td class="num">02/02/2567</td><td class="num">-</td><td class="num">1.40</td><td class="num"><input class="pct-input num" value="40.00" disabled>%</td><td class="num comp-cell">19,280.00</td></tr>
           </tbody>
         </table></div>
         <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px 14px;margin:12px 0 2px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;">
           <span style="color:var(--muted);">ผลรวมเงินชดเชยทุกร้าน</span>
-          <b class="num" style="color:#16a34a;font-size:15.5px;">72,300.00 ฿</b>
-          <span class="chip"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#2f6fed;vertical-align:middle;margin-right:5px;"></i>ร้าน 00990 · 66.7%</span>
-          <span class="chip"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#15b6a6;vertical-align:middle;margin-right:5px;"></i>ร้าน 01180 · 33.3%</span>
+          <b class="num" style="color:#16a34a;font-size:15.5px;">48,200.00 ฿</b>
+          <span class="chip"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#2f6fed;vertical-align:middle;margin-right:5px;"></i>ร้าน 00990 · 60.0%</span>
+          <span class="chip"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#15b6a6;vertical-align:middle;margin-right:5px;"></i>ร้าน 01180 · 40.0%</span>
         </div>
         <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">สูตรคำนวณ: เงินชดเชยร้านเปิดใหม่ = เงินชดเชยร้านถูกกระทบ × %ชดเชย &nbsp;·&nbsp; ผลรวม %ชดเชยทุกรายการต้องเท่ากับ 100%</p>
         <p style="font-size:12px;color:var(--muted);margin:6px 0 0;">ประเภทร้านทั้งหมด 8 ชนิด: FR Type A · FR Type B · FR Type C · FR Type C r · บริษัท · FR Type พนักงาน · FR Type PTT · FR Type BGC</p>
@@ -186,11 +186,18 @@
             <button class="btn btn-muted btn-sm" data-ack="บันทึกข้อมูลร้านคู่แข่งเรียบร้อย" data-kind="ok">บันทึก</button>
           </div>
         </div>
+        <!-- แถบดำเนินการกับรายการที่ติ๊กเลือก — แสดงเฉพาะบทบาทที่แก้ไขส่วนนี้ได้ และเมื่อเลือกอย่างน้อย 1 รายการ -->
+        <div class="bulk-bar" data-bulk-for="tblCompetitor" hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>เลือกไว้ <b class="bulk-n">0</b> รายการ</span>
+          <button class="btn btn-ghost btn-sm" data-bulk="clear">ล้างการเลือก</button>
+          <button class="btn btn-danger btn-sm" data-bulk="del"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg> ลบที่เลือก</button>
+        </div>
         <div class="table-wrap"><table class="data" id="tblCompetitor" data-entity="competitor">
           <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ร้านคู่แข่ง</th><th>วันที่เปิดกระทบ</th><th>รายละเอียดเพิ่มเติม</th><th class="col-action">Action</th></tr></thead>
           <tbody>
-            <tr><td><input type="checkbox" class="cbx"></td><td>Lotus Express</td><td class="num">10/10/2566</td><td>เปิดฝั่งตรงข้าม ระยะ 120 ม.</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
-            <tr><td><input type="checkbox" class="cbx"></td><td>CJ Express</td><td class="num">05/01/2567</td><td>เปิดหัวซอยเดียวกัน</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="col-chk"><input type="checkbox" class="cbx"></td><td>Lotus Express</td><td class="num">10/10/2566</td><td>เปิดฝั่งตรงข้าม ระยะ 120 ม.</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="col-chk"><input type="checkbox" class="cbx"></td><td>CJ Express</td><td class="num">05/01/2567</td><td>เปิดหัวซอยเดียวกัน</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
           </tbody>
         </table></div>
       </div>
@@ -204,10 +211,16 @@
             <button class="btn btn-muted btn-sm" data-ack="บันทึกข้อมูลปัจจัยอื่นๆ เรียบร้อย" data-kind="ok">บันทึก</button>
           </div>
         </div>
+        <div class="bulk-bar" data-bulk-for="tblFactorsDoc" hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11 3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>เลือกไว้ <b class="bulk-n">0</b> รายการ</span>
+          <button class="btn btn-ghost btn-sm" data-bulk="clear">ล้างการเลือก</button>
+          <button class="btn btn-danger btn-sm" data-bulk="del"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg> ลบที่เลือก</button>
+        </div>
         <div class="table-wrap"><table class="data" id="tblFactorsDoc" data-entity="factordoc">
           <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>ปัจจัยภายนอก</th><th>วันที่เริ่มต้น</th><th>วันที่สิ้นสุด</th><th>รายละเอียดเพิ่มเติม</th><th class="col-action">Action</th></tr></thead>
           <tbody>
-            <tr><td><input type="checkbox" class="cbx"></td><td>การก่อสร้าง / ปิดถนน</td><td class="num">01/05/2569</td><td class="num">31/07/2569</td><td>ก่อสร้างสะพานกลับรถ กระทบการเข้าถึง</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
+            <tr><td class="col-chk"><input type="checkbox" class="cbx"></td><td>การก่อสร้าง / ปิดถนน</td><td class="num">01/05/2569</td><td class="num">31/07/2569</td><td>ก่อสร้างสะพานกลับรถ กระทบการเข้าถึง</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
           </tbody>
         </table></div>
       </div>
@@ -232,8 +245,8 @@
         <div class="card-head"><h2>คำนวณเงินชดเชย</h2><span class="chip file" style="margin-left:auto;">ผ่านระบบ Finance &amp; Account (FS) · เฉพาะเจ้าหน้าที่ SBP DSA</span></div>
         <div class="form-grid">
           <div class="field"><label>เงินชดเชยร้านถูกกระทบ (ตั้งต้น)</label><input class="num" value="48,200.00" readonly></div>
-          <div class="field"><label>รวม %ชดเชยร้านเปิดใหม่</label><input class="num" value="150.00%" readonly></div>
-          <div class="field"><label>เงินชดเชยรวม (ร้านเปิดใหม่ 1+2)</label><input class="num" value="72,300.00" readonly></div>
+          <div class="field"><label>รวม %ชดเชยร้านเปิดใหม่</label><input class="num" value="100.00%" readonly></div>
+          <div class="field"><label>เงินชดเชยรวม (ร้านเปิดใหม่ 1+2)</label><input class="num" value="48,200.00" readonly></div>
           <div class="field"><label>อำนาจอนุมัติ</label><input value="≤ 50,000 = GM ส่งเสริม · 50,001–300,000 = AVP สำนัก SBPM (SDD GI 24/02/2026)" readonly></div>
         </div>
       </div>
@@ -263,7 +276,8 @@
       <!-- ส่วน พิจารณา (ตัวเลือกเปลี่ยนตามบทบาท/ขั้นตอน) -->
       <div class="card" style="border-left:5px solid var(--primary);">
         <div class="card-head"><h2>พิจารณา (ส่งดำเนินการ)</h2><span id="decHint" class="pill info" style="margin-left:auto;"></span></div>
-        <div id="decisionOptions" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;"></div>
+        <div id="decisionOptions" style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px;"></div>
+        <p id="zeroRuleHint" hidden style="font-size:12px;line-height:1.7;color:#7a5b12;background:#fff8ec;border:1px solid #f0dcb4;border-radius:8px;padding:9px 12px;margin:0 0 14px;"></p>
         <div class="form-grid">
           <div class="field col-2"><label>ความคิดเห็นเพิ่มเติม <span id="cmtStar" style="color:var(--danger);display:none;">*</span></label><textarea id="decComment" rows="3" placeholder="ระบุความคิดเห็น..."></textarea></div>
         </div>
@@ -284,7 +298,7 @@
     <div class="k2pop">
       <h4><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg> โปรดตรวจสอบ</h4>
       <p id="k2popMsg"></p>
-      <div class="k2pop-foot"><button class="btn btn-primary btn-sm" id="k2popOk">OK</button></div>
+      <div class="k2pop-foot"><button class="btn btn-ghost btn-sm" id="k2popCancel" hidden>ยกเลิก</button><button class="btn btn-primary btn-sm" id="k2popOk">OK</button></div>
     </div>
   </div>
 
@@ -357,7 +371,13 @@
     .k2pop{background:#fff;border-radius:12px;max-width:430px;width:90%;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
     .k2pop h4{margin:0 0 8px;font-size:15px;color:#b45309;display:flex;gap:10px;align-items:center;}
     .k2pop p{margin:0 0 18px;font-size:13.5px;color:#45525f;line-height:1.6;}
-    .k2pop-foot{display:flex;justify-content:flex-end;}
+    .k2pop-foot{display:flex;justify-content:flex-end;gap:8px;}
+    /* แถบดำเนินการกับรายการที่เลือก (checkbox) */
+    .bulk-bar{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:9px 14px;border:1px solid #cfe0ff;background:#eef5ff;border-radius:10px;font-size:13px;color:#2b3440;}
+    .bulk-bar[hidden]{display:none;}
+    .bulk-bar svg{color:var(--primary);flex:none;}
+    .bulk-bar .bulk-n{color:var(--primary);font-size:14px;}
+    .bulk-bar .btn:first-of-type{margin-left:auto;}
   /* แถบ "ขั้นตอน Workflow ตามบทบาท" — sticky ใต้ header เมื่อเลื่อนลง */
   #roleBar{position:sticky; top:var(--header-h); z-index:30; transition:box-shadow .18s, padding .18s;}
   #roleBar.stuck{box-shadow:0 12px 28px rgba(31,72,104,.18); padding-top:12px; padding-bottom:12px;}
@@ -369,6 +389,8 @@
     background:#fff; border:1px solid var(--line); border-radius:8px;
     transition:background .15s, color .15s, border-color .15s;}
   .rb-close:hover{background:#f3f6fb; color:#2b3440; border-color:#c9d3df;}
+  /* ตัวเลือกที่กติกายอดชดเชย 0 บังคับให้เลือก (SDD GI) */
+  .dec-opt-pick{border-color:#d68a10!important; background:#fff8ec!important; box-shadow:0 0 0 3px rgba(214,138,16,.10);}
   </style>
 
   <script src="assets/sbp.js"></script>
@@ -378,8 +400,8 @@
     var ROLES = [
       { key:'sbpdsa-mgr', role:'ฝ่าย SBP DSA (Manager Franchise · section_code 06)', status:'รอฝ่าย SBP DSA ดำเนินการ', pill:'wait', edit:[], opts:[
         { label:'เห็นควรไม่ชดเชย', note:'เอกสารเสร็จสิ้น', req:true },
-        { label:'หยุดชดเชยประกันรายได้', note:'เอกสารเสร็จสิ้น' },
-        { label:'ส่งหน่วยงานส่งเสริมธุรกิจ SBP' },
+        { label:'หยุดชดเชยประกันรายได้', note:'เอกสารเสร็จสิ้น', zero:'stop' },
+        { label:'ส่งหน่วยงานส่งเสริมธุรกิจ SBP', zero:'forward' },
         { label:'ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ' } ] },
       { key:'sbpdsa-officer', role:'เจ้าหน้าที่ SBP DSA (Officer Franchise · section_code 08)', status:'รอเจ้าหน้าที่ SBP DSA ดำเนินการ', pill:'violet', edit:['sec-calc'], opts:[
         { label:'คำนวณเงินชดเชยเรียบร้อย → ส่งหน่วยงานส่งเสริมธุรกิจฯ' },
@@ -406,7 +428,7 @@
         detail:'ตรวจสอบเอกสารและข้อมูลร้านครบถ้วน ส่งให้เจ้าหน้าที่คำนวณเงินชดเชย',
         datetime:'12/06/2569 09.20.33 น.', files:['map_allmap.pdf'] },
       { name:'Nattapong Wongsa',      position:'เจ้าหน้าที่ SBP DSA',           result:'คำนวณเงินชดเชยเรียบร้อย → ส่งหน่วยงานส่งเสริมธุรกิจฯ',
-        detail:'คำนวณผ่านระบบ FS · ยอดชดเชยรวม 72,300.00 บาท (ร้านใหม่ 2 ร้าน)',
+        detail:'คำนวณผ่านระบบ FS · ยอดชดเชยรวม 48,200.00 บาท (ร้านใหม่ 2 ร้าน · 60% + 40%)',
         datetime:'13/06/2569 14.05.11 น.', files:['fs_calculation.xlsx','impact_report.pdf'] },
       { name:'Chantaporn Banchuen',   position:'หน่วยงานส่งเสริมธุรกิจ SBP',    result:'เห็นควรชดเชย → GM ส่งเสริมธุรกิจฯ',
         detail:'เห็นควรชดเชยตามเกณฑ์ · ตรวจสอบร้านเปิดใหม่และปัจจัยภายนอกแล้ว',
@@ -421,10 +443,36 @@
 
     function $(id){ return document.getElementById(id); }
     function toast(m,k){ if (window.SBP && SBP.toast) SBP.toast(m,k||''); }
-    function popup(msg){ $('k2popMsg').textContent = msg; $('k2pop').classList.add('show'); }
+    var popOnOk = null;   /* callback ของโหมด confirm */
+    function popup(msg){
+      popOnOk = null;
+      $('k2popMsg').textContent = msg;
+      $('k2popCancel').hidden = true;
+      var ok = $('k2popOk'); ok.textContent = 'OK'; ok.className = 'btn btn-primary btn-sm';
+      $('k2pop').classList.add('show');
+    }
+    /* popup แบบยืนยัน (ยกเลิก / ยืนยัน) — ใช้กับการลบหลายรายการที่เลือก */
+    function confirmPopup(msg, okLabel, onOk){
+      popOnOk = onOk;
+      $('k2popMsg').textContent = msg;
+      $('k2popCancel').hidden = false;
+      var ok = $('k2popOk'); ok.textContent = okLabel; ok.className = 'btn btn-danger btn-sm';
+      $('k2pop').classList.add('show');
+    }
     function money(){ var t=0; document.querySelectorAll('#tbldocument_new_stores .comp-cell').forEach(function(c){ t += parseFloat((c.textContent||'0').replace(/,/g,''))||0; }); return t; }
     function fmt(n){ return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
     function roleByKey(k){ return ROLES.filter(function(r){return r.key===k;})[0] || ROLES[0]; }
+
+    /* แถบดำเนินการกับรายการที่เลือก — โผล่เมื่อ (1) บทบาทนี้แก้ไขส่วนนั้นได้ และ (2) ติ๊กอย่างน้อย 1 รายการ */
+    function syncBulk(card){
+      var bar = card.querySelector('.bulk-bar'); if (!bar) return;
+      var tbl = document.getElementById(bar.getAttribute('data-bulk-for'));
+      var badge = card.querySelector('.edit-badge');
+      var editable = !!(badge && badge.classList.contains('on'));
+      var n = tbl ? tbl.querySelectorAll('tbody input.cbx:checked').length : 0;
+      bar.querySelector('.bulk-n').textContent = n;
+      bar.hidden = !(editable && n > 0);
+    }
 
     var currentRoleKey = '';
 
@@ -459,6 +507,10 @@
         if (b){ b.className = 'edit-badge ' + (on?'on':'off'); b.textContent = on ? 'แก้ไขได้ (บทบาทนี้)' : 'อ่านอย่างเดียว'; }
         card.querySelectorAll('.edit-only').forEach(function(el){ el.hidden = !on; });
         card.querySelectorAll('.pct-input').forEach(function(inp){ inp.disabled = !on; });
+        /* บทบาทที่อ่านอย่างเดียว: ซ่อนทั้งคอลัมน์ checkbox และคอลัมน์ Action (ไม่เหลือช่องว่างค้างไว้) */
+        card.querySelectorAll('.col-chk, th.col-action').forEach(function(cell){ cell.hidden = !on; });
+        card.querySelectorAll('input.cbx').forEach(function(c){ if (!on) c.checked = false; });
+        syncBulk(card);
       });
 
       /* ส่วนคำนวณเงินชดเชย เฉพาะบทบาทที่กำหนด */
@@ -469,6 +521,12 @@
       /* ตัวเลือกพิจารณา */
       var box = $('decisionOptions'); box.innerHTML = '';
       var total = money();
+      /* กติกายอดชดเชย 0 (SDD GI สไลด์ 51) — ใช้เฉพาะขั้น 06 ฝ่าย SBP DSA
+         เดือนที่ 1–3 ที่ยอดเป็น 0 → ส่งหน่วยงานส่งเสริมธุรกิจ SBP · ครบเดือนที่ 4 → หยุดชดเชยรายได้ */
+      var LOOP_NO = parseInt((document.querySelector('.page-sub') || {}).textContent
+                      ? ((document.querySelector('.page-sub').textContent.match(/ครั้งที่\s*(\d+)/) || [])[1] || '1') : '1', 10);
+      var zeroCase = (r.key === 'sbpdsa-mgr' && total === 0);
+      var zeroPick = LOOP_NO >= 4 ? 'stop' : 'forward';
       r.opts.forEach(function(o, idx){
         var note = o.note ? o.note : '';
         // วงเงินตาม SDD GI 24/02/2026: GM ≤ 50,000 · AVP 50,001–300,000 · เห็นควรไม่ชดเชยจบทันที
@@ -476,11 +534,24 @@
         if (o.money === 'reject')  note = 'เสร็จสิ้นดำเนินการ (ไม่อนุมัติในเดือนนั้น · SDD GI)';
         if (o.req) note = (note ? note + ' · ' : '') + 'บังคับกรอกความคิดเห็น';
         if (o.end) note = (note ? note + ' · ' : '') + 'จบกระบวนการ';
+        var pick = zeroCase && o.zero === zeroPick;
+        if (pick) note = (note ? note + ' · ' : '') +
+          (zeroPick === 'stop' ? 'ยอดชดเชย 0 ครบเดือนที่ 4 → ต้องเลือกข้อนี้ (SDD GI)'
+                               : 'ยอดชดเชย 0 เดือนที่ ' + LOOP_NO + ' (1–3) → ต้องเลือกข้อนี้ (SDD GI)');
         var lab = document.createElement('label');
-        lab.className = 'dec-opt';
+        lab.className = 'dec-opt' + (pick ? ' dec-opt-pick' : '');
         lab.innerHTML = '<input type="radio" name="route" data-req="'+(o.req?1:0)+'" style="margin-top:3px;"> <span>'+o.label+(note?' <small>('+note+')</small>':'')+'</span>';
         box.appendChild(lab);
       });
+      var zeroNote = $('zeroRuleHint');
+      if (zeroNote) {
+        zeroNote.hidden = (r.key !== 'sbpdsa-mgr');
+        zeroNote.innerHTML = zeroCase
+          ? '<b>ยอดชดเชยเป็น 0 · ครั้งที่ ' + LOOP_NO + '</b> — ' + (zeroPick === 'stop'
+              ? 'ครบเดือนที่ 4 แล้ว ต้องเลือก “หยุดชดเชยประกันรายได้”'
+              : 'อยู่ในเดือนที่ 1–3 ต้องเลือก “ส่งหน่วยงานส่งเสริมธุรกิจ SBP”') + ' (SDD GI สไลด์ 51)'
+          : 'กติกายอดชดเชย 0 (SDD GI): เดือนที่ 1–3 → ส่งหน่วยงานส่งเสริมธุรกิจ SBP · ครบเดือนที่ 4 → หยุดชดเชยรายได้ · เอกสารนี้ยอด ' + fmt(total) + ' บาท จึงยังไม่เข้าเงื่อนไข';
+      }
       $('decHint').textContent = r.role.split(' (')[0];
 
       /* ไฮไลต์ stepper ให้ตรงบทบาทปัจจุบัน */
@@ -510,8 +581,58 @@
       });
       render(ROLES[0].key);
 
-      $('k2popOk').addEventListener('click', function(){ $('k2pop').classList.remove('show'); });
-      $('k2pop').addEventListener('click', function(e){ if(e.target===$('k2pop')) $('k2pop').classList.remove('show'); });
+      /* คืนปุ่มเป็นโหมดแจ้งเตือนปกติทุกครั้งที่ปิด — popup ตัวนี้ถูกเรียกจาก sbp.js (validation ของ modal เพิ่มข้อมูล) ด้วย */
+      function resetPop(){
+        $('k2popCancel').hidden = true;
+        var ok = $('k2popOk'); ok.textContent = 'OK'; ok.className = 'btn btn-primary btn-sm';
+      }
+      function closePop(){ $('k2pop').classList.remove('show'); resetPop(); }
+      $('k2popOk').addEventListener('click', function(){
+        var cb = popOnOk; popOnOk = null;
+        closePop();
+        if (cb) cb();
+      });
+      $('k2popCancel').addEventListener('click', function(){ popOnOk = null; closePop(); });
+
+      /* modal "เพิ่มข้อมูล" ของ sbp.js โคลนแถวสุดท้ายเป็นต้นแบบ — ต้องเอาแถว "ไม่มีข้อมูล" ออกก่อน (capture ก่อน handler ของ sbp.js) */
+      document.addEventListener('click', function(e){
+        var t = e.target.closest && e.target.closest('[data-add-row]'); if (!t) return;
+        var at = document.getElementById(t.getAttribute('data-add-row'));
+        var er = at && at.querySelector('tbody .empty-row'); if (er) er.remove();
+      }, true);
+
+      /* ===== ดำเนินการกับเฉพาะรายการที่ติ๊กเลือก (ร้านคู่แข่ง / ปัจจัยอื่นๆ) ===== */
+      document.querySelectorAll('.card[data-editrole]').forEach(function(card){
+        var bar = card.querySelector('.bulk-bar'); if (!bar) return;
+        var tbl = document.getElementById(bar.getAttribute('data-bulk-for')); if (!tbl) return;
+        var head = tbl.querySelector('thead .cbx');
+        var picked = function(){ return [].slice.call(tbl.querySelectorAll('tbody input.cbx:checked')); };
+        tbl.addEventListener('change', function(e){ if (e.target.classList.contains('cbx')) syncBulk(card); });
+        bar.addEventListener('click', function(e){
+          var btn = e.target.closest('[data-bulk]'); if (!btn) return;
+          var rows = picked();
+          if (btn.getAttribute('data-bulk') === 'clear'){
+            rows.forEach(function(c){ c.checked = false; });
+            if (head) head.checked = false;
+            syncBulk(card); return;
+          }
+          if (!rows.length) return;
+          var title = (card.querySelector('h2') || {}).textContent || 'รายการนี้';
+          confirmPopup('ยืนยันลบรายการที่เลือก ' + rows.length + ' รายการ ออกจาก "' + title + '" หรือไม่ · การลบจะมีผลจริงเมื่อกดปุ่ม "บันทึก"',
+            'ยืนยันลบ ' + rows.length + ' รายการ', function(){
+              rows.forEach(function(c){ var tr = c.closest('tr'); if (tr) tr.remove(); });
+              if (head) head.checked = false;
+              var body = tbl.querySelector('tbody');
+              if (body && !body.children.length){
+                body.innerHTML = '<tr class="empty-row"><td colspan="' + tbl.querySelectorAll('thead th').length +
+                  '" style="text-align:center;color:var(--muted);padding:22px 0;">— ไม่มีข้อมูลในส่วนนี้ —</td></tr>';
+              }
+              syncBulk(card);
+              toast('ลบรายการที่เลือก ' + rows.length + ' รายการแล้ว · กด "บันทึก" เพื่อยืนยัน', 'del');
+            });
+        });
+      });
+      $('k2pop').addEventListener('click', function(e){ if(e.target===$('k2pop')){ popOnOk = null; closePop(); } });
 
       /* ผลการพิจารณา (ประวัติ) — คลิกแถวเพื่อดูรายละเอียด + เอกสารแนบ ใน modal (แถวถูก render ตามบทบาทใน renderHistory) */
       var dhPop = $('decHistPop');
@@ -607,7 +728,7 @@
       });
       var restore = $('btnNsRestore');
       if (restore) restore.addEventListener('click', function(){
-        var d = [['100.00','48,200.00'],['50.00','24,100.00']];
+        var d = [['60.00','28,920.00'],['40.00','19,280.00']];
         document.querySelectorAll('#tbldocument_new_stores tbody tr').forEach(function(tr,i){ if(!d[i])return; var p=tr.querySelector('.pct-input'); if(p)p.value=d[i][0]; var c=tr.querySelector('.comp-cell'); if(c)c.textContent=d[i][1]; });
         toast('คืนค่าข้อมูลก่อนแก้ไขแล้ว','ok');
       });

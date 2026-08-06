@@ -89,8 +89,9 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **S6 แผนที่ AllMap:** `<AllMapPoi>` hand-SVG (วงรัศมี 1กม., pulse ร้านถูกกระทบ, หมุดร้านใหม่ 1/2, คู่แข่ง C) + legend + ปุ่ม `Link To ALLMAP`
 - **S7 ร้านคู่แข่ง** (`data-editrole`, `data-entity=competitor`): ปุ่ม `เพิ่ม`(add-row)/`บันทึก` · ตาราง `☑ | ร้านคู่แข่ง | วันที่เปิดกระทบ | รายละเอียดเพิ่มเติม | Action`
 - **S8 ปัจจัยอื่นๆ** (`data-entity=factordoc`): ปุ่ม `เพิ่มข้อมูล`/`บันทึก` · ตาราง `☑ | ปัจจัยภายนอก | วันที่เริ่มต้น | วันที่สิ้นสุด | รายละเอียดเพิ่มเติม | Action`
+- **S7–S8 สิทธิ์ + bulk action** (2026-08-06): คอลัมน์ `☑` และคอลัมน์ `Action` **แสดงเฉพาะ role ที่แก้ส่วนนั้นได้** (`permissions.canEditSections` — ปัจจุบันคือ section 01) · role อ่านอย่างเดียวต้องไม่เห็นทั้งสองคอลัมน์ · เมื่อติ๊ก ≥ 1 แถวให้ขึ้นแถบ `เลือกไว้ N รายการ` + ปุ่ม `ล้างการเลือก` / `ลบที่เลือก` (confirm ก่อนลบ · ลบใน state แล้วมีผลจริงตอนกด `บันทึก` → `PUT /documents/{docNo}`)
 - **S9 เอกสารแนบทั้งหมด:** ปุ่ม `แนบไฟล์` (≤5MB) · ตาราง `ไฟล์แนบ | ตำแหน่ง | ผู้สร้างแนบไฟล์ | รายละเอียดเพิ่มเติม | วัน/เดือน/ปี`
-- **S10 คำนวณเงินชดเชย** (`data-roleonly=sbpdsa-officer`): ฟอร์ม readonly (ตั้งต้น 48,200 / %รวม 150 / รวมร้านใหม่ 72,300 / อำนาจอนุมัติ ≤100k GM · >100k AVP)
+- **S10 คำนวณเงินชดเชย** (`data-roleonly=sbpdsa-officer`): ฟอร์ม readonly (ตั้งต้น 48,200 / %รวม 100 / รวมร้านใหม่ 48,200 / อำนาจอนุมัติ ≤50k GM · 50,001–300k AVP · SDD GI)
 - **S11 ประวัติการชดเชย:** ตาราง `ครั้ง | เดือน/ปีที่กระทบ | จำนวนเงินที่ชดเชย | เดือน/ปีที่ส่งบัญชี | สถานะเอกสาร | ผลการพิจารณา | เอกสาร` (คลิก→doc)
 - **S12 ผลการพิจารณา (ประวัติ):** ตาราง `ชื่อผู้พิจารณา | ตำแหน่ง | ผลการพิจารณา | รายละเอียดการพิจารณา | วัน/เวลา` (คลิกแถว→modal)
 - **S13 พิจารณา (ส่งดำเนินการ):** radio ตัวเลือกตาม role + textarea `ความคิดเห็นเพิ่มเติม` + ปุ่ม `แนบรูป`/`บันทึก`/`ส่งดำเนินการ` (validate เลือกผล + comment ถ้าบังคับ → popup "ท่านยังไม่เลือกผลการพิจารณา…")
@@ -158,7 +159,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **ข้อมูล:** 2 array `PHASES` + `JOBS` (11 job, แต่ละ job: params/flow/tables/rels/meta/run/hist)
 - **TODO:** `<JobBatchPage>`, `<PhaseStrip>`/`<JobChip>`, `<JobTable>`, `<JobDetailPanel>`+`<EnableToggle>`, `<Tabs>`, `<ParamForm>`, `<ManualRunBar>`, `<FlowchartSvg>`(port renderFlow), `<JobDbDiagramSvg>`(port renderDb), `<RunHistoryTab>`, `<AuditHistoryTable>`
 
-## plan-email.html — Email Template (EM-01–08 + WYSIWYG editor)
+## email-template.html — Email Template (EM-01–08 + WYSIWYG editor)
 - **Route:** `/plan/email-templates` · **crumb:** `Email Template`
 - **S1 head:** pill `8 Templates` + ปุ่ม `รีเซ็ตทั้งหมดเป็น Default`
 - **S2 ตาราง map:** `Template | ชื่อ | จุดที่ส่งใน Flow | ผู้รับ (TO) | แหล่งกติกาผู้รับ | ความถี่` — คลิกแถว→เลื่อนไป template card (สลับ tab + flash)
@@ -247,6 +248,6 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 ## หมายเหตุ implement รวม
 - **Charts:** prototype ใช้ทั้ง engine `data-chart` (bar/donut/spark) และ hand-SVG (index cols, k2-report hbar, k2-document sales, ทุก diagram/flowchart/ER/map) — React แนะนำ data-drive component; diagram ใหญ่ (BPMN, architecture, ER, zone map) อาจเก็บเป็น SVG asset ก่อนแล้วค่อย data-drive
 - **หน้า static (ไม่มี state):** flow-fgi, k2-flow, plan-flow, fgi-database, k2-database, plan-database → layout + data เท่านั้น
-- **หน้ามี state จริง:** k2-document (workflow role), k2-permissions (matrix dirty), plan-email (editor), job-batch (job select), k2-list-* (filter/sort/page), master pages (CRUD modal)
+- **หน้ามี state จริง:** k2-document (workflow role), k2-permissions (matrix dirty), email-template (editor), job-batch (job select), k2-list-* (filter/sort/page), master pages (CRUD modal)
 - **Mock data → API:** k2-list-* และ master pages ใช้ mock deterministic — เปลี่ยนเป็น REST ตาม plan-api.html
 - **Living docs:** แก้เรื่อง database/flow/API ต้องอัปเดต `.md` + HTML คู่ของมันพร้อมกันเสมอ

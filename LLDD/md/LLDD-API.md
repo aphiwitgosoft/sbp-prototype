@@ -2528,7 +2528,7 @@ VALUES (:tableName, :key, :actionDelete, :oldValue, :reason, :actor, :now);
 
 | Endpoint | Method | Path | Summary |
 | --- | --- | --- | --- |
-| 1 | GET | /api/v1/email-templates | รายการ 8 email template (EM-01–08) พร้อมสถานะว่าถูกแก้จาก Default หรือยัง (หน้าจอ plan-email.html) |
+| 1 | GET | /api/v1/email-templates | รายการ 8 email template (EM-01–08) พร้อมสถานะว่าถูกแก้จาก Default หรือยัง (หน้าจอ email-template.html) |
 | 2 | GET | /api/v1/email-templates/{code} | อ่าน template รายตัว (EM-01–08) พร้อมชุดตัวแปร merge ที่ใช้ได้ในฉบับนั้น |
 | 3 | PUT | /api/v1/email-templates/{code} | บันทึกเนื้อหา template — แก้ได้เฉพาะ subject/body และตัวแปร · ผู้รับ From/To/Cc แก้ผ่านเส้นนี้ไม่ได้ (ล็อกตาม status_email_rules) |
 | 4 | POST | /api/v1/email-templates/{code}/reset | รีเซ็ต template ฉบับเดียวกลับเป็น Default (ปุ่ม "รีเซ็ต" รายตัวในหน้าจอ) |
@@ -2536,7 +2536,7 @@ VALUES (:tableName, :key, :actionDelete, :oldValue, :reason, :actor, :now);
 
 #### 6.6.1 GET /api/v1/email-templates
 
-รายการ 8 email template (EM-01–08) พร้อมสถานะว่าถูกแก้จาก Default หรือยัง (หน้าจอ plan-email.html)
+รายการ 8 email template (EM-01–08) พร้อมสถานะว่าถูกแก้จาก Default หรือยัง (หน้าจอ email-template.html)
 
 | Item | Detail |
 | --- | --- |
