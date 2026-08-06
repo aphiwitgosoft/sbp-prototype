@@ -26,7 +26,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- | --- | --- |
 | FE-SMOKE | app bootstrap, menus, dashboard, open list/detail | deploy reachable and test user available | timestamped run result and failed-step detail |
 | FE-DOC | create, edit section, attachment, action, timeline and role views | fixture documents for sections 06/08/01/02/03 | case ID, docNo, requestId and screenshots for failures |
-| FE-REPORT | required filters, 19 columns, totals, CSV parity | known report fixture and expected aggregate | query snapshot, row count, totals and exported checksum |
+| FE-REPORT | required status filter, 14 columns (SDD slide 60), totals, Excel parity | known report fixture and expected aggregate | query snapshot, row count, totals and exported checksum |
 | FE-ADMIN | SCR-08/09/10/11 plus email template | admin role and reversible test data | before/after values and audit reference |
 | FE-BATCH | job selection, editable params, locked params, run history | job metadata/run fixtures | request/response capture and UI state |
 | FE-RESP | desktop 1440, tablet 768, mobile 390 | latest supported browsers | page checklist with overflow/modal/navigation result |

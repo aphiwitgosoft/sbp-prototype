@@ -20,14 +20,6 @@
   .sumline{display:flex; gap:10px 26px; flex-wrap:wrap; align-items:center; margin:2px 0 16px; font-size:13px; color:#5d6b7a;}
   .sumline b{color:#2b3440; font-size:15px;}
   .sumline .dotsep{color:#c4ccd6;}
-  /* กราฟแท่งแนวนอน */
-  .hchart svg{display:block; width:100%;}
-  .hchart .hb-hit{fill:transparent; cursor:pointer;}
-  .hchart .hb-bar{transition:opacity .12s;}
-  .hchart .hb-hit:hover + .hb-bar, .hchart g:hover .hb-bar{opacity:.78;}
-  #chartTip{position:fixed; z-index:200; pointer-events:none; background:#1f2937; color:#fff; font-size:12px;
-    padding:6px 10px; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,.22); display:none; white-space:nowrap;}
-  #chartTip small{color:#cbd5e1;}
 </style>
 </head>
 <body data-page="k2-report" data-nav="modules" data-module="k2-report" data-crumb="รายงานสรุปสถานะ">
@@ -37,31 +29,15 @@
 
       <div class="page-head">
         <div><h1 class="page-title">รายงานสรุปสถานะ</h1>
-          <p class="page-sub">ค้นหาและออกรายงานสรุปสถานะเอกสารประกันรายได้ (SRS 3.1.7 · ผลลัพธ์ 19 คอลัมน์) · ระบบประกันรายได้</p></div>
+          <p class="page-sub">ค้นหาและออกรายงานสรุปสถานะเอกสารประกันรายได้ (SRS 3.1.7 · ผลลัพธ์ 14 คอลัมน์ ตาม SDD) · ระบบประกันรายได้</p></div>
       </div>
 
       <div class="card">
         <div class="card-head"><h2>กรุณาระบุข้อมูลที่ท่านต้องการค้นหา</h2></div>
         <div class="form-grid">
-          <div class="field"><label>รหัสร้านที่ถูกกระทบ</label>
-            <div style="display:flex;gap:8px;"><input placeholder="เลือกรหัสร้าน" style="flex:1;"><button class="btn btn-soft btn-sm" data-ack="เปิด Pop Up เลือกร้านที่ถูกกระทบ"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg></button></div>
-          </div>
-          <div class="field"><label>ชื่อร้านที่ถูกกระทบ</label><input placeholder="แสดงอัตโนมัติหลังเลือกรหัสร้าน" readonly></div>
-          <div class="field"><label>รหัสร้านเปิดกระทบ (ร้านเปิดใหม่)</label><input class="num" inputmode="numeric" placeholder="ระบุรหัสร้านเปิดใหม่ (ตัวเลข)"></div>
-          <div class="field"><label>ประเภทร้าน (เลือกได้มากกว่า 1)</label>
-            <div class="ckgrid" style="grid-template-columns:repeat(4,minmax(0,1fr));">
-              <label><input type="checkbox"> A</label>
-              <label><input type="checkbox"> B</label>
-              <label><input type="checkbox"> C</label>
-              <label><input type="checkbox"> E</label>
-            </div>
-          </div>
-          <div class="field col-2"><label>เดือน/ปีที่ถูกกระทบ (From – To)</label>
-            <div style="display:flex;gap:8px;"><input type="month" class="num" style="flex:1;" id="imFrom" aria-label="เดือน/ปีที่ถูกกระทบ From"><input type="month" class="num" style="flex:1;" id="imTo" aria-label="เดือน/ปีที่ถูกกระทบ To"></div>
-          </div>
           <div class="field"><label>สถานะ <span style="color:#c0392b">*</span> (บังคับ · เลือก 1 สถานะ)</label>
             <select required id="fStatus">
-              <option value="" selected disabled>— เลือกสถานะ —</option>
+              <option value="" selected disabled>— Choose an option —</option>
               <option>รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</option>
               <option>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</option>
               <option>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</option>
@@ -70,11 +46,24 @@
               <option>เสร็จสิ้นดำเนินการ</option>
             </select>
           </div>
-          <div class="field"><label>ผลการพิจารณา <span style="color:#c0392b">*</span> (บังคับ)</label>
-            <div class="ckgrid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-              <label><input type="radio" name="verdict" required> ประกันรายได้</label>
-              <label><input type="radio" name="verdict"> ไม่ประกันรายได้</label>
+          <div class="field"><label>รหัสร้านถูกกระทบ</label>
+            <input class="num" inputmode="numeric" id="fImpacted" placeholder="XXXXXX (ตัวเลข)">
+          </div>
+          <div class="field"><label>รหัสร้านเปิดกระทบ</label>
+            <input class="num" inputmode="numeric" id="fNewStore" placeholder="XXXXXX (ตัวเลข)">
+            <small style="color:var(--muted);">ระบุรหัสร้านถูกกระทบแล้ว ต้องระบุรหัสร้านเปิดกระทบด้วย</small>
+          </div>
+          <div class="field"><label>ประเภทร้าน (เลือกได้มากกว่า 1)</label>
+            <div class="ckgrid" style="grid-template-columns:repeat(4,minmax(0,1fr));">
+              <label><input type="checkbox"> A</label>
+              <label><input type="checkbox"> B</label>
+              <label><input type="checkbox"> C</label>
+              <label><input type="checkbox"> E</label>
             </div>
+          </div>
+          <div class="field col-2"><label>Period Statement (From – To) <span id="psStar" style="color:#c0392b;display:none;">*</span>
+              <small id="psHint" style="color:var(--muted);font-weight:400;"> — ปฏิทิน วัน/เดือน/ปี (ค.ศ.) · บังคับเมื่อเลือกสถานะ “เสร็จสิ้นดำเนินการ” (SDD)</small></label>
+            <div style="display:flex;gap:8px;"><input type="date" class="num" style="flex:1;" id="psFrom" aria-label="Period Statement From"><input type="date" class="num" style="flex:1;" id="psTo" aria-label="Period Statement To"></div>
           </div>
           <div class="field col-2"><label>ภาค (เลือกได้มากกว่า 1 · เพิ่มภาคใหม่อัตโนมัติ)</label>
             <div class="ckgrid" style="grid-template-columns:repeat(5,minmax(0,1fr));">
@@ -93,44 +82,46 @@
               <label><input type="checkbox"> RSL</label>
             </div>
           </div>
-          <div class="field col-2"><label>Period Statement (From – To) <span id="psStar" style="color:#c0392b;display:none;">*</span>
-              <small id="psHint" style="color:var(--muted);font-weight:400;"> — บังคับเมื่อเลือกสถานะ “เสร็จสิ้นดำเนินการ” (SDD)</small></label>
-            <div style="display:flex;gap:8px;"><input type="month" class="num" style="flex:1;" id="psFrom" aria-label="Period Statement From"><input type="month" class="num" style="flex:1;" id="psTo" aria-label="Period Statement To"></div>
+          <div class="field col-2"><label>ผลการพิจารณา (เลือกอย่างใดอย่างหนึ่ง)</label>
+            <div class="ckgrid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+              <label><input type="radio" name="verdict" value="ประกันรายได้"> ประกันรายได้</label>
+              <label><input type="radio" name="verdict" value="ไม่ประกันรายได้"> ไม่ประกันรายได้</label>
+            </div>
           </div>
         </div>
         <div class="toolbar" style="justify-content:flex-end;margin:18px 0 0;">
           <button class="btn btn-muted btn-sm" data-ack="เคลียร์ค่าเริ่มใหม่">เคลียร์ค่าเริ่มใหม่</button>
-          <button class="btn btn-soft btn-sm" data-ack="แสดงตัวอย่างรายงานตรวจสอบประกันรายได้ตามเงื่อนไข" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> Preview Report</button>
-          <button class="btn btn-primary btn-sm" data-ack="ส่งออก CSV เข้า Batch เรียบร้อย — ทีมบัญชีนำไปตรวจสอบเทียบกับ SAP" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg> Export</button>
+          <button class="btn btn-soft btn-sm" id="btnSearch" data-ack="ค้นหาข้อมูลตามเงื่อนไขที่ระบุ" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg> ค้นหาข้อมูล</button>
+          <button class="btn btn-primary btn-sm" data-ack="Export Excel เรียบร้อย — ทีมบัญชีนำไปตรวจสอบเทียบกับ SAP" data-kind="ok"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg> Export Excel</button>
         </div>
       </div>
 
       <div class="sumline">
         <span>พบ <b>10</b> รายการ</span><span class="dotsep">·</span>
         <span>ยอดเงินชดเชยรวม <b>439,100.00</b> บาท</span><span class="dotsep">·</span>
-        <span>วงเงินเข้าเส้น AVP (&gt; 50,000 · SDD GI) <b>1</b> รายการ</span><span class="dotsep">·</span>
+        <span>วงเงินเข้าเส้น AVP (&gt; 50,000 · SDD GI) <b>3</b> รายการ</span><span class="dotsep">·</span>
         <span style="color:#c0392b;">ยอดขายไม่ครบ 60 วัน (แถวแดง) <b>2</b> รายการ</span>
       </div>
 
       <div class="card">
         <div class="card-head"><h2>ผลการค้นหารายชื่อร้าน</h2>
           <span class="pill fail" style="margin-left:auto;font-weight:600;">แถวแดง = ยอดขายไม่ครบ 60 วัน</span>
-          <span class="pill info">19 คอลัมน์ · Export ได้ทั้งหมด</span></div>
-        <div class="table-wrap"><table class="data" style="min-width:1780px;">
+          <span class="pill info">14 คอลัมน์ · ตามรูปแบบรายงานใน SDD</span></div>
+        <div class="table-wrap"><table class="data" style="min-width:1420px;">
           <thead><tr>
-            <th data-sort="num">รหัสร้านถูกกระทบ</th><th data-sort="text">ชื่อร้านถูกกระทบ</th><th data-sort="text">ภาค</th><th data-sort="text">ประเภทร้าน</th><th data-sort="date">เดือนปีที่ถูกกระทบ</th><th data-sort="date">วันที่โอนเป็นร้าน SP</th><th data-sort="date">Period Statement</th><th data-sort="num">รหัสร้านเปิดใหม่</th><th data-sort="text">ชื่อร้านเปิดใหม่</th><th data-sort="text">ภาค (ร้านใหม่)</th><th data-sort="text">ประเภทร้าน (ร้านใหม่)</th><th data-sort="num">ยอดเงินชดเชย</th><th data-sort="text">สถานะ</th><th data-sort="text">ชื่อ-นามสกุลผู้ดำเนินการ</th><th data-sort="text">ผลการพิจารณา</th><th data-sort="num">รอดำเนินการ (วัน)</th><th data-sort="num">ครั้งที่</th><th data-sort="date">วันที่สร้าง</th><th data-sort="text">เลขที่เอกสาร</th>
+            <th data-sort="num">รหัสร้านถูกกระทบ</th><th data-sort="text">ชื่อร้านถูกกระทบ</th><th data-sort="text">ภาค</th><th data-sort="text">ประเภทร้าน</th><th data-sort="date">เดือน/ปีที่ถูกกระทบ</th><th data-sort="date">Period Statement</th><th data-sort="num">รหัสร้านเปิดกระทบ</th><th data-sort="text">ชื่อร้านเปิดกระทบ</th><th data-sort="text">ภาค</th><th data-sort="text">ประเภทร้าน</th><th data-sort="num">ยอดเงินชดเชย</th><th data-sort="num">ครั้งที่</th><th data-sort="date">วันที่สร้าง</th><th data-sort="text">เลขที่เอกสาร</th>
           </tr></thead>
           <tbody>
-            <tr><td class="num">00788</td><td>รัตนอุทิศ ซ.13</td><td>RS</td><td>FR Type B</td><td class="num">05/2026</td><td class="num">01/03/2023</td><td class="num">05/2026</td><td class="num">00990</td><td>เซเว่นฯ รัตนาธิเบศร์ 12</td><td>RS</td><td>FR Type A</td><td class="num">48,200.00</td><td><span class="pill wait">รอฝ่าย SBP DSA ดำเนินการ</span></td><td>สมชาย ใจดี</td><td>-</td><td class="num">2</td><td class="num">1</td><td class="num">12/06/2026</td><td class="num">2026/00123</td></tr>
-            <tr class="flag-red"><td class="num">01045</td><td>บางบัวทอง ก.ม.8</td><td>BW</td><td>FR Type C</td><td class="num">05/2026</td><td class="num">15/07/2022</td><td class="num">05/2026</td><td class="num">01200</td><td>เซเว่นฯ บางบัวทอง 14</td><td>BW</td><td>FR Type A</td><td class="num">31,500.00</td><td><span class="pill violet">รอเจ้าหน้าที่ SBP DSA ดำเนินการ</span></td><td>มาลี ศรีสุข</td><td>-</td><td class="num">5</td><td class="num">1</td><td class="num">10/06/2026</td><td class="num">2026/00131</td></tr>
-            <tr><td class="num">00256</td><td>ปากเกร็ด สถานี</td><td>RN</td><td>FR Type B</td><td class="num">05/2026</td><td class="num">20/01/2023</td><td class="num">05/2026</td><td class="num">00501</td><td>เซเว่นฯ แจ้งวัฒนะ 28</td><td>RN</td><td>FR Type A</td><td class="num">66,400.00</td><td><span class="pill info">รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</span></td><td>วีรพล มั่นคง</td><td>คำนวณเงินชดเชยเรียบร้อย</td><td class="num">1</td><td class="num">2</td><td class="num">11/06/2026</td><td class="num">2026/00140</td></tr>
-            <tr><td class="num">01133</td><td>แคราย พลาซ่า</td><td>RS</td><td>FR Type พนักงาน</td><td class="num">04/2026</td><td class="num">05/09/2021</td><td class="num">04/2026</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="num">25,650.00</td><td><span class="pill ok">เสร็จสิ้นดำเนินการ</span></td><td>พัชริดา พงศ์วรงค์ชัย</td><td>เห็นควรชดเชย</td><td class="num">0</td><td class="num">1</td><td class="num">02/06/2026</td><td class="num">2026/00152</td></tr>
-            <tr><td class="num">00342</td><td>ติวานนท์ 25</td><td>BN</td><td>FR Type A</td><td class="num">05/2026</td><td class="num">11/11/2022</td><td class="num">05/2026</td><td class="num">00877</td><td>เซเว่นฯ ติวานนท์ 40</td><td>BN</td><td>FR Type B</td><td class="num">52,300.00</td><td><span class="pill orange">รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</span></td><td>สมชาย ใจดี</td><td>เห็นควรชดเชย</td><td class="num">3</td><td class="num">1</td><td class="num">09/06/2026</td><td class="num">2026/00157</td></tr>
-            <tr><td class="num">01055</td><td>บางพลัด จรัญฯ 79</td><td>BS</td><td>FR Type A</td><td class="num">05/2026</td><td class="num">22/02/2023</td><td class="num">05/2026</td><td class="num">01340</td><td>เซเว่นฯ จรัญสนิทวงศ์ 81</td><td>BS</td><td>FR Type A</td><td class="num">104,500.00</td><td><span class="pill navy">รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</span></td><td>จันทราภรณ์ บรรจือ</td><td>เห็นควรชดเชย (50,001–300,000)</td><td class="num">2</td><td class="num">1</td><td class="num">08/06/2026</td><td class="num">2026/00194</td></tr>
-            <tr><td class="num">00694</td><td>สามัคคี ซ.58</td><td>BE</td><td>FR Type B</td><td class="num">05/2026</td><td class="num">30/05/2022</td><td class="num">05/2026</td><td class="num">00912</td><td>เซเว่นฯ สามัคคี 60</td><td>BE</td><td>FR Type C</td><td class="num">22,150.00</td><td><span class="pill ok">เสร็จสิ้นดำเนินการ</span></td><td>มาลี ศรีสุข</td><td>เห็นควรชดเชย</td><td class="num">1</td><td class="num">1</td><td class="num">06/06/2026</td><td class="num">2026/00168</td></tr>
-            <tr><td class="num">00623</td><td>สนามบินน้ำ 9</td><td>RC</td><td>FR Type C</td><td class="num">05/2026</td><td class="num">18/04/2023</td><td class="num">05/2026</td><td class="num">01108</td><td>เซเว่นฯ สนามบินน้ำ 11</td><td>RC</td><td>FR Type B</td><td class="num">27,800.00</td><td><span class="pill ok">เสร็จสิ้นดำเนินการ</span></td><td>วีรพล มั่นคง</td><td>เห็นควรชดเชย</td><td class="num">2</td><td class="num">2</td><td class="num">05/06/2026</td><td class="num">2026/00190</td></tr>
-            <tr class="flag-red"><td class="num">00415</td><td>ประชาชื่น 12</td><td>BN</td><td>FR Type B</td><td class="num">05/2026</td><td class="num">09/10/2023</td><td class="num">05/2026</td><td class="num">00733</td><td>เซเว่นฯ ประชาชื่น 18</td><td>BN</td><td>FR Type A</td><td class="num">24,600.00</td><td><span class="pill wait">รอฝ่าย SBP DSA ดำเนินการ</span></td><td>สมชาย ใจดี</td><td>-</td><td class="num">6</td><td class="num">2</td><td class="num">04/06/2026</td><td class="num">2026/00171</td></tr>
-            <tr><td class="num">01260</td><td>ไทรม้า สถานีรถไฟฟ้า</td><td>RE</td><td>FR Type พนักงาน</td><td class="num">05/2026</td><td class="num">27/06/2022</td><td class="num">05/2026</td><td class="num">01415</td><td>เซเว่นฯ ไทรม้า 7</td><td>RE</td><td>FR Type B</td><td class="num">36,000.00</td><td><span class="pill info">รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</span></td><td>พัชริดา พงศ์วรงค์ชัย</td><td>-</td><td class="num">4</td><td class="num">1</td><td class="num">03/06/2026</td><td class="num">2026/00205</td></tr>
+            <tr><td class="num">00788</td><td>รัตนอุทิศ ซ.13</td><td>RSU</td><td>B</td><td class="num">05/2026</td><td class="num">07/06/2026</td><td class="num">00990</td><td>เซเว่นฯ รัตนาธิเบศร์ 12</td><td>RSU</td><td>A</td><td class="num">48,200.00</td><td class="num">1</td><td class="num">12/06/2026</td><td class="num">2026/00123</td></tr>
+            <tr class="flag-red"><td class="num">01045</td><td>บางบัวทอง ก.ม.8</td><td>BW</td><td>C</td><td class="num">05/2026</td><td class="num">07/06/2026</td><td class="num">01200</td><td>เซเว่นฯ บางบัวทอง 14</td><td>BW</td><td>A</td><td class="num">31,500.00</td><td class="num">1</td><td class="num">10/06/2026</td><td class="num">2026/00131</td></tr>
+            <tr><td class="num">00256</td><td>ปากเกร็ด สถานี</td><td>RN</td><td>B</td><td class="num">05/2026</td><td class="num">07/06/2026</td><td class="num">00501</td><td>เซเว่นฯ แจ้งวัฒนะ 28</td><td>RN</td><td>A</td><td class="num">66,400.00</td><td class="num">2</td><td class="num">11/06/2026</td><td class="num">2026/00140</td></tr>
+            <tr><td class="num">01133</td><td>แคราย พลาซ่า</td><td>RSU</td><td>E</td><td class="num">04/2026</td><td class="num">07/05/2026</td><td>-</td><td>-</td><td>-</td><td>-</td><td class="num">25,650.00</td><td class="num">1</td><td class="num">02/06/2026</td><td class="num">2026/00152</td></tr>
+            <tr><td class="num">00342</td><td>ติวานนท์ 25</td><td>BN</td><td>A</td><td class="num">05/2026</td><td class="num">07/06/2026</td><td class="num">00877</td><td>เซเว่นฯ ติวานนท์ 40</td><td>BN</td><td>B</td><td class="num">52,300.00</td><td class="num">1</td><td class="num">09/06/2026</td><td class="num">2026/00157</td></tr>
+            <tr><td class="num">01055</td><td>บางพลัด จรัญฯ 79</td><td>BS</td><td>A</td><td class="num">05/2026</td><td class="num">07/06/2026</td><td class="num">01340</td><td>เซเว่นฯ จรัญสนิทวงศ์ 81</td><td>BS</td><td>A</td><td class="num">104,500.00</td><td class="num">1</td><td class="num">08/06/2026</td><td class="num">2026/00194</td></tr>
+            <tr><td class="num">00694</td><td>สามัคคี ซ.58</td><td>BE</td><td>B</td><td class="num">05/2026</td><td class="num">07/06/2026</td><td class="num">00912</td><td>เซเว่นฯ สามัคคี 60</td><td>BE</td><td>C</td><td class="num">22,150.00</td><td class="num">1</td><td class="num">06/06/2026</td><td class="num">2026/00168</td></tr>
+            <tr><td class="num">00623</td><td>สนามบินน้ำ 9</td><td>RC</td><td>C</td><td class="num">05/2026</td><td class="num">07/06/2026</td><td class="num">01108</td><td>เซเว่นฯ สนามบินน้ำ 11</td><td>RC</td><td>B</td><td class="num">27,800.00</td><td class="num">2</td><td class="num">05/06/2026</td><td class="num">2026/00190</td></tr>
+            <tr class="flag-red"><td class="num">00415</td><td>ประชาชื่น 12</td><td>BN</td><td>B</td><td class="num">05/2026</td><td class="num">07/06/2026</td><td class="num">00733</td><td>เซเว่นฯ ประชาชื่น 18</td><td>BN</td><td>A</td><td class="num">24,600.00</td><td class="num">2</td><td class="num">04/06/2026</td><td class="num">2026/00171</td></tr>
+            <tr><td class="num">01260</td><td>ไทรม้า สถานีรถไฟฟ้า</td><td>REU</td><td>E</td><td class="num">05/2026</td><td class="num">07/06/2026</td><td class="num">01415</td><td>เซเว่นฯ ไทรม้า 7</td><td>REU</td><td>B</td><td class="num">36,000.00</td><td class="num">1</td><td class="num">03/06/2026</td><td class="num">2026/00205</td></tr>
           </tbody>
         </table></div>
       </div>
@@ -138,7 +129,6 @@
     </main>
   </div>
   <div id="toast-stack"></div>
-  <div id="chartTip"></div>
   <script src="assets/sbp.js"></script>
   <script>
   /* Period Statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ (SDD สไลด์ 42) */
@@ -150,81 +140,33 @@
       var need = st.value === 'เสร็จสิ้นดำเนินการ';
       star.style.display = need ? '' : 'none';
       from.required = to.required = need;
-      hint.textContent = need ? ' — บังคับกรอกเพราะเลือกสถานะ “เสร็จสิ้นดำเนินการ”' : ' — บังคับเมื่อเลือกสถานะ “เสร็จสิ้นดำเนินการ” (SDD)';
+      hint.textContent = need ? ' — ปฏิทิน วัน/เดือน/ปี (ค.ศ.) · บังคับกรอกเพราะเลือกสถานะ “เสร็จสิ้นดำเนินการ”' : ' — ปฏิทิน วัน/เดือน/ปี (ค.ศ.) · บังคับเมื่อเลือกสถานะ “เสร็จสิ้นดำเนินการ” (SDD)';
       [from, to].forEach(function (el) { el.style.borderColor = need && !el.value ? '#e5b567' : ''; });
     }
     st.addEventListener('change', sync);
     [from, to].forEach(function (el) { el.addEventListener('change', sync); });
     sync();
   })();
-  </script>
 
-  <script>
+  /* SDD: ระบุรหัสร้านถูกกระทบแล้ว ต้องระบุรหัสร้านเปิดกระทบคู่กันเสมอ + สถานะเป็นฟิลด์บังคับ */
   (function () {
-    'use strict';
-    /* ข้อมูลกราฟสรุปจาก mock 10 แถวในตารางด้านล่าง (นับ/รวมให้ตรงกันเสมอ) */
-    var STATUS_DATA = [
-      { label: 'รอฝ่าย SBP DSA', dot: '#f59e0b', value: 2 },
-      { label: 'รอเจ้าหน้าที่ SBP DSA', dot: '#7c3aed', value: 1 },
-      { label: 'รอหน่วยงานส่งเสริมธุรกิจ SBP', dot: '#2563eb', value: 2 },
-      { label: 'รอ GM ส่งเสริมธุรกิจ SBP', dot: '#ea580c', value: 1 },
-      { label: 'รอผู้บริหารสำนักบริหาร SBP', dot: '#4f46e5', value: 1 },
-      { label: 'เสร็จสิ้นดำเนินการ', dot: '#16a34a', value: 3 }
-    ];
-    var REGION_DATA = [
-      { label: 'BE', value: 22150 }, { label: 'BN', value: 76900 },
-      { label: 'BS', value: 104500 }, { label: 'BW', value: 31500 },
-      { label: 'RC', value: 27800 }, { label: 'RE', value: 36000 },
-      { label: 'RN', value: 66400 }, { label: 'RS', value: 73850 }
-    ];
-
-    function fmt(n) { return n.toFixed(n % 1 ? 2 : 0).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
-
-    var tip = document.getElementById('chartTip');
-    function showTip(e, html) {
-      tip.innerHTML = html; tip.style.display = 'block';
-      var x = e.clientX + 14, y = e.clientY + 14;
-      if (x + tip.offsetWidth > window.innerWidth - 8) x = e.clientX - tip.offsetWidth - 10;
-      tip.style.left = x + 'px'; tip.style.top = y + 'px';
-    }
-    function hideTip() { tip.style.display = 'none'; }
-
-    /*
-     * กราฟแท่งแนวนอน: แท่งบาง ปลายมน 4px ฝั่งข้อมูล ฐานเรียบชิดแกน
-     * สีเดียวต่อกราฟ (เทียบขนาด) · ป้ายค่ากำกับท้ายแท่ง · hover มี tooltip
-     */
-    function hbarChart(elId, rows, opts) {
-      var el = document.getElementById(elId);
-      var left = opts.left, rowH = 32, barH = 18, W = 520, right = 78;
-      var H = rows.length * rowH + 10;
-      var max = 0;
-      rows.forEach(function (r) { if (r.value > max) max = r.value; });
-      var span = W - left - right;
-      var out = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + opts.aria + '">';
-      // เส้นแกนฐาน (บาง สีอ่อน)
-      out += '<line x1="' + left + '" y1="4" x2="' + left + '" y2="' + (H - 6) + '" stroke="#e4ebf3" stroke-width="1.4"/>';
-      rows.forEach(function (r, i) {
-        var y = i * rowH + 8;
-        var w = Math.max(5, Math.round(span * r.value / max));
-        out += '<g data-i="' + i + '">';
-        if (r.dot) out += '<circle cx="10" cy="' + (y + barH / 2) + '" r="4.5" fill="' + r.dot + '"/>';
-        out += '<text x="' + (r.dot ? 22 : 8) + '" y="' + (y + barH / 2 + 4) + '" font-size="11.5" fill="#55677d" font-family="Prompt,Sarabun,sans-serif">' + r.label + '</text>';
-        out += '<path class="hb-bar" fill="' + opts.color + '" d="M' + left + ',' + y + ' h' + (w - 4)
-          + ' a4,4 0 0 1 4,4 v' + (barH - 8) + ' a4,4 0 0 1 -4,4 h-' + (w - 4) + ' z"/>';
-        out += '<text x="' + (left + w + 8) + '" y="' + (y + barH / 2 + 4) + '" font-size="11.5" font-weight="600" fill="#2b3440" font-family="Sarabun,sans-serif">' + fmt(r.value) + '</text>';
-        out += '<rect class="hb-hit" x="0" y="' + (y - 6) + '" width="' + W + '" height="' + rowH + '"/>';
-        out += '</g>';
-      });
-      out += '</svg>';
-      el.innerHTML = out;
-      el.querySelectorAll('g[data-i]').forEach(function (g) {
-        var r = rows[+g.getAttribute('data-i')];
-        g.addEventListener('mousemove', function (e) { showTip(e, opts.tip(r)); });
-        g.addEventListener('mouseleave', hideTip);
-      });
-    }
-
+    var imp = document.getElementById('fImpacted'), nw = document.getElementById('fNewStore'),
+        st = document.getElementById('fStatus'),
+        btn = document.getElementById('btnSearch');
+    if (!btn) return;
+    function mark(el, bad) { el.style.borderColor = bad ? '#c0392b' : ''; }
+    btn.addEventListener('click', function (e) {
+      var pairBad = (!!imp.value.trim()) !== (!!nw.value.trim());
+      var stBad = !st.value;
+      mark(imp, pairBad); mark(nw, pairBad); mark(st, stBad);
+      if (stBad || pairBad) {
+        e.preventDefault(); e.stopPropagation();
+        window.SBP.toast(stBad ? 'กรุณาเลือกสถานะก่อนค้นหาข้อมูล'
+                               : 'กรณีระบุรหัสร้านถูกกระทบ ต้องระบุรหัสร้านเปิดกระทบด้วย', 'del');
+      }
+    }, true);
   })();
   </script>
+
 </body>
 </html>

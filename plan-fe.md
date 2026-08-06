@@ -119,7 +119,7 @@ srm-sps-spsap-web-frontend/
       masters/factors/page.tsx
       admin/system-config/page.tsx  ·  admin/email-templates/page.tsx  ·  admin/batch-jobs/page.tsx
     components/sbpgi/                      # ★ component เฉพาะโดเมน
-      DecisionPanel.tsx  WorkflowSteps.tsx  DocumentSections/*  StatCards.tsx
+      DecisionPanel.tsx  WorkflowSteps.tsx  DocumentSections/*        # ไม่มี StatCards แล้ว (2026-08-06)
       charts/DonutChart.tsx                                   # SVG เขียนเอง (พอร์ตจาก prototype · กราฟยอดขาย/สัดส่วนชดเชยถอดออก 2026-08-06)
     services/sbpgi/                        # ★ service ต่อกลุ่ม API (axios instance กลางของ portal)
       documents.service.ts  tasks.service.ts  reports.service.ts  masters.service.ts  jobs.service.ts  lookups.service.ts
@@ -480,7 +480,7 @@ export interface TimelineEntry { name: string; position: string; result: string;
 export interface SalesWindow { label: string; days: { date: string; amount: number }[] }  // 4 หน้าต่าง × 15 วัน
 ```
 
-types เฉพาะ feature (OperatorRow, FactorMasterRow, RoleRow, ConfigRow, EmailTemplate, JobItem, ReportRow 19 คอลัมน์ ฯลฯ) ประกาศใน `features/*/types/` ของตัวเอง — field ตรงคอลัมน์ตารางใน REACT-TODO-CHECKLIST.md ของหน้านั้น
+types เฉพาะ feature (OperatorRow, FactorMasterRow, RoleRow, ConfigRow, EmailTemplate, JobItem, ReportRow 14 คอลัมน์ (SDD สไลด์ 60) ฯลฯ) ประกาศใน `features/*/types/` ของตัวเอง — field ตรงคอลัมน์ตารางใน REACT-TODO-CHECKLIST.md ของหน้านั้น
 
 ## 9. Shared components — spec props ต่อตัว
 
@@ -660,12 +660,12 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
   - ผ่าน → `POST /documents/{docNo}/actions` `{result, comment}` — **routing อยู่ BE ทั้งหมด (SDD GI)**: วงเงิน GM 50,000 / AVP 300,000 (เกิน 300,000 รอ confirm) · เห็นควรไม่ชดเชยที่ขั้น 01/02 → เสร็จสิ้นทันที (ไม่ตีกลับ 06 · ขั้น 03 คงเดิม รอ confirm) · ยอดชดเชย 0: เดือน 1–3 ผู้ใช้กด "ส่งหน่วยงานส่งเสริมธุรกิจ SBP" ต่อ, เดือนที่ 4 กด "หยุดชดเชยรายได้" (BE ช่วย validate) → toast ok + invalidate detail+timeline+`taskKeys.all` → สถานะ/stepper ขยับ
 
 ### 11.6 `/reports/income-audit` — ReportPage (k2-report.html, SRS 3.1.7 + SDD v7.5)
-- ฟอร์ม `<ReportSearchForm>` (ผังจริง 2026-08-06 — เรียง: รหัสร้านกระทบ|ชื่อร้าน · รหัสร้านเปิดใหม่|ประเภทร้าน · **เดือน/ปีที่ถูกกระทบ From–To เต็มแถว** · สถานะ|ผลการพิจารณา · ภาคเต็มแถว · Period Statement เต็มแถว): ปี* · เดือน/ปีที่ถูกกระทบ From–To (`MonthRangeInput` เต็มแถว รูปแบบเดียวกับ Period Statement) · รหัสร้านกระทบ (+`StorePickerModal` → `GET /store/search` (ระบบ SBP เดิม)) · ชื่อร้าน (readonly) · รหัสร้านเปิดใหม่ · สถานะ (select `DOC_STATUSES`) · **radio ผลการพิจารณา\* (บังคับ): `ประกันรายได้` / `ไม่ประกันรายได้`** · ภาค (checkbox `REPORT_REGIONS13` — **ภาคใหม่ที่เพิ่มในระบบต้องแสดงเป็น checkbox อัตโนมัติ**: render จาก lookup API ไม่ hardcode 13 ค่าใน UI · SDD GI/v7.5) · ประเภทร้าน (checkbox **A/B/C/E**) · Period Statement From–To (เต็มแถว) · ปุ่ม `เคลียร์` / `Preview Report` / `Export` · **คอนโทรลทุกชนิดสูง 46px เท่ากัน** · **ตารางผล sort ได้ทุกคอลัมน์**
+- ฟอร์ม `<ReportSearchForm>` (**7 ตัวกรองตาม SDD สไลด์ 60** · เรียง: สถานะ\*|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ|ประเภทร้าน · Period Statement From–To เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว): ปี\* · **สถานะ\* (select `DOC_STATUSES` — Required Field ตัวเดียวของหน้านี้)** · รหัสร้านถูกกระทบ (numeric) · รหัสร้านเปิดกระทบ (numeric · **ระบุร้านถูกกระทบแล้วต้องระบุร้านเปิดกระทบด้วย** ไม่งั้น 400) · ประเภทร้าน (checkbox **A/B/C/E**) · **Period Statement From–To** (`DateRangeInput` เต็มแถว · `input[type=date]` ปฏิทิน **วัน/เดือน/ปี ค.ศ.** · บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ) · ภาค (checkbox `REPORT_REGIONS13` — **ภาคใหม่ที่เพิ่มในระบบต้องแสดงเป็น checkbox อัตโนมัติ**: render จาก lookup API ไม่ hardcode 13 ค่าใน UI · SDD GI/v7.5) · **radio ผลการพิจารณา (ไม่บังคับ): `ประกันรายได้` / `ไม่ประกันรายได้`** · ปุ่ม `เคลียร์ค่าเริ่มใหม่` / `ค้นหาข้อมูล` / `Export Excel` · **คอนโทรลทุกชนิดสูง 46px เท่ากัน** · **ตารางผล sort ได้ทุกคอลัมน์** (ตัดฟิลด์ ชื่อร้านที่ถูกกระทบ + เดือน/ปีที่ถูกกระทบ From–To ออก 2026-08-06 — ไม่มีใน SDD)
 - ไม่เลือกปี → error + ไม่ยิง API (กฎเดียวกับ related)
 - **`periodStatement` บังคับเมื่อสถานะ = `เสร็จสิ้นดำเนินการ`** (SDD GI) — zod refine: status เป็นเสร็จสิ้นฯ แต่ Period Statement ว่าง → error ใต้ช่อง + ไม่ยิง API
-- `Preview Report` → `GET /reports/status-summary` (`reportKeys.statusSummary`) → `<SummaryLine>` (พบ N รายการ / ยอดชดเชยรวม / วงเงิน 50,001–300,000 เข้า AVP / แถวแดง) · **ไม่มีกราฟในหน้ารายงาน (ถอด 2026-08-06)**
-- ตารางผล **19 คอลัมน์** (scroll ใน `.table-wrap`) ตาม checklist · flag-red · pill สถานะ · เงินคั่นหลักพัน · วันที่ พ.ศ.
-- ปุ่ม `Export CSV to Batch` → `GET /reports/status-summary/export` (query เดียวกับ preview) → ดาวน์โหลด CSV (UTF-8 BOM เปิด Excel ไทยไม่เพี้ยน)
+- `ค้นหาข้อมูล` → `GET /reports/status-summary` (`reportKeys.statusSummary`) → `<SummaryLine>` (พบ N รายการ / ยอดชดเชยรวม / วงเงิน 50,001–300,000 เข้า AVP / แถวแดง) · **ไม่มีกราฟในหน้ารายงาน (ถอด 2026-08-06)**
+- ตารางผล **14 คอลัมน์ ตาม SDD สไลด์ 60** (scroll ใน `.table-wrap`) ตาม checklist · flag-red · เงินคั่นหลักพัน · **วันที่/เดือน-ปี แสดงเป็น ค.ศ.** (ตรงกับตัวอย่างใน SDD และระบบ K2 เดิม) · ประเภทร้าน/ภาคเป็นรหัสสั้น
+- ปุ่ม `Export Excel` → `GET /reports/status-summary/export` (query เดียวกับการค้นหา) → ดาวน์โหลด `.xlsx` 14 คอลัมน์
 
 ### 11.7 ~~`/masters/operators` — OperatorsPage~~ **ตัดออก — ใช้ระบบ SBP เดิม (ตัดสินใจ 2026-08-05)**
 - ไม่พอร์ต `k2-operators.html` (SRS 3.1.8) — กำหนดผู้ปฏิบัติงานทำผ่าน group + scope ของ auth-backend ระบบเดิม (หน้า `/setting/manage-user-rights`) · ผูกผู้อนุมัติรายเอกสารด้วย prepared approvers ของ workflow engine เดิม (`@srm/glb-workflow`)

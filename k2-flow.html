@@ -67,7 +67,7 @@
         <div style="font-size:13px;color:#7a5b12;line-height:1.8;">
           <b>ปรับตาม SDD v7.5 (ปรับกระบวนการบัญชีประกันรายได้):</b> ยกเลิกขั้นอนุมัติของบัญชีออกจาก workflow — <b>ไม่มี Section บัญชีและไม่มีสถานะบัญชีในเอกสารอีกต่อไป</b> (สถานะเอกสารเหลือ 6 ค่า) ·
           เอกสารจบที่ GM (≤50,000) หรือ AVP (50,001–300,000) — <b>วงเงินใหม่ตาม SDD GI 24/02/2026 (เดิมเกณฑ์เดียว 100,000)</b> ·
-          To-Be: ทีมบัญชี <b>ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี</b> ผ่าน <b>หน้ารายงานตรวจสอบประกันรายได้ (SBP Mall)</b> → Preview Report → Export CSV to Batch → กระทบยอด SAP เอง (นอก workflow) · แผนผังด้านล่างใช้ baseline 5 ขั้น 06→08→01→02→03
+          To-Be: ทีมบัญชี <b>ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี</b> ผ่าน <b>หน้ารายงานตรวจสอบประกันรายได้ (SBP Mall)</b> → ค้นหาข้อมูล (14 คอลัมน์ · SDD สไลด์ 60) → Export Excel → กระทบยอด SAP เอง (นอก workflow) · แผนผังด้านล่างใช้ baseline 5 ขั้น 06→08→01→02→03
         </div>
       </div>
 
@@ -259,7 +259,7 @@
           <rect x="240" y="1088" width="380" height="96" rx="12" fill="#fff8ec" stroke="#d68a10" stroke-width="1.6" stroke-dasharray="6 4"/>
           <text x="430" y="1124" text-anchor="middle" fill="#7a5b12" font-size="12.5" font-weight="700">บัญชี — ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี</text>
           <text x="430" y="1144" text-anchor="middle" fill="#8a6a1e" font-size="10.5">ผ่านหน้า “รายงานตรวจสอบประกันรายได้ (SBP Mall)”</text>
-          <text x="430" y="1162" text-anchor="middle" fill="#a5893f" font-size="9.5">Preview Report → Export CSV to Batch → กระทบยอด SAP (FBL3H / SAPPOST)</text>
+          <text x="430" y="1162" text-anchor="middle" fill="#a5893f" font-size="9.5">ค้นหาข้อมูล → Export Excel → กระทบยอด SAP (FBL3H / SAPPOST)</text>
           <text x="430" y="1176" text-anchor="middle" fill="#a5893f" font-size="9.5">ไม่มีสถานะบัญชีในเอกสาร · ไม่มีขั้นอนุมัติของบัญชีใน workflow</text>
 
           <!-- ต่อฝั่ง batch หลังจบ -->
@@ -369,7 +369,7 @@
           <div class="lane-h"><b>บัญชี — นอก workflow</b><span class="sc">ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี</span></div>
           <div class="lane-b">
             <span class="task">รายงานตรวจสอบประกันรายได้ (SBP Mall)</span>
-            <span class="branch b-go">Export CSV to Batch → กระทบยอด SAP (FBL3H/SAPPOST)</span>
+            <span class="branch b-go">Export Excel → กระทบยอด SAP (FBL3H/SAPPOST)</span>
             <span class="branch b-back">SBP ≠ SAP → เปิด SR แก้ข้อมูล</span>
           </div>
         </div>
@@ -392,7 +392,7 @@
             <tr><td class="num">3</td><td>หน่วยงานส่งเสริมธุรกิจฯ <small style="color:#8a97a5;">(ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ + <b>เจ้าหน้าที่อาวุโส</b> + เจ้าหน้าที่ · SDD GI)</small></td><td class="num">01</td><td>แก้ไขร้านเปิดใหม่ + คู่แข่ง + ปัจจัยได้ · เห็นควรชดเชย(→GM) / <b>เห็นควรไม่ชดเชย = จบทันที</b> / ส่งกลับ DSA</td></tr>
             <tr><td class="num">4</td><td>GM ส่งเสริมธุรกิจฯ (GM OPT)</td><td class="num">02</td><td>เห็นควรชดเชย: ≤50,000 → <b>เสร็จสิ้น</b> · 50,001–300,000 → AVP &nbsp;|&nbsp; เห็นควรไม่ชดเชย → <b>เสร็จสิ้นทันที</b> (SDD GI) &nbsp;|&nbsp; ส่งกลับส่งเสริมฯ</td></tr>
             <tr><td class="num">5</td><td>ผู้บริหารสำนักบริหาร SBP (AVP OPT)</td><td class="num">03</td><td>เห็นควรชดเชย → <b>เสร็จสิ้น</b> / ไม่ชดเชย / ส่งกลับ GM</td></tr>
-            <tr><td class="num">—</td><td>บัญชี <small style="color:#8a97a5;">(นอก workflow)</small></td><td class="num">—</td><td><b>ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี</b> ผ่านหน้ารายงานตรวจสอบประกันรายได้ (SBP Mall) → Export CSV to Batch → กระทบยอด SAP · <b>ไม่มีขั้นอนุมัติและไม่มีสถานะบัญชีในเอกสาร</b> (SDD v7.5)</td></tr>
+            <tr><td class="num">—</td><td>บัญชี <small style="color:#8a97a5;">(นอก workflow)</small></td><td class="num">—</td><td><b>ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี</b> ผ่านหน้ารายงานตรวจสอบประกันรายได้ (SBP Mall) → Export Excel → กระทบยอด SAP · <b>ไม่มีขั้นอนุมัติและไม่มีสถานะบัญชีในเอกสาร</b> (SDD v7.5)</td></tr>
           </tbody>
         </table></div>
       </div>

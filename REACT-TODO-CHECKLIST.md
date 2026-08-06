@@ -24,7 +24,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 ### Shared UI primitives (ใช้ข้ามหน้า)
 - [ ] `<Pill>` — สถานะ (มีจุด) หลาย variant: `wait/violet/info/orange/navy/teal/muted/ok/fail/del` **ห้ามสลับกับ** `<Chip>` (ป้ายข้อมูล)
 - [ ] `<Chip>` / `<RefChip>` (source tag: `fgi/k2/new/mix` + suffix เช่น `K2 · 3.1.1`)
-- [ ] `<StatCard>` + `<StatGrid>` — ไอคอน + ตัวเลข + label (variant สี bg-blue/teal/amber/rose/navy/…)
+- [x] ~~`<StatCard>` + `<StatGrid>`~~ **ไม่ต้องสร้าง** — ถอด stat cards ออกจากทุกหน้าแล้ว (2026-08-06)
 - [ ] `<DataTable>` — `table.data` ห่อ `.table-wrap` (scroll แนวนอน); รองรับ sortable header (`data-stype`), row action icons `.icon-view/.icon-edit/.icon-del`, checkbox column, empty-state row "ไม่พบรายการตามเงื่อนไขที่กรอง"
 - [ ] `<EntityModal>` — engine view/edit/add ขับเคลื่อนด้วย schema (แทน `SCHEMAS` + `data-entity`); field map กับ header ตาราง; edit ต้องมีช่อง "เหตุผลการแก้ไข (บันทึกลง audit_logs)"
 - [ ] `<ConfirmDeleteDialog>`
@@ -71,7 +71,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **S4 Filter bar:** ค้นหา, สถานะ(ซ่อนใน waiting), ภาค(8), ประเภทร้าน, ช่วงวันที่สร้าง, ยอดขายลดลง% (min–max), เงินชดเชย (min–max), รอ(วัน) (min–max), `ล้างตัวกรอง`
 - **ตาราง `#tblK2`/`#tblRelated`** (คลิกแถว→k2-document, sortable): `ครั้งที่ | เลขที่เอกสาร | รหัสร้าน | ชื่อร้านถูกกระทบ | ภาค | ยอดขายที่ลดลง(%) | จำนวนเงินที่ชดเชย | สถานะ(pill) | รอ (วัน)` · `tr.flag-red` = ยอดขายไม่ครบ 60 วัน
 - **Pager** + note card ("แดง = ยอดขายไม่ครบ 60 วัน · text file 17:00/วัน · Approve A → SAP")
-- **TODO:** `<DocumentListPage mode>`, `<RoleWorkflowBar>` (render เฉพาะ waiting), `<WorkflowStepper>`, `<StatCardGrid>`(clickable, active), `<DocumentFilterBar>`, `<RangeInput>`, `<DocumentTable>`, `<StatusPill>` (map 6 สถานะ), `<Pager>`, hook mock data (เปลี่ยนเป็น API)
+- **TODO:** `<DocumentListPage mode>`, `<RoleWorkflowBar>` (render เฉพาะ waiting), `<WorkflowStepper>`, `<DocumentFilterBar>`, `<RangeInput>`, `<DocumentTable>`, `<StatusPill>` (map 6 สถานะ), `<Pager>`, hook mock data (เปลี่ยนเป็น API)
 
 ## k2-list-abnormal.html — ข้อมูลผิดปกติ / แจกงาน  *(ปิดชั่วคราวใน MODULES — ไฟล์ยังใช้ได้)*
 - **Route:** `/k2/documents/abnormal` · **crumb:** `ข้อมูลผิดปกติ / แจกงาน`
@@ -102,14 +102,14 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **Modals:** `#k2pop` (warning SRS), `#decHistPop` (รายละเอียดผลพิจารณา), auto view/edit/add/del (competitor/factordoc)
 - **TODO:** `<DocumentPage>` + workflow state provider, `<RoleSwitcherBar>`, `<WorkflowStepper>`, `<DocMetaGrid>`, `<AllMapPoi>`, `<NewStoresTable>`(edit+validate 100%), `<EditableDataTable>`(competitor/factors), `<AttachmentsTable>`, `<CompensationCalcPanel>`, `<CompensationHistoryTable>`, `<DecisionHistoryTable>`+`<DecisionHistoryModal>`, `<DecisionPanel>`, `<WarningPopup>`, `useWorkflowRole()`
 
-## k2-report.html — รายงานสรุปสถานะ (SRS 3.1.7, 19 คอลัมน์)
+## k2-report.html — รายงานสรุปสถานะ (SRS 3.1.7 · ปรับตาม **SDD สไลด์ 60** 2026-08-06: ตัวกรอง 7 ตัว / ผลลัพธ์ 14 คอลัมน์)
 - **Route:** `/k2/report` · **crumb:** `รายงานสรุปสถานะ`
-- **S1 head:** ไม่มีปุ่มด้านบน — `Preview Report` และ `Export` อยู่ในฟอร์มค้นหาเท่านั้น (2026-08-06)
-- **S2 ฟอร์มค้นหา (ลำดับตามผังจริง 2026-08-06):** รหัสร้านที่ถูกกระทบ(+ปุ่ม picker) | ชื่อร้าน(readonly) · รหัสร้านเปิดกระทบ | **ประเภทร้าน (checkbox `A/B/C/E`)** · **เดือน/ปีที่ถูกกระทบ (From – To) — 2 month input เรียงแถวเดียว เต็มความกว้าง (`col-2`) รูปแบบเดียวกับ Period Statement** · สถานะ\* (select ทีละ 1) | ผลการพิจารณา\* (radio ประกันรายได้/ไม่ประกันรายได้) · ภาค (checkbox 13 รหัส · `col-2`) · Period Statement From–To (`col-2` · บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ) · ปุ่ม `เคลียร์ค่าเริ่มใหม่` · `Preview Report` · `Export`
+- **S1 head:** ไม่มีปุ่มด้านบน — `ค้นหาข้อมูล` และ `Export Excel` อยู่ในฟอร์มค้นหาเท่านั้น (2026-08-06)
+- **S2 ฟอร์มค้นหา (7 ตัวกรอง · ลำดับตาม SDD สไลด์ 60):** สถานะ\* (select ทีละ 1 · **Required Field ตัวเดียวของหน้านี้**) | รหัสร้านถูกกระทบ (numeric) · รหัสร้านเปิดกระทบ (numeric) | **ประเภทร้าน (checkbox `A/B/C/E`)** · **Period Statement From–To** (`col-2` · `input[type=date]` ปฏิทิน **วัน/เดือน/ปี ค.ศ.** · บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ) · ภาค (checkbox 13 รหัส · `col-2` · ภาคใหม่แสดงอัตโนมัติ) · ผลการพิจารณา (radio ประกันรายได้/ไม่ประกันรายได้ · `col-2` · **ไม่บังคับ**) · ปุ่ม `เคลียร์ค่าเริ่มใหม่` · `ค้นหาข้อมูล` · `Export Excel` · **validate คู่รหัสร้าน:** ระบุรหัสร้านถูกกระทบแล้วต้องระบุรหัสร้านเปิดกระทบด้วย (ตัดฟิลด์ ชื่อร้านที่ถูกกระทบ และ เดือน/ปีที่ถูกกระทบ From–To ออก 2026-08-06 — ไม่มีใน SDD)
 - **S2.1 ความสูงคอนโทรล:** input / select / กล่อง checkbox-radio (`.ckgrid`) สูง **46px เท่ากันทุกช่อง** — `sbp.css` คุมด้วย `min-height:46px` (ยกเว้น `[type=checkbox]`/`[type=radio]` ที่ยังเป็น 15px) · กล่องหลายแถว (ภาค) ยืดตามเนื้อหา
 - **S3 Summary line:** พบ N รายการ / ยอดชดเชยรวม / วงเงินเข้า AVP / แถวแดง
-- ~~**S4 Charts**~~ **ถอดกราฟ “เอกสารตามสถานะ” และ “ยอดเงินชดเชยตามภาค” ออก 2026-08-06** — หน้ารายงานเหลือ ฟอร์มค้นหา → แถบสรุป → ตาราง 19 คอลัมน์
-- **S5 ตารางผล 19 คอลัมน์:** `รหัสร้านถูกกระทบ | ชื่อร้านถูกกระทบ | ภาค | ประเภทร้าน | เดือนปีที่ถูกกระทบ | วันที่โอนเป็นร้าน SP | Period Statement | รหัสร้านเปิดใหม่ | ชื่อร้านเปิดใหม่ | ภาค (ร้านใหม่) | ประเภทร้าน (ร้านใหม่) | ยอดเงินชดเชย | สถานะ | ชื่อ-นามสกุลผู้ดำเนินการ | ผลการพิจารณา | รอดำเนินการ (วัน) | ครั้งที่ | วันที่สร้าง | เลขที่เอกสาร` · **ทุกคอลัมน์ sort ได้** (`th[data-sort="text|num|date"]` → sorter กลางใน `sbp.js` คลิกสลับ asc/desc) · `tr.flag-red` · pill สถานะ
+- ~~**S4 Charts**~~ **ถอดกราฟ “เอกสารตามสถานะ” และ “ยอดเงินชดเชยตามภาค” ออก 2026-08-06** — หน้ารายงานเหลือ ฟอร์มค้นหา → แถบสรุป → ตาราง 14 คอลัมน์
+- **S5 ตารางผล 14 คอลัมน์ (ตาม SDD สไลด์ 60):** `รหัสร้านถูกกระทบ | ชื่อร้านถูกกระทบ | ภาค | ประเภทร้าน | เดือน/ปีที่ถูกกระทบ | Period Statement | รหัสร้านเปิดกระทบ | ชื่อร้านเปิดกระทบ | ภาค | ประเภทร้าน | ยอดเงินชดเชย | ครั้งที่ | วันที่สร้าง | เลขที่เอกสาร` · **ทุกคอลัมน์ sort ได้** (`th[data-sort="text|num|date"]` → sorter กลางใน `sbp.js` คลิกสลับ asc/desc) · `tr.flag-red` · ค่า ประเภทร้าน/ภาค ใช้รหัสสั้น (`A/B/C/E`, 13 ภาค) ตามตัวอย่างใน SDD (ตัดคอลัมน์ วันที่โอนเป็นร้าน SP · สถานะ · ชื่อ-นามสกุลผู้ดำเนินการ · ผลการพิจารณา · รอดำเนินการ (วัน) ออก 2026-08-06)
 - **TODO:** `<K2ReportPage>`, `<ReportSearchForm>`, `<CheckboxGroup>`(×2), `<MonthRangeInput>`(From–To ใช้ซ้ำทั้งเดือน/ปีที่ถูกกระทบและ Period Statement), `<StorePickerModal>`, `<SummaryLine>`, `<HBarChart>`+`<ChartTooltip>`, `<ReportResultTable>`(19-col scroll + sort ทุกคอลัมน์), number formatter (คั่นหลักพันไทย)
 - **ไม่มีในหน้านี้:** กล่องอธิบายขั้นตอนบัญชี/SAP (FBL3H · SAPPOST · SR/BSR) **ถูกลบออก 2026-08-06** — ปลายทางของปุ่ม Export อธิบายไว้ที่ `workflow.md` ขั้น 10 แทน
 

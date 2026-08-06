@@ -639,8 +639,8 @@ def api_json(obj: Any) -> str:
 
 API_REQUIRED_QUERY_FIELDS: dict[str, set[str]] = {
     "/api/v1/documents": {"year"},
-    "/api/v1/reports/status-summary": {"year", "status", "result", "resultCategory"},
-    "/api/v1/reports/status-summary/export": {"year", "status", "result", "resultCategory"},
+    "/api/v1/reports/status-summary": {"year", "status"},
+    "/api/v1/reports/status-summary/export": {"year", "status"},
 }
 
 
@@ -1530,7 +1530,7 @@ def testing_delivery_blocks(topic: Topic) -> list[dict[str, Any]]:
         table(["Suite", "Coverage", "Entry condition", "Required evidence"], [
             ["FE-SMOKE", "app bootstrap, menus, dashboard, open list/detail", "deploy reachable and test user available", "timestamped run result and failed-step detail"],
             ["FE-DOC", "create, edit section, attachment, action, timeline and role views", "fixture documents for sections 06/08/01/02/03", "case ID, docNo, requestId and screenshots for failures"],
-            ["FE-REPORT", "required filters, 19 columns, totals, CSV parity", "known report fixture and expected aggregate", "query snapshot, row count, totals and exported checksum"],
+            ["FE-REPORT", "required status filter, 14 columns (SDD slide 60), totals, Excel parity", "known report fixture and expected aggregate", "query snapshot, row count, totals and exported checksum"],
             ["FE-ADMIN", "SCR-08/09/10/11 plus email template", "admin role and reversible test data", "before/after values and audit reference"],
             ["FE-BATCH", "job selection, editable params, locked params, run history", "job metadata/run fixtures", "request/response capture and UI state"],
             ["FE-RESP", "desktop 1440, tablet 768, mobile 390", "latest supported browsers", "page checklist with overflow/modal/navigation result"],
@@ -1877,11 +1877,10 @@ FE_COMPONENT_DETAILS: dict[str, list[tuple[str, str]]] = {
         ("จัด delivery note, test summary, known limitations และ reproducible verification commands", "ผู้รับมอบตรวจซ้ำได้โดยไม่มี token/secret หรือไฟล์ QA ชั่วคราว"),
     ],
     "FE/LLDD-FE-Report": [
-        ("จัดการ filter store/month/type/status/result/region/statement period พร้อม dependency validation", "status/result required และช่วง from-to ทุกคู่ตรวจผ่านก่อน Preview/Export"),
-        ("map response เป็น summary line, chart และตาราง 19 คอลัมน์ด้วย formatter กลาง", "คอลัมน์/ยอดรวม/วันที่/leading zero ตรง response และข้อมูลยอดขายผิดปกติใช้ salesDataDays"),
-        ("แสดง preview/detail โดยใช้ filter snapshot เดียวกับผลลัพธ์ที่กำลังดู", "เปิดเอกสารถูก docNo และปิด modal แล้ว filter/table ไม่ reset"),
-        ("ส่ง filter snapshot ล่าสุดไป export endpoint และจัดการ queued/download/error state", "export ใช้เงื่อนไขเดียวกับ preview และชื่อไฟล์/content type ตรง response"),
-        ("รองรับ fixture สำหรับ 0 แถว, หลาย region/type, เกิน threshold และยอดขายไม่ครบ 60 วัน", "sample verification ครอบคลุม chart/table/export parity โดยไม่ฝังข้อมูลทดสอบใน production"),
+        ("จัดการ filter 7 ตัวตาม SDD สไลด์ 60 (status, impacted/new store code, store type, period statement, region, result) พร้อม dependency validation", "status required, คู่รหัสร้านต้องมาด้วยกัน, period statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ และช่วง from-to ตรวจผ่านก่อนค้นหา/Export"),
+        ("map response เป็น summary line และตาราง 14 คอลัมน์ (SDD สไลด์ 60) ด้วย formatter กลาง", "คอลัมน์/ยอดรวม/วันที่ (ค.ศ.)/leading zero ตรง response และข้อมูลยอดขายผิดปกติใช้ salesDataDays"),
+        ("ส่ง filter snapshot ล่าสุดไป export endpoint และจัดการ download/error state", "Export Excel ใช้เงื่อนไขเดียวกับการค้นหา และชื่อไฟล์/content type (.xlsx) ตรง response"),
+        ("รองรับ fixture สำหรับ 0 แถว, หลาย region/type, เกิน threshold และยอดขายไม่ครบ 60 วัน", "sample verification ครอบคลุม table/export parity 14 คอลัมน์ โดยไม่ฝังข้อมูลทดสอบใน production"),
     ],
     "FE/LLDD-FE-Master-Config": [
         ("โหลด/ค้นหา/เพิ่ม/แก้/ปิด operator โดยเลือก employee จาก employee search", "duplicate/invalid employee ถูก block และ mutation สำเร็จ refresh row/audit"),
@@ -3074,11 +3073,11 @@ def topics() -> list[Topic]:
                 ("statusChart", "array", "ต้องมี label/value/color", "render SVG chart"),
             ],
             [
-                ("Refresh dashboard", "เปิดหน้า/กด refresh", "GET /api/v1/dashboard/summary", "update KPI + charts"),
+                ("เปิดหน้ารายการงาน", "เข้าเมนูเอกสาร", "GET /api/v1/tasks", "แสดงตารางงานรอดำเนินการ (ไม่มี KPI/กราฟแล้ว 2026-08-06)"),
                 ("Click pending card", "card งานรอดำเนินการ", "navigate /documents/waiting", "เปิดรายการเอกสารรอ"),
             ],
             [
-                ApiSpec("GET", "/api/v1/dashboard/summary", "ดึงข้อมูล Dashboard", {"year": 2026}, {"waitingTasks": 24, "storesThisMonth": 342, "compensationThisMonth": 8420000.0, "abnormalStores": 5, "monthlyChart": [{"month": "ม.ค.", "amount": 7200000.0}], "statusChart": [{"statusCode": "06", "label": "รอฝ่าย SBP DSA ดำเนินการ", "count": 8}]}),
+                ApiSpec("GET", "/api/v1/tasks", "รายการงานรอดำเนินการ", {"year": 2026, "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 24, "items": []}),
             ],
             ["Initial route `/`", "Call dashboard API", "Map KPI values", "Render charts", "Show error state if API fails"],
             ["KPI ตรงกับ API response", "กราฟไม่ blank", "ข้อความไม่ล้นใน mobile", "กด card แล้วไปหน้ารายการถูกต้อง"],
@@ -3229,9 +3228,9 @@ def topics() -> list[Topic]:
             5.9,
             50,
             FE_OWNER_PEERAKORN,
-            "สร้างรายงานตรวจสอบประกันรายได้พร้อม Preview และ Export CSV",
+            "สร้างรายงานตรวจสอบประกันรายได้ตาม SDD สไลด์ 60 (7 ตัวกรอง / 14 คอลัมน์) พร้อมค้นหาข้อมูลและ Export Excel",
             ["k2-report-01.png", "k2-report-02.png"],
-            ["Report filters (layout 2026-08-06: รหัสร้าน|ชื่อร้าน · ร้านเปิดใหม่|ประเภทร้าน A/B/C/E · เดือน/ปี From-To เต็มแถว · สถานะ|ผลการพิจารณา · ภาค · Period Statement)", "Summary table (sortable 19 columns)", "Preview/detail modal", "Export action", "Sample data verification"],
+            ["Report filters (SDD slide 60 · 2026-08-06: สถานะ*|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ|ประเภทร้าน A/B/C/E · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว)", "Summary table (sortable 14 columns)", "Export Excel action", "Sample data verification"],
             [
                 ("impactedStoreCode", "string 5 digits", "optional; numeric only when input", "คง leading zero; ปุ่มแว่นขยายเรียก popup เลือกร้านที่ถูกกระทบ"),
                 ("impactedStoreName", "string", "readonly", "แสดงอัตโนมัติหลังเลือกรหัสร้าน; ไม่ส่งเป็น filter หลักถ้ามี storeCode"),
@@ -3269,20 +3268,20 @@ def topics() -> list[Topic]:
             ],
             [
                 ("เปิด popup ร้าน", "ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ", "GET /store/search (ระบบ SBP เดิม)", "เลือก store แล้วเติม storeCode/storeName"),
-                ("Preview Report", "ปุ่ม Preview Report", "GET /api/v1/reports/status-summary", "validate required แล้ว render summary line/chart/table 19 columns"),
+                ("ค้นหาข้อมูล", "ปุ่ม ค้นหาข้อมูล", "GET /api/v1/reports/status-summary", "validate status (required) และคู่รหัสร้าน แล้ว render summary line + table 14 columns"),
                 ("เคลียร์ค่าเริ่มใหม่", "ปุ่มเคลียร์ค่าเริ่มใหม่", "client state", "reset filter, summary, table และ error message"),
-                ("Export CSV to Batch", "ปุ่ม Export CSV to Batch ด้านบน/ท้าย filter", "GET /api/v1/reports/status-summary/export", "ส่ง filter ชุดเดียวกับ preview แล้ว download/queue CSV"),
+                ("Export Excel", "ปุ่ม Export Excel ท้าย filter", "GET /api/v1/reports/status-summary/export", "ส่ง filter ชุดเดียวกับการค้นหา แล้วดาวน์โหลดไฟล์ .xlsx 14 คอลัมน์"),
                 ("Hover chart", "hover bar chart", "client chart tooltip", "แสดง tooltip จำนวนเอกสาร/ยอดเงินตามภาค"),
                 ("Open detail", "คลิกเลขที่เอกสารหรือ row", "navigate /documents/{docNo} หรือ preview modal", "เปิดเอกสารที่เกี่ยวข้อง"),
             ],
             [
                 ApiSpec("GET", "/store/search (ระบบ SBP เดิม)", "Popup เลือกร้านที่ถูกกระทบ", {"q": "00788", "type": "impacted"}, {"items": [{"storeCode": "00788", "storeName": "รัตนอุทิศ ซ.13", "region": "RS", "storeType": "FR Type B"}]}),
-                ApiSpec("GET", "/api/v1/reports/status-summary", "Preview รายงานและข้อมูล chart/summary", {"impactedStoreCode": "00788", "newStoreCode": "00990", "impactMonthFrom": "2026-05", "impactMonthTo": "2026-05", "storeTypes": ["A", "B"], "status": "06", "resultCategory": "APPROVE", "regions": ["RS", "BN"], "statementPeriodFrom": "2026-05", "statementPeriodTo": "2026-05", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 10, "summary": {"totalItems": 10, "totalCompensationAmount": 439100.0, "overThresholdItems": 1, "abnormalSalesItems": 2}, "charts": {"status": [{"label": "รอฝ่าย SBP DSA ดำเนินการ", "value": 2}], "regionAmount": [{"region": "RS", "amount": 73850.0}]}, "items": [{"impactedStoreCode": "00788", "impactedStoreName": "รัตนอุทิศ ซ.13", "region": "RS", "storeType": "FR Type B", "impactMonth": "2026-05", "transferToSpDate": "2026-03-01", "statementPeriod": "2026-05", "newStoreCode": "00990", "newStoreName": "เซเว่นฯ รัตนาธิเบศร์ 12", "newStoreRegion": "RS", "newStoreType": "FR Type A", "compensationAmount": 48200.0, "statusName": "รอฝ่าย SBP DSA ดำเนินการ", "operatorName": "สมชาย ใจดี", "resultText": "-", "waitingDays": 2, "roundNo": 1, "createdDate": "2026-06-12", "docNo": "2026/00123"}]}),
-                ApiSpec("GET", "/api/v1/reports/status-summary/export", "Export CSV to Batch ด้วย filter เดียวกับ preview", {"sameAsPreview": True, "format": "csv"}, {"contentType": "text/csv; charset=utf-8", "fileName": "status-summary-2569.csv", "queuedToBatch": True}),
+                ApiSpec("GET", "/api/v1/reports/status-summary", "ค้นหาข้อมูลรายงานตรวจสอบประกันรายได้ (14 คอลัมน์ · SDD สไลด์ 60)", {"status": "06", "impactedStoreCode": "00788", "newStoreCode": "00990", "periodStatementFrom": "2026-06-01", "periodStatementTo": "2026-06-30", "storeTypes": ["A", "B"], "regions": ["RSU", "BN"], "result": "APPROVE", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 10, "summary": {"totalItems": 10, "totalCompensationAmount": 439100.0, "overThresholdItems": 3, "abnormalSalesItems": 2}, "items": [{"impactedStoreCode": "00788", "impactedStoreName": "รัตนอุทิศ ซ.13", "impactedRegion": "RSU", "impactedStoreType": "B", "impactMonth": "2026-05", "periodStatement": "2026-06-07", "newStoreCode": "00990", "newStoreName": "เซเว่นฯ รัตนาธิเบศร์ 12", "newRegion": "RSU", "newStoreType": "A", "compensationAmount": 48200.0, "roundNo": 1, "createdDate": "2026-06-12", "docNo": "2026/00123"}]}),
+                ApiSpec("GET", "/api/v1/reports/status-summary/export", "Export Excel ด้วย filter เดียวกับการค้นหา", {"sameAsSearch": True, "format": "xlsx"}, {"contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "fileName": "insurance-verification-2026.xlsx"}),
             ],
-            ["เปิดหน้า Report", "โหลด reference status/region/store type ถ้ามี API", "ผู้ใช้ระบุ filter", "Validate status/result และช่วงเดือน", "กด Preview แล้ว call report API", "แสดงวันที่เป็น ค.ศ. ตามระบบ SBP เดิม (ไม่แปลงเป็น พ.ศ. — ตัดสินใจ 2026-08-06)", "render summary line, chart และ table 19 คอลัมน์", "กด Export แล้วส่ง filter เดียวกันไป export API"],
-            ["status และ resultCategory เป็น required ก่อน preview/export", "month range ทุกคู่ต้อง from <= to", "ตารางแสดง 19 คอลัมน์ครบและ export ออกครบ 19 คอลัมน์", "ยอดเงิน format #,##0.00 และ total summary ตรงกับผลรวม API", "แถวข้อมูลยอดขายไม่ครบ 60 วันใช้ class flag-red โดยอิง derived.salesDataDays < 60", "export ใช้ filter เดียวกับ preview ล่าสุด"],
-            ["ไม่เลือก status แล้ว preview ต้อง block", "ไม่เลือก resultCategory แล้ว export ต้อง block", "impactMonthFrom > impactMonthTo ต้อง error REPORT_DATE_RANGE_INVALID", "ค้นหาด้วยร้านถูกกระทบ", "เลือกหลาย region/storeType", "render table 19 columns", "export csv utf-8", "empty result แสดง summary เป็น 0"],
+            ["เปิดหน้า Report", "โหลด reference status/region/store type ถ้ามี API (ภาคใหม่แสดง checkbox อัตโนมัติ)", "ผู้ใช้ระบุ filter 7 ตัวตาม SDD สไลด์ 60", "Validate status (required) · คู่รหัสร้านถูกกระทบ-เปิดกระทบ · Period Statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ", "กด ค้นหาข้อมูล แล้ว call report API", "แสดงวันที่เป็น ค.ศ. ตามระบบ SBP เดิม (ไม่แปลงเป็น พ.ศ. — ตัดสินใจ 2026-08-06)", "render summary line และ table 14 คอลัมน์", "กด Export Excel แล้วส่ง filter เดียวกันไป export API"],
+            ["status เป็น required ตัวเดียวก่อนค้นหา/export (resultCategory เป็นตัวเลือก · SDD สไลด์ 60)", "ระบุ impactedStoreCode แล้วต้องระบุ newStoreCode ด้วย", "Period Statement เป็นช่วงวันที่ ค.ศ. และ from <= to", "ตารางแสดง 14 คอลัมน์ครบและ export ออกครบ 14 คอลัมน์", "ยอดเงิน format #,##0.00 และ total summary ตรงกับผลรวม API", "แถวข้อมูลยอดขายไม่ครบ 60 วันใช้ class flag-red โดยอิง derived.salesDataDays < 60", "export ใช้ filter เดียวกับการค้นหาล่าสุด"],
+            ["ไม่เลือก status แล้วค้นหาต้อง block", "ระบุร้านถูกกระทบแต่ไม่ระบุร้านเปิดกระทบ ต้อง block", "periodStatementFrom > periodStatementTo ต้อง error REPORT_DATE_RANGE_INVALID", "สถานะ = เสร็จสิ้นดำเนินการ แต่ไม่ระบุ Period Statement ต้อง block", "ค้นหาด้วยร้านถูกกระทบ", "เลือกหลาย region/storeType", "render table 14 columns", "export xlsx", "empty result แสดง summary เป็น 0"],
         ),
         Topic(
             "FE/LLDD-FE-Master-Config",
@@ -3487,7 +3486,7 @@ def topics() -> list[Topic]:
                 ("Refresh cache", "internal", "cache.invalidateDashboard", "refresh after document/status change"),
             ],
             [
-                ApiSpec("GET", "/api/v1/dashboard/summary", "Dashboard summary API", {"year": 2026}, {"waitingTasks": 24, "storesThisMonth": 342, "compensationThisMonth": 8420000.0, "abnormalStores": 5, "monthlyChart": [], "statusChart": []}),
+                ApiSpec("GET", "/api/v1/tasks", "รายการงานรอดำเนินการ", {"year": 2026, "page": 1}, {"page": 1, "size": 20, "total": 24, "items": []}),
             ],
             ["Validate query", "Aggregate workflow_transaction (@srm/glb-workflow)/compensation_documents/compensation_histories", "Build chart datasets", "Cache response", "Return normalized JSON"],
             ["KPI ตรงกับ query", "cache TTL ไม่เกิน 5 นาที", "empty data คืน 0 ไม่คืน null"],
@@ -3762,7 +3761,7 @@ def topics() -> list[Topic]:
             ],
             [
                 ApiSpec("GET", "/api/v1/reports/status-summary", "รายงานตรวจสอบประกันรายได้", {"year": 2026, "status": "06", "result": "APPROVE", "region": ["RSU"], "storeType": ["A"], "impactedStoreCode": "00788", "newStoreCode": "00990", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 0, "items": []}),
-                ApiSpec("GET", "/api/v1/reports/status-summary/export", "Export CSV", {"year": 2026, "status": "06", "result": "APPROVE", "region": ["RSU"], "storeType": ["A"], "impactedStoreCode": "00788", "newStoreCode": "00990"}, {"fileName": "status-summary.csv"}),
+                ApiSpec("GET", "/api/v1/reports/status-summary/export", "Export Excel", {"year": 2026, "status": "06", "result": "APPROVE", "region": ["RSU"], "storeType": ["A"], "impactedStoreCode": "00788", "newStoreCode": "00990"}, {"fileName": "insurance-verification-2026.xlsx"}),
                 ApiSpec("GET", "/api/v1/operators", "อ่าน operator assignments", {"employeeId": "E001", "positionCode": "06", "active": True, "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 1, "items": [{"id": 101, "employeeId": "E001", "employeeName": "สมชาย ใจดี", "positionCode": "06", "zoneCode": "01", "active": True}]}),
                 ApiSpec("POST", "/api/v1/operators", "สร้าง operator assignment", {"employeeId": "E001", "positionCode": "06", "zoneCode": "01", "active": True, "reason": "มอบหมายผู้ปฏิบัติงาน"}, {"id": 101, "employeeId": "E001", "positionCode": "06", "zoneCode": "01", "active": True}),
                 ApiSpec("PUT", "/api/v1/operators/{id}", "แก้ operator assignment", {"positionCode": "08", "zoneCode": "01", "active": True, "reason": "ย้ายหน้าที่"}, {"id": 101, "employeeId": "E001", "positionCode": "08", "zoneCode": "01", "active": True}),
@@ -4090,10 +4089,10 @@ def api_endpoint_groups() -> list[list[Any]]:
         ["Master Data", "19", "operators, factors, employees, menu-permissions, roles, menus, audit-logs", "admin/master maintenance + audit reason"],
         ["System Config", "5", "GET/POST/PUT/DELETE /configs*", "global config; no secret storage"],
         ["Email Template", "5", "GET/PUT/POST /email-templates*", "notification template content"],
-        ["รายงาน", "2", "GET /reports/status-summary, /export", "accounting preview/export CSV to Batch"],
+        ["รายงาน", "2", "GET /reports/status-summary, /export", "accounting search/export Excel (14 columns, SDD slide 60)"],
         ["Batch Job Admin", "6", "GET/PUT/POST /jobs*", "monitor/admin/manual run guard"],
         ["Workflow ภายใน", "3", "POST /workflows/instances, GET /workflows/instances/{id}, /workflows/summary", "internal workflow engine for Job 8b"],
-        ["Interface & Dashboard", "4", "GET /interfaces/*, POST /interfaces/sta/ack, GET /dashboard/summary", "file tracking, ACK, dashboard KPI"],
+        ["Interface Tracking", "3", "GET /interfaces/tracking, GET /interfaces/pending-ack, POST /interfaces/sta/ack", "file tracking และ ACK (ตัด GET /dashboard/summary ออก 2026-08-06)"],
     ]
 
 

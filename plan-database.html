@@ -89,7 +89,7 @@
           รับเข้า <b>5 ตารางใหม่</b> <span class="ref k2">K2</span> ที่โครงเป้าหมายยังขาด — <code>zones</code> (ZoneProfile — SDD GI บังคับให้เพิ่มภาคแล้ว checkbox ขึ้นอัตโนมัติ) ·
           <code>branch_types</code> (BranchTypeProfile — ชื่อประเภทสาขาต่างกันระหว่าง FMS/FGI ต้อง map) · <code>decisions</code> (DecisionProfile — ผลพิจารณามีชื่อ 3 ชุด ปุ่ม/flow/ผลลัพธ์) ·
           <code>document_running_numbers</code> (RunningNumber — ออกเลข YYYY/xxxxx แบบ atomic) · <code>document_cost_details</code> (ImpactCostDetail — ยอดชดเชยแยกรายเดือน/รายร้านใหม่)
-          · เติมคอลัมน์สำคัญจาก <code>CompensateFlow</code> (84 คอลัมน์) เข้า <code>compensation_documents</code>: <code>round_no</code>/<code>loop_no</code> · <code>allmap_url</code> · <code>statement_id</code> · <code>approver_snapshot</code>
+          · เติมคอลัมน์สำคัญจาก <code>CompensateFlow</code> (84 คอลัมน์) เข้า <code>compensation_documents</code>: <code>round_no</code>/<code>loop_no</code> · <code>allmap_url</code> · <code>statement_id</code> + <code>statement_date</code> (ใหม่ 2026-08-06 · ค.ศ. — คอลัมน์/ตัวกรอง Period Statement ของรายงานตรวจสอบประกันรายได้ ตาม SDD สไลด์ 60) · <code>approver_snapshot</code>
           · และ <code>workflow_sections.approve_limit_amount</code> (= SectionLimitCost) ทำให้วงเงิน GM 50,000 / AVP 300,000 เป็น <b>data ไม่ใช่ค่า hardcode</b>
           · กลุ่ม RBAC/เมนูของ K2 เดิมไม่นำเข้า (ใช้ระบบ SBP เดิมตามการตัดสินใจ 2026-08-05) · รายการค้างพิจารณา P1 ดู <code>database.md</code>
         </div>

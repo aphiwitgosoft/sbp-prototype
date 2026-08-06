@@ -39,7 +39,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Dashboard Su
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/dashboard/summary |
+| Input | GET /api/v1/tasks |
 | Progress | Validate query; Aggregate workflow_transaction (@srm/glb-workflow)/compensation_documents/compensation_histories; Build chart datasets; Cache response |
 | Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
@@ -47,7 +47,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Dashboard Su
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| GET /api/v1/dashboard/summary | Dashboard summary API | Validate query | KPI ตรงกับ query |
+| GET /api/v1/tasks | รายการงานรอดำเนินการ | Validate query | KPI ตรงกับ query |
 
 ### 5.91 Backend Execution Sequence
 
@@ -68,15 +68,16 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Dashboard Su
 
 ## 7. API Contract
 
-### GET /api/v1/dashboard/summary
+### GET /api/v1/tasks
 
-Dashboard summary API
+รายการงานรอดำเนินการ
 
 #### Query Params
 
 ```json
 {
-  "year": 2026
+  "year": 2026,
+  "page": 1
 }
 ```
 
@@ -85,17 +86,16 @@ Dashboard summary API
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | year | integer | No | UTF-8; use value domain described by endpoint purpose |
+| page | integer | No | >= 1; default 1 |
 
 #### Response
 
 ```json
 {
-  "waitingTasks": 24,
-  "storesThisMonth": 342,
-  "compensationThisMonth": 8420000.0,
-  "abnormalStores": 5,
-  "monthlyChart": [],
-  "statusChart": []
+  "page": 1,
+  "size": 20,
+  "total": 24,
+  "items": []
 }
 ```
 
@@ -103,12 +103,10 @@ Dashboard summary API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| waitingTasks | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| storesThisMonth | integer | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| compensationThisMonth | number | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| abnormalStores | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| monthlyChart | array<object> | Yes | JSON array; element type shown in Type column |
-| statusChart | array<object> | Yes | JSON array; element type shown in Type column |
+| page | integer | Yes | >= 1; default 1 |
+| size | integer | Yes | 1..100; default 20 |
+| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items | array<object> | Yes | JSON array; element type shown in Type column |
 
 ## 8. Reference DB Mapping (No Database Page Work)
 

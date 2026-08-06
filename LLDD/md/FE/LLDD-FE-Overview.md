@@ -50,7 +50,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Overview Dashboa
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/dashboard/summary |
+| Input | GET /api/v1/tasks |
 | Progress | Initial route `/`; Call dashboard API; Map KPI values; Render charts |
 | Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
@@ -68,13 +68,13 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Overview Dashboa
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
-| GET /api/v1/dashboard/summary | ดึงข้อมูล Dashboard | Refresh dashboard (เปิดหน้า/กด refresh) |
+| GET /api/v1/tasks | รายการงานรอดำเนินการ | เปิดหน้ารายการงาน (เข้าเมนูเอกสาร) |
 
 ### 5.92 Overview Dashboard Interaction State Machine
 
 | Action | Trigger | API / State transition | Expected visible result |
 | --- | --- | --- | --- |
-| Refresh dashboard | เปิดหน้า/กด refresh | GET /api/v1/dashboard/summary | update KPI + charts |
+| เปิดหน้ารายการงาน | เข้าเมนูเอกสาร | GET /api/v1/tasks | แสดงตารางงานรอดำเนินการ (ไม่มี KPI/กราฟแล้ว 2026-08-06) |
 | Click pending card | card งานรอดำเนินการ | navigate /documents/waiting | เปิดรายการเอกสารรอ |
 
 ### 5.93 Overview Dashboard Feature Failure Checks
@@ -90,20 +90,22 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Overview Dashboa
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
-| Refresh dashboard | เปิดหน้า/กด refresh | GET /api/v1/dashboard/summary | update KPI + charts |
+| เปิดหน้ารายการงาน | เข้าเมนูเอกสาร | GET /api/v1/tasks | แสดงตารางงานรอดำเนินการ (ไม่มี KPI/กราฟแล้ว 2026-08-06) |
 | Click pending card | card งานรอดำเนินการ | navigate /documents/waiting | เปิดรายการเอกสารรอ |
 
 ## 7. API Contract
 
-### GET /api/v1/dashboard/summary
+### GET /api/v1/tasks
 
-ดึงข้อมูล Dashboard
+รายการงานรอดำเนินการ
 
 #### Query Params
 
 ```json
 {
-  "year": 2026
+  "year": 2026,
+  "page": 1,
+  "size": 20
 }
 ```
 
@@ -112,28 +114,17 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Overview Dashboa
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | year | integer | No | UTF-8; use value domain described by endpoint purpose |
+| page | integer | No | >= 1; default 1 |
+| size | integer | No | 1..100; default 20 |
 
 #### Response
 
 ```json
 {
-  "waitingTasks": 24,
-  "storesThisMonth": 342,
-  "compensationThisMonth": 8420000.0,
-  "abnormalStores": 5,
-  "monthlyChart": [
-    {
-      "month": "ม.ค.",
-      "amount": 7200000.0
-    }
-  ],
-  "statusChart": [
-    {
-      "statusCode": "06",
-      "label": "รอฝ่าย SBP DSA ดำเนินการ",
-      "count": 8
-    }
-  ]
+  "page": 1,
+  "size": 20,
+  "total": 24,
+  "items": []
 }
 ```
 
@@ -141,17 +132,10 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Overview Dashboa
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| waitingTasks | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| storesThisMonth | integer | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| compensationThisMonth | number | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| abnormalStores | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| monthlyChart | array<object> | Yes | JSON array; element type shown in Type column |
-| monthlyChart[].month | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| monthlyChart[].amount | number | Yes | number >= 0 with 2 decimals |
-| statusChart | array<object> | Yes | JSON array; element type shown in Type column |
-| statusChart[].statusCode | string | Yes | canonical code; do not replace with display label |
-| statusChart[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| statusChart[].count | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| page | integer | Yes | >= 1; default 1 |
+| size | integer | Yes | 1..100; default 20 |
+| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items | array<object> | Yes | JSON array; element type shown in Type column |
 
 ## 9. Processing Flow
 

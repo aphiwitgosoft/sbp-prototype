@@ -9,16 +9,15 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Track | FE |
 | Estimate | 30 ชั่วโมง |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
-| Objective | สร้างรายงานตรวจสอบประกันรายได้พร้อม Preview และ Export CSV |
+| Objective | สร้างรายงานตรวจสอบประกันรายได้ตาม SDD สไลด์ 60 (7 ตัวกรอง / 14 คอลัมน์) พร้อมค้นหาข้อมูลและ Export Excel |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
 ## 2. Screen / Functional Scope
 
-- Report filters (layout 2026-08-06: รหัสร้าน|ชื่อร้าน · ร้านเปิดใหม่|ประเภทร้าน A/B/C/E · เดือน/ปี From-To เต็มแถว · สถานะ|ผลการพิจารณา · ภาค · Period Statement)
-- Summary table (sortable 19 columns)
-- Preview/detail modal
-- Export action
+- Report filters (SDD slide 60 · 2026-08-06: สถานะ*|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ|ประเภทร้าน A/B/C/E · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว)
+- Summary table (sortable 14 columns)
+- Export Excel action
 - Sample data verification
 
 ## 3. Screenshot Reference
@@ -80,35 +79,34 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 | Stage | Contract for implementation |
 | --- | --- |
 | Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/reports/status-summary; GET /api/v1/reports/status-summary/export |
-| Progress | เปิดหน้า Report; โหลด reference status/region/store type ถ้ามี API; ผู้ใช้ระบุ filter; Validate status/result และช่วงเดือน |
+| Progress | เปิดหน้า Report; โหลด reference status/region/store type ถ้ามี API (ภาคใหม่แสดง checkbox อัตโนมัติ); ผู้ใช้ระบุ filter 7 ตัวตาม SDD สไลด์ 60; Validate status (required) · คู่รหัสร้านถูกกระทบ-เปิดกระทบ · Period Statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ |
 | Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
 ### 5.90 Status Summary Report Component Contract
 
 | ID | Component / Scope | Single responsibility | Definition of done |
 | --- | --- | --- | --- |
-| C01 | Report filters (layout 2026-08-06: รหัสร้าน\|ชื่อร้าน · ร้านเปิดใหม่\|ประเภทร้าน A/B/C/E · เดือน/ปี From-To เต็มแถว · สถานะ\|ผลการพิจารณา · ภาค · Period Statement) | จัดการ filter store/month/type/status/result/region/statement period พร้อม dependency validation | status/result required และช่วง from-to ทุกคู่ตรวจผ่านก่อน Preview/Export |
-| C02 | Summary table (sortable 19 columns) | map response เป็น summary line, chart และตาราง 19 คอลัมน์ด้วย formatter กลาง | คอลัมน์/ยอดรวม/วันที่/leading zero ตรง response และข้อมูลยอดขายผิดปกติใช้ salesDataDays |
-| C03 | Preview/detail modal | แสดง preview/detail โดยใช้ filter snapshot เดียวกับผลลัพธ์ที่กำลังดู | เปิดเอกสารถูก docNo และปิด modal แล้ว filter/table ไม่ reset |
-| C04 | Export action | ส่ง filter snapshot ล่าสุดไป export endpoint และจัดการ queued/download/error state | export ใช้เงื่อนไขเดียวกับ preview และชื่อไฟล์/content type ตรง response |
-| C05 | Sample data verification | รองรับ fixture สำหรับ 0 แถว, หลาย region/type, เกิน threshold และยอดขายไม่ครบ 60 วัน | sample verification ครอบคลุม chart/table/export parity โดยไม่ฝังข้อมูลทดสอบใน production |
+| C01 | Report filters (SDD slide 60 · 2026-08-06: สถานะ*\|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ\|ประเภทร้าน A/B/C/E · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว) | จัดการ filter 7 ตัวตาม SDD สไลด์ 60 (status, impacted/new store code, store type, period statement, region, result) พร้อม dependency validation | status required, คู่รหัสร้านต้องมาด้วยกัน, period statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ และช่วง from-to ตรวจผ่านก่อนค้นหา/Export |
+| C02 | Summary table (sortable 14 columns) | map response เป็น summary line และตาราง 14 คอลัมน์ (SDD สไลด์ 60) ด้วย formatter กลาง | คอลัมน์/ยอดรวม/วันที่ (ค.ศ.)/leading zero ตรง response และข้อมูลยอดขายผิดปกติใช้ salesDataDays |
+| C03 | Export Excel action | ส่ง filter snapshot ล่าสุดไป export endpoint และจัดการ download/error state | Export Excel ใช้เงื่อนไขเดียวกับการค้นหา และชื่อไฟล์/content type (.xlsx) ตรง response |
+| C04 | Sample data verification | รองรับ fixture สำหรับ 0 แถว, หลาย region/type, เกิน threshold และยอดขายไม่ครบ 60 วัน | sample verification ครอบคลุม table/export parity 14 คอลัมน์ โดยไม่ฝังข้อมูลทดสอบใน production |
 
 ### 5.91 Status Summary Report API Adapter Map
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
 | GET /store/search (ระบบ SBP เดิม) | Popup เลือกร้านที่ถูกกระทบ | เปิด popup ร้าน (ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ) |
-| GET /api/v1/reports/status-summary | Preview รายงานและข้อมูล chart/summary | Preview Report (ปุ่ม Preview Report); Export CSV to Batch (ปุ่ม Export CSV to Batch ด้านบน/ท้าย filter) |
-| GET /api/v1/reports/status-summary/export | Export CSV to Batch ด้วย filter เดียวกับ preview | Export CSV to Batch (ปุ่ม Export CSV to Batch ด้านบน/ท้าย filter) |
+| GET /api/v1/reports/status-summary | ค้นหาข้อมูลรายงานตรวจสอบประกันรายได้ (14 คอลัมน์ · SDD สไลด์ 60) | ค้นหาข้อมูล (ปุ่ม ค้นหาข้อมูล); Export Excel (ปุ่ม Export Excel ท้าย filter) |
+| GET /api/v1/reports/status-summary/export | Export Excel ด้วย filter เดียวกับการค้นหา | Export Excel (ปุ่ม Export Excel ท้าย filter) |
 
 ### 5.92 Status Summary Report Interaction State Machine
 
 | Action | Trigger | API / State transition | Expected visible result |
 | --- | --- | --- | --- |
 | เปิด popup ร้าน | ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ | GET /store/search (ระบบ SBP เดิม) | เลือก store แล้วเติม storeCode/storeName |
-| Preview Report | ปุ่ม Preview Report | GET /api/v1/reports/status-summary | validate required แล้ว render summary line/chart/table 19 columns |
+| ค้นหาข้อมูล | ปุ่ม ค้นหาข้อมูล | GET /api/v1/reports/status-summary | validate status (required) และคู่รหัสร้าน แล้ว render summary line + table 14 columns |
 | เคลียร์ค่าเริ่มใหม่ | ปุ่มเคลียร์ค่าเริ่มใหม่ | client state | reset filter, summary, table และ error message |
-| Export CSV to Batch | ปุ่ม Export CSV to Batch ด้านบน/ท้าย filter | GET /api/v1/reports/status-summary/export | ส่ง filter ชุดเดียวกับ preview แล้ว download/queue CSV |
+| Export Excel | ปุ่ม Export Excel ท้าย filter | GET /api/v1/reports/status-summary/export | ส่ง filter ชุดเดียวกับการค้นหา แล้วดาวน์โหลดไฟล์ .xlsx 14 คอลัมน์ |
 | Hover chart | hover bar chart | client chart tooltip | แสดง tooltip จำนวนเอกสาร/ยอดเงินตามภาค |
 | Open detail | คลิกเลขที่เอกสารหรือ row | navigate /documents/{docNo} หรือ preview modal | เปิดเอกสารที่เกี่ยวข้อง |
 
@@ -116,21 +114,21 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 
 | Case | Feature-specific scenario | Expected evidence |
 | --- | --- | --- |
-| FE-01 | ไม่เลือก status แล้ว preview ต้อง block | status และ resultCategory เป็น required ก่อน preview/export |
-| FE-02 | ไม่เลือก resultCategory แล้ว export ต้อง block | month range ทุกคู่ต้อง from <= to |
-| FE-03 | impactMonthFrom > impactMonthTo ต้อง error REPORT_DATE_RANGE_INVALID | ตารางแสดง 19 คอลัมน์ครบและ export ออกครบ 19 คอลัมน์ |
-| FE-04 | ค้นหาด้วยร้านถูกกระทบ | ยอดเงิน format #,##0.00 และ total summary ตรงกับผลรวม API |
-| FE-05 | เลือกหลาย region/storeType | แถวข้อมูลยอดขายไม่ครบ 60 วันใช้ class flag-red โดยอิง derived.salesDataDays < 60 |
-| FE-06 | render table 19 columns | export ใช้ filter เดียวกับ preview ล่าสุด |
+| FE-01 | ไม่เลือก status แล้วค้นหาต้อง block | status เป็น required ตัวเดียวก่อนค้นหา/export (resultCategory เป็นตัวเลือก · SDD สไลด์ 60) |
+| FE-02 | ระบุร้านถูกกระทบแต่ไม่ระบุร้านเปิดกระทบ ต้อง block | ระบุ impactedStoreCode แล้วต้องระบุ newStoreCode ด้วย |
+| FE-03 | periodStatementFrom > periodStatementTo ต้อง error REPORT_DATE_RANGE_INVALID | Period Statement เป็นช่วงวันที่ ค.ศ. และ from <= to |
+| FE-04 | สถานะ = เสร็จสิ้นดำเนินการ แต่ไม่ระบุ Period Statement ต้อง block | ตารางแสดง 14 คอลัมน์ครบและ export ออกครบ 14 คอลัมน์ |
+| FE-05 | ค้นหาด้วยร้านถูกกระทบ | ยอดเงิน format #,##0.00 และ total summary ตรงกับผลรวม API |
+| FE-06 | เลือกหลาย region/storeType | แถวข้อมูลยอดขายไม่ครบ 60 วันใช้ class flag-red โดยอิง derived.salesDataDays < 60 |
 
 ## 6. Button / User Action Mapping
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
 | เปิด popup ร้าน | ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ | GET /store/search (ระบบ SBP เดิม) | เลือก store แล้วเติม storeCode/storeName |
-| Preview Report | ปุ่ม Preview Report | GET /api/v1/reports/status-summary | validate required แล้ว render summary line/chart/table 19 columns |
+| ค้นหาข้อมูล | ปุ่ม ค้นหาข้อมูล | GET /api/v1/reports/status-summary | validate status (required) และคู่รหัสร้าน แล้ว render summary line + table 14 columns |
 | เคลียร์ค่าเริ่มใหม่ | ปุ่มเคลียร์ค่าเริ่มใหม่ | client state | reset filter, summary, table และ error message |
-| Export CSV to Batch | ปุ่ม Export CSV to Batch ด้านบน/ท้าย filter | GET /api/v1/reports/status-summary/export | ส่ง filter ชุดเดียวกับ preview แล้ว download/queue CSV |
+| Export Excel | ปุ่ม Export Excel ท้าย filter | GET /api/v1/reports/status-summary/export | ส่ง filter ชุดเดียวกับการค้นหา แล้วดาวน์โหลดไฟล์ .xlsx 14 คอลัมน์ |
 | Hover chart | hover bar chart | client chart tooltip | แสดง tooltip จำนวนเอกสาร/ยอดเงินตามภาค |
 | Open detail | คลิกเลขที่เอกสารหรือ row | navigate /documents/{docNo} หรือ preview modal | เปิดเอกสารที่เกี่ยวข้อง |
 
@@ -183,28 +181,26 @@ Popup เลือกร้านที่ถูกกระทบ
 
 ### GET /api/v1/reports/status-summary
 
-Preview รายงานและข้อมูล chart/summary
+ค้นหาข้อมูลรายงานตรวจสอบประกันรายได้ (14 คอลัมน์ · SDD สไลด์ 60)
 
 #### Query Params
 
 ```json
 {
+  "status": "06",
   "impactedStoreCode": "00788",
   "newStoreCode": "00990",
-  "impactMonthFrom": "2026-05",
-  "impactMonthTo": "2026-05",
+  "periodStatementFrom": "2026-06-01",
+  "periodStatementTo": "2026-06-30",
   "storeTypes": [
     "A",
     "B"
   ],
-  "status": "06",
-  "resultCategory": "APPROVE",
   "regions": [
-    "RS",
+    "RSU",
     "BN"
   ],
-  "statementPeriodFrom": "2026-05",
-  "statementPeriodTo": "2026-05",
+  "result": "APPROVE",
   "page": 1,
   "size": 20
 }
@@ -214,16 +210,14 @@ Preview รายงานและข้อมูล chart/summary
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| status | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | newStoreCode | string | No | exactly 5 digits; preserve leading zero |
-| impactMonthFrom | string | No | UTF-8; use value domain described by endpoint purpose |
-| impactMonthTo | string | No | UTF-8; use value domain described by endpoint purpose |
+| periodStatementFrom | string | No | UTF-8; use value domain described by endpoint purpose |
+| periodStatementTo | string | No | UTF-8; use value domain described by endpoint purpose |
 | storeTypes | array<string> | No | JSON array; element type shown in Type column |
-| status | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| resultCategory | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | regions | array<string> | No | JSON array; element type shown in Type column |
-| statementPeriodFrom | string | No | UTF-8; use value domain described by endpoint purpose |
-| statementPeriodTo | string | No | UTF-8; use value domain described by endpoint purpose |
+| result | string | No | UTF-8; use value domain described by endpoint purpose |
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
 
@@ -237,41 +231,22 @@ Preview รายงานและข้อมูล chart/summary
   "summary": {
     "totalItems": 10,
     "totalCompensationAmount": 439100.0,
-    "overThresholdItems": 1,
+    "overThresholdItems": 3,
     "abnormalSalesItems": 2
-  },
-  "charts": {
-    "status": [
-      {
-        "label": "รอฝ่าย SBP DSA ดำเนินการ",
-        "value": 2
-      }
-    ],
-    "regionAmount": [
-      {
-        "region": "RS",
-        "amount": 73850.0
-      }
-    ]
   },
   "items": [
     {
       "impactedStoreCode": "00788",
       "impactedStoreName": "รัตนอุทิศ ซ.13",
-      "region": "RS",
-      "storeType": "FR Type B",
+      "impactedRegion": "RSU",
+      "impactedStoreType": "B",
       "impactMonth": "2026-05",
-      "transferToSpDate": "2026-03-01",
-      "statementPeriod": "2026-05",
+      "periodStatement": "2026-06-07",
       "newStoreCode": "00990",
       "newStoreName": "เซเว่นฯ รัตนาธิเบศร์ 12",
-      "newStoreRegion": "RS",
-      "newStoreType": "FR Type A",
+      "newRegion": "RSU",
+      "newStoreType": "A",
       "compensationAmount": 48200.0,
-      "statusName": "รอฝ่าย SBP DSA ดำเนินการ",
-      "operatorName": "สมชาย ใจดี",
-      "resultText": "-",
-      "waitingDays": 2,
       "roundNo": 1,
       "createdDate": "2026-06-12",
       "docNo": "2026/00123"
@@ -292,44 +267,32 @@ Preview รายงานและข้อมูล chart/summary
 | summary.totalCompensationAmount | number | Yes | number >= 0 with 2 decimals |
 | summary.overThresholdItems | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | summary.abnormalSalesItems | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| charts | object | Yes | JSON object; nested fields listed below |
-| charts.status | array<object> | Yes | JSON array; element type shown in Type column |
-| charts.status[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| charts.status[].value | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| charts.regionAmount | array<object> | Yes | number >= 0 with 2 decimals |
-| charts.regionAmount[].region | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| charts.regionAmount[].amount | number | Yes | number >= 0 with 2 decimals |
 | items | array<object> | Yes | JSON array; element type shown in Type column |
 | items[].impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | items[].impactedStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].region | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].storeType | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].impactedRegion | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].impactedStoreType | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].impactMonth | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| items[].transferToSpDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| items[].statementPeriod | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].periodStatement | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].newStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | items[].newStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].newStoreRegion | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].newRegion | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].newStoreType | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].compensationAmount | number | Yes | number >= 0 with 2 decimals |
-| items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].operatorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].resultText | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].waitingDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].createdDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
 | items[].docNo | string | Yes | พ.ศ. YYYY/xxxxx |
 
 ### GET /api/v1/reports/status-summary/export
 
-Export CSV to Batch ด้วย filter เดียวกับ preview
+Export Excel ด้วย filter เดียวกับการค้นหา
 
 #### Query Params
 
 ```json
 {
-  "sameAsPreview": true,
-  "format": "csv"
+  "sameAsSearch": true,
+  "format": "xlsx"
 }
 ```
 
@@ -337,16 +300,15 @@ Export CSV to Batch ด้วย filter เดียวกับ preview
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| sameAsPreview | boolean | No | UTF-8; use value domain described by endpoint purpose |
+| sameAsSearch | boolean | No | UTF-8; use value domain described by endpoint purpose |
 | format | string | No | ISO-8601 ค.ศ.; nullable only when type includes null |
 
 #### Response
 
 ```json
 {
-  "contentType": "text/csv; charset=utf-8",
-  "fileName": "status-summary-2569.csv",
-  "queuedToBatch": true
+  "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "fileName": "insurance-verification-2026.xlsx"
 }
 ```
 
@@ -356,39 +318,40 @@ Export CSV to Batch ด้วย filter เดียวกับ preview
 | --- | --- | --- | --- |
 | contentType | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| queuedToBatch | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ## 9. Processing Flow
 
 | Step | Description |
 | --- | --- |
 | 1 | เปิดหน้า Report |
-| 2 | โหลด reference status/region/store type ถ้ามี API |
-| 3 | ผู้ใช้ระบุ filter |
-| 4 | Validate status/result และช่วงเดือน |
-| 5 | กด Preview แล้ว call report API |
+| 2 | โหลด reference status/region/store type ถ้ามี API (ภาคใหม่แสดง checkbox อัตโนมัติ) |
+| 3 | ผู้ใช้ระบุ filter 7 ตัวตาม SDD สไลด์ 60 |
+| 4 | Validate status (required) · คู่รหัสร้านถูกกระทบ-เปิดกระทบ · Period Statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ |
+| 5 | กด ค้นหาข้อมูล แล้ว call report API |
 | 6 | แสดงวันที่เป็น ค.ศ. ตามระบบ SBP เดิม (ไม่แปลงเป็น พ.ศ. — ตัดสินใจ 2026-08-06) |
-| 7 | render summary line, chart และ table 19 คอลัมน์ |
-| 8 | กด Export แล้วส่ง filter เดียวกันไป export API |
+| 7 | render summary line และ table 14 คอลัมน์ |
+| 8 | กด Export Excel แล้วส่ง filter เดียวกันไป export API |
 
 ## 10. Acceptance Criteria
 
-- status และ resultCategory เป็น required ก่อน preview/export
-- month range ทุกคู่ต้อง from <= to
-- ตารางแสดง 19 คอลัมน์ครบและ export ออกครบ 19 คอลัมน์
+- status เป็น required ตัวเดียวก่อนค้นหา/export (resultCategory เป็นตัวเลือก · SDD สไลด์ 60)
+- ระบุ impactedStoreCode แล้วต้องระบุ newStoreCode ด้วย
+- Period Statement เป็นช่วงวันที่ ค.ศ. และ from <= to
+- ตารางแสดง 14 คอลัมน์ครบและ export ออกครบ 14 คอลัมน์
 - ยอดเงิน format #,##0.00 และ total summary ตรงกับผลรวม API
 - แถวข้อมูลยอดขายไม่ครบ 60 วันใช้ class flag-red โดยอิง derived.salesDataDays < 60
-- export ใช้ filter เดียวกับ preview ล่าสุด
+- export ใช้ filter เดียวกับการค้นหาล่าสุด
 
 ## 11. Developer Test Checklist
 
 | No | Test |
 | --- | --- |
-| 1 | ไม่เลือก status แล้ว preview ต้อง block |
-| 2 | ไม่เลือก resultCategory แล้ว export ต้อง block |
-| 3 | impactMonthFrom > impactMonthTo ต้อง error REPORT_DATE_RANGE_INVALID |
-| 4 | ค้นหาด้วยร้านถูกกระทบ |
-| 5 | เลือกหลาย region/storeType |
-| 6 | render table 19 columns |
-| 7 | export csv utf-8 |
-| 8 | empty result แสดง summary เป็น 0 |
+| 1 | ไม่เลือก status แล้วค้นหาต้อง block |
+| 2 | ระบุร้านถูกกระทบแต่ไม่ระบุร้านเปิดกระทบ ต้อง block |
+| 3 | periodStatementFrom > periodStatementTo ต้อง error REPORT_DATE_RANGE_INVALID |
+| 4 | สถานะ = เสร็จสิ้นดำเนินการ แต่ไม่ระบุ Period Statement ต้อง block |
+| 5 | ค้นหาด้วยร้านถูกกระทบ |
+| 6 | เลือกหลาย region/storeType |
+| 7 | render table 14 columns |
+| 8 | export xlsx |
+| 9 | empty result แสดง summary เป็น 0 |

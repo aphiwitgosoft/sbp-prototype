@@ -49,7 +49,7 @@ Release: `Phase #4`
 | Create Document | สร้างเอกสารประกันรายได้แบบ Manual/FS ตามสิทธิ์ที่ระบบหลักส่งมา |
 | Document Detail | แสดงรายละเอียดร้านถูกกระทบ ร้านเปิดใหม่ แผนที่ ประวัติ ผลพิจารณา คู่แข่ง ปัจจัยอื่น เอกสารแนบ และ Action Panel |
 | Document Action | บันทึกร่าง ส่งดำเนินการ อนุมัติ ไม่อนุมัติ ส่งกลับ และบันทึก comment/history |
-| Report | รายงานตรวจสอบประกันรายได้, Preview, Export CSV สำหรับ Batch/บัญชี |
+| Report | รายงานตรวจสอบประกันรายได้ (7 ตัวกรอง / 14 คอลัมน์ · SDD สไลด์ 60), ค้นหาข้อมูล, Export Excel สำหรับบัญชี |
 | Master/Config | ผู้ปฏิบัติงาน, ปัจจัยภายนอก, สิทธิ์เมนู, ตั้งค่าระบบ |
 | Batch/Email | Batch Job Monitor, Job History, Retry/Re-run, Log Detail, Email Template/Preview |
 
@@ -71,7 +71,7 @@ Release: `Phase #4`
 - ระบบ SBP Mall มีข้อมูล user/role จากระบบกลางแล้ว จึงไม่ออกแบบ login ใหม่
 - เลขที่เอกสารใช้รูปแบบ `YYYY/xxxxx` โดย `YYYY` เป็นปี พ.ศ. และ running 5 หลักต่อปี
 - ร้านที่ข้อมูลยอดขายไม่ครบ 60 วันต้องแสดงเป็นรายการผิดปกติด้วยสีแดง
-- รายงานบัญชีใช้ Preview และ Export CSV เพื่อส่งต่อ Batch/กระทบ SAP ภายนอกระบบ
+- รายงานบัญชีใช้ ค้นหาข้อมูล และ Export Excel เพื่อกระทบ SAP ภายนอกระบบ
 
 ## 6. Logical Architecture
 
@@ -285,7 +285,7 @@ src/modules/incomeGuarantee/
 | `GET` | `/api/v1/documents/{docNo}/timeline` | ประวัติการพิจารณา |
 | `POST` | `/api/v1/documents/{docNo}/attachments` | แนบไฟล์ |
 | `GET` | `/api/v1/reports/status-summary` | Preview รายงาน |
-| `GET` | `/api/v1/reports/status-summary/export` | Export CSV |
+| `GET` | `/api/v1/reports/status-summary/export` | Export Excel (14 คอลัมน์) |
 | `GET/POST/PUT/DELETE` | `/api/v1/operators` | ผู้ปฏิบัติงาน |
 | `GET/POST/PUT/DELETE` | `/api/v1/factors` | ปัจจัยภายนอก |
 | `GET/PUT` | `/api/v1/menu-permissions` | สิทธิ์เมนู |
@@ -401,7 +401,7 @@ src/modules/incomeGuarantee/
 | TC | Case | Expected Result |
 |---|---|---|
 | TC-RPT-01 | ค้นหารายงานโดยไม่ระบุปี | validation error |
-| TC-RPT-02 | Export CSV | ได้ไฟล์ตาม filter |
+| TC-RPT-02 | Export Excel | ได้ไฟล์ .xlsx 14 คอลัมน์ตาม filter |
 | TC-MST-01 | เพิ่มปัจจัยภายนอก code ซ้ำ | validation error |
 | TC-MST-02 | แก้ master โดยไม่ระบุ reason | validation error |
 | TC-BAT-01 | Retry job จากหน้าจอ | create job run history |

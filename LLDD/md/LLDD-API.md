@@ -11,7 +11,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Item | Detail |
 | --- | --- |
 | API base | /api/v1 |
-| Endpoint count | 48 endpoints, 9 groups |
+| Endpoint count | 47 endpoints, 9 groups |
 | Detailed implementation docs | LLDD-BE-API-Common-Contracts, LLDD-BE-API-Dashboard-Summary, LLDD-BE-API-Document-List-Search, LLDD-BE-API-Document-Create-Update, LLDD-BE-API-Document-Detail-Aggregate, LLDD-BE-API-Document-Workflow-Actions, LLDD-BE-API-Workflow-Instances, LLDD-BE-API-Attachment-Sales-Timeline, LLDD-BE-API-Lookup-RBAC-Email, LLDD-BE-API-Report-Master-Config |
 | Out of scope | Login/Auth implementation ของ platform, SAP/SR process ภายนอก, abnormal-stores endpoints ที่ยัง comment รอตัดสินใจ |
 
@@ -47,7 +47,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายงาน | 2 | /api/v1/reports/status-summary, /api/v1/reports/status-summary/export | K2 · SRS 3.1.7 |
 | Batch Job Admin | 6 | /api/v1/jobs, /api/v1/jobs/{jobNo}, /api/v1/jobs/{jobNo}/params, /api/v1/jobs/{jobNo}/run ... | FGI/FCS · Jobs 1–10 |
 | Workflow ภายใน | 3 | /api/v1/workflows/instances, /api/v1/workflows/instances/{id}, /api/v1/workflows/summary | K2 3.1.4 + FGI/FCS Job 8b |
-| Interface & Dashboard | 4 | /api/v1/interfaces/tracking, /api/v1/interfaces/sta/ack, /api/v1/interfaces/pending-ack, /api/v1/dashboard/summary | FGI/FCS · tracking / watchdog |
+| Interface & Dashboard | 3 | /api/v1/interfaces/tracking, /api/v1/interfaces/sta/ack, /api/v1/interfaces/pending-ack | FGI/FCS · tracking / watchdog |
 
 ## 5. Request Lifecycle
 
@@ -187,8 +187,9 @@ LIMIT :size OFFSET :offset;
 #### Request / Query / Header
 
 ```json
-Query: ?year=2026&impactedStoreCode=00788&status=06&page=1
+Query: ?year=2026&impactedStoreCode=00788&status=06&result=APPROVE&page=1
 (status = section ที่รออยู่ 06/08/01/02/03 หรือ END)
+(result = APPROVE | REJECT | NONE — ประกันรายได้ / ไม่ประกันรายได้ / ยังไม่มีผล · เพิ่ม 2026-08-06)
 ```
 
 #### Response
@@ -273,7 +274,7 @@ LIMIT :size OFFSET :offset;
   "statusCode": "06",
   "currentSection": "06",
   "impactedStore": { "storeCode": "00788", ... },
-  // newStores[] = แหล่งข้อมูลของทั้งตารางร้านเปิดใหม่และกราฟ "สัดส่วนเงินชดเชยรายร้านเปิดใหม่"
+  // newStores[] = แหล่งข้อมูลของตารางร้านเปิดใหม่ (กราฟสัดส่วนเงินชดเชยถอดออกแล้ว 2026-08-06)
   // compensateAmount คำนวณที่ BE (= compensation.amount x compensatePercent) — FE ไม่คูณเอง
   "newStores": [
     { "newStoreCode": "00990", "storeName": "สาขารัตนาธิเบศร์ 2", "distanceKm": 0.85,
@@ -388,8 +389,9 @@ VALUES (:instanceId, :docNo, :section06, :statusOpen);
 | --- | --- |
 | 1 | ตรวจว่า role + section ปัจจุบันมีสิทธิ์แก้ส่วนที่ส่งมา (เช่น Section 01 แก้คู่แข่ง/ปัจจัยได้) |
 | 2 | validate %ชดเชยของร้านใหม่รวมกันต้องเท่ากับ 100% แล้วคำนวณ compensateAmount ใหม่ทุกแถว |
-| 3 | ส่งอาร์เรย์มา = ชุดข้อมูลเต็มของส่วนนั้น — รายการที่หายไปจากอาร์เรย์ถือว่าถูกลบ (รองรับปุ่ม "ลบที่เลือก" ในหน้าเอกสาร) |
-| 4 | บันทึกและคืนเอกสารล่าสุด |
+| 3 | validate require field ของแถวที่ผู้ใช้เพิ่มเอง: คู่แข่ง = รหัสแบรนด์จาก master /competitors (01–11) + วันที่เปิดกระทบ · ปัจจัย = รหัสจาก master /factors + วันที่เริ่มต้น (วันที่สิ้นสุดถ้ามีต้อง ≥ วันที่เริ่มต้น) |
+| 4 | ส่งอาร์เรย์มา = ชุดข้อมูลเต็มของส่วนนั้น — รายการที่หายไปจากอาร์เรย์ถือว่าถูกลบ (รองรับปุ่ม "ลบที่เลือก") · ฝั่ง FE เรียกเส้นนี้ทันทีเมื่อกดบันทึกใน modal หรือยืนยันลบ ไม่มีปุ่มบันทึกระดับการ์ดแล้ว |
+| 5 | บันทึกและคืนเอกสารล่าสุด |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
@@ -418,6 +420,8 @@ VALUES (:instanceId, :docNo, :section06, :statusOpen);
 | --- |
 | 403 — ไม่มีสิทธิ์แก้ส่วนนี้ในขั้นปัจจุบัน |
 | 422 — "%ชดเชย ... รวมกันแล้วไม่เท่ากับ 100%" (ข้อความตรงตาม SRS) |
+| 400 — "กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ" / "กรุณาเลือกปัจจัยอื่นๆ ที่ท่านต้องการ" (require field · ข้อความตรงตาม SRS) |
+| 400 — "วันที่สิ้นสุดต้องมีค่าเท่ากับหรือมากกว่าวันที่เริ่มต้น" |
 
 SQL Reference
 
@@ -1984,12 +1988,12 @@ FROM email_template WHERE is_customized = FALSE;
 
 | Endpoint | Method | Path | Summary |
 | --- | --- | --- | --- |
-| 1 | GET | /api/v1/reports/status-summary | รายงานตรวจสอบประกันรายได้ (SBP Mall) — Preview Report · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS) |
-| 2 | GET | /api/v1/reports/status-summary/export | Export CSV to Batch — ส่งไฟล์ CSV เข้า Batch ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไขเดียวกับเส้นค้นหา |
+| 1 | GET | /api/v1/reports/status-summary | รายงานตรวจสอบประกันรายได้ (SBP Mall) — ค้นหาข้อมูล · filter 7 ตัวและผลลัพธ์ 14 คอลัมน์ ตาม SDD สไลด์ 60 · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS) |
+| 2 | GET | /api/v1/reports/status-summary/export | Export Excel — ส่งออกผลการค้นหา 14 คอลัมน์เป็น Excel ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไขเดียวกับเส้นค้นหา |
 
 #### 6.6.1 GET /api/v1/reports/status-summary
 
-รายงานตรวจสอบประกันรายได้ (SBP Mall) — Preview Report · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)
+รายงานตรวจสอบประกันรายได้ (SBP Mall) — ค้นหาข้อมูล · filter 7 ตัวและผลลัพธ์ 14 คอลัมน์ ตาม SDD สไลด์ 60 · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)
 
 | Item | Detail |
 | --- | --- |
@@ -2002,10 +2006,12 @@ FROM email_template WHERE is_customized = FALSE;
 
 | Step | Flow |
 | --- | --- |
-| 1 | validate ปี (ไม่ระบุ → 400) |
-| 2 | query compensation_documents + compensation_histories ตามเงื่อนไข (status 6 ค่า · region 13 · storeType A-D · รหัสถูกกระทบ/เปิดกระทบ) |
-| 3 | กรอง result (APPROVE/REJECT) จากผลพิจารณาล่าสุดใน consideration_logs — filter "ประกันรายได้/ไม่ประกันรายได้" หน้า k2-report |
-| 4 | คืนแบบแบ่งหน้าตามหน้าจอ k2-report.html |
+| 1 | validate ปี (ไม่ระบุ → 400) และ status (ไม่ระบุ → 400 · Required Field ตาม SDD) |
+| 2 | validate คู่รหัสร้าน: ระบุ impactedStoreCode แล้วต้องระบุ newStoreCode ด้วย (และกลับกัน) ไม่งั้น 400 |
+| 3 | ถ้า status = เสร็จสิ้นดำเนินการ ต้องมี periodStatementFrom/To (ค.ศ.) ไม่งั้น 400 |
+| 4 | query compensation_documents + compensation_histories ตามเงื่อนไข (status 6 ค่า · region 13 รหัส + ภาคใหม่อัตโนมัติ · storeType A/B/C/E · รหัสถูกกระทบ/เปิดกระทบ · ช่วง Period Statement) |
+| 5 | กรอง result (APPROVE/REJECT) จากผลพิจารณาล่าสุดใน consideration_logs — Radio "ประกันรายได้/ไม่ประกันรายได้" (ไม่บังคับ) |
+| 6 | คืน 14 คอลัมน์ตาม SDD แบบแบ่งหน้า (ร้านถูกกระทบ 4 · เดือน/ปีที่ถูกกระทบ · Period Statement · ร้านเปิดกระทบ 4 · ยอดเงินชดเชย · ครั้งที่ · วันที่สร้าง · เลขที่เอกสาร) |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
@@ -2017,8 +2023,9 @@ FROM email_template WHERE is_customized = FALSE;
 #### Request / Query / Header
 
 ```json
-Query: ?year=2026&statusCode=06&result=APPROVE&region=RSU&storeType=A&impactedStoreCode=00233&newStoreCode=22864&page=1
-(result = APPROVE | REJECT — ประกันรายได้ / ไม่ประกันรายได้)
+Query: ?year=2026&status=เสร็จสิ้นดำเนินการ&periodStatementFrom=2026-06-01&periodStatementTo=2026-06-30
+       &storeType=A&storeType=B&region=RSU&region=BW&impactedStoreCode=00788&newStoreCode=00990&result=APPROVE&page=1
+(status บังคับ · result = APPROVE | REJECT — ประกันรายได้ / ไม่ประกันรายได้ · ไม่บังคับ)
 ```
 
 #### Response
@@ -2026,39 +2033,56 @@ Query: ?year=2026&statusCode=06&result=APPROVE&region=RSU&storeType=A&impactedSt
 ```json
 {
   "page": 1, "total": 212,
-  "items": [{ "docNo": "2026/00098", "storeCode": "00788", "status": "เสร็จสิ้นดำเนินการ", "compensateAmount": 85000.00, ... }]
+  "items": [{
+    "impactedStoreCode": "00788", "impactedStoreName": "รัตนอุทิศ ซ.13", "impactedRegion": "RSU", "impactedStoreType": "B",
+    "impactMonth": "05/2026", "periodStatement": "07/06/2026",
+    "newStoreCode": "00990", "newStoreName": "เซเว่นฯ รัตนาธิเบศร์ 12", "newRegion": "RSU", "newStoreType": "A",
+    "compensateAmount": 48200.00, "round": 1, "createdDate": "12/06/2026", "docNo": "2026/00123"
+  }]
 }
 ```
 
 | Error / Condition |
 | --- |
 | 400 — กรุณาระบุปีที่ต้องการค้นหา |
+| 400 — กรุณาเลือกสถานะก่อนค้นหาข้อมูล |
+| 400 — กรณีระบุรหัสร้านถูกกระทบ ต้องระบุรหัสร้านเปิดกระทบด้วย |
 
 SQL Reference
 
 ```sql
--- ต้องระบุ :year เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว
-SELECT d.doc_no, d.impacted_store_code, s.store_name, d.status_code,
-       h.compensate_amount, h.submit_account_month, cl.result_category
+-- 14 คอลัมน์ตาม SDD สไลด์ 60 ; ต้องระบุ :year และ :status เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว
+SELECT si.store_code   AS impacted_store_code, si.store_name   AS impacted_store_name,
+       si.region_code  AS impacted_region,     si.store_type   AS impacted_store_type,
+       pr.impact_month, pr.impact_year, d.statement_date,   -- statement_date = ค.ศ. (คอลัมน์ใหม่คู่กับ statement_id)
+       ns.store_code   AS new_store_code,      ns.store_name  AS new_store_name,
+       ns.region_code  AS new_region,          ns.store_type  AS new_store_type,
+       h.compensate_amount, d.loop_no AS round_no, d.created_at AS created_date, d.doc_no
 FROM compensation_documents d
-JOIN stores s ON s.store_code = d.impacted_store_code
+JOIN fgi_impact_processes pr ON pr.id = d.impact_process_id
+JOIN stores si               ON si.store_code = d.impacted_store_code
 LEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no
+LEFT JOIN document_new_stores dns  ON dns.doc_no = d.doc_no
+LEFT JOIN stores ns                ON ns.store_code = dns.new_store_code
 LEFT JOIN LATERAL (
   SELECT result_category FROM consideration_logs
   WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1
 ) cl ON TRUE
 WHERE d.year = :year
-  AND (:month  IS NULL OR h.submit_account_month = :month)
-  AND (:zone   IS NULL OR s.zone_code = :zone)
-  AND (:statusCode IS NULL OR d.status_code = :statusCode)
-  AND (:result IS NULL OR cl.result_category = :result)   -- APPROVE / REJECT (filter ประกันรายได้/ไม่ประกันรายได้)
+  AND d.status_code = :status                                   -- Drop-down บังคับ (SDD สไลด์ 60)
+  AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)
+  AND (:newStoreCode      IS NULL OR dns.new_store_code    = :newStoreCode)
+  AND (:psFrom IS NULL OR d.statement_date BETWEEN :psFrom AND :psTo)  -- ค.ศ. ; บังคับเมื่อ status = เสร็จสิ้นดำเนินการ
+  AND (:storeTypes IS NULL OR si.store_type  = ANY(:storeTypes))       -- A/B/C/E
+  AND (:regions    IS NULL OR si.region_code = ANY(:regions))          -- 13 ภาค + ภาคใหม่อัตโนมัติ
+  AND (:result     IS NULL OR cl.result_category = :result)            -- APPROVE / REJECT (ไม่บังคับ)
 ORDER BY d.doc_no
 LIMIT :size OFFSET :offset;
 ```
 
 #### 6.6.2 GET /api/v1/reports/status-summary/export
 
-Export CSV to Batch — ส่งไฟล์ CSV เข้า Batch ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไขเดียวกับเส้นค้นหา
+Export Excel — ส่งออกผลการค้นหา 14 คอลัมน์เป็น Excel ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไขเดียวกับเส้นค้นหา
 
 | Item | Detail |
 | --- | --- |
@@ -2071,8 +2095,8 @@ Export CSV to Batch — ส่งไฟล์ CSV เข้า Batch ให้�
 
 | Step | Flow |
 | --- | --- |
-| 1 | เงื่อนไขเดียวกับ status-summary |
-| 2 | สร้างไฟล์ CSV แล้วส่งเข้า Batch (ทีมบัญชีนำไปกระทบ SAP) |
+| 1 | เงื่อนไขเดียวกับ status-summary (รวม validate status และคู่รหัสร้าน) |
+| 2 | สร้างไฟล์ Excel 14 คอลัมน์ตาม SDD สไลด์ 60 ให้ทีมบัญชีนำไปกระทบ SAP |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
@@ -2081,7 +2105,7 @@ Export CSV to Batch — ส่งไฟล์ CSV เข้า Batch ให้�
 #### Request / Query / Header
 
 ```json
-Query: ?year=2569&result=APPROVE&region=RSU&storeType=A
+Query: ?year=2026&status=เสร็จสิ้นดำเนินการ&region=RSU&storeType=A&result=APPROVE
 (เงื่อนไขชุดเดียวกับเส้นค้นหา รวม result ประกันรายได้/ไม่ประกันรายได้)
 ```
 
@@ -2089,9 +2113,8 @@ Query: ?year=2569&result=APPROVE&region=RSU&storeType=A
 
 ```json
 200 OK
-Content-Type: text/csv; charset=utf-8
-Content-Disposition: attachment; filename="insurance-verification-2569.csv"
-X-Batch-Job: queued
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+Content-Disposition: attachment; filename="insurance-verification-2026.xlsx"
 ```
 
 | Error / Condition |
@@ -2101,17 +2124,8 @@ X-Batch-Job: queued
 SQL Reference
 
 ```sql
--- เงื่อนไขเดียวกับ status-summary (รวม :result ประกัน/ไม่ประกัน) แล้ว stream เป็นไฟล์ .csv เข้า Batch
-SELECT d.doc_no, d.impacted_store_code, d.status_code, h.compensate_amount, h.submit_account_month
-FROM compensation_documents d
-LEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no
-LEFT JOIN LATERAL (
-  SELECT result_category FROM consideration_logs
-  WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1
-) cl ON TRUE
-WHERE d.year = :year
-  AND (:month  IS NULL OR h.submit_account_month = :month)
-  AND (:result IS NULL OR cl.result_category = :result)
+-- เงื่อนไขเดียวกับ status-summary ทุกตัว แล้ว stream 14 คอลัมน์เดิมออกเป็นไฟล์ .xlsx (Export Excel)
+-- ใช้ SELECT ชุดเดียวกับ GET /reports/status-summary แต่ไม่ตัดหน้า (ไม่มี LIMIT/OFFSET)
 ORDER BY d.doc_no;
 ```
 
@@ -2551,7 +2565,6 @@ GROUP BY section_code;
 | 1 | GET | /api/v1/interfaces/tracking | สถานะการรับ–ส่งไฟล์กับระบบภายนอก (interface_transactions ใหม่ แทน FGI_CONFIRM_RECEIVE_DATA) |
 | 2 | POST | /api/v1/interfaces/sta/ack | Callback ให้ระบบ STA ยิงตอบรับ (ACK) ตรง — แทนการรออัปเดต return_code ฝั่งเดียว |
 | 3 | GET | /api/v1/interfaces/pending-ack | รายการ ACK ค้างเกิน 1 วัน (เกณฑ์เดียวกับ watchdog) — ใช้ทั้งหน้า dashboard และอีเมลเตือน |
-| 4 | GET | /api/v1/dashboard/summary | ตัวเลข stat cards ของหน้าแรก (งานรอดำเนินการ) — ยกเลิกหน้า Overview/Dashboard แล้ว (ตัดสินใจ 2026-08-06) |
 
 #### 6.9.1 GET /api/v1/interfaces/tracking
 
@@ -2713,76 +2726,6 @@ WHERE return_code IS NULL
   AND data_name IN (:staDatasets)
   AND sent_at < CURRENT_DATE - 1
 ORDER BY sent_at;
-```
-
-#### 6.9.4 GET /api/v1/dashboard/summary
-
-ตัวเลข stat cards ของหน้าแรก (งานรอดำเนินการ) — ยกเลิกหน้า Overview/Dashboard แล้ว (ตัดสินใจ 2026-08-06)
-
-| Item | Detail |
-| --- | --- |
-| Global No. | 48 |
-| Method | GET |
-| Path | /api/v1/dashboard/summary |
-| Group | Interface & Dashboard |
-| Access / Role | ทุก role |
-| Requirement Tag | K2 (หน้าแรก = งานรอดำเนินการ) |
-
-| Step | Flow |
-| --- | --- |
-| 1 | อ่าน sectionCode ของผู้ใช้จาก user context ที่ BFF ส่งมา |
-| 2 | นับงานค้างของ section นั้น + แยกกลุ่ม: ยอดขายไม่ครบ 60 วัน · รอเกิน 3 วัน · วงเงินเข้าเส้น AVP (> 50,000 · SDD GI) |
-| 3 | cache 5 นาที |
-| 4 | ตัด field abnormalStores/chart.monthly ของหน้า Overview เดิมออก |
-
-| DB Object | R/W | Usage |
-| --- | --- | --- |
-| workflow_tasks | R | งานค้างของ section + จำนวนวันที่รอ |
-| compensation_documents | R | ยอดชดเชยต่อเอกสาร (เกณฑ์วงเงิน AVP) |
-| fgi_impact_sales_summaries | R | total_working_days < 60 = แถวแดง |
-
-#### Request / Query / Header
-
-```json
-(ไม่มี body)
-```
-
-#### Response
-
-```json
-{
-  "waitingTasks": 24,
-  "flagUnder60Days": 5,
-  "pendingOver3Days": 7,
-  "overGmLimit": 3
-}
-```
-
-| Error / Condition |
-| --- |
-| 401 |
-
-SQL Reference
-
-```sql
--- stat cards หน้าแรก = งานรอดำเนินการ (cache 5 นาที) · ยกเลิกหน้า Overview แล้ว (2026-08-06)
-SELECT COUNT(*) AS waiting_tasks
-FROM workflow_tasks WHERE section_code = :mySection AND task_status = :statusOpen;
-
-SELECT COUNT(*) AS flag_under_60_days
-FROM workflow_tasks t
-JOIN compensation_documents d ON d.doc_no = t.doc_no
-JOIN fgi_impact_sales_summaries s ON s.impact_process_id = d.impact_process_id
-WHERE t.section_code = :mySection AND t.task_status = :statusOpen AND s.total_working_days < 60;
-
-SELECT COUNT(*) AS pending_over_3_days
-FROM workflow_tasks WHERE section_code = :mySection AND task_status = :statusOpen
-  AND opened_at < :threeDaysAgo;
-
--- วงเงินเข้าเส้น AVP (> workflow.gm_amount_limit = 50,000 · SDD GI)
-SELECT COUNT(*) AS over_gm_limit
-FROM workflow_tasks t JOIN compensation_documents d ON d.doc_no = t.doc_no
-WHERE t.section_code = :mySection AND t.task_status = :statusOpen AND d.total_compensation_amount > :gmLimit;
 ```
 
 ## 7. API Test Checklist

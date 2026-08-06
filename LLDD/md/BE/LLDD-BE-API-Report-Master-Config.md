@@ -54,7 +54,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report Maste
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
 | GET /api/v1/reports/status-summary | รายงานตรวจสอบประกันรายได้ | Validate filter | missing year/status/result fails |
-| GET /api/v1/reports/status-summary/export | Export CSV | Build query | export uses same filters as preview |
+| GET /api/v1/reports/status-summary/export | Export Excel | Build query | export uses same filters as preview |
 | GET /api/v1/operators | อ่าน operator assignments | Apply pagination/export mode | master edit requires reason |
 | POST /api/v1/operators | สร้าง operator assignment | Return rows or CSV | config locked value cannot edit |
 | PUT /api/v1/operators/{id} | แก้ operator assignment | For mutations validate reason and write audit | missing year/status/result fails |
@@ -119,7 +119,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report Maste
 | --- | --- | --- | --- |
 | year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | status | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| result | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| result | string | No | UTF-8; use value domain described by endpoint purpose |
 | region | array<string> | No | JSON array; element type shown in Type column |
 | storeType | array<string> | No | JSON array; element type shown in Type column |
 | impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
@@ -149,7 +149,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report Maste
 
 ### GET /api/v1/reports/status-summary/export
 
-Export CSV
+Export Excel
 
 #### Query Params
 
@@ -175,7 +175,7 @@ Export CSV
 | --- | --- | --- | --- |
 | year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | status | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| result | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| result | string | No | UTF-8; use value domain described by endpoint purpose |
 | region | array<string> | No | JSON array; element type shown in Type column |
 | storeType | array<string> | No | JSON array; element type shown in Type column |
 | impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
@@ -185,7 +185,7 @@ Export CSV
 
 ```json
 {
-  "fileName": "status-summary.csv"
+  "fileName": "insurance-verification-2026.xlsx"
 }
 ```
 

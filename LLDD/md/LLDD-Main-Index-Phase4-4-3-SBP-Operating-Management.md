@@ -85,7 +85,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Document Lists | 42 | 29/07/2026 | 06/08/2026 | Waiting list, Related document list, Search/filter/status filter |
 | Create Document | 30 | 29/07/2026 | 04/08/2026 | Create form shell, Tab: สร้างเอกสารทั่วไป, Tab: เอกสารจาก FS ผ่าน hidden iframe |
 | Document Detail and Action | 72 | 05/08/2026 | 20/08/2026 | Document header, Store impact/new-store/factor sections, Role-based visible/editable sections |
-| Status Summary Report | 30 | 07/08/2026 | 13/08/2026 | Report filters (layout 2026-08-06: รหัสร้าน\|ชื่อร้าน · ร้านเปิดใหม่\|ประเภทร้าน A/B/C/E · เดือน/ปี From-To เต็มแถว · สถานะ\|ผลการพิจารณา · ภาค · Period Statement), Summary table (sortable 19 columns), Preview/detail modal |
+| Status Summary Report | 30 | 07/08/2026 | 13/08/2026 | Report filters (SDD slide 60 · 2026-08-06: สถานะ*\|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ\|ประเภทร้าน A/B/C/E · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว), Summary table (sortable 14 columns), Export Excel action |
 | Master Config | 30 | 14/08/2026 | 20/08/2026 | Operator master, External factor master, Menu permission, System/Global Config (SCR-11) |
 | Batch Job Monitor | 24 | 21/08/2026 | 26/08/2026 | Job selector/list สำหรับเลือก job ที่ต้องดูรายละเอียด, Tab: แบบฟอร์มพารามิเตอร์, Tab: ประวัติการรัน |
 | Email Template and Notification Config | 21 | 20/08/2026 | 25/08/2026 | Email template list, Template edit form, Variable helper |

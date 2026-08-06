@@ -87,8 +87,8 @@
 | 3.7 | ประเภทร้าน (checkbox 4 ค่า) | ✅ | checkbox **A/B/C/E** — แก้จาก A/B/C/D เมื่อ 2026-08-06 ตามภาพหน้าจอ K2 จริง (`docs/ภาพประกันรายได้/รายงานสรุปสถานะ.png`) |
 | 3.8 | **ภาค (checkbox + เพิ่มภาคใหม่อัตโนมัติ)** | ✅ | **13 รหัส** `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` ใช้ชุดเดียวทั้งระบบ · master `mas_zone` ของระบบ SBP เดิม + `GET /store/all-regions` |
 | 3.9 | ผลการพิจารณา (**radio** ประกัน/ไม่ประกันรายได้) | ✅ | radio บังคับ 2 ค่า |
-| 3.10 | ปุ่ม **Preview Report** · **Export** · เคลียร์ค่าเริ่มต้น | ✅ | 3 ปุ่มในฟอร์ม (ตัดปุ่ม Export ด้านบนออกตามมติผู้ใช้) |
-| 3.11 | ผลลัพธ์ 19 คอลัมน์ | ✅ | ตารางผลลัพธ์ใน `k2-report.html` |
+| 3.10 | ปุ่ม **ค้นหาข้อมูล** · **Export Excel** · เคลียร์ค่าเริ่มใหม่ | ✅ | 3 ปุ่มในฟอร์ม (ตัดปุ่ม Export ด้านบนออกตามมติผู้ใช้ · เปลี่ยนชื่อปุ่มตาม SDD สไลด์ 60 · 2026-08-06) |
+| 3.11 | ผลลัพธ์ **14 คอลัมน์ ตาม SDD สไลด์ 60** | ✅ | ตารางผลลัพธ์ใน `k2-report.html` (ลดจาก 19 → 14 คอลัมน์ · 2026-08-06) |
 | 3.12 | กระทบยอด SAP (`FBL3H`/`SAPPOST`) · SR · Auto Update = BSR out of scope | ✅ | `api.md` / `workflow.md` + การ์ดอธิบายปลายทางในหน้ารายงาน — ขั้นตอนจริงอยู่ในระบบ SAP/ticketing จึงไม่ต้องมีหน้าจอ |
 
 ## 6. รายละเอียดการคำนวณชดเชย + ข้อมูลประกอบ (สไลด์ As-Is 6–7, 30–42)
@@ -128,7 +128,7 @@
 ## 9. สิ่งที่เปลี่ยนไปนอก SDD (มติผู้ใช้ระหว่างทาง — บันทึกกันสับสน)
 
 - **ยกเลิกหน้า Overview/Dashboard** → หน้าแรกคือ **เอกสาร → รอดำเนินการ** (`index.html` เหลือ redirect stub)
-- **ลบหน้าข้อมูลผิดปกติ / แจกงาน** (ไฟล์ + 2 endpoint) — เหลือเป็นธงแถวแดง + stat card ในหน้ารายการ
+- **ลบหน้าข้อมูลผิดปกติ / แจกงาน** (ไฟล์ + 2 endpoint) — เหลือเป็น **ธงแถวแดง** ในหน้ารายการอย่างเดียว (ถอด stat card ออกเมื่อ 2026-08-06 · ไม่ทำตัวกรองทดแทน)
 - **RBAC + ผู้ปฏิบัติงาน ใช้ระบบ SBP เดิม** (auth-backend/ABS) — ตัด 5 ตาราง + 18 endpoint · ถอดหน้า `k2-permissions` / `k2-operators`
 - **เทียบ DB เดิมของ K2** (`script_TB_DB_CPA_FRN_FGI_20260722.sql`) → เพิ่ม 5 ตาราง (`zones`, `branch_types`, `decisions`, `document_running_numbers`, `document_cost_details`) + คอลัมน์ `approve_limit_amount`, `round_no`/`loop_no`, `allmap_url`, `statement_id`, `approver_snapshot` → รวม 34 ตาราง / 47 endpoint · **แล้วตัดอีก 10 ตาราง / 3 endpoint เมื่อ 2026-08-06 (รอบ 2) เพราะระบบ SBP ปัจจุบันมีอยู่แล้ว → เหลือ 24 ตาราง / 44 endpoint**
 - **เป้าหมาย FE/BE** = โมดูลใน `srm-sps-spsap-web-frontend` (portal `sbpm`, Next.js) และ NestJS + TypeORM ตาม `srm-sps-spsap-store-backend` · โฟลเดอร์ `react-app/` ถูกลบ (กู้จาก git `003b661`)
