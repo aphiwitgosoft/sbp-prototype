@@ -63,8 +63,8 @@ select waiting rows, start workflow instance, update generated-flow flag per tra
 | --- | --- | --- |
 | Input identity | Impact-store rows waiting to start workflow plus generated workflow/document identifiers. | snapshot input file/business key/period in run record |
 | Output identity | Workflow instances started and source rows marked generated; failed rows remain rerunnable with error detail. | reconcile input, success, reject and skipped counts |
-| Dedup proof | UNIQUE(workflow_instances.doc_no) และ OPEN-task partial unique index; instance เดิมให้ skip | rerun fixture produces no duplicate target business key |
-| Transaction proof | lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึง create instance/task และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun | injected failure leaves no partial committed state outside documented boundary |
+| Dedup proof | UNIQUE(workflow_transaction.version_id, reference_id) ของ @srm/glb-workflow; transaction เดิมให้ skip | rerun fixture produces no duplicate target business key |
+| Transaction proof | lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึงเรียก initializeWorkflow/addPreparedApprover ของ @srm/glb-workflow และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun | injected failure leaves no partial committed state outside documented boundary |
 | Security proof | internal service token จาก workload identity/secretRef; ห้าม Basic Auth หรือ K2 REST credential เดิม | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
@@ -81,8 +81,8 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | Contract | Target implementation |
 | --- | --- |
 | Repository | workflowRepository |
-| Idempotency / dedup | UNIQUE(workflow_instances.doc_no) และ OPEN-task partial unique index; instance เดิมให้ skip |
-| Transaction boundary | lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึง create instance/task และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun |
+| Idempotency / dedup | UNIQUE(workflow_transaction.version_id, reference_id) ของ @srm/glb-workflow; transaction เดิมให้ skip |
+| Transaction boundary | lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึงเรียก initializeWorkflow/addPreparedApprover ของ @srm/glb-workflow และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun |
 | Security | internal service token จาก workload identity/secretRef; ห้าม Basic Auth หรือ K2 REST credential เดิม |
 
 #### Input / candidate query
@@ -93,7 +93,7 @@ WITH locked_process AS (
     FROM fgi_impact_processes p
     JOIN compensation_documents d ON d.impact_process_id = p.id
     WHERE p.workflow_generation_status = 'W'
-      AND NOT EXISTS (SELECT 1 FROM workflow_instances w WHERE w.doc_no = d.doc_no)
+      AND NOT EXISTS (SELECT 1 FROM workflow_transaction w WHERE w.reference_id = d.doc_no AND w.version_id = :sbpgi_version_id)   -- @srm/glb-workflow
     ORDER BY p.id
     FOR UPDATE OF p SKIP LOCKED
 ), gate AS (
@@ -136,12 +136,10 @@ WHERE id = :impact_process_id
   AND workflow_generation_status = 'W'
   AND :gate_decision = 'N';
 
-INSERT INTO workflow_instances (instance_id, doc_no, instance_status, started_at, started_by)
-SELECT :instance_id, :doc_no, 'ACTIVE', CURRENT_TIMESTAMP, 'JOB-8B'
-WHERE :gate_decision = 'Y';
-INSERT INTO workflow_tasks (instance_id, doc_no, section_code, task_status, opened_at)
-SELECT :instance_id, :doc_no, '06', 'OPEN', CURRENT_TIMESTAMP
-WHERE :gate_decision = 'Y';
+-- gate_decision='Y': เปิด workflow ผ่าน @srm/glb-workflow ของระบบ SBP เดิม (ไม่ INSERT ตารางเอง)
+--   initializeWorkflow({ versionId: :sbpgi_version_id, referenceId: :doc_no, userId: 'JOB-8B' })
+--   addPreparedApprover({ versionId, referenceId: :doc_no, stateId: '06', approver, seq: 1 })
+-- library จะเขียน workflow_transaction / workflow_approver / workflow_history ให้เอง
 UPDATE fgi_impact_processes
 SET workflow_generation_status = 'Y', updated_at = CURRENT_TIMESTAMP
 WHERE id = :impact_process_id
@@ -352,7 +350,7 @@ export async function runLlddBeJob8BStartinternalworkflow(ctx, services) {
 {
   "items": [
     {
-      "startedAt": "30/06/2569 18:00",
+      "startedAt": "30/06/2026 18:00",
       "status": "ok"
     }
   ]

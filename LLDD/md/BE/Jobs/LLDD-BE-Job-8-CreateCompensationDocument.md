@@ -61,7 +61,7 @@ update BPM sequence, query eligible impact-store rows, refresh not-OPT data, gen
 | --- | --- | --- |
 | Input identity | Impact-store compensation rows in initial status with workflow sequence values and no prior confirm-receive output. | snapshot input file/business key/period in run record |
 | Output identity | Impact-store workflow create payload/output with generated sequence numbers and duplicate guard. | reconcile input, success, reject and skipped counts |
-| Dedup proof | UNIQUE(impact_process_id) และ UNIQUE(be_year,running_no); lock running number ต่อปีใน transaction; conflict ต้องคืน/อ้าง doc_no เดิม และยอมให้เลขที่จองกระโดดโดยห้าม reuse | rerun fixture produces no duplicate target business key |
+| Dedup proof | UNIQUE(impact_process_id) และ UNIQUE(year,running_no); lock running number ต่อปีใน transaction; conflict ต้องคืน/อ้าง doc_no เดิม และยอมให้เลขที่จองกระโดดโดยห้าม reuse | rerun fixture produces no duplicate target business key |
 | Transaction proof | lock เลขรัน + insert document + update process + INTERNAL_DB_WRITE tracking ใน transaction เดียว | injected failure leaves no partial committed state outside documented boundary |
 | Security proof | internal service account เท่านั้น; ห้ามสร้างไฟล์ BPM06001O, ห้าม SFTP และห้ามเก็บ K2 credential | config/log/error contains no plaintext secret |
 
@@ -80,7 +80,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | Contract | Target implementation |
 | --- | --- |
 | Repository | compensationDocumentRepository |
-| Idempotency / dedup | UNIQUE(impact_process_id) และ UNIQUE(be_year,running_no); lock running number ต่อปีใน transaction; conflict ต้องคืน/อ้าง doc_no เดิม และยอมให้เลขที่จองกระโดดโดยห้าม reuse |
+| Idempotency / dedup | UNIQUE(impact_process_id) และ UNIQUE(year,running_no); lock running number ต่อปีใน transaction; conflict ต้องคืน/อ้าง doc_no เดิม และยอมให้เลขที่จองกระโดดโดยห้าม reuse |
 | Transaction boundary | lock เลขรัน + insert document + update process + INTERNAL_DB_WRITE tracking ใน transaction เดียว |
 | Security | internal service account เท่านั้น; ห้ามสร้างไฟล์ BPM06001O, ห้าม SFTP และห้ามเก็บ K2 credential |
 
@@ -99,9 +99,9 @@ GROUP BY p.id, p.impacted_store_code, p.impact_month;
 
 ```sql
 INSERT INTO compensation_documents
-    (doc_no, be_year, running_no, impact_process_id, impacted_store_code, impact_month,
+    (doc_no, year, running_no, impact_process_id, impacted_store_code, impact_month,
      source, status_code, current_section_code, total_compensation_amount, created_by)
-VALUES (:doc_no, :be_year, :running_no, :impact_process_id, :impacted_store_code, :impact_month,
+VALUES (:doc_no, :year, :running_no, :impact_process_id, :impacted_store_code, :impact_month,
         'FS', '06', '06', :total_compensation_amount, 'JOB-8')
 ON CONFLICT (impact_process_id) DO NOTHING;
 
@@ -329,7 +329,7 @@ Job 8 ใช้ running number แบบ monotonic ต่อปี พ.ศ. ช�
 {
   "items": [
     {
-      "startedAt": "30/06/2569 17:30",
+      "startedAt": "30/06/2026 17:30",
       "status": "ok"
     }
   ]

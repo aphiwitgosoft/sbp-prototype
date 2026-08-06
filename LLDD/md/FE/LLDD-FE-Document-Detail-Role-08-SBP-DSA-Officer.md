@@ -75,7 +75,7 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Document Detail 
 
 | Area | Fields | Validation / Behavior |
 | --- | --- | --- |
-| คำนวณเงินชดเชย | baseCompensationAmount, totalCompensatePercent, totalCompensationAmount, approvalLimitIndicator | read-only; แสดง <=50,000 (จบที่ GM) หรือ 50,001–300,000 (เข้าเส้น AVP) — วงเงิน SDD GI จาก API |
+| คำนวณเงินชดเชย | baseCompensationAmount, totalCompensatePercent, totalCompensationAmount, approvalLimitIndicator | read-only; แสดง <=100,000 หรือ >100,000 จาก API |
 | เอกสารแนบ | file, fileName, attachmentType, remark | เพิ่มไฟล์ได้; ขนาด <= 5 MB; extension ต้องอยู่ใน allowlist |
 | แผงพิจารณา | result, comment | result required; comment ตาม actionOptions.requireComment |
 
@@ -94,7 +94,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123",
+  "docNo": "2026/00123",
   "statusCode": "08",
   "viewerRbacRoleCode": "R-XX",
   "roleProfileCode": "P-08",
@@ -183,7 +183,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123"
+  "docNo": "2026/00123"
 }
 ```
 
@@ -197,7 +197,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123",
+  "docNo": "2026/00123",
   "statusCode": "08",
   "viewerRbacRoleCode": "R-XX",
   "roleProfileCode": "P-08",
@@ -244,7 +244,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ### POST /api/v1/documents/{docNo}/actions
 
-ตัวอย่าง positive-path จาก section 08; Section 02 ใช้กรณียอดรวมมากกว่า 50,000 บาท (GM) / 300,000 บาท (AVP) ตาม SDD GI 24/02/2026
+ตัวอย่าง positive-path จาก section 08; Section 02 ใช้กรณียอดรวมมากกว่า 100,000 บาท
 
 #### Request
 

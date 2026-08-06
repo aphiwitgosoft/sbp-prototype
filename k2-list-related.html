@@ -46,6 +46,14 @@
     background:#fff; border:1px solid var(--line); border-radius:8px;
     transition:background .15s, color .15s, border-color .15s;}
   .rb-close:hover{background:#f3f6fb; color:#2b3440; border-color:#c9d3df;}
+  /* แถบ Selected Filter + Quick Search (ตามหน้าจอ K2 เดิม) */
+  .quickbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 12px;padding:9px 14px;background:#f7f9fc;border:1px solid #e6edf6;border-radius:10px;}
+  .quickbar .qb-l{font-size:12.5px;color:#6b7888;white-space:nowrap;}
+  .quickbar .qb-sel{height:34px;min-width:132px;padding:0 10px;font-size:13px;color:#37414e;background:#fff;border:1px solid #d9e2ee;border-radius:8px;}
+  .quickbar .qb-input{height:34px;min-width:230px;flex:1;padding:0 12px;font-size:13px;background:#fff;border:1px solid #d9e2ee;border-radius:8px;}
+  .quickbar .qb-input:focus,.quickbar .qb-sel:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(47,111,237,.12);}
+  .quickbar .qb-div{width:1px;height:22px;background:#dde5ef;margin:0 3px;}
+  .quickbar .qb-hit{font-size:12px;color:var(--primary);font-weight:600;white-space:nowrap;}
 </style>
 </head>
 <body data-page="k2-list-related" data-nav="modules" data-module="k2-list-related" data-crumb="เอกสาร · ที่เกี่ยวข้อง">
@@ -154,6 +162,19 @@
               <button class="btn btn-ghost" id="fClear" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg> ล้างตัวกรอง</button>
             </div>
           </div>
+          <!-- Selected Filter (ชุดตัวกรองที่บันทึกได้) + Quick Search — เทียบเท่าแถบเดียวกันของ K2 เดิม -->
+          <div class="quickbar">
+            <span class="qb-l">Selected Filter:</span>
+            <select id="fPreset" class="qb-sel" title="ชุดตัวกรองที่บันทึกไว้"><option value="">Default</option></select>
+            <input id="fPresetName" class="qb-input" style="min-width:160px;flex:none;" placeholder="ตั้งชื่อชุดตัวกรอง แล้วกด Enter" hidden><button class="icon-btn" id="fPresetSave" title="บันทึกตัวกรองที่ตั้งอยู่ตอนนี้เป็นชุดใหม่"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0 5 5l-9.4 9.4a2.1 2.1 0 0 1-3-3Z"/></svg></button>
+            <button class="icon-btn icon-del" id="fPresetDel" title="ลบชุดตัวกรองที่เลือก" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+            <span class="qb-div"></span>
+            <span class="qb-l">Quick Search:</span>
+            <select id="qsField" class="qb-sel" title="เลือกคอลัมน์ที่ต้องการค้น"><option value="-1">All fields</option></select>
+            <input id="qsText" class="qb-input" placeholder="พิมพ์คำค้น แล้วกรองทันที…" aria-label="Quick Search">
+            <button class="icon-btn" id="qsClear" title="ล้างคำค้น Quick Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+            <span class="qb-hit" id="qsHit"></span>
+          </div>
           <div class="table-wrap"><table class="data" id="tblK2">
             <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">ผู้ดำเนินการ (เจ้าของงาน)</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
             <tbody><!-- 200 แถว mock ถูก generate ด้วยสคริปต์ท้ายหน้า --></tbody>
@@ -236,6 +257,19 @@
               <button class="btn btn-ghost" id="fClearR" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg> ล้างตัวกรอง</button>
             </div>
           </div>
+          <!-- Selected Filter (ชุดตัวกรองที่บันทึกได้) + Quick Search — เทียบเท่าแถบเดียวกันของ K2 เดิม -->
+          <div class="quickbar">
+            <span class="qb-l">Selected Filter:</span>
+            <select id="fPresetR" class="qb-sel" title="ชุดตัวกรองที่บันทึกไว้"><option value="">Default</option></select>
+            <input id="fPresetNameR" class="qb-input" style="min-width:160px;flex:none;" placeholder="ตั้งชื่อชุดตัวกรอง แล้วกด Enter" hidden><button class="icon-btn" id="fPresetSaveR" title="บันทึกตัวกรองที่ตั้งอยู่ตอนนี้เป็นชุดใหม่"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0 5 5l-9.4 9.4a2.1 2.1 0 0 1-3-3Z"/></svg></button>
+            <button class="icon-btn icon-del" id="fPresetDelR" title="ลบชุดตัวกรองที่เลือก" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+            <span class="qb-div"></span>
+            <span class="qb-l">Quick Search:</span>
+            <select id="qsFieldR" class="qb-sel" title="เลือกคอลัมน์ที่ต้องการค้น"><option value="-1">All fields</option></select>
+            <input id="qsTextR" class="qb-input" placeholder="พิมพ์คำค้น แล้วกรองทันที…" aria-label="Quick Search">
+            <button class="icon-btn" id="qsClearR" title="ล้างคำค้น Quick Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+            <span class="qb-hit" id="qsHitR"></span>
+          </div>
           <div class="table-wrap"><table class="data" id="tblRelated">
             <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">ผู้ดำเนินการ (เจ้าของงาน)</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
             <tbody><!-- 120 แถว mock ถูก generate ด้วยสคริปต์ท้ายหน้า --></tbody>
@@ -294,7 +328,7 @@
     var DONE = 'เสร็จสิ้นดำเนินการ';
     // ลำดับถ่วงน้ำหนัก 20 ตำแหน่ง (6 สถานะ · ตัดบัญชี 04/05 ตาม SDD v7.5) — 06:50 · 08:30 · 01:40 · 02:30 · 03:20 · เสร็จสิ้น:30 (ต่อ 200 แถว)
     var PATTERN = [0, 2, 5, 1, 3, 0, 2, 4, 0, 1, 5, 2, 3, 0, 1, 4, 2, 0, 3, 5];
-    // ภาค 13 รหัส (SDD v7.5 — ชุดใหม่แทน 8 รหัสเดิมของ SRS 3.1.7) · ภาคใหม่เพิ่มอัตโนมัติจาก master `zones` (GET /zones)
+    // ภาค 13 รหัส (SDD v7.5 — ชุดใหม่แทน 8 รหัสเดิมของ SRS 3.1.7) · ภาคใหม่เพิ่มอัตโนมัติจาก master `mas_zone` ของระบบ SBP เดิม (GET /store/all-regions · ตัดสินใจ 2026-08-06)
     // เจ้าของงาน (เจ้าหน้าที่ SBP DSA) — เคสต่อเนื่อง/เห็นควรไม่ชดเชย ระบบ auto-assign คนเดิม (SDD GI สไลด์ 48)
     var OWNERS = ['Somchai Jaidee', 'Nattapong Wongsa', 'Kanjana Preechan', 'Wichai Thongdee', 'Pimchanok Sae-lim'];
     var REGIONS = ['BE', 'BS', 'NEU', 'REU', 'RSU', 'BG', 'BW', 'RC', 'RN', 'BN', 'NEL', 'REL', 'RSL'];
@@ -451,6 +485,7 @@
         var ymin = numVal(fDayMin), ymax = numVal(fDayMax);
         return baseRows().filter(function (tr) {
           if (special && !special(tr)) return false;
+          if (!quickMatch(tr)) return false;
           if (q && rowText(tr).indexOf(q) === -1) return false;
           if (st && pillText(tr) !== st) return false;
           if (rg && rowRegion(tr) !== rg) return false;
@@ -570,6 +605,85 @@
         if (cfg.onApply) cfg.onApply();
       }
 
+
+      /* ===== Selected Filter (preset) + Quick Search — เทียบเท่าแถบของ K2 เดิม ===== */
+      var qsField = el('qsField'), qsText = el('qsText'), fPreset = el('fPreset');
+      var quick = { col: -1, q: '' };
+      var PRESET_KEY = 'sbp.filterPresets.' + cfg.tableId;
+
+      /* เติมรายชื่อคอลัมน์ให้ dropdown Quick Search จากหัวตารางจริง */
+      Array.prototype.slice.call(document.querySelectorAll('#' + cfg.tableId + ' thead th')).forEach(function (th, i) {
+        var o = document.createElement('option'); o.value = String(i); o.textContent = th.textContent.trim();
+        qsField.appendChild(o);
+      });
+
+      function quickMatch(tr) {
+        if (!quick.q) return true;
+        var hay = quick.col < 0
+          ? tr.textContent
+          : (tr.cells[quick.col] ? tr.cells[quick.col].textContent : '');
+        return hay.toLowerCase().indexOf(quick.q) !== -1;
+      }
+      function onQuick() {
+        quick.q = qsText.value.trim().toLowerCase();
+        quick.col = parseInt(qsField.value, 10);
+        el('qsHit').textContent = quick.q ? 'Quick Search ทำงาน' : '';
+        page = 1; apply();
+      }
+      qsText.addEventListener('input', onQuick);
+      qsField.addEventListener('change', onQuick);
+      el('qsClear').addEventListener('click', function () { qsText.value = ''; qsField.value = '-1'; onQuick(); });
+
+      /* preset: เก็บค่าฟิลเตอร์ทั้งชุดไว้ใน localStorage */
+      var FIELDS = [fSearch, fStatus, fRegion, fType, fDateFrom, fDateTo, fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax];
+      function readPresets() { try { return JSON.parse(localStorage.getItem(PRESET_KEY)) || {}; } catch (e) { return {}; } }
+      function writePresets(p) { try { localStorage.setItem(PRESET_KEY, JSON.stringify(p)); } catch (e) {} }
+      function renderPresets(sel) {
+        var p = readPresets();
+        fPreset.innerHTML = '<option value="">Default</option>';
+        Object.keys(p).forEach(function (name) {
+          var o = document.createElement('option'); o.value = name; o.textContent = name; fPreset.appendChild(o);
+        });
+        fPreset.value = sel || '';
+        el('fPresetDel').hidden = !fPreset.value;
+      }
+      /* ตั้งชื่อ preset ด้วย input ในแถบเอง — ไม่ใช้ prompt() ของเบราว์เซอร์ (บล็อกหน้าจอ) */
+      var nameBox = el('fPresetName');
+      function savePreset() {
+        var name = nameBox.value.trim();
+        if (!name) { nameBox.focus(); return; }
+        var p = readPresets();
+        p[name] = { f: FIELDS.map(function (c) { return c.value; }), qc: qsField.value, qt: qsText.value };
+        writePresets(p); renderPresets(name);
+        nameBox.value = ''; nameBox.hidden = true;
+        toast('บันทึกชุดตัวกรอง "' + name + '" แล้ว', 'ok');
+      }
+      el('fPresetSave').addEventListener('click', function () {
+        if (nameBox.hidden) { nameBox.hidden = false; nameBox.focus(); return; }
+        savePreset();
+      });
+      nameBox.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); savePreset(); }
+        if (e.key === 'Escape') { nameBox.value = ''; nameBox.hidden = true; }
+      });
+      el('fPresetDel').addEventListener('click', function () {
+        var name = fPreset.value; if (!name) return;
+        var p = readPresets(); delete p[name]; writePresets(p); renderPresets('');
+        toast('ลบชุดตัวกรอง "' + name + '" แล้ว', 'del');
+      });
+      fPreset.addEventListener('change', function () {
+        var name = fPreset.value;
+        el('fPresetDel').hidden = !name;
+        if (!name) { FIELDS.forEach(function (c) { c.value = ''; }); qsField.value = '-1'; qsText.value = ''; }
+        else {
+          var d = readPresets()[name]; if (!d) return;
+          FIELDS.forEach(function (c, i) { c.value = d.f[i] || ''; });
+          qsField.value = d.qc || '-1'; qsText.value = d.qt || '';
+        }
+        onQuick();
+      });
+      renderPresets('');
+
       function onFilter() { page = 1; apply(); }
       fSearch.addEventListener('input', onFilter);
       [fStatus, fRegion, fType, fDateFrom, fDateTo].forEach(function (c) { c.addEventListener('change', onFilter); });
@@ -577,6 +691,8 @@
       el('fClear').addEventListener('click', function () {
         [fSearch, fStatus, fRegion, fType, fDateFrom, fDateTo, fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax]
           .forEach(function (c) { c.value = ''; });
+        qsText.value = ''; qsField.value = '-1'; quick = { col: -1, q: '' }; el('qsHit').textContent = '';
+        fPreset.value = ''; el('fPresetDel').hidden = true;
         special = null; specialKey = ''; relatedKey = '';
         page = 1; apply();
       });

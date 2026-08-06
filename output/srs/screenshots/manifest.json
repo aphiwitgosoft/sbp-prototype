@@ -1,11 +1,5 @@
 [
   {
-    "file": "index.html",
-    "width": 1440,
-    "height": 1842,
-    "output": "index.png"
-  },
-  {
     "file": "flow-fgi.html",
     "width": 1440,
     "height": 2331,
@@ -14,13 +8,13 @@
   {
     "file": "k2-flow.html",
     "width": 1440,
-    "height": 4180,
+    "height": 4805,
     "output": "k2-flow.png"
   },
   {
     "file": "plan-flow.html",
     "width": 1440,
-    "height": 4025,
+    "height": 4148,
     "output": "plan-flow.png"
   },
   {
@@ -38,7 +32,7 @@
   {
     "file": "plan-database.html",
     "width": 1440,
-    "height": 4958,
+    "height": 6141,
     "output": "plan-database.png"
   },
   {
@@ -50,31 +44,25 @@
   {
     "file": "k2-create.html",
     "width": 1440,
-    "height": 1033,
+    "height": 1192,
     "output": "k2-create.png"
   },
   {
     "file": "k2-list-waiting.html",
     "width": 1440,
-    "height": 1570,
+    "height": 1636,
     "output": "k2-list-waiting.png"
   },
   {
     "file": "k2-list-related.html",
     "width": 1440,
-    "height": 1601,
+    "height": 1667,
     "output": "k2-list-related.png"
-  },
-  {
-    "file": "k2-list-abnormal.html",
-    "width": 1440,
-    "height": 1473,
-    "output": "k2-list-abnormal.png"
   },
   {
     "file": "k2-document.html",
     "width": 1440,
-    "height": 3881,
+    "height": 4432,
     "output": "k2-document.png"
   },
   {
@@ -84,39 +72,33 @@
     "output": "k2-report.png"
   },
   {
-    "file": "k2-operators.html",
-    "width": 1440,
-    "height": 1216,
-    "output": "k2-operators.png"
-  },
-  {
     "file": "k2-factors.html",
     "width": 1440,
     "height": 1142,
     "output": "k2-factors.png"
   },
   {
-    "file": "k2-permissions.html",
+    "file": "k2-competitors.html",
     "width": 1440,
-    "height": 2621,
-    "output": "k2-permissions.png"
+    "height": 1596,
+    "output": "k2-competitors.png"
   },
   {
     "file": "system-config.html",
     "width": 1440,
-    "height": 2116,
+    "height": 1983,
     "output": "system-config.png"
   },
   {
-    "file": "plan-email.html",
+    "file": "email-template.html",
     "width": 1440,
-    "height": 3791,
-    "output": "plan-email.png"
+    "height": 3812,
+    "output": "email-template.png"
   },
   {
     "file": "plan-api.html",
     "width": 1440,
-    "height": 5649,
+    "height": 5039,
     "output": "plan-api.png"
   }
 ]

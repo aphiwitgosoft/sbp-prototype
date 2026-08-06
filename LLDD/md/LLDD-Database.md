@@ -2,8 +2,6 @@
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
-> ปรับตาม SDD GI 24/02/2026 (วงเงิน GM 50,000 / AVP 300,000) + การตัดสินใจใช้ระบบสิทธิ์เดิม 2026-08-05 — ตัดตาราง `roles`/`menus`/`menu_permissions`/`user_accounts`/`operator_assignments` เหลือ 34 ตาราง
-
 ## 1. Purpose
 
 เอกสารนี้เป็น LLDD Database ระดับรวมของ target schema ระบบ SBPGI/SBP Mall ใช้เป็น reference สำหรับ BE API, Batch Job, migration, indexing, transaction และ data dictionary
@@ -13,10 +11,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 - ระบบใหม่รวม EAI และ K2 เข้าเป็น SBPGI ใช้ฐานข้อมูลเดียวกัน
 - ไม่มีไฟล์ BPM06001O/BPM06002O/BPM06003O ภายในเพื่อส่งเข้า K2; ใช้ FK จาก compensation_documents ไป impact_process แทน
 - Workflow engine ภายในใช้ workflow_instances และ workflow_tasks แทน K2 engine ภายนอก
-- ตัดขั้นบัญชี 04/05 ตาม SDD v7.5; workflow ใช้ section 06/08/01/02/03
+- ตัดขั้นบัญชี 04/05 (SDD v7.5 — รวมเข้าการออกแบบแล้ว ไฟล์ต้นฉบับถูกลบจาก repo 2026-08-06); workflow ใช้ section 06/08/01/02/03; SDD ที่ยึดเป็นหลักคือ SDD GI 24/02/2026
 - มาตรฐานชื่อ table/column เป็น English lower_snake_case
 - ตาราง job_configs และ job_run_histories เป็น schema reference สำหรับ BE/dev; ไม่ใช่ scope ให้ FE Batch Monitor ทำ tab Database ที่ใช้
-- **ตัดสินใจ 2026-08-05:** RBAC/ผู้ปฏิบัติงาน (`roles`, `menus`, `menu_permissions`, `user_accounts`, `operator_assignments`) **ไม่สร้างใน SBPGI** — ใช้ระบบสิทธิ์/ผู้ใช้ของระบบ SBP เดิม (AWS Cognito + BFF + auth-backend/ABS · SBPGI รับ user context จาก header `x-user-id`/`x-user-group-id`/`x-user-permissions`) · schema เหลือ **34 ตาราง** (เดิม 34)
 
 ## 2.1 Input / Progress / Output Contract
 
@@ -32,7 +29,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- | --- | --- |
 | A | FGI/FCS Impact Pipeline and external interfaces | fgi_impact_processes, fgi_impact_stores, sales, interface_transactions | Batch Jobs 1-7, IAS/ALLMAP/QSSI/STA tracking |
 | B | K2 Document and internal workflow | compensation_documents, document_* tables, workflow_instances, workflow_tasks | Document APIs, workflow actions, FE detail/list/report |
-| C | Shared master/config/audit (RBAC ใช้ระบบ SBP เดิม) | stores, configs, jobs, email templates, audit | Lookup, admin, job monitor, notification |
+| C | Shared master/config/RBAC/audit | stores, roles, menus, configs, jobs, email templates, audit | Lookup, admin, job monitor, notification |
 
 | Order | Key | Meaning | Used by |
 | --- | --- | --- | --- |
@@ -40,7 +37,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | 2 | doc_no | เอกสาร YYYY/xxxxx ปี พ.ศ. | Document APIs, reports, attachments |
 | 3 | instance_id | workflow instance ต่อเอกสาร | Workflow engine |
 | 4 | task_id | งานต่อ section/assignee | Inbox/current task guard |
-| 5 | employee_id | identity — ตัวตน/สิทธิ์เมนูมาจากระบบ SBP เดิม (auth-backend) ผ่าน user-context header | audit, task assignment |
+| 5 | employee_id / role_code | identity/RBAC | menu, audit, assignment |
 
 ## 4. Data Dictionary
 
@@ -54,39 +51,30 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | A | fcs_qssi_scores | id | store_id + category_code + period | QSSI scores |
 | A | interface_transactions | id | impact_process_id/sales_summary_id/doc_no | interface tracking replacement |
 | B | compensation_documents | doc_no | impact_process_id, status_code, current_section_code | document header/core |
-| B | document_new_stores | id | doc_no, new_store_code | new stores and compensate percent |
+| B | document_new_stores | id | doc_no, new_store_code | new stores, compensate percent and amount |
 | B | document_competitors | id | doc_no, competitor_code | document competitors |
 | B | document_external_factors | id | doc_no, factor_code | document external factors |
-| B | consideration_logs | id | doc_no | approval/action history |
-| B | document_attachments | attach_id | doc_no | attachment metadata and storage pointer |
+| B | consideration_logs | id | doc_no | approval/action history (decision code, result category, attachments) |
+| B | document_attachments | attach_id | doc_no | attachment metadata; file storage uses existing SBP S3 service |
 | B | compensation_histories | id | store_code, ref_doc_no | compensation history/accounting export |
-| B | workflow_instances | instance_id | doc_no | internal workflow instance |
-| B | workflow_tasks | task_id | instance_id, section_code, assignee_employee_id | current/past tasks |
-| C | stores | store_code | - | all 7-Eleven stores |
-| C | impacted_stores | store_code | stores.store_code | SP impacted store subset |
-| C | workflow_sections | section_code | - | workflow sections 06/08/01/02/03 |
-| C | document_statuses | status_code | - | document status dictionary |
-| C | ~~roles~~ | role_code | - | **ตัดออก** — ใช้ `groups` ของ auth-backend เดิม (2026-08-05) |
-| C | ~~menus~~ | menu_code | - | **ตัดออก** — ใช้ `menus` ของ auth-backend เดิม |
-| C | ~~menu_permissions~~ | role_code + menu_code | roles, menus | **ตัดออก** — ใช้ permissions ต่อ URL ของ auth-backend เดิม |
-| C | ~~operator_assignments~~ | id | section_code, employee_id | **ตัดออก** — ใช้ group + scope ของ auth-backend + prepared approvers ของ workflow engine เดิม |
-| C | employees | employee_id | - | HR employee master |
+| B | document_cost_details | id | doc_no, new_store_code | monthly cost detail per new store (ImpactCostDetail) |
+| B | document_running_numbers | year | - | atomic YYYY/xxxxx running number |
+| C | impacted_stores | store_code | store.store_code (SBP) | SP impacted store subset |
+| C | decisions | decision_code | - | decision master (button/flow/result names) |
 | C | external_factors | factor_code | - | external factor master |
 | C | competitors | competitor_code | - | competitor master |
 | C | audit_logs | id | table_name + ref_key | master/config/email audit |
-| C | status_email_rules | status_code | workflow_sections | notification recipients |
-| C | email_templates | template_code | - | notification templates |
-| C | ~~user_accounts~~ | employee_id | role_code | **ตัดออก** — ใช้ Cognito + auth-backend `users`/`user_group_memberships` เดิม |
+| C | status_email_rules | status_code | workflow state (SBP) | notification recipients |
 | C | job_configs | job_no | - | schema reference for batch schedule/config; not FE Database tab scope |
 | C | job_run_histories | run_id | job_no | job execution history |
-| C | system_configs | config_key | - | global config key-value |
+| - | USE EXISTING SBP TABLES | - | - | workflow_transaction/approver/history/state/route/status (@srm/glb-workflow) · store/mas_store/sevenshop · mas_zone · common_code · business_user · email_template + email_sent · mas_param — decided 2026-08-05/2026-08-06: do NOT recreate these in SBPGI |
 
 ### 4.1 Canonical Column Contract
 
 | Table | Canonical columns used by DDL and SQL | Rejected legacy vocabulary |
 | --- | --- | --- |
-| ~~menu_permissions~~ (ตัดออก — ใช้ระบบ SBP เดิม) | role_code, menu_code, can_access | can_view/can_create/can_update/can_delete |
-| ~~user_accounts~~ (ตัดออก — ใช้ระบบ SBP เดิม) | employee_id, role_code, section_code, username, is_active | password_hash/account_status |
+| menu_permissions | role_code, menu_code, can_access | can_view/can_create/can_update/can_delete |
+| user_accounts | employee_id, role_code, section_code, username, is_active | password_hash/account_status |
 | workflow_instances | instance_id, doc_no, instance_status, started_at, started_by | status or auto-generated instance id |
 | system_configs | config_key, category, config_value, value_type, unit, description, is_editable | secret_flag or inline secrets |
 | sales_transactions | txn_date, window_no, sales_amount, sales_diff, is_outlier | sale_date/window_code/net_sales |
@@ -94,20 +82,14 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | interface_transactions | id, acked_at | tracking_id/receive_date (API aliases only) |
 | fgi_impact_processes | workflow_generation_status | duplicate workflow flag on fgi_impact_stores |
 
-## 5. Executable DDL — 29 Tables
+## 5. Executable DDL — 34 Tables
 
-ส่วนนี้เป็น PostgreSQL DDL ครบทุกตารางใน Data Dictionary เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น สามารถใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม (เดิม 34 ตาราง — DDL ของ `roles`/`menus`/`menu_permissions`/`user_accounts`/`operator_assignments` ถูกตัดออกตามการตัดสินใจ 2026-08-05 ใช้ระบบสิทธิ์ของ SBP เดิม)
+ส่วนนี้เป็น PostgreSQL DDL ครบทุกตารางใน Data Dictionary เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น สามารถใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม
 
-### 5.1 Zone C — Shared Master, Config and Operations
+### 5.1 Zone C — Shared Master, RBAC, Config and Operations
 
 ```sql
-CREATE TABLE stores (
-    store_code VARCHAR(5) PRIMARY KEY,
-    store_name VARCHAR(200) NOT NULL, juristic_name VARCHAR(200), store_type VARCHAR(30),
-    region_code VARCHAR(10), zone_code VARCHAR(10), branch_type VARCHAR(10),
-    opened_date DATE, closed_date DATE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- ❌ ไม่สร้างตาราง stores ใน SBPGI — ใช้ store / mas_store / sevenshop ของระบบ SBP เดิม (API: GET /store/search · /store/list · /store/detail)
 
 CREATE TABLE impacted_stores (
     store_code VARCHAR(5) PRIMARY KEY REFERENCES stores(store_code),
@@ -116,38 +98,22 @@ CREATE TABLE impacted_stores (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE workflow_sections (
-    section_code VARCHAR(2) PRIMARY KEY,
-    section_name VARCHAR(200) NOT NULL,
-    sort_order INTEGER NOT NULL UNIQUE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
-);
+-- ❌ ไม่สร้างตาราง workflow_sections ใน SBPGI — ใช้ workflow_state / workflow_route ของ @srm/glb-workflow · วงเงินอนุมัติเก็บใน common_code (SBPGI_APPROVE_LIMIT)
 
-CREATE TABLE document_statuses (
-    status_code VARCHAR(2) PRIMARY KEY,
-    status_name VARCHAR(200) NOT NULL,
-    section_code VARCHAR(2) REFERENCES workflow_sections(section_code),
-    sort_order INTEGER NOT NULL UNIQUE,
-    terminal_flag BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
-);
+-- ❌ ไม่สร้างตาราง document_statuses ใน SBPGI — ใช้ workflow_status ของ @srm/glb-workflow
 
--- ตัดออก 2026-08-05: roles / menus / menu_permissions — ใช้ groups/menus/permissions ต่อ URL
--- ของ auth-backend (ABS) ระบบ SBP เดิม (จัดการผ่านหน้า /setting/manage-user-rights)
+-- ❌ ไม่สร้างตาราง roles ใน SBPGI — ใช้ auth-backend/ABS groups ของระบบ SBP เดิม (ตัดสินใจ 2026-08-05)
 
-CREATE TABLE employees (
-    employee_id VARCHAR(30) PRIMARY KEY,
-    emp_name VARCHAR(200) NOT NULL,
-    emp_mail VARCHAR(255), department VARCHAR(150), zone_code VARCHAR(10), dv_code VARCHAR(20),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- ❌ ไม่สร้างตาราง menus ใน SBPGI — ใช้ menus/permissions ของ auth-backend (ตัดสินใจ 2026-08-05)
+
+-- ❌ ไม่สร้างตาราง menu_permissions ใน SBPGI — ใช้ permissions ต่อ URL ของ auth-backend (ตัดสินใจ 2026-08-05)
+
+-- ❌ ไม่สร้างตาราง employees ใน SBPGI — ใช้ business_user / business_user_group ของระบบ SBP เดิม
 
 ALTER TABLE impacted_stores
     ADD CONSTRAINT fk_impacted_store_opt_dv FOREIGN KEY (opt_dv_user_id) REFERENCES employees(employee_id);
 
--- ตัดออก 2026-08-05: operator_assignments — ใช้ group + scope ของ auth-backend เดิม
--- และ prepared approvers ของ workflow engine เดิม (@srm/glb-workflow) แทน
+-- ❌ ไม่สร้างตาราง operator_assignments ใน SBPGI — ใช้ group + scope ของ auth-backend + prepared approvers ของ @srm/glb-workflow (ตัดสินใจ 2026-08-05)
 
 CREATE TABLE external_factors (
     factor_code VARCHAR(30) PRIMARY KEY,
@@ -163,15 +129,7 @@ CREATE TABLE competitors (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE email_templates (
-    template_code VARCHAR(30) PRIMARY KEY,
-    name VARCHAR(200) NOT NULL, subject VARCHAR(500) NOT NULL, body TEXT NOT NULL,
-    variables JSONB NOT NULL DEFAULT '[]'::jsonb,
-    default_subject VARCHAR(500), default_body TEXT,
-    is_customized BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- ❌ ไม่สร้างตาราง email_templates ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ตาราง email_template ของระบบ SBP เดิม (email_template_id · subject_format · body_format) + email_sent
 
 CREATE TABLE status_email_rules (
     status_code VARCHAR(2) NOT NULL REFERENCES document_statuses(status_code),
@@ -182,8 +140,7 @@ CREATE TABLE status_email_rules (
     PRIMARY KEY (status_code, template_code)
 );
 
--- ตัดออก 2026-08-05: user_accounts — ใช้ AWS Cognito + auth-backend users/user_group_memberships
--- ระบบเดิม; SBPGI รับตัวตนจาก BFF ผ่าน header x-user-id/x-user-group-id ไม่เก็บบัญชีเอง
+-- ❌ ไม่สร้างตาราง user_accounts ใน SBPGI — ใช้ AWS Cognito + auth-backend — SBPGI รับตัวตนจาก header ของ BFF (ตัดสินใจ 2026-08-05)
 
 CREATE TABLE job_configs (
     job_no VARCHAR(10) PRIMARY KEY,
@@ -214,13 +171,7 @@ CREATE TABLE audit_logs (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE system_configs (
-    config_key VARCHAR(150) PRIMARY KEY,
-    category VARCHAR(80) NOT NULL, config_value TEXT NOT NULL, value_type VARCHAR(30) NOT NULL,
-    unit VARCHAR(30), description VARCHAR(500), is_editable BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_by VARCHAR(30), updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_system_config_no_secret CHECK (config_key !~* '(password|private_key|client_secret|token)')
-);
+-- ❌ ไม่สร้างตาราง system_configs ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ตาราง mas_param ของระบบ SBP เดิม (param_name · param_value · ref_name · description · is_config · active_flag)
 ```
 
 ### 5.2 Zone A — Impact Pipeline, Sales and Interface
@@ -244,7 +195,7 @@ CREATE TABLE fgi_impact_stores (
     impacted_store_code VARCHAR(5) NOT NULL REFERENCES impacted_stores(store_code),
     new_store_code VARCHAR(5) NOT NULL REFERENCES stores(store_code),
     impact_month CHAR(7) NOT NULL, distance_km NUMERIC(8,3),
-    verify_status CHAR(1) NOT NULL DEFAULT 'W' CHECK (verify_status IN ('W','P','Y','N')),
+    sales_request_status CHAR(1) NOT NULL DEFAULT 'W' CHECK (sales_request_status IN ('W','P','Y','E')),
     forecast_compensate_percent NUMERIC(7,4), adjust_compensate_percent NUMERIC(7,4),
     forecast_compensation_amount NUMERIC(14,2), adjust_compensation_amount NUMERIC(14,2),
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -312,7 +263,7 @@ CREATE TABLE interface_transactions (
 ```sql
 CREATE TABLE compensation_documents (
     doc_no VARCHAR(10) PRIMARY KEY,
-    be_year INTEGER NOT NULL, running_no INTEGER NOT NULL,
+    year INTEGER NOT NULL, running_no INTEGER NOT NULL,
     impact_process_id BIGINT NOT NULL UNIQUE REFERENCES fgi_impact_processes(id),
     impacted_store_code VARCHAR(5) NOT NULL REFERENCES impacted_stores(store_code),
     impact_month CHAR(7), new_store_code VARCHAR(5) REFERENCES stores(store_code), round_no INTEGER,
@@ -323,7 +274,7 @@ CREATE TABLE compensation_documents (
     version_no INTEGER NOT NULL DEFAULT 1,
     created_by VARCHAR(30) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(30), updated_at TIMESTAMP,
-    CONSTRAINT uq_comp_be_year_running UNIQUE (be_year, running_no),
+    CONSTRAINT uq_comp_year_running UNIQUE (year, running_no),
     CONSTRAINT uq_comp_business UNIQUE (source, impacted_store_code, impact_month, new_store_code, round_no)
 );
 
@@ -393,23 +344,9 @@ CREATE TABLE compensation_histories (
     CONSTRAINT uq_compensation_history UNIQUE (store_code, ref_doc_no, submit_account_month)
 );
 
-CREATE TABLE workflow_instances (
-    instance_id VARCHAR(40) PRIMARY KEY,
-    doc_no VARCHAR(10) NOT NULL UNIQUE REFERENCES compensation_documents(doc_no),
-    instance_status VARCHAR(20) NOT NULL CHECK (instance_status IN ('ACTIVE','COMPLETED','CANCELLED')),
-    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, started_by VARCHAR(30) NOT NULL,
-    completed_at TIMESTAMP
-);
+-- ❌ ไม่สร้างตาราง workflow_instances ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ workflow_transaction ของ @srm/glb-workflow
 
-CREATE TABLE workflow_tasks (
-    task_id BIGSERIAL PRIMARY KEY,
-    instance_id VARCHAR(40) NOT NULL REFERENCES workflow_instances(instance_id),
-    doc_no VARCHAR(10) NOT NULL REFERENCES compensation_documents(doc_no),
-    section_code VARCHAR(2) NOT NULL REFERENCES workflow_sections(section_code),
-    assignee_employee_id VARCHAR(30) REFERENCES employees(employee_id),
-    task_status VARCHAR(20) NOT NULL CHECK (task_status IN ('OPEN','DONE','CANCELLED')),
-    action_result TEXT, opened_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, closed_at TIMESTAMP
-);
+-- ❌ ไม่สร้างตาราง workflow_tasks ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ workflow_approver/workflow_transaction ของ @srm/glb-workflow
 ```
 
 ### 5.4 Required Indexes, Partial Uniqueness and Purge
@@ -448,7 +385,7 @@ RETURNING i.id, i.data_name, i.business_key;
 
 | Table | Index / constraint | Reason |
 | --- | --- | --- |
-| compensation_documents | UNIQUE (be_year, running_no), UNIQUE(source, impacted_store_code, impact_month, new_store_code, round_no), INDEX(status_code,current_section_code), INDEX(impact_process_id) | docNo uniqueness, duplicate guard, list/inbox/report, pipeline trace |
+| compensation_documents | UNIQUE (year, running_no), UNIQUE(source, impacted_store_code, impact_month, new_store_code, round_no), INDEX(status_code,current_section_code), INDEX(impact_process_id) | docNo uniqueness, duplicate guard, list/inbox/report, pipeline trace |
 | workflow_tasks | INDEX(doc_no, task_status), INDEX(section_code, task_status), UNIQUE(instance_id, section_code, task_status) filtered OPEN | current task guard and inbox |
 | document_new_stores | INDEX(doc_no), CHECK compensate_percent between 0 and 100 | detail load and allocation validation |
 | consideration_logs | INDEX(doc_no, action_datetime DESC), INDEX(result_category) | timeline/report result filter |
@@ -475,9 +412,9 @@ RETURNING i.id, i.data_name, i.business_key;
 | --- | --- |
 | workflow_sections | 06, 08, 01, 02, 03 only |
 | document_statuses | 6 statuses: 5 waiting statuses + completed |
-| ~~roles~~ | **ตัดออก** — 8 role (00–10) ของ SRS map เป็น group ใน auth-backend ระบบเดิม (2026-08-05) |
+| roles | 00, 01, 02, 03, 04, 05, 06, 10 per RBAC model |
 | email_templates | EM-01..EM-08 |
-| system_configs | impact radius 1/2 km, workflow.gm_amount_limit=50000, workflow.avp_amount_limit=300000 (SDD GI 24/02/2026 — แทน workflow.gm_amount_limit / workflow.avp_amount_limit=100000 เดิม), sales data threshold=60, growth rate threshold=-10 |
+| system_configs | impact radius 1/2 km, workflow.avp_amount_threshold=100000, sales data threshold=60, growth rate threshold=-10 |
 | job_configs | Jobs 1-10 and 8b with enabled/schedule/default params as schema reference |
 
 ## 9. Migration and Verification Checklist
@@ -486,7 +423,7 @@ RETURNING i.id, i.data_name, i.business_key;
 | --- | --- |
 | Naming | all new tables/columns lower_snake_case |
 | Leading zero | store_code/new_store_code stored as VARCHAR(5), never numeric |
-| docNo | be_year/running_no/doc_no generated in DB transaction; concurrency test 20 parallel requests |
+| docNo | year/running_no/doc_no generated in DB transaction; concurrency test 20 parallel requests |
 | Workflow | no active 04/05 accounting sections/statuses |
 | Security | no secrets in system_configs/job_configs; storage objectKey not returned to FE |
 | External interface | credential/certificate/private key อยู่ Secret Manager ผ่าน secretRef; TLS verify-full หรือ SFTP strict known_hosts; ทดสอบ rotation และ invalid certificate/host key |
@@ -498,16 +435,16 @@ RETURNING i.id, i.data_name, i.business_key;
 
 | Document | DB usage |
 | --- | --- |
-| LLDD-BE-API-Dashboard-Summary | workflow_tasks(R), compensation_documents(R), compensation_histories(R), fgi_impact_sales_summaries(R) |
-| LLDD-BE-API-Document-List-Search | workflow_tasks(R), compensation_documents(R), impacted_stores(R), fgi_impact_sales_summaries(R) |
-| LLDD-BE-API-Document-Create-Update | compensation_documents(R/W), workflow_instances / workflow_tasks(W), document_new_stores(R/W), document_competitors(R/W) |
+| LLDD-BE-API-Dashboard-Summary | workflow_transaction / workflow_approver (@srm/glb-workflow)(R), compensation_documents(R), compensation_histories(R), fgi_impact_sales_summaries(R) |
+| LLDD-BE-API-Document-List-Search | workflow_transaction / workflow_approver (@srm/glb-workflow)(R), compensation_documents(R), impacted_stores(R), fgi_impact_sales_summaries(R) |
+| LLDD-BE-API-Document-Create-Update | compensation_documents(R/W), workflow_transaction / workflow_approver (@srm/glb-workflow)(W), document_new_stores(R/W), document_competitors(R/W) |
 | LLDD-BE-API-Document-Detail-Aggregate | compensation_documents(R), impacted_stores(R), document_new_stores(R), document_competitors(R) |
-| LLDD-BE-API-Document-Workflow-Actions | workflow_tasks(R/W), compensation_documents(W), consideration_logs(W), status_email_rules(R) |
-| LLDD-BE-API-Workflow-Instances | fgi_impact_processes / fgi_impact_stores(R/W), compensation_documents(R/W), workflow_instances(R/W), workflow_tasks(W) |
+| LLDD-BE-API-Document-Workflow-Actions | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow)(R/W), compensation_documents(W), consideration_logs(W), status_email_rules(R) |
+| LLDD-BE-API-Workflow-Instances | fgi_impact_processes / fgi_impact_stores(R/W), compensation_documents(R/W), workflow_transaction (@srm/glb-workflow)(R/W), workflow_approver (@srm/glb-workflow)(W) |
 | LLDD-BE-API-Attachment-Sales-Timeline | document_attachments(R/W), compensation_documents(R), fgi_impact_sales_summaries(R), sales_transactions(R) |
-| LLDD-BE-API-Lookup-RBAC-Email | stores / impacted_stores(R), document_statuses / workflow_sections(R), employees(R), email_templates / audit_logs(R/W) — ~~roles / menus / menu_permissions~~ ตัดออก ใช้ระบบ SBP เดิม |
-| LLDD-BE-API-Report-Master-Config | compensation_documents(R), compensation_histories(R), consideration_logs(R), external_factors / system_configs(R/W) — ~~operator_assignments~~ ตัดออก ใช้ระบบ SBP เดิม |
-| LLDD-BE-Job-Batch-Email-SRM | job_configs(R/W), job_run_histories(R/W), interface_transactions(R/W), email_templates(R/W) |
+| LLDD-BE-API-Lookup-RBAC-Email | stores / impacted_stores(R), document_statuses / workflow_sections(R), employees(R), roles / menus / menu_permissions(R/W) |
+| LLDD-BE-API-Report-Master-Config | compensation_documents(R), compensation_histories(R), consideration_logs(R), operator_assignments(R/W) |
+| LLDD-BE-Job-Batch-Email-SRM | job_configs(R/W), job_run_histories(R/W), interface_transactions(R/W), email_template (SBP)(R/W) |
 | LLDD-BE-Job-1-ImportQSSI | fcs_qssi_scores(W) |
 | LLDD-BE-Job-2-ImportImpactStore | fgi_impact_stores(W) |
 | LLDD-BE-Job-3-ImportImpactCompetitor | fgi_impact_competitors(W) |

@@ -32,7 +32,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 1 ImportQSSI
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | กำหนดการรัน (Cron) | Monthly | แก้ไขได้ | ตั้งเวลาใน scheduler ผ่าน deployment config |
-| งวดข้อมูล (เดือนที่รัน) | 07/2569 | แก้ไขได้ | ชื่อไฟล์ใช้เดือนปัจจุบัน แต่งวดใน DB คือเดือนก่อนหน้า |
+| งวดข้อมูล (เดือนที่รัน) | 07/2026 | แก้ไขได้ | ชื่อไฟล์ใช้เดือนปัจจุบัน แต่งวดใน DB คือเดือนก่อนหน้า |
 | SFTP endpoint alias | qssi-monthly | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | resolve host/port จาก environment; ไม่รับค่า host/port จาก request หรือ job_configs |
 | Secret reference | secret/sbpgi/interfaces/qssi | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | credential/private key อ่านจาก Secret Manager และบังคับ strict known_hosts |
 | Remote Directory | /export/qssishare/onl/qssi/textfile/SBP/QSSI_Monthly/ | แก้ไขได้ | path เท่านั้น ไม่รวม credential |
@@ -185,7 +185,7 @@ export async function runLlddBeJob1Importqssi(ctx, services) {
     },
     {
       "label": "งวดข้อมูล (เดือนที่รัน)",
-      "value": "07/2569",
+      "value": "07/2026",
       "editable": true
     },
     {
@@ -312,7 +312,7 @@ export async function runLlddBeJob1Importqssi(ctx, services) {
 {
   "items": [
     {
-      "startedAt": "01/07/2569 06:00",
+      "startedAt": "01/07/2026 06:00",
       "status": "ok"
     }
   ]

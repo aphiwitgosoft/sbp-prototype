@@ -1,15 +1,15 @@
 # checklist-fe.md — Checklist สร้าง Frontend (React + Vite) ฉบับละเอียด
 
-> ทำตามลำดับ Phase — **ห้ามข้าม Phase** เพราะของหลังพึ่งของก่อน · spec เต็มอยู่ `plan-fe.md` · รายละเอียด component/ฟิลด์ต่อหน้าอยู่ `REACT-TODO-CHECKLIST.md` · API 62 เส้นอยู่ `api.md` · flow/สถานะอยู่ `workflow.md` · สัญญากลางอยู่ `LLDD/FE/LLDD-FE-Integration-Contracts.md` + `LLDD/BE/LLDD-BE-API-Common-Contracts.md`
+> ทำตามลำดับ Phase — **ห้ามข้าม Phase** เพราะของหลังพึ่งของก่อน · spec เต็มอยู่ `plan-fe.md` · รายละเอียด component/ฟิลด์ต่อหน้าอยู่ `REACT-TODO-CHECKLIST.md` · API 44 เส้นอยู่ `api.md` · flow/สถานะอยู่ `workflow.md` · สัญญากลางอยู่ `LLDD/FE/LLDD-FE-Integration-Contracts.md` + `LLDD/BE/LLDD-BE-API-Common-Contracts.md`
 > ทุก Phase มี **✔ เกณฑ์ตรวจรับ** เป็น test case ที่รันได้จริง — ผ่านครบก่อนไป Phase ถัดไป
 > ทุกข้อออกแบบให้ทำจบใน ~1–2 ชั่วโมง · path ไฟล์ = ใต้ `src/` ตามโครง feature-based ใน plan-fe.md §3
 
 **กติกาเหล็ก (ใช้ทุก Phase — ผิดข้อใดข้อหนึ่ง = ไม่ผ่าน):**
 1. workflow 5 ขั้น `06 → 08 → 01 → 02 → 03` เท่านั้น — **ห้ามอ้าง section 04/05 หรือสถานะบัญชีในทุกที่** (SDD v7.5 ตัดแล้ว)
-2. สถานะเอกสาร 6 ค่า verbatim: `รอฝ่าย SBP DSA ดำเนินการ` · `รอเจ้าหน้าที่ SBP DSA ดำเนินการ` · `รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ` · `รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ` · `รอผู้บริหารสำนักบริหาร SBP ดำเนินการ` · `เสร็จสิ้นดำเนินการ`
-3. กฎ 100,000: >100k → ผ่าน AVP(03) แล้ว**จบ** · ≤100k → **จบที่ GM(02)** — logic อยู่ BE, FE แค่แสดงผล
+2. สถานะเอกสาร 6 ค่า verbatim: `รอฝ่าย SBP DSA ดำเนินการ` · `รอเจ้าหน้าที่ SBP DSA ดำเนินการ` · `รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ` · `รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ` · `รอผู้บริหารสำนักบริหาร SBP ดำเนินการ` · `เสร็จสิ้นดำเนินการ`
+3. กฎวงเงิน (SDD GI 24/02/2026 — แทนเกณฑ์เดียว 100,000 เดิม): **≤ 50,000 → จบที่ GM(02)** · **50,001–300,000 → ผ่าน AVP(03) แล้วจบ** (เกิน 300,000 รอ confirm) — logic อยู่ BE, FE แค่แสดงผล
 4. ข้อความไทย verbatim ห้าม paraphrase เช่น `ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ`
-5. ภาค **13 รหัส**: `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` (SDD v7.5) — โหลดจาก `GET /zones` ห้าม hardcode · ภาคใหม่ขึ้นเองอัตโนมัติ
+5. ภาค **13 รหัส**: `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` (SDD v7.5) — โหลดจาก `GET /store/all-regions` (ระบบ SBP เดิม) ห้าม hardcode · ภาคใหม่ขึ้นเองอัตโนมัติ
 6. %ชดเชยรวมทุกร้านเปิดใหม่ = **100%** พอดีก่อน submit
 7. ไฟล์แนบ ≤ **5MB** + นามสกุลตาม `ATTACH_EXTS`
 8. แถวยอดขายไม่ครบ 60 วัน = `tr.flag-red`
@@ -53,7 +53,7 @@
 
 ### 0.7 Common API/FE contracts
 - [ ] `shared/types/api.ts` — ประกาศ `ApiError {code,message}` · `PageResponse<T> {page,size,total,items}` · `ActionResponse {nextSection,statusCode,status}` · `MenuItem`
-- [ ] `shared/lib/format.ts` เป็นจุดเดียวสำหรับ date/month พ.ศ., money, docNo; ไม่มี formatter ซ้ำใน feature
+- [ ] `shared/lib/format.ts` เป็นจุดเดียวสำหรับ date/month (ค.ศ.), money, docNo; ไม่มี formatter ซ้ำใน feature
 - [ ] `features/documents/types/workflow.ts` — `ActionResult` 6-enum ไทย verbatim; `DecisionPanel` ใช้ type นี้เท่านั้น
 - [ ] `shared/api/client.ts` เป็น API client เดียวทั้งแอป; eslint/import check หรือ test ยืนยันไม่มี axios instance อื่น
 - [ ] MSW base handlers คืน error `{code,message}` และ list `{page,size,total,items}` เพื่อบังคับ shape ตั้งแต่ test แรก
@@ -64,7 +64,7 @@
 - [ ] หน้า demo ชั่วคราวแสดง `.pill` ทั้ง 10 variant → สีตรงกับ prototype เมื่อเทียบตา
 - [ ] commit ด้วย message ไม่ตรง convention → ถูก commitlint ปฏิเสธ
 - [ ] import ข้าม feature (`features/reports` → `features/documents`) → eslint ฟ้อง
-- [ ] unit test `ApiError` passthrough, `PageResponse` pager mapping, `ActionResponse` หลัง submit, formatter พ.ศ./money/docNo ผ่านทั้งหมด
+- [ ] unit test `ApiError` passthrough, `PageResponse` pager mapping, `ActionResponse` หลัง submit, formatter date(ค.ศ.)/money/docNo ผ่านทั้งหมด
 
 ---
 
@@ -125,8 +125,8 @@
 - [ ] `ColumnChart.tsx` (รายเดือน, มุมโค้ง, label เฉพาะแท่งสุดท้าย)
 
 ### 2.5 Constants + utils
-- [ ] `shared/lib/constants.ts` ตาม plan-fe.md §7 ครบ: `SECTIONS` (5 ขั้น 06/08/01/02/03) · `DOC_STATUSES` (6 ค่า verbatim ข้างบน) · `AVP_THRESHOLD=100_000` · `REGIONS` = 13 รหัส (fallback) + โหลดจริงจาก `GET /zones` · `SEARCH_STORE_TYPES=['FR Type A','FR Type B','FR Type C','พนักงาน']` · `MAX_FILE_MB=5` · `ATTACH_EXTS` (27 นามสกุล) · `MSG.NO_DECISION='ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ'` + ข้อความอื่นจากหน้า html เดิม
-- [ ] `shared/lib/format.ts` — `formatMoney` (คั่นหลักพัน ทศนิยม 2) · `formatDateThai` (ISO ค.ศ. → พ.ศ. จุดเดียว) · `formatDocNo` (`YYYY/xxxxx` พ.ศ.)
+- [ ] `shared/lib/constants.ts` ตาม plan-fe.md §7 ครบ: `SECTIONS` (5 ขั้น 06/08/01/02/03) · `DOC_STATUSES` (6 ค่า verbatim ข้างบน) · `GM_LIMIT=50_000` / `AVP_LIMIT=300_000` (SDD GI) · `REGIONS` = 13 รหัส (fallback) + โหลดจริงจาก `GET /store/all-regions` (ระบบ SBP เดิม) · `SEARCH_STORE_TYPES=['FR Type A','FR Type B','FR Type C','พนักงาน']` · `MAX_FILE_MB=5` · `ATTACH_EXTS` (27 นามสกุล) · `MSG.NO_DECISION='ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ'` + ข้อความอื่นจากหน้า html เดิม
+- [ ] `shared/lib/format.ts` — `formatMoney` (คั่นหลักพัน ทศนิยม 2) · `formatDate` (ISO ค.ศ. → `dd/MM/yyyy` ค.ศ. จุดเดียว · ใช้ `buddhistEra` ของ DatePicker เฉพาะจุดที่ต้องการ พ.ศ.) · `formatDocNo` (`YYYY/xxxxx` **ค.ศ.**)
 - [ ] `shared/api/query-keys.ts` — key factory รวมศูนย์ (`documentKeys.list(params)` / `.detail(docNo)` / `taskKeys` / `masterKeys` …)
 - [ ] unit test: format ทั้ง 3 + constants (สถานะ 6 ค่า, ภาคมี RC ไม่มี RW, threshold)
 
@@ -153,9 +153,9 @@
 - [ ] S5 `ActivityFeed.tsx` (pill+เวลา) + `QuickLinks.tsx`
 
 ### 3.2 DocListPage (`features/documents/DocListPage.tsx` — 1 component 2 mode, §k2-list-waiting/related)
-- [ ] ฟอร์มค้นหา `DocumentFilterBar.tsx`: **ปี\*** (dropdown พ.ศ.) · เดือน · สถานะ (6 ค่า — ซ่อนใน waiting) · ภาค (`REGIONS` multi (13 รหัส · โหลดจาก GET /zones)) · ประเภทร้าน (`SEARCH_STORE_TYPES` 4 ค่า multi) · รหัส/ชื่อร้าน · เลขเอกสาร · ยอดขายลดลง% (min–max) · เงินชดเชย (min–max) · รอ(วัน) (min–max) · ปุ่ม `ล้างตัวกรอง` (`RangeInput.tsx`)
+- [ ] ฟอร์มค้นหา `DocumentFilterBar.tsx`: **ปี\*** (dropdown ค.ศ.) · เดือน · สถานะ (6 ค่า — ซ่อนใน waiting) · ภาค (`REGIONS` multi (13 รหัส · โหลดจาก GET /store/all-regions ของระบบ SBP เดิม)) · ประเภทร้าน (`SEARCH_STORE_TYPES` 4 ค่า multi) · รหัส/ชื่อร้าน · เลขเอกสาร · ยอดขายลดลง% (min–max) · เงินชดเชย (min–max) · รอ(วัน) (min–max) · ปุ่ม `ล้างตัวกรอง` (`RangeInput.tsx`)
 - [ ] mode `waiting` → `GET /tasks` (inbox: เฉพาะสถานะ "รอ<role ตัวเอง>ดำเนินการ") · mode `related` → `GET /documents` — **ไม่เลือกปี = ไม่ยิง API + แสดง error ใต้ช่องปี**
-- [ ] Stat cards คลิกกรองตาราง: waiting = 4 ใบ (ทั้งหมด / flag60 / รอเกิน 3 วัน / วงเงิน>100,000 เข้า AVP) · related = ทั้งหมด + ต่อสถานะ
+- [ ] Stat cards คลิกกรองตาราง: waiting = 4 ใบ (ทั้งหมด / flag60 / รอเกิน 3 วัน / วงเงิน 50,001–300,000 เข้า AVP) · related = ทั้งหมด + ต่อสถานะ
 - [ ] `DocumentTable.tsx` คอลัมน์: `ครั้งที่ | เลขที่เอกสาร | รหัสร้าน | ชื่อร้านถูกกระทบ | ภาค | ยอดขายที่ลดลง(%) | จำนวนเงินที่ชดเชย | สถานะ(pill) | รอ (วัน)` · sortable · แถว <60 วัน = `flag-red` · คลิกแถว → `/documents/:docNo`
 - [ ] `<Pager>` ผูก `?page&size` ↔ `{page,size,total,items}` + note card ("แดง = ยอดขายไม่ครบ 60 วัน …")
 
@@ -164,9 +164,9 @@
 - [ ] เปิด `/documents/waiting` → เห็นเฉพาะเอกสารสถานะของ role ตัวเอง
 - [ ] เปิด `/documents/related` ไม่เลือกปีแล้วกดค้นหา → error แสดง, network tab **ไม่มี** request
 - [ ] เลือกปี+ภาค BN+ประเภท FR Type A → ผลตรง seed · กด `ล้างตัวกรอง` → ฟอร์มกลับค่าเริ่ม
-- [ ] แถวร้านยอดขาย <60 วันเป็นสีแดง · คลิกแถว → ไป `/documents/2569/00123` (route ถูก)
+- [ ] แถวร้านยอดขาย <60 วันเป็นสีแดง · คลิกแถว → ไป `/documents/2026/00123` (route ถูก)
 - [ ] เปลี่ยน per-page 10→50, กด goto หน้า → ตาราง+info `แสดง X–Y จาก N` ถูกต้อง
-- [ ] คลิก stat card "วงเงิน>100,000" → ตารางเหลือเฉพาะแถวเงินชดเชย >100,000
+- [ ] คลิก stat card "วงเงินเข้า AVP" → ตารางเหลือเฉพาะแถวเงินชดเชย 50,001–300,000
 
 ---
 
@@ -178,7 +178,7 @@
 - [ ] `WorkflowStepper.tsx` — 5 ขั้น `06›08›01›02›03` + pill `ขั้นตอนที่ N/5`
 
 ### 4.2 ส่วนข้อมูล + กราฟ
-- [ ] S3 `DocMetaGrid.tsx` — รอบ/ครั้งที่/เดือน, สถานะ, เลขที่, วันที่สร้าง (พ.ศ.), รหัส/ชื่อร้าน, ภาค, ประเภท, เจ้าของ, นิติบุคคล, วันที่โอน, ผู้ดำเนินการ, ยอดขายลดลง %, ชดเชยล่าสุด, ไฟล์แนบ + ปุ่ม `ข้อมูลยอดขายเพิ่มเติม`
+- [ ] S3 `DocMetaGrid.tsx` — รอบ/ครั้งที่/เดือน, สถานะ, เลขที่, วันที่สร้าง (ค.ศ.), รหัส/ชื่อร้าน, ภาค, ประเภท, เจ้าของ, นิติบุคคล, วันที่โอน, ผู้ดำเนินการ, ยอดขายลดลง %, ชดเชยล่าสุด, ไฟล์แนบ + ปุ่ม `ข้อมูลยอดขายเพิ่มเติม`
 - [ ] S4 `SalesTrendChart.tsx` (เส้น/พื้นที่ 2 ชุด ก่อน–หลัง + marker วันเปิดสาขา + เส้นเฉลี่ย) + `SalesAvgBarChart.tsx` (2 แท่ง + badge −%) — ข้อมูลจาก `GET /documents/{docNo}/sales` (4 หน้าต่าง × 15 วัน)
 
 ### 4.3 ร้านเปิดใหม่ (S5) — validate 100%
@@ -197,7 +197,7 @@
 - [ ] ปุ่ม `แนบไฟล์` → ตรวจฝั่ง FE ก่อนอัปโหลด: นามสกุลอยู่ใน `ATTACH_EXTS` **และ** ขนาด ≤ `MAX_FILE_MB` (5MB) — ผิด = toast error ไม่ยิง API · ผ่าน → `POST /documents/{docNo}/attachments` (multipart)
 
 ### 4.6 คำนวณเงินชดเชย + ประวัติ (S10–S12)
-- [ ] S10 `CompensationCalcPanel.tsx` — readonly (ยอดตั้งต้น / %รวม / รวมร้านใหม่ / อำนาจอนุมัติ `≤100,000 GM · >100,000 AVP`) — **แสดงเฉพาะ view section 08** (ตามธงจาก API)
+- [ ] S10 `CompensationCalcPanel.tsx` — readonly (ยอดตั้งต้น / %รวม / รวมร้านใหม่ / อำนาจอนุมัติ `≤ 50,000 GM · 50,001–300,000 AVP` (SDD GI)) — **แสดงเฉพาะ view section 08** (ตามธงจาก API)
 - [ ] S11 `CompensationHistoryTable.tsx`: `ครั้ง | เดือน/ปีที่กระทบ | จำนวนเงินที่ชดเชย | เดือน/ปีที่ส่งบัญชี | สถานะเอกสาร | ผลการพิจารณา | เอกสาร` (คลิก → เปิดเอกสารครั้งนั้น)
 - [ ] S12 `DecisionHistoryTable.tsx` + `DecisionHistoryModal.tsx`: `ชื่อผู้พิจารณา | ตำแหน่ง | ผลการพิจารณา | รายละเอียดการพิจารณา | วัน/เวลา` — จาก `GET /documents/{docNo}/timeline`
 
@@ -210,20 +210,20 @@
 
 ### 4.8 CreateDocPage (`features/documents/CreateDocPage.tsx` — §k2-create)
 - [ ] S1 pill `เลขที่เอกสารถัดไป · <จาก API>`
-- [ ] Tab 1 `สร้างเอกสารใหม่ (นอกเงื่อนไข)`: `รหัสร้านถูกกระทบ*` (`StoreSearchInput` → popup `GET /stores/search?type=impacted`) · `ชื่อร้านถูกกระทบ` (readonly auto) · `ภาค` (readonly) · `ประเภทร้าน` (select 8 ตัวเลือก FR Type A/B/C/C r/บริษัท/พนักงาน/PTT/BGC) · `วันที่โอนเป็นร้าน SP` (date) · `เดือน/ปีที่ถูกกระทบ*` (month) · `ครั้งที่` · `รหัสร้านเปิดใหม่*` (search `type=new`) · `เหตุผลการสร้างเอกสารนอกเงื่อนไข*` (textarea) · ปุ่ม `เคลียร์ค่าเริ่มใหม่` / `สร้างเอกสาร` → `POST /documents` → toast เลขเอกสาร `YYYY/xxxxx` (พ.ศ.) → navigate ไปเอกสาร
+- [ ] Tab 1 `สร้างเอกสารใหม่ (นอกเงื่อนไข)`: `รหัสร้านถูกกระทบ*` (`StoreSearchInput` → popup `GET /store/search` (ระบบ SBP เดิม)) · `ชื่อร้านถูกกระทบ` (readonly auto) · `ภาค` (readonly) · `ประเภทร้าน` (select 8 ตัวเลือก FR Type A/B/C/C r/บริษัท/พนักงาน/PTT/BGC) · `วันที่โอนเป็นร้าน SP` (date) · `เดือน/ปีที่ถูกกระทบ*` (month) · `ครั้งที่` · `รหัสร้านเปิดใหม่*` (search `type=new`) · `เหตุผลการสร้างเอกสารนอกเงื่อนไข*` (textarea) · ปุ่ม `เคลียร์ค่าเริ่มใหม่` / `สร้างเอกสาร` → `POST /documents` → toast เลขเอกสาร `YYYY/xxxxx` (ค.ศ.) → navigate ไปเอกสาร
 - [ ] Tab 2 `สร้างเอกสารที่ FS`: `รหัสร้านถูกกระทบ*` · `ชื่อร้าน` (readonly) · `เดือน/ปีที่ถูกกระทบ*` · `Period Statement (From–To)` · ปุ่ม `เคลียร์` / `ส่งสร้างที่ FS` → `POST /documents` (mode FS)
 - [ ] `PendingStatementTable.tsx` "เอกสารที่รอ SBP Statement ส่งกลับ": `รหัสร้าน | ชื่อร้านถูกกระทบ | เดือน/ปี | ส่งเข้า FS เมื่อ | สถานะ` (pill รอ/ส่งกลับแล้ว)
 
 **✔ เกณฑ์ตรวจรับ Phase 4 (เดิน workflow จริงกับ BE)**
 - [ ] สร้างเอกสารนอกเงื่อนไข → ได้เลข `2569/xxxxx` → เอกสารสถานะ `รอฝ่าย SBP DSA ดำเนินการ`
-- [ ] เคสหลัก ≤100k: 06 ส่งต่อ → 08 คำนวณ+ส่งต่อ → 01 ส่งต่อ → 02 อนุมัติ (เงิน ≤100,000) → สถานะ = `เสร็จสิ้นดำเนินการ` **ไม่ผ่าน 03**
-- [ ] เคสสอง >100k: ตั้งเงิน >100,000 → หลัง 02 สถานะ = `รอผู้บริหารสำนักบริหาร SBP ดำเนินการ` → 03 อนุมัติ → `เสร็จสิ้นดำเนินการ`
+- [ ] เคสหลัก ≤ 50k: 06 ส่งต่อ → 08 คำนวณ+ส่งต่อ → 01 ส่งต่อ → 02 อนุมัติ (เงิน ≤ 50,000) → สถานะ = `เสร็จสิ้นดำเนินการ` **ไม่ผ่าน 03**
+- [ ] เคสสอง 50,001–300,000: ตั้งเงิน 120,000 → หลัง 02 สถานะ = `รอผู้บริหารสำนักบริหาร SBP ดำเนินการ` → 03 อนุมัติ → `เสร็จสิ้นดำเนินการ`
 - [ ] ส่งดำเนินการโดยไม่เลือกผล → popup ตรง verbatim `ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ`
 - [ ] เลือกไม่ชดเชยไม่กรอก comment → ถูกบล็อก · กด `บันทึก` เฉย ๆ → ผ่านโดยไม่ validate
 - [ ] แก้ %ชดเชย 2 ร้านเป็น 60+30 → กดคำนวณ → popup %รวม≠100, ไม่ยิง PUT · แก้เป็น 60+40 → บันทึกสำเร็จ เงินชดเชยรายร้านคำนวณถูก
 - [ ] แนบไฟล์ .exe → ปฏิเสธ · ไฟล์ .pdf 6MB → ปฏิเสธ (ไม่ยิง API) · .pdf 2MB → ขึ้นตาราง S9
 - [ ] view section 08 เห็นแผง S10 คำนวณเงินชดเชย · section อื่นไม่เห็น
-- [ ] วันที่ทุกจุดในหน้าเป็น พ.ศ.
+- [ ] วันที่ทุกจุดในหน้าเป็น **ค.ศ.** (ตามระบบ SBP เดิม)
 
 ---
 
@@ -232,7 +232,7 @@
 ### 5.1 ReportPage (`features/reports/ReportPage.tsx` — §k2-report, รายงานตรวจสอบประกันรายได้ SBP Mall)
 - [ ] `ReportSearchForm.tsx`: `ปี*` · เดือน/ปีเริ่ม–ถึง (month) · รหัสร้านกระทบ (+`StorePickerModal`) · ชื่อร้าน (readonly) · รหัสร้านเปิดใหม่ · สถานะ (select 6 ค่า) · **radio ผลการพิจารณา\*: `ประกันรายได้` / `ไม่ประกันรายได้`** · ภาค (`REPORT_REGIONS13` — checkbox 13 รหัส) · ประเภทร้าน (checkbox A–D) · Period Statement From–To · ปุ่ม `เคลียร์` / **`Preview Report`**
 - [ ] ไม่เลือกปี → error + ไม่ยิง API (กฎเดียวกับ related)
-- [ ] `Preview Report` → `GET /reports/status-summary` → `SummaryLine` (พบ N รายการ / ยอดชดเชยรวม / วงเงิน>100,000 / แถวแดง) + 2 `<HBarChart>` (ตามสถานะ 6 ค่า / ยอดเงินตามภาค)
+- [ ] `Preview Report` → `GET /reports/status-summary` → `SummaryLine` (พบ N รายการ / ยอดชดเชยรวม / วงเงินเข้า AVP / แถวแดง) + 2 `<HBarChart>` (ตามสถานะ 6 ค่า / ยอดเงินตามภาค)
 - [ ] `ReportResultTable.tsx` 19 คอลัมน์ (scroll ใน `.table-wrap`): `รหัสร้านถูกกระทบ | ชื่อร้านถูกกระทบ | ภาค | ประเภทร้าน | เดือนปีที่ถูกกระทบ | วันที่โอนเป็นร้าน SP | Period Statement | รหัสร้านเปิดใหม่ | ชื่อร้านเปิดใหม่ | ภาค (ร้านใหม่) | ประเภทร้าน (ร้านใหม่) | ยอดเงินชดเชย | สถานะ | ชื่อ-นามสกุลผู้ดำเนินการ | ผลการพิจารณา | รอดำเนินการ (วัน) | ครั้งที่ | วันที่สร้าง | เลขที่เอกสาร` · `flag-red` · pill สถานะ
 - [ ] ปุ่ม **`Export CSV to Batch`** → `GET /reports/status-summary/export` (เงื่อนไขเดียวกับ preview) → ดาวน์โหลดไฟล์ CSV
 
@@ -241,7 +241,7 @@
 - [ ] เลือกปี + radio `ประกันรายได้` → ตารางเหลือเฉพาะผลชดเชย ตรง seed · สลับ `ไม่ประกันรายได้` → ผลกลับด้าน
 - [ ] ติ๊กภาค 2 รหัส + ประเภท A → ผลถูกกรองตรงกัน · ตาราง 19 คอลัมน์ scroll แนวนอนโดย body ไม่ scroll
 - [ ] Export CSV → เปิดใน Excel ภาษาไทยไม่เพี้ยน (UTF-8 BOM) เนื้อหาตรงกับ preview
-- [ ] เลขเงินคั่นหลักพัน + วันที่ พ.ศ. ทุกคอลัมน์
+- [ ] เลขเงินคั่นหลักพัน + วันที่ ค.ศ. ทุกคอลัมน์
 
 ---
 
@@ -249,7 +249,7 @@
 
 ### 6.1 OperatorsPage (§k2-operators — operator_assignments, SRS 3.1.8)
 - [ ] `OperatorsPage.tsx` + `OperatorTable.tsx`: `☑ | ชื่อผู้ปฏิบัติงาน | E-Mail | ชื่อตำแหน่ง | ภาคที่รับผิดชอบ | Action(view/edit/del)` — `GET /operators`
-- [ ] `EntityModal` schema operator: ชื่อ / อีเมล / ชื่อตำแหน่ง (select ตาม `SECTIONS` 5 ค่า) / ภาค (select `REGIONS` + `-`) / เหตุผล — **ช่องภาคแสดงเฉพาะเมื่อตำแหน่ง = ฝ่ายส่งเสริมธุรกิจ SBP** · POST/PUT/DELETE `/operators/{id}` (reason บังคับ)
+- [ ] `EntityModal` schema operator: ชื่อ / อีเมล / ชื่อตำแหน่ง (select ตาม `SECTIONS` 5 ค่า) / ภาค (select `REGIONS` + `-`) / เหตุผล — **ช่องภาคแสดงเฉพาะเมื่อตำแหน่ง = หน่วยงานส่งเสริมธุรกิจ SBP** · POST/PUT/DELETE `/operators/{id}` (reason บังคับ)
 - [ ] `EmployeeSearchModal.tsx` — ปุ่ม `ค้นหาพนักงาน (Pop Up)` → `GET /employees/search` → เลือก → เติมฟอร์มเพิ่มแถว + toast
 - [ ] `AuditHistoryTable` ผูก `GET /audit-logs?table=operator_assignments` + `SrsConditionsCard`
 
@@ -268,7 +268,7 @@
 
 **✔ เกณฑ์ตรวจรับ Phase 6**
 - [ ] เพิ่ม operator ผ่าน popup ค้นพนักงาน → แถวขึ้น + audit ขึ้นแถวใหม่ทันที (invalidate query — ไม่ต้อง refresh หน้า)
-- [ ] เลือกตำแหน่ง = ฝ่ายส่งเสริมธุรกิจ SBP → ช่องภาคโผล่ · ตำแหน่งอื่น → ซ่อน
+- [ ] เลือกตำแหน่ง = หน่วยงานส่งเสริมธุรกิจ SBP → ช่องภาคโผล่ · ตำแหน่งอื่น → ซ่อน
 - [ ] แก้ factor โดยไม่กรอกเหตุผล → submit ไม่ได้ · เพิ่ม factor รหัสซ้ำ → error message จาก BE แสดงตรง ๆ
 - [ ] toggle matrix 3 ช่อง → badge dirty = 3 → กดบันทึก → PUT ต่อเมนู, badge หาย, refresh แล้วค่าคงอยู่
 - [ ] role `is_system` (เช่น 00) → ปุ่มลบ disabled · ลบเมนู → สิทธิ์เมนูนั้นหายทุก role
@@ -344,9 +344,9 @@
 | `/` | index.html | `GET /dashboard/summary` | 3 |
 | `/documents/waiting` | k2-list-waiting.html | `GET /tasks` | 3 |
 | `/documents/related` | k2-list-related.html | `GET /documents` (ปี required) | 3 |
-| `/documents/create` | k2-create.html | `POST /documents` · `GET /stores/search` | 4 |
+| `/documents/create` | k2-create.html | `POST /documents` · `GET /store/search` (ระบบ SBP เดิม) | 4 |
 | `/documents/:docNo` | k2-document.html | `GET/PUT /documents/{docNo}` · `POST .../actions` · `GET .../timeline` · `POST .../attachments` · `GET .../sales` · `GET /competitors` · `GET /factors` | 4 |
-| `/reports/income-audit` | k2-report.html | `GET /reports/status-summary` · `GET .../export` · `GET /stores/search` | 5 |
+| `/reports/income-audit` | k2-report.html | `GET /reports/status-summary` · `GET .../export` · `GET /store/search` (ระบบ SBP เดิม) | 5 |
 | `/masters/operators` | k2-operators.html | `GET/POST/PUT/DELETE /operators` · `GET /employees/search` · `GET /workflow-sections` · `GET /audit-logs` | 6 |
 | `/masters/factors` | k2-factors.html | `GET/POST/PUT/DELETE /factors` · `GET /audit-logs` | 6 |
 | `/masters/permissions` | k2-permissions.html | `GET/PUT /menu-permissions` · `GET/POST/PUT/DELETE /roles` · `POST/PUT/DELETE /menus` · `GET /audit-logs` | 6 |
@@ -367,7 +367,7 @@
 | empty-state | `ไม่พบรายการตามเงื่อนไขที่กรอง` | DataTable ทุกหน้า |
 | สถานะ 1 | `รอฝ่าย SBP DSA ดำเนินการ` | Pill สถานะ (section 06) |
 | สถานะ 2 | `รอเจ้าหน้าที่ SBP DSA ดำเนินการ` | Pill สถานะ (section 08) |
-| สถานะ 3 | `รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ` | Pill สถานะ (section 01) |
+| สถานะ 3 | `รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ` | Pill สถานะ (section 01) |
 | สถานะ 4 | `รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ` | Pill สถานะ (section 02) |
 | สถานะ 5 | `รอผู้บริหารสำนักบริหาร SBP ดำเนินการ` | Pill สถานะ (section 03) |
 | สถานะ 6 | `เสร็จสิ้นดำเนินการ` | Pill สถานะ (จบ) |
@@ -379,13 +379,13 @@
 
 ## ภาคผนวก B — ค่าคงที่ที่ต้องตรงตัว (สรุปจาก plan-fe.md §7)
 
-- `SECTIONS` (ลำดับตายตัว): `06 ฝ่าย SBP DSA` → `08 เจ้าหน้าที่ SBP DSA` → `01 ฝ่ายส่งเสริมธุรกิจ SBP` → `02 GM ส่งเสริมธุรกิจฯ` → `03 ผู้บริหารสำนักบริหาร SBP (AVP)`
-- `AVP_THRESHOLD = 100_000` — ใช้แค่**แสดงป้าย** (เช่น stat card "วงเงิน>100,000 เข้า AVP", แผง S10) — routing จริงอยู่ BE
-- `REGIONS` = 13 รหัส `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` (ตาม k2-report.html) — fallback เท่านั้น · runtime โหลดจาก `GET /zones`
+- `SECTIONS` (ลำดับตายตัว): `06 ฝ่าย SBP DSA` → `08 เจ้าหน้าที่ SBP DSA` → `01 หน่วยงานส่งเสริมธุรกิจ SBP` → `02 GM ส่งเสริมธุรกิจฯ` → `03 ผู้บริหารสำนักบริหาร SBP (AVP)`
+- `GM_LIMIT = 50_000` / `AVP_LIMIT = 300_000` (SDD GI 24/02/2026 — แทน `AVP_THRESHOLD` 100_000 เดิม) — ใช้แค่**แสดงป้าย** (stat card "วงเงินเข้า AVP", แผง S10) — routing จริงอยู่ BE
+- `REGIONS` = 13 รหัส `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` (ตาม k2-report.html) — fallback เท่านั้น · runtime โหลดจาก `GET /store/all-regions` ของระบบ SBP เดิม
 - `SEARCH_STORE_TYPES` (ตัวกรองค้นหา 4 ค่า): `FR Type A` `FR Type B` `FR Type C` `พนักงาน` — **คนละชุด**กับประเภทร้าน 8 ตัวเลือกในฟอร์ม k2-create (FR Type A/B/C/C r/บริษัท/พนักงาน/PTT/BGC)
 - `MAX_FILE_MB = 5` · `ATTACH_EXTS` = `vsd dwg afp pdf mda zip wav mp3 gif jpg tif tiff htm html txt xml mpg mov ivs doc docx xls xlsx pps ppt pot csv`
-- เลขเอกสาร `YYYY/xxxxx` ปี**พ.ศ.** (เช่น `2569/00123`) — format ผ่าน `formatDocNo()` จุดเดียว
-- วันที่แสดงผลทุกจุด = พ.ศ. ผ่าน `formatDateThai()` เท่านั้น (API รับ-ส่ง ISO ค.ศ.)
+- เลขเอกสาร `YYYY/xxxxx` ปี**ค.ศ.** (เช่น `2026/00123`) — format ผ่าน `formatDocNo()` จุดเดียว
+- วันที่แสดงผลทุกจุด = **ค.ศ.** ผ่าน formatter จุดเดียว (API รับ-ส่ง ISO ค.ศ.) · **เลขเอกสารและวันที่ทั้งระบบเป็น ค.ศ.** (ตัดสินใจ 2026-08-06 — ยึดตามระบบ SBP ปัจจุบัน: DatePicker ของ FE ตั้งค่า `buddhistEra = false` เป็นค่าเริ่มต้น และ BE มี helper `toAD(y) = y >= 2500 ? y - 543 : y` บังคับแปลงค่าที่หลุดมาเป็น พ.ศ. ให้เป็น ค.ศ. · แสดงผลเป็น พ.ศ. ได้เฉพาะจุดที่เปิด `buddhistEra` ที่ระดับ component เท่านั้น · ภาพหน้าจอ K2 จริงก็ใช้ ค.ศ. เช่นกัน เช่น `2026/01870`)
 
 ## ภาคผนวก C — Definition of Done ต่อ checkbox (ใช้ตัดสินว่า "ติ๊กได้")
 

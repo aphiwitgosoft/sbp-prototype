@@ -2,8 +2,6 @@
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
-> ปรับตาม SDD GI 24/02/2026 — วงเงิน GM 50,000 / AVP 300,000 (แทนเกณฑ์ 100,000) · เห็นควรไม่ชดเชยที่ 01/02 จบทันที · ปุ่ม "ส่งหน่วยงานส่งเสริมธุรกิจ SBP" · auto-queue เจ้าของเดิมเมื่อ 06 ไม่เห็นควร
-
 ## 1. Overview
 
 | รายการ | รายละเอียด |
@@ -43,19 +41,14 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 
 | Current | Result / condition | statusCode | nextSection | Task effect |
 | --- | --- | --- | --- | --- |
-| 06 | ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI — เดิม "ส่งฝ่ายส่งเสริมธุรกิจ SBP") | 01 | 01 | close 06; open 01 |
 | 06 | ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ | 08 | 08 | close 06; open 08 |
 | 08 | คำนวณเงินชดเชยเรียบร้อย | 01 | 01 | close 08; open 01 |
 | 01 | เห็นควรชดเชย | 02 | 02 | close 01; open 02 |
-| 01 | เห็นควรไม่ชดเชย (SDD GI — จบทันที ไม่อนุมัติในเดือนนั้น; เดิมตีกลับให้ 06 รับทราบ) | 99 | null | close 01; complete instance |
-| 02 | เห็นควรชดเชย และ totalCompensationAmount <= 50000 (วงเงิน GM · SDD GI) | 99 | null | close 02; complete instance |
-| 02 | เห็นควรชดเชย และ totalCompensationAmount 50001–300000 (วงเงิน AVP · SDD GI) | 03 | 03 | close 02; open 03 |
-| 02 | เห็นควรชดเชย และ totalCompensationAmount > 300000 | - | - | SDD ยังไม่ระบุเส้นทาง — รอ confirm |
-| 02 | เห็นควรไม่ชดเชย (SDD GI — จบทันที ไม่อนุมัติในเดือนนั้น; เดิมตีกลับเป็นทอด ๆ) | 99 | null | close 02; complete instance |
-| 03 | เห็นควรชดเชย (วงเงิน AVP 300,000/รายการ) | 99 | null | close 03; complete instance |
-| 03 | เห็นควรไม่ชดเชย (คงเดิม — SDD GI ไม่ได้ระบุขั้น AVP · รอ confirm) | 06 | 06 | close 03; reopen 06 |
+| 02 | เห็นควรชดเชย และ totalCompensationAmount > 100000 | 03 | 03 | close 02; open 03 |
+| 02 | เห็นควรชดเชย และ totalCompensationAmount <= 100000 | 99 | null | close 02; complete instance |
+| 03 | เห็นควรชดเชย | 99 | null | close 03; complete instance |
 | ทุก section ที่รองรับ | ส่งกลับ | รหัส section ปลายทางตาม action option | section ปลายทาง | close current; reopen target with new task id |
-| 06 | เห็นควรไม่ชดเชย หรือ หยุดชดเชยประกันรายได้ | 99 | null | close 06; complete instance · กรณีเห็นควรไม่ชดเชย: รอบเดือนถัดไประบบ auto-queue งานเข้าหน้างานค้างพร้อม assignee คนเดิม (SDD GI) |
+| 06 | เห็นควรไม่ชดเชย หรือ หยุดชดเชยประกันรายได้ | 99 | null | close 06; complete instance |
 
 ### 5.2 Action Response Type
 
@@ -71,7 +64,7 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 | --- | --- |
 | Input | POST /api/v1/documents/{docNo}/actions; GET /api/v1/documents/{docNo}/timeline |
 | Progress | Lock current action task; Validate owner and selected result against actionOptions; Apply server-side business rule; Update document/task |
-| Output | workflow_tasks; compensation_documents; consideration_logs |
+| Output | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow); compensation_documents; consideration_logs |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -147,7 +140,7 @@ Timeline API
 
 ```json
 {
-  "docNo": "2569/00123"
+  "docNo": "2026/00123"
 }
 ```
 
@@ -184,11 +177,11 @@ Timeline API
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| workflow_tasks | R/W | lock/close/open task ตาม transition |
+| workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow) | R/W | triggerEvent() เดิน state + บันทึก history |
 | compensation_documents | W | อัปเดต status/current_section/result |
 | consideration_logs | W | บันทึกผลพิจารณาและ comment |
 | status_email_rules | R | ผู้รับอีเมลตาม status |
-| workflow_tasks current-open lock | R/W | กัน action ซ้ำด้วย lock task ปัจจุบัน + closed_at |
+| workflow_transaction (@srm/glb-workflow) | R/W | กัน action ซ้ำด้วย getTransaction/getPermissionEvents ก่อน triggerEvent |
 
 ## 9. Processing Flow
 

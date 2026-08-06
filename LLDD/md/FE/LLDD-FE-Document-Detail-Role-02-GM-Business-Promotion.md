@@ -75,7 +75,7 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Document Detail 
 
 | Area | Fields | Validation / Behavior |
 | --- | --- | --- |
-| ข้อมูลประกอบอนุมัติ | totalCompensationAmount, approvalLimitIndicator | read-only จาก API; ใช้แสดง <=50,000 (จบที่ GM) หรือ 50,001–300,000 (เข้าเส้น AVP) — วงเงิน SDD GI |
+| ข้อมูลประกอบอนุมัติ | totalCompensationAmount, approvalLimitIndicator | read-only จาก API; ใช้แสดง <=100,000 หรือ >100,000 |
 | เอกสารแนบ | file, fileName, attachmentType, remark | เพิ่มไฟล์ได้; ขนาด <= 5 MB; extension ต้องอยู่ใน allowlist |
 | แผงพิจารณา | result, comment | result required; comment ตาม actionOptions.requireComment |
 
@@ -87,7 +87,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | --- | --- |
 | เห็นควรชดเชย | comment optional |
 | เห็นควรไม่ชดเชย | comment ตาม actionOptions.requireComment |
-| ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP | comment ตาม actionOptions.requireComment |
+| ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP | comment ตาม actionOptions.requireComment |
 
 ### 5.6 API Response Example
 
@@ -95,7 +95,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123",
+  "docNo": "2026/00123",
   "statusCode": "02",
   "viewerRbacRoleCode": "R-XX",
   "roleProfileCode": "P-02",
@@ -124,7 +124,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
       "requireComment": false
     },
     {
-      "label": "ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP",
+      "label": "ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP",
       "requireComment": false
     }
   ]
@@ -165,7 +165,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | Render profile sections | render เฉพาะ visibleSections ของ P-02: doc-header, sec-sales, sec-map, sec-newstore, sec-competitor, sec-factor, sec-attach, sec-comp-history, sec-decision-history, sec-action; ซ่อน: sec-calc | section ที่ซ่อนต้องไม่อยู่ใน DOM และ section key ที่ไม่รู้จักต้อง log/ignore แบบ fail closed |
 | Apply edit boundary | เปิด mutation control เฉพาะ editableSections ของ P-02: ไม่มี; business section ทั้งหมด read-only | read-only section ไม่มี focusable input/save/add/delete และ payload ต้องไม่มี field นอก editableSections |
 | Attachment control | canUploadAttachment=true สำหรับ GM Business Promotion; ใช้ allowlist, 5 MB และ scan-status contract | ปุ่ม upload ตรง flag, FILE_TOO_LARGE/FILE_SCAN_BLOCKED แสดงที่ attachment section |
-| Render exact action set | แสดง actionOptions ของ P-02 เท่านั้น: เห็นควรชดเชย; เห็นควรไม่ชดเชย; ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP; comment rules: เห็นควรชดเชย: comment optional; เห็นควรไม่ชดเชย: comment ตาม actionOptions.requireComment; ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP: comment ตาม actionOptions.requireComment | radio label/requireComment มาจาก API และ FE ไม่คำนวณ nextSection |
+| Render exact action set | แสดง actionOptions ของ P-02 เท่านั้น: เห็นควรชดเชย; เห็นควรไม่ชดเชย; ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP; comment rules: เห็นควรชดเชย: comment optional; เห็นควรไม่ชดเชย: comment ตาม actionOptions.requireComment; ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP: comment ตาม actionOptions.requireComment | radio label/requireComment มาจาก API และ FE ไม่คำนวณ nextSection |
 | Submit and reload | ส่ง result/comment สำหรับ P-02 แล้ว invalidate detail, timeline, task/list cache | หลัง submit ต้องโหลด status/actionOptions ใหม่และไม่คง action set ของ P-02 เมื่อ workflow เปลี่ยนขั้น |
 
 ## 6. Button / User Action Mapping
@@ -187,7 +187,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123"
+  "docNo": "2026/00123"
 }
 ```
 
@@ -201,7 +201,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123",
+  "docNo": "2026/00123",
   "statusCode": "02",
   "viewerRbacRoleCode": "R-XX",
   "roleProfileCode": "P-02",
@@ -228,7 +228,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
       "requireComment": false
     },
     {
-      "label": "ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP",
+      "label": "ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP",
       "requireComment": false
     }
   ]
@@ -251,7 +251,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ### POST /api/v1/documents/{docNo}/actions
 
-ตัวอย่าง positive-path จาก section 02; Section 02 ใช้กรณียอดรวมมากกว่า 50,000 บาท (GM) / 300,000 บาท (AVP) ตาม SDD GI 24/02/2026
+ตัวอย่าง positive-path จาก section 02; Section 02 ใช้กรณียอดรวมมากกว่า 100,000 บาท
 
 #### Request
 

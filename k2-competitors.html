@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>กำหนดรายชื่อคู่แข่ง · SBP Management System</title>
+<link rel="stylesheet" href="assets/sbp.css">
+</head>
+<body data-page="k2-competitors" data-nav="modules" data-module="k2-competitors" data-crumb="กำหนดรายชื่อคู่แข่ง">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">กำหนดรายชื่อคู่แข่ง</h1>
+          <p class="page-sub">master รายชื่อร้านคู่แข่งที่ใช้เลือกในหัวข้อ “ร้านคู่แข่งเปิดกระทบ” ของหน้าเอกสาร · ระบบประกันรายได้ (competitors)</p></div>
+        <div class="page-actions">
+          <button class="btn btn-primary" data-add-row="tblCompetitorMaster"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มรายชื่อคู่แข่ง</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>รายชื่อคู่แข่งทั้งหมด</h2><span class="pill info" style="margin-left:auto;">11 รายการ · ตรงตามระบบ K2 เดิม</span></div>
+        <div class="toolbar">
+          <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input id="cmSearch" placeholder="ค้นหารหัส / ชื่อคู่แข่ง (ไทย-อังกฤษ)"></div>
+          <div class="spacer"></div>
+          <button class="btn btn-ghost btn-sm" id="cmRefresh" data-ack="รีเฟรชรายชื่อคู่แข่ง" data-kind="ok"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg> รีเฟรช</button>
+          <button class="btn btn-muted btn-sm" id="cmClear">เคลียร์ค่าเริ่มใหม่</button>
+        </div>
+        <div class="table-wrap"><table class="data" id="tblCompetitorMaster" data-entity="competitormaster">
+          <thead><tr><th class="col-chk"><input type="checkbox" class="cbx"></th><th>รหัสคู่แข่ง</th><th>ชื่อคู่แข่ง (ไทย)</th><th>ชื่อคู่แข่ง (อังกฤษ)</th><th>รายละเอียดเพิ่มเติม</th><th class="col-action">Action</th></tr></thead>
+          <tbody id="cmBody"><!-- 11 แถว generate ด้วยสคริปต์ท้ายหน้า (ตรงตามหน้าจอ K2 เดิม) --></tbody>
+        </table></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">รายการนี้คือแหล่งข้อมูลของ dropdown <b>“ร้านคู่แข่ง (Master)”</b> ใน modal เพิ่ม/แก้ไขร้านคู่แข่งของหน้าเอกสาร — เพิ่มรายชื่อที่นี่แล้วหน้าเอกสารจะเลือกได้ทันที โดยไม่ต้องแก้โค้ด</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>ประวัติการแก้ไขข้อมูล</h2><span class="pill info" style="margin-left:auto;">audit_logs (MaintainMasterHistory)</span></div>
+        <div class="table-wrap"><table class="data" style="min-width:1020px;">
+          <thead><tr><th>วันที่แก้ไข</th><th>ผู้แก้ไข</th><th>คำสั่ง</th><th>รายการ</th><th>ข้อมูลเดิม → ข้อมูลใหม่</th><th>เหตุผลการแก้ไข</th></tr></thead>
+          <tbody>
+            <tr><td class="num">02/07/2026 14:05</td><td>Admin BPM</td><td><span class="pill ok">เพิ่ม</span></td><td>11 · อื่นๆ (Other)</td><td>—</td><td>รองรับคู่แข่งรายใหม่ที่ยังไม่มีในรายการ</td></tr>
+            <tr><td class="num">26/06/2026 10:41</td><td>ภัชริดา ประดิษฐ์ทองใส</td><td><span class="pill info">แก้ไข</span></td><td>09</td><td>ชื่อ(อังกฤษ): Lawson → Lawson 108</td><td>ปรับให้ตรงกับชื่อทางการค้า</td></tr>
+            <tr><td class="num">14/06/2026 16:20</td><td>Admin BPM</td><td><span class="pill fail">ลบ</span></td><td>12 · ร้านโชห่วยทั่วไป</td><td>—</td><td>ไม่ใช่ร้านสะดวกซื้อเชนที่ต้องติดตาม</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">ระบบบันทึกประวัติอัตโนมัติทุกครั้งที่ เพิ่ม / แก้ไข / ลบ — การแก้ไขและการลบต้องระบุเหตุผลเสมอ · เรียงล่าสุดก่อน</p>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          <div style="font-size:13.5px;color:#45525f;line-height:1.7;">
+            <b style="color:#2b3440;">เงื่อนไข:</b> <b>รหัสคู่แข่ง</b> · <b>ชื่อคู่แข่ง (ไทย)</b> · <b>ชื่อคู่แข่ง (อังกฤษ)</b> เป็น require field ทั้งสามช่อง — รหัสคู่แข่งห้ามซ้ำ · แก้ไขได้เฉพาะชื่อและรายละเอียด และต้องระบุเหตุผล · ระบบบันทึกที่ตาราง <code>competitors</code> และเก็บประวัติที่ <code>audit_logs</code>
+            <br><b style="color:#2b3440;">ที่มา:</b> หน้าจอ “สำหรับจัดการข้อมูลรายชื่อคู่แข่ง” ของ K2 เดิม (<code>docs/ภาพประกันรายได้/กำหนดรายชื่อคู่แข่ง.png</code>) — รหัสและชื่อทั้ง 11 รายการคัดลอกมาตรงตามของจริง
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+  <script>
+  /* ===== master รายชื่อคู่แข่ง 11 รายการ — ตรงตามหน้าจอ K2 เดิม ===== */
+  (function () {
+    var ICON = {
+      view: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+      edit: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z',
+      del:  'M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6'
+    };
+    var LIST = [
+      ['01', 'โลตัสเอ็กซ์เพรส', 'Lotus Express', 'ร้านสะดวกซื้อในเครือโลตัส'],
+      ['02', 'มินิบิ๊กซี', 'Mini Big C', 'ร้านสะดวกซื้อในเครือบิ๊กซี'],
+      ['03', 'ท็อปส์เดลี่', 'Tops Daily', 'ร้านสะดวกซื้อในเครือเซ็นทรัล'],
+      ['04', 'แฟมิลี่มาร์ท', 'Family Mart', ''],
+      ['05', 'จิฟฟี่', 'Jiffy', 'ส่วนใหญ่อยู่ในสถานีบริการน้ำมัน'],
+      ['06', 'ซี.เจ. เอ็กซ์เพรส', 'CJ Express', ''],
+      ['07', 'แม็กซ์แวลูทันใจ', 'Max Valu', ''],
+      ['08', 'ซุปเปอร์ชีป', 'Super Cheap', 'เน้นพื้นที่ภาคใต้'],
+      ['09', 'ลอว์สัน 108', 'Lawson 108', ''],
+      ['10', 'จอย', 'Joy', ''],
+      ['11', 'อื่นๆ', 'Other', 'ใช้เมื่อคู่แข่งไม่อยู่ในรายการข้างต้น']
+    ];
+    function ic(cls, d) {
+      return '<button class="icon-btn ' + cls + '"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="' + d + '"/></svg></button>';
+    }
+    var body = document.getElementById('cmBody');
+    body.innerHTML = LIST.map(function (r) {
+      return '<tr><td class="col-chk"><input type="checkbox" class="cbx"></td>'
+        + '<td class="num">' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td>'
+        + '<td>' + (r[3] || '<span style="color:#b9c3cf;">—</span>') + '</td>'
+        + '<td class="col-action">' + ic('icon-view', ICON.view) + ic('icon-edit', ICON.edit) + ic('icon-del', ICON.del) + '</td></tr>';
+    }).join('');
+
+    /* ค้นหาแบบ client-side (รหัส / ชื่อไทย / ชื่ออังกฤษ / รายละเอียด) */
+    var q = document.getElementById('cmSearch');
+    function filter() {
+      var v = q.value.trim().toLowerCase();
+      Array.prototype.forEach.call(body.rows, function (tr) {
+        tr.hidden = !!v && tr.textContent.toLowerCase().indexOf(v) === -1;
+      });
+    }
+    q.addEventListener('input', filter);
+    document.getElementById('cmClear').addEventListener('click', function () {
+      q.value = ''; filter();
+      if (window.SBP && SBP.toast) SBP.toast('เคลียร์ค่าเริ่มใหม่แล้ว', 'ok');
+    });
+  })();
+  </script>
+</body>
+</html>

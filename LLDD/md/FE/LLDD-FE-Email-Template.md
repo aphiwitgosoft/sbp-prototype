@@ -197,7 +197,7 @@ preview ด้วย sample variables
 ```json
 {
   "variables": {
-    "docNo": "2569/00123"
+    "docNo": "2026/00123"
   }
 }
 ```
@@ -213,7 +213,7 @@ preview ด้วย sample variables
 
 ```json
 {
-  "subject": "แจ้งเตือน 2569/00123",
+  "subject": "แจ้งเตือน 2026/00123",
   "body": "..."
 }
 ```

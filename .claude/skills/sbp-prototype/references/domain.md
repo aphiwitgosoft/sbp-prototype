@@ -10,7 +10,7 @@
 
 ## ค่าคงที่ธุรกิจ (ห้ามเปลี่ยนโดยไม่มี business sign-off)
 
-- เลขที่เอกสาร `YYYY/xxxxx` — **ปี พ.ศ.** เช่น `2569/00123` (running เริ่ม 00001)
+- เลขที่เอกสาร `YYYY/xxxxx` — **ปี พ.ศ.** เช่น `2026/00123` (running เริ่ม 00001)
 - วงเงินอนุมัติ (SDD GI 24/02/2026 — แทนเกณฑ์เดียว 100,000): ชดเชย **≤ 50,000 บาท จบที่ GM (02)** · **50,001–300,000 ต้องผ่าน AVP สำนัก SBPM (03) แล้วจบ** · เกิน 300,000 รอ confirm · เปิดเรื่องซ้ำได้เองหลังหยุด/ไม่เห็นควรชดเชย (ไม่ต้องเปิด SR) · ยอด 0: เดือน 1–3 ส่งต่อ 01, เดือนที่ 4 หยุดชดเชย
 - **คำเรียกหน่วยงาน (SDD GI · ตัดสินใจ 2026-08-06):** ใช้ **"หน่วยงานส่งเสริมธุรกิจ"** แทน "ฝ่ายส่งเสริม" **ทุกจุด** — ทั้งปุ่ม/ค่า enum และ**ชื่อสถานะเอกสาร** ("รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ") · ขั้น 01 เพิ่มบทบาท **เจ้าหน้าที่อาวุโส (Senior Officer)** ใช้งานร่วมกับผู้จัดการฝ่าย/ผู้เชี่ยวชาญ
 - **%ชดเชยของร้านเปิดใหม่ทุกร้านในเอกสารรวมกันต้อง = 100%**
@@ -21,6 +21,8 @@
 - ไฟล์แนบ ≤ **5MB/ไฟล์** · ชนิดที่รับ: vsd,dwg,afp,pdf,mda,zip,wav,mp3,gif,jpg,tif,tiff,htm,html,txt,xml,mpg,mov,ivs,doc,docx,xls,xlsx,pps,ppt,pot,csv
 
 ## Workflow 5 ขั้น (section_code) — SDD v7.5 ตัดขั้นบัญชี 04/05
+
+> ไฟล์ SDD v7.5 (`08102025 …pdf`) **ถูกลบออกจาก repo 2026-08-06** — ข้อกำหนดถูกรวมเข้าการออกแบบปัจจุบันแล้ว · SDD ที่ยึดเป็นหลักตอนนี้คือ **SDD GI** (`SDD-GI-Compensation/`)
 
 **06 → 08 → 01 → 02 → 03**
 
@@ -85,5 +87,5 @@ EM-04/05 รับพฤติกรรมมาจาก Approve Flow เดิ
 - **รวม EAI + K2 เข้า SBPGI**: ตัดไฟล์ภายใน `BPM06001O_/2O_/3O_` (Jobs 7/8/9) และ K2 REST StartInstance (Job 8b) → Document Service เขียน DB ตรง + Workflow Engine ภายใน
 - Interface ภายนอก **คงเดิม** (ระบบของทีมอื่น): QSSI (SFTP) · ALLMAP (SQL Server) · IAS/MIS (ไฟล์ AMS06001O/I) · STA (FRBC0001 + ACK, เพิ่ม `POST /interfaces/sta/ack`) · SMTP
 - Flow 12 ขั้น 4 Stage (A รับข้อมูล Jobs 1–5 · B สร้างเอกสาร+เปิด workflow · C พิจารณา 5 ขั้น · D ส่งออก+watchdog Jobs 6/10) → `workflow.md`
-- Schema 34 ตาราง 3 โซน (A=FGI/FCS · B=K2 docs/workflow · C=shared master/config · RBAC/ผู้ปฏิบัติงานใช้ระบบ SBP เดิม) + Data Spine 4 ID (`impact_process_id` → `doc_no` → `instance_id` → `task_id`) → `database.md`
+- Schema 24 ตาราง 3 โซน (A=FGI/FCS · B=K2 docs/workflow · C=shared master/config · RBAC/ผู้ปฏิบัติงาน + workflow engine + master/config ที่ระบบ SBP มีอยู่แล้ว ใช้ของเดิม) + Data Spine 4 ID (`impact_process_id` → `doc_no` → `instance_id`/`task_id` ของ `@srm/glb-workflow`) → `database.md`
 - P0 สำคัญ: ครอบ Job 4 ด้วย transaction · ย้าย credential ไป Secret Manager · ห้ามเก็บ secret ใน `system_configs`

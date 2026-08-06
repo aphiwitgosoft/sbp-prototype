@@ -40,7 +40,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Dashboard Su
 | Stage | Contract for implementation |
 | --- | --- |
 | Input | GET /api/v1/dashboard/summary |
-| Progress | Validate query; Aggregate workflow_tasks/compensation_documents/compensation_histories; Build chart datasets; Cache response |
+| Progress | Validate query; Aggregate workflow_transaction (@srm/glb-workflow)/compensation_documents/compensation_histories; Build chart datasets; Cache response |
 | Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
 ### 5.90 Endpoint Implementation Contract
@@ -54,7 +54,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Dashboard Su
 | Step | Behavior specific to this LLDD | Failure/test evidence |
 | --- | --- | --- |
 | 1 | Validate query | dashboard fixture |
-| 2 | Aggregate workflow_tasks/compensation_documents/compensation_histories | empty dashboard |
+| 2 | Aggregate workflow_transaction (@srm/glb-workflow)/compensation_documents/compensation_histories | empty dashboard |
 | 3 | Build chart datasets | status chart count |
 | 4 | Cache response | cache invalidation |
 | 5 | Return normalized JSON | dashboard fixture |
@@ -93,7 +93,7 @@ Dashboard summary API
   "waitingTasks": 24,
   "storesThisMonth": 342,
   "compensationThisMonth": 8420000.0,
-  "flagUnder60Days": 5,
+  "abnormalStores": 5,
   "monthlyChart": [],
   "statusChart": []
 }
@@ -106,7 +106,7 @@ Dashboard summary API
 | waitingTasks | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | storesThisMonth | integer | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
 | compensationThisMonth | number | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| flagUnder60Days | integer | Yes | จำนวนงานที่ยอดขายไม่ครบ 60 วัน (แถวแดง) — เดิมชื่อ abnormalStores ของหน้า Overview ที่ยกเลิกแล้ว (2026-08-06) |
+| abnormalStores | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | monthlyChart | array<object> | Yes | JSON array; element type shown in Type column |
 | statusChart | array<object> | Yes | JSON array; element type shown in Type column |
 
@@ -116,7 +116,7 @@ Dashboard summary API
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| workflow_tasks | R | นับงานค้างและ pending queue |
+| workflow_transaction / workflow_approver (@srm/glb-workflow) | R | นับงานค้างและ pending queue |
 | compensation_documents | R | นับเอกสาร/ร้านในงวด |
 | compensation_histories | R | ยอดชดเชยรายเดือน |
 | fgi_impact_sales_summaries | R | จำนวนข้อมูลผิดปกติ total_working_days < 60 |
@@ -126,7 +126,7 @@ Dashboard summary API
 | Step | Description |
 | --- | --- |
 | 1 | Validate query |
-| 2 | Aggregate workflow_tasks/compensation_documents/compensation_histories |
+| 2 | Aggregate workflow_transaction (@srm/glb-workflow)/compensation_documents/compensation_histories |
 | 3 | Build chart datasets |
 | 4 | Cache response |
 | 5 | Return normalized JSON |

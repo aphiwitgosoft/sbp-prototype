@@ -48,7 +48,7 @@ Attachment API ต้องจัดการ binary file จริง ไม่
 | --- | --- | --- |
 | Storage provider | `OBJECT_STORAGE` ผ่าน adapter กลาง | รองรับ S3-compatible/MinIO/NAS ตาม env โดย service code ไม่ผูก vendor โดยตรง |
 | Bucket/container | `sbpgi-{env}-attachments` | แยก dev/test/prod และกำหนด lifecycle/backup ที่ infra |
-| Object key | `documents/{beYear}/{docNoSafe}/{attachId}/{sha256Prefix}-{safeFileName}` | `docNoSafe` แทน `/` ด้วย `-`; sanitize filename ก่อนใช้ใน key |
+| Object key | `documents/{year}/{docNoSafe}/{attachId}/{sha256Prefix}-{safeFileName}` | `docNoSafe` แทน `/` ด้วย `-`; sanitize filename ก่อนใช้ใน key |
 | Quarantine path | `quarantine/{runDate}/{uuid}` | ไฟล์ใหม่ต้องเข้า quarantine ก่อน scan; ยัง download ไม่ได้ |
 | Allowed extension | vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv | ตรวจทั้ง extension และ content type/magic bytes เท่าที่ platform รองรับ |
 | AV scan status | PENDING -> CLEAN หรือ BLOCKED/FAILED | download อนุญาตเฉพาะ CLEAN; BLOCKED/FAILED คืน FILE_SCAN_BLOCKED |
@@ -201,7 +201,7 @@ Sales detail API
 
 ```json
 {
-  "docNo": "2569/00123"
+  "docNo": "2026/00123"
 }
 ```
 
@@ -244,7 +244,7 @@ Timeline/history API
 
 ```json
 {
-  "docNo": "2569/00123"
+  "docNo": "2026/00123"
 }
 ```
 

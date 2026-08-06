@@ -32,7 +32,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี พ.ศ. และ running 5 หลัก |
-| impactedStoreCode | string 5 digits | numeric length = 5 | แสดง leading zero |
+| storeCode | string 5 digits | numeric length = 5 | แสดง leading zero |
 | amount | number, 2 decimals | >= 0 | format `#,##0.00` บาท |
 | percent | number, 2 decimals | 0-100 | ใช้ `%` และรวม allocation ต้องเท่ากับ 100 |
 | date | DD/MM/YYYY | valid date | FE แสดง พ.ศ. หาก source เป็น ISO ค.ศ. |
@@ -53,7 +53,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
 | GET /api/v1/tasks | Inbox tasks API | Read JWT section/role | year missing fails for /documents |
-| GET /api/v1/documents | Document search API | Validate year for documents | leading zero impactedStoreCode preserved |
+| GET /api/v1/documents | Document search API | Validate year for documents | leading zero storeCode preserved |
 
 ### 5.91 Backend Execution Sequence
 
@@ -102,8 +102,8 @@ Inbox tasks API
 {
   "items": [
     {
-      "docNo": "2569/00123",
-      "daysPending": 3
+      "docNo": "2026/00123",
+      "waitingDays": 3
     }
   ]
 }
@@ -115,7 +115,7 @@ Inbox tasks API
 | --- | --- | --- | --- |
 | items | array<object> | Yes | JSON array; element type shown in Type column |
 | items[].docNo | string | Yes | พ.ศ. YYYY/xxxxx |
-| items[].daysPending | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].waitingDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### GET /api/v1/documents
 
@@ -126,7 +126,7 @@ Document search API
 ```json
 {
   "year": 2569,
-  "impactedStoreCode": "00788",
+  "storeCode": "00788",
   "status": "06",
   "page": 1
 }
@@ -137,7 +137,7 @@ Document search API
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
+| storeCode | string | No | exactly 5 digits; preserve leading zero |
 | status | string | No | UTF-8; use value domain described by endpoint purpose |
 | page | integer | No | >= 1; default 1 |
 
@@ -147,7 +147,7 @@ Document search API
 {
   "items": [
     {
-      "docNo": "2569/00123",
+      "docNo": "2026/00123",
       "statusCode": "06"
     }
   ]
@@ -168,7 +168,7 @@ Document search API
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| workflow_tasks | R | อ่าน inbox ตาม section/role |
+| workflow_transaction / workflow_approver (@srm/glb-workflow) | R | อ่าน inbox ผ่าน getPendingFlow() |
 | compensation_documents | R | ค้นเอกสารตาม year/status/store |
 | impacted_stores | R | ชื่อร้าน ภาค และข้อมูลร้าน |
 | fgi_impact_sales_summaries | R | flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน |
@@ -186,7 +186,7 @@ Document search API
 ## 10. Acceptance Criteria
 
 - year missing fails for /documents
-- leading zero impactedStoreCode preserved
+- leading zero storeCode preserved
 - pagination returns total
 - status filter works
 

@@ -208,6 +208,8 @@ td.col-action{text-align:center;}
 .field label .req{color:var(--danger);}
 .field input,.field select,.field textarea{font-family:inherit; font-size:14px; padding:10px 13px; border:1px solid #d6dfeb; border-radius:10px; background:#fff; color:var(--ink); outline:none; transition:.15s;}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary); box-shadow:0 0 0 3px rgba(47,111,237,.12);}
+/* คุมความสูงคอนโทรลให้เท่ากันทุกชนิด (input/select/date) — เฉพาะลูกโดยตรงของ .field เพื่อไม่ให้กระทบ checkbox/radio ที่ซ้อนอยู่ในกล่องย่อย */
+.field input:not([type="checkbox"]):not([type="radio"]),.field select{min-height:46px;}
 
 /* wizard steps */
 .stepper{display:flex; align-items:center; gap:0; margin:4px 0 22px; flex-wrap:wrap;}
@@ -414,8 +416,8 @@ tr.flag-red td:first-child{box-shadow:inset 3px 0 0 #ef4444;}
 .fpanel .frange input[type=number]::-webkit-outer-spin-button, .fpanel .frange input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
 .fpanel .ffoot{display:flex; justify-content:flex-end; margin-top:12px; padding-top:12px; border-top:1px dashed #dde5ef;}
 .legend-line{display:flex; justify-content:flex-end; margin-bottom:10px;}
-table.data thead th[data-stype]{cursor:pointer; user-select:none; white-space:nowrap;}
-table.data thead th[data-stype]::after{content:"⇅"; margin-left:6px; font-size:10px; opacity:.4;}
+table.data thead th[data-stype],table.data thead th[data-sort]{cursor:pointer; user-select:none; white-space:nowrap;}
+table.data thead th[data-stype]::after,table.data thead th[data-sort]::after{content:"⇅"; margin-left:6px; font-size:10px; opacity:.4;}
 table.data thead th.sort-asc::after{content:"▲"; opacity:1; color:var(--primary);}
 table.data thead th.sort-desc::after{content:"▼"; opacity:1; color:var(--primary);}
 .pager{display:flex; align-items:center; gap:6px; margin-top:16px; flex-wrap:wrap;}
@@ -443,3 +445,24 @@ table.data thead th.sort-desc::after{content:"▼"; opacity:1; color:var(--prima
 .wf-step.on{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(47,111,237,.3);}
 .wf-step.on b{color:#dbe7ff;}
 .wf-arrow{color:#9fb0c4;font-size:14px;}
+
+/* แถบดำเนินการกับรายการที่เลือก (checkbox) — สร้างอัตโนมัติโดย sbp.js ให้ทุกตารางที่มี checkbox */
+.bulk-bar{display:flex; align-items:center; gap:10px; margin:0 0 12px; padding:9px 14px;
+  border:1px solid #cfe0ff; background:#eef5ff; border-radius:10px; font-size:13px; color:#2b3440;}
+.bulk-bar[hidden]{display:none;}
+.bulk-bar > svg{color:var(--primary); flex:none;}
+.bulk-bar .bulk-n{color:var(--primary); font-size:14px;}
+.bulk-bar .btn:first-of-type{margin-left:auto;}
+.bulk-bar .bulk-trash{color:#dc2626;}
+
+/* กรอบจำลอง iframe ของระบบภายนอก (FS) — ใช้ทั้งหน้าเอกสารและหน้าสร้างเอกสาร */
+.fs-frame{border:1px solid #d9e2ee; border-radius:12px; overflow:hidden; background:#fff;}
+.fs-frame-bar{display:flex; align-items:center; gap:7px; padding:9px 14px; background:#eef2f8; border-bottom:1px solid #dde5ef;}
+.fs-frame-bar code{font-size:11.5px; color:#5d6b7a; background:#fff; border:1px solid #dde5ef; border-radius:6px; padding:3px 9px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.fs-frame-tag{margin-left:auto; font-size:11px; font-weight:700; color:#1d4ed8; background:#e8f0fe; border-radius:11px; padding:3px 10px; white-space:nowrap;}
+.fs-dot{width:9px; height:9px; border-radius:50%; background:#cbd5e1; flex:none;}
+.fs-frame-body{min-height:230px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px 24px;
+  background:repeating-linear-gradient(45deg,#fbfcfe,#fbfcfe 10px,#f6f8fb 10px,#f6f8fb 20px);}
+.fs-frame-body b{display:block; margin:12px 0 6px; font-size:15px; color:#2b3440;}
+.fs-frame-body p{margin:0; max-width:620px; font-size:13px; line-height:1.75; color:#5d6b7a;}
+.fs-frame-body small{display:block; margin-top:10px; max-width:620px; font-size:11.5px; line-height:1.7; color:#9aa7b6;}

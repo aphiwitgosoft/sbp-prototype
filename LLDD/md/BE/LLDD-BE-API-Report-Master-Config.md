@@ -11,15 +11,13 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
 | Objective | ออกแบบ APIs สำหรับรายงาน Master Data และ System Config |
 
-> ปรับตาม SDD GI 24/02/2026 (periodStatement บังคับเมื่อสถานะเสร็จสิ้น · ภาคใหม่เพิ่มอัตโนมัติ) + การตัดสินใจใช้ระบบสิทธิ์เดิม 2026-08-05 (เส้น `/operators*` ตัดออก — ใช้ auth-backend ระบบเดิม)
-
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
 ## 2. Screen / Functional Scope
 
 - Report query service
 - CSV export
-- Factor CRUD (~~Operator CRUD~~ ตัดออก — ใช้ group/scope ของ auth-backend ระบบเดิม · 2026-08-05)
+- Operator/factor CRUD
 - System/Global Config (SCR-11)
 - Report filters
 
@@ -36,9 +34,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report Maste
 | year | พ.ศ. YYYY | required for report | return 400 if missing |
 | status | statusCode string | required | 6 สถานะเอกสาร; verbatim จาก document_statuses |
 | result | APPROVE\|REJECT | required for report | maps to consideration latest result |
-| periodStatement | พ.ศ./ค.ศ. month | **required เมื่อ status = เสร็จสิ้นดำเนินการ** (SDD GI) | ปฏิทิน ค.ศ. หรือกรอกเอง; return 400 if missing |
-| region | array/string | optional | 13 region codes + ภาคใหม่เพิ่ม checkbox อัตโนมัติ (SDD v7.5); multi-select |
-| storeType | array/string | optional | A/B/C/D; multi-select |
+| region | array/string | optional | 13 region codes; multi-select |
+| storeType | array/string | optional | A/B/C/E; multi-select |
 | impactedStoreCode | string 5 digits | optional | คง leading zero |
 | newStoreCode | string 5 digits | optional | คง leading zero |
 | reason | text | required mutation | audit reason |
@@ -48,9 +45,9 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report Maste
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/reports/status-summary; GET /api/v1/reports/status-summary/export |
+| Input | GET /api/v1/reports/status-summary; GET /api/v1/reports/status-summary/export; GET /api/v1/operators |
 | Progress | Validate filter; Build query; Apply pagination/export mode; Return rows or CSV |
-| Output | external_factors; system_configs (~~operator_assignments~~ ตัดออก — ใช้ระบบ SBP เดิม) |
+| Output | operator_assignments; external_factors; mas_param (SBP) |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -58,10 +55,10 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report Maste
 | --- | --- | --- | --- |
 | GET /api/v1/reports/status-summary | รายงานตรวจสอบประกันรายได้ | Validate filter | missing year/status/result fails |
 | GET /api/v1/reports/status-summary/export | Export CSV | Build query | export uses same filters as preview |
-| ~~GET /api/v1/operators~~ **ตัดออก — ใช้ระบบ SBP เดิม** | อ่าน operator assignments | Apply pagination/export mode | master edit requires reason |
-| ~~POST /api/v1/operators~~ **ตัดออก — ใช้ระบบ SBP เดิม** | สร้าง operator assignment | Return rows or CSV | config locked value cannot edit |
-| ~~PUT /api/v1/operators/{id}~~ **ตัดออก — ใช้ระบบ SBP เดิม** | แก้ operator assignment | For mutations validate reason and write audit | missing year/status/result fails |
-| ~~DELETE /api/v1/operators/{id}~~ **ตัดออก — ใช้ระบบ SBP เดิม** | ยกเลิก operator assignment | Validate filter | export uses same filters as preview |
+| GET /api/v1/operators | อ่าน operator assignments | Apply pagination/export mode | master edit requires reason |
+| POST /api/v1/operators | สร้าง operator assignment | Return rows or CSV | config locked value cannot edit |
+| PUT /api/v1/operators/{id} | แก้ operator assignment | For mutations validate reason and write audit | missing year/status/result fails |
+| DELETE /api/v1/operators/{id} | ยกเลิก operator assignment | Validate filter | export uses same filters as preview |
 | GET /api/v1/factors | อ่านปัจจัยภายนอก | Build query | master edit requires reason |
 | POST /api/v1/factors | สร้างปัจจัยภายนอก | Apply pagination/export mode | config locked value cannot edit |
 | PUT /api/v1/factors/{code} | แก้ปัจจัยภายนอก | Return rows or CSV | missing year/status/result fails |
@@ -198,7 +195,7 @@ Export CSV
 | --- | --- | --- | --- |
 | fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/operators — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### GET /api/v1/operators
 
 อ่าน operator assignments
 
@@ -259,7 +256,7 @@ Export CSV
 | items[].zoneCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/operators — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### POST /api/v1/operators
 
 สร้าง operator assignment
 
@@ -307,7 +304,7 @@ Export CSV
 | zoneCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### PUT /api/v1/operators/{id} — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### PUT /api/v1/operators/{id}
 
 แก้ operator assignment
 
@@ -353,7 +350,7 @@ Export CSV
 | zoneCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### DELETE /api/v1/operators/{id} — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### DELETE /api/v1/operators/{id}
 
 ยกเลิก operator assignment
 
@@ -595,7 +592,7 @@ Export CSV
     {
       "key": "UPLOAD_MAX_MB",
       "value": 5,
-      "valueType": "NUMBER",
+      "valueType": "INTEGER",
       "editable": true,
       "description": "ขนาดไฟล์สูงสุด"
     }
@@ -641,7 +638,7 @@ Export CSV
 {
   "key": "UPLOAD_MAX_MB",
   "value": 5,
-  "valueType": "NUMBER",
+  "valueType": "INTEGER",
   "editable": true,
   "description": "ขนาดไฟล์สูงสุด"
 }
@@ -667,7 +664,7 @@ Export CSV
 {
   "key": "UPLOAD_WARN_MB",
   "value": 4,
-  "valueType": "NUMBER",
+  "valueType": "INTEGER",
   "editable": true,
   "description": "ระดับเตือนขนาดไฟล์",
   "reason": "เพิ่มค่าเตือน"
@@ -691,7 +688,7 @@ Export CSV
 {
   "key": "UPLOAD_WARN_MB",
   "value": 4,
-  "valueType": "NUMBER",
+  "valueType": "INTEGER",
   "editable": true
 }
 ```
@@ -733,7 +730,7 @@ Export CSV
 {
   "key": "UPLOAD_MAX_MB",
   "value": 6,
-  "valueType": "NUMBER",
+  "valueType": "INTEGER",
   "editable": true
 }
 ```
@@ -790,10 +787,10 @@ Export CSV
 | compensation_documents | R | แหล่งข้อมูลรายงานและ filter status/year |
 | compensation_histories | R | ยอดเงินชดเชยและงวด statement |
 | consideration_logs | R | ผลพิจารณาล่าสุด APPROVE/REJECT |
-| ~~operator_assignments~~ | R/W | **ตัดออก** — ผู้ปฏิบัติงานใช้ group + scope ของ auth-backend ระบบเดิม |
+| operator_assignments | R/W | ผู้ปฏิบัติงาน |
 | external_factors | R/W | master ปัจจัยภายนอก |
-| system_configs | R/W | ค่ากำหนดกลาง (รวม workflow.gm_amount_limit=50000 / workflow.avp_amount_limit=300000 ตาม SDD GI) |
-| audit_logs | W | ประวัติการแก้ไข factor/config |
+| mas_param (SBP) | R/W | ค่ากำหนดกลางในตารางของระบบ SBP เดิม |
+| audit_logs | W | ประวัติการแก้ไข operator/factor/config |
 
 ## 9. Processing Flow
 
@@ -819,5 +816,5 @@ Export CSV
 | 1 | report missing year |
 | 2 | report export |
 | 3 | factor duplicate |
-| 4 | ~~operator audit~~ (ตัดออก — ใช้ระบบ SBP เดิม) · report periodStatement required เมื่อสถานะเสร็จสิ้น |
+| 4 | operator audit |
 | 5 | config locked |

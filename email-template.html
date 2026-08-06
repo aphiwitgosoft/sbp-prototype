@@ -115,8 +115,8 @@
             <tr><td><span class="tpl-code">EM-01</span></td><td>แจ้งผู้ดำเนินการลำดับถัดไป</td><td>Stage C — ทุกครั้งที่เอกสารเปลี่ยนสถานะ (ส่งดำเนินการ)</td><td>ผู้ดำเนินการ Step ถัดไป</td><td>status_email_rules (SRS 3.1.5)</td><td>ตามเหตุการณ์</td></tr>
             <tr><td><span class="tpl-code">EM-02</span></td><td>เอกสารเสร็จสิ้นดำเนินการ (End)</td><td>Stage C — เห็นควรไม่ชดเชย / หยุดชดเชย / อนุมัติชดเชย (GM ≤100k · AVP &gt;100k)</td><td>ผู้เกี่ยวข้องทั้งหมด</td><td>status_email_rules</td><td>ตามเหตุการณ์</td></tr>
             <tr><td><span class="tpl-code">EM-03</span></td><td>เอกสารถูกส่งกลับ (Back-flow)</td><td>Stage C — เลือกผลพิจารณา "ส่งกลับ" ทุกขั้น</td><td>ผู้ดำเนินการที่ถูกส่งกลับหา</td><td>status_email_rules</td><td>ตามเหตุการณ์</td></tr>
-            <tr><td><span class="tpl-code">EM-04</span></td><td>เตือนงานค้างรายสัปดาห์</td><td>Reminder Job — อ่านงานค้างจาก workflow_tasks</td><td>ผู้ดำเนินการที่มีงานค้าง</td><td>status_email_rules + config</td><td>ทุกวันจันทร์ 10:00 (แก้ได้)</td></tr>
-            <tr><td><span class="tpl-code">EM-05</span></td><td>Escalation งานค้าง 30/45/60 วัน</td><td>Workflow Engine ตรวจ waiting_days ของ workflow_tasks</td><td>หัวหน้า Section / GM OPT</td><td>เกณฑ์ escalation (config)</td><td>เมื่อครบ 30/45/60 วัน</td></tr>
+            <tr><td><span class="tpl-code">EM-04</span></td><td>เตือนงานค้างรายสัปดาห์</td><td>Reminder Job — อ่านงานค้างจาก @srm/glb-workflow (getPendingFlow)</td><td>ผู้ดำเนินการที่มีงานค้าง</td><td>status_email_rules + config</td><td>ทุกวันจันทร์ 10:00 (แก้ได้)</td></tr>
+            <tr><td><span class="tpl-code">EM-05</span></td><td>Escalation งานค้าง 30/45/60 วัน</td><td>Workflow Engine ตรวจอายุงานค้าง (waitingDate จาก getPendingFlow)</td><td>หัวหน้า Section / GM OPT</td><td>เกณฑ์ escalation (config)</td><td>เมื่อครบ 30/45/60 วัน</td></tr>
             <tr><td><span class="tpl-code">EM-06</span></td><td>สรุปการเปิด Workflow ราย DV</td><td>Stage B — Gen Flow Gate เปิด workflow เสร็จ (เดิม Job 8b)</td><td>DV / GM user (opt_dv_user_id)</td><td>พฤติกรรมเดิม Job 8b</td><td>ตามรอบ batch</td></tr>
             <tr><td><span class="tpl-code">EM-07</span></td><td>แจ้ง Batch Job ผิดพลาด</td><td>Stage A/B/D — ทุก Job 1–10 เมื่อจบด้วย Error</td><td>ผู้ดูแลระบบ (เดิม storeretention)</td><td>config ต่อ job</td><td>ตามเหตุการณ์</td></tr>
             <tr><td><span class="tpl-code">EM-08</span></td><td>Watchdog — ACK จาก STA ค้าง</td><td>Stage D — Job 10 ตรวจ interface_transactions ทุก 07:00</td><td>ผู้ดูแลระบบ</td><td>พฤติกรรมเดิม Job 10</td><td>ทุกวัน 07:00 (เมื่อพบค้าง ≥ 1 วัน)</td></tr>
@@ -149,7 +149,7 @@
           <div class="tpl-meta">
             <div class="m"><span class="k">Trigger</span><span class="v">กด "ส่งดำเนินการ" แล้วสถานะเอกสารเปลี่ยนเป็น "รอ&lt;ผู้ดำเนินการ&gt;ดำเนินการ"</span></div>
             <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = ผู้ดำเนินการลำดับถัดไป · CC ตาม status_email_rules</span></div>
-            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">compensation_documents · workflow_tasks · consideration_logs</span></div>
+            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">compensation_documents · workflow_transaction (@srm/glb-workflow) · consideration_logs</span></div>
           </div>
           <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
             <span style="font-size:13px;color:#5d6b7a;font-weight:600;">ดูตัวอย่างเมื่อสถานะถัดไปเป็น:</span>
@@ -167,16 +167,16 @@
               <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">To</span><span class="v" id="em01To">หน่วยงานส่งเสริมธุรกิจ SBP &lt;sbp-opt-mgr@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">Cc</span><span class="v" id="em01Cc">ฝ่าย SBP DSA &lt;sbp-dsa-mgr@cpall.co.th&gt;</span></div>
-              <div class="mail-row"><span class="k">Subject</span><span class="v subj" id="em01Subj">[SBPGI] เอกสารประกันรายได้ 2569/00123 — รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj" id="em01Subj">[SBPGI] เอกสารประกันรายได้ 2026/00123 — รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</span></div>
             </div>
             <div class="mail-body">
               เรียน <span id="em01Dear">หน่วยงานส่งเสริมธุรกิจ SBP</span><br>
-              เอกสารประกันรายได้เลขที่ <span class="mf">2569/00123</span> ได้เปลี่ยนสถานะเป็น
+              เอกสารประกันรายได้เลขที่ <span class="mf">2026/00123</span> ได้เปลี่ยนสถานะเป็น
               "<b id="em01BodyStatus">รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</b>" กรุณาเข้าระบบเพื่อตรวจสอบและดำเนินการ
               <table class="det">
-                <tr><td>เลขที่เอกสาร</td><td><span class="mf">2569/00123</span></td></tr>
+                <tr><td>เลขที่เอกสาร</td><td><span class="mf">2026/00123</span></td></tr>
                 <tr><td>ร้านถูกกระทบ</td><td><span class="mf">00788</span> — <span class="mf">รัตนอุทิศ ซ.13</span> (ภาค <span class="mf">RS</span>)</td></tr>
-                <tr><td>รอบ / ครั้งที่ / เดือน</td><td><span class="mf">1</span> / <span class="mf">3</span> / <span class="mf">06/2569</span></td></tr>
+                <tr><td>รอบ / ครั้งที่ / เดือน</td><td><span class="mf">1</span> / <span class="mf">3</span> / <span class="mf">06/2026</span></td></tr>
                 <tr><td>ยอดขายที่ลดลง</td><td><span class="mf">12.45%</span></td></tr>
                 <tr><td>จำนวนเงินชดเชย (ล่าสุด)</td><td><span class="mf">48,200.00</span> บาท</td></tr>
                 <tr><td>ผลพิจารณาล่าสุด</td><td><span class="mf" id="em01Action">คำนวณเงินชดเชยเรียบร้อย</span> โดย <span class="mf" id="em01Actor">เจ้าหน้าที่ SBP DSA</span></td></tr>
@@ -205,22 +205,22 @@
           <div class="tpl-meta">
             <div class="m"><span class="k">Trigger</span><span class="v">เห็นควรไม่ชดเชย (06/01/02 — 01/02 จบทันทีตาม SDD GI) · หยุดชดเชยประกันรายได้ (06) · เห็นควรชดเชย ≤50,000 (02) · เห็นควรชดเชย (03 AVP)</span></div>
             <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = ผู้เกี่ยวข้องทั้งหมดในเอกสาร (ทุก section ที่เคยดำเนินการ)</span></div>
-            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">document_statuses · compensation_histories · consideration_logs</span></div>
+            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">workflow_status (@srm/glb-workflow) · compensation_histories · consideration_logs</span></div>
           </div>
           <div class="mail ok">
             <div class="mail-top">
               <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">To</span><span class="v">ผู้เกี่ยวข้องทั้งหมดของเอกสาร <span class="mf">{{stakeholder_list}}</span></span></div>
-              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] เอกสารประกันรายได้ 2569/00123 — เสร็จสิ้นดำเนินการ (อนุมัติชดเชย)</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] เอกสารประกันรายได้ 2026/00123 — เสร็จสิ้นดำเนินการ (อนุมัติชดเชย)</span></div>
             </div>
             <div class="mail-body">
               เรียน ผู้เกี่ยวข้องทุกท่าน<br>
-              เอกสารประกันรายได้เลขที่ <span class="mf">2569/00123</span> ร้าน <span class="mf">รัตนอุทิศ ซ.13</span> (<span class="mf">00788</span>)
+              เอกสารประกันรายได้เลขที่ <span class="mf">2026/00123</span> ร้าน <span class="mf">รัตนอุทิศ ซ.13</span> (<span class="mf">00788</span>)
               ได้ <b>เสร็จสิ้นดำเนินการ</b> ด้วยผลพิจารณา "<span class="mf">เห็นควรชดเชย</span>"
               <table class="det">
                 <tr><td>ผลสุดท้าย</td><td><span class="mf">อนุมัติชดเชย</span></td></tr>
                 <tr><td>จำนวนเงินชดเชย</td><td><span class="mf">48,200.00</span> บาท</td></tr>
-                <tr><td>วันที่ปิดงาน</td><td><span class="mf">28/06/2569</span></td></tr>
+                <tr><td>วันที่ปิดงาน</td><td><span class="mf">28/06/2026</span></td></tr>
                 <tr><td>ขั้นตอนถัดไป (นอกระบบ)</td><td>ส่งผลเข้า Statement ผ่านไฟล์ FRBC0001 ไป STA (Job 6 · Stage D)</td></tr>
               </table>
               <span class="mail-btn">ดูประวัติการพิจารณา</span>
@@ -242,17 +242,17 @@
               <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">To</span><span class="v">หน่วยงานส่งเสริมธุรกิจ SBP &lt;sbp-opt-mgr@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">Cc</span><span class="v">GM ส่งเสริมธุรกิจ SBP &lt;sbp-opt-gm@cpall.co.th&gt;</span></div>
-              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] เอกสารประกันรายได้ 2569/00123 — ถูกส่งกลับเพื่อแก้ไข</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] เอกสารประกันรายได้ 2026/00123 — ถูกส่งกลับเพื่อแก้ไข</span></div>
             </div>
             <div class="mail-body">
               เรียน หน่วยงานส่งเสริมธุรกิจ SBP<br>
-              เอกสารประกันรายได้เลขที่ <span class="mf">2569/00123</span> ถูก <b>ส่งกลับ</b> จาก
+              เอกสารประกันรายได้เลขที่ <span class="mf">2026/00123</span> ถูก <b>ส่งกลับ</b> จาก
               <span class="mf">GM ส่งเสริมธุรกิจ SBP</span> เพื่อให้ตรวจสอบ/แก้ไขข้อมูลก่อนส่งพิจารณาอีกครั้ง
               <table class="det">
                 <tr><td>ผู้ส่งกลับ</td><td><span class="mf">GM ส่งเสริมธุรกิจ SBP</span> (section 02)</td></tr>
                 <tr><td>สถานะใหม่</td><td><span class="mf">รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</span></td></tr>
                 <tr><td>ความเห็น / เหตุผล</td><td><span class="mf warn">%ชดเชยของร้านเปิดใหม่รวมไม่เท่ากับ 100% กรุณาปรับสัดส่วนใหม่</span></td></tr>
-                <tr><td>วันที่ส่งกลับ</td><td><span class="mf">20/06/2569</span></td></tr>
+                <tr><td>วันที่ส่งกลับ</td><td><span class="mf">20/06/2026</span></td></tr>
               </table>
               <span class="mail-btn">เปิดเอกสารเพื่อแก้ไข</span>
               <div class="mail-foot">อีเมลฉบับนี้ส่งอัตโนมัติจากระบบ SBPGI (Notification Service) กรุณาอย่าตอบกลับ</div>
@@ -271,7 +271,7 @@
           <div class="tpl-meta">
             <div class="m"><span class="k">Trigger</span><span class="v">Reminder job รายสัปดาห์ (รอบเวลาแก้ได้ใน config) — รับพฤติกรรมจาก Approve Flow เดิม จุด 10.1, 20.2, 30.1, 70.1, 80.1, 110.2</span></div>
             <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = ผู้ดำเนินการแต่ละ section ที่มีงานค้าง (แยกฉบับต่อคน)</span></div>
-            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">workflow_tasks (งานค้างในสถานะ "รอ&lt;role&gt;ดำเนินการ")</span></div>
+            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">workflow_transaction/workflow_approver ของ @srm/glb-workflow (งานค้างในสถานะ "รอ&lt;role&gt;ดำเนินการ")</span></div>
           </div>
           <div class="mail">
             <div class="mail-top">
@@ -281,12 +281,12 @@
             </div>
             <div class="mail-body">
               เรียน ฝ่าย SBP DSA<br>
-              ณ วันที่ <span class="mf">29/06/2569</span> ท่านมีเอกสารประกันรายได้ค้างดำเนินการ <b><span class="mf">3</span> รายการ</b> ดังนี้
+              ณ วันที่ <span class="mf">29/06/2026</span> ท่านมีเอกสารประกันรายได้ค้างดำเนินการ <b><span class="mf">3</span> รายการ</b> ดังนี้
               <table class="det" style="min-width:480px;">
                 <tr><td>เลขที่เอกสาร</td><td>ร้านถูกกระทบ</td><td>สถานะ</td><td>ค้างมาแล้ว</td></tr>
-                <tr><td><span class="mf">2569/00123</span></td><td>รัตนอุทิศ ซ.13 (00788)</td><td>รอฝ่าย SBP DSA ดำเนินการ</td><td><span class="mf">12</span> วัน</td></tr>
-                <tr><td><span class="mf">2569/00119</span></td><td>ตลาดพลู สถานี (00512)</td><td>รอฝ่าย SBP DSA ดำเนินการ</td><td><span class="mf">9</span> วัน</td></tr>
-                <tr><td><span class="mf">2569/00104</span></td><td>บ้านโป่ง 12 (00233)</td><td>รอฝ่าย SBP DSA ดำเนินการ</td><td><span class="mf">26</span> วัน</td></tr>
+                <tr><td><span class="mf">2026/00123</span></td><td>รัตนอุทิศ ซ.13 (00788)</td><td>รอฝ่าย SBP DSA ดำเนินการ</td><td><span class="mf">12</span> วัน</td></tr>
+                <tr><td><span class="mf">2026/00119</span></td><td>ตลาดพลู สถานี (00512)</td><td>รอฝ่าย SBP DSA ดำเนินการ</td><td><span class="mf">9</span> วัน</td></tr>
+                <tr><td><span class="mf">2026/00104</span></td><td>บ้านโป่ง 12 (00233)</td><td>รอฝ่าย SBP DSA ดำเนินการ</td><td><span class="mf">26</span> วัน</td></tr>
               </table>
               <span class="mail-btn">เปิดหน้างานรอดำเนินการ</span><br>
               <span style="font-size:12px;color:#93a1b0;">ลิงก์: หน้า "เอกสาร → รอดำเนินการ" ของระบบ SBPGI</span>
@@ -301,20 +301,20 @@
           <div class="tpl-meta">
             <div class="m"><span class="k">Trigger</span><span class="v">งานค้างครบ 30 / 45 / 60 วัน (เกณฑ์แก้ได้) — รับพฤติกรรมจาก Approve Flow เดิม จุด 20.3</span></div>
             <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = หัวหน้า Section / GM OPT · CC = ผู้ดำเนินการเจ้าของงาน</span></div>
-            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">workflow_tasks.waiting_days</span></div>
+            <div class="m"><span class="k">แหล่งข้อมูล</span><span class="v">อายุงานค้างจาก getPendingFlow() ของ @srm/glb-workflow</span></div>
           </div>
           <div class="mail warn">
             <div class="mail-top">
               <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">To</span><span class="v">GM ส่งเสริมธุรกิจ SBP &lt;sbp-opt-gm@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">Cc</span><span class="v">ฝ่าย SBP DSA &lt;sbp-dsa-mgr@cpall.co.th&gt;</span></div>
-              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] งานค้างเกิน 45 วัน — เอกสาร 2569/00104 (Escalation)</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] งานค้างเกิน 45 วัน — เอกสาร 2026/00104 (Escalation)</span></div>
             </div>
             <div class="mail-body">
               เรียน GM ส่งเสริมธุรกิจ SBP<br>
               เอกสารประกันรายได้ต่อไปนี้ค้างดำเนินการเกินเกณฑ์ <b><span class="mf">45</span> วัน</b> จึงแจ้งมายังท่านเพื่อพิจารณาติดตาม/ส่งต่อ
               <table class="det">
-                <tr><td>เลขที่เอกสาร</td><td><span class="mf">2569/00104</span> — บ้านโป่ง 12 (<span class="mf">00233</span>)</td></tr>
+                <tr><td>เลขที่เอกสาร</td><td><span class="mf">2026/00104</span> — บ้านโป่ง 12 (<span class="mf">00233</span>)</td></tr>
                 <tr><td>สถานะปัจจุบัน</td><td><span class="mf">รอฝ่าย SBP DSA ดำเนินการ</span></td></tr>
                 <tr><td>ค้างมาแล้ว</td><td><span class="mf warn">47</span> วัน (เกณฑ์แจ้งเตือน: 30 → 45 → 60 วัน)</td></tr>
                 <tr><td>ผู้ดำเนินการเจ้าของงาน</td><td><span class="mf">ฝ่าย SBP DSA</span></td></tr>
@@ -342,14 +342,14 @@
             <div class="mail-top">
               <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">To</span><span class="v">DV เขตกรุงเทพตะวันออก &lt;dv-be-04@cpall.co.th&gt;</span></div>
-              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] สรุปการเปิด Workflow ประกันรายได้ ประจำรอบ 06/2569 — DV เขตกรุงเทพตะวันออก</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] สรุปการเปิด Workflow ประกันรายได้ ประจำรอบ 06/2026 — DV เขตกรุงเทพตะวันออก</span></div>
             </div>
             <div class="mail-body">
               เรียน DV เขตกรุงเทพตะวันออก<br>
-              ระบบได้เปิด workflow เอกสารประกันรายได้ประจำรอบ <span class="mf">06/2569</span> สำหรับร้านในความรับผิดชอบของท่าน สรุปได้ดังนี้
+              ระบบได้เปิด workflow เอกสารประกันรายได้ประจำรอบ <span class="mf">06/2026</span> สำหรับร้านในความรับผิดชอบของท่าน สรุปได้ดังนี้
               <table class="det">
                 <tr><td>ร้านที่ผ่านเกณฑ์ Gen Flow Gate</td><td><span class="mf">5</span> ร้าน</td></tr>
-                <tr><td>เปิด workflow สำเร็จ (Y)</td><td><span class="mf">4</span> เอกสาร — 2569/00121, 00122, 00123, 00125</td></tr>
+                <tr><td>เปิด workflow สำเร็จ (Y)</td><td><span class="mf">4</span> เอกสาร — 2026/00121, 00122, 00123, 00125</td></tr>
                 <tr><td>เปิดไม่สำเร็จ (N)</td><td><span class="mf warn">1</span> รายการ — ร้าน 00790 (ข้อมูล DV ไม่ครบ)</td></tr>
                 <tr><td>สถานะเริ่มต้นของเอกสาร</td><td>รอฝ่าย SBP DSA ดำเนินการ (06)</td></tr>
               </table>
@@ -377,7 +377,7 @@
               แจ้งเตือน: Batch job ต่อไปนี้จบการทำงานด้วยสถานะ <b style="color:#b45309;">Error</b>
               <table class="det">
                 <tr><td>Job</td><td><span class="mf">Job 5 — FGI_ImportImpactStoreSale</span> (รับยอดขาย + คำนวณ Growth Rate)</td></tr>
-                <tr><td>รอบการรัน</td><td><span class="mf">16/06/2569 16:30</span></td></tr>
+                <tr><td>รอบการรัน</td><td><span class="mf">16/06/2026 16:30</span></td></tr>
                 <tr><td>ขั้นตอนที่ล้มเหลว</td><td><span class="mf">อ่านไฟล์ AMS06001I</span></td></tr>
                 <tr><td>รหัส / ข้อความ</td><td><span class="mf warn">E11 — ไม่พบไฟล์ AMS06001I_25690616.txt บน SFTP</span></td></tr>
                 <tr><td>ผลกระทบ</td><td>ยังไม่คำนวณ sales_diff ของงวดนี้ — ข้อมูลไม่ถูกเขียนบางส่วน (job ครอบด้วย transaction)</td></tr>
@@ -407,8 +407,8 @@
               แจ้งเตือน: พบข้อมูลค่าชดเชยที่ส่งไป STA แล้ว <b>ยังไม่ได้รับ ACK ตอบกลับ</b> เกิน 1 วัน
               <table class="det" style="min-width:460px;">
                 <tr><td>ไฟล์ / Dataset</td><td>ส่งเมื่อ</td><td>ค้างมาแล้ว</td></tr>
-                <tr><td><span class="mf">FRBC0001_25690614.txt</span></td><td><span class="mf">14/06/2569 17:00</span></td><td><span class="mf warn">2</span> วัน</td></tr>
-                <tr><td><span class="mf">FRBC0001_25690615.txt</span></td><td><span class="mf">15/06/2569 17:00</span></td><td><span class="mf warn">1</span> วัน</td></tr>
+                <tr><td><span class="mf">FRBC0001_25690614.txt</span></td><td><span class="mf">14/06/2026 17:00</span></td><td><span class="mf warn">2</span> วัน</td></tr>
+                <tr><td><span class="mf">FRBC0001_25690615.txt</span></td><td><span class="mf">15/06/2026 17:00</span></td><td><span class="mf warn">1</span> วัน</td></tr>
               </table>
               กรุณาประสานทีม STA เพื่อตรวจสอบการประมวลผล หรือดูรายการค้างที่ dashboard (<span class="mf">GET /interfaces/pending-ack</span>)
               <div class="mail-foot">งานอ่านอย่างเดียว รันซ้ำปลอดภัย · แจ้งทุกวัน 07:00 เมื่อพบรายการค้าง กรุณาอย่าตอบกลับ</div>
@@ -420,13 +420,13 @@
 
       <!-- ประวัติการแก้ไขข้อมูล (template) -->
       <div class="card" style="margin-top:4px;">
-        <div class="card-head"><h2>ประวัติการแก้ไขข้อมูล</h2><span class="pill info" style="margin-left:auto;">audit_logs (table_name = email_templates)</span></div>
+        <div class="card-head"><h2>ประวัติการแก้ไขข้อมูล</h2><span class="pill info" style="margin-left:auto;">audit_logs (table_name = email_template)</span></div>
         <div class="table-wrap"><table class="data" style="min-width:980px;">
           <thead><tr><th>วันที่แก้ไข</th><th>ผู้แก้ไข</th><th>คำสั่ง</th><th>รายการ</th><th>ข้อมูลเดิม → ข้อมูลใหม่</th><th>เหตุผลการแก้ไข</th></tr></thead>
           <tbody>
-            <tr><td class="num">02/07/2569 10:20</td><td>Admin BPM</td><td><span class="pill info">แก้ไข</span></td><td><span class="tpl-code">EM-07</span> แจ้ง Batch Job ผิดพลาด</td><td>เพิ่มแถว "การแก้ไขเบื้องต้น" ในเนื้อหาอีเมล</td><td>ให้ผู้ดูแลเห็นแนวทาง rerun ได้ทันทีจากอีเมล</td></tr>
-            <tr><td class="num">27/06/2569 14:05</td><td>ภัชริดา ประดิษฐ์ทองใส</td><td><span class="pill info">แก้ไข</span></td><td><span class="tpl-code">EM-01</span> แจ้งผู้ดำเนินการลำดับถัดไป</td><td>เพิ่มตัวแปร {{doc_url}} ท้ายเนื้อหา</td><td>ให้กดเปิดเอกสารจากอีเมลได้โดยตรง</td></tr>
-            <tr><td class="num">24/06/2569 09:30</td><td>Admin BPM</td><td><span class="pill fail">รีเซ็ต</span></td><td><span class="tpl-code">EM-05</span> Escalation งานค้าง 30/45/60 วัน</td><td>คืนค่า Default</td><td>ยกเลิกถ้อยคำที่ทดลองปรับก่อนหน้า</td></tr>
+            <tr><td class="num">02/07/2026 10:20</td><td>Admin BPM</td><td><span class="pill info">แก้ไข</span></td><td><span class="tpl-code">EM-07</span> แจ้ง Batch Job ผิดพลาด</td><td>เพิ่มแถว "การแก้ไขเบื้องต้น" ในเนื้อหาอีเมล</td><td>ให้ผู้ดูแลเห็นแนวทาง rerun ได้ทันทีจากอีเมล</td></tr>
+            <tr><td class="num">27/06/2026 14:05</td><td>ภัชริดา ประดิษฐ์ทองใส</td><td><span class="pill info">แก้ไข</span></td><td><span class="tpl-code">EM-01</span> แจ้งผู้ดำเนินการลำดับถัดไป</td><td>เพิ่มตัวแปร {{doc_url}} ท้ายเนื้อหา</td><td>ให้กดเปิดเอกสารจากอีเมลได้โดยตรง</td></tr>
+            <tr><td class="num">24/06/2026 09:30</td><td>Admin BPM</td><td><span class="pill fail">รีเซ็ต</span></td><td><span class="tpl-code">EM-05</span> Escalation งานค้าง 30/45/60 วัน</td><td>คืนค่า Default</td><td>ยกเลิกถ้อยคำที่ทดลองปรับก่อนหน้า</td></tr>
           </tbody>
         </table></div>
         <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">ระบบบันทึกประวัติอัตโนมัติทุกครั้งที่ แก้ไข / รีเซ็ต template — ผู้รับ From/To/Cc ล็อกตาม status_email_rules แก้ไม่ได้ · การแก้ไขและการรีเซ็ตต้องระบุเหตุผลเสมอ · เก็บหลายรายการต่อ template เรียงล่าสุดก่อน</p>
@@ -454,7 +454,7 @@
       set('em01Status', r.status);
       set('em01To', r.to + ' <' + r.toMail + '>');
       set('em01Cc', r.cc + ' <' + r.ccMail + '>');
-      set('em01Subj', '[SBPGI] เอกสารประกันรายได้ 2569/00123 — ' + r.status);
+      set('em01Subj', '[SBPGI] เอกสารประกันรายได้ 2026/00123 — ' + r.status);
       set('em01Dear', r.to);
       set('em01BodyStatus', r.status);
       set('em01Action', r.action);

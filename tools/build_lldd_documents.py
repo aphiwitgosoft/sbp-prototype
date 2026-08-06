@@ -479,9 +479,9 @@ JOIN fgi_impact_stores s ON s.impact_process_id = p.id
 WHERE p.process_status = 'READY_DOCUMENT'
 GROUP BY p.id, p.impacted_store_code, p.impact_month;""",
         "write": """INSERT INTO compensation_documents
-    (doc_no, be_year, running_no, impact_process_id, impacted_store_code, impact_month,
+    (doc_no, year, running_no, impact_process_id, impacted_store_code, impact_month,
      source, status_code, current_section_code, total_compensation_amount, created_by)
-VALUES (:doc_no, :be_year, :running_no, :impact_process_id, :impacted_store_code, :impact_month,
+VALUES (:doc_no, :year, :running_no, :impact_process_id, :impacted_store_code, :impact_month,
         'FS', '06', '06', :total_compensation_amount, 'JOB-8')
 ON CONFLICT (impact_process_id) DO NOTHING;
 
@@ -494,7 +494,7 @@ SELECT :run_id, 'DOCUMENT_CREATE', 'INTERNAL', 'COMPLETED', d.impact_process_id,
 FROM compensation_documents d
 WHERE d.impact_process_id = :impact_process_id
 ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;""",
-        "idempotency": "UNIQUE(impact_process_id) และ UNIQUE(be_year,running_no); lock running number ต่อปีใน transaction; conflict ต้องคืน/อ้าง doc_no เดิม และยอมให้เลขที่จองกระโดดโดยห้าม reuse",
+        "idempotency": "UNIQUE(impact_process_id) และ UNIQUE(year,running_no); lock running number ต่อปีใน transaction; conflict ต้องคืน/อ้าง doc_no เดิม และยอมให้เลขที่จองกระโดดโดยห้าม reuse",
         "transaction": "lock เลขรัน + insert document + update process + INTERNAL_DB_WRITE tracking ใน transaction เดียว",
         "security": "internal service account เท่านั้น; ห้ามสร้างไฟล์ BPM06001O, ห้าม SFTP และห้ามเก็บ K2 credential",
         "steps": "loadDocumentCandidates|allocateDocumentNumbers|createCompensationDocuments|recordDocumentCreation",
@@ -506,7 +506,7 @@ ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;""",
     FROM fgi_impact_processes p
     JOIN compensation_documents d ON d.impact_process_id = p.id
     WHERE p.workflow_generation_status = 'W'
-      AND NOT EXISTS (SELECT 1 FROM workflow_instances w WHERE w.doc_no = d.doc_no)
+      AND NOT EXISTS (SELECT 1 FROM workflow_transaction w WHERE w.reference_id = d.doc_no AND w.version_id = :sbpgi_version_id)   -- @srm/glb-workflow
     ORDER BY p.id
     FOR UPDATE OF p SKIP LOCKED
 ), gate AS (
@@ -544,12 +544,10 @@ WHERE id = :impact_process_id
   AND workflow_generation_status = 'W'
   AND :gate_decision = 'N';
 
-INSERT INTO workflow_instances (instance_id, doc_no, instance_status, started_at, started_by)
-SELECT :instance_id, :doc_no, 'ACTIVE', CURRENT_TIMESTAMP, 'JOB-8B'
-WHERE :gate_decision = 'Y';
-INSERT INTO workflow_tasks (instance_id, doc_no, section_code, task_status, opened_at)
-SELECT :instance_id, :doc_no, '06', 'OPEN', CURRENT_TIMESTAMP
-WHERE :gate_decision = 'Y';
+-- gate_decision='Y': เปิด workflow ผ่าน @srm/glb-workflow ของระบบ SBP เดิม (ไม่ INSERT ตารางเอง)
+--   initializeWorkflow({ versionId: :sbpgi_version_id, referenceId: :doc_no, userId: 'JOB-8B' })
+--   addPreparedApprover({ versionId, referenceId: :doc_no, stateId: '06', approver, seq: 1 })
+-- library จะเขียน workflow_transaction / workflow_approver / workflow_history ให้เอง
 UPDATE fgi_impact_processes
 SET workflow_generation_status = 'Y', updated_at = CURRENT_TIMESTAMP
 WHERE id = :impact_process_id
@@ -557,8 +555,8 @@ WHERE id = :impact_process_id
   AND :gate_decision = 'Y';
 
 -- gate_decision='W' ไม่เปลี่ยนสถานะ; บันทึก reason ลง job_run_histories เพื่อ rerun.""",
-        "idempotency": "UNIQUE(workflow_instances.doc_no) และ OPEN-task partial unique index; instance เดิมให้ skip",
-        "transaction": "lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึง create instance/task และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun",
+        "idempotency": "UNIQUE(workflow_transaction.version_id, reference_id) ของ @srm/glb-workflow; transaction เดิมให้ skip",
+        "transaction": "lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึงเรียก initializeWorkflow/addPreparedApprover ของ @srm/glb-workflow และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun",
         "security": "internal service token จาก workload identity/secretRef; ห้าม Basic Auth หรือ K2 REST credential เดิม",
         "steps": "lockWorkflowCandidates|evaluateGenerationGate|startInternalWorkflows|notifyWorkflowOwners",
     },
@@ -2402,7 +2400,7 @@ def document_detail_single_role_blocks(profile: dict[str, Any]) -> list[dict[str
         section_rows.append([key, label, state, control])
 
     response = {
-        "docNo": "2569/00123",
+        "docNo": "2026/00123",
         "statusCode": profile["code"],
         "viewerRbacRoleCode": "R-XX",
         "roleProfileCode": role_profile_code(profile),
@@ -2489,7 +2487,7 @@ def document_detail_role_topic(profile: dict[str, Any]) -> Topic:
             ("Submit action", "ปุ่มส่งดำเนินการ", "POST /api/v1/documents/{docNo}/actions", "submit selected result"),
         ],
         [
-            ApiSpec("GET", "/api/v1/documents/{docNo}", f"โหลด role profile {role_profile_code(profile)} สำหรับหน้า detail", {"docNo": "2569/00123"}, {"docNo": "2569/00123", "statusCode": profile["code"], "viewerRbacRoleCode": "R-XX", "roleProfileCode": role_profile_code(profile), "visibleSections": profile["visible"], "editableSections": profile["editable"], "actionOptions": [{"label": row[0], "requireComment": "ต้องกรอก" in row[1]} for row in profile["actions"]]}),
+            ApiSpec("GET", "/api/v1/documents/{docNo}", f"โหลด role profile {role_profile_code(profile)} สำหรับหน้า detail", {"docNo": "2026/00123"}, {"docNo": "2026/00123", "statusCode": profile["code"], "viewerRbacRoleCode": "R-XX", "roleProfileCode": role_profile_code(profile), "visibleSections": profile["visible"], "editableSections": profile["editable"], "actionOptions": [{"label": row[0], "requireComment": "ต้องกรอก" in row[1]} for row in profile["actions"]]}),
             ApiSpec("POST", "/api/v1/documents/{docNo}/actions", f"ตัวอย่าง positive-path จาก section {profile['code']}; Section 02 ใช้กรณียอดรวมมากกว่า 100,000 บาท", {"result": forward_action[0], "comment": "ส่งดำเนินการตามลำดับ"}, {"statusCode": forward_action[2], "nextSection": forward_action[1], "message": "submitted"}),
         ],
         [
@@ -2552,7 +2550,7 @@ def common_contract_extra_blocks() -> list[dict[str, Any]]:
                 ["Document create", "POST /documents", "02 HQ, 03 User Admin, 01 Admin"],
                 ["Document update/action/attachment upload", "PUT /documents/{docNo}, POST /documents/{docNo}/actions, POST /documents/{docNo}/attachments", "current action owner; admin override only with policy and audit reason"],
                 ["Attachment download", "GET /documents/{docNo}/attachments/{attachId}/download", "same as document read; attachment belongs to doc and scanStatus=CLEAN"],
-                ["Lookup", "/stores/search, /competitors, /document-statuses", "authenticated user with related menu access"],
+                ["Lookup", "/competitors, /document-statuses, /workflow-sections, /decisions (ร้าน/ภาค/ประเภทสาขา ใช้ /store/* + /common/common-code ของระบบ SBP เดิม · 2026-08-06)", "authenticated user with related menu access"],
                 ["Master/RBAC/config", "/operators*, /factors*, /menu-permissions*, /roles*, /menus*, /configs*", "admin/HQ roles according to menu_permissions"],
                 ["Reports", "/reports/status-summary*", "admin/HQ/report roles and accounting service user"],
                 ["Internal workflow/interface", "/workflows/instances, /interfaces/* callback", "service token or API key only"],
@@ -2605,8 +2603,8 @@ def document_create_update_extra_blocks() -> list[dict[str, Any]]:
         table(
             ["Rule", "Required behavior", "Implementation note"],
             [
-                ["Format", "YYYY/xxxxx โดย YYYY เป็นปี พ.ศ. และ running 5 หลัก", "ตัวอย่าง 2569/00124; เก็บ doc_no เป็น string และเก็บ be_year/running_no แยกเพื่อ index"],
-                ["Sequence scope", "running reset ตามปี พ.ศ.", "unique key `(be_year, running_no)` และ unique `doc_no`"],
+                ["Format", "YYYY/xxxxx โดย YYYY เป็นปี พ.ศ. และ running 5 หลัก", "ตัวอย่าง 2026/00124; เก็บ doc_no เป็น string และเก็บ year/running_no แยกเพื่อ index"],
+                ["Sequence scope", "running reset ตามปี พ.ศ.", "unique key `(year, running_no)` และ unique `doc_no`"],
                 ["Lock strategy", "lock row sequence ด้วย `SELECT ... FOR UPDATE` หรือ database sequence ต่อปี", "ห้ามอ่าน max(running_no)+1 แบบไม่มี lock"],
                 ["Transaction boundary", "generate docNo, insert compensation_documents, insert first workflow task และ audit ใน transaction เดียว", "ถ้าสร้าง task ไม่สำเร็จต้อง rollback ทั้งชุด"],
                 ["Gap policy", "เลขที่ถูก commit แล้วห้าม reuse; rollback ก่อน commit ไม่ควรเผยแพร่ docNo ให้ client", "ถ้าใช้ native sequence ที่เกิด gap ได้ต้องบันทึก policy นี้ใน runbook"],
@@ -2623,7 +2621,7 @@ def document_create_update_extra_blocks() -> list[dict[str, Any]]:
                 ["3. Start transaction", "เปิด transaction และ lock sequence row ของปี พ.ศ.", "lock timeout คืน 409/503 ตามมาตรฐาน platform"],
                 ["4. Generate docNo", "เพิ่ม running_no และประกอบ doc_no", "ยังไม่ส่ง response จนกว่า commit สำเร็จ"],
                 ["5. Insert document", "insert compensation_documents และ child rows เริ่มต้น", "fail ต้อง rollback sequence/document"],
-                ["6. Open first task", "insert workflow_instances/workflow_tasks section 06 หรือเรียก workflow service ภายใน transaction boundary ที่กำหนด", "fail ต้อง rollback document"],
+                ["6. Open first task", "เรียก initializeWorkflow + addPreparedApprover (state 06) ของ @srm/glb-workflow ภายใน transaction boundary ที่กำหนด", "fail ต้อง rollback document"],
                 ["7. Audit and commit", "insert audit_logs แล้ว commit", "หลัง commit จึง return docNo/statusCode"],
             ],
         ),
@@ -2633,36 +2631,36 @@ def document_create_update_extra_blocks() -> list[dict[str, Any]]:
             [
                 ["ยิง POST /documents พร้อมกัน 20 request ในปีเดียวกัน", "ได้ docNo ไม่ซ้ำ running เรียงตาม commit และไม่มี duplicate key error ที่หลุดเป็น 500"],
                 ["สร้าง duplicate business key", "คืน 409 DUPLICATE_DOCUMENT และไม่ consume docNo ใหม่ถ้า duplicate ถูกพบก่อน lock sequence"],
-                ["จำลอง error หลัง insert document ก่อน insert task", "rollback แล้วไม่เหลือ compensation_documents/workflow_tasks/audit partial"],
+                ["จำลอง error หลัง insert document ก่อนเปิด workflow", "rollback แล้วไม่เหลือ compensation_documents/workflow_transaction/audit partial"],
                 ["เปลี่ยนปี พ.ศ.", "running เริ่มที่ 00001 ของปีใหม่"],
             ],
         ),
         h(2, "5.4 docNo Generator SQL Reference"),
         code("""-- Lock sequence row for the Buddhist year before generating docNo.
-SELECT be_year, next_running_no
+SELECT year, next_running_no
 FROM document_number_sequences
-WHERE be_year = :beYear
+WHERE year = :year
 FOR UPDATE;
 
 -- Create sequence row when the year is first used.
-INSERT INTO document_number_sequences (be_year, next_running_no, created_at, updated_at)
-SELECT :beYear, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+INSERT INTO document_number_sequences (year, next_running_no, created_at, updated_at)
+SELECT :year, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (
-    SELECT 1 FROM document_number_sequences WHERE be_year = :beYear
+    SELECT 1 FROM document_number_sequences WHERE year = :year
 );
 
 -- Consume the next number inside the same transaction as document creation.
 UPDATE document_number_sequences
 SET next_running_no = next_running_no + 1,
     updated_at = CURRENT_TIMESTAMP
-WHERE be_year = :beYear
-RETURNING be_year, next_running_no;
+WHERE year = :year
+RETURNING year, next_running_no;
 
 INSERT INTO compensation_documents (
-    doc_no, be_year, running_no, impacted_store_code, impact_month,
+    doc_no, year, running_no, impacted_store_code, impact_month,
     new_store_code, round_no, source, status_code, created_by, created_at
 ) VALUES (
-    :docNo, :beYear, :runningNo, :impactedStoreCode, :impactMonth,
+    :docNo, :year, :runningNo, :impactedStoreCode, :impactMonth,
     :newStoreCode, :roundNo, :source, '06', :userId, CURRENT_TIMESTAMP
 );""", "sql"),
     ]
@@ -2677,7 +2675,7 @@ def attachment_storage_extra_blocks() -> list[dict[str, Any]]:
             [
                 ["Storage provider", "`OBJECT_STORAGE` ผ่าน adapter กลาง", "รองรับ S3-compatible/MinIO/NAS ตาม env โดย service code ไม่ผูก vendor โดยตรง"],
                 ["Bucket/container", "`sbpgi-{env}-attachments`", "แยก dev/test/prod และกำหนด lifecycle/backup ที่ infra"],
-                ["Object key", "`documents/{beYear}/{docNoSafe}/{attachId}/{sha256Prefix}-{safeFileName}`", "`docNoSafe` แทน `/` ด้วย `-`; sanitize filename ก่อนใช้ใน key"],
+                ["Object key", "`documents/{year}/{docNoSafe}/{attachId}/{sha256Prefix}-{safeFileName}`", "`docNoSafe` แทน `/` ด้วย `-`; sanitize filename ก่อนใช้ใน key"],
                 ["Quarantine path", "`quarantine/{runDate}/{uuid}`", "ไฟล์ใหม่ต้องเข้า quarantine ก่อน scan; ยัง download ไม่ได้"],
                 ["Allowed extension", ATTACHMENT_ALLOWED_EXTENSIONS, "ตรวจทั้ง extension และ content type/magic bytes เท่าที่ platform รองรับ"],
                 ["AV scan status", "PENDING -> CLEAN หรือ BLOCKED/FAILED", "download อนุญาตเฉพาะ CLEAN; BLOCKED/FAILED คืน FILE_SCAN_BLOCKED"],
@@ -3117,8 +3115,8 @@ def topics() -> list[Topic]:
                 ("Open detail", "click row", "navigate /documents/:docNo", "เปิดเอกสาร"),
             ],
             [
-                ApiSpec("GET", "/api/v1/tasks", "รายการเอกสารรอดำเนินการ", {"page": 1, "size": 20, "status": "06"}, {"page": 1, "size": 20, "total": 24, "items": [{"roundNo": 1, "docNo": "2569/00123", "impactedStoreCode": "01234", "impactedStoreName": "สาขาตัวอย่าง", "regionCode": "BE", "salesDeclinePercent": 12.5, "statusCode": "06", "statusName": "รอฝ่าย SBP DSA ดำเนินการ", "totalCompensationAmount": 48200.0, "daysPending": 3, "salesDataDays": 58}]}),
-                ApiSpec("GET", "/api/v1/documents", "ค้นหาเอกสารที่เกี่ยวข้อง ต้องระบุปี", {"year": 2569, "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 342, "items": [{"roundNo": 2, "docNo": "2569/00124", "impactedStoreCode": "01235", "impactedStoreName": "สาขาตัวอย่าง 2", "regionCode": "BS", "salesDeclinePercent": 18.0, "statusCode": "99", "statusName": "เสร็จสิ้น", "totalCompensationAmount": 72500.0, "daysPending": 0, "salesDataDays": 60}]}),
+                ApiSpec("GET", "/api/v1/tasks", "รายการเอกสารรอดำเนินการ", {"page": 1, "size": 20, "status": "06"}, {"page": 1, "size": 20, "total": 24, "items": [{"roundNo": 1, "docNo": "2026/00123", "impactedStoreCode": "01234", "impactedStoreName": "สาขาตัวอย่าง", "regionCode": "BE", "salesDeclinePercent": 12.5, "statusCode": "06", "statusName": "รอฝ่าย SBP DSA ดำเนินการ", "totalCompensationAmount": 48200.0, "daysPending": 3, "salesDataDays": 58}]}),
+                ApiSpec("GET", "/api/v1/documents", "ค้นหาเอกสารที่เกี่ยวข้อง ต้องระบุปี", {"year": 2569, "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 342, "items": [{"roundNo": 2, "docNo": "2026/00124", "impactedStoreCode": "01235", "impactedStoreName": "สาขาตัวอย่าง 2", "regionCode": "BS", "salesDeclinePercent": 18.0, "statusCode": "99", "statusName": "เสร็จสิ้น", "totalCompensationAmount": 72500.0, "daysPending": 0, "salesDataDays": 60}]}),
             ],
             ["Read route mode", "Bind filter values", "Call list API", "Render table", "Apply abnormal row style", "Navigate to detail on row click"],
             ["ตาราง 9 คอลัมน์หลักครบ", "ปีเป็น required เมื่อใช้ /documents", "ยอดขายไม่ครบ 60 วันแสดงแดง", "pagination คง filter เดิม"],
@@ -3149,7 +3147,7 @@ def topics() -> list[Topic]:
                 ("reason", "text", "required for MANUAL/out-of-condition", "เหตุผลการสร้างเอกสารนอกเงื่อนไข; trim ก่อนส่ง"),
             ],
             [
-                ("Search store", "แว่นขยาย", "GET /api/v1/stores/search", "เลือก impacted/new store"),
+                ("Search store", "แว่นขยาย", "GET /store/search (ระบบ SBP เดิม)", "เลือก impacted/new store"),
                 ("Open FS tab", "tab เอกสารจาก FS", "Load hidden iframe from fsIframeUrl", "discover FS fields and render SBP mirror form"),
                 ("Change FS mirror value", "input/select ใน SBP mirror form", "iframe value sync service", "ส่งค่าเข้า field ใน hidden iframe และ dispatch input/change"),
                 ("Save draft", "ปุ่มบันทึก", "POST /api/v1/documents", "สร้าง draft"),
@@ -3157,9 +3155,9 @@ def topics() -> list[Topic]:
                 ("Submit FS iframe", "ปุ่มส่งใน tab เอกสารจาก FS", "sync all mirror values + submit iframe form", "submit form ของ FS ใน hidden iframe"),
             ],
             [
-                ApiSpec("GET", "/api/v1/stores/search", "ค้นหาร้านสำหรับ popup", {"q": "012", "type": "impacted"}, {"items": [{"storeCode": "01234", "storeName": "สาขาตัวอย่าง", "regionCode": "RS"}]}),
+                ApiSpec("GET", "/store/search (ระบบ SBP เดิม)", "ค้นหาร้านสำหรับ popup", {"q": "012", "type": "impacted"}, {"items": [{"storeCode": "01234", "storeName": "สาขาตัวอย่าง", "regionCode": "RS"}]}),
                 ApiSpec("GET", "/api/v1/configs/fs.createDocumentUrl", "อ่าน URL สำหรับโหลด FS iframe ใน tab เอกสารจาก FS", {}, {"configKey": "fs.createDocumentUrl", "value": "https://fs.example/create-document"}),
-                ApiSpec("POST", "/api/v1/documents", "สร้างเอกสาร", {"source": "MANUAL", "impactMonth": "2026-07", "statementPeriod": "2026-07", "impactedStoreCode": "01234", "newStoreCode": "22864", "roundNo": 1, "reason": "สร้างเอกสารนอกเงื่อนไข"}, {"docNo": "2569/00001", "statusCode": "06", "message": "created"}),
+                ApiSpec("POST", "/api/v1/documents", "สร้างเอกสาร", {"source": "MANUAL", "impactMonth": "2026-07", "statementPeriod": "2026-07", "impactedStoreCode": "01234", "newStoreCode": "22864", "roundNo": 1, "reason": "สร้างเอกสารนอกเงื่อนไข"}, {"docNo": "2026/00001", "statusCode": "06", "message": "created"}),
             ],
             ["User opens create page", "Choose tab: สร้างเอกสารทั่วไป or เอกสารจาก FS", "For FS tab load hidden iframe and discover fields", "Render SBP mirror form from iframe field metadata", "Search/select store or input period/source", "On change sync value into hidden iframe", "Validate", "Submit SBP API or submit hidden FS iframe", "Navigate to detail or show FS submit result"],
             ["required fields ทำงาน", "docNo ได้จาก API for MANUAL", "FS tab loads iframe and renders mirror form", "changing SBP mirror field updates hidden iframe field", "FS submit syncs all values before iframe submit", "validation message ชัดเจน"],
@@ -3187,7 +3185,7 @@ def topics() -> list[Topic]:
                 ("Open sales", "ข้อมูลยอดขายเพิ่มเติม", "GET /api/v1/documents/{docNo}/sales", "show chart/detail"),
             ],
             [
-                ApiSpec("GET", "/api/v1/documents/{docNo}", "โหลดรายละเอียดเอกสารพร้อม role profile สำหรับหน้า detail", {"docNo": "2569/00123"}, {"docNo": "2569/00123", "statusCode": "06", "viewerRbacRoleCode": "R-XX", "roleProfileCode": "P-06", "visibleSections": ["doc-header", "sec-sales", "sec-map", "sec-newstore", "sec-competitor", "sec-factor", "sec-attach", "sec-comp-history", "sec-decision-history", "sec-action"], "editableSections": [], "canUploadAttachment": True, "canAction": True, "actionOptions": [{"label": "เห็นควรไม่ชดเชย", "requireComment": True}, {"label": "หยุดชดเชยประกันรายได้", "requireComment": False}, {"label": "ส่งฝ่ายส่งเสริมธุรกิจ SBP", "requireComment": False}, {"label": "ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ", "requireComment": False}], "impactedStore": {"storeCode": "01234"}, "newStores": []}),
+                ApiSpec("GET", "/api/v1/documents/{docNo}", "โหลดรายละเอียดเอกสารพร้อม role profile สำหรับหน้า detail", {"docNo": "2026/00123"}, {"docNo": "2026/00123", "statusCode": "06", "viewerRbacRoleCode": "R-XX", "roleProfileCode": "P-06", "visibleSections": ["doc-header", "sec-sales", "sec-map", "sec-newstore", "sec-competitor", "sec-factor", "sec-attach", "sec-comp-history", "sec-decision-history", "sec-action"], "editableSections": [], "canUploadAttachment": True, "canAction": True, "actionOptions": [{"label": "เห็นควรไม่ชดเชย", "requireComment": True}, {"label": "หยุดชดเชยประกันรายได้", "requireComment": False}, {"label": "ส่งฝ่ายส่งเสริมธุรกิจ SBP", "requireComment": False}, {"label": "ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ", "requireComment": False}], "impactedStore": {"storeCode": "01234"}, "newStores": []}),
                 ApiSpec("PUT", "/api/v1/documents/{docNo}", "บันทึกส่วนย่อย เช่น ร้านเปิดใหม่/คู่แข่ง/ปัจจัย", {"newStores": [{"newStoreCode": "22864", "compensatePercent": 100}]}, {"message": "saved"}),
                 ApiSpec("POST", "/api/v1/documents/{docNo}/actions", "ส่งผลพิจารณาที่เลือกจาก actionOptions; ตัวอย่าง currentSection=01 จึงเปลี่ยนไป 02", {"result": "เห็นควรชดเชย", "comment": "เห็นควรชดเชยตามหลักเกณฑ์"}, {"statusCode": "02", "nextSection": "02", "message": "submitted"}),
                 ApiSpec("POST", "/api/v1/documents/{docNo}/attachments", "แนบไฟล์", {"file": "multipart/form-data <= 5MB"}, {"attachmentId": "att-001", "fileName": "evidence.pdf"}),
@@ -3270,7 +3268,7 @@ def topics() -> list[Topic]:
                 ("resultTable.docNo", "YYYY/xxxxx", "required", "คอลัมน์ 19 เลขที่เอกสาร; ใช้เปิด detail/preview"),
             ],
             [
-                ("เปิด popup ร้าน", "ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ", "GET /api/v1/stores/search?type=impacted", "เลือก store แล้วเติม storeCode/storeName"),
+                ("เปิด popup ร้าน", "ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ", "GET /store/search (ระบบ SBP เดิม)", "เลือก store แล้วเติม storeCode/storeName"),
                 ("Preview Report", "ปุ่ม Preview Report", "GET /api/v1/reports/status-summary", "validate required แล้ว render summary line/chart/table 19 columns"),
                 ("เคลียร์ค่าเริ่มใหม่", "ปุ่มเคลียร์ค่าเริ่มใหม่", "client state", "reset filter, summary, table และ error message"),
                 ("Export CSV to Batch", "ปุ่ม Export CSV to Batch ด้านบน/ท้าย filter", "GET /api/v1/reports/status-summary/export", "ส่ง filter ชุดเดียวกับ preview แล้ว download/queue CSV"),
@@ -3278,8 +3276,8 @@ def topics() -> list[Topic]:
                 ("Open detail", "คลิกเลขที่เอกสารหรือ row", "navigate /documents/{docNo} หรือ preview modal", "เปิดเอกสารที่เกี่ยวข้อง"),
             ],
             [
-                ApiSpec("GET", "/api/v1/stores/search", "Popup เลือกร้านที่ถูกกระทบ", {"q": "00788", "type": "impacted"}, {"items": [{"storeCode": "00788", "storeName": "รัตนอุทิศ ซ.13", "region": "RS", "storeType": "FR Type B"}]}),
-                ApiSpec("GET", "/api/v1/reports/status-summary", "Preview รายงานและข้อมูล chart/summary", {"impactedStoreCode": "00788", "newStoreCode": "00990", "impactMonthFrom": "2026-05", "impactMonthTo": "2026-05", "storeTypes": ["A", "B"], "status": "06", "resultCategory": "APPROVE", "regions": ["RS", "BN"], "statementPeriodFrom": "2026-05", "statementPeriodTo": "2026-05", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 10, "summary": {"totalItems": 10, "totalCompensationAmount": 439100.0, "overThresholdItems": 1, "abnormalSalesItems": 2}, "charts": {"status": [{"label": "รอฝ่าย SBP DSA ดำเนินการ", "value": 2}], "regionAmount": [{"region": "RS", "amount": 73850.0}]}, "items": [{"impactedStoreCode": "00788", "impactedStoreName": "รัตนอุทิศ ซ.13", "region": "RS", "storeType": "FR Type B", "impactMonth": "2026-05", "transferToSpDate": "2026-03-01", "statementPeriod": "2026-05", "newStoreCode": "00990", "newStoreName": "เซเว่นฯ รัตนาธิเบศร์ 12", "newStoreRegion": "RS", "newStoreType": "FR Type A", "compensationAmount": 48200.0, "statusName": "รอฝ่าย SBP DSA ดำเนินการ", "operatorName": "สมชาย ใจดี", "resultText": "-", "waitingDays": 2, "roundNo": 1, "createdDate": "2026-06-12", "docNo": "2569/00123"}]}),
+                ApiSpec("GET", "/store/search (ระบบ SBP เดิม)", "Popup เลือกร้านที่ถูกกระทบ", {"q": "00788", "type": "impacted"}, {"items": [{"storeCode": "00788", "storeName": "รัตนอุทิศ ซ.13", "region": "RS", "storeType": "FR Type B"}]}),
+                ApiSpec("GET", "/api/v1/reports/status-summary", "Preview รายงานและข้อมูล chart/summary", {"impactedStoreCode": "00788", "newStoreCode": "00990", "impactMonthFrom": "2026-05", "impactMonthTo": "2026-05", "storeTypes": ["A", "B"], "status": "06", "resultCategory": "APPROVE", "regions": ["RS", "BN"], "statementPeriodFrom": "2026-05", "statementPeriodTo": "2026-05", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 10, "summary": {"totalItems": 10, "totalCompensationAmount": 439100.0, "overThresholdItems": 1, "abnormalSalesItems": 2}, "charts": {"status": [{"label": "รอฝ่าย SBP DSA ดำเนินการ", "value": 2}], "regionAmount": [{"region": "RS", "amount": 73850.0}]}, "items": [{"impactedStoreCode": "00788", "impactedStoreName": "รัตนอุทิศ ซ.13", "region": "RS", "storeType": "FR Type B", "impactMonth": "2026-05", "transferToSpDate": "2026-03-01", "statementPeriod": "2026-05", "newStoreCode": "00990", "newStoreName": "เซเว่นฯ รัตนาธิเบศร์ 12", "newStoreRegion": "RS", "newStoreType": "FR Type A", "compensationAmount": 48200.0, "statusName": "รอฝ่าย SBP DSA ดำเนินการ", "operatorName": "สมชาย ใจดี", "resultText": "-", "waitingDays": 2, "roundNo": 1, "createdDate": "2026-06-12", "docNo": "2026/00123"}]}),
                 ApiSpec("GET", "/api/v1/reports/status-summary/export", "Export CSV to Batch ด้วย filter เดียวกับ preview", {"sameAsPreview": True, "format": "csv"}, {"contentType": "text/csv; charset=utf-8", "fileName": "status-summary-2569.csv", "queuedToBatch": True}),
             ],
             ["เปิดหน้า Report", "โหลด reference status/region/store type ถ้ามี API", "ผู้ใช้ระบุ filter", "Validate status/result และช่วงเดือน", "กด Preview แล้ว call report API", "แปลงวันที่ ค.ศ. จาก API เป็น พ.ศ. สำหรับแสดง", "render summary line, chart และ table 19 คอลัมน์", "กด Export แล้วส่ง filter เดียวกันไป export API"],
@@ -3390,7 +3388,7 @@ def topics() -> list[Topic]:
             [
                 ApiSpec("GET", "/api/v1/email-templates", "รายการ template ของ SBP Mall", {}, {"items": [{"templateCode": "EM-01", "subject": "แจ้งเตือน {{docNo}}"}]}),
                 ApiSpec("GET", "/api/v1/email-templates/{code}", "อ่าน template รายตัว", {"code": "EM-01"}, {"templateCode": "EM-01", "subject": "แจ้งเตือน {{docNo}}", "body": "...", "variables": ["docNo", "statusName"]}),
-                ApiSpec("POST", "/api/v1/email-templates/{code}/preview", "preview ด้วย sample variables", {"variables": {"docNo": "2569/00123"}}, {"subject": "แจ้งเตือน 2569/00123", "body": "..."}),
+                ApiSpec("POST", "/api/v1/email-templates/{code}/preview", "preview ด้วย sample variables", {"variables": {"docNo": "2026/00123"}}, {"subject": "แจ้งเตือน 2026/00123", "body": "..."}),
                 ApiSpec("PUT", "/api/v1/email-templates/{code}", "บันทึก template", {"subject": "แจ้งเตือน {{docNo}}", "body": "...", "reason": "ปรับข้อความ"}, {"message": "saved"}),
             ],
             ["Load templates", "Open template detail", "Edit subject/body", "Render preview", "Confirm save/reset with reason", "Reload audit/latest template"],
@@ -3491,7 +3489,7 @@ def topics() -> list[Topic]:
             [
                 ApiSpec("GET", "/api/v1/dashboard/summary", "Dashboard summary API", {"year": 2569}, {"waitingTasks": 24, "storesThisMonth": 342, "compensationThisMonth": 8420000.0, "abnormalStores": 5, "monthlyChart": [], "statusChart": []}),
             ],
-            ["Validate query", "Aggregate workflow_tasks/compensation_documents/compensation_histories", "Build chart datasets", "Cache response", "Return normalized JSON"],
+            ["Validate query", "Aggregate workflow_transaction (@srm/glb-workflow)/compensation_documents/compensation_histories", "Build chart datasets", "Cache response", "Return normalized JSON"],
             ["KPI ตรงกับ query", "cache TTL ไม่เกิน 5 นาที", "empty data คืน 0 ไม่คืน null"],
             ["dashboard fixture", "empty dashboard", "status chart count", "cache invalidation"],
         ),
@@ -3514,8 +3512,8 @@ def topics() -> list[Topic]:
                 ("Document search", "GET", "document.service.search", "return related list"),
             ],
             [
-                ApiSpec("GET", "/api/v1/tasks", "Inbox tasks API", {"sectionCode": "06", "page": 1, "size": 20}, {"items": [{"docNo": "2569/00123", "waitingDays": 3}]}),
-                ApiSpec("GET", "/api/v1/documents", "Document search API", {"year": 2569, "storeCode": "00788", "status": "06", "page": 1}, {"items": [{"docNo": "2569/00123", "statusCode": "06"}]}),
+                ApiSpec("GET", "/api/v1/tasks", "Inbox tasks API", {"sectionCode": "06", "page": 1, "size": 20}, {"items": [{"docNo": "2026/00123", "waitingDays": 3}]}),
+                ApiSpec("GET", "/api/v1/documents", "Document search API", {"year": 2569, "storeCode": "00788", "status": "06", "page": 1}, {"items": [{"docNo": "2026/00123", "statusCode": "06"}]}),
             ],
             ["Read JWT section/role", "Validate year for documents", "Build filter query", "Join impacted_stores", "Return page result"],
             ["year missing fails for /documents", "leading zero storeCode preserved", "pagination returns total", "status filter works"],
@@ -3540,7 +3538,7 @@ def topics() -> list[Topic]:
                 ("Update document section", "PUT", "document.service.updateSections", "save editable sections"),
             ],
             [
-                ApiSpec("POST", "/api/v1/documents", "Create document API", {"impactedStoreCode": "00788", "impactMonth": "2026-06", "source": "MANUAL", "newStoreCode": "00990", "roundNo": 1, "reason": "manual create", "requestId": "uuid"}, {"docNo": "2569/00124", "statusCode": "06"}),
+                ApiSpec("POST", "/api/v1/documents", "Create document API", {"impactedStoreCode": "00788", "impactMonth": "2026-06", "source": "MANUAL", "newStoreCode": "00990", "roundNo": 1, "reason": "manual create", "requestId": "uuid"}, {"docNo": "2026/00124", "statusCode": "06"}),
                 ApiSpec("PUT", "/api/v1/documents/{docNo}", "Update document partial sections", {"newStores": [{"newStoreCode": "00990", "compensatePercent": 100}]}, {"message": "saved"}),
             ],
             ["Validate required fields", "Check duplicate store/month", "Generate docNo", "Insert compensation_documents", "Open workflow task", "Save section updates in transaction"],
@@ -3567,7 +3565,7 @@ def topics() -> list[Topic]:
                 ("Get lookup", "GET", "lookup service", "return status/competitors/factors"),
             ],
             [
-                ApiSpec("GET", "/api/v1/documents/{docNo}", "Document aggregate API", {"docNo": "2569/00123"}, {"docNo": "2569/00123", "statusCode": "06", "viewerRbacRoleCode": "R-XX", "roleProfileCode": "P-06", "visibleSections": ["doc-header", "sec-sales", "sec-map", "sec-newstore", "sec-competitor", "sec-factor", "sec-attach", "sec-comp-history", "sec-decision-history", "sec-action"], "editableSections": [], "canUploadAttachment": True, "canAction": True, "actionOptions": [{"label": "เห็นควรไม่ชดเชย", "requireComment": True}], "impactedStore": {"storeCode": "00788"}, "newStores": []}),
+                ApiSpec("GET", "/api/v1/documents/{docNo}", "Document aggregate API", {"docNo": "2026/00123"}, {"docNo": "2026/00123", "statusCode": "06", "viewerRbacRoleCode": "R-XX", "roleProfileCode": "P-06", "visibleSections": ["doc-header", "sec-sales", "sec-map", "sec-newstore", "sec-competitor", "sec-factor", "sec-attach", "sec-comp-history", "sec-decision-history", "sec-action"], "editableSections": [], "canUploadAttachment": True, "canAction": True, "actionOptions": [{"label": "เห็นควรไม่ชดเชย", "requireComment": True}], "impactedStore": {"storeCode": "00788"}, "newStores": []}),
                 ApiSpec("GET", "/api/v1/competitors", "Competitor lookup", {"q": "lotus"}, {"items": [{"competitorCode": "C007", "competitorName": "Lotus Express"}]}),
             ],
             ["Validate docNo", "Load header", "Load child sections", "Compute role profile", "Map to FE response shape", "Return aggregate"],
@@ -3596,7 +3594,7 @@ def topics() -> list[Topic]:
             ],
             [
                 ApiSpec("POST", "/api/v1/documents/{docNo}/actions", "Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02", {"result": "เห็นควรชดเชย", "comment": "เห็นควรชดเชยตามหลักเกณฑ์"}, {"statusCode": "02", "nextSection": "02", "message": "submitted"}),
-                ApiSpec("GET", "/api/v1/documents/{docNo}/timeline", "Timeline API", {"docNo": "2569/00123"}, {"items": [{"section": "06", "result": "ชดเชย"}]}),
+                ApiSpec("GET", "/api/v1/documents/{docNo}/timeline", "Timeline API", {"docNo": "2026/00123"}, {"items": [{"section": "06", "result": "ชดเชย"}]}),
             ],
             ["Lock current action task", "Validate owner and selected result against actionOptions", "Apply server-side business rule", "Update document/task", "Insert consideration_logs", "Trigger email"],
             ["non-owner returns 403", "missing result returns exact SRS message", "invalid result for this role profile returns 422", "duplicate submit blocked by current open task lock", "audit written in same transaction"],
@@ -3635,8 +3633,8 @@ def topics() -> list[Topic]:
                 ("Summary", "GET", "/api/v1/workflows/summary", "ตัวเลข W/Y/N และงานค้างต่อ section"),
             ],
             [
-                ApiSpec("POST", "/api/v1/workflows/instances", "เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service token ไม่ใช่ FE", {"impactProcessId": 901234, "sourceJobNo": "8b", "requestId": "job8b-901234-256907"}, {"docNo": "2569/00123", "instanceId": "WF-2569-00123", "workflowGenerationStatus": "Y", "firstSection": "06", "statusCode": "06", "status": "รอฝ่าย SBP DSA ดำเนินการ"}),
-                ApiSpec("GET", "/api/v1/workflows/instances/{id}", "อ่านสถานะ workflow instance", {"id": "WF-2569-00123"}, {"instanceId": "WF-2569-00123", "docNo": "2569/00123", "status": "ACTIVE", "currentSection": "06"}),
+                ApiSpec("POST", "/api/v1/workflows/instances", "เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service token ไม่ใช่ FE", {"impactProcessId": 901234, "sourceJobNo": "8b", "requestId": "job8b-901234-256907"}, {"docNo": "2026/00123", "instanceId": "WF-2569-00123", "workflowGenerationStatus": "Y", "firstSection": "06", "statusCode": "06", "status": "รอฝ่าย SBP DSA ดำเนินการ"}),
+                ApiSpec("GET", "/api/v1/workflows/instances/{id}", "อ่านสถานะ workflow instance", {"id": "WF-2569-00123"}, {"instanceId": "WF-2569-00123", "docNo": "2026/00123", "status": "ACTIVE", "currentSection": "06"}),
                 ApiSpec("GET", "/api/v1/workflows/summary", "สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor", {"period": "2569-07"}, {"workflowGeneration": {"W": 12, "Y": 342, "N": 8}, "openTasksBySection": [{"sectionCode": "06", "count": 24}]}),
             ],
             [
@@ -3646,7 +3644,7 @@ def topics() -> list[Topic]:
                 "Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N",
                 "If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason",
                 "If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun",
-                "If gate passes, require compensation_documents from Job 8, create workflow_instances/workflow_tasks first section 06, then update fgi_impact_processes.workflow_generation_status=Y in one transaction",
+                "If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initializeWorkflow + addPreparedApprover state 06), then update fgi_impact_processes.workflow_generation_status=Y in one transaction",
                 "Enqueue notification summary outside transaction after commit",
             ],
             [
@@ -3680,8 +3678,8 @@ def topics() -> list[Topic]:
             ],
             [
                 ApiSpec("POST", "/api/v1/documents/{docNo}/attachments", "Upload attachment API", {"file": "multipart <= 5MB", "sectionCode": "06"}, {"attachId": 771, "fileName": "evidence.pdf"}),
-                ApiSpec("GET", "/api/v1/documents/{docNo}/sales", "Sales detail API", {"docNo": "2569/00123"}, {"growthRateDiff": -12.45, "totalWorkingDays": 60, "windows": [{"label": "ก่อนเปิด 15 วัน", "rows": []}]}),
-                ApiSpec("GET", "/api/v1/documents/{docNo}/timeline", "Timeline/history API", {"docNo": "2569/00123"}, {"items": []}),
+                ApiSpec("GET", "/api/v1/documents/{docNo}/sales", "Sales detail API", {"docNo": "2026/00123"}, {"growthRateDiff": -12.45, "totalWorkingDays": 60, "windows": [{"label": "ก่อนเปิด 15 วัน", "rows": []}]}),
+                ApiSpec("GET", "/api/v1/documents/{docNo}/timeline", "Timeline/history API", {"docNo": "2026/00123"}, {"items": []}),
             ],
             ["Validate docNo/permission", "Validate file size/type", "Store file metadata", "Load sales summary and transactions", "Return timeline ordered by action time"],
             ["file >5MB returns 413", "unsupported file type returns 415", "sales windows are ordered", "timeline newest/oldest order matches FE expectation"],
@@ -3699,7 +3697,7 @@ def topics() -> list[Topic]:
             ["Lookup APIs", "Employee search", "Role/menu/menu-permission CRUD", "Audit log search", "Email template CRUD/reset", "Auth endpoints are platform reference only"],
             [
                 ("q", "string", "optional", "ใช้ค้นหา stores/employees/competitors"),
-                ("type", "impacted|new", "required for stores/search", "เลือกแหล่ง impacted_stores หรือ stores"),
+                ("type", "impacted|new", "required for /store/search (ระบบ SBP เดิม)", "เลือกแหล่งร้านถูกกระทบ/ร้านเปิดใหม่"),
                 ("roleCode", "00-10", "required for permission", "อ้าง roles"),
                 ("menuCode", "string", "required for permission", "อ้าง menus"),
                 ("templateCode", "EM-01..EM-08", "required", "email template key"),
@@ -3712,7 +3710,7 @@ def topics() -> list[Topic]:
                 ("Email template save/reset", "PUT/POST", "notificationTemplate.service", "update/reset template and audit"),
             ],
             [
-                ApiSpec("GET", "/api/v1/stores/search", "ค้นหาร้านสำหรับ popup", {"q": "00788", "type": "impacted"}, {"items": [{"storeCode": "00788", "storeName": "รัตนอุทิศ ซ.13"}]}),
+                ApiSpec("GET", "/store/search (ระบบ SBP เดิม)", "ค้นหาร้านสำหรับ popup", {"q": "00788", "type": "impacted"}, {"items": [{"storeCode": "00788", "storeName": "รัตนอุทิศ ซ.13"}]}),
                 ApiSpec("GET", "/api/v1/document-statuses", "รายการสถานะเอกสาร verbatim", {}, {"items": [{"statusCode": "06", "statusName": "รอฝ่าย SBP DSA ดำเนินการ"}]}),
                 ApiSpec("GET", "/api/v1/workflow-sections", "รายการ section 5 ขั้น", {}, {"items": [{"sectionCode": "06", "sectionName": "ฝ่าย SBP DSA"}]}),
                 ApiSpec("GET", "/api/v1/employees/search", "ค้นหาพนักงานสำหรับ master/operator", {"q": "สมชาย"}, {"items": [{"employeeId": "E001", "employeeName": "สมชาย ใจดี"}]}),
@@ -3751,7 +3749,7 @@ def topics() -> list[Topic]:
                 ("status", "statusCode string", "required", "6 สถานะเอกสาร; verbatim จาก document_statuses"),
                 ("result", "APPROVE|REJECT", "required for report", "maps to consideration latest result"),
                 ("region", "array/string", "optional", "13 region codes; multi-select"),
-                ("storeType", "array/string", "optional", "A/B/C/D; multi-select"),
+                ("storeType", "array/string", "optional", "A/B/C/E; multi-select"),
                 ("impactedStoreCode", "string 5 digits", "optional", "คง leading zero"),
                 ("newStoreCode", "string 5 digits", "optional", "คง leading zero"),
                 ("reason", "text", "required mutation", "audit reason"),
@@ -3811,11 +3809,11 @@ def topics() -> list[Topic]:
                 ApiSpec("PUT", "/api/v1/jobs/{jobNo}/enabled", "เปิด/ปิด job พร้อม audit reason", {"enabled": False, "reason": "ปิดชั่วคราวช่วงปิดงบ"}, {"jobNo": "8b", "enabled": False, "message": "saved"}),
                 ApiSpec("POST", "/api/v1/jobs/{jobNo}/run", "สั่ง manual run/retry โดยตรวจ enabled และ concurrent run", {"params": {"period": "2026-07"}, "reason": "rerun หลังแก้ข้อมูล"}, {"runId": 4452, "jobNo": "8b", "status": "QUEUED", "queuedAt": "2026-07-22T11:00:00+07:00"}),
                 ApiSpec("GET", "/api/v1/jobs/{jobNo}/runs", "ประวัติการรันแบบแบ่งหน้า", {"status": "FAILED", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 1, "items": [{"runId": 4450, "jobNo": "8b", "status": "FAILED", "triggerType": "MANUAL", "triggeredBy": "E001", "startedAt": "2026-07-22T05:20:00+07:00", "endedAt": "2026-07-22T05:21:30+07:00", "durationSec": 90, "readCount": 10, "successCount": 9, "rejectCount": 1, "errorCode": "GEN_FLOW_GATE_NOT_READY", "errorMessage": "ข้อมูลผู้อนุมัติยังไม่ครบ"}]}),
-                ApiSpec("GET", "/api/v1/interfaces/tracking", "ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา", {"dataName": "COMPENSATE_INIT_I", "status": "SENT", "pending": True, "sentFrom": "2026-07-01T00:00:00+07:00", "sentTo": "2026-07-22T23:59:59+07:00", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 1, "items": [{"trackingId": 9912, "dataName": "COMPENSATE_INIT_I", "direction": "OUT", "businessKey": "2569/00098", "docNo": "2569/00098", "fileName": "COMPENSATE_INIT_I_25690722.dat", "status": "SENT", "sentAt": "2026-07-20T17:02:00+07:00", "ackedAt": None, "returnCode": None, "ageHours": 41}]}),
-                ApiSpec("GET", "/api/v1/interfaces/pending-ack", "รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน", {"thresholdHours": 24, "dataName": "COMPENSATE_INIT_I", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 1, "count": 1, "items": [{"trackingId": 9912, "dataName": "COMPENSATE_INIT_I", "businessKey": "2569/00098", "docNo": "2569/00098", "fileName": "COMPENSATE_INIT_I_25690722.dat", "sentAt": "2026-07-20T17:02:00+07:00", "ageHours": 41, "returnCode": None}]}),
+                ApiSpec("GET", "/api/v1/interfaces/tracking", "ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา", {"dataName": "COMPENSATE_INIT_I", "status": "SENT", "pending": True, "sentFrom": "2026-07-01T00:00:00+07:00", "sentTo": "2026-07-22T23:59:59+07:00", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 1, "items": [{"trackingId": 9912, "dataName": "COMPENSATE_INIT_I", "direction": "OUT", "businessKey": "2026/00098", "docNo": "2026/00098", "fileName": "COMPENSATE_INIT_I_25690722.dat", "status": "SENT", "sentAt": "2026-07-20T17:02:00+07:00", "ackedAt": None, "returnCode": None, "ageHours": 41}]}),
+                ApiSpec("GET", "/api/v1/interfaces/pending-ack", "รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน", {"thresholdHours": 24, "dataName": "COMPENSATE_INIT_I", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 1, "count": 1, "items": [{"trackingId": 9912, "dataName": "COMPENSATE_INIT_I", "businessKey": "2026/00098", "docNo": "2026/00098", "fileName": "COMPENSATE_INIT_I_25690722.dat", "sentAt": "2026-07-20T17:02:00+07:00", "ageHours": 41, "returnCode": None}]}),
                 ApiSpec("GET", "/api/v1/email-templates/{code}", "อ่าน template และ merge-variable metadata", {"code": "EM-01"}, {"code": "EM-01", "name": "แจ้งสร้างเอกสาร", "subject": "เอกสาร {{docNo}}", "body": "กรุณาตรวจสอบเอกสาร {{docNo}}", "variables": ["docNo"], "fromRule": "SYSTEM", "toRule": "NEXT_SECTION", "ccRule": "NONE"}),
                 ApiSpec("PUT", "/api/v1/email-templates/{code}", "บันทึก subject/body", {"subject": "แจ้งเอกสาร {{docNo}}", "body": "กรุณาตรวจสอบเอกสาร {{docNo}}", "reason": "ปรับถ้อยคำ"}, {"code": "EM-01", "subject": "แจ้งเอกสาร {{docNo}}", "body": "กรุณาตรวจสอบเอกสาร {{docNo}}", "updatedAt": "2026-07-22T10:20:00+07:00"}),
-                ApiSpec("POST", "/api/v1/email-templates/{code}/preview", "render template โดยไม่บันทึก", {"variables": {"docNo": "2569/00123"}}, {"subject": "แจ้งเอกสาร 2569/00123", "body": "กรุณาตรวจสอบเอกสาร 2569/00123"}),
+                ApiSpec("POST", "/api/v1/email-templates/{code}/preview", "render template โดยไม่บันทึก", {"variables": {"docNo": "2026/00123"}}, {"subject": "แจ้งเอกสาร 2026/00123", "body": "กรุณาตรวจสอบเอกสาร 2026/00123"}),
                 ApiSpec("POST", "/api/v1/email-templates/{code}/reset", "รีเซ็ต template รายตัว", {"reason": "คืนค่าเริ่มต้น"}, {"code": "EM-01", "reset": True}),
                 ApiSpec("POST", "/api/v1/interfaces/sta/ack", "STA ACK callback ให้ Job 10 เป็น safety net", {"transactionId": "TX-001", "returnCode": "A", "receivedAt": "2026-07-20T10:00:00+07:00"}, {"message": "acknowledged"}),
                 ApiSpec("POST", "/api/v1/integrations/srm/income-guarantee", "รับข้อมูลประกันรายได้จาก SRM", {"sourceSystem": "SRM", "sourceRefNo": "SRM-001", "impactedStoreCode": "01234", "periodMonth": "2569-07"}, {"transactionId": "TX-001", "successRecords": 1, "failedRecords": 0}),
@@ -3828,20 +3826,20 @@ def topics() -> list[Topic]:
     base.extend(document_detail_role_topics())
     db_map = {
         "BE/LLDD-BE-API-Dashboard-Summary": [
-            ("workflow_tasks", "R", "นับงานค้างและ pending queue"),
+            ("workflow_transaction / workflow_approver (@srm/glb-workflow)", "R", "นับงานค้างและ pending queue"),
             ("compensation_documents", "R", "นับเอกสาร/ร้านในงวด"),
             ("compensation_histories", "R", "ยอดชดเชยรายเดือน"),
             ("fgi_impact_sales_summaries", "R", "จำนวนข้อมูลผิดปกติ total_working_days < 60"),
         ],
         "BE/LLDD-BE-API-Document-List-Search": [
-            ("workflow_tasks", "R", "อ่าน inbox ตาม section/role"),
+            ("workflow_transaction / workflow_approver (@srm/glb-workflow)", "R", "อ่าน inbox ผ่าน getPendingFlow()"),
             ("compensation_documents", "R", "ค้นเอกสารตาม year/status/store"),
             ("impacted_stores", "R", "ชื่อร้าน ภาค และข้อมูลร้าน"),
             ("fgi_impact_sales_summaries", "R", "flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน"),
         ],
         "BE/LLDD-BE-API-Document-Create-Update": [
             ("compensation_documents", "R/W", "สร้างหัวเอกสารและแก้ไข section หลัก"),
-            ("workflow_instances / workflow_tasks", "W", "เปิด workflow งานแรกตอนสร้างเอกสาร"),
+            ("workflow_transaction / workflow_approver (@srm/glb-workflow)", "W", "เปิด workflow งานแรกตอนสร้างเอกสาร"),
             ("document_new_stores", "R/W", "ร้านเปิดใหม่และ % ชดเชย"),
             ("document_competitors", "R/W", "ร้านคู่แข่งในเอกสาร"),
             ("document_external_factors", "R/W", "ปัจจัยภายนอกในเอกสาร"),
@@ -3857,17 +3855,17 @@ def topics() -> list[Topic]:
             ("consideration_logs", "R", "timeline/history"),
         ],
         "BE/LLDD-BE-API-Document-Workflow-Actions": [
-            ("workflow_tasks", "R/W", "lock/close/open task ตาม transition"),
+            ("workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow)", "R/W", "triggerEvent() เดิน state + บันทึก history"),
             ("compensation_documents", "W", "อัปเดต status/current_section/result"),
             ("consideration_logs", "W", "บันทึกผลพิจารณาและ comment"),
             ("status_email_rules", "R", "ผู้รับอีเมลตาม status"),
-            ("workflow_tasks current-open lock", "R/W", "กัน action ซ้ำด้วย lock task ปัจจุบัน + closed_at"),
+            ("workflow_transaction (@srm/glb-workflow)", "R/W", "กัน action ซ้ำด้วย getTransaction/getPermissionEvents ก่อน triggerEvent"),
         ],
         "BE/LLDD-BE-API-Workflow-Instances": [
             ("fgi_impact_processes / fgi_impact_stores", "R/W", "อ่านข้อมูล impact และอัปเดต workflow_generation_status W/Y/N"),
             ("compensation_documents", "R/W", "create-if-missing จาก impact process และผูก docNo"),
-            ("workflow_instances", "R/W", "สร้าง instance ACTIVE แทน K2 StartInstance"),
-            ("workflow_tasks", "W", "เปิด first task section 06"),
+            ("workflow_transaction (@srm/glb-workflow)", "R/W", "initializeWorkflow แทน K2 StartInstance"),
+            ("workflow_approver (@srm/glb-workflow)", "W", "addPreparedApprover state 06"),
             ("document_statuses / workflow_sections", "R", "lookup statusCode/status และ section แรก"),
             ("job_run_histories", "W", "บันทึกผลเรียกจาก Job 8b"),
             ("audit_logs", "W", "audit permanent skip N และ manual rerun"),
@@ -3884,7 +3882,7 @@ def topics() -> list[Topic]:
             ("document_statuses / workflow_sections", "R", "lookup สถานะ verbatim และ section 5 ขั้น"),
             ("employees", "R", "popup ค้นหาพนักงาน"),
             ("roles / menus / menu_permissions", "R/W", "RBAC/menu matrix"),
-            ("email_templates / status_email_rules", "R/W", "เนื้อหา template และผู้รับที่ล็อกตามสถานะ"),
+            ("email_template (SBP) / status_email_rules", "R/W", "เนื้อหา template ในตารางของระบบ SBP เดิม และผู้รับที่ล็อกตามสถานะ"),
             ("audit_logs", "R/W", "ประวัติ mutation ของ RBAC/email/master"),
         ],
         "BE/LLDD-BE-API-Report-Master-Config": [
@@ -3893,14 +3891,14 @@ def topics() -> list[Topic]:
             ("consideration_logs", "R", "ผลพิจารณาล่าสุด APPROVE/REJECT"),
             ("operator_assignments", "R/W", "ผู้ปฏิบัติงาน"),
             ("external_factors", "R/W", "master ปัจจัยภายนอก"),
-            ("system_configs", "R/W", "ค่ากำหนดกลาง"),
+            ("mas_param (SBP)", "R/W", "ค่ากำหนดกลางในตารางของระบบ SBP เดิม"),
             ("audit_logs", "W", "ประวัติการแก้ไข operator/factor/config"),
         ],
         "BE/LLDD-BE-Job-Batch-Email-SRM": [
             ("job_configs", "R/W", "enabled, cron, params ของ batch"),
             ("job_run_histories", "R/W", "ประวัติการรันและสถานะล่าสุด"),
             ("interface_transactions", "R/W", "tracking file/API interface และ ACK"),
-            ("email_templates", "R/W", "subject/body template"),
+            ("email_template (SBP)", "R/W", "subject_format/body_format ของระบบ SBP เดิม"),
             ("status_email_rules", "R", "TO/CC ตามสถานะ"),
             ("audit_logs", "R/W", "audit การแก้ job/email"),
         ],
@@ -4088,7 +4086,7 @@ def api_endpoint_groups() -> list[list[Any]]:
     return [
         ["Auth & สิทธิ์ผู้ใช้", "4", "POST /auth/login, POST /auth/refresh, GET /auth/me, GET /me/menus", "platform reference; FE consume token/menu"],
         ["งาน & เอกสารประกันรายได้", "10", "GET /tasks, GET/POST/PUT /documents*, POST /documents/{docNo}/actions, attachments, sales, timeline", "core document workflow API"],
-        ["Lookup / Reference", "4", "GET /stores/search, /competitors, /document-statuses, /workflow-sections", "dropdown/search/status dictionary"],
+        ["Lookup / Reference", "4", "GET /competitors, /document-statuses, /workflow-sections, /decisions", "dropdown/status dictionary (ร้าน/ภาค/ประเภทสาขา ใช้ของระบบ SBP เดิม)"],
         ["Master Data", "19", "operators, factors, employees, menu-permissions, roles, menus, audit-logs", "admin/master maintenance + audit reason"],
         ["System Config", "5", "GET/POST/PUT/DELETE /configs*", "global config; no secret storage"],
         ["Email Template", "5", "GET/PUT/POST /email-templates*", "notification template content"],
@@ -4270,6 +4268,7 @@ def lldd_api_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
 
 
 def database_table_catalog() -> list[list[Any]]:
+    """24 target tables (2026-08-06): 34 tables minus 10 already provided by the current SBP system."""
     return [
         ["A", "fgi_impact_stores", "id", "impact_process_id, impacted_store_code", "impact pair; sales request and allocation data"],
         ["A", "fgi_impact_processes", "id", "impacted_store_code", "impact process hub and canonical workflow_generation_status"],
@@ -4279,44 +4278,31 @@ def database_table_catalog() -> list[list[Any]]:
         ["A", "fcs_qssi_scores", "id", "store_id + category_code + period", "QSSI scores"],
         ["A", "interface_transactions", "id", "impact_process_id/sales_summary_id/doc_no", "interface tracking replacement"],
         ["B", "compensation_documents", "doc_no", "impact_process_id, status_code, current_section_code", "document header/core"],
-        ["B", "document_new_stores", "id", "doc_no, new_store_code", "new stores and compensate percent"],
+        ["B", "document_new_stores", "id", "doc_no, new_store_code", "new stores, compensate percent and amount"],
         ["B", "document_competitors", "id", "doc_no, competitor_code", "document competitors"],
         ["B", "document_external_factors", "id", "doc_no, factor_code", "document external factors"],
-        ["B", "consideration_logs", "id", "doc_no", "approval/action history"],
-        ["B", "document_attachments", "attach_id", "doc_no", "attachment metadata and storage pointer"],
+        ["B", "consideration_logs", "id", "doc_no", "approval/action history (decision code, result category, attachments)"],
+        ["B", "document_attachments", "attach_id", "doc_no", "attachment metadata; file storage uses existing SBP S3 service"],
         ["B", "compensation_histories", "id", "store_code, ref_doc_no", "compensation history/accounting export"],
-        ["B", "workflow_instances", "instance_id", "doc_no", "internal workflow instance"],
-        ["B", "workflow_tasks", "task_id", "instance_id, section_code, assignee_employee_id", "current/past tasks"],
-        ["C", "stores", "store_code", "-", "all 7-Eleven stores"],
-        ["C", "impacted_stores", "store_code", "stores.store_code", "SP impacted store subset"],
-        ["C", "workflow_sections", "section_code", "-", "workflow sections 06/08/01/02/03"],
-        ["C", "document_statuses", "status_code", "-", "document status dictionary"],
-        ["C", "roles", "role_code", "-", "RBAC roles 00-10"],
-        ["C", "menus", "menu_code", "-", "menu registry"],
-        ["C", "menu_permissions", "role_code + menu_code", "roles, menus", "RBAC matrix"],
-        ["C", "operator_assignments", "id", "section_code, employee_id", "operator by section/zone"],
-        ["C", "employees", "employee_id", "-", "HR employee master"],
+        ["B", "document_cost_details", "id", "doc_no, new_store_code", "monthly cost detail per new store (ImpactCostDetail)"],
+        ["B", "document_running_numbers", "year", "-", "atomic YYYY/xxxxx running number"],
+        ["C", "impacted_stores", "store_code", "store.store_code (SBP)", "SP impacted store subset"],
+        ["C", "decisions", "decision_code", "-", "decision master (button/flow/result names)"],
         ["C", "external_factors", "factor_code", "-", "external factor master"],
         ["C", "competitors", "competitor_code", "-", "competitor master"],
         ["C", "audit_logs", "id", "table_name + ref_key", "master/config/email audit"],
-        ["C", "status_email_rules", "status_code", "workflow_sections", "notification recipients"],
-        ["C", "email_templates", "template_code", "-", "notification templates"],
-        ["C", "user_accounts", "employee_id", "role_code", "user account/JWT role"],
+        ["C", "status_email_rules", "status_code", "workflow state (SBP)", "notification recipients"],
         ["C", "job_configs", "job_no", "-", "schema reference for batch schedule/config; not FE Database tab scope"],
         ["C", "job_run_histories", "run_id", "job_no", "job execution history"],
-        ["C", "system_configs", "config_key", "-", "global config key-value"],
+        ["-", "USE EXISTING SBP TABLES", "-", "-",
+         "workflow_transaction/approver/history/state/route/status (@srm/glb-workflow) · store/mas_store/sevenshop · mas_zone · common_code · business_user · email_template + email_sent · mas_param "
+         "— decided 2026-08-05/2026-08-06: do NOT recreate these in SBPGI"],
     ]
 
 
 def database_ddl_sections() -> list[tuple[str, str]]:
     return [
-        ("5.1 Zone C — Shared Master, RBAC, Config and Operations", """CREATE TABLE stores (
-    store_code VARCHAR(5) PRIMARY KEY,
-    store_name VARCHAR(200) NOT NULL, juristic_name VARCHAR(200), store_type VARCHAR(30),
-    region_code VARCHAR(10), zone_code VARCHAR(10), branch_type VARCHAR(10),
-    opened_date DATE, closed_date DATE, is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+        ("5.1 Zone C — Shared Master, RBAC, Config and Operations", """-- ❌ ไม่สร้างตาราง stores ใน SBPGI — ใช้ store / mas_store / sevenshop ของระบบ SBP เดิม (API: GET /store/search · /store/list · /store/detail)
 
 CREATE TABLE impacted_stores (
     store_code VARCHAR(5) PRIMARY KEY REFERENCES stores(store_code),
@@ -4325,64 +4311,22 @@ CREATE TABLE impacted_stores (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE workflow_sections (
-    section_code VARCHAR(2) PRIMARY KEY,
-    section_name VARCHAR(200) NOT NULL,
-    sort_order INTEGER NOT NULL UNIQUE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
-);
+-- ❌ ไม่สร้างตาราง workflow_sections ใน SBPGI — ใช้ workflow_state / workflow_route ของ @srm/glb-workflow · วงเงินอนุมัติเก็บใน common_code (SBPGI_APPROVE_LIMIT)
 
-CREATE TABLE document_statuses (
-    status_code VARCHAR(2) PRIMARY KEY,
-    status_name VARCHAR(200) NOT NULL,
-    section_code VARCHAR(2) REFERENCES workflow_sections(section_code),
-    sort_order INTEGER NOT NULL UNIQUE,
-    terminal_flag BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
-);
+-- ❌ ไม่สร้างตาราง document_statuses ใน SBPGI — ใช้ workflow_status ของ @srm/glb-workflow
 
-CREATE TABLE roles (
-    role_code VARCHAR(10) PRIMARY KEY,
-    role_name VARCHAR(200) NOT NULL, role_desc VARCHAR(500),
-    is_system BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
-);
+-- ❌ ไม่สร้างตาราง roles ใน SBPGI — ใช้ auth-backend/ABS groups ของระบบ SBP เดิม (ตัดสินใจ 2026-08-05)
 
-CREATE TABLE menus (
-    menu_code VARCHAR(50) PRIMARY KEY,
-    menu_name VARCHAR(200) NOT NULL, menu_group VARCHAR(100),
-    route_path VARCHAR(255), sort_order INTEGER NOT NULL,
-    is_system BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
-);
+-- ❌ ไม่สร้างตาราง menus ใน SBPGI — ใช้ menus/permissions ของ auth-backend (ตัดสินใจ 2026-08-05)
 
-CREATE TABLE menu_permissions (
-    role_code VARCHAR(10) NOT NULL REFERENCES roles(role_code),
-    menu_code VARCHAR(50) NOT NULL REFERENCES menus(menu_code),
-    can_access BOOLEAN NOT NULL DEFAULT FALSE,
-    PRIMARY KEY (role_code, menu_code)
-);
+-- ❌ ไม่สร้างตาราง menu_permissions ใน SBPGI — ใช้ permissions ต่อ URL ของ auth-backend (ตัดสินใจ 2026-08-05)
 
-CREATE TABLE employees (
-    employee_id VARCHAR(30) PRIMARY KEY,
-    emp_name VARCHAR(200) NOT NULL,
-    emp_mail VARCHAR(255), department VARCHAR(150), zone_code VARCHAR(10), dv_code VARCHAR(20),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- ❌ ไม่สร้างตาราง employees ใน SBPGI — ใช้ business_user / business_user_group ของระบบ SBP เดิม
 
 ALTER TABLE impacted_stores
     ADD CONSTRAINT fk_impacted_store_opt_dv FOREIGN KEY (opt_dv_user_id) REFERENCES employees(employee_id);
 
-CREATE TABLE operator_assignments (
-    id BIGSERIAL PRIMARY KEY,
-    section_code VARCHAR(2) NOT NULL REFERENCES workflow_sections(section_code),
-    employee_id VARCHAR(30) NOT NULL REFERENCES employees(employee_id),
-    emp_name VARCHAR(200) NOT NULL, emp_mail VARCHAR(255), zone_code VARCHAR(10),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_operator_scope UNIQUE (section_code, employee_id, zone_code)
-);
+-- ❌ ไม่สร้างตาราง operator_assignments ใน SBPGI — ใช้ group + scope ของ auth-backend + prepared approvers ของ @srm/glb-workflow (ตัดสินใจ 2026-08-05)
 
 CREATE TABLE external_factors (
     factor_code VARCHAR(30) PRIMARY KEY,
@@ -4398,15 +4342,7 @@ CREATE TABLE competitors (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE email_templates (
-    template_code VARCHAR(30) PRIMARY KEY,
-    name VARCHAR(200) NOT NULL, subject VARCHAR(500) NOT NULL, body TEXT NOT NULL,
-    variables JSONB NOT NULL DEFAULT '[]'::jsonb,
-    default_subject VARCHAR(500), default_body TEXT,
-    is_customized BOOLEAN NOT NULL DEFAULT FALSE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- ❌ ไม่สร้างตาราง email_templates ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ตาราง email_template ของระบบ SBP เดิม (email_template_id · subject_format · body_format) + email_sent
 
 CREATE TABLE status_email_rules (
     status_code VARCHAR(2) NOT NULL REFERENCES document_statuses(status_code),
@@ -4417,14 +4353,7 @@ CREATE TABLE status_email_rules (
     PRIMARY KEY (status_code, template_code)
 );
 
-CREATE TABLE user_accounts (
-    employee_id VARCHAR(30) PRIMARY KEY REFERENCES employees(employee_id),
-    role_code VARCHAR(10) NOT NULL REFERENCES roles(role_code),
-    section_code VARCHAR(2) REFERENCES workflow_sections(section_code),
-    username VARCHAR(100) NOT NULL UNIQUE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    last_login_at TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- ❌ ไม่สร้างตาราง user_accounts ใน SBPGI — ใช้ AWS Cognito + auth-backend — SBPGI รับตัวตนจาก header ของ BFF (ตัดสินใจ 2026-08-05)
 
 CREATE TABLE job_configs (
     job_no VARCHAR(10) PRIMARY KEY,
@@ -4455,13 +4384,7 @@ CREATE TABLE audit_logs (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE system_configs (
-    config_key VARCHAR(150) PRIMARY KEY,
-    category VARCHAR(80) NOT NULL, config_value TEXT NOT NULL, value_type VARCHAR(30) NOT NULL,
-    unit VARCHAR(30), description VARCHAR(500), is_editable BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_by VARCHAR(30), updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_system_config_no_secret CHECK (config_key !~* '(password|private_key|client_secret|token)')
-);"""),
+-- ❌ ไม่สร้างตาราง system_configs ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ตาราง mas_param ของระบบ SBP เดิม (param_name · param_value · ref_name · description · is_config · active_flag)"""),
         ("5.2 Zone A — Impact Pipeline, Sales and Interface", """CREATE TABLE fgi_impact_processes (
     id BIGSERIAL PRIMARY KEY,
     impacted_store_code VARCHAR(5) NOT NULL REFERENCES impacted_stores(store_code),
@@ -4543,7 +4466,7 @@ CREATE TABLE interface_transactions (
 );"""),
         ("5.3 Zone B — Document and Internal Workflow", """CREATE TABLE compensation_documents (
     doc_no VARCHAR(10) PRIMARY KEY,
-    be_year INTEGER NOT NULL, running_no INTEGER NOT NULL,
+    year INTEGER NOT NULL, running_no INTEGER NOT NULL,
     impact_process_id BIGINT NOT NULL UNIQUE REFERENCES fgi_impact_processes(id),
     impacted_store_code VARCHAR(5) NOT NULL REFERENCES impacted_stores(store_code),
     impact_month CHAR(7), new_store_code VARCHAR(5) REFERENCES stores(store_code), round_no INTEGER,
@@ -4554,7 +4477,7 @@ CREATE TABLE interface_transactions (
     version_no INTEGER NOT NULL DEFAULT 1,
     created_by VARCHAR(30) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(30), updated_at TIMESTAMP,
-    CONSTRAINT uq_comp_be_year_running UNIQUE (be_year, running_no),
+    CONSTRAINT uq_comp_year_running UNIQUE (year, running_no),
     CONSTRAINT uq_comp_business UNIQUE (source, impacted_store_code, impact_month, new_store_code, round_no)
 );
 
@@ -4624,23 +4547,9 @@ CREATE TABLE compensation_histories (
     CONSTRAINT uq_compensation_history UNIQUE (store_code, ref_doc_no, submit_account_month)
 );
 
-CREATE TABLE workflow_instances (
-    instance_id VARCHAR(40) PRIMARY KEY,
-    doc_no VARCHAR(10) NOT NULL UNIQUE REFERENCES compensation_documents(doc_no),
-    instance_status VARCHAR(20) NOT NULL CHECK (instance_status IN ('ACTIVE','COMPLETED','CANCELLED')),
-    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, started_by VARCHAR(30) NOT NULL,
-    completed_at TIMESTAMP
-);
+-- ❌ ไม่สร้างตาราง workflow_instances ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ workflow_transaction ของ @srm/glb-workflow
 
-CREATE TABLE workflow_tasks (
-    task_id BIGSERIAL PRIMARY KEY,
-    instance_id VARCHAR(40) NOT NULL REFERENCES workflow_instances(instance_id),
-    doc_no VARCHAR(10) NOT NULL REFERENCES compensation_documents(doc_no),
-    section_code VARCHAR(2) NOT NULL REFERENCES workflow_sections(section_code),
-    assignee_employee_id VARCHAR(30) REFERENCES employees(employee_id),
-    task_status VARCHAR(20) NOT NULL CHECK (task_status IN ('OPEN','DONE','CANCELLED')),
-    action_result TEXT, opened_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, closed_at TIMESTAMP
-);"""),
+-- ❌ ไม่สร้างตาราง workflow_tasks ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ workflow_approver/workflow_transaction ของ @srm/glb-workflow"""),
         ("5.4 Required Indexes, Partial Uniqueness and Purge", """CREATE INDEX idx_document_status_section ON compensation_documents(status_code, current_section_code);
 CREATE INDEX idx_document_impact_process ON compensation_documents(impact_process_id);
 CREATE INDEX idx_task_doc_status ON workflow_tasks(doc_no, task_status);
@@ -4673,15 +4582,20 @@ RETURNING i.id, i.data_name, i.business_key;"""),
 
 def validate_schema_sql_contract() -> None:
     ddl = "\n".join(sql for _, sql in database_ddl_sections())
+    # 2026-08-05/06: ตาราง RBAC, workflow, master ร้าน/ภาค/พนักงาน, email template และ config
+    # ใช้ของระบบ SBP เดิม จึงไม่มี DDL ในเอกสารนี้ (เหลือเป็นบรรทัดหมายเหตุ "ไม่สร้างตาราง ... ใน SBPGI")
     required_ddl = {
-        "menu_permissions": ["can_access BOOLEAN"],
-        "user_accounts": ["section_code VARCHAR(2)", "is_active BOOLEAN"],
-        "workflow_instances": ["instance_status VARCHAR(20)", "started_by VARCHAR(30) NOT NULL"],
-        "system_configs": ["category VARCHAR(80)", "unit VARCHAR(30)", "is_editable BOOLEAN"],
         "sales_transactions": ["txn_date DATE", "window_no SMALLINT", "sales_amount NUMERIC", "sales_diff NUMERIC", "is_outlier BOOLEAN"],
         "consideration_logs": ["result VARCHAR(100)", "detail TEXT", "consider_by VARCHAR(30)", "action_datetime TIMESTAMP"],
-        "document_statuses": ["sort_order INTEGER"],
     }
+    reused_tables = [
+        "stores", "zones", "branch_types", "employees", "workflow_sections", "document_statuses",
+        "workflow_instances", "workflow_tasks", "email_templates", "system_configs",
+        "roles", "menus", "menu_permissions", "user_accounts", "operator_assignments",
+    ]
+    for table_name in reused_tables:
+        if re.search(rf"CREATE TABLE {table_name} \(", ddl):
+            raise ValueError(f"table must reuse the existing SBP system, DDL must not exist: {table_name}")
     for table_name, columns in required_ddl.items():
         table_match = re.search(rf"CREATE TABLE {table_name} \((.*?)\n\);", ddl, re.S)
         if not table_match:
@@ -4729,7 +4643,7 @@ def lldd_database_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
             "ระบบใหม่รวม EAI และ K2 เข้าเป็น SBPGI ใช้ฐานข้อมูลเดียวกัน",
             "ไม่มีไฟล์ BPM06001O/BPM06002O/BPM06003O ภายในเพื่อส่งเข้า K2; ใช้ FK จาก compensation_documents ไป impact_process แทน",
             "Workflow engine ภายในใช้ workflow_instances และ workflow_tasks แทน K2 engine ภายนอก",
-            "ตัดขั้นบัญชี 04/05 ตาม SDD v7.5; workflow ใช้ section 06/08/01/02/03",
+            "ตัดขั้นบัญชี 04/05 (SDD v7.5 — รวมเข้าการออกแบบแล้ว ไฟล์ต้นฉบับถูกลบจาก repo 2026-08-06); workflow ใช้ section 06/08/01/02/03; SDD ที่ยึดเป็นหลักคือ SDD GI 24/02/2026",
             "มาตรฐานชื่อ table/column เป็น English lower_snake_case",
             "ตาราง job_configs และ job_run_histories เป็น schema reference สำหรับ BE/dev; ไม่ใช่ scope ให้ FE Batch Monitor ทำ tab Database ที่ใช้",
         ]),
@@ -4785,7 +4699,7 @@ def lldd_database_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
         table(
             ["Table", "Index / constraint", "Reason"],
             [
-                ["compensation_documents", "UNIQUE (be_year, running_no), UNIQUE(source, impacted_store_code, impact_month, new_store_code, round_no), INDEX(status_code,current_section_code), INDEX(impact_process_id)", "docNo uniqueness, duplicate guard, list/inbox/report, pipeline trace"],
+                ["compensation_documents", "UNIQUE (year, running_no), UNIQUE(source, impacted_store_code, impact_month, new_store_code, round_no), INDEX(status_code,current_section_code), INDEX(impact_process_id)", "docNo uniqueness, duplicate guard, list/inbox/report, pipeline trace"],
                 ["workflow_tasks", "INDEX(doc_no, task_status), INDEX(section_code, task_status), UNIQUE(instance_id, section_code, task_status) filtered OPEN", "current task guard and inbox"],
                 ["document_new_stores", "INDEX(doc_no), CHECK compensate_percent between 0 and 100", "detail load and allocation validation"],
                 ["consideration_logs", "INDEX(doc_no, action_datetime DESC), INDEX(result_category)", "timeline/report result filter"],
@@ -4826,7 +4740,7 @@ def lldd_database_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
             [
                 ["Naming", "all new tables/columns lower_snake_case"],
                 ["Leading zero", "store_code/new_store_code stored as VARCHAR(5), never numeric"],
-                ["docNo", "be_year/running_no/doc_no generated in DB transaction; concurrency test 20 parallel requests"],
+                ["docNo", "year/running_no/doc_no generated in DB transaction; concurrency test 20 parallel requests"],
                 ["Workflow", "no active 04/05 accounting sections/statuses"],
                 ["Security", "no secrets in system_configs/job_configs; storage objectKey not returned to FE"],
                 ["External interface", "credential/certificate/private key อยู่ Secret Manager ผ่าน secretRef; TLS verify-full หรือ SFTP strict known_hosts; ทดสอบ rotation และ invalid certificate/host key"],

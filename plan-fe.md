@@ -9,7 +9,7 @@
 2. สถานะเอกสาร **6 ค่า** verbatim (ดู `DOC_STATUSES` ใน §7)
 3. กฎวงเงินอนุมัติ (SDD GI 24/02/2026 — แทนเกณฑ์เดียว 100,000 เดิม): **≤ 50,000 → จบที่ GM(02)** · **50,001–300,000 → ผ่าน AVP(03) แล้วจบ** · **เกิน 300,000 SDD ยังไม่ระบุเส้นทาง (รอ confirm)** — logic routing อยู่ BE, FE แค่แสดงผล · เห็นควรไม่ชดเชยที่ขั้น 01/02 = **จบกระบวนการทันที** (ไม่ตีกลับ 06 · ขั้น 03 คงเดิม รอ confirm)
 4. ข้อความไทย verbatim ห้าม paraphrase เช่น `ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ`
-5. ภาค **13 รหัส** `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` (SDD v7.5 · ใช้ชุดเดียวทั้งหน้ารายการและรายงาน) — โหลดจาก `GET /zones` **ห้าม hardcode** · ภาคใหม่ต้องขึ้นเองโดยไม่แก้หน้าจอ
+5. ภาค **13 รหัส** `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` (SDD v7.5 · ใช้ชุดเดียวทั้งหน้ารายการและรายงาน) — โหลดจาก `GET /store/all-regions` (ระบบ SBP เดิม) **ห้าม hardcode** · ภาคใหม่ต้องขึ้นเองโดยไม่แก้หน้าจอ
 6. %ชดเชยรวมทุกร้านเปิดใหม่ = **100%** พอดีก่อน submit
 7. ไฟล์แนบ ≤ **5MB** + นามสกุลใน `ATTACH_EXTS`
 8. เลขเอกสาร `YYYY/xxxxx` ปี **พ.ศ.** · วันที่แสดงผลเป็น พ.ศ. ทุกจุด
@@ -146,7 +146,7 @@ Convention การตั้งชื่อ (ตาม repo เดิม):
 | `/sbgpi/documents/related` | k2-list-related.html | `documents/related/page.tsx` | ทุก role | `GET /documents` (ปี required) |
 | `/sbpgi/documents/create` | k2-create.html | `documents/create/page.tsx` — **หน้าอธิบายกระบวนการ ไม่มีฟอร์ม** (2026-08-06 · ต้นทางสร้างที่ FS แล้วรอ SBP Statement ~1 วัน) | ตามสิทธิ์เมนู | — (ไม่เรียก API) |
 | `/sbpgi/documents/[year]/[running]` | k2-document.html | `documents/[year]/[running]/page.tsx` | ตาม role/section | `GET/PUT /documents/{docNo}` + ลูก ๆ |
-| `/sbpgi/reports/income-audit` | k2-report.html | `reports/income-audit/page.tsx` | 01/04/06 | `GET /reports/status-summary` (+`/export`) · `GET /zones` (checkbox ภาคอัตโนมัติ) |
+| `/sbpgi/reports/income-audit` | k2-report.html | `reports/income-audit/page.tsx` | 01/04/06 | `GET /reports/status-summary` (+`/export`) · `GET /store/all-regions` (ระบบ SBP เดิม) (checkbox ภาคอัตโนมัติ) |
 | `/sbpgi/masters/factors` | k2-factors.html | `masters/factors/page.tsx` | 01/03 | `/factors` CRUD |
 | `/sbpgi/admin/system-config` | system-config.html | `admin/system-config/page.tsx` | 01 | `/configs` CRUD |
 | `/sbpgi/admin/email-templates` | email-template.html | `admin/email-templates/page.tsx` | 01 | `/email-templates` |
@@ -155,7 +155,7 @@ Convention การตั้งชื่อ (ตาม repo เดิม):
 หมายเหตุ route:
 - **หน้า `k2-operators.html` / `k2-permissions.html` ไม่พอร์ต** (ตัดสินใจ 2026-08-05) — กำหนดผู้ปฏิบัติงานและสิทธิ์เมนูใช้ระบบ SBP เดิม (auth-backend: groups/menus/permissions ต่อ URL · จัดการผ่านหน้า `/setting/manage-user-rights` ที่มีอยู่แล้ว)
 - **หน้า Overview และหน้าข้อมูลผิดปกติ/แจกงานถูกยกเลิก** (2026-08-06) — หน้าแรกของโมดูลคือ `documents/waiting` · ข้อมูลผิดปกติเหลือเป็นแถวแดง + ตัวกรอง "ยอดขายไม่ครบ 60 วัน" ในหน้ารายการ
-- `docNo` มี `/` ข้างใน (`2569/00123`) → route เป็น `[year]/[running]` แล้วประกอบเป็น docNo ใน page (`${year}/${running}`) — ห้าม encode `/` เป็น `%2F`
+- `docNo` มี `/` ข้างใน (`2026/00123`) → route เป็น `[year]/[running]` แล้วประกอบเป็น docNo ใน page (`${year}/${running}`) — ห้าม encode `/` เป็น `%2F`
 - หน้ากลุ่ม Flow/Database/Plan (`flow-fgi`, `k2-flow`, `plan-*`, `*-database`) เป็น**เอกสารออกแบบ ไม่พอร์ต**เข้าแอปจริง
 - **DocListPage ใช้ component เดียว 2 mode** (prototype เป็นไฟล์ฝาแฝด ต่างแค่ `MODE`): `waiting` → `GET /tasks` (inbox: เฉพาะสถานะ "รอ<role ตัวเอง>ดำเนินการ") · `related` → `GET /documents` (**บังคับเลือกปี พ.ศ. ก่อนค้นหา** — ไม่เลือก = ห้ามยิง API + error ใต้ช่องปี)
 
@@ -355,7 +355,7 @@ export const GM_APPROVE_LIMIT = 50_000;   // ≤50,000 → จบที่ GM(02
 export const AVP_APPROVE_LIMIT = 300_000; // 50,001–300,000 → ผ่าน AVP(03) แล้วจบ · เกิน 300,000 รอ confirm (SDD ยังไม่ระบุเส้นทาง)
 
 /* ภาค 8 ค่า (ตัวกรองเอกสาร) — มี RC ไม่มี RW */
-/* ภาค 13 รหัส (SDD v7.5) — ค่าเริ่มต้นสำหรับ fallback เท่านั้น · runtime ต้องโหลดจาก GET /zones เพราะภาคใหม่เพิ่มได้เอง */
+/* ภาค 13 รหัส (SDD v7.5) — ค่าเริ่มต้นสำหรับ fallback เท่านั้น · runtime ต้องโหลดจาก GET /store/all-regions (ระบบ SBP เดิม) เพราะภาคใหม่เพิ่มได้เอง */
 export const REGIONS = ['BE', 'BS', 'NEU', 'REU', 'RSU', 'BG', 'BW', 'RC', 'RN', 'BN', 'NEL', 'REL', 'RSL'] as const;
 
 /* ภาค 13 รหัสของหน้ารายงาน (checkbox ตาม k2-report.html — ลำดับตามหน้าจอ) */
@@ -387,7 +387,7 @@ export const MSG = {
 
 ### 7.1 `shared/lib/format.ts`
 ```ts
-/** ISO ค.ศ. → แสดง พ.ศ. เช่น '2026-01-15' → '15/01/2569' — จุดเดียวทั้งแอป */
+/** ISO ค.ศ. → แสดง พ.ศ. เช่น '2026-01-15' → '15/01/2026' — จุดเดียวทั้งแอป */
 export function formatDateThai(iso: string | null | undefined): string {
   if (!iso) return '-';
   const d = new Date(iso);
@@ -402,7 +402,7 @@ export function formatMoney(n: number | null | undefined): string {
   return n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/** เลขเอกสาร YYYY/xxxxx ปี พ.ศ. เช่น (2569, 123) → '2569/00123' */
+/** เลขเอกสาร YYYY/xxxxx ปี พ.ศ. เช่น (2569, 123) → '2026/00123' */
 export function formatDocNo(yearBE: number, running: number): string {
   return `${yearBE}/${String(running).padStart(5, '0')}`;
 }
@@ -434,7 +434,7 @@ export interface PermissionEntry {                   // GET /groups/current-user
 
 /* ---- Tasks / Documents ---- */
 export interface TaskItem {
-  docNo: string;                    // '2569/00123'
+  docNo: string;                    // '2026/00123'
   roundNo: number;                  // ครั้งที่
   impactedStoreCode: string; impactedStoreName: string;
   regionCode: string;               // REGIONS
@@ -623,7 +623,7 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 ### 11.3 `/documents/waiting` + `/documents/related` — DocListPage (1 component 2 mode)
 - mode `waiting` → `GET /tasks` (`taskKeys.list(params)`) — inbox เฉพาะสถานะของ role ตัวเอง · mode `related` → `GET /documents` (`documentKeys.list`)
 - **related: ปี พ.ศ. required** — ไม่เลือกแล้วกดค้นหา → error ใต้ช่องปี + **ไม่ยิง API** (enabled: false)
-- FilterBar: ปี* (dropdown พ.ศ.) · เดือน · สถานะ (select `DOC_STATUSES` — **ซ่อนใน waiting**) · ภาค (`REGIONS` multi (13 รหัส · โหลดจาก GET /zones)) · ประเภทร้าน (`SEARCH_STORE_TYPES` multi) · รหัส/ชื่อร้าน · เลขเอกสาร · ยอดขายลดลง% / เงินชดเชย / รอ(วัน) (RangeInput min–max) · ปุ่ม `ล้างตัวกรอง`
+- FilterBar: ปี* (dropdown พ.ศ.) · เดือน · สถานะ (select `DOC_STATUSES` — **ซ่อนใน waiting**) · ภาค (`REGIONS` multi (13 รหัส · โหลดจาก GET /store/all-regions ของระบบ SBP เดิม)) · ประเภทร้าน (`SEARCH_STORE_TYPES` multi) · รหัส/ชื่อร้าน · เลขเอกสาร · ยอดขายลดลง% / เงินชดเชย / รอ(วัน) (RangeInput min–max) · ปุ่ม `ล้างตัวกรอง`
 - Stat cards คลิกกรองตาราง: waiting 4 ใบ (ทั้งหมด / flag60 / รอเกิน 3 วัน / วงเงิน >50,000 เข้า AVP — วงเงินใหม่ SDD GI) · related = ทั้งหมด + ต่อสถานะ
 - ตาราง: `ครั้งที่ | เลขที่เอกสาร | รหัสร้าน | ชื่อร้านถูกกระทบ | ภาค | ยอดขายที่ลดลง(%) | จำนวนเงินที่ชดเชย | สถานะ(pill) | รอ (วัน)` — sortable, `rowClassName` = flag-red, คลิกแถว → `/documents/:docNo`
 - **งานค้าง mode waiting (SDD GI 24/02/2026)**: ต้องมี FilterBar (ข้างบน) + **checkbox เลือกหลายเอกสาร** (`selectable` ของ `<DataTable>` + select-all) + ปุ่ม bulk action → **popup ยืนยันก่อนดำเนินการ** · เอกสารที่ 06 ลง "เห็นควรไม่ชดเชย" เดือนก่อน BE จะ auto-queue เข้า inbox เดือนถัดไปให้**เจ้าของงานคนเดิม** — FE แค่แสดงจาก `GET /tasks` ไม่คำนวณเอง
@@ -633,7 +633,7 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 
 ### 11.4 `/documents/create` — CreateDocPage (k2-create.html)
 - S1 pill `เลขที่เอกสารถัดไป · <จาก API>` · Tabs 2 แท็บ
-- **Tab `สร้างเอกสารใหม่ (นอกเงื่อนไข)`** — ฟิลด์: `รหัสร้านถูกกระทบ*` (`StoreSearchInput` → `GET /stores/search?type=impacted`) · `ชื่อร้านถูกกระทบ` (readonly auto) · `ภาค` (readonly) · `ประเภทร้าน` (select `CREATE_STORE_TYPES` 8 ค่า) · `วันที่โอนเป็นร้าน SP` (date) · `เดือน/ปีที่ถูกกระทบ*` (month) · `ครั้งที่` · `รหัสร้านเปิดใหม่*` (search `type=new`) · `เหตุผลการสร้างเอกสารนอกเงื่อนไข*` (textarea) · ปุ่ม `เคลียร์ค่าเริ่มใหม่` / `สร้างเอกสาร`
+- **Tab `สร้างเอกสารใหม่ (นอกเงื่อนไข)`** — ฟิลด์: `รหัสร้านถูกกระทบ*` (`StoreSearchInput` → `GET /store/search` (ระบบ SBP เดิม)) · `ชื่อร้านถูกกระทบ` (readonly auto) · `ภาค` (readonly) · `ประเภทร้าน` (select `CREATE_STORE_TYPES` 8 ค่า) · `วันที่โอนเป็นร้าน SP` (date) · `เดือน/ปีที่ถูกกระทบ*` (month) · `ครั้งที่` · `รหัสร้านเปิดใหม่*` (search `type=new`) · `เหตุผลการสร้างเอกสารนอกเงื่อนไข*` (textarea) · ปุ่ม `เคลียร์ค่าเริ่มใหม่` / `สร้างเอกสาร`
 - zod: ช่อง `*` ทั้งหมด required — message ไทยตามหน้าเดิม
 - mutation: `POST /documents` → toast เลขเอกสาร `YYYY/xxxxx` → invalidate `documentKeys.all`+`taskKeys.all` → navigate ไปเอกสาร
 - **Tab `สร้างเอกสารที่ FS`**: `รหัสร้านถูกกระทบ*` · `ชื่อร้าน` (readonly) · `เดือน/ปีที่ถูกกระทบ*` · `Period Statement (From–To)` · ปุ่ม `เคลียร์` / `ส่งสร้างที่ FS` → `POST /documents` (mode FS) + `<PendingStatementTable>` "เอกสารที่รอ SBP Statement ส่งกลับ": `รหัสร้าน | ชื่อร้านถูกกระทบ | เดือน/ปี | ส่งเข้า FS เมื่อ | สถานะ` (pill รอ/ส่งกลับแล้ว)
@@ -660,7 +660,7 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
   - ผ่าน → `POST /documents/{docNo}/actions` `{result, comment}` — **routing อยู่ BE ทั้งหมด (SDD GI)**: วงเงิน GM 50,000 / AVP 300,000 (เกิน 300,000 รอ confirm) · เห็นควรไม่ชดเชยที่ขั้น 01/02 → เสร็จสิ้นทันที (ไม่ตีกลับ 06 · ขั้น 03 คงเดิม รอ confirm) · ยอดชดเชย 0: เดือน 1–3 ผู้ใช้กด "ส่งหน่วยงานส่งเสริมธุรกิจ SBP" ต่อ, เดือนที่ 4 กด "หยุดชดเชยรายได้" (BE ช่วย validate) → toast ok + invalidate detail+timeline+`taskKeys.all` → สถานะ/stepper ขยับ
 
 ### 11.6 `/reports/income-audit` — ReportPage (k2-report.html, SRS 3.1.7 + SDD v7.5)
-- ฟอร์ม `<ReportSearchForm>`: ปี* · เดือน/ปีเริ่ม–ถึง (month) · รหัสร้านกระทบ (+`StorePickerModal` → `GET /stores/search`) · ชื่อร้าน (readonly) · รหัสร้านเปิดใหม่ · สถานะ (select `DOC_STATUSES`) · **radio ผลการพิจารณา\* (บังคับ): `ประกันรายได้` / `ไม่ประกันรายได้`** · ภาค (checkbox `REPORT_REGIONS13` — **ภาคใหม่ที่เพิ่มในระบบต้องแสดงเป็น checkbox อัตโนมัติ**: render จาก lookup API ไม่ hardcode 13 ค่าใน UI · SDD GI/v7.5) · ประเภทร้าน (checkbox) · Period Statement From–To · ปุ่ม `เคลียร์` / `Preview Report`
+- ฟอร์ม `<ReportSearchForm>`: ปี* · เดือน/ปีเริ่ม–ถึง (month) · รหัสร้านกระทบ (+`StorePickerModal` → `GET /store/search` (ระบบ SBP เดิม)) · ชื่อร้าน (readonly) · รหัสร้านเปิดใหม่ · สถานะ (select `DOC_STATUSES`) · **radio ผลการพิจารณา\* (บังคับ): `ประกันรายได้` / `ไม่ประกันรายได้`** · ภาค (checkbox `REPORT_REGIONS13` — **ภาคใหม่ที่เพิ่มในระบบต้องแสดงเป็น checkbox อัตโนมัติ**: render จาก lookup API ไม่ hardcode 13 ค่าใน UI · SDD GI/v7.5) · ประเภทร้าน (checkbox) · Period Statement From–To · ปุ่ม `เคลียร์` / `Preview Report`
 - ไม่เลือกปี → error + ไม่ยิง API (กฎเดียวกับ related)
 - **`periodStatement` บังคับเมื่อสถานะ = `เสร็จสิ้นดำเนินการ`** (SDD GI) — zod refine: status เป็นเสร็จสิ้นฯ แต่ Period Statement ว่าง → error ใต้ช่อง + ไม่ยิง API
 - `Preview Report` → `GET /reports/status-summary` (`reportKeys.statusSummary`) → `<SummaryLine>` (พบ N รายการ / ยอดชดเชยรวม / วงเงิน >50,000 เข้า AVP / แถวแดง) + `<HBarChart>` ×2 (ตามสถานะ 6 ค่า / ยอดเงินตามภาค)

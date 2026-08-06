@@ -62,22 +62,22 @@
 |---|---|---|---|---|---|
 | `compensation_documents` | K2 | **MSSQL** `CompensateFlow` (PK `CompDocumentID` → `doc_no`) + join **ORA** `FGI_IMPACT_STORE_INFO` เพื่อเติม `impact_process_id` | `doc_no` (YYYY/xxxxx) | `status_code` · `current_section_code` · `impacted_store_code` · **`impact_process_id` (ใหม่)** | เอกสารประกันรายได้ — หัวใจโซน B · FK ใหม่เชื่อม hub โซน A แทนไฟล์ 48 ฟิลด์ · **คอลัมน์ที่เติมจาก CompensateFlow เดิม (2026-08-06):** `round_no`/`loop_no` (= CompMainLoopNo/CompLoopNo — หน้าจอแสดง "รอบ 1 · ครั้งที่ 3") · `allmap_url` (= CompUrlMap — ปุ่ม Link To ALLMAP) · **`statement_id`** (= CompStatementID — โยงกลับ SBP Statement ที่เป็นต้นทางการสร้างเอกสารตามกระบวนการ FS ใหม่) · `account_year`/`account_month` (งวดบัญชี) · `approver_snapshot` (JSONB — FC/Section/Manager/GM/AVP + ชื่อ/อีเมล ณ เวลาเปิดเอกสาร ตามที่ CompensateFlow เก็บไว้ 25 คอลัมน์: **จำเป็นเป็นพิเศษเมื่อ RBAC ย้ายไปใช้ระบบเดิม เพราะตำแหน่งจาก HR Connect เปลี่ยนได้ และผู้รักษาการเป็นผู้อนุมัติไม่ได้**) |
 | `document_new_stores` | K2 | **MSSQL** `ImpactProfile` (ฝั่ง `_N`) + **ORA** `FGI_NEW_STORE_INFO` / `FGI_NEW_STORE_COMPENSATE` (%ชดเชย + ยอดต่อร้าน) | id | `doc_no` → compensation_documents | ร้านเปิดใหม่ · `distance_km` · `compensate_percent` (**ผลรวมต้อง = 100%**) · `compensate_amount` (ใหม่ — ยอดชดเชยร้านถูกกระทบ × %ชดเชย คำนวณ/ปัดเศษที่ BE · ผลรวมทุกแถวต้องเท่ากับยอดชดเชยของเอกสารพอดี · เป็นแหล่งข้อมูลกราฟสัดส่วนเงินชดเชยในหน้าเอกสาร) |
-| `document_competitors` | K2 | **MSSQL** `CompetInCompenProfile` | id | `doc_no` · `competitor_code` → competitors | คู่แข่งในเอกสาร · `source_system` = ALLMAP (จาก pipeline) / USER (ผู้ใช้เพิ่มเอง) |
+| `document_competitors` | K2 | **MSSQL** `CompetInCompenProfile` (+ ไฟล์ `BPM06003O_` 14 ฟิลด์) | id | `doc_no` · `competitor_code` → competitors | คู่แข่งในเอกสาร **ระดับสาขา** · `source_system` = ALLMAP (จาก pipeline) / USER (ผู้ใช้เพิ่มเอง) · **คอลัมน์ที่ยืนยันจากไฟล์จริง (2026-08-06):** `competitor_code` เป็นรหัสจาก **ALLMAP** แบบตัวเลข/ตัวอักษรผสม (`4832`, `TD58_08`, `LS3550`) — **ไม่ใช่** รหัสแบรนด์ 01–11 · `branch_name` (ชื่อสาขาคู่แข่ง เช่น "ตลาดศรีวานิช") · `zone_code` + `subzone_code` (01–07) · `open_date`/`close_date` ของคู่แข่ง (ดู `docs/K2-interface-files.md`) |
 | `document_external_factors` | K2 | **MSSQL** `FactorInCompenProfile` | id | `doc_no` · `factor_code` → external_factors | ปัจจัยภายนอกที่ใช้ในเอกสาร + ช่วงวันที่ |
 | `consideration_logs` | K2 | **MSSQL** `CompensateHistory` (PK `ActionID`) | id | `doc_no` → compensation_documents | ประวัติพิจารณาทุกขั้น (ผู้พิจารณา · Section · ผล · เวลา) · `result_category` (APPROVE/REJECT/PENDING) สำหรับ filter **ประกันรายได้/ไม่ประกันรายได้** หน้ารายงานตรวจสอบประกันรายได้ (k2-report · SDD v7.5) |
 | `document_attachments` | K2 | **MSSQL** `CompDocAttachment` + `CompTempAttachment` (+ `AttachFileProfile` สำหรับสถานะอัปโหลด/purge) | id | `doc_no` → compensation_documents | ไฟล์แนบ ≤ 5MB ต่อไฟล์ · แยกตาม Section ที่แนบ · **เติมจาก AttachFileProfile เดิม (2026-08-06):** `file_size` · `upload_status` + `upload_message` (ผลอัปโหลดขึ้น object storage) · `purge_flag`/`storage_delete_status` (lifecycle ลบไฟล์บน S3 — ของเดิมมี FlagPurgeData/FlagDeleteS3/StatusCodeDeleteS3 ครบ) |
 | `compensation_histories` | K2 | **ORA** `FGI_IMPACT_STORE_COMPENSATE` + **MSSQL** `CompensateFlow` (แถวรอบก่อนหน้าของร้านเดียวกัน) | id | `store_code` · `ref_doc_no` | ประวัติชดเชยต่อร้าน/รอบ · `submit_account_month` เดือนส่งบัญชี (→ ไฟล์ FRBC0001 ของ Job 6) |
 | `document_cost_details` ★ | K2 (ImpactCostDetail) | **MSSQL** `ImpactCostDetail` (PK `ImpCostID`) | id | `doc_no` → compensation_documents · `new_store_code` | **(เพิ่ม 2026-08-06)** ยอดชดเชย**แยกรายเดือน/รายร้านเปิดใหม่** — `cost_year`/`cost_month` · `cost_target` (เป้ายอดขาย) · `cost_amount` · แยกค่าของร้านใหม่ (`_n`) และร้านใหม่สะสม (`_nc`) ตาม ImpactCostDetail เดิม · ของเดิมในโครงเรามีแค่ยอดรวมต่อเอกสาร + %ต่อร้าน ทำให้ทวนยอดรายเดือนกับ Statement/SAP ไม่ได้ |
-| `document_running_numbers` ★ | K2 (RunningNumber) | **MSSQL** `RunningNumber` | `be_year` | ออกเลขให้ compensation_documents | **(เพิ่ม 2026-08-06)** ตัวนับเลขเอกสารต่อปี พ.ศ. (`last_running_no`) — ออกเลข `YYYY/xxxxx` แบบ atomic (`UPDATE … RETURNING` / row lock) กันเลขชนกันเมื่อ batch และผู้ใช้สร้างพร้อมกัน · เดิมโครงเราไม่ระบุที่เก็บตัวนับ |
+| `document_running_numbers` ★ | K2 (RunningNumber) | **MSSQL** `RunningNumber` | `year` | ออกเลขให้ compensation_documents | **(เพิ่ม 2026-08-06)** ตัวนับเลขเอกสารต่อปี พ.ศ. (`last_running_no`) — ออกเลข `YYYY/xxxxx` แบบ atomic (`UPDATE … RETURNING` / row lock) กันเลขชนกันเมื่อ batch และผู้ใช้สร้างพร้อมกัน · เดิมโครงเราไม่ระบุที่เก็บตัวนับ |
 
 ### Zone C · Shared — Master, RBAC, Configuration และ Audit
 
 | ตาราง | ที่มา | ตารางต้นทาง (Migration) | PK | FK / ความสัมพันธ์หลัก | บทบาท |
 |---|---|---|---|---|---|
-| `impacted_stores` | K2 | **ORA** `FGI_IMPACT_STORE` (ฝั่ง `_I` · distinct) + **MSSQL** `CompensateFlow.CompTransferSBPDate` | `store_code` | = `impacted_store_code` ของโซน A (สะพานหลักสองระบบ) · subset SP ของ `stores` | ข้อมูลร้าน SP master · **`transfer_sbp_date` (เพิ่ม 2026-08-06 = CompTransferSBPDate เดิม)** — วันที่โอนเป็นร้าน SP ใช้กับเงื่อนไขร้านก่อน/หลัง 1/10/2557 ของ Approve Flow เดิม |
+| `impacted_stores` | K2 | **ORA** `FGI_IMPACT_STORE` (ฝั่ง `_I` · distinct) + **MSSQL** `CompensateFlow.CompTransferSBPDate` | `store_code` | = `impacted_store_code` ของโซน A (สะพานหลักสองระบบ) · subset SP ของ `stores` | ข้อมูลร้าน SP master · **`transfer_sbp_date` (เพิ่ม 2026-08-06 = CompTransferSBPDate เดิม)** — วันที่โอนเป็นร้าน SP ใช้กับเงื่อนไขร้านก่อน/หลัง 1/10/2014 ของ Approve Flow เดิม |
 | `decisions` ★ | K2 (DecisionProfile) | **MSSQL** `DecisionProfile` | `decision_code` | ← consideration_logs.decision_code · workflow transition | **(เพิ่ม 2026-08-06)** master **ผลพิจารณา** — `decision_name` (ข้อความบนปุ่ม · ไทย verbatim) · **`flow_name`** (ชื่อที่ใช้ในผังflow) · **`result_name`** (ชื่อที่ใช้แสดงผลในรายงาน/ประวัติ) ซึ่งของเดิมแยกกัน 3 ชุด · ทำให้การเปลี่ยนชื่อปุ่มตาม SDD GI ("ส่งฝ่ายส่งเสริมฯ" → "ส่งหน่วยงานส่งเสริมฯ") แก้ที่ data ไม่ต้อง deploy · `consideration_logs.result` ยังเก็บข้อความ ณ เวลากดไว้เป็น snapshot |
 | `external_factors` | K2 · SRS 3.1.9 | **MSSQL** `FactorProfile` | `factor_code` | ← document_external_factors | ปัจจัยภายนอก master · รหัสห้ามซ้ำ |
-| `competitors` | K2 | **MSSQL** `CompetitionProfile` (+ **ORA** `MAS_STORE_COMPETITOR`) | `competitor_code` | ← document_competitors | ร้านคู่แข่ง 24 ราย (108 Shop, Lotus Express, CJ …) |
+| `competitors` | K2 | **MSSQL** `CompetitionProfile` (+ **ORA** `MAS_STORE_COMPETITOR`) | `competitor_code` | ← document_competitors | **master แบรนด์ร้านคู่แข่ง 11 รายการ** (รหัส `01`–`11`) · `name_th` + `name_en` (ระบบเดิมเก็บทั้งไทยและอังกฤษ) — จัดการที่หน้าจอ `k2-competitors.html` (เพิ่ม 2026-08-06 ตามหน้าจอ K2 เดิม) · **คนละระดับกับ `document_competitors`** ที่เก็บ *รายสาขา* ของคู่แข่งพร้อมรหัสจาก ALLMAP (เช่น `4832`, `TD58_08`) + ชื่อสาขา + zone/subzone (ดู `docs/K2-interface-files.md`) |
 | `audit_logs` | K2 | **MSSQL** `MaintainHistory` + `MaintainMasterHistory` (`ActionCode` ← `ActionProfile`) | id | `table_name` + `ref_key` (generic) | ประวัติแก้ไข master แบบหลายรายการ: `action_type` · `old_value` → `new_value` · `reason` · `updated_by` · `updated_at` (= MaintainMasterHistory เดิม — แผงประวัติท้ายหน้าจอ 3.1.9) |
 | `status_email_rules` | K2 · SRS 3.1.5 | **ORA** `WF_EMAIL_RULE` + `WF_EMAIL_DETAIL` + `WF_EMAIL_CC` (WF = email utility ของ FCS) + **MSSQL** `CompensateHistory.ActionAccountCCMail`/`ActionFRCCMail` | `status_code` | `to_section_code` · `cc_section_code` → workflow_sections | ผู้รับอีเมล TO/CC เมื่อเปลี่ยนสถานะ — ใช้โดย Notification Service |
 | `job_configs` | ใหม่ | **MSSQL** `TaskMaster` + `TaskList` (layout fixed-width ต่อฟิลด์) + `ServerMaster`/`ServerType` — ⚠ **ห้าม migrate `ServerMaster.password`** (plaintext → Secret Manager) | `job_no` | ← job_run_histories | schema reference สำหรับ cron + พารามิเตอร์ที่แก้ได้ของ 11 jobs; ไม่ใช่ scope ให้ FE ทำ tab Database ที่ใช้ |
@@ -113,7 +113,7 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 | `SectionProfile.SectionLimitCost` | `workflow_sections.approve_limit_amount` | ทำให้วงเงิน GM 50,000 / AVP 300,000 (SDD GI) เป็น data |
 | `CompensateFlow` (84 คอลัมน์) | คอลัมน์เติมใน `compensation_documents` | `round_no`/`loop_no` · `allmap_url` · `statement_id` · งวดบัญชี · `approver_snapshot` |
 | `AttachFileProfile` | คอลัมน์เติมใน `document_attachments` | สถานะอัปโหลด + lifecycle ลบไฟล์บน object storage |
-| `CompTransferSBPDate` | `impacted_stores.transfer_sbp_date` | เงื่อนไขร้านก่อน/หลัง 1/10/2557 |
+| `CompTransferSBPDate` | `impacted_stores.transfer_sbp_date` | เงื่อนไขร้านก่อน/หลัง 1/10/2014 |
 
 ### ตรวจแล้ว — มีของเทียบเท่าอยู่แล้ว ไม่ต้องเพิ่ม
 
@@ -198,6 +198,18 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 | `interface_transactions` | `integration_log` (`module` · `service` · `payload`) | ของเราติดตาม ACK ระดับ record/ไฟล์ · `integration_log` เป็น payload log ราย call → **ใช้ `integration_log` แทนตาราง `FGI_WS_LOG` ในข้อ F6 ได้เลย ไม่ต้องเพิ่มตารางใหม่** |
 | `audit_logs` | `general_upload_data_page_audit_log` (เฉพาะงาน upload) | ระบบเดิมไม่มี audit กลางของ master → เก็บของเราไว้ |
 
+## ไฟล์ interface ของ K2 เดิม — ใช้ตรวจ field coverage (2026-08-06)
+
+ถอดโครงสร้างจากไฟล์ตัวอย่างจริงใน `docs/ตัวอย่างไฟล์ที่วางให้ K2 เอาเข้าระบบ/` แล้วสรุปไว้ที่ **[`docs/K2-interface-files.md`](docs/K2-interface-files.md)** — ระบบใหม่ตัดไฟล์ทั้ง 3 ตัวออก (Jobs 7/8/9 → เขียน DB ตรง) แต่ต้องใช้ layout นี้ตรวจว่า **เขียนลง DB ครบทุกฟิลด์ที่ K2 เคยได้รับ**
+
+| ไฟล์ | ฟิลด์ | สาระที่กระทบ schema |
+|---|---|---|
+| `BPM06001O_` | 48 | หัวเอกสาร + งวด + growth + ยอดชดเชย · **24 ฟิลด์ (ครึ่งไฟล์) เป็นบล็อกผู้อนุมัติ DV/GM/AVP** (emp id · ชื่อ-สกุล ไทย/อังกฤษ · อีเมล) → ยืนยันว่า `compensation_documents.approver_snapshot` ต้องมี **DV** ด้วย (ข้อ F3) · ฟิลด์ 9 = `allmap_url` และฟิลด์ 10 = ลิงก์ SBP Statement (`statement_id`) มาจากไฟล์นี้ตรง ๆ |
+| `BPM06002O_` | 24 | ร้านเปิดใหม่ต่อร้านถูกกระทบ — `radius` + `radius_unit` · `distance_km` · **`compensate_amount` (ฟิลด์ 16) + `compensate_percent` (ฟิลด์ 17)** → ยืนยันสูตร ยอด × % และผลรวม = ยอดของเอกสาร · ประเภทร้านเป็น **ตัวอักษรเดียว (`B`)** ยืนยันชุด A/B/C/E |
+| `BPM06003O_` | 14 | คู่แข่งระดับสาขา — รหัส ALLMAP · **ชื่อไทย + ชื่ออังกฤษ** (→ `competitors.name_th`/`name_en`) · ชื่อสาขา · zone + subzone |
+
+**ข้อเท็จจริงของไฟล์ที่ต้องแก้ในเอกสารเก่า:** ไฟล์กลุ่ม BPM เป็น **UTF-8** (ไม่ใช่ windows-874 — ตัวที่เป็น windows-874 คือ `FRBC0001` ที่ส่งไป STA) · ตัวคั่น `|` · ไม่มีบรรทัดหัวคอลัมน์ · วันที่/ปีเป็น **ค.ศ.** · ชุดตัวอย่างมี `BPM06002O_` ซ้ำ 2 ไฟล์เนื้อหาเหมือนกันทุกไบต์ → **การนำเข้าต้อง idempotent ด้วย business key ไม่ใช่ชื่อไฟล์**
+
 ## Canonical Column Contract
 
 DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่อด้านล่างตรงกัน; ชื่อในคอลัมน์ “ยกเลิกใช้” ห้ามปรากฏใน implementation ใหม่
@@ -212,7 +224,7 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 | `fgi_impact_processes` | `workflow_generation_status` | ห้าม duplicate สถานะเดียวกันใน `fgi_impact_stores` |
 | `workflow_sections` | `approve_limit_amount` (numeric) | ห้าม hardcode วงเงินใน service — อ่านจากคอลัมน์นี้ |
 | `zones` / `branch_types` / `decisions` | `zone_code` · `branch_type_code` · `decision_code` | ห้าม hardcode รายการภาค / ประเภทสาขา / ปุ่มผลพิจารณาใน FE |
-| `document_running_numbers` | `be_year`, `last_running_no` | ห้ามใช้ `MAX(running_no)+1` — ต้อง lock แถวปีนั้น |
+| `document_running_numbers` | `year`, `last_running_no` | ห้ามใช้ `MAX(running_no)+1` — ต้อง lock แถวปีนั้น |
 
 ## กุญแจเชื่อมข้ามระบบ (Cross-System Keys)
 

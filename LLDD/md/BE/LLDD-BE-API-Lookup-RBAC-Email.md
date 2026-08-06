@@ -2,8 +2,6 @@
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
-> ปรับตามการตัดสินใจใช้ระบบสิทธิ์เดิม 2026-08-05 — ส่วน RBAC/menu permission/ค้นหาพนักงาน (`/employees/search`, `/menu-permissions*`, `/roles*`, `/menus*`) **ตัดออก — ใช้ระบบ SBP เดิม (auth-backend/ABS)**: เมนู/สิทธิ์ต่อ URL จาก `GET /menus` + `GET /groups/current-user/permissions` · จัดการ group ผ่านหน้า `/setting/manage-user-rights` ของ FE เดิม · ค้นพนักงานผ่าน employee backend เดิม — LLDD นี้เหลือเฉพาะ shared lookup (stores/document-statuses/workflow-sections), audit log และ email template
-
 ## 1. Overview
 
 | รายการ | รายละเอียด |
@@ -11,15 +9,15 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Track | BE |
 | Estimate | 30 ชั่วโมง |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
-| Objective | ออกแบบ APIs สำหรับ shared lookup, audit log และ email template ของ SBP Mall (ส่วน RBAC/menu permission ตัดออก — ใช้ระบบ SBP เดิม 2026-08-05) |
+| Objective | ออกแบบ APIs ที่ตกหล่นจาก shared lookup, RBAC/menu permission, audit log และ email template ของ SBP Mall |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
 ## 2. Screen / Functional Scope
 
 - Lookup APIs
-- ~~Employee search~~ — ตัดออก ใช้ employee backend ระบบเดิม (2026-08-05)
-- ~~Role/menu/menu-permission CRUD~~ — ตัดออก ใช้ auth-backend ระบบเดิม (จัดการผ่าน /setting/manage-user-rights)
+- Employee search
+- Role/menu/menu-permission CRUD
 - Audit log search
 - Email template CRUD/reset
 - Auth endpoints are platform reference only
@@ -35,7 +33,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | q | string | optional | ใช้ค้นหา stores/employees/competitors |
-| type | impacted\|new | required for stores/search | เลือกแหล่ง impacted_stores หรือ stores |
+| type | impacted\|new | required for /store/search (ระบบ SBP เดิม) | เลือกแหล่งร้านถูกกระทบ/ร้านเปิดใหม่ |
 | roleCode | 00-10 | required for permission | อ้าง roles |
 | menuCode | string | required for permission | อ้าง menus |
 | templateCode | EM-01..EM-08 | required | email template key |
@@ -45,27 +43,27 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/stores/search; GET /api/v1/document-statuses; GET /api/v1/workflow-sections |
+| Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/document-statuses; GET /api/v1/workflow-sections |
 | Progress | Validate query/role/menu/template; Read/write table by domain; Apply reason requirement; Write audit_logs |
-| Output | email_templates / status_email_rules; audit_logs (~~roles / menus / menu_permissions~~ ตัดออก — ใช้ auth-backend ระบบเดิม) |
+| Output | roles / menus / menu_permissions; email_template (SBP) / status_email_rules; audit_logs |
 
 ### 5.90 Endpoint Implementation Contract
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| GET /api/v1/stores/search | ค้นหาร้านสำหรับ popup | Validate query/role/menu/template | status label ต้องเป็น verbatim |
+| GET /store/search (ระบบ SBP เดิม) | ค้นหาร้านสำหรับ popup | Validate query/role/menu/template | status label ต้องเป็น verbatim |
 | GET /api/v1/document-statuses | รายการสถานะเอกสาร verbatim | Read/write table by domain | permission mutation ต้อง audit |
 | GET /api/v1/workflow-sections | รายการ section 5 ขั้น | Apply reason requirement | email recipient From/To/Cc ล็อกจาก status_email_rules |
-| ~~GET /api/v1/employees/search~~ **ตัดออก — ใช้ระบบ SBP เดิม** | ค้นหาพนักงานสำหรับ master/operator | Write audit_logs | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
-| ~~GET /api/v1/menu-permissions~~ **ตัดออก — ใช้ระบบ SBP เดิม** | อ่าน matrix สิทธิ์เมนูทุก role | Return standard envelope for list endpoints | status label ต้องเป็น verbatim |
-| ~~PUT /api/v1/menu-permissions/{menuCode}~~ **ตัดออก — ใช้ระบบ SBP เดิม** | บันทึกสิทธิ์เมนูรายเมนู | Validate query/role/menu/template | permission mutation ต้อง audit |
-| ~~GET /api/v1/roles~~ **ตัดออก — ใช้ระบบ SBP เดิม** | อ่านรายการ role | Read/write table by domain | email recipient From/To/Cc ล็อกจาก status_email_rules |
-| ~~POST /api/v1/roles~~ **ตัดออก — ใช้ระบบ SBP เดิม** | สร้าง role | Apply reason requirement | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
-| ~~PUT /api/v1/roles/{roleCode}~~ **ตัดออก — ใช้ระบบ SBP เดิม** | แก้ role ที่ไม่ใช่ system role | Write audit_logs | status label ต้องเป็น verbatim |
-| ~~DELETE /api/v1/roles/{roleCode}~~ **ตัดออก — ใช้ระบบ SBP เดิม** | ลบ role ที่ไม่ถูกใช้งาน | Return standard envelope for list endpoints | permission mutation ต้อง audit |
-| ~~POST /api/v1/menus~~ **ตัดออก — ใช้ระบบ SBP เดิม** | สร้างเมนูและสิทธิ์เริ่มต้นทุก role | Validate query/role/menu/template | email recipient From/To/Cc ล็อกจาก status_email_rules |
-| ~~PUT /api/v1/menus/{menuCode}~~ **ตัดออก — ใช้ระบบ SBP เดิม** | แก้เมนู | Read/write table by domain | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
-| ~~DELETE /api/v1/menus/{menuCode}~~ **ตัดออก — ใช้ระบบ SBP เดิม** | ลบเมนูพร้อมสิทธิ์ที่เกี่ยวข้อง | Apply reason requirement | status label ต้องเป็น verbatim |
+| GET /api/v1/employees/search | ค้นหาพนักงานสำหรับ master/operator | Write audit_logs | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
+| GET /api/v1/menu-permissions | อ่าน matrix สิทธิ์เมนูทุก role | Return standard envelope for list endpoints | status label ต้องเป็น verbatim |
+| PUT /api/v1/menu-permissions/{menuCode} | บันทึกสิทธิ์เมนูรายเมนู | Validate query/role/menu/template | permission mutation ต้อง audit |
+| GET /api/v1/roles | อ่านรายการ role | Read/write table by domain | email recipient From/To/Cc ล็อกจาก status_email_rules |
+| POST /api/v1/roles | สร้าง role | Apply reason requirement | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
+| PUT /api/v1/roles/{roleCode} | แก้ role ที่ไม่ใช่ system role | Write audit_logs | status label ต้องเป็น verbatim |
+| DELETE /api/v1/roles/{roleCode} | ลบ role ที่ไม่ถูกใช้งาน | Return standard envelope for list endpoints | permission mutation ต้อง audit |
+| POST /api/v1/menus | สร้างเมนูและสิทธิ์เริ่มต้นทุก role | Validate query/role/menu/template | email recipient From/To/Cc ล็อกจาก status_email_rules |
+| PUT /api/v1/menus/{menuCode} | แก้เมนู | Read/write table by domain | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
+| DELETE /api/v1/menus/{menuCode} | ลบเมนูพร้อมสิทธิ์ที่เกี่ยวข้อง | Apply reason requirement | status label ต้องเป็น verbatim |
 | GET /api/v1/audit-logs | ค้นประวัติการแก้ master | Write audit_logs | permission mutation ต้อง audit |
 | GET /api/v1/email-templates | อ่านรายการ email template | Return standard envelope for list endpoints | email recipient From/To/Cc ล็อกจาก status_email_rules |
 | GET /api/v1/email-templates/{code} | อ่าน email template รายตัว | Validate query/role/menu/template | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
@@ -94,7 +92,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 
 ## 7. API Contract
 
-### GET /api/v1/stores/search
+### GET /store/search (ระบบ SBP เดิม)
 
 ค้นหาร้านสำหรับ popup
 
@@ -209,7 +207,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | items[].sectionCode | string | Yes | canonical code; do not replace with display label |
 | items[].sectionName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/employees/search — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### GET /api/v1/employees/search
 
 ค้นหาพนักงานสำหรับ master/operator
 
@@ -248,7 +246,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | items[].employeeId | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].employeeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/menu-permissions — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### GET /api/v1/menu-permissions
 
 อ่าน matrix สิทธิ์เมนูทุก role
 
@@ -289,7 +287,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | items[].roleCode | string | Yes | canonical code; do not replace with display label |
 | items[].canAccess | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### PUT /api/v1/menu-permissions/{menuCode} — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### PUT /api/v1/menu-permissions/{menuCode}
 
 บันทึกสิทธิ์เมนูรายเมนู
 
@@ -325,7 +323,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | --- | --- | --- | --- |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/roles — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### GET /api/v1/roles
 
 อ่านรายการ role
 
@@ -376,7 +374,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | items[].system | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/roles — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### POST /api/v1/roles
 
 สร้าง role
 
@@ -420,7 +418,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | system | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### PUT /api/v1/roles/{roleCode} — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### PUT /api/v1/roles/{roleCode}
 
 แก้ role ที่ไม่ใช่ system role
 
@@ -462,7 +460,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | system | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### DELETE /api/v1/roles/{roleCode} — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### DELETE /api/v1/roles/{roleCode}
 
 ลบ role ที่ไม่ถูกใช้งาน
 
@@ -496,7 +494,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | roleCode | string | Yes | canonical code; do not replace with display label |
 | deleted | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/menus — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### POST /api/v1/menus
 
 สร้างเมนูและสิทธิ์เริ่มต้นทุก role
 
@@ -540,7 +538,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | menuCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | created | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### PUT /api/v1/menus/{menuCode} — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### PUT /api/v1/menus/{menuCode}
 
 แก้เมนู
 
@@ -582,7 +580,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | menuCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | updated | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### DELETE /api/v1/menus/{menuCode} — ตัดออก (ใช้ระบบ SBP เดิม · auth-backend)
+### DELETE /api/v1/menus/{menuCode}
 
 ลบเมนูพร้อมสิทธิ์ที่เกี่ยวข้อง
 
@@ -894,10 +892,10 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | --- | --- | --- |
 | stores / impacted_stores | R | store picker สำหรับร้านถูกกระทบ/ร้านเปิดใหม่ |
 | document_statuses / workflow_sections | R | lookup สถานะ verbatim และ section 5 ขั้น |
-| ~~employees (popup ค้นหาพนักงาน)~~ | R | **ตัดออก** — ค้นพนักงานผ่าน employee backend ระบบเดิม |
-| ~~roles / menus / menu_permissions~~ | R/W | **ตัดออก** — RBAC/menu matrix อยู่ auth-backend ระบบเดิม (ไม่มีตารางใน SBPGI) |
-| email_templates / status_email_rules | R/W | เนื้อหา template และผู้รับที่ล็อกตามสถานะ |
-| audit_logs | R/W | ประวัติ mutation ของ email/master (การแก้สิทธิ์ลง audit ของระบบเดิม) |
+| employees | R | popup ค้นหาพนักงาน |
+| roles / menus / menu_permissions | R/W | RBAC/menu matrix |
+| email_template (SBP) / status_email_rules | R/W | เนื้อหา template ในตารางของระบบ SBP เดิม และผู้รับที่ล็อกตามสถานะ |
+| audit_logs | R/W | ประวัติ mutation ของ RBAC/email/master |
 
 ## 9. Processing Flow
 
@@ -912,9 +910,9 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 ## 10. Acceptance Criteria
 
 - status label ต้องเป็น verbatim
-- ~~permission mutation ต้อง audit~~ — ตัดออก: permission mutation อยู่ระบบ SBP เดิม (audit ของระบบเดิม)
+- permission mutation ต้อง audit
 - email recipient From/To/Cc ล็อกจาก status_email_rules
-- Auth Group 1 และ RBAC/ผู้ปฏิบัติงานทั้งหมดเป็นของระบบ SBP เดิม ไม่ใช่งาน implement ใน LLDD นี้ (2026-08-05)
+- Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้
 
 ## 11. Developer Test Checklist
 
@@ -922,6 +920,6 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup RBAC 
 | --- | --- |
 | 1 | store lookup |
 | 2 | status lookup |
-| 3 | ~~permission save without reason~~ (ตัดออก — ใช้ระบบ SBP เดิม) |
+| 3 | permission save without reason |
 | 4 | email template reset |
 | 5 | audit log search |

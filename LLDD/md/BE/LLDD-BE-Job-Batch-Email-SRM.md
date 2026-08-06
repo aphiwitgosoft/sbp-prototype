@@ -440,8 +440,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch Email 
       "trackingId": 9912,
       "dataName": "COMPENSATE_INIT_I",
       "direction": "OUT",
-      "businessKey": "2569/00098",
-      "docNo": "2569/00098",
+      "businessKey": "2026/00098",
+      "docNo": "2026/00098",
       "fileName": "COMPENSATE_INIT_I_25690722.dat",
       "status": "SENT",
       "sentAt": "2026-07-20T17:02:00+07:00",
@@ -509,8 +509,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch Email 
     {
       "trackingId": 9912,
       "dataName": "COMPENSATE_INIT_I",
-      "businessKey": "2569/00098",
-      "docNo": "2569/00098",
+      "businessKey": "2026/00098",
+      "docNo": "2026/00098",
       "fileName": "COMPENSATE_INIT_I_25690722.dat",
       "sentAt": "2026-07-20T17:02:00+07:00",
       "ageHours": 41,
@@ -637,7 +637,7 @@ render template โดยไม่บันทึก
 ```json
 {
   "variables": {
-    "docNo": "2569/00123"
+    "docNo": "2026/00123"
   }
 }
 ```
@@ -653,8 +653,8 @@ render template โดยไม่บันทึก
 
 ```json
 {
-  "subject": "แจ้งเอกสาร 2569/00123",
-  "body": "กรุณาตรวจสอบเอกสาร 2569/00123"
+  "subject": "แจ้งเอกสาร 2026/00123",
+  "body": "กรุณาตรวจสอบเอกสาร 2026/00123"
 }
 ```
 
@@ -786,7 +786,7 @@ STA ACK callback ให้ Job 10 เป็น safety net
 | job_configs | R/W | enabled, cron, params ของ batch |
 | job_run_histories | R/W | ประวัติการรันและสถานะล่าสุด |
 | interface_transactions | R/W | tracking file/API interface และ ACK |
-| email_templates | R/W | subject/body template |
+| email_template (SBP) | R/W | subject_format/body_format ของระบบ SBP เดิม |
 | status_email_rules | R | TO/CC ตามสถานะ |
 | audit_logs | R/W | audit การแก้ job/email |
 

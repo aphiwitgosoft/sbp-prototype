@@ -8,7 +8,6 @@ const outDir = path.join(root, "output", "srs", "screenshots", "full");
 fs.mkdirSync(outDir, { recursive: true });
 
 const pages = [
-  "index.html",
   "flow-fgi.html",
   "k2-flow.html",
   "plan-flow.html",
@@ -19,12 +18,10 @@ const pages = [
   "k2-create.html",
   "k2-list-waiting.html",
   "k2-list-related.html",
-  "k2-list-abnormal.html",
   "k2-document.html",
   "k2-report.html",
-  "k2-operators.html",
   "k2-factors.html",
-  "k2-permissions.html",
+  "k2-competitors.html",
   "system-config.html",
   "email-template.html",
   "plan-api.html",

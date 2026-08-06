@@ -71,6 +71,7 @@
     // ไฟล์ k2-operators.html / k2-permissions.html ยังเก็บไว้อ้างอิง
     // { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ระบบประกันรายได้ (SBP Mall)' },
+    { key:'k2-competitors', label:'กำหนดรายชื่อคู่แข่ง',  href:'k2-competitors.html', icon:I.db,      group:'ระบบประกันรายได้ (SBP Mall)' },
     // { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ระบบประกันรายได้ (SBP Mall)' },
     // กลุ่มผู้ดูแลระบบ (2026-08-06) — ย้าย Config / Batch Job / Email Template ออกจากกลุ่มงานประจำวัน
     { key:'system-config', label:'ตั้งค่าระบบ (Global Config)', href:'system-config.html', icon:I.cog,  group:'ผู้ดูแลระบบ (Admin)' },
@@ -256,16 +257,87 @@
       }
     });
 
-    // select-all checkboxes per table
+    // select-all checkboxes per table + แถบดำเนินการกับรายการที่เลือก (bulk action)
+    // ทุกตารางที่มี checkbox จะได้แถบนี้อัตโนมัติ — ยกเว้นตารางที่หน้าเพจทำแถบเองแล้ว (มี [data-bulk-for] ชี้มา)
     document.querySelectorAll('table.data').forEach(function (tbl) {
       var all = tbl.querySelector('thead .cbx');
       if (!all) return;
       var rows = function () { return [].slice.call(tbl.querySelectorAll('tbody .cbx')); };
-      all.addEventListener('change', function () { rows().forEach(function (c) { c.checked = all.checked; }); });
+      var picked = function () { return rows().filter(function (c) { return c.checked; }); };
+
+      var custom = tbl.id && document.querySelector('[data-bulk-for="' + tbl.id + '"]');
+      var bar = null, count = null;
+      if (!custom) {
+        var wrap = tbl.closest('.table-wrap') || tbl;
+        bar = cre('div', 'bulk-bar');
+        bar.hidden = true;
+        var canDelete = !!tbl.querySelector('tbody .icon-del');
+        bar.innerHTML =
+          svg('m9 11 3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11', '', 16) +
+          '<span>เลือกไว้ <b class="bulk-n">0</b> รายการ</span>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-bulk="clear">ล้างการเลือก</button>' +
+          (canDelete ? '<button type="button" class="btn btn-danger btn-sm" data-bulk="del">' +
+            svg(I.trash, 'bulk-trash', 15) + ' ลบที่เลือก</button>' : '');
+        wrap.parentNode.insertBefore(bar, wrap);
+        count = bar.querySelector('.bulk-n');
+
+        bar.addEventListener('click', function (e) {
+          var btn = e.target.closest('[data-bulk]'); if (!btn) return;
+          var list = picked();
+          if (btn.getAttribute('data-bulk') === 'clear') {
+            list.forEach(function (c) { c.checked = false; }); all.checked = false; sync(); return;
+          }
+          if (!list.length) return;
+          if (!confirm('ยืนยันลบรายการที่เลือก ' + list.length + ' รายการ?')) return;
+          list.forEach(function (c) { var tr = c.closest('tr'); if (tr) tr.remove(); });
+          all.checked = false; sync();
+          toast('ลบรายการที่เลือก ' + list.length + ' รายการแล้ว', 'del');
+        });
+      }
+      function sync() {
+        if (!bar) return;
+        var n = picked().length;
+        count.textContent = n;
+        bar.hidden = n === 0;
+      }
+
+      all.addEventListener('change', function () { rows().forEach(function (c) { c.checked = all.checked; }); sync(); });
       tbl.addEventListener('change', function (e) {
         if (e.target.classList.contains('cbx') && e.target !== all) {
           var r = rows(); all.checked = r.length && r.every(function (c) { return c.checked; });
         }
+        sync();
+      });
+    });
+
+    // sort หัวตารางแบบ generic — เปิดใช้ด้วย th[data-sort="text|num|date"] (ตารางที่มีสคริปต์ sort เองใช้ data-stype จึงไม่ชนกัน)
+    document.querySelectorAll('table.data thead th[data-sort]').forEach(function (th) {
+      th.addEventListener('click', function () {
+        var tbl = th.closest('table'), tb = tbl.querySelector('tbody');
+        if (!tb) return;
+        var idx = th.cellIndex, type = th.getAttribute('data-sort');
+        var dir = th.classList.contains('sort-asc') ? -1 : 1;
+        tbl.querySelectorAll('thead th').forEach(function (h) { h.classList.remove('sort-asc', 'sort-desc'); });
+        th.classList.add(dir === 1 ? 'sort-asc' : 'sort-desc');
+        var rows = [].slice.call(tb.rows).filter(function (r) { return r.cells.length > idx; });
+        function val(tr) {
+          var t = clean(tr.cells[idx].textContent);
+          if (type === 'num') return parseFloat(t.replace(/[^0-9.\-]/g, '')) || 0;
+          if (type === 'date') {
+            var m = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (m) return new Date(+m[3], +m[2] - 1, +m[1]).getTime();
+            var mm = t.match(/(\d{1,2})\/(\d{4})/);
+            return mm ? new Date(+mm[2], +mm[1] - 1, 1).getTime() : 0;
+          }
+          return t;
+        }
+        rows.sort(function (a, b) {
+          var va = val(a), vb = val(b);
+          if (va < vb) return -dir;
+          if (va > vb) return dir;
+          return 0;
+        });
+        rows.forEach(function (r) { tb.appendChild(r); });
       });
     });
 
@@ -503,9 +575,25 @@
       { key: 'remark', label: 'รายละเอียดเพิ่มเติม (factor_remark)', col: 'รายละเอียดเพิ่มเติม', wide: true },
       { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
     ],
+    /* master รายชื่อคู่แข่ง — จัดการที่หน้า k2-competitors.html (ตรงตาม K2 เดิม 11 รายการ)
+       เพิ่ม/แก้ที่นั่นแล้ว dropdown ในหน้าเอกสารต้องเปลี่ยนตาม (ระบบจริงอ่านจากตาราง competitors) */
+    COMPETITOR_MASTER: ['01 · โลตัสเอ็กซ์เพรส (Lotus Express)', '02 · มินิบิ๊กซี (Mini Big C)', '03 · ท็อปส์เดลี่ (Tops Daily)',
+      '04 · แฟมิลี่มาร์ท (Family Mart)', '05 · จิฟฟี่ (Jiffy)', '06 · ซี.เจ. เอ็กซ์เพรส (CJ Express)',
+      '07 · แม็กซ์แวลูทันใจ (Max Valu)', '08 · ซุปเปอร์ชีป (Super Cheap)', '09 · ลอว์สัน 108 (Lawson 108)',
+      '10 · จอย (Joy)', '11 · อื่นๆ (Other)'],
+    competitormaster: [
+      { key: 'code', label: 'รหัสคู่แข่ง (competitor_code) *', col: 'รหัสคู่แข่ง' },
+      { key: 'nameth', label: 'ชื่อคู่แข่ง (ไทย) *', col: 'ชื่อคู่แข่ง (ไทย)', wide: true },
+      { key: 'nameen', label: 'ชื่อคู่แข่ง (อังกฤษ) *', col: 'ชื่อคู่แข่ง (อังกฤษ)', wide: true },
+      { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true },
+      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
+    ],
     competitor: [
       { key: 'name', label: 'ร้านคู่แข่ง (Master)', col: 'ร้านคู่แข่ง', wide: true, type: 'select',
-        options: ['108 Shop', 'V Shop', 'Lotus Express', 'AM PM', 'Joy', 'Max Valu', 'Bai Chak', 'Lawson 108', 'Mini Big C', 'BATAGRO SHOP', 'Lemon Green', 'Rak Ban Kerd', 'CJ Express', 'Tops Daily', 'StarMart', 'CP FreshMark', 'Golden Place', 'Super Cheap', 'Family Mart', 'Jiffy', 'Suria', 'Fresh Mart', 'Tigermart', 'Thai Shop'] },
+        options: ['โลตัสเอ็กซ์เพรส (Lotus Express)', 'มินิบิ๊กซี (Mini Big C)', 'ท็อปส์เดลี่ (Tops Daily)',
+          'แฟมิลี่มาร์ท (Family Mart)', 'จิฟฟี่ (Jiffy)', 'ซี.เจ. เอ็กซ์เพรส (CJ Express)',
+          'แม็กซ์แวลูทันใจ (Max Valu)', 'ซุปเปอร์ชีป (Super Cheap)', 'ลอว์สัน 108 (Lawson 108)',
+          'จอย (Joy)', 'อื่นๆ (Other)'] },
       { key: 'date', label: 'วันที่เปิดกระทบ', col: 'วันที่เปิดกระทบ', type: 'date' },
       { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true }
     ],

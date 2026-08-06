@@ -312,7 +312,7 @@ export async function runLlddBeJob7Synccompetitortodocument(ctx, services) {
 {
   "items": [
     {
-      "startedAt": "30/06/2569 17:30",
+      "startedAt": "30/06/2026 17:30",
       "status": "ok"
     }
   ]

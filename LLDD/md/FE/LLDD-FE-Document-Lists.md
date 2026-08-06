@@ -1,8 +1,5 @@
 # LLDD FE - Document Lists
 
-> ℹ️ **อัปเดต 2026-08-06:** หน้ารายการ "รอดำเนินการ" เป็น **หน้าแรกของระบบ** · หน้า **ข้อมูลผิดปกติ / แจกงาน ถูกยกเลิกและลบทิ้ง** — ข้อมูลผิดปกติเหลือเป็นแถวแดง (`salesDataDays < 60`) + stat card ตัวกรอง "ยอดขายไม่ครบ 60 วัน" ในหน้ารายการนี้ · เพิ่ม checkbox เลือกหลายเอกสาร + auto-assign เจ้าของงานเดิมตาม SDD GI
-
-
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
 ## 1. Overview
@@ -78,7 +75,7 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | C02 | Related document list | ค้นหาเอกสารจาก /documents โดยบังคับปีและแสดงเอกสารที่เกี่ยวข้องตาม permission | ไม่ call API เมื่อไม่มีปี และ empty result ไม่แสดงข้อมูลจาก query ก่อนหน้า |
 | C03 | Search/filter/status filter | serialize docNo/year/status/store filters ลง query state และ restore เมื่อย้อนกลับจาก detail | Search/Clear/refresh ให้ผลซ้ำได้และ pagination ใช้ filter ชุดเดียวกัน |
 | C04 | Pagination/row action | ควบคุม page/size/sort และ row navigation โดยใช้ docNo เป็น stable key | เปลี่ยนหน้าไม่ reset filter และเปิด detail ของ row ที่เลือกถูกเลขเอกสาร |
-| C05 | Red flag for sales data < 60 days | คำนวณ presentation flag จาก salesDataDays < 60 โดยไม่ใช้ daysPending แทน | แถวผิดปกติเป็นสีแดงพร้อม accessible label เฉพาะเมื่อยอดขายไม่ครบ 60 วัน |
+| C05 | Red flag for sales data < 60 days | คำนวณ presentation flag จาก salesDataDays < 60 โดยไม่ใช้ waitingDays แทน | แถวผิดปกติเป็นสีแดงพร้อม accessible label เฉพาะเมื่อยอดขายไม่ครบ 60 วัน |
 
 ### 5.91 Document Lists API Adapter Map
 
@@ -147,7 +144,7 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
   "items": [
     {
       "roundNo": 1,
-      "docNo": "2569/00123",
+      "docNo": "2026/00123",
       "impactedStoreCode": "01234",
       "impactedStoreName": "สาขาตัวอย่าง",
       "regionCode": "BE",
@@ -214,7 +211,7 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
   "items": [
     {
       "roundNo": 2,
-      "docNo": "2569/00124",
+      "docNo": "2026/00124",
       "impactedStoreCode": "01235",
       "impactedStoreName": "สาขาตัวอย่าง 2",
       "regionCode": "BS",

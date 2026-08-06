@@ -47,7 +47,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | --- | --- |
 | Input | POST /api/v1/workflows/instances; GET /api/v1/workflows/instances/{id}; GET /api/v1/workflows/summary |
 | Progress | Validate service token and idempotency key; Load impact process and current workflow_generation_status; Reject if status is already Y and return existing doc/instance idempotently; Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N |
-| Output | fgi_impact_processes / fgi_impact_stores; compensation_documents; workflow_instances |
+| Output | fgi_impact_processes / fgi_impact_stores; compensation_documents; workflow_transaction (@srm/glb-workflow) |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -67,7 +67,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | 4 | Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N | missing DV sets N |
 | 5 | If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason | same juristic sets N |
 | 6 | If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun | growth NULL keeps W but growth > -10 sets N |
-| 7 | If gate passes, require compensation_documents from Job 8, create workflow_instances/workflow_tasks first section 06, then update fgi_impact_processes.workflow_generation_status=Y in one transaction | sales status NULL keeps W |
+| 7 | If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initializeWorkflow + addPreparedApprover state 06), then update fgi_impact_processes.workflow_generation_status=Y in one transaction | sales status NULL keeps W |
 | 8 | Enqueue notification summary outside transaction after commit | duplicate request returns existing instance |
 
 ## 6. Button / User Action Mapping
@@ -106,7 +106,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 
 ```json
 {
-  "docNo": "2569/00123",
+  "docNo": "2026/00123",
   "instanceId": "WF-2569-00123",
   "workflowGenerationStatus": "Y",
   "firstSection": "06",
@@ -149,7 +149,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 ```json
 {
   "instanceId": "WF-2569-00123",
-  "docNo": "2569/00123",
+  "docNo": "2026/00123",
   "status": "ACTIVE",
   "currentSection": "06"
 }
@@ -220,8 +220,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | --- | --- | --- |
 | fgi_impact_processes / fgi_impact_stores | R/W | อ่านข้อมูล impact และอัปเดต workflow_generation_status W/Y/N |
 | compensation_documents | R/W | create-if-missing จาก impact process และผูก docNo |
-| workflow_instances | R/W | สร้าง instance ACTIVE แทน K2 StartInstance |
-| workflow_tasks | W | เปิด first task section 06 |
+| workflow_transaction (@srm/glb-workflow) | R/W | initializeWorkflow แทน K2 StartInstance |
+| workflow_approver (@srm/glb-workflow) | W | addPreparedApprover state 06 |
 | document_statuses / workflow_sections | R | lookup statusCode/status และ section แรก |
 | job_run_histories | W | บันทึกผลเรียกจาก Job 8b |
 | audit_logs | W | audit permanent skip N และ manual rerun |
@@ -236,7 +236,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | 4 | Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N |
 | 5 | If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason |
 | 6 | If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun |
-| 7 | If gate passes, require compensation_documents from Job 8, create workflow_instances/workflow_tasks first section 06, then update fgi_impact_processes.workflow_generation_status=Y in one transaction |
+| 7 | If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initializeWorkflow + addPreparedApprover state 06), then update fgi_impact_processes.workflow_generation_status=Y in one transaction |
 | 8 | Enqueue notification summary outside transaction after commit |
 
 ## 10. Acceptance Criteria

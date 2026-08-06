@@ -116,7 +116,7 @@ Document aggregate API
 
 ```json
 {
-  "docNo": "2569/00123"
+  "docNo": "2026/00123"
 }
 ```
 
@@ -130,7 +130,7 @@ Document aggregate API
 
 ```json
 {
-  "docNo": "2569/00123",
+  "docNo": "2026/00123",
   "statusCode": "06",
   "viewerRbacRoleCode": "R-XX",
   "roleProfileCode": "P-06",

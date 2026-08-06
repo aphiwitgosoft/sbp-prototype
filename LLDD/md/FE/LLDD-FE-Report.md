@@ -79,7 +79,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/stores/search; GET /api/v1/reports/status-summary; GET /api/v1/reports/status-summary/export |
+| Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/reports/status-summary; GET /api/v1/reports/status-summary/export |
 | Progress | เปิดหน้า Report; โหลด reference status/region/store type ถ้ามี API; ผู้ใช้ระบุ filter; Validate status/result และช่วงเดือน |
 | Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
@@ -97,7 +97,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
-| GET /api/v1/stores/search | Popup เลือกร้านที่ถูกกระทบ | เปิด popup ร้าน (ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ) |
+| GET /store/search (ระบบ SBP เดิม) | Popup เลือกร้านที่ถูกกระทบ | เปิด popup ร้าน (ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ) |
 | GET /api/v1/reports/status-summary | Preview รายงานและข้อมูล chart/summary | Preview Report (ปุ่ม Preview Report); Export CSV to Batch (ปุ่ม Export CSV to Batch ด้านบน/ท้าย filter) |
 | GET /api/v1/reports/status-summary/export | Export CSV to Batch ด้วย filter เดียวกับ preview | Export CSV to Batch (ปุ่ม Export CSV to Batch ด้านบน/ท้าย filter) |
 
@@ -105,7 +105,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 
 | Action | Trigger | API / State transition | Expected visible result |
 | --- | --- | --- | --- |
-| เปิด popup ร้าน | ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ | GET /api/v1/stores/search?type=impacted | เลือก store แล้วเติม storeCode/storeName |
+| เปิด popup ร้าน | ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ | GET /store/search (ระบบ SBP เดิม) | เลือก store แล้วเติม storeCode/storeName |
 | Preview Report | ปุ่ม Preview Report | GET /api/v1/reports/status-summary | validate required แล้ว render summary line/chart/table 19 columns |
 | เคลียร์ค่าเริ่มใหม่ | ปุ่มเคลียร์ค่าเริ่มใหม่ | client state | reset filter, summary, table และ error message |
 | Export CSV to Batch | ปุ่ม Export CSV to Batch ด้านบน/ท้าย filter | GET /api/v1/reports/status-summary/export | ส่ง filter ชุดเดียวกับ preview แล้ว download/queue CSV |
@@ -127,7 +127,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
-| เปิด popup ร้าน | ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ | GET /api/v1/stores/search?type=impacted | เลือก store แล้วเติม storeCode/storeName |
+| เปิด popup ร้าน | ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ | GET /store/search (ระบบ SBP เดิม) | เลือก store แล้วเติม storeCode/storeName |
 | Preview Report | ปุ่ม Preview Report | GET /api/v1/reports/status-summary | validate required แล้ว render summary line/chart/table 19 columns |
 | เคลียร์ค่าเริ่มใหม่ | ปุ่มเคลียร์ค่าเริ่มใหม่ | client state | reset filter, summary, table และ error message |
 | Export CSV to Batch | ปุ่ม Export CSV to Batch ด้านบน/ท้าย filter | GET /api/v1/reports/status-summary/export | ส่ง filter ชุดเดียวกับ preview แล้ว download/queue CSV |
@@ -136,7 +136,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 
 ## 7. API Contract
 
-### GET /api/v1/stores/search
+### GET /store/search (ระบบ SBP เดิม)
 
 Popup เลือกร้านที่ถูกกระทบ
 
@@ -274,7 +274,7 @@ Preview รายงานและข้อมูล chart/summary
       "waitingDays": 2,
       "roundNo": 1,
       "createdDate": "2026-06-12",
-      "docNo": "2569/00123"
+      "docNo": "2026/00123"
     }
   ]
 }

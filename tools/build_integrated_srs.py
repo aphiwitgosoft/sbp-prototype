@@ -78,11 +78,11 @@ SCREEN_LABELS = {
     "k2-create.html": "Create Document",
     "k2-list-waiting.html": "Task Inbox",
     "k2-list-related.html": "Related Documents",
-    "k2-list-abnormal.html": "Abnormal Assignment",
     "k2-document.html": "Document Detail",
     "k2-report.html": "Status Report",
     "k2-operators.html": "Operator Master",
     "k2-factors.html": "External Factor Master",
+    "k2-competitors.html": "Competitor Master",
     "k2-permissions.html": "RBAC Matrix",
     "system-config.html": "Global Config",
     "email-template.html": "Email Template",
@@ -241,7 +241,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
         "1": {
             "params": [
                 ["กำหนดการรัน (Cron)", "Monthly", "text", 1, "ตั้งเวลาใน scheduler ผ่าน deployment config"],
-                ["งวดข้อมูล (เดือนที่รัน)", "07/2569", "text", 1, "ชื่อไฟล์ใช้เดือนปัจจุบัน แต่งวดใน DB คือเดือนก่อนหน้า"],
+                ["งวดข้อมูล (เดือนที่รัน)", "07/2026", "text", 1, "ชื่อไฟล์ใช้เดือนปัจจุบัน แต่งวดใน DB คือเดือนก่อนหน้า"],
                 ["SFTP endpoint alias", "qssi-monthly", "text", 0, "resolve host/port จาก environment; ไม่รับค่า host/port จาก request หรือ job_configs"],
                 ["Secret reference", "secret/sbpgi/interfaces/qssi", "text", 0, "credential/private key อ่านจาก Secret Manager และบังคับ strict known_hosts"],
                 ["Remote Directory", "/export/qssishare/onl/qssi/textfile/SBP/QSSI_Monthly/", "text", 1, "path เท่านั้น ไม่รวม credential"],
@@ -710,9 +710,9 @@ SRS_ARTIFACT_LABELS = {
     "k2-report.html": "Status Report screen",
     "k2-list-waiting.html": "Task Inbox screen",
     "k2-list-related.html": "Related Documents screen",
-    "k2-list-abnormal.html": "Abnormal Data screen",
     "k2-operators.html": "Operator Master screen",
     "k2-factors.html": "External Factor Master screen",
+    "k2-competitors.html": "Competitor Master screen",
     "k2-permissions.html": "RBAC Matrix screen",
 }
 
@@ -967,9 +967,9 @@ def build_model() -> Model:
         ["REQ-FIL-001", "ไฟล์แนบต้องไม่เกิน 5 MB ผ่าน type/AV scan และดาวน์โหลดได้เฉพาะผู้มีสิทธิ์เมื่อสถานะ CLEAN", "upload/download security test"],
         ["REQ-RPT-001", "รายงานหน้าจอและ CSV ต้องใช้ filter/dataset เดียวกันและมีข้อมูลครบ 19 คอลัมน์", "preview/export reconciliation"],
         ["REQ-OPS-001", "Jobs 1-10 และ 8b ต้องรองรับ rerun โดยไม่สร้างข้อมูลซ้ำและต้องรายงาน input/success/reject/skipped", "rerun/reconcile evidence"],
-        ["REQ-SCR-001", "ระบบต้องมีหน้าจอ committed SCR-01 ถึง SCR-04 และ SCR-06 ถึง SCR-11 ตาม requirement รายหน้าจอ", "screen/UAT traceability"],
+        ["REQ-SCR-001", "ระบบต้องมีหน้าจอ committed SCR-01 ถึง SCR-08 ตาม requirement รายหน้าจอ", "screen/UAT traceability"],
         ["SYS-API-001", f"ระบบต้องมี API capability {endpoint_total} endpoints ใน {api_group_total} กลุ่มตาม catalog", "OpenAPI/contract coverage"],
-        ["SYS-DAT-001", "ระบบต้องมี logical data model 34 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ", "migration/schema test"],
+        ["SYS-DAT-001", "ระบบต้องมี logical data model 24 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ)", "migration/schema test"],
         ["SYS-NFR-001", "ระบบต้องมี correlation log, metrics, alert และ audit ที่เชื่อม request/job/interface กับผลธุรกิจได้", "observability trace"],
     ]
     model.table(["Requirement ID", "Atomic shall statement", "Verification"], requirement_rows, [0.16, 0.58, 0.26])
@@ -1159,25 +1159,14 @@ def build_model() -> Model:
     model.pagebreak()
     model.heading("3.4 K2 Screen Requirements", 2)
     model.note(
-        "Committed implementation scope ของหน้าจอ SBP Mall คือ 10 หน้า + 1 placeholder/deferred: "
-        "SCR-05 ข้อมูลผิดปกติ / แจกงานยังเป็น OPEN item ใช้อธิบายกฎยอดขายไม่ครบ 60 วันเท่านั้น "
-        "และไม่ถูกนับเป็นงานสร้างหน้า FE/BE จนกว่าจะมีคำตัดสิน keep/drop"
+        "Committed implementation scope ของหน้าจอ SBP Mall คือ 8 หน้าในตารางนี้ (+ Email Template และ Batch Job Console ในหัวข้อแยก) — "
+        "ปรับตามการตัดสินใจ 2026-08-06: ตัดหน้า Overview/Dashboard ออก โดยหน้าแรกของระบบเปลี่ยนเป็นหน้าเอกสารรอดำเนินการ (SCR-02) "
+        "และลบหน้าข้อมูลผิดปกติ/แจกงานถาวร (ข้อมูลผิดปกติเหลือเป็นธงสีแดงในแถวตาราง) · "
+        "หน้ากำหนดผู้ปฏิบัติงานและสิทธิ์การเข้าถึงเมนูไม่อยู่ใน scope SBPGI — ใช้ระบบผู้ใช้/สิทธิ์ของระบบ SBP เดิม (ตัดสินใจ 2026-08-05)"
     )
     screens = [
         {
             "id": "SCR-01",
-            "file": "index.html",
-            "name": "Overview / Dashboard",
-            "purpose": "แสดงงานค้าง ร้านที่เข้าเกณฑ์ ยอดชดเชย ข้อมูลผิดปกติ กราฟ และทางลัดตามสิทธิ์",
-            "actors": "ทุก role ที่ login",
-            "rules": [
-                "ตัวเลขต้อง aggregate จากข้อมูลจริงและรองรับ cache ไม่เกิน 5 นาที",
-                "ทางลัดและ sidebar ต้องสร้างตาม menu_permissions",
-                "ค่าชื่อผู้ใช้/role ต้องมาจาก JWT ไม่ใช้ข้อมูล mock",
-            ],
-        },
-        {
-            "id": "SCR-02",
             "file": "k2-create.html",
             "name": "สร้างเอกสาร",
             "purpose": "สร้างเอกสารนอกเงื่อนไขอัตโนมัติ หรือส่งสร้างผ่าน FS",
@@ -1190,7 +1179,7 @@ def build_model() -> Model:
             ],
         },
         {
-            "id": "SCR-03",
+            "id": "SCR-02",
             "file": "k2-list-waiting.html",
             "name": "เอกสารรอดำเนินการ",
             "purpose": "Task inbox แสดงเฉพาะ OPEN task ที่ผู้ใช้/section ปัจจุบันต้องดำเนินการ",
@@ -1202,7 +1191,7 @@ def build_model() -> Model:
             ],
         },
         {
-            "id": "SCR-04",
+            "id": "SCR-03",
             "file": "k2-list-related.html",
             "name": "เอกสารที่เกี่ยวข้อง",
             "purpose": "แสดงเอกสารทั้งหมดที่ผู้ใช้เคยมีส่วนร่วม โดยแก้ไขได้เฉพาะงานที่อยู่ในสิทธิ์ปัจจุบัน",
@@ -1214,20 +1203,7 @@ def build_model() -> Model:
             ],
         },
         {
-            "id": "SCR-05",
-            "file": "k2-list-abnormal.html",
-            "name": "ข้อมูลผิดปกติ / แจกงาน (placeholder/deferred)",
-            "purpose": "Placeholder สำหรับค้นหาและมอบหมายรายการผิดปกติ โดยใช้กฎยอดขายไม่ครบ 60 วัน",
-            "actors": "Assign Job 05 และ Admin",
-            "rules": [
-                "OPEN: ไม่เป็นหน้าจอ committed ใน scope FE/BE รอบนี้",
-                "ถ้าเปิด scope ในอนาคต ต้องรองรับ multi-select และแจกงานเฉพาะรายการที่เลือก",
-                "ถ้าเปิด scope ในอนาคต ต้องแสดงสาเหตุ ผู้รับผิดชอบ และสถานะ assignment",
-                "OPEN: เมนูนี้และ API 2 เส้นถูก comment ไว้ รอคำตัดสิน keep/drop",
-            ],
-        },
-        {
-            "id": "SCR-06",
+            "id": "SCR-04",
             "file": "k2-document.html",
             "name": "เอกสารข้อมูลร้านถูกกระทบ",
             "purpose": "หน้าหลักสำหรับดู แก้ คำนวณ พิจารณา แนบไฟล์ และเดิน workflow",
@@ -1242,7 +1218,7 @@ def build_model() -> Model:
             ],
         },
         {
-            "id": "SCR-07",
+            "id": "SCR-05",
             "file": "k2-report.html",
             "name": "รายงานสรุปสถานะ",
             "purpose": "ค้นหา แสดงกราฟ/ผล 19 คอลัมน์ และ Export CSV to Batch",
@@ -1256,19 +1232,7 @@ def build_model() -> Model:
             ],
         },
         {
-            "id": "SCR-08",
-            "file": "k2-operators.html",
-            "name": "กำหนดผู้ปฏิบัติงาน",
-            "purpose": "จัดการผู้ปฏิบัติงานต่อ section และ zone",
-            "actors": "Admin 01, HQ 02, User Admin 03",
-            "rules": [
-                "ชื่อพนักงานและตำแหน่งเป็น required; เลือกพนักงานจาก popup",
-                "แสดงภาคเมื่อเป็นตำแหน่งส่งเสริมธุรกิจพันธมิตรฯ",
-                "เพิ่ม/แก้/ลบต้องบันทึก audit และเหตุผลเมื่อแก้ไข",
-            ],
-        },
-        {
-            "id": "SCR-09",
+            "id": "SCR-06",
             "file": "k2-factors.html",
             "name": "กำหนดปัจจัยภายนอก",
             "purpose": "จัดการ external factor master และประวัติแก้ไข",
@@ -1280,19 +1244,20 @@ def build_model() -> Model:
             ],
         },
         {
-            "id": "SCR-10",
-            "file": "k2-permissions.html",
-            "name": "สิทธิ์การเข้าถึงเมนู",
-            "purpose": "แสดงและบริหาร RBAC 8 role ต่อ main menu และ master forms",
-            "actors": "Admin และผู้ดูแลสิทธิ์ที่ได้รับมอบหมาย",
+            "id": "SCR-07",
+            "file": "k2-competitors.html",
+            "name": "กำหนดรายชื่อคู่แข่ง",
+            "purpose": "จัดการ master แบรนด์ร้านคู่แข่ง (รหัส 01-11 ชื่อไทย/อังกฤษ) ที่หน้าเอกสารใช้เลือกในหัวข้อร้านคู่แข่งเปิดกระทบ",
+            "actors": "Admin และผู้ดูแล master data",
             "rules": [
-                "sidebar ต้องอิงสิทธิ์จาก backend ไม่ใช่ซ่อนเฉพาะฝั่ง FE",
-                "API ต้องตรวจ role/record access ซ้ำทุก request",
-                "การเปลี่ยนสิทธิ์ต้อง audit และมีผลกับ token/session ตามนโยบาย",
+                "รหัสคู่แข่ง ชื่อไทย และชื่ออังกฤษ เป็น require field ทั้งสามช่อง",
+                "รหัสคู่แข่งห้ามซ้ำ",
+                "การแก้ไขและการลบต้องระบุเหตุผลและบันทึกลง audit log",
+                "รายการนี้ต้องเป็นแหล่งข้อมูลเดียวของ dropdown ร้านคู่แข่งในหน้าเอกสาร ห้าม hardcode ใน FE",
             ],
         },
         {
-            "id": "SCR-11",
+            "id": "SCR-08",
             "file": "system-config.html",
             "name": "ตั้งค่าระบบ (Global Config)",
             "purpose": "จัดการค่ากำหนดกลางที่ใช้ร่วมทั้งระบบ เช่น รัศมีผลกระทบ เกณฑ์ข้อมูล วงเงินอนุมัติ timeout และ notification switch",
@@ -1307,17 +1272,14 @@ def build_model() -> Model:
         },
     ]
     screen_outcomes = {
-        "SCR-01": "ผู้ใช้เห็นสถานะและงานสำคัญตามสิทธิ์ พร้อมเปิดรายการเป้าหมายจากทางลัดได้",
-        "SCR-02": "ระบบสร้างเอกสารเพียงหนึ่งรายการต่อร้าน/งวด ออกเลขเอกสาร และเปิดงานเริ่มต้นสำเร็จ",
-        "SCR-03": "ผู้ใช้เปิดดำเนินการเฉพาะ task ที่ตนรับผิดชอบและเห็นรายการผิดปกติอย่างชัดเจน",
-        "SCR-04": "ผู้ใช้ค้นและเปิดเอกสารที่เกี่ยวข้องได้ โดยรายการนอก task ปัจจุบันเป็น read-only",
-        "SCR-05": "ยังไม่มีผลลัพธ์ที่ commit; หากอนุมัติ scope ระบบต้องบันทึกผู้รับผิดชอบและสถานะ assignment",
-        "SCR-06": "ข้อมูลที่แก้ไขถูกตรวจสอบ บันทึก audit และเปลี่ยนสถานะ workflow ตาม action ที่ได้รับอนุญาต",
-        "SCR-07": "ผลบนหน้าจอและไฟล์ CSV ตรงกันภายใต้ filter เดียวกันและนำไปตรวจสอบบัญชีได้",
-        "SCR-08": "assignment ต่อ section/zone มีผลกับการแจก task และตรวจสอบประวัติการเปลี่ยนแปลงได้",
-        "SCR-09": "external factor master พร้อมใช้งานในเอกสารและตรวจสอบผู้แก้/เหตุผลย้อนหลังได้",
-        "SCR-10": "เมนูและ API บังคับสิทธิ์จาก policy เดียวกันและการเปลี่ยนสิทธิ์มี audit",
-        "SCR-11": "ค่ากำหนดที่ผ่าน validation ถูกเผยแพร่ให้บริการที่เกี่ยวข้องโดยไม่เปิดเผย secret",
+        "SCR-01": "ระบบสร้างเอกสารเพียงหนึ่งรายการต่อร้าน/งวด ออกเลขเอกสาร และเปิดงานเริ่มต้นสำเร็จ",
+        "SCR-02": "ผู้ใช้เปิดดำเนินการเฉพาะ task ที่ตนรับผิดชอบและเห็นรายการผิดปกติอย่างชัดเจน",
+        "SCR-03": "ผู้ใช้ค้นและเปิดเอกสารที่เกี่ยวข้องได้ โดยรายการนอก task ปัจจุบันเป็น read-only",
+        "SCR-04": "ข้อมูลที่แก้ไขถูกตรวจสอบ บันทึก audit และเปลี่ยนสถานะ workflow ตาม action ที่ได้รับอนุญาต",
+        "SCR-05": "ผลบนหน้าจอและไฟล์ CSV ตรงกันภายใต้ filter เดียวกันและนำไปตรวจสอบบัญชีได้",
+        "SCR-06": "external factor master พร้อมใช้งานในเอกสารและตรวจสอบผู้แก้/เหตุผลย้อนหลังได้",
+        "SCR-07": "master รายชื่อคู่แข่งพร้อมใช้งานใน dropdown ของหน้าเอกสาร และตรวจสอบผู้แก้/เหตุผลย้อนหลังได้",
+        "SCR-08": "ค่ากำหนดที่ผ่าน validation ถูกเผยแพร่ให้บริการที่เกี่ยวข้องโดยไม่เปิดเผย secret",
     }
     for screen in screens:
         inv = page_inventory(screen["file"])
@@ -1330,7 +1292,7 @@ def build_model() -> Model:
                 ["Actor", screen["actors"]],
                 ["Pre-condition", "ผ่านการยืนยันตัวตนจาก platform กลาง และมีสิทธิ์เมนู/ข้อมูล"],
                 ["Post-condition / expected outcome", screen_outcomes[screen["id"]]],
-                ["Scope status", "Deferred / OPEN" if screen["id"] == "SCR-05" else "Committed"],
+                ["Scope status", "Committed"],
             ],
             [0.2, 0.8],
         )
@@ -1495,23 +1457,20 @@ def build_model() -> Model:
         ["REQ-OPS-001", "Batch rerun", "idempotency และ run reconciliation", "3.0, 3.3"],
         ["REQ-SCR-001", "Committed screens", "SCR-01..04 และ SCR-06..11", "3.4"],
         ["SYS-API-001", "API capability", f"{endpoint_total} endpoints / {api_group_total} groups", "3.5"],
-        ["SYS-DAT-001", "Data model", "34 tables and integrity controls", "3.2"],
+        ["SYS-DAT-001", "Data model", "24 tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม)", "3.2"],
         ["SYS-NFR-001", "Observability", "correlation/metrics/alert/audit evidence", "4"],
         ["FLOW-01", "Batch pipeline", "ขั้นตอนนำเข้า คำนวณ สร้างเอกสาร ส่ง Statement และติดตาม ACK", "3.1, 3.3"],
         ["FLOW-02", "Approval workflow", "Section 06 -> 08 -> 01 -> 02 และ Section 03 ตามวงเงิน", "3.1.1, 3.1.3"],
         ["DATA-01", "Logical data model", "Data subjects, relationships, controls และ remediation", "3.2"],
         ["JOB-01", "Batch Job Console", "11 entry points, common controls และผลลัพธ์ที่ตรวจรับได้", "3.3"],
-        ["K2-01", "Overview / Dashboard", "Dashboard", "SCR-01"],
-        ["K2-02", "Create Document", "Create document", "SCR-02"],
-        ["K2-03", "Task Inbox", "Task inbox", "SCR-03"],
-        ["K2-04", "Related Documents", "Related documents", "SCR-04"],
-        ["K2-05", "Abnormal Assignment", "Abnormal assignment", "SCR-05 / OPEN"],
-        ["K2-06", "Document Detail", "Document detail/action", "SCR-06"],
-        ["K2-07", "Status Report", "Status report", "SCR-07"],
-        ["K2-08", "Operator Master", "Operator master", "SCR-08"],
-        ["K2-09", "External Factor Master", "External factor master", "SCR-09"],
-        ["K2-10", "RBAC Matrix", "RBAC matrix", "SCR-10"],
-        ["K2-11", "Global Config", "Global system configuration", "SCR-11"],
+        ["K2-01", "Create Document", "Create document (ข้อมูลต้นทางสร้างที่ระบบ FS)", "SCR-01"],
+        ["K2-02", "Task Inbox", "Task inbox — หน้าแรกของระบบ", "SCR-02"],
+        ["K2-03", "Related Documents", "Related documents", "SCR-03"],
+        ["K2-04", "Document Detail", "Document detail/action", "SCR-04"],
+        ["K2-05", "Status Report", "Status report", "SCR-05"],
+        ["K2-06", "External Factor Master", "External factor master", "SCR-06"],
+        ["K2-07", "Competitor Master", "Competitor brand master 01-11 (Thai/English)", "SCR-07"],
+        ["K2-08", "Global Config", "Global system configuration (ตาราง mas_param ของระบบ SBP เดิม)", "SCR-08"],
         ["EMAIL-01", "Email Template", "หน้าจอผู้ดูแล template และกฎ Notification Service", "3.4.13"],
         ["API-01", "REST API", f"Capability catalog {endpoint_total} endpoints และข้อกำหนด contract กลาง", "3.5"],
     ]
@@ -1525,16 +1484,17 @@ def build_model() -> Model:
     )
     model.heading("6.1 Closed decisions", 2)
     closed_items = [
-        ["OPEN-01", "CLOSED", "22/07/2026", "เลขเอกสารใช้ปี พ.ศ. รูป YYYY/xxxxx และเก็บ be_year/running_no เพื่อ uniqueness; วันที่/เดือนใน API และฐานข้อมูลเชิงเวลาใช้ ISO-8601 ปี ค.ศ.; FE แปลงเป็น พ.ศ. เฉพาะการแสดงผล"],
+        ["OPEN-01", "CLOSED", "06/08/2026", "เลขเอกสารใช้ปี ค.ศ. รูป YYYY/xxxxx (เช่น 2026/01870) และเก็บ year/running_no เพื่อ uniqueness; วันที่/เดือนใน API และฐานข้อมูลใช้ ISO-8601 ปี ค.ศ. — ยึดตามระบบ K2 เดิม (ภาพหน้าจอจริง) และระบบ SBP ปัจจุบัน (DatePicker default buddhistEra=false + helper toAD()); แสดงผลเป็น พ.ศ. ได้เฉพาะจุดที่เปิด flag ที่ระดับ component"],
         ["OPEN-03", "CLOSED", "22/07/2026", "Job 8b ใช้ event/dependency trigger หลัง Job 8 สร้างเอกสารสำเร็จ ไม่ใช้เวลา wall-clock คงที่; Operations สั่ง manual rerun ตาม period ได้ โดยใช้ run lock และ idempotency key เดิม"],
     ]
     model.table(["ID", "Status", "Effective date", "Baseline decision"], closed_items, [0.1, 0.12, 0.16, 0.62])
     model.heading("6.2 Open decisions required", 2)
     model.para("รายการต่อไปนี้ยังไม่ถือเป็น requirement ที่อนุมัติ เมื่อได้ข้อยุติต้องบันทึกผล วันที่มีผล และปรับ baseline ก่อนพัฒนาส่วนที่เกี่ยวข้อง")
     open_items = [
-        ["OPEN-02", "Abnormal screen", "ตัดสินใจ keep/drop หน้าจอและ API 2 เส้น พร้อมปรับ role 05", "ขอบเขต FE/BE, API และ UAT"],
+        ["OPEN-02", "วงเงินอนุมัติเกิน 300,000", "SDD GI กำหนดวงเงิน GM 50,000 / AVP 300,000 แต่ยังไม่ระบุเส้นทางกรณีเกิน 300,000 ต่อรายการ", "routing ขั้น 03 และ UAT"],
+        ["OPEN-09", "ผลพิจารณา \"เห็นควรไม่ชดเชย\" ที่ขั้น AVP (03)", "SDD GI ระบุเฉพาะขั้น 01/02 ว่าจบทันที — ขั้น 03 ยังคงพฤติกรรมเดิม (ตีกลับ 06) รอยืนยัน", "routing และ UAT"],
         ["OPEN-04", "NULL growth_rate", "อนุมัติรอตรวจสอบแทน auto-accept หรือกำหนดกฎใหม่", "การคัดรายการและ workflow generation"],
-        ["OPEN-05", "Legacy date routing", "ยืนยันเงื่อนไข routing สำหรับร้านก่อน/หลัง 1/10/2557", "routing และผลพิจารณา"],
+        ["OPEN-05", "Legacy date routing", "ยืนยันเงื่อนไข routing สำหรับร้านก่อน/หลัง 1/10/2014", "routing และผลพิจารณา"],
         ["OPEN-06", "NFR SLA/RPO/RTO", "กำหนด SLA API/report/batch และ RPO/RTO production", "capacity, HA, backup และ acceptance"],
         ["OPEN-07", "File retention", "กำหนด retention, encryption และ purge ของ attachment/interface/archive", "storage, compliance และ recovery"],
         ["OPEN-08", "Permission matrix", "ยืนยัน menu/master/record permission ต่อ role", "sidebar, API authorization และ UAT"],

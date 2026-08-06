@@ -63,8 +63,8 @@ Entry แบบมี `children: [{key,label,href}]` (ไม่มี href บ�
 | | `job-batch.html` | Batch console Jobs 1–10 + 8b (จากเอกสาร Batch v4.0) — กลุ่ม Admin |
 | | `email-template.html` | Email templates EM-01–08 + WYSIWYG editor (ดูหัวข้อถัดไป) — กลุ่ม Admin |
 | Flow | `flow-fgi.html` / `k2-flow.html` / `plan-flow.html` | FGI/FCS pipeline / K2 approval BPMN / flow รวมระบบใหม่ (คู่ของ workflow.md) |
-| Database | `fgi-database.html` / `k2-database.html` / `plan-database.html` | schema FGI/FCS / schema K2 16 ตาราง + ER / schema รวม 34 ตาราง (คู่ของ database.md · RBAC/ผู้ปฏิบัติงานตัดไปใช้ระบบเดิม) |
-| Plan | `plan-api.html` | REST API spec 47 เส้น 9 กลุ่ม (กลุ่ม Auth + เส้นสิทธิ์/ผู้ปฏิบัติงาน 18 เส้น comment ตัดถาวร — ใช้ระบบเดิม · กลุ่มข้อมูลผิดปกติ 2 เส้นถูกลบทิ้ง 2026-08-06) |
+| Database | `fgi-database.html` / `k2-database.html` / `plan-database.html` | schema FGI/FCS / schema K2 16 ตาราง + ER / schema รวม 24 ตาราง (คู่ของ database.md · RBAC/ผู้ปฏิบัติงาน + workflow engine + store/zone/employee master + email template + config ตัดไปใช้ของระบบ SBP เดิม · 2026-08-05/06) |
+| Plan | `plan-api.html` | REST API spec 44 เส้น 9 กลุ่ม (กลุ่ม Auth + เส้นสิทธิ์/ผู้ปฏิบัติงาน 18 เส้น comment ตัดถาวร — ใช้ระบบเดิม · กลุ่มข้อมูลผิดปกติ 2 เส้นถูกลบทิ้ง 2026-08-06) |
 
 หมายเหตุ: `k2-database.html` (ER + 16 ตาราง) และ BPMN ใน `k2-flow.html` เป็นของ**เพิ่มเกิน SRS** — ชื่อตาราง/FK ที่เพิ่มไม่ใช่ SRS-mandated
 
@@ -82,7 +82,7 @@ Entry แบบมี `children: [{key,label,href}]` (ไม่มี href บ�
 
 ## plan-api.html — internals ของ modal + SQL + Flowchart
 
-- catalog `GROUPS` (47 เส้น 9 กลุ่ม · inline script) → คลิกแถว → `selectEp()` เปิด modal
+- catalog `GROUPS` (44 เส้น 9 กลุ่ม · inline script) → คลิกแถว → `selectEp()` เปิด modal
 - โครง modal: ชิป (ที่มา/สิทธิ์/กลุ่ม) → **Flow (ลำดับการทำงาน) อยู่นอกแท็บ** → แท็บ 1 Request/Response → แท็บ 2 Database + SQL → แท็บ 3 Flowchart (โผล่เฉพาะเส้นที่มี spec)
 - **`SQL_BY_PATH`** — ตัวอย่าง SQL ต่อ endpoint keyed `'METHOD path'` (เช่น `'GET /api/v1/tasks'`) ครบทุกเส้น active · bind params ขึ้นต้น `:` · illustrative (key ของเส้นที่ตัดออกยังอยู่แต่ไม่ถูกใช้)
 - **`FLOWCHART_BY_PATH`** — spec flowchart (nodes/edges) เฉพาะ 4 เส้นซับซ้อน: `POST /documents/{docNo}/actions` · `POST /workflows/instances` · `POST /documents` · `POST /jobs/{jobNo}/run` · เรนเดอร์ด้วย `renderFlow()` เป็น inline SVG (node type: term/termOk/proc/dec/err)

@@ -1,10 +1,5 @@
 # LLDD FE - Create Document
 
-> ⚠️ **เปลี่ยนขอบเขต (2026-08-06): หน้าสร้างเอกสารไม่มีฟอร์มและไม่มีแท็บแล้ว**
-> เหลือเป็นหน้าอธิบายกระบวนการ (การ์ดขาวใบเดียว): *"ใช้ form สร้างข้อมูลต้นทางที่ระบบ Finance & Account Unit (FS) — ระบบประกันรายได้รับข้อมูลกลับมาสร้างเอกสารให้อัตโนมัติ"* + หมายเหตุ รอ SBP Statement ~1 วัน · เฉพาะผู้มีสิทธิ์เข้าถึง
-> `POST /documents` กลายเป็นเส้น pipeline/service token (ไม่ใช่ฟอร์ม FE) · การคีย์/ปรับข้อมูลร้านตาม SDD GI ทำในหน้าเอกสาร · **ผลกระทบแผนงาน: ต้องทบทวนชั่วโมงกับ PM**
-
-
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
 ## 1. Overview
@@ -194,7 +189,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/stores/search; GET /api/v1/configs/fs.createDocumentUrl; POST /api/v1/documents |
+| Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/configs/fs.createDocumentUrl; POST /api/v1/documents |
 | Progress | User opens create page; Choose tab: สร้างเอกสารทั่วไป or เอกสารจาก FS; For FS tab load hidden iframe and discover fields; Render SBP mirror form from iframe field metadata |
 | Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
@@ -215,7 +210,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
-| GET /api/v1/stores/search | ค้นหาร้านสำหรับ popup | Search store (แว่นขยาย) |
+| GET /store/search (ระบบ SBP เดิม) | ค้นหาร้านสำหรับ popup | Search store (แว่นขยาย) |
 | GET /api/v1/configs/fs.createDocumentUrl | อ่าน URL สำหรับโหลด FS iframe ใน tab เอกสารจาก FS | Open FS tab (tab เอกสารจาก FS) |
 | POST /api/v1/documents | สร้างเอกสาร | Save draft (ปุ่มบันทึก); Submit (ปุ่มส่งดำเนินการ) |
 
@@ -223,7 +218,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 | Action | Trigger | API / State transition | Expected visible result |
 | --- | --- | --- | --- |
-| Search store | แว่นขยาย | GET /api/v1/stores/search | เลือก impacted/new store |
+| Search store | แว่นขยาย | GET /store/search (ระบบ SBP เดิม) | เลือก impacted/new store |
 | Open FS tab | tab เอกสารจาก FS | Load hidden iframe from fsIframeUrl | discover FS fields and render SBP mirror form |
 | Change FS mirror value | input/select ใน SBP mirror form | iframe value sync service | ส่งค่าเข้า field ใน hidden iframe และ dispatch input/change |
 | Save draft | ปุ่มบันทึก | POST /api/v1/documents | สร้าง draft |
@@ -245,7 +240,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
-| Search store | แว่นขยาย | GET /api/v1/stores/search | เลือก impacted/new store |
+| Search store | แว่นขยาย | GET /store/search (ระบบ SBP เดิม) | เลือก impacted/new store |
 | Open FS tab | tab เอกสารจาก FS | Load hidden iframe from fsIframeUrl | discover FS fields and render SBP mirror form |
 | Change FS mirror value | input/select ใน SBP mirror form | iframe value sync service | ส่งค่าเข้า field ใน hidden iframe และ dispatch input/change |
 | Save draft | ปุ่มบันทึก | POST /api/v1/documents | สร้าง draft |
@@ -254,7 +249,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 ## 7. API Contract
 
-### GET /api/v1/stores/search
+### GET /store/search (ระบบ SBP เดิม)
 
 ค้นหาร้านสำหรับ popup
 
@@ -363,7 +358,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 ```json
 {
-  "docNo": "2569/00001",
+  "docNo": "2026/00001",
   "statusCode": "06",
   "message": "created"
 }

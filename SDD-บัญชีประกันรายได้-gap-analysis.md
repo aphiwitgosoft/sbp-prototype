@@ -5,7 +5,7 @@
 
 | | เอกสารต้นทาง | ขอบเขต |
 |---|---|---|
-| 1 | `08102025 SDD ปรับกระบวนการบัญชีประกันรายได้ เพื่อตรวจสอบ.pdf` — **SDD v7.5** · 32 หน้า · 15/10/2025 | change request ฝั่งบัญชี |
+| 1 | ~~`08102025 SDD ปรับกระบวนการบัญชีประกันรายได้ เพื่อตรวจสอบ.pdf`~~ — **SDD v7.5** · 32 หน้า · 15/10/2025 · **ลบออกจาก repo แล้ว 2026-08-06** (ข้อกำหนดถูกรวมเข้าการออกแบบปัจจุบันครบแล้ว — ดูหัวข้อ 2) | change request ฝั่งบัญชี (ประวัติ) |
 | 2 | `SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI(2402026).pptx` — **SDD GI** · 82 สไลด์ · 24/02/2026 (แปลงไว้ที่ `SDD-GI-Compensation/`) | **ฉบับใหม่สุด — ชนะเมื่อขัดแย้ง** |
 
 **ตรวจเทียบ:** 2026-08-06 · **เทียบกับ:** prototype HTML 20 หน้า + living docs (`workflow.md` · `api.md` · `database.md`) + คู่ HTML
@@ -84,8 +84,8 @@
 | 3.4 | ฟิลด์ **สถานะ — dropdown บังคับ** | ✅ | `<select required>` · 6 ค่า ไม่มีสถานะบัญชี |
 | 3.5 | ฟิลด์ รหัสร้านถูกกระทบ · **รหัสร้านเปิดกระทบ** | ✅ | มีทั้งคู่เป็นตัวกรอง |
 | 3.6 | **Period Statement** + **บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ** | ✅ | สไลด์ 42 · `*` ขึ้น + `required` + ข้อความเปลี่ยนตามเงื่อนไข (ทดสอบในเบราว์เซอร์แล้ว) |
-| 3.7 | ประเภทร้าน (checkbox A/B/C/D) | ✅ | checkbox 4 ค่า |
-| 3.8 | **ภาค (checkbox + เพิ่มภาคใหม่อัตโนมัติ)** | ✅ | **13 รหัส** `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` ใช้ชุดเดียวทั้งระบบ · master `zones` + `GET /zones` |
+| 3.7 | ประเภทร้าน (checkbox 4 ค่า) | ✅ | checkbox **A/B/C/E** — แก้จาก A/B/C/D เมื่อ 2026-08-06 ตามภาพหน้าจอ K2 จริง (`docs/ภาพประกันรายได้/รายงานสรุปสถานะ.png`) |
+| 3.8 | **ภาค (checkbox + เพิ่มภาคใหม่อัตโนมัติ)** | ✅ | **13 รหัส** `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` ใช้ชุดเดียวทั้งระบบ · master `mas_zone` ของระบบ SBP เดิม + `GET /store/all-regions` |
 | 3.9 | ผลการพิจารณา (**radio** ประกัน/ไม่ประกันรายได้) | ✅ | radio บังคับ 2 ค่า |
 | 3.10 | ปุ่ม **Preview Report** · **Export** · เคลียร์ค่าเริ่มต้น | ✅ | 3 ปุ่มในฟอร์ม (ตัดปุ่ม Export ด้านบนออกตามมติผู้ใช้) |
 | 3.11 | ผลลัพธ์ 19 คอลัมน์ | ✅ | ตารางผลลัพธ์ใน `k2-report.html` |
@@ -130,7 +130,7 @@
 - **ยกเลิกหน้า Overview/Dashboard** → หน้าแรกคือ **เอกสาร → รอดำเนินการ** (`index.html` เหลือ redirect stub)
 - **ลบหน้าข้อมูลผิดปกติ / แจกงาน** (ไฟล์ + 2 endpoint) — เหลือเป็นธงแถวแดง + stat card ในหน้ารายการ
 - **RBAC + ผู้ปฏิบัติงาน ใช้ระบบ SBP เดิม** (auth-backend/ABS) — ตัด 5 ตาราง + 18 endpoint · ถอดหน้า `k2-permissions` / `k2-operators`
-- **เทียบ DB เดิมของ K2** (`script_TB_DB_CPA_FRN_FGI_20260722.sql`) → เพิ่ม 5 ตาราง (`zones`, `branch_types`, `decisions`, `document_running_numbers`, `document_cost_details`) + คอลัมน์ `approve_limit_amount`, `round_no`/`loop_no`, `allmap_url`, `statement_id`, `approver_snapshot` → รวม **34 ตาราง / 47 endpoint**
+- **เทียบ DB เดิมของ K2** (`script_TB_DB_CPA_FRN_FGI_20260722.sql`) → เพิ่ม 5 ตาราง (`zones`, `branch_types`, `decisions`, `document_running_numbers`, `document_cost_details`) + คอลัมน์ `approve_limit_amount`, `round_no`/`loop_no`, `allmap_url`, `statement_id`, `approver_snapshot` → รวม 34 ตาราง / 47 endpoint · **แล้วตัดอีก 10 ตาราง / 3 endpoint เมื่อ 2026-08-06 (รอบ 2) เพราะระบบ SBP ปัจจุบันมีอยู่แล้ว → เหลือ 24 ตาราง / 44 endpoint**
 - **เป้าหมาย FE/BE** = โมดูลใน `srm-sps-spsap-web-frontend` (portal `sbpm`, Next.js) และ NestJS + TypeORM ตาม `srm-sps-spsap-store-backend` · โฟลเดอร์ `react-app/` ถูกลบ (กู้จาก git `003b661`)
 - ย้าย **ตั้งค่าระบบ / Batch Job / Email Template** ไปกลุ่มเมนู **ผู้ดูแลระบบ (Admin)** · เมนู **สร้างเอกสาร** อยู่บนสุดของกลุ่มระบบประกันรายได้
 

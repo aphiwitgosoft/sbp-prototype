@@ -2,8 +2,6 @@
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
-> ปรับตาม SDD GI 24/02/2026 — duplicate guard 409 เฉพาะเอกสาร active: เอกสารเดิมที่จบด้วย "หยุดชดเชย/เห็นควรไม่ชดเชย" เปิดเรื่องใหม่ทับได้ ทั้งเดือนเดียวกันและเดือนถัดไป (ยกเลิกการเปิด SR)
-
 ## 1. Overview
 
 | รายการ | รายละเอียด |
@@ -48,12 +46,12 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 
 | Rule | Required behavior | Implementation note |
 | --- | --- | --- |
-| Format | YYYY/xxxxx โดย YYYY เป็นปี พ.ศ. และ running 5 หลัก | ตัวอย่าง 2569/00124; เก็บ doc_no เป็น string และเก็บ be_year/running_no แยกเพื่อ index |
-| Sequence scope | running reset ตามปี พ.ศ. | unique key `(be_year, running_no)` และ unique `doc_no` |
+| Format | YYYY/xxxxx โดย YYYY เป็นปี พ.ศ. และ running 5 หลัก | ตัวอย่าง 2026/00124; เก็บ doc_no เป็น string และเก็บ year/running_no แยกเพื่อ index |
+| Sequence scope | running reset ตามปี พ.ศ. | unique key `(year, running_no)` และ unique `doc_no` |
 | Lock strategy | lock row sequence ด้วย `SELECT ... FOR UPDATE` หรือ database sequence ต่อปี | ห้ามอ่าน max(running_no)+1 แบบไม่มี lock |
 | Transaction boundary | generate docNo, insert compensation_documents, insert first workflow task และ audit ใน transaction เดียว | ถ้าสร้าง task ไม่สำเร็จต้อง rollback ทั้งชุด |
 | Gap policy | เลขที่ถูก commit แล้วห้าม reuse; rollback ก่อน commit ไม่ควรเผยแพร่ docNo ให้ client | ถ้าใช้ native sequence ที่เกิด gap ได้ต้องบันทึก policy นี้ใน runbook |
-| Duplicate guard | business key ซ้ำกับเอกสาร **active (ยังไม่จบ)** ต้องคืน 409 ก่อน generate docNo ใหม่เมื่อเป็นไปได้ — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย ไม่ block การเปิดใหม่ (SDD GI) | business key อย่างน้อย impactedStoreCode+impactMonth+newStoreCode+roundNo+source; unique constraint ฝั่ง DB ต้องเป็น partial unique เฉพาะเอกสาร active หรือรวม roundNo ที่ increment ต่อรอบเปิดใหม่ |
+| Duplicate guard | business key ซ้ำต้องคืน 409 ก่อน generate docNo ใหม่เมื่อเป็นไปได้ | business key อย่างน้อย impactedStoreCode+impactMonth+newStoreCode+roundNo+source |
 | Idempotency | requestId ใช้ trace/retry แต่ไม่แทน duplicate business key | ถ้า retry request เดิมหลัง success ให้คืน docNo เดิมเมื่อจับคู่ requestId ได้ |
 
 ### 5.2 Create Document Transaction Flow
@@ -61,11 +59,11 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 | Step | Service behavior | Rollback / error rule |
 | --- | --- | --- |
 | 1. Validate input | ตรวจ required, format, store exists, period, source, roundNo | invalid คืน 400/422 ก่อน lock sequence |
-| 2. Check duplicate | query business key บน compensation_documents เฉพาะเอกสาร active (ยังไม่ถึงสถานะเสร็จสิ้น) — เอกสารที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดใหม่ได้ (SDD GI) | พบเอกสาร active เดิมคืน 409 DUPLICATE_DOCUMENT พร้อม docNo เดิมถ้าอนุญาตให้แสดง |
+| 2. Check duplicate | query business key บน compensation_documents | พบเอกสารเดิมคืน 409 DUPLICATE_DOCUMENT พร้อม docNo เดิมถ้าอนุญาตให้แสดง |
 | 3. Start transaction | เปิด transaction และ lock sequence row ของปี พ.ศ. | lock timeout คืน 409/503 ตามมาตรฐาน platform |
 | 4. Generate docNo | เพิ่ม running_no และประกอบ doc_no | ยังไม่ส่ง response จนกว่า commit สำเร็จ |
 | 5. Insert document | insert compensation_documents และ child rows เริ่มต้น | fail ต้อง rollback sequence/document |
-| 6. Open first task | insert workflow_instances/workflow_tasks section 06 หรือเรียก workflow service ภายใน transaction boundary ที่กำหนด | fail ต้อง rollback document |
+| 6. Open first task | เรียก initializeWorkflow + addPreparedApprover (state 06) ของ @srm/glb-workflow ภายใน transaction boundary ที่กำหนด | fail ต้อง rollback document |
 | 7. Audit and commit | insert audit_logs แล้ว commit | หลัง commit จึง return docNo/statusCode |
 
 ### 5.3 Required Developer Tests for docNo
@@ -74,37 +72,37 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 | --- | --- |
 | ยิง POST /documents พร้อมกัน 20 request ในปีเดียวกัน | ได้ docNo ไม่ซ้ำ running เรียงตาม commit และไม่มี duplicate key error ที่หลุดเป็น 500 |
 | สร้าง duplicate business key | คืน 409 DUPLICATE_DOCUMENT และไม่ consume docNo ใหม่ถ้า duplicate ถูกพบก่อน lock sequence |
-| จำลอง error หลัง insert document ก่อน insert task | rollback แล้วไม่เหลือ compensation_documents/workflow_tasks/audit partial |
+| จำลอง error หลัง insert document ก่อนเปิด workflow | rollback แล้วไม่เหลือ compensation_documents/workflow_transaction/audit partial |
 | เปลี่ยนปี พ.ศ. | running เริ่มที่ 00001 ของปีใหม่ |
 
 ### 5.4 docNo Generator SQL Reference
 
 ```sql
 -- Lock sequence row for the Buddhist year before generating docNo.
-SELECT be_year, next_running_no
+SELECT year, next_running_no
 FROM document_number_sequences
-WHERE be_year = :beYear
+WHERE year = :year
 FOR UPDATE;
 
 -- Create sequence row when the year is first used.
-INSERT INTO document_number_sequences (be_year, next_running_no, created_at, updated_at)
-SELECT :beYear, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+INSERT INTO document_number_sequences (year, next_running_no, created_at, updated_at)
+SELECT :year, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (
-    SELECT 1 FROM document_number_sequences WHERE be_year = :beYear
+    SELECT 1 FROM document_number_sequences WHERE year = :year
 );
 
 -- Consume the next number inside the same transaction as document creation.
 UPDATE document_number_sequences
 SET next_running_no = next_running_no + 1,
     updated_at = CURRENT_TIMESTAMP
-WHERE be_year = :beYear
-RETURNING be_year, next_running_no;
+WHERE year = :year
+RETURNING year, next_running_no;
 
 INSERT INTO compensation_documents (
-    doc_no, be_year, running_no, impacted_store_code, impact_month,
+    doc_no, year, running_no, impacted_store_code, impact_month,
     new_store_code, round_no, source, status_code, created_by, created_at
 ) VALUES (
-    :docNo, :beYear, :runningNo, :impactedStoreCode, :impactMonth,
+    :docNo, :year, :runningNo, :impactedStoreCode, :impactMonth,
     :newStoreCode, :roundNo, :source, '06', :userId, CURRENT_TIMESTAMP
 );
 ```
@@ -115,7 +113,7 @@ INSERT INTO compensation_documents (
 | --- | --- |
 | Input | POST /api/v1/documents; PUT /api/v1/documents/{docNo} |
 | Progress | Validate required fields; Check duplicate store/month; Generate docNo; Insert compensation_documents |
-| Output | compensation_documents; workflow_instances / workflow_tasks; document_new_stores |
+| Output | compensation_documents; workflow_transaction / workflow_approver (@srm/glb-workflow); document_new_stores |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -178,7 +176,7 @@ Create document API
 
 ```json
 {
-  "docNo": "2569/00124",
+  "docNo": "2026/00124",
   "statusCode": "06"
 }
 ```
@@ -236,7 +234,7 @@ Update document partial sections
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
 | compensation_documents | R/W | สร้างหัวเอกสารและแก้ไข section หลัก |
-| workflow_instances / workflow_tasks | W | เปิด workflow งานแรกตอนสร้างเอกสาร |
+| workflow_transaction / workflow_approver (@srm/glb-workflow) | W | เปิด workflow งานแรกตอนสร้างเอกสาร |
 | document_new_stores | R/W | ร้านเปิดใหม่และ % ชดเชย |
 | document_competitors | R/W | ร้านคู่แข่งในเอกสาร |
 | document_external_factors | R/W | ปัจจัยภายนอกในเอกสาร |
@@ -255,7 +253,7 @@ Update document partial sections
 
 ## 10. Acceptance Criteria
 
-- duplicate business key (active document เท่านั้น) returns 409; reopen หลังจบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย ต้องสร้างได้ (SDD GI)
+- duplicate business key returns 409
 - docNo format YYYY/xxxxx
 - compensatePercent sum=100
 - requestId trace does not replace business duplicate guard

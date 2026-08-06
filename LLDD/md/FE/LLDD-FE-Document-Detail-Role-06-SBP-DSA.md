@@ -86,7 +86,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | --- | --- |
 | เห็นควรไม่ชดเชย | ต้องกรอก comment |
 | หยุดชดเชยประกันรายได้ | comment optional |
-| ส่งหน่วยงานส่งเสริมธุรกิจ SBP | comment optional |
+| ส่งฝ่ายส่งเสริมธุรกิจ SBP | comment optional |
 | ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ | comment optional |
 
 ### 5.6 API Response Example
@@ -95,7 +95,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123",
+  "docNo": "2026/00123",
   "statusCode": "06",
   "viewerRbacRoleCode": "R-XX",
   "roleProfileCode": "P-06",
@@ -124,7 +124,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
       "requireComment": false
     },
     {
-      "label": "ส่งหน่วยงานส่งเสริมธุรกิจ SBP",
+      "label": "ส่งฝ่ายส่งเสริมธุรกิจ SBP",
       "requireComment": false
     },
     {
@@ -169,7 +169,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | Render profile sections | render เฉพาะ visibleSections ของ P-06: doc-header, sec-sales, sec-map, sec-newstore, sec-competitor, sec-factor, sec-attach, sec-comp-history, sec-decision-history, sec-action; ซ่อน: sec-calc | section ที่ซ่อนต้องไม่อยู่ใน DOM และ section key ที่ไม่รู้จักต้อง log/ignore แบบ fail closed |
 | Apply edit boundary | เปิด mutation control เฉพาะ editableSections ของ P-06: ไม่มี; business section ทั้งหมด read-only | read-only section ไม่มี focusable input/save/add/delete และ payload ต้องไม่มี field นอก editableSections |
 | Attachment control | canUploadAttachment=true สำหรับ SBP DSA; ใช้ allowlist, 5 MB และ scan-status contract | ปุ่ม upload ตรง flag, FILE_TOO_LARGE/FILE_SCAN_BLOCKED แสดงที่ attachment section |
-| Render exact action set | แสดง actionOptions ของ P-06 เท่านั้น: เห็นควรไม่ชดเชย; หยุดชดเชยประกันรายได้; ส่งหน่วยงานส่งเสริมธุรกิจ SBP; ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ; comment rules: เห็นควรไม่ชดเชย: ต้องกรอก comment; หยุดชดเชยประกันรายได้: comment optional; ส่งหน่วยงานส่งเสริมธุรกิจ SBP: comment optional; ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ: comment optional | radio label/requireComment มาจาก API และ FE ไม่คำนวณ nextSection |
+| Render exact action set | แสดง actionOptions ของ P-06 เท่านั้น: เห็นควรไม่ชดเชย; หยุดชดเชยประกันรายได้; ส่งฝ่ายส่งเสริมธุรกิจ SBP; ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ; comment rules: เห็นควรไม่ชดเชย: ต้องกรอก comment; หยุดชดเชยประกันรายได้: comment optional; ส่งฝ่ายส่งเสริมธุรกิจ SBP: comment optional; ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ: comment optional | radio label/requireComment มาจาก API และ FE ไม่คำนวณ nextSection |
 | Submit and reload | ส่ง result/comment สำหรับ P-06 แล้ว invalidate detail, timeline, task/list cache | หลัง submit ต้องโหลด status/actionOptions ใหม่และไม่คง action set ของ P-06 เมื่อ workflow เปลี่ยนขั้น |
 
 ## 6. Button / User Action Mapping
@@ -191,7 +191,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123"
+  "docNo": "2026/00123"
 }
 ```
 
@@ -205,7 +205,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123",
+  "docNo": "2026/00123",
   "statusCode": "06",
   "viewerRbacRoleCode": "R-XX",
   "roleProfileCode": "P-06",
@@ -232,7 +232,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
       "requireComment": false
     },
     {
-      "label": "ส่งหน่วยงานส่งเสริมธุรกิจ SBP",
+      "label": "ส่งฝ่ายส่งเสริมธุรกิจ SBP",
       "requireComment": false
     },
     {
@@ -259,7 +259,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ### POST /api/v1/documents/{docNo}/actions
 
-ตัวอย่าง positive-path จาก section 06; Section 02 ใช้กรณียอดรวมมากกว่า 50,000 บาท (GM) / 300,000 บาท (AVP) ตาม SDD GI 24/02/2026
+ตัวอย่าง positive-path จาก section 06; Section 02 ใช้กรณียอดรวมมากกว่า 100,000 บาท
 
 #### Request
 

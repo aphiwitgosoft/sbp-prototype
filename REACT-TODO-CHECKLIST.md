@@ -7,7 +7,7 @@
 แต่ละหน้าระบุ: sections, ปุ่ม, กราฟ, ตาราง (คอลัมน์ครบ), ฟอร์ม/ฟิลด์, modal, และ component ที่ต้องสร้าง
 
 > ป้ายกำกับ UI ภาษาไทยคัดลอกจากหน้าจริงแบบ verbatim — ข้อความ popup/validation ต้องตรงตาม SRS ห้าม paraphrase
-> อ้างอิงกติกาธุรกิจ (workflow 5 ขั้น 06→08→01→02→03 — SDD v7.5 ตัดบัญชี 04/05, วงเงิน 100,000: >100k จบที่ AVP · ≤100k จบที่ GM, %ชดเชยรวม 100%, 60 วัน = แถวแดง) — ดู `CLAUDE.md` / skill `sbp-prototype`
+> อ้างอิงกติกาธุรกิจ (workflow 5 ขั้น 06→08→01→02→03 — ตัดขั้นบัญชี 04/05, **วงเงินตาม SDD GI 24/02/2026: ≤ 50,000 จบที่ GM · 50,001–300,000 ผ่าน AVP แล้วจบ** — แทนเกณฑ์เดียว 100,000 เดิม, %ชดเชยรวม 100%, 60 วัน = แถวแดง) — ดู `CLAUDE.md` / skill `sbp-prototype`
 
 ---
 
@@ -52,11 +52,12 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **S5:** การ์ด "กิจกรรมล่าสุด" (4 แถว pill+เวลา) · การ์ด "ทางลัด" (ปุ่ม data-href)
 - **TODO:** `<HomePage>`, `<Hero>`, `<ColumnChart>`, `<HBarChart>`, `<ModuleCard>`/`<ModuleGrid>` (รองรับ card ปิดแบบ feature-flag), `<ActivityFeed>`, `<QuickLinks>`
 
-## k2-create.html — สร้างเอกสาร
+## k2-create.html
+> **โครงหน้า (2026-08-06):** การ์ด `สร้างเอกสารที่ FS` = กรอบจำลอง iframe ของระบบ FS (คลาส `.fs-frame` ใน `sbp.css` ใช้ร่วมกับส่วนคำนวณเงินชดเชยของหน้าเอกสาร) · ใต้กรอบเป็นการ์ด **หมายเหตุ · ขั้นตอนการสร้างเอกสาร** (หัวข้อ + 4 ขั้นตอน verbatim + บรรทัด “ใช้กรณี…”) — ไม่มีฟอร์ม/แท็บในหน้านี้ — สร้างเอกสาร
 - **Route:** `/k2-create` · **crumb:** `สร้างเอกสาร`
-- **S1 head:** info pill `เลขที่เอกสารถัดไป · 2569/00187`
+- **S1 head:** info pill `เลขที่เอกสารถัดไป · 2026/00187`
 - **S2 Tabs:** `สร้างเอกสารใหม่ (นอกเงื่อนไข)` | `สร้างเอกสารที่ FS`
-  - **Tab manual:** InfoCallout + ฟอร์ม: `รหัสร้านถูกกระทบ*`(search), `ชื่อร้านถูกกระทบ`(readonly), `ภาค`(readonly), `ประเภทร้าน`(select 8 ตัวเลือก FR Type A/B/C/C r/บริษัท/พนักงาน/PTT/BGC), `วันที่โอนเป็นร้าน SP`(date), `เดือน/ปีที่ถูกกระทบ*`(month), `ครั้งที่`, `รหัสร้านเปิดใหม่*`(search), `เหตุผลการสร้างเอกสารนอกเงื่อนไข*`(textarea) · ปุ่ม `เคลียร์ค่าเริ่มใหม่` · `สร้างเอกสาร`(toast ออกเลข 2569/00187)
+  - **Tab manual:** InfoCallout + ฟอร์ม: `รหัสร้านถูกกระทบ*`(search), `ชื่อร้านถูกกระทบ`(readonly), `ภาค`(readonly), `ประเภทร้าน`(select 8 ตัวเลือก FR Type A/B/C/C r/บริษัท/พนักงาน/PTT/BGC), `วันที่โอนเป็นร้าน SP`(date), `เดือน/ปีที่ถูกกระทบ*`(month), `ครั้งที่`, `รหัสร้านเปิดใหม่*`(search), `เหตุผลการสร้างเอกสารนอกเงื่อนไข*`(textarea) · ปุ่ม `เคลียร์ค่าเริ่มใหม่` · `สร้างเอกสาร`(toast ออกเลข 2026/00187)
   - **Tab fs:** InfoCallout + ฟอร์ม: `รหัสร้านถูกกระทบ*`(search), `ชื่อร้านถูกกระทบ`(readonly), `เดือน/ปีที่ถูกกระทบ*`(month), `Period Statement (From–To)` · ปุ่ม `เคลียร์` · `ส่งสร้างที่ FS` · ตาราง "เอกสารที่รอ SBP Statement ส่งกลับ": `รหัสร้าน | ชื่อร้านถูกกระทบ | เดือน/ปี | ส่งเข้า FS เมื่อ | สถานะ` (pill รอ/ส่งกลับแล้ว)
 - **TODO:** `<K2CreatePage>`, `<Tabs>`, `<InfoCallout>`, `<StoreSearchInput>`(×3, ปุ่มแว่นขยาย→lookup), `<FormGrid>`/`<Field>`, `<PendingStatementTable>`
 
@@ -65,7 +66,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **Route:** `/k2/documents/waiting` · `/k2/documents/related`
 - **S1 RoleWorkflowBar** (sticky, เฉพาะ mode=waiting): dropdown role profile 5 ขั้น (`code · name`) + stepper คลิกได้ `06›08›01›02›03` + hint
 - **S2 head:** title/sub สลับตาม mode
-- **S3 Stat cards (คลิกกรองตาราง):** waiting = 4 การ์ด (ทั้งหมด / flag60 แถวแดง / รอเกิน 3 วัน / วงเงิน>100,000 เข้า AVP); related = 10 การ์ด (ทั้งหมด + 6 สถานะ + 3 special)
+- **S3 Stat cards (คลิกกรองตาราง):** waiting = 4 การ์ด (ทั้งหมด / flag60 แถวแดง / รอเกิน 3 วัน / วงเงิน 50,001–300,000 เข้า AVP · SDD GI); related = 10 การ์ด (ทั้งหมด + 6 สถานะ + 3 special)
 - **S4 Filter bar:** ค้นหา, สถานะ(ซ่อนใน waiting), ภาค(8), ประเภทร้าน, ช่วงวันที่สร้าง, ยอดขายลดลง% (min–max), เงินชดเชย (min–max), รอ(วัน) (min–max), `ล้างตัวกรอง`
 - **ตาราง `#tblK2`/`#tblRelated`** (คลิกแถว→k2-document, sortable): `ครั้งที่ | เลขที่เอกสาร | รหัสร้าน | ชื่อร้านถูกกระทบ | ภาค | ยอดขายที่ลดลง(%) | จำนวนเงินที่ชดเชย | สถานะ(pill) | รอ (วัน)` · `tr.flag-red` = ยอดขายไม่ครบ 60 วัน
 - **Pager** + note card ("แดง = ยอดขายไม่ครบ 60 วัน · text file 17:00/วัน · Approve A → SAP")
@@ -81,8 +82,8 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 
 ## k2-document.html — เอกสารข้อมูลร้านถูกกระทบ  ⭐ (ซับซ้อนสุด, SRS 3.1.6)
 - **Route:** `/documents/:docNo` · **crumb:** `เอกสารร้านถูกกระทบ` · *ไม่อยู่ใน sidebar (เข้าจากคลิกแถว)*
-- **S1 RoleSwitcherBar** (sticky): `#roleSwitch` (7 role) + pill `ขั้นตอนที่ N/7` + stepper คลิกได้ → เปลี่ยน role re-render ทั้งหน้า + toast
-- **S2 head:** `เอกสารข้อมูลร้านถูกกระทบ 2569/00123` + sub + pill สถานะ(สลับตาม role) + ปุ่ม `พิมพ์`
+- **S1 RoleSwitcherBar** (sticky): `#roleSwitch` (**5 role** — ตัดขั้นบัญชี 04/05) + pill `ขั้นตอนที่ N/5` + stepper คลิกได้ → เปลี่ยน role re-render ทั้งหน้า + toast
+- **S2 head:** `เอกสารข้อมูลร้านถูกกระทบ 2026/00123` + sub + pill สถานะ(สลับตาม role) + ปุ่ม `พิมพ์`
 - **S3 ข้อมูลร้านถูกกระทบ:** doc-meta grid (รอบ/ครั้งที่/เดือน, สถานะ, เลขที่, วันที่สร้าง, รหัส/ชื่อร้าน, ภาค, ประเภท, เจ้าของ, นิติบุคคล, วันที่โอน, ผู้ดำเนินการ, ยอดขายลดลง 12.45%, ชดเชยล่าสุด 48,200฿, ไฟล์แนบ) + ปุ่ม `ข้อมูลยอดขายเพิ่มเติม`
 - **S4 Charts:** `<SalesTrendChart>` (hand-SVG เส้น/พื้นที่ 2 ชุด ก่อน–หลัง + marker สาขาเปิด + เส้นเฉลี่ย) · `<SalesAvgBarChart>` (2 แท่ง 42,450 vs 37,163 + badge −12.45%)
 - **S5 ร้านเปิดใหม่** (`data-editrole=opt-mgr`): ปุ่ม `รีเฟรช`/`คืนค่าก่อนแก้ไข`/`คำนวณเงินชดเชย` (validate %รวม=100 ไม่งั้น popup) · ตาราง `#tbldocument_new_stores`: `ลำดับ | รหัสร้าน | ชื่อร้านเปิดใหม่ | ภาค | ประเภทร้าน | เจ้าของร้าน | นิติบุคคล | วันที่เปิดร้าน | วันที่ปิดร้าน | ระยะห่าง(กม.) | %ชดเชย(input) | เงินชดเชย(ร้านใหม่)` · สูตร comp = base × %/100
@@ -91,11 +92,12 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **S8 ปัจจัยอื่นๆ** (`data-entity=factordoc`): ปุ่ม `เพิ่มข้อมูล`/`บันทึก` · ตาราง `☑ | ปัจจัยภายนอก | วันที่เริ่มต้น | วันที่สิ้นสุด | รายละเอียดเพิ่มเติม | Action`
 - **S7–S8 สิทธิ์ + bulk action** (2026-08-06): คอลัมน์ `☑` และคอลัมน์ `Action` **แสดงเฉพาะ role ที่แก้ส่วนนั้นได้** (`permissions.canEditSections` — ปัจจุบันคือ section 01) · role อ่านอย่างเดียวต้องไม่เห็นทั้งสองคอลัมน์ · เมื่อติ๊ก ≥ 1 แถวให้ขึ้นแถบ `เลือกไว้ N รายการ` + ปุ่ม `ล้างการเลือก` / `ลบที่เลือก` (confirm ก่อนลบ · ลบใน state แล้วมีผลจริงตอนกด `บันทึก` → `PUT /documents/{docNo}`)
 - **S9 เอกสารแนบทั้งหมด:** ปุ่ม `แนบไฟล์` (≤5MB) · ตาราง `ไฟล์แนบ | ตำแหน่ง | ผู้สร้างแนบไฟล์ | รายละเอียดเพิ่มเติม | วัน/เดือน/ปี`
+- **S9 modal รายละเอียดไฟล์แนบ** (2026-08-06): คลิกแถวในตารางเปิด modal — ไอคอนนามสกุลไฟล์ + ชื่อไฟล์ + ขนาด + วันที่แนบ · ตำแหน่ง/ผู้แนบ/ขั้นตอนที่แนบ/รายละเอียด (readonly) · ปุ่ม **ดาวน์โหลดเอกสาร** → `GET /documents/{docNo}/attachments/{attachId}/download` (ไฟล์จริงใช้ service S3 ของระบบ SBP เดิม `POST /statement/download-file-aws`) · ปุ่ม ปิด
 - **S10 คำนวณเงินชดเชย** (`data-roleonly=sbpdsa-officer`): ฟอร์ม readonly (ตั้งต้น 48,200 / %รวม 100 / รวมร้านใหม่ 48,200 / อำนาจอนุมัติ ≤50k GM · 50,001–300k AVP · SDD GI)
 - **S11 ประวัติการชดเชย:** ตาราง `ครั้ง | เดือน/ปีที่กระทบ | จำนวนเงินที่ชดเชย | เดือน/ปีที่ส่งบัญชี | สถานะเอกสาร | ผลการพิจารณา | เอกสาร` (คลิก→doc)
 - **S12 ผลการพิจารณา (ประวัติ):** ตาราง `ชื่อผู้พิจารณา | ตำแหน่ง | ผลการพิจารณา | รายละเอียดการพิจารณา | วัน/เวลา` (คลิกแถว→modal)
 - **S13 พิจารณา (ส่งดำเนินการ):** radio ตัวเลือกตาม role + textarea `ความคิดเห็นเพิ่มเติม` + ปุ่ม `แนบรูป`/`บันทึก`/`ส่งดำเนินการ` (validate เลือกผล + comment ถ้าบังคับ → popup "ท่านยังไม่เลือกผลการพิจารณา…")
-- **Role-based views:** 7 role (sbpdsa-mgr/officer, opt-mgr/gm, avp, acct-mgr/op) กำหนด status/pill/edit sections/decision options + กฎวงเงิน >100,000→AVP
+- **Role-based views:** **5 role** (sbpdsa-mgr, sbpdsa-officer, opt-mgr, opt-gm, avp — role บัญชี acct-mgr/acct-op ถูกตัดออกแล้ว) กำหนด status/pill/edit sections/decision options + กฎวงเงิน SDD GI (≤50,000 จบที่ GM · 50,001–300,000 → AVP)
 - **Modals:** `#k2pop` (warning SRS), `#decHistPop` (รายละเอียดผลพิจารณา), auto view/edit/add/del (competitor/factordoc)
 - **TODO:** `<DocumentPage>` + workflow state provider, `<RoleSwitcherBar>`, `<WorkflowStepper>`, `<DocMetaGrid>`, `<SalesTrendChart>`, `<SalesAvgBarChart>`, `<AllMapPoi>`, `<NewStoresTable>`(edit+validate 100%), `<EditableDataTable>`(competitor/factors), `<AttachmentsTable>`, `<CompensationCalcPanel>`, `<CompensationHistoryTable>`, `<DecisionHistoryTable>`+`<DecisionHistoryModal>`, `<DecisionPanel>`, `<WarningPopup>`, `useWorkflowRole()`
 
@@ -103,7 +105,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **Route:** `/k2/report` · **crumb:** `รายงานสรุปสถานะ`
 - **S1 head:** ปุ่ม `Export Excel`(toast)
 - **S2 ฟอร์มค้นหา:** รหัสร้าน(+ปุ่ม picker), ชื่อร้าน(readonly), เดือน/ปีเริ่ม(month), ถึง(month), ประเภทร้าน(checkbox 4), ภาค(checkbox 8), สถานะ(select ทีละ 1), ผลการพิจารณา(select), Period Statement From–To · ปุ่ม `เคลียร์` · `ค้นหาข้อมูล`
-- **S3 Summary line:** พบ N รายการ / ยอดชดเชยรวม / วงเงิน>100,000 / แถวแดง
+- **S3 Summary line:** พบ N รายการ / ยอดชดเชยรวม / วงเงินเข้า AVP / แถวแดง
 - **S4 Charts:** `<HBarChart>` "เอกสารตามสถานะ" (8 แถว, dot สี) · `<HBarChart>` "ยอดเงินชดเชยตามภาค" (8 ภาค, teal)
 - **S5 ตารางผล 19 คอลัมน์:** `รหัสร้านถูกกระทบ | ชื่อร้านถูกกระทบ | ภาค | ประเภทร้าน | เดือนปีที่ถูกกระทบ | วันที่โอนเป็นร้าน SP | Period Statement | รหัสร้านเปิดใหม่ | ชื่อร้านเปิดใหม่ | ภาค (ร้านใหม่) | ประเภทร้าน (ร้านใหม่) | ยอดเงินชดเชย | สถานะ | ชื่อ-นามสกุลผู้ดำเนินการ | ผลการพิจารณา | รอดำเนินการ (วัน) | ครั้งที่ | วันที่สร้าง | เลขที่เอกสาร` · `tr.flag-red` · pill สถานะ (wait/violet/info/orange/navy/teal/muted/ok)
 - **TODO:** `<K2ReportPage>`, `<ReportSearchForm>`, `<CheckboxGroup>`(×2), `<StorePickerModal>`, `<SummaryLine>`, `<HBarChart>`+`<ChartTooltip>`, `<ReportResultTable>`(19-col scroll), number formatter (คั่นหลักพันไทย)
@@ -183,7 +185,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 ## k2-flow.html — Flow K2 (Workflow อนุมัติ, SRS 3.1.4)
 - **Route:** `/flows/k2` · **crumb:** `Flow K2`
 - **S1 head** (pill `5 ขั้นตอน · 6 สถานะ`) · **S2 IntroCard**
-- **S3 HappyPathStepper:** `S › 06 › 08 › 01 › 02 › 03(เฉพาะ >100,000) › ✓`
+- **S3 HappyPathStepper:** `S › 06 › 08 › 01 › 02 › 03(เฉพาะ 50,001–300,000) › ✓`
 - **S4 K2Flowchart:** BPMN hand-SVG (task/decision D1–D3/end; solid=ส่งต่อ/ข้ามขั้น, dashed amber=ส่งกลับ/ไม่ชดเชย; กล่องแจ้งเตือนอัตโนมัติ + escalation 30/45/60) + legend
 - **S5 Swimlane:** 6 lane (ระบบ→06→08→01→02→03) แต่ละ lane มี task + branch chips (b-go/b-back/b-end)
 - **S6 ตาราง Transitions:** `ลำดับ | ผู้ดำเนินการ | section_code | ตัวเลือกส่งงาน / หมายเหตุ` (7 แถว)

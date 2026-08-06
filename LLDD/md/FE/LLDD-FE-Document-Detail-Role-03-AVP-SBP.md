@@ -95,7 +95,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123",
+  "docNo": "2026/00123",
   "statusCode": "03",
   "viewerRbacRoleCode": "R-XX",
   "roleProfileCode": "P-03",
@@ -187,7 +187,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123"
+  "docNo": "2026/00123"
 }
 ```
 
@@ -201,7 +201,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "docNo": "2569/00123",
+  "docNo": "2026/00123",
   "statusCode": "03",
   "viewerRbacRoleCode": "R-XX",
   "roleProfileCode": "P-03",
@@ -251,7 +251,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ### POST /api/v1/documents/{docNo}/actions
 
-ตัวอย่าง positive-path จาก section 03; Section 02 ใช้กรณียอดรวมมากกว่า 50,000 บาท (GM) / 300,000 บาท (AVP) ตาม SDD GI 24/02/2026
+ตัวอย่าง positive-path จาก section 03; Section 02 ใช้กรณียอดรวมมากกว่า 100,000 บาท
 
 #### Request
 

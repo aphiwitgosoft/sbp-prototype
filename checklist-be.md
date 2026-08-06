@@ -1,12 +1,27 @@
 # checklist-be.md — Checklist สร้าง Backend (Node.js + Express + Prisma + PostgreSQL)
 
+> ## ⚠️ ตัดสินใจ 2026-08-06 — ยึดตาราง/บริการของระบบ SBP เดิม (อ่านก่อนเริ่ม Phase ตาราง)
+>
+> ไฟล์นี้เขียนไว้ตอนโครงยังเป็น 34 ตาราง **ตอนนี้เหลือ 24 ตาราง** — งานสร้างตารางด้านล่างที่ตรงกับรายการนี้ **ห้ามสร้างใหม่ ให้ใช้ของระบบ SBP ปัจจุบัน** (`srm-sps-spsap-store-backend`):
+>
+> | รายการในไฟล์นี้ | ใช้ของเดิมแทน |
+> |---|---|
+> | `workflow_instances` · `workflow_tasks` · `workflow_sections` · `document_statuses` | **`@srm/glb-workflow`** (`workflow_transaction` · `workflow_approver` · `workflow_history` · `workflow_state`/`route`/`status`) — ขอ workflow version ใหม่ 1 ตัว · `referenceId = doc_no` · inbox = `getPendingFlow()` |
+> | `stores` · `zones` · `branch_types` · `employees` | `store`/`mas_store`/`sevenshop` · `mas_zone` · `common_code` · `business_user` |
+> | `email_templates` | `email_template` + `email_sent` + `@gosoft-sbp/email-lib` |
+> | `system_configs` | `mas_param` (เพิ่มคอลัมน์ในตารางเดิมถ้าจำเป็น) |
+> | วงเงินอนุมัติ (`workflow.avp_amount_threshold`) | `common_code` (`code_type = SBPGI_APPROVE_LIMIT`) — **GM 50,000 / AVP 300,000 ตาม SDD GI** ไม่ใช่ 100,000 |
+>
+> รายละเอียดเต็ม: `database.md` §ตารางที่ตัดออกรอบ 2 · `api.md` §เส้นที่เปลี่ยนไปใช้ของระบบ SBP เดิม
+
+
 > **วิธีใช้:** ทำตามลำดับ Phase 0 → 7 ติ๊กทีละข้อ — ทุก Phase มี **✔ เกณฑ์ตรวจรับ** เป็น test case รันได้จริง ต้องผ่านครบก่อนไปต่อ
 > spec เต็มอยู่ `plan-be.md` · สัญญา API = `api.md` + `SQL_BY_PATH` ใน `plan-api.html` · สัญญากลาง = `LLDD/BE/LLDD-BE-API-Common-Contracts.md` + `LLDD/FE/LLDD-FE-Integration-Contracts.md` · schema = `database.md` · transition = `workflow.md`
 >
 > **กติกาเหล็ก (ห้ามเปลี่ยน):**
 > - workflow **5 ขั้น 06→08→01→02→03** (ตัดขั้นบัญชี 04/05 ตาม SDD v7.5)
-> - สถานะเอกสาร **6 ค่า** · เลขเอกสาร `พ.ศ./xxxxx` running ต่อปี จองด้วย `FOR UPDATE`
-> - กฎวงเงิน: ชดเชย/ไม่ชดเชย **> 100,000 → AVP (03) แล้วจบ** · ชดเชย **≤ 100,000 จบที่ GM (02)**
+> - สถานะเอกสาร **6 ค่า** · เลขเอกสาร `ค.ศ./xxxxx` running ต่อปี จองด้วย `FOR UPDATE`
+> - กฎวงเงิน (SDD GI 24/02/2026 — แทนเกณฑ์เดียว 100,000 เดิม): เห็นควรชดเชย **≤ 50,000 → จบที่ GM (02)** · **50,001–300,000 → AVP (03) แล้วจบ** (เกิน 300,000 รอ confirm) · **เห็นควรไม่ชดเชยที่ 01/02 = จบกระบวนการทันที ไม่ตีกลับ**
 > - Error ทุกเส้นรูปเดียว `{code,message}` — ข้อความไทย **verbatim ตาม SRS**
 > - Gen Flow Gate **6 เกณฑ์** ครบทุกข้อ · Job 4 ครอบ transaction/outbox (**P0**)
 > - **ห้ามเก็บ secret ใน DB/system_configs** — credential อยู่ .env / Secret Manager
@@ -14,7 +29,7 @@
 
 ---
 
-## Phase 0 — Scaffold + Schema (34 ตาราง)
+## Phase 0 — Scaffold + Schema (24 ตาราง — ดูรายการที่ตัดในกล่องเตือนหัวไฟล์)
 
 ### 0.1 โครงโปรเจกต์
 - [ ] init โปรเจกต์ TypeScript strict + Express 4 + pino + helmet/cors — โครงโฟลเดอร์ **module-per-domain + layered** ตาม plan-be.md §2 (`routes → controller → service → repository → prisma` · controller ห้ามมี business logic · service ห้ามแตะ req/res · ข้าม module ได้เฉพาะชั้น service)
@@ -22,7 +37,7 @@
 - [ ] GitHub Actions CI: `lint → tsc --noEmit → prisma validate → test → build` + postgres service container
 - [ ] `config/env.ts` — zod validate ทุกตัวแปร env (ดูตาราง ENV ท้ายไฟล์) — ขาดตัวไหน **fail fast ตอน boot**
 - [ ] `lib/errors.ts` — `AppError{code,message,status}` + `errorHandler` middleware แปลงเป็น `{code,message}` · 400 VALIDATION / 401 AUTH / 403 FORBIDDEN / 404 NOT_FOUND / 409 CONFLICT
-- [ ] `lib/date.ts` — แปลง พ.ศ.↔ค.ศ. (payload = ISO ค.ศ. · เลขเอกสาร/ไฟล์ interface = พ.ศ.)
+- [ ] `lib/date.ts` — helper `toAD(y) = y >= 2500 ? y - 543 : y` แบบเดียวกับ store-backend (payload/เลขเอกสาร = **ค.ศ.** ทั้งหมด · แปลงเฉพาะกรณี client ส่ง พ.ศ. มา · ไฟล์ interface ที่ปลายทางต้องการ พ.ศ. ให้แปลงตอนเขียนไฟล์เท่านั้น)
 - [ ] `GET /healthz` (liveness — ไม่แตะ DB)
 
 ### 0.1b Common API contracts
@@ -44,7 +59,7 @@
 - [ ] `interface_transactions` — PK `id` · **typed FK 3 คอลัมน์: `impact_process_id` / `sales_summary_id` / `doc_no` — ห้าม polymorphic key** · `data_name` เป็น enum · enum `sta_status` (I/C/A/N/S/Z)
 
 ### 0.3 Prisma schema — Zone B · K2 เอกสาร & Workflow (9 ตาราง)
-- [ ] `compensation_documents` — PK `doc_no` (`YYYY/xxxxx` พ.ศ.) · FK `status_code` → document_statuses · `current_section_code` → workflow_sections · `impacted_store_code` · **`impact_process_id` → fgi_impact_processes (FK ใหม่ 1 รอบ : 1 เอกสาร)**
+- [ ] `compensation_documents` — PK `doc_no` (`YYYY/xxxxx` **ค.ศ.**) · FK `status_code` → document_statuses · `current_section_code` → workflow_sections · `impacted_store_code` · **`impact_process_id` → fgi_impact_processes (FK ใหม่ 1 รอบ : 1 เอกสาร)**
 - [ ] `document_new_stores` — PK `id` · FK `doc_no` · `distance_km` · `%ชดเชย` (**ผลรวมต่อเอกสาร = 100%** — enforce ชั้น service)
 - [ ] `document_competitors` — PK `id` · FK `doc_no` · `competitor_code` → competitors · enum `source_system` (ALM/USER)
 - [ ] `document_external_factors` — PK `id` · FK `doc_no` · `factor_code` → external_factors · ช่วงวันที่
@@ -55,7 +70,7 @@
 - [ ] `workflow_tasks` — PK `task_id` · FK `instance_id` · `section_code` · `assignee_employee_id` · สถานะ open/closed (ฐาน inbox + reminder + escalation)
 
 ### 0.4 Prisma schema — Zone C · Shared Master/Config (18 ตาราง)
-- [ ] `stores` — PK `store_code` — master สาขาทุกประเภท (แหล่ง `/stores/search?type=new`)
+- [ ] ~~`stores`~~ **ไม่สร้าง** — ใช้ `store`/`mas_store`/`sevenshop` + `GET /store/search` ของระบบ SBP เดิม (2026-08-06)
 - [ ] `impacted_stores` — PK `store_code` — subset SP · สะพาน Zone C ↔ A (`= fgi_impact_stores.impacted_store_code`)
 - [ ] `workflow_sections` — PK `section_code` — **5 แถวใช้งาน (06/08/01/02/03)** + 04/05 `is_active=false` (อ้างอิงประวัติ)
 - [ ] `document_statuses` — PK `status_code` — **6 ค่า** (ตัด "รอฝ่ายบัญชี SBP" / "รอบัญชีปฏิบัติการภาค")
@@ -65,7 +80,7 @@
 - [ ] `operator_assignments` — PK `id` · `section_code` · `zone_code` · FK `employee_id` → employees
 - [ ] `employees` — PK `employee_id` — master HR (แหล่ง `/employees/search`)
 - [ ] `external_factors` — PK `factor_code` — **รหัสห้ามซ้ำ**
-- [ ] `competitors` — PK `competitor_code` — 24 ราย
+- [ ] `competitors` — PK `competitor_code` — **11 ราย** (01–11) · `name_th` + `name_en` (ตามหน้าจอ K2 เดิม)
 - [ ] `audit_logs` — PK `id` · generic `table_name` + `ref_key` · `action_type` · `old_value` → `new_value` · `reason` · `updated_by` · `updated_at`
 - [ ] `status_email_rules` — PK `status_code` · `to_section_code` / `cc_section_code` → workflow_sections
 - [ ] `email_templates` — PK `template_code` (EM-01–08) · subject/body + ตัวแปร merge + default สำหรับ reset
@@ -73,7 +88,7 @@
 - [ ] `job_configs` — PK `job_no` · cron + พารามิเตอร์ editable · `enabled` (11 jobs)
 - [ ] `job_run_histories` — PK `run_id` · FK `job_no` · เวลา/แถว/ไฟล์/ผล · สถานะ RUNNING ใช้เป็น lock
 - [ ] `system_configs` — PK `config_key` (dot notation) · `category` (IMPACT/WORKFLOW/DOCUMENT/AUTH/NOTIFICATION/BATCH) · `value_type` (NUMBER/STRING/BOOLEAN/JSON/CRON) · `is_editable` · **ห้ามมี secret**
-- [ ] ตาราง counter เลขเอกสาร (เช่น `doc_no_counters` PK ปี พ.ศ. + `last_no`) สำหรับ `FOR UPDATE`
+- [ ] ตาราง counter เลขเอกสาร (`document_running_numbers` PK ปี **ค.ศ.** + `last_running_no`) สำหรับ `FOR UPDATE`
 
 ### 0.5 Migration แรก
 - [ ] `prisma migrate dev` สร้าง migration แรก — enum/check constraint ครบทุก status domain ตามข้อ 0.2–0.4
@@ -117,8 +132,8 @@
 ## Phase 2 — Lookup + Masters + Audit (4 + 19 เส้น)
 
 ### 2.1 Lookup (4 เส้น)
-- [ ] `GET /stores/search?type=impacted|new&q=` — impacted → `impacted_stores` · new → `stores` · type อื่น/ไม่ส่ง → 400
-- [ ] `GET /competitors` — master 24 ราย
+- [ ] ~~`GET /stores/search`~~ **ไม่สร้าง** — ใช้ `GET /store/search` ของระบบ SBP เดิม (2026-08-06)
+- [ ] `GET /competitors` — master 11 ราย (+ POST/PUT/DELETE สำหรับหน้า `k2-competitors.html`)
 - [ ] `GET /document-statuses` — **6 ค่า** (เฉพาะ active)
 - [ ] `GET /workflow-sections` — **5 ขั้น** (06/08/01/02/03 · ไม่รวม 04/05 ที่ is_active=false)
 
@@ -159,37 +174,36 @@
 ## Phase 3 — Documents + Workflow Engine (9 + 3 เส้น — หัวใจระบบ)
 
 ### 3.1 Seed เพิ่ม
-- [ ] `workflow_sections` 5 (+04/05 inactive) · `document_statuses` 6 · `system_configs`: `workflow.avp_amount_threshold=100000`, รัศมี 1/2 กม., เกณฑ์ 60 วัน, เกณฑ์ −10 (ทั้งหมด `is_editable=false`)
-- [ ] เอกสารตัวอย่าง ~10 ฉบับครบทุกสถานะ 6 ค่า + เคส >100k / ≤100k + แถว <60 วัน (เลขตรง prototype เช่น 2569/00185)
+- [ ] `workflow_sections` 5 (+04/05 inactive) · `document_statuses` 6 · `common_code` (`SBPGI_APPROVE_LIMIT`): GM `50000` / AVP `300000` (SDD GI), รัศมี 1/2 กม., เกณฑ์ 60 วัน, เกณฑ์ −10 (ทั้งหมด `is_editable=false`)
+- [ ] เอกสารตัวอย่าง ~10 ฉบับครบทุกสถานะ 6 ค่า + เคส >100k / ≤100k + แถว <60 วัน (เลขตรง prototype เช่น 2026/00185)
 
 ### 3.2 Transition table (`workflow/transitions.ts` — ประกาศเป็น data)
 ลอกครบทุกแถวจาก `workflow.md` §ตารางเส้นทางพิจารณา — checkbox ต่อแถว:
 - [ ] **06 ฝ่าย SBP DSA** · "เห็นควรไม่ชดเชย" → **เสร็จสิ้นดำเนินการ** (END · result REJECT)
 - [ ] 06 · "หยุดชดเชยประกันรายได้" → **เสร็จสิ้นดำเนินการ** (END)
-- [ ] 06 · "ส่งฝ่ายส่งเสริมธุรกิจ SBP" → รอ 01
+- [ ] 06 · "ส่งหน่วยงานส่งเสริมธุรกิจ SBP" → รอ 01
 - [ ] 06 · "ส่งเจ้าหน้าที่ SBP DSA" → รอ 08
 - [ ] **08 เจ้าหน้าที่ SBP DSA** · "คำนวณเงินชดเชยเรียบร้อย" → รอ 01
 - [ ] 08 · result "ส่งกลับ" → รอ 06 (back-flow)
-- [ ] **01 ฝ่ายส่งเสริมธุรกิจ SBP** · "เห็นควรชดเชย" → รอ 02
-- [ ] 01 · "เห็นควรไม่ชดเชย / ส่งกลับ" → รอ 06 (back-flow)
-- [ ] **02 GM** · "เห็นควรชดเชย" + ยอด **> 100,000** → รอ 03 (AVP)
-- [ ] 02 · "เห็นควรชดเชย" + ยอด **≤ 100,000** → **เสร็จสิ้นดำเนินการ** (จบที่ GM · APPROVE)
-- [ ] 02 · "เห็นควรไม่ชดเชย" + ยอด **> 100,000** → รอ 03 (ไม่ชดเชยก็ต้องผ่าน AVP ตามวงเงิน)
-- [ ] 02 · "เห็นควรไม่ชดเชย" + ยอด **≤ 100,000** → รอ 06 (back-flow)
+- [ ] **01 หน่วยงานส่งเสริมธุรกิจ SBP** (ผจก.ฝ่าย/ผู้เชี่ยวชาญ + **เจ้าหน้าที่อาวุโส** · SDD GI) · "เห็นควรชดเชย" → รอ 02
+- [ ] 01 · "เห็นควรไม่ชดเชย" → **เสร็จสิ้นดำเนินการทันที** (ไม่อนุมัติในเดือนนั้น · SDD GI — เดิมตีกลับ 06) · "ส่งกลับ" → รอ 06 (back-flow)
+- [ ] **02 GM** · "เห็นควรชดเชย" + ยอด **50,001–300,000** → รอ 03 (AVP)
+- [ ] 02 · "เห็นควรชดเชย" + ยอด **≤ 50,000** → **เสร็จสิ้นดำเนินการ** (จบที่ GM · APPROVE)
+- [ ] 02 · "เห็นควรไม่ชดเชย" (ทุกวงเงิน) → **เสร็จสิ้นดำเนินการทันที** (ไม่อนุมัติในเดือนนั้น · SDD GI — เดิมแยกตามวงเงิน/ตีกลับ)
 - [ ] 02 · result "ส่งกลับ" → รอ 01 (back-flow)
 - [ ] **03 AVP** · "เห็นควรชดเชย" → **เสร็จสิ้นดำเนินการ** (APPROVE)
-- [ ] 03 · "เห็นควรไม่ชดเชย" → รอ 06 (back-flow)
+- [ ] 03 · "เห็นควรไม่ชดเชย" → รอ 06 (back-flow · คงเดิม — SDD GI ไม่ได้ระบุขั้น AVP · **รอ confirm**)
 - [ ] 03 · result "ส่งกลับ" → รอ 02 (back-flow)
-- [ ] threshold 100,000 อ่านจาก `system_configs['workflow.avp_amount_threshold']` — **ห้าม hardcode**
+- [ ] วงเงิน GM 50,000 / AVP 300,000 (SDD GI) อ่านจาก `common_code` (`code_type = SBPGI_APPROVE_LIMIT`) — **ห้าม hardcode**
 - [ ] unit test transitions ครอบ**ทุก branch ข้างบน** + เคส result ไม่รู้จัก → throw
 
 ### 3.3 เลขเอกสาร (`lib/docNo.ts`)
-- [ ] ออกเลข `YYYY(พ.ศ.)/xxxxx` running ต่อปีเริ่ม 00001 — จองด้วย `SELECT ... FOR UPDATE` บนตาราง counter ใน transaction
+- [ ] ออกเลข `YYYY(ค.ศ.)/xxxxx` running ต่อปีเริ่ม 00001 — จองด้วย `SELECT ... FOR UPDATE` บนตาราง counter ใน transaction
 - [ ] test: ยิงขอเลขพร้อมกัน 20 ครั้ง (Promise.all) → 20 เลขไม่ซ้ำ ต่อเนื่อง
 
 ### 3.4 Endpoint เอกสาร (9 เส้น)
-- [ ] `GET /tasks` — inbox: workflow_tasks เปิดของ section ที่ map กับ role ผู้เรียก · paginate
-- [ ] `GET /documents` — **ไม่ส่งปี (พ.ศ.) → 400** · filter สถานะ/ร้าน/งวด · paginate
+- [ ] `GET /tasks` — inbox: `getPendingFlow({userData:{userId, groupId}, versionId})` ของ `@srm/glb-workflow` แล้ว join เอกสาร · paginate
+- [ ] `GET /documents` — **ไม่ส่งปี (ค.ศ.) → 400** · filter สถานะ/ร้าน/งวด · paginate
 - [ ] `GET /documents/{docNo}` — เอกสารเต็ม 12 ส่วน + ธง `editableSections` / `myRoleView` ต่อ role-section ผู้เรียก · ไม่พบ → 404
 - [ ] `POST /documents` — MANUAL/FS: ออกเลข (3.3) + สร้าง instance + task แรก (06) ใน transaction เดียว · **ร้าน+งวดซ้ำ → 409**
 - [ ] `PUT /documents/{docNo}` — ตรวจสิทธิ์ section ผู้เรียก = current_section (403 ถ้าไม่ใช่) · **%ชดเชยรวม ≠ 100% → 400** message ตาม SRS
@@ -216,15 +230,15 @@
 
 ### ✔ เกณฑ์ตรวจรับ Phase 3 — integration test เดินเรื่องจริง (supertest + postgres)
 
-**Scenario 1 — เส้นทางปกติ ≤ 100,000 (จบที่ GM):**
-1. login role 06 → `POST /documents` (ยอด 80,000) → 201 ได้ `docNo` รูป `2569/xxxxx` · เช็ค DB: status "รอฝ่าย SBP DSA ดำเนินการ" + task 06 เปิด
+**Scenario 1 — เส้นทางปกติ ≤ 50,000 (จบที่ GM):**
+1. login role 06 → `POST /documents` (ยอด 40,000) → 201 ได้ `docNo` รูป `2569/xxxxx` · เช็ค DB: status "รอฝ่าย SBP DSA ดำเนินการ" + task 06 เปิด
 2. `POST .../actions` result "ส่งเจ้าหน้าที่ SBP DSA" → 200 · status → รอ 08 · task 06 ปิด, task 08 เปิด
 3. login role 08 → actions "คำนวณเงินชดเชยเรียบร้อย" → รอ 01
 4. login role 01 → `PUT /documents/{docNo}` %ชดเชยรวม 100 → 200 · actions "เห็นควรชดเชย" → รอ 02
-5. login role 02 → actions "เห็นควรชดเชย" (80,000 ≤ 100k) → **สถานะ "เสร็จสิ้นดำเนินการ"** · ไม่มี task เปิดเหลือ · consideration_logs แถวสุดท้าย result_category=APPROVE
+5. login role 02 → actions "เห็นควรชดเชย" (40,000 ≤ 50k) → **สถานะ "เสร็จสิ้นดำเนินการ"** · ไม่มี task เปิดเหลือ · consideration_logs แถวสุดท้าย result_category=APPROVE
 
-**Scenario 2 — เส้นทาง > 100,000 (ผ่าน AVP):**
-1. สร้างเอกสารยอด 150,000 เดิน 06→08→01→02 เหมือน Scenario 1
+**Scenario 2 — เส้นทาง 50,001–300,000 (ผ่าน AVP):**
+1. สร้างเอกสารยอด 150,000 (อยู่ในช่วง 50,001–300,000) เดิน 06→08→01→02 เหมือน Scenario 1
 2. ขั้น 02 "เห็นควรชดเชย" → status **รอ 03** (ไม่จบ) · task 03 เปิด
 3. login role 03 → actions "เห็นควรชดเชย" → เสร็จสิ้นดำเนินการ
 
@@ -244,8 +258,8 @@
 
 ## Phase 4 — Reports + Dashboard (2 + 1 เส้น)
 
-- [ ] `GET /reports/status-summary` — **ปี (พ.ศ.) required → 400** · filter ครบ 6 ตัว:
-  - `status` (6 ค่า) · `result` (**ประกันรายได้/ไม่ประกันรายได้** — จาก `consideration_logs.result_category` **ล่าสุด** APPROVE/REJECT) · `region` (13 รหัส: BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL + ภาคใหม่อัตโนมัติ) · `storeType` (A/B/C/D เลือกได้หลายค่า) · `impactedStoreCode` · `newStoreCode`
+- [ ] `GET /reports/status-summary` — **ปี (ค.ศ.) required → 400** · filter ครบ 6 ตัว:
+  - `status` (6 ค่า) · `result` (**ประกันรายได้/ไม่ประกันรายได้** — จาก `consideration_logs.result_category` **ล่าสุด** APPROVE/REJECT) · `region` (13 รหัส: BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL + ภาคใหม่อัตโนมัติ) · `storeType` (**A/B/C/E** เลือกได้หลายค่า — ยืนยันจากภาพหน้าจอ K2 จริง) · `impactedStoreCode` · `newStoreCode`
   - ออกเฉพาะรายการ**มีเลขเอกสาร** · SQL ตาม `SQL_BY_PATH` ($queryRaw parameterized)
 - [ ] `GET /reports/status-summary/export` — เงื่อนไขเดียวกัน → **CSV UTF-8 มี BOM** (`﻿`) · เก็บสำเนา `storage/exports/` + ส่งไฟล์กลับ (Content-Disposition)
 - [ ] `GET /dashboard/summary` — ตัวเลข 4 ก้อน + chart data (SQL ตาม SQL_BY_PATH) · **cache in-memory TTL 5 นาที**
@@ -335,7 +349,7 @@
 ## Phase 7 — Hardening & Delivery
 
 - [ ] script เทียบ route table กับ `api.md` — รายงาน **"62/62 matched"** path/method ตรงทุกตัว (+ ยืนยัน abnormal-stores 2 เส้น**ไม่มี** route)
-- [ ] `openapi.yaml` ครบ 62 เส้น + ตัวอย่าง request/response ตรง plan-api.html
+- [ ] `openapi.yaml` ครบ 44 เส้น + ตัวอย่าง request/response ตรง plan-api.html
 - [ ] security: rate limit login (มีแล้ว P1 — ทวน) · pino redact token/รหัสผ่าน/Authorization header · สแกนยืนยัน**ไม่มี secret ใน DB** (`SELECT * FROM system_configs WHERE config_key ~* 'password|secret|token'` → 0 แถว) และไม่มีใน log
 - [ ] index DB จุด query หนัก: `compensation_documents(status_code, current_section_code)` · `(impact_process_id)` · `compensation_histories(submit_account_month)` · `workflow_tasks(section_code, status)`
 - [ ] graceful shutdown: SIGTERM/SIGINT → หยุดรับ request → รอ job ที่กำลังรัน → `prisma.$disconnect()` · `GET /readyz` เช็ค DB
@@ -369,7 +383,7 @@
 | 11 | GET | /documents/{docNo}/timeline | consideration_logs (R) | 3 |
 | 12 | POST | /documents/{docNo}/attachments | document_attachments (W) | 3 |
 | 13 | GET | /documents/{docNo}/sales | sales_transactions, fgi_impact_sales_summaries (R) | 3 |
-| 14 | GET | /stores/search | stores / impacted_stores (R) | 2 |
+| 14 | — | ~~/stores/search~~ ตัดออก → `GET /store/search` (ระบบ SBP เดิม) | — | 0 |
 | 15 | GET | /competitors | competitors (R) | 2 |
 | 16 | GET | /document-statuses | document_statuses (R) | 2 |
 | 17 | GET | /workflow-sections | workflow_sections (R) | 2 |
@@ -450,7 +464,7 @@
 |---|---|---|
 | 1 | รอฝ่าย SBP DSA ดำเนินการ | 06 |
 | 2 | รอเจ้าหน้าที่ SBP DSA ดำเนินการ | 08 |
-| 3 | รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ | 01 |
+| 3 | รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ | 01 |
 | 4 | รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ | 02 |
 | 5 | รอผู้บริหารสำนักบริหาร SBP ดำเนินการ | 03 |
 | 6 | เสร็จสิ้นดำเนินการ | — (END) |
