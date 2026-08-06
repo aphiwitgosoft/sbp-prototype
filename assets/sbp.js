@@ -58,13 +58,13 @@
     // ตัดออกถาวร 2026-08-06 — ไม่ใช้หน้า Overview (index.html) แล้ว · หน้าแรกของระบบคือ "เอกสาร → รอดำเนินการ"
     // (index.html เหลือเป็น redirect stub ไป k2-list-waiting.html เพื่อให้ open index.html / http.server ยังใช้ได้)
     // { key:'home',        label:'Overview',                href:'index.html',        icon:I.home,      group:'ระบบประกันรายได้ (SBP Mall)' },
+    { key:'k2-create',   label:'สร้างเอกสาร',             href:'k2-create.html',    icon:I.plus,      group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'k2-docs',     label:'เอกสาร',                  icon:I.badge,             group:'ระบบประกันรายได้ (SBP Mall)', children:[
       { key:'k2-list-waiting',  label:'รอดำเนินการ',   href:'k2-list-waiting.html' },   // = หน้าแรกของระบบ (2026-08-06)
       { key:'k2-list-related',  label:'ที่เกี่ยวข้อง',  href:'k2-list-related.html' }
       // เมนู "ข้อมูลผิดปกติ / แจกงาน" ถูกยกเลิกและลบไฟล์ทิ้งแล้ว (2026-08-06) —
       // ข้อมูลผิดปกติแสดงเป็นธงแถวแดง + stat card "ยอดขายไม่ครบ 60 วัน" ในสองเมนูด้านบนแทน
     ]},
-    { key:'k2-create',   label:'สร้างเอกสาร',             href:'k2-create.html',    icon:I.plus,      group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'k2-report',   label:'รายงานสรุปสถานะ',         href:'k2-report.html',    icon:I.statement, group:'ระบบประกันรายได้ (SBP Mall)' },
     // ตัดออกถาวร 2026-08-05 — กำหนดผู้ปฏิบัติงาน (SRS 3.1.8) และสิทธิ์การเข้าถึงเมนู (SRS 3.1.1) ใช้ระบบ SBP เดิม
     // (auth-backend/ABS: groups/menus/permissions · หน้า /setting/manage-user-rights + prepared approvers ของ @srm/glb-workflow)
