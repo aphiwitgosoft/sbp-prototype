@@ -1,0 +1,92 @@
+[
+  {
+    "out": "modal-add-competitor.png",
+    "title": "Modal เพิ่มร้านคู่แข่งเปิดกระทบ",
+    "w": 628,
+    "h": 458
+  },
+  {
+    "out": "modal-edit-factor.png",
+    "title": "Modal แก้ไขปัจจัยอื่น ๆ",
+    "w": 628,
+    "h": 465
+  },
+  {
+    "out": "modal-attach-file.png",
+    "title": "Modal แนบเอกสาร",
+    "w": 628,
+    "h": 537
+  },
+  {
+    "out": "modal-attach-detail.png",
+    "title": "Modal รายละเอียดไฟล์แนบ + ปุ่มดาวน์โหลด",
+    "w": 628,
+    "h": 557
+  },
+  {
+    "out": "modal-decision-history.png",
+    "title": "Modal รายละเอียดผลการพิจารณา (ประวัติ)",
+    "w": 628,
+    "h": 573
+  },
+  {
+    "out": "validate-percent-100.png",
+    "title": "Validation: %ชดเชยรวมไม่เท่ากับ 100%",
+    "w": 458,
+    "h": 177
+  },
+  {
+    "out": "validate-no-decision.png",
+    "title": "Validation: ยังไม่เลือกผลการพิจารณา",
+    "w": 458,
+    "h": 199
+  },
+  {
+    "out": "validate-competitor-required.png",
+    "title": "Validation: ยังไม่เลือกร้านคู่แข่ง",
+    "w": 458,
+    "h": 177
+  },
+  {
+    "out": "confirm-bulk-delete.png",
+    "title": "Popup ยืนยันลบรายการที่เลือก",
+    "w": 458,
+    "h": 199
+  },
+  {
+    "out": "section-bulk-bar.png",
+    "title": "แถบดำเนินการกับรายการที่เลือก (ร้านคู่แข่งเปิดกระทบ)",
+    "w": 1150,
+    "h": 393
+  },
+  {
+    "out": "section-calc-fs-iframe.png",
+    "title": "ส่วนคำนวณเงินชดเชย (iframe ของระบบ FS)",
+    "w": 1150,
+    "h": 666
+  },
+  {
+    "out": "section-decision-panel.png",
+    "title": "แผงพิจารณา (ส่งดำเนินการ)",
+    "w": 1150,
+    "h": 445
+  },
+  {
+    "out": "list-quickbar.png",
+    "title": "แถบ Selected Filter + Quick Search",
+    "w": 1100,
+    "h": 82
+  },
+  {
+    "out": "modal-add-competitor-master.png",
+    "title": "Modal เพิ่มรายชื่อคู่แข่ง (master)",
+    "w": 628,
+    "h": 629
+  },
+  {
+    "out": "modal-add-factor-master.png",
+    "title": "Modal เพิ่มปัจจัยภายนอก (master)",
+    "w": 628,
+    "h": 543
+  }
+]

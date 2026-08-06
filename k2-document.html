@@ -290,7 +290,7 @@
       </div>
 
       <!-- ส่วน พิจารณา (ตัวเลือกเปลี่ยนตามบทบาท/ขั้นตอน) -->
-      <div class="card" style="border-left:5px solid var(--primary);">
+      <div class="card" id="sec-decision" style="border-left:5px solid var(--primary);">
         <div class="card-head"><h2>พิจารณา (ส่งดำเนินการ)</h2><span id="decHint" class="pill info" style="margin-left:auto;"></span></div>
         <div id="decisionOptions" style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px;"></div>
         <p id="zeroRuleHint" hidden style="font-size:12px;line-height:1.7;color:#7a5b12;background:#fff8ec;border:1px solid #f0dcb4;border-radius:8px;padding:9px 12px;margin:0 0 14px;"></p>
@@ -673,7 +673,7 @@
           }
           if (!rows.length) return;
           var title = (card.querySelector('h2') || {}).textContent || 'รายการนี้';
-          confirmPopup('ยืนยันลบรายการที่เลือก ' + rows.length + ' รายการ ออกจาก "' + title + '" หรือไม่ · การลบจะมีผลจริงเมื่อกดปุ่ม "บันทึก"',
+          confirmPopup('ยืนยันลบรายการที่เลือก ' + rows.length + ' รายการ ออกจาก "' + title + '" หรือไม่ · ระบบจะบันทึกทันทีเมื่อกดยืนยัน',
             'ยืนยันลบ ' + rows.length + ' รายการ', function(){
               rows.forEach(function(c){ var tr = c.closest('tr'); if (tr) tr.remove(); });
               if (head) head.checked = false;
@@ -683,7 +683,7 @@
                   '" style="text-align:center;color:var(--muted);padding:22px 0;">— ไม่มีข้อมูลในส่วนนี้ —</td></tr>';
               }
               syncBulk(card);
-              toast('ลบรายการที่เลือก ' + rows.length + ' รายการแล้ว · กด "บันทึก" เพื่อยืนยัน', 'del');
+              toast('ลบรายการที่เลือก ' + rows.length + ' รายการเรียบร้อย', 'del');
             });
         });
       });
