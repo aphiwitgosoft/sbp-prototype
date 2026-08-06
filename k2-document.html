@@ -13,6 +13,9 @@
 
       <!-- ตัวสลับบทบาท / ขั้นตอน Workflow (จำลองมุมมองตามผู้ดำเนินการ) -->
       <div class="card" id="roleBar" style="border-left:5px solid var(--primary);">
+        <button class="rb-close" id="rbClose" type="button" title="ปิดแถบขั้นตอน Workflow" aria-label="ปิดแถบขั้นตอน Workflow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
         <div style="display:flex;gap:14px 18px;align-items:center;flex-wrap:wrap;">
           <div style="display:flex;gap:10px;align-items:center;color:#2b3440;font-weight:600;font-size:14px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM19 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 8v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3 3M9 4h8a2 2 0 0 1 2 2v6"/></svg>
@@ -212,11 +215,11 @@
       <!-- ส่วน เอกสารแนบทั้งหมด -->
       <div class="card">
         <div class="card-head"><h2>เอกสารแนบทั้งหมด</h2>
-          <button class="btn btn-soft btn-sm" style="margin-left:auto;" data-ack="แนบไฟล์ (สูงสุด 5 MB ต่อไฟล์)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> แนบไฟล์</button>
+          <button class="btn btn-soft btn-sm" style="margin-left:auto;" id="btnAttachAll"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> แนบเอกสาร</button>
         </div>
-        <div class="table-wrap"><table class="data">
+        <div class="table-wrap"><table class="data" id="tblAttachAll">
           <thead><tr><th>ไฟล์แนบ</th><th>ตำแหน่ง</th><th>ผู้สร้างแนบไฟล์</th><th>รายละเอียดเพิ่มเติม</th><th>วัน/เดือน/ปี</th></tr></thead>
-          <tbody>
+          <tbody id="tbAttachBody">
             <tr><td class="num">impact_report.pdf</td><td>ฝ่าย บธฟ</td><td>Chantaporn Banchuen</td><td>รายงานยอดขายย้อนหลัง</td><td class="num">12/06/2569</td></tr>
             <tr><td class="num">map_allmap.pdf</td><td>ฝ่าย SBP DSA</td><td>Somchai Jaidee</td><td>แผนที่จาก AllMap</td><td class="num">12/06/2569</td></tr>
           </tbody>
@@ -241,21 +244,19 @@
         <div class="table-wrap"><table class="data" id="tblCompHistory" style="min-width:880px;">
           <thead><tr><th>ครั้ง</th><th>เดือน/ปีที่กระทบ</th><th>จำนวนเงินที่ชดเชย</th><th>เดือน/ปีที่ส่งบัญชี</th><th>สถานะเอกสาร</th><th>ผลการพิจารณา</th><th class="col-action">เอกสาร</th></tr></thead>
           <tbody>
-            <tr data-href="k2-document.html" title="คลิกเพื่อเปิดเอกสาร"><td class="num">1</td><td class="num">11/2566</td><td class="num">48,200.00</td><td class="num">12/2566</td><td>เสร็จสิ้นดำเนินการ</td><td>ฝ่ายส่งเสริมธุรกิจ SBP พิจารณา (ชดเชย)</td><td class="col-action"><button class="icon-btn" data-href="k2-document.html" title="เปิดเอกสาร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg></button></td></tr>
-            <tr data-href="k2-document.html" title="คลิกเพื่อเปิดเอกสาร"><td class="num">2</td><td class="num">05/2569</td><td class="num">48,200.00</td><td class="num">-</td><td>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</td><td>-</td><td class="col-action"><button class="icon-btn" data-href="k2-document.html" title="เปิดเอกสาร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg></button></td></tr>
+            <tr data-href="k2-document.html" title="คลิกเพื่อเปิดเอกสาร"><td class="num">1</td><td class="num">11/2566</td><td class="num">48,200.00</td><td class="num">12/2566</td><td>เสร็จสิ้นดำเนินการ</td><td>หน่วยงานส่งเสริมธุรกิจ SBP พิจารณา (ชดเชย)</td><td class="col-action"><button class="icon-btn" data-href="k2-document.html" title="เปิดเอกสาร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg></button></td></tr>
+            <tr data-href="k2-document.html" title="คลิกเพื่อเปิดเอกสาร"><td class="num">2</td><td class="num">05/2569</td><td class="num">48,200.00</td><td class="num">-</td><td>รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</td><td>-</td><td class="col-action"><button class="icon-btn" data-href="k2-document.html" title="เปิดเอกสาร"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg></button></td></tr>
           </tbody>
         </table></div>
       </div>
 
       <!-- ส่วน ผลการพิจารณา -->
       <div class="card">
-        <div class="card-head"><h2>ผลการพิจารณา (ประวัติ)</h2></div>
+        <div class="card-head"><h2>ผลการพิจารณา (ประวัติ)</h2><span id="decHistHint" class="pill info" style="margin-left:auto;"></span></div>
+        <p style="font-size:12px;color:var(--muted);margin:-2px 0 10px;">แสดงเฉพาะขั้นที่ดำเนินการมาก่อนหน้าบทบาทที่เลือกในแถบ “ขั้นตอน Workflow ตามบทบาท” · คลิกแถวเพื่อดูรายละเอียดและเอกสารแนบของการพิจารณานั้น</p>
         <div class="table-wrap"><table class="data" id="tblDecisionHistory" style="min-width:880px;">
-          <thead><tr><th>ชื่อผู้พิจารณา</th><th>ตำแหน่ง</th><th>ผลการพิจารณา</th><th>รายละเอียดการพิจารณา</th><th>วัน/เวลา</th></tr></thead>
-          <tbody>
-            <tr title="คลิกเพื่อดูรายละเอียด"><td>Chantaporn Banchuen</td><td>ฝ่าย บธฟ</td><td>ฝ่ายส่งเสริมธุรกิจ SBP พิจารณา</td><td>เห็นควรชดเชยตามเกณฑ์</td><td class="num">15/12/2566 11.45.09 น.</td></tr>
-            <tr title="คลิกเพื่อดูรายละเอียด"><td>Somchai Jaidee</td><td>ฝ่าย SBP DSA</td><td>ส่งหน่วยงานส่งเสริมธุรกิจ SBP</td><td>ตรวจสอบเอกสารครบถ้วน</td><td class="num">12/06/2569 09.20.33 น.</td></tr>
-          </tbody>
+          <thead><tr><th>ชื่อผู้พิจารณา</th><th>ตำแหน่ง</th><th>ผลการพิจารณา</th><th>รายละเอียดการพิจารณา</th><th>เอกสารแนบ</th><th>วัน/เวลา</th></tr></thead>
+          <tbody id="tbDecHistBody"></tbody>
         </table></div>
       </div>
 
@@ -268,7 +269,7 @@
         </div>
         <p style="font-size:12px;color:var(--muted);margin:0 0 2px;">แนบไฟล์ ≤ 5 MB ต่อไฟล์ · รองรับ pdf, doc, docx, xls, xlsx, ppt, jpg, gif, tif, zip, mp3, mov, txt, csv ฯลฯ</p>
         <div class="toolbar" style="justify-content:flex-end;margin:12px 0 0;">
-          <button class="btn btn-ghost btn-sm" data-ack="แนบรูปภาพไฟล์ (≤ 5 MB)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> แนบรูป</button>
+          <button class="btn btn-ghost btn-sm" id="btnAttachDec"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg> แนบเอกสาร</button>
           <button class="btn btn-muted btn-sm" data-ack="บันทึกข้อมูล (ไม่ตรวจ require field)">บันทึก</button>
           <button class="btn btn-primary btn-sm" id="btnDecSend"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z"/></svg> ส่งดำเนินการ</button>
         </div>
@@ -302,9 +303,39 @@
           <div class="field"><label>ผลการพิจารณา</label><input id="dhResult" readonly></div>
           <div class="field"><label>วัน/เวลา</label><input id="dhDatetime" readonly></div>
           <div class="field col-2"><label>รายละเอียดการพิจารณา</label><textarea id="dhDetail" rows="3" readonly></textarea></div>
+          <div class="field col-2"><label>เอกสารแนบของการพิจารณานี้</label>
+            <div id="dhFiles" style="display:flex;flex-wrap:wrap;gap:8px;padding:10px 2px 2px;"></div>
+          </div>
         </div>
       </div>
       <div class="modal-foot"><button class="btn btn-muted btn-sm" id="decHistOk">ปิด</button></div>
+    </div>
+  </div>
+
+  <!-- modal แนบเอกสาร (ใช้ร่วมกันทั้งปุ่มในการ์ดเอกสารแนบ และปุ่มในแผงพิจารณา) -->
+  <div class="modal-overlay" id="attachPop">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="mh-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></div>
+        <div><h3>แนบเอกสาร</h3><div class="mh-sub" id="atSub">แนบไฟล์เข้าเอกสารประกันรายได้</div></div>
+        <button class="modal-close" id="atClose" style="margin-left:auto;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field col-2"><label>ไฟล์ที่ต้องการแนบ <span style="color:var(--danger);">*</span></label>
+            <input type="file" id="atFile" multiple>
+            <div id="atPicked" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
+          </div>
+          <div class="field"><label>ตำแหน่ง / ขั้นตอนที่แนบ</label><input id="atSection" readonly></div>
+          <div class="field"><label>ผู้แนบไฟล์</label><input id="atBy" value="ภัชริดา ประดิษฐ์ทองใส" readonly></div>
+          <div class="field col-2"><label>รายละเอียดเพิ่มเติม</label><textarea id="atNote" rows="2" placeholder="ระบุรายละเอียดของเอกสารที่แนบ..."></textarea></div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:10px 0 0;">ไฟล์ละไม่เกิน <b>5 MB</b> · รองรับ pdf, doc/docx, xls/xlsx, ppt/pps/pot, csv, txt, xml, htm/html, jpg, gif, tif/tiff, zip, mp3, wav, mpg, mov, vsd, dwg, afp, mda, ivs</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-muted btn-sm" id="atCancel">ยกเลิก</button>
+        <button class="btn btn-primary btn-sm" id="atOk">แนบเอกสาร</button>
+      </div>
     </div>
   </div>
 
@@ -331,6 +362,13 @@
   #roleBar{position:sticky; top:var(--header-h); z-index:30; transition:box-shadow .18s, padding .18s;}
   #roleBar.stuck{box-shadow:0 12px 28px rgba(31,72,104,.18); padding-top:12px; padding-bottom:12px;}
   #roleBar.stuck .rb-hint{display:none;}
+  /* ปุ่มปิดแถบ (มุมขวาบน) + ชิปเรียกกลับเมื่อปิดแล้ว */
+  #roleBar > div:first-child{padding-right:42px;}
+  .rb-close{position:absolute; top:12px; right:14px; width:30px; height:30px; padding:0; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; color:#8493a5;
+    background:#fff; border:1px solid var(--line); border-radius:8px;
+    transition:background .15s, color .15s, border-color .15s;}
+  .rb-close:hover{background:#f3f6fb; color:#2b3440; border-color:#c9d3df;}
   </style>
 
   <script src="assets/sbp.js"></script>
@@ -346,19 +384,39 @@
       { key:'sbpdsa-officer', role:'เจ้าหน้าที่ SBP DSA (Officer Franchise · section_code 08)', status:'รอเจ้าหน้าที่ SBP DSA ดำเนินการ', pill:'violet', edit:['sec-calc'], opts:[
         { label:'คำนวณเงินชดเชยเรียบร้อย → ส่งหน่วยงานส่งเสริมธุรกิจฯ' },
         { label:'ส่งกลับฝ่าย SBP DSA' } ] },
-      { key:'opt-mgr', role:'ฝ่ายส่งเสริมธุรกิจฯ (Manager OPT · section_code 01)', status:'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ', pill:'info', edit:['sec-newstore','sec-competitor','sec-factor'], opts:[
+      { key:'opt-mgr', role:'หน่วยงานส่งเสริมธุรกิจฯ (ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ + เจ้าหน้าที่อาวุโส · section_code 01)', status:'รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ', pill:'info', edit:['sec-newstore','sec-competitor','sec-factor'], opts:[
         { label:'เห็นควรชดเชย → GM ส่งเสริมธุรกิจฯ' },
         { label:'เห็นควรไม่ชดเชย → ฝ่าย SBP DSA', req:true },
         { label:'ฝ่าย SBP DSA ดำเนินการ (ส่งกลับ)' } ] },
       { key:'opt-gm', role:'GM ส่งเสริมธุรกิจฯ (GM OPT · section_code 02)', status:'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ', pill:'info', edit:[], money:true, opts:[
         { label:'เห็นควรชดเชย', money:'approve' },
         { label:'เห็นควรไม่ชดเชย', money:'reject' },
-        { label:'ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP' } ] },
+        { label:'ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP' } ] },
       { key:'avp', role:'ผู้บริหารสำนักบริหาร SBP (AVP OPT · section_code 03)', status:'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill:'info', edit:[], opts:[
         { label:'เห็นควรชดเชย → เสร็จสิ้นดำเนินการ', end:true },
         { label:'เห็นควรไม่ชดเชย → รอฝ่าย SBP DSA' },
         { label:'ส่งกลับ GM ส่งเสริมธุรกิจฯ' } ] }
       /* ตัดบทบาทบัญชี 04/05 ตาม SDD v7.5 — บัญชีตรวจผ่านรายงาน SBP Mall นอก workflow */
+    ];
+
+    /* ประวัติผลการพิจารณา — เรียงตามลำดับขั้น workflow (index ตรงกับ ROLES)
+       เมื่อเลือกบทบาทที่ขั้น i จะแสดงเฉพาะขั้น 0..i-1 ที่ "ดำเนินการไปแล้ว" */
+    var HISTORY = [
+      { name:'Somchai Jaidee',        position:'ฝ่าย SBP DSA',                 result:'ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ',
+        detail:'ตรวจสอบเอกสารและข้อมูลร้านครบถ้วน ส่งให้เจ้าหน้าที่คำนวณเงินชดเชย',
+        datetime:'12/06/2569 09.20.33 น.', files:['map_allmap.pdf'] },
+      { name:'Nattapong Wongsa',      position:'เจ้าหน้าที่ SBP DSA',           result:'คำนวณเงินชดเชยเรียบร้อย → ส่งหน่วยงานส่งเสริมธุรกิจฯ',
+        detail:'คำนวณผ่านระบบ FS · ยอดชดเชยรวม 72,300.00 บาท (ร้านใหม่ 2 ร้าน)',
+        datetime:'13/06/2569 14.05.11 น.', files:['fs_calculation.xlsx','impact_report.pdf'] },
+      { name:'Chantaporn Banchuen',   position:'หน่วยงานส่งเสริมธุรกิจ SBP',    result:'เห็นควรชดเชย → GM ส่งเสริมธุรกิจฯ',
+        detail:'เห็นควรชดเชยตามเกณฑ์ · ตรวจสอบร้านเปิดใหม่และปัจจัยภายนอกแล้ว',
+        datetime:'15/06/2569 11.45.09 น.', files:['promotion_memo.pdf'] },
+      { name:'Wirat Chaiyaporn',      position:'GM ส่งเสริมธุรกิจ SBP',        result:'เห็นควรชดเชย (วงเงิน 50,001–300,000 → AVP)',
+        detail:'อนุมัติในวงเงิน GM ไม่ได้เพราะเกิน 50,000 ส่งต่อผู้บริหารสำนักบริหาร SBP',
+        datetime:'17/06/2569 10.02.47 น.', files:[] },
+      { name:'Kanyarat Siratana',     position:'ผู้บริหารสำนักบริหาร SBP (AVP)', result:'เห็นควรชดเชย → เสร็จสิ้นดำเนินการ',
+        detail:'อนุมัติวงเงินชดเชยตามที่เสนอ · จบกระบวนการ',
+        datetime:'18/06/2569 16.30.02 น.', files:['avp_approval.pdf'] }
     ];
 
     function $(id){ return document.getElementById(id); }
@@ -368,8 +426,27 @@
     function fmt(n){ return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
     function roleByKey(k){ return ROLES.filter(function(r){return r.key===k;})[0] || ROLES[0]; }
 
+    var currentRoleKey = '';
+
+    /* ประวัติเปลี่ยนตามบทบาทที่เลือก — แสดงเฉพาะขั้นก่อนหน้าที่ดำเนินการไปแล้ว */
+    function renderHistory(stepIdx){
+      var tb = $('tbDecHistBody'), done = HISTORY.slice(0, stepIdx), html = '';
+      done.forEach(function(h, i){
+        var tags = h.files.length
+          ? h.files.map(function(f){ return '<span class="chip file" style="margin:2px 4px 2px 0;">' + f + '</span>'; }).join('')
+          : '<span style="color:#b9c3cf;">—</span>';
+        html += '<tr title="คลิกเพื่อดูรายละเอียด" data-idx="' + i + '"><td>' + h.name + '</td><td>' + h.position +
+                '</td><td>' + h.result + '</td><td>' + h.detail + '</td><td>' + tags + '</td><td class="num">' + h.datetime + '</td></tr>';
+      });
+      if (!done.length) html = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:22px 0;">— ยังไม่มีประวัติการพิจารณา (บทบาทนี้เป็นขั้นแรกของเอกสาร) —</td></tr>';
+      tb.innerHTML = html;
+      $('decHistHint').textContent = done.length ? 'ดำเนินการมาแล้ว ' + done.length + ' ขั้น' : 'ขั้นแรก · ยังไม่มีประวัติ';
+    }
+
     function render(key){
       var r = roleByKey(key), i;
+      currentRoleKey = r.key;
+      renderHistory(ROLES.indexOf(r));
       $('docRole').textContent = r.role;
       var st = $('docStatus'); st.textContent = r.status; st.className = 'pill ' + r.pill;
       var st2 = $('docStatus2'); if (st2){ st2.textContent = r.status; st2.className = 'pill ' + r.pill; }
@@ -436,25 +513,78 @@
       $('k2popOk').addEventListener('click', function(){ $('k2pop').classList.remove('show'); });
       $('k2pop').addEventListener('click', function(e){ if(e.target===$('k2pop')) $('k2pop').classList.remove('show'); });
 
-      /* ผลการพิจารณา (ประวัติ) — คลิกแถวเพื่อดูรายละเอียดใน modal */
+      /* ผลการพิจารณา (ประวัติ) — คลิกแถวเพื่อดูรายละเอียด + เอกสารแนบ ใน modal (แถวถูก render ตามบทบาทใน renderHistory) */
       var dhPop = $('decHistPop');
       function dhClose(){ dhPop.classList.remove('show'); setTimeout(function(){ dhPop.style.display='none'; }, 200); }
-      document.querySelectorAll('#tblDecisionHistory tbody tr').forEach(function(tr){
-        tr.addEventListener('click', function(){
-          var c = tr.children;
-          $('dhName').value = c[0].textContent.trim();
-          $('dhPosition').value = c[1].textContent.trim();
-          $('dhResult').value = c[2].textContent.trim();
-          $('dhDetail').value = c[3].textContent.trim();
-          $('dhDatetime').value = c[4].textContent.trim();
-          dhPop.style.display = 'flex';
-          void dhPop.offsetHeight; /* force reflow ให้ transition ทำงานหลังเปลี่ยน display */
-          dhPop.classList.add('show');
-        });
+      $('tbDecHistBody').addEventListener('click', function(e){
+        var tr = e.target.closest('tr'); if (!tr || !tr.dataset.idx) return;
+        var h = HISTORY[parseInt(tr.dataset.idx, 10)];
+        $('dhName').value = h.name;
+        $('dhPosition').value = h.position;
+        $('dhResult').value = h.result;
+        $('dhDetail').value = h.detail;
+        $('dhDatetime').value = h.datetime;
+        var box = $('dhFiles'); box.innerHTML = '';
+        if (!h.files.length) {
+          box.innerHTML = '<span style="font-size:12.5px;color:var(--muted);">— ไม่มีเอกสารแนบในขั้นนี้ —</span>';
+        } else {
+          h.files.forEach(function(f){
+            var t = document.createElement('span');
+            t.className = 'chip file';
+            t.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5"/></svg>' + f;
+            t.title = 'เปิดไฟล์แนบ (ตัวอย่าง)';
+            box.appendChild(t);
+          });
+        }
+        dhPop.style.display = 'flex';
+        void dhPop.offsetHeight; /* force reflow ให้ transition ทำงานหลังเปลี่ยน display */
+        dhPop.classList.add('show');
       });
       $('decHistClose').addEventListener('click', dhClose);
       $('decHistOk').addEventListener('click', dhClose);
       dhPop.addEventListener('click', function(e){ if (e.target === dhPop) dhClose(); });
+
+      /* ===== modal แนบเอกสาร ===== */
+      var atPop = $('attachPop');
+      function atClose(){ atPop.classList.remove('show'); setTimeout(function(){ atPop.style.display='none'; }, 200); }
+      function atOpen(sub){
+        var r = roleByKey(currentRoleKey);
+        $('atSub').textContent = sub;
+        $('atSection').value = r.role.split(' (')[0];
+        $('atNote').value = ''; $('atFile').value = ''; $('atPicked').innerHTML = '';
+        atPop.style.display = 'flex'; void atPop.offsetHeight; atPop.classList.add('show');
+      }
+      $('atFile').addEventListener('change', function(){
+        var box = $('atPicked'); box.innerHTML = '';
+        Array.prototype.forEach.call(this.files, function(f){
+          var mb = f.size / (1024 * 1024), over = mb > 5;
+          var t = document.createElement('span');
+          t.className = 'chip file';
+          if (over) { t.style.background = '#fdecea'; t.style.color = '#c0392b'; }
+          t.textContent = f.name + ' · ' + mb.toFixed(2) + ' MB' + (over ? ' (เกิน 5 MB)' : '');
+          box.appendChild(t);
+        });
+      });
+      $('btnAttachAll').addEventListener('click', function(){ atOpen('แนบไฟล์เข้าเอกสารประกันรายได้ (เอกสารแนบทั้งหมด)'); });
+      $('btnAttachDec').addEventListener('click', function(){ atOpen('แนบเอกสารประกอบผลการพิจารณาของขั้นตอนนี้'); });
+      $('atClose').addEventListener('click', atClose);
+      $('atCancel').addEventListener('click', atClose);
+      atPop.addEventListener('click', function(e){ if (e.target === atPop) atClose(); });
+      $('atOk').addEventListener('click', function(){
+        var files = $('atFile').files;
+        if (!files.length){ popup('กรุณาเลือกไฟล์ที่ต้องการแนบ ก่อนกดแนบเอกสาร'); return; }
+        var over = Array.prototype.filter.call(files, function(f){ return f.size > 5 * 1024 * 1024; });
+        if (over.length){ popup('ไฟล์ "' + over[0].name + '" มีขนาดเกิน 5 MB กรุณาเลือกไฟล์ใหม่'); return; }
+        var tb = $('tbAttachBody'), note = $('atNote').value.trim() || '-';
+        Array.prototype.forEach.call(files, function(f){
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td class="num">' + f.name + '</td><td>' + $('atSection').value + '</td><td>' + $('atBy').value +
+                         '</td><td>' + note + '</td><td class="num">12/06/2569</td>';
+          tb.appendChild(tr);
+        });
+        atClose();
+        toast('แนบเอกสารเรียบร้อย ' + files.length + ' ไฟล์', 'ok');
+      });
 
       /* ส่งดำเนินการ — validate ผลการพิจารณา + ความคิดเห็น */
       $('btnDecSend').addEventListener('click', function(){
@@ -487,6 +617,13 @@
   <script>
   /* sticky แถบบทบาท: เพิ่มเงา + ย่อเมื่อถูกตรึงใต้ header */
   (function () {
+    /* ปุ่มปิดแถบขั้นตอน Workflow — กดแล้วซ่อนหายไปเลย (ไม่มีชิปเรียกกลับ · โหลดหน้าใหม่จะแสดงอีกครั้ง) */
+    (function () {
+      var bar = document.getElementById('roleBar'), btn = document.getElementById('rbClose');
+      if (!bar || !btn || bar.style.display === 'none') return;   // โหมดที่เกี่ยวข้อง: ซ่อนแถบอยู่แล้ว
+      btn.addEventListener('click', function () { bar.style.display = 'none'; });
+    })();
+
     var rb = document.getElementById('roleBar');
     if (!rb || rb.style.display === 'none') return;
     window.addEventListener('scroll', function () {

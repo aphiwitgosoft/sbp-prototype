@@ -62,7 +62,7 @@
         <div class="db-stat"><b>11</b><span>Batch Entry Points</span></div>
         <div class="db-stat"><b>5</b><span>Approval Sections</span></div>
         <div class="db-stat"><b>34</b><span>Tables ใน Schema รวม</span></div>
-        <div class="db-stat"><b>44</b><span>REST API Endpoints</span></div>
+        <div class="db-stat"><b>47</b><span>REST API Endpoints</span></div>
       </div>
 
       <div class="card">
@@ -119,7 +119,7 @@
 
           <!-- API -->
           <rect x="200" y="128" width="600" height="48" rx="12" fill="#0f172a"/>
-          <text x="500" y="149" text-anchor="middle" font-size="13" font-weight="700" fill="#86efac">REST API  /api/v1 · JSON · 44 เส้น (ผ่าน BFF ระบบเดิม)</text>
+          <text x="500" y="149" text-anchor="middle" font-size="13" font-weight="700" fill="#86efac">REST API  /api/v1 · JSON · 47 เส้น (ผ่าน BFF ระบบเดิม)</text>
           <text x="500" y="166" text-anchor="middle" font-size="10.5" fill="#9fb3cd">รายละเอียดทุกเส้นดูหน้า “API”</text>
 
           <line x1="500" y1="176" x2="500" y2="200" stroke="#8493a5" stroke-width="1.8" marker-end="url(#aa)"/>
@@ -238,7 +238,7 @@
             <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · ส่งพิจารณาด้วย POST /documents/{docNo}/actions payload เดียว {result, comment}; result เป็น 6-enum verbatim · บันทึก consideration_logs + อีเมลตาม status_email_rules · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
-            <div class="tl-t">8. ขั้นที่ 3: ฝ่ายส่งเสริมธุรกิจฯ ปรับข้อมูล <span class="ref k2">K2 · Section 01</span></div>
+            <div class="tl-t">8. ขั้นที่ 3: หน่วยงานส่งเสริมธุรกิจฯ ปรับข้อมูล <span class="ref k2">K2 · Section 01</span></div>
             <div class="tl-meta">แก้ไขร้านเปิดใหม่ / ร้านคู่แข่ง / ปัจจัยภายนอก (%ชดเชยรวมต้องเท่ากับ 100%) แล้วส่งพิจารณาต่อ หรือส่งกลับ (back-flow)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
@@ -325,7 +325,7 @@
                 <td>โซน B · ไม่แตะ FGI/FCS</td></tr>
               <tr><td>สร้างเอกสารแบบ manual</td>
                 <td class="int-old">ขั้น 15 (lane admin): กรอกข้อมูลร้านเปิดใหม่/ร้านถูกกระทบเอง เมื่อระบบคำนวณให้ไม่ได้</td>
-                <td class="int-new">หน้า "สร้างเอกสาร" (k2-create) → POST /documents ลงตารางชุดเดียวกับเส้นอัตโนมัติ — เป็นจุดเข้าเสริมฝั่งผู้ใช้ ไม่แตะ batch</td>
+                <td class="int-new">สร้างข้อมูลต้นทางที่ระบบ FS → รอ SBP Statement ส่งกลับ (~1 วัน) → POST /documents ลงตารางชุดเดียวกับเส้นอัตโนมัติ · ไม่มีฟอร์มสร้างเอกสารใน FE (ตัดสินใจ 2026-08-06 — k2-create เหลือเป็นหน้าอธิบายกระบวนการ)</td>
                 <td>โซน B · ไม่แตะ FGI/FCS</td></tr>
               <tr><td>เงื่อนไขร้านก่อน/หลัง 1/10/2557</td>
                 <td class="int-old">โน้ต 10.1–10.4 แยกจุดเริ่มเอกสารตามวันที่โอนร้านแฟรนไชส์ และกรณีไม่มีข้อมูลให้คำนวณ</td>

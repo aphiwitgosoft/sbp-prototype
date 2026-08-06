@@ -9,7 +9,7 @@ Prototype HTML แบบ click-through ภาษาไทยของระบ�
 ที่ยอดขายตกเมื่อมีสาขาใหม่เปิดในรัศมีกระทบ (1 กม. กทม./ปริมณฑล · 2 กม. ต่างจังหวัด)
 ระบบใหม่ชื่อ **SBPGI** รวม EAI + K2 เข้าเป็นระบบเดียว ฐานข้อมูลเดียว
 
-ไม่มี build/lint/test — เปิดด้วย `open index.html` หรือ `python3 -m http.server`
+ไม่มี build/lint/test — เปิดด้วย `open index.html` หรือ `python3 -m http.server` (ทั้งคู่เด้งไปหน้าแรกจริงคือ `k2-list-waiting.html` — `index.html` เหลือเป็น redirect stub)
 Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย่างต้องทำงาน offline ห้ามเพิ่ม CDN/library**
 
 ## กติกาเหล็ก (อ่านก่อนแก้อะไรทุกครั้ง)
@@ -30,7 +30,7 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 | 2 | `RDM-SRS-ประกันรายได้-K2-รายการหน้าจอ.md` (455 บรรทัด) | รายละเอียดต่อหน้าจอ: ฟิลด์ validation ข้อความ popup ตาราง role |
 | 3 | `ประกันรายได้-K2-รายการหน้าจอ.md` (160 บรรทัด) | ฉบับย่อ keyed ตามเลข section SRS + section_code + 8 role — **ไม่ใช่ไฟล์ซ้ำ** กับข้อ 2 |
 | 4 | `FGI_FCS_Batch_Job_Technical_Document_Improved_v4.0.pdf` | แหล่งความจริงเดียวของ batch Jobs 1–10 + 8b (ใช้กับ `job-batch.html`) |
-| 5 | `database.md` / `workflow.md` / `api.md` | **living docs** — การออกแบบระบบใหม่ (schema 29 ตาราง / flow 12 ขั้น / API 44 เส้น 9 กลุ่ม — RBAC/ผู้ปฏิบัติงานใช้ระบบ SBP เดิม · ตัดสินใจ 2026-08-05) canonical กว่า HTML เมื่อขัดแย้ง |
+| 5 | `database.md` / `workflow.md` / `api.md` | **living docs** — การออกแบบระบบใหม่ (schema 34 ตาราง / flow 12 ขั้น / API 47 เส้น 9 กลุ่ม — RBAC/ผู้ปฏิบัติงานใช้ระบบ SBP เดิม · ตัดสินใจ 2026-08-05) canonical กว่า HTML เมื่อขัดแย้ง |
 | 6 | `PLAN-checklist-prototype.md` | checklist สถานะ implement — **ภายในขัดแย้งกันเอง** เช็ค HTML จริงก่อนเชื่อ |
 
 `SRS_Income_Compensation_v3.1.md` เป็น markdown แปลงจาก SRS pdf · `workflow_status_document.md` = ตารางสถานะ/อีเมล
@@ -52,7 +52,7 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 
 **แก้สิทธิ์/role** — **ตัดสินใจ 2026-08-05: ใช้ระบบ SBP เดิม** (auth-backend/ABS: groups/menus/permissions ต่อ URL · จัดการผ่านหน้า `/setting/manage-user-rights` ของ FE เดิม) — SBPGI ไม่มีตาราง `roles`/`menus`/`menu_permissions`/`user_accounts`/`operator_assignments` และไม่มีหน้า/เมนู `k2-permissions.html` · `k2-operators.html` แล้ว (ไฟล์เก็บไว้อ้างอิง · 8 role ดูตารางใน [references/domain.md](references/domain.md) — map เป็น group ของระบบเดิม)
 
-**เรื่องหน้าข้อมูลผิดปกติ (`k2-list-abnormal.html`)** — ปิดชั่วคราวรอตัดสินใจ: comment อยู่ที่ MODULES, index.html shortcuts, กลุ่ม API 2 เส้นใน plan-api.html · ไฟล์ยังอยู่ครบ เปิดคืนได้โดย uncomment
+**หน้าที่ตัดออกถาวร 2026-08-06** — (1) **Overview** (`index.html`) เหลือเป็น redirect stub · หน้าแรกคือ `k2-list-waiting.html` (ค่าคุมอยู่ที่ `HOME_KEY`/`HOME_HREF` ใน sbp.js) (2) **ข้อมูลผิดปกติ / แจกงาน** — **ลบไฟล์ `k2-list-abnormal.html` ทิ้งแล้ว** พร้อมเมนูใน MODULES และกลุ่ม API 2 เส้นใน plan-api.html · ข้อมูลผิดปกติเหลือเป็นธงแถวแดง + stat card "ยอดขายไม่ครบ 60 วัน" ในหน้ารอดำเนินการ/ที่เกี่ยวข้อง
 
 ## เอกสารอ้างอิงใน skill นี้
 

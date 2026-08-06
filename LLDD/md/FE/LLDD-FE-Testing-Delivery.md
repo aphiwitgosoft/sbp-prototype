@@ -38,7 +38,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Build identity | commit SHA, build number, deploy timestamp | freeze before regression |
 | API identity | base URL and contract version | no production credentials in evidence |
 | Role users | one account per tested RBAC role/profile | masked identifiers in shared evidence |
-| Document fixtures | docNo per current section plus <=100,000 and >100,000 cases | resettable or uniquely generated |
+| Document fixtures | docNo per current section plus <=50,000 (GM) and 50,001-300,000 (AVP) cases per SDD GI | resettable or uniquely generated |
 | File fixtures | valid type, >5MB, unsupported type, AV-blocked stub | checksum recorded |
 | Job fixtures | SUCCESS/FAILED/RUNNING/QUEUED histories | read-only unless manual-run case |
 

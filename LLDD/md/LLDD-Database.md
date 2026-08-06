@@ -2,7 +2,7 @@
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
-> ปรับตาม SDD GI 24/02/2026 (วงเงิน GM 50,000 / AVP 300,000) + การตัดสินใจใช้ระบบสิทธิ์เดิม 2026-08-05 — ตัดตาราง `roles`/`menus`/`menu_permissions`/`user_accounts`/`operator_assignments` เหลือ 29 ตาราง
+> ปรับตาม SDD GI 24/02/2026 (วงเงิน GM 50,000 / AVP 300,000) + การตัดสินใจใช้ระบบสิทธิ์เดิม 2026-08-05 — ตัดตาราง `roles`/`menus`/`menu_permissions`/`user_accounts`/`operator_assignments` เหลือ 34 ตาราง
 
 ## 1. Purpose
 
@@ -16,7 +16,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 - ตัดขั้นบัญชี 04/05 ตาม SDD v7.5; workflow ใช้ section 06/08/01/02/03
 - มาตรฐานชื่อ table/column เป็น English lower_snake_case
 - ตาราง job_configs และ job_run_histories เป็น schema reference สำหรับ BE/dev; ไม่ใช่ scope ให้ FE Batch Monitor ทำ tab Database ที่ใช้
-- **ตัดสินใจ 2026-08-05:** RBAC/ผู้ปฏิบัติงาน (`roles`, `menus`, `menu_permissions`, `user_accounts`, `operator_assignments`) **ไม่สร้างใน SBPGI** — ใช้ระบบสิทธิ์/ผู้ใช้ของระบบ SBP เดิม (AWS Cognito + BFF + auth-backend/ABS · SBPGI รับ user context จาก header `x-user-id`/`x-user-group-id`/`x-user-permissions`) · schema เหลือ **29 ตาราง** (เดิม 34)
+- **ตัดสินใจ 2026-08-05:** RBAC/ผู้ปฏิบัติงาน (`roles`, `menus`, `menu_permissions`, `user_accounts`, `operator_assignments`) **ไม่สร้างใน SBPGI** — ใช้ระบบสิทธิ์/ผู้ใช้ของระบบ SBP เดิม (AWS Cognito + BFF + auth-backend/ABS · SBPGI รับ user context จาก header `x-user-id`/`x-user-group-id`/`x-user-permissions`) · schema เหลือ **34 ตาราง** (เดิม 34)
 
 ## 2.1 Input / Progress / Output Contract
 
@@ -477,7 +477,7 @@ RETURNING i.id, i.data_name, i.business_key;
 | document_statuses | 6 statuses: 5 waiting statuses + completed |
 | ~~roles~~ | **ตัดออก** — 8 role (00–10) ของ SRS map เป็น group ใน auth-backend ระบบเดิม (2026-08-05) |
 | email_templates | EM-01..EM-08 |
-| system_configs | impact radius 1/2 km, workflow.gm_amount_limit=50000, workflow.avp_amount_limit=300000 (SDD GI 24/02/2026 — แทน workflow.avp_amount_threshold=100000 เดิม), sales data threshold=60, growth rate threshold=-10 |
+| system_configs | impact radius 1/2 km, workflow.gm_amount_limit=50000, workflow.avp_amount_limit=300000 (SDD GI 24/02/2026 — แทน workflow.gm_amount_limit / workflow.avp_amount_limit=100000 เดิม), sales data threshold=60, growth rate threshold=-10 |
 | job_configs | Jobs 1-10 and 8b with enabled/schedule/default params as schema reference |
 
 ## 9. Migration and Verification Checklist

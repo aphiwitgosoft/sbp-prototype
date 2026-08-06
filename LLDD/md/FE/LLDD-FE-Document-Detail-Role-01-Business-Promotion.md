@@ -1,5 +1,8 @@
 # LLDD FE - Document Detail Role 01 Business Promotion
 
+> ℹ️ **อัปเดต 2026-08-06 (SDD GI):** ขั้นนี้เปลี่ยนคำเรียกเป็น **"หน่วยงานส่งเสริมธุรกิจ SBP"** ทุกจุด (รวมชื่อสถานะ "รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ") · เพิ่มบทบาท **เจ้าหน้าที่อาวุโส (Senior Officer)** ให้เข้าใช้งานขั้นนี้ได้ร่วมกับผู้จัดการฝ่าย/ผู้เชี่ยวชาญเดิม และส่งต่อ flow ให้ GM ส่งเสริมได้ (ตำแหน่งอ้าง HR Connect · ผู้รักษาการเป็นผู้อนุมัติไม่ได้) · **เห็นควรไม่ชดเชยที่ขั้นนี้ = จบกระบวนการทันที** ไม่ตีกลับ 06
+
+
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
 ## 1. Overview
@@ -9,13 +12,13 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Track | FE |
 | Estimate | 10 ชั่วโมง |
 | Owner | Kittisak <New> Kaeowika |
-| Objective | อธิบายหน้าจอ Document Detail สำหรับ role 01 - ฝ่ายส่งเสริมธุรกิจฯ |
+| Objective | อธิบายหน้าจอ Document Detail สำหรับ role 01 - หน่วยงานส่งเสริมธุรกิจฯ |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
 ## 2. Screen / Functional Scope
 
-- Role profile P-01 - ฝ่ายส่งเสริมธุรกิจฯ
+- Role profile P-01 - หน่วยงานส่งเสริมธุรกิจฯ
 - Visible/read-only/hidden section behavior
 - Editable field and validation behavior
 - Attachment upload behavior
@@ -41,9 +44,9 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Document Detail 
 
 | Item | Value |
 | --- | --- |
-| Role profile | P-01 - ฝ่ายส่งเสริมธุรกิจฯ |
+| Role profile | P-01 - หน่วยงานส่งเสริมธุรกิจฯ |
 | Workflow section/status code | 01 |
-| Document status shown | รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ |
+| Document status shown | รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ |
 | Purpose on this page | ปรับข้อมูลร้านเปิดใหม่ ร้านคู่แข่ง ปัจจัยอื่น และส่งผลพิจารณา |
 | Editable sections | sec-newstore, sec-competitor, sec-factor |
 | Hidden sections | sec-calc |
@@ -261,7 +264,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ### POST /api/v1/documents/{docNo}/actions
 
-ตัวอย่าง positive-path จาก section 01; Section 02 ใช้กรณียอดรวมมากกว่า 100,000 บาท
+ตัวอย่าง positive-path จาก section 01; Section 02 ใช้กรณียอดรวมมากกว่า 50,000 บาท (GM) / 300,000 บาท (AVP) ตาม SDD GI 24/02/2026
 
 #### Request
 

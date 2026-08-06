@@ -7,7 +7,7 @@
 
 ## ภาพรวม
 
-- **44 เส้น · 9 กลุ่มตามโดเมน** เป็น reference contract สำหรับ FE/BE alignment (+ กลุ่มข้อมูลผิดปกติ 2 เส้นที่ comment รอตัดสินใจ — ดูท้ายไฟล์)
+- **47 เส้น · 9 กลุ่มตามโดเมน** เป็น reference contract สำหรับ FE/BE alignment (กลุ่มข้อมูลผิดปกติ 2 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ — ดูท้ายไฟล์)
 - Base URL `/api/v1` · การยืนยันตัวตน: ผ่าน BFF ของระบบ SBP เดิม — SBPGI รับ user context จาก header (`x-api-key` + `x-user-id`/`x-user-group-id`/`x-user-permissions`) · callback ภายนอกใช้ API key/service token
 - **ตัดสินใจ 2026-08-05:** กลุ่ม Auth & สิทธิ์ผู้ใช้ (เดิมกลุ่ม 1 · 4 เส้น) และ API ผู้ปฏิบัติงาน/roles/menus/สิทธิ์เมนู (เดิมอยู่กลุ่ม Master Data · 14 เส้น) **ตัดออก — ใช้ระบบ SBP เดิม** (Cognito + BFF + auth-backend/ABS) ดูหัวข้อ "เส้นที่ตัดออก" ท้ายไฟล์ · เดิมนับเป็น 62 เส้น 10 กลุ่ม
 - แบ่งหน้า `?page=1&size=20` → ตอบ `{"page","size","total","items":[]}`
@@ -58,7 +58,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 | GET | `/tasks` | งานรอท่านดำเนินการ (inbox ของ section — k2-list-waiting) |
 | GET | `/documents` | ค้นหาเอกสารที่เกี่ยวข้อง — **บังคับระบุปี** |
 | GET | `/documents/{docNo}` | เอกสารฉบับเต็ม 12 ส่วน + ธงสิทธิ์แก้ต่อ role/section |
-| POST | `/documents` | สร้างเอกสาร (MANUAL/FS) — ออกเลข YYYY/xxxxx + เปิด workflow (มี Flowchart) |
+| POST | `/documents` | สร้างเอกสาร — ออกเลข YYYY/xxxxx + เปิด workflow (มี Flowchart) · **ตัดสินใจ 2026-08-06: ไม่มีฟอร์มสร้างเอกสารใน FE แล้ว** — ต้นทางสร้างที่ระบบ **FS** แล้วรอ **SBP Statement** ส่งข้อมูลกลับ (~1 วัน) จึงเรียกเส้นนี้โดย pipeline/service token · หน้า `k2-create.html` เหลือเป็นหน้าอธิบายกระบวนการ · การคีย์/ปรับข้อมูลร้านตาม SDD GI ทำในหน้าเอกสาร (`PUT /documents/{docNo}`) |
 | PUT | `/documents/{docNo}` | บันทึกส่วนย่อย (ร้านใหม่/คู่แข่ง/ปัจจัย) · **%ชดเชยรวม = 100%** |
 | POST | `/documents/{docNo}/actions` | ส่งผลพิจารณา — หัวใจ workflow 5 ขั้น · วงเงิน GM 50,000 / AVP 300,000 · SDD GI (มี Flowchart) |
 | GET | `/documents/{docNo}/timeline` | ประวัติพิจารณาทุกขั้น |
@@ -66,13 +66,16 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 | GET | `/documents/{docNo}/attachments/{attachId}/download` | ดาวน์โหลดไฟล์แนบผ่าน BE authorization + AV clean guard |
 | GET | `/documents/{docNo}/sales` | **(ใหม่ session นี้)** ยอดขาย 4 หน้าต่าง × 15 วัน — ปุ่ม "ข้อมูลยอดขายเพิ่มเติม" + กราฟยอดขายในหน้าเอกสาร |
 
-### 3. ข้อมูลอ้างอิง (Lookup / Reference) · K2 + FGI/FCS **(ใหม่ session นี้ · 4 เส้น)**
+### 3. ข้อมูลอ้างอิง (Lookup / Reference) · K2 + FGI/FCS **(7 เส้น · เพิ่ม zones/branch-types/decisions 2026-08-06)**
 | Method | Path | ทำอะไร |
 |---|---|---|
-| GET | `/stores/search` | ค้นหาร้าน (`type=impacted`→impacted_stores / `type=new`→stores) — แว่นขยายใน k2-create |
+| GET | `/stores/search` | ค้นหาร้าน (`type=impacted`→impacted_stores / `type=new`→stores) — popup เพิ่ม/แก้ร้านเปิดใหม่ในหน้าเอกสาร (เดิมเป็นแว่นขยายหน้า k2-create ซึ่งตัดฟอร์มออกแล้ว 2026-08-06) |
 | GET | `/competitors` | master ร้านคู่แข่ง 24 ราย — dropdown เพิ่มคู่แข่งในเอกสาร |
 | GET | `/document-statuses` | รายการสถานะเอกสาร — dropdown ตัวกรอง (ค้นหา/รายงาน) |
-| GET | `/workflow-sections` | รายการ Section 5 ขั้น (06/08/01/02/03) — dropdown ตำแหน่ง/ตัวกรอง |
+| GET | `/workflow-sections` | รายการ Section 5 ขั้น (06/08/01/02/03) + `approveLimitAmount` ต่อขั้น — dropdown ตำแหน่ง/ตัวกรอง · FE ใช้แสดงวงเงิน ไม่ hardcode |
+| GET | `/zones` | **(เพิ่ม 2026-08-06)** รายการภาค/โซนจาก master `zones` — ชุดปัจจุบัน 13 รหัส (`BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL`) — **SDD GI บังคับ**: เพิ่มภาคในระบบแล้ว checkbox ในรายงานต้องขึ้นเองโดยไม่แก้หน้าจอ |
+| GET | `/branch-types` | **(เพิ่ม 2026-08-06)** ประเภทสาขาจาก master `branch_types` (ชื่อ FMS/FGI ต่างกัน) — ตัวกรองประเภทร้าน + เซ็ตที่ผ่าน Gen Flow Gate |
+| GET | `/decisions` | **(เพิ่ม 2026-08-06)** ผลพิจารณาจาก master `decisions` (`decisionName` = ข้อความปุ่มไทย verbatim) — FE เรนเดอร์ปุ่มพิจารณาจากเส้นนี้ ไม่ hardcode 6-enum |
 
 ### 4. Master Data · K2 3.1.9 (5 เส้น)
 | Method | Path | ทำอะไร |
@@ -120,11 +123,12 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 |---|---|---|
 | GET | `/interfaces/tracking` · `/interfaces/pending-ack` | สถานะรับ–ส่งไฟล์ (interface_transactions) · ACK ค้าง ≥ 1 วัน (Job 10) |
 | POST | `/interfaces/sta/ack` | callback ให้ STA ยิง ACK ตรง (API key) |
-| GET | `/dashboard/summary` | ตัวเลขหน้า Dashboard (cache 5 นาที) |
+| GET | `/dashboard/summary` | **ตัวเลข stat cards หน้างานรอดำเนินการ** (cache 5 นาที) — งานรอดำเนินการของ section ผู้ใช้ · ยอดขายไม่ครบ 60 วัน (แถวแดง) · รอเกิน 3 วัน · วงเงินเข้าเส้น AVP (> 50,000) · **ตัดสินใจ 2026-08-06: ยกเลิกหน้า Overview/Dashboard — เส้นนี้ย้ายไปป้อน stat cards ของหน้าแรกใหม่ (k2-list-waiting) แทน · ตัด field `abnormalStores` และ `chart.monthly` ของหน้า Overview เดิมออก** |
 
 ## กฎธุรกิจสำคัญที่ผูกกับ API
 
 - **บังคับระบุปี (พ.ศ.)** ใน `/documents` และ `/reports/status-summary` ไม่งั้นตอบ 400 (กติกา SRS)
+- **เส้นทางข้ามขั้นที่ section 06** ใน `/documents/{docNo}/actions`: `result = "ส่งหน่วยงานส่งเสริมธุรกิจ SBP"` → `nextSection = "01"` (**ข้ามขั้น 08**) ใช้เมื่อยอดที่ระบบคำนวณถูกต้องแล้วไม่ต้องให้เจ้าหน้าที่คำนวณซ้ำ · `result = "ส่งเจ้าหน้าที่ SBP DSA"` → `nextSection = "08"` (เส้นทางปกติ ให้คำนวณยอดก่อน) · การส่งกลับจาก 01 กลับไปที่ 06 เสมอ ไม่ใช่ 08 (ดูตารางเทียบใน `workflow.md`)
 - **กฎวงเงินอนุมัติ (SDD GI 24/02/2026)** ใน `/documents/{docNo}/actions`: เห็นควรชดเชย ≤ 50,000 → **จบที่ GM (02)** · 50,001–300,000 → AVP (03) แล้วจบ (เกิน 300,000 รอ confirm) · เห็นควรไม่ชดเชยที่ 01/02 → **เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น)** · 06 ไม่ชดเชย/หยุด → เสร็จสิ้น · **ตัดขั้นบัญชี 04/05 ตาม SDD v7.5** (ดูตารางเต็มใน `workflow.md`) · เดิมใช้เกณฑ์เดียว 100,000
 - **เปิดเรื่องซ้ำได้ (SDD GI)** ใน `POST /documents`: 409 เฉพาะกรณีมีเอกสาร **active** ของร้าน+เดือนนั้น — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้ทั้งเดือนเดียวกันและเดือนถัดไป (ยกเลิกการเปิด SR) · กรณีเห็นควรไม่ชดเชย (06) เดือนถัดไประบบสร้างงานเข้า `GET /tasks` อัตโนมัติพร้อม assignee คนเดิม · ยอดชดเชย 0: เดือน 1–3 ส่งต่อ 01 · เดือนที่ 4 หยุดชดเชย
 - **งานค้าง (SDD GI)** ใน `GET /tasks`: รองรับ filter + เลือกหลายเอกสาร (bulk action) · เจ้าหน้าที่/ฝ่าย SBP DSA เห็นเอกสารได้ทุกสาขา (ไม่จำกัดงานตน) · ทีมส่งเสริม/บัญชีตามสิทธิ์เดิม
@@ -139,18 +143,18 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 
 ## การกระทบยอด SAP และแก้ข้อมูลผิดปกติ (SDD v7.5)
 
-ยกเลิกหน้าจอ Approve ของบัญชี — ทีมบัญชีใช้ `GET /reports/status-summary` (Preview) + `/export` (Export CSV to Batch) แล้วกระทบยอดกับ SAP เอง งานฝั่ง SAP อยู่นอก API ชุดนี้:
+ยกเลิกหน้าจอ Approve ของบัญชีและ**ยกเลิกสถานะบัญชีในเอกสาร 2 ค่า** — To-Be ทีมบัญชี **ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี ผ่านหน้ารายงาน**: `GET /reports/status-summary` (Preview Report · **สถานะเป็น dropdown บังคับ 6 ค่า ไม่มีสถานะบัญชี**) + `/export` (Export CSV to Batch) แล้วกระทบยอดกับ SAP เอง งานฝั่ง SAP อยู่นอก API ชุดนี้:
 - **SAP** `FBL3H` (GL Account Line-Item Browser — กระทบยอด) · `SAPPOST` (Update Transaction to SAP) · `FS/FSWEB` (ตรวจ STATUS=Completed)
 - **กรณี SBP ผิดแต่ SAP ถูก** → เปิด **SR (Service Request)** ให้ทีมดูแล SBP แก้รายครั้ง (ผ่านระบบ ticketing เดิม — ไม่เพิ่ม endpoint)
 - **ข้อเสนอ:** SBP **Auto Update** จาก SAP โดยไม่ต้องเปิด SR ทุกครั้ง — **BSR = Out of Scope** ของโครงการ Replacement SBP
 
-## กลุ่มที่ comment รอตัดสินใจ
+## กลุ่มข้อมูลผิดปกติ / แจกงาน — ยกเลิกและลบทิ้ง (ตัดสินใจ 2026-08-06 · 2 เส้น)
 
-**ข้อมูลผิดปกติ / แจกงาน (2 เส้น)** — comment อยู่ใน `plan-api.html` (GROUPS) คู่กับหน้า `k2-list-abnormal.html` ที่ปิดชั่วคราว:
+**ลบทิ้งแล้ว** — ทั้ง 2 endpoint ถูกเอาออกจาก `plan-api.html` (GROUPS) และไฟล์หน้าจอ `k2-list-abnormal.html` ถูกลบออกจากโปรเจกต์:
 - `GET /abnormal-stores` — ร้านข้อมูลผิดปกติ (ยอดขาย < 60 วัน) จาก pipeline batch
 - `POST /abnormal-stores/assign` — แจกงานให้เจ้าหน้าที่ตรวจสอบ (role 05)
 
-เปิดคืนได้โดยลบ comment (นับเป็น 46 เส้น 10 กลุ่ม)
+**ทดแทนด้วย:** ข้อมูลผิดปกติเป็น *ธงของแถว* ไม่ใช่หน้าจอแยก — `GET /tasks` และ `GET /documents` คืน `salesDataDays` ให้ FE ทำแถวแดง + ตัวกรอง "ยอดขายไม่ครบ 60 วัน" · ตัวเลขสรุปอยู่ใน `GET /dashboard/summary` · การจ่ายงานใช้ auto-assign ของ SDD GI (เจ้าของงานคนเดิม) แทนการแจกงานด้วยมือ
 
 ## เส้นที่ตัดออก — ใช้ระบบ SBP เดิม (ตัดสินใจ 2026-08-05 · 18 เส้น)
 
@@ -164,6 +168,6 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 
 ## เอกสารที่เกี่ยวข้อง
 
-- ตารางที่แต่ละเส้นอ่าน/เขียน: [database.md](database.md) · `plan-database.html` (29 ตาราง)
+- ตารางที่แต่ละเส้นอ่าน/เขียน: [database.md](database.md) · `plan-database.html` (34 ตาราง)
 - Flow ที่ API ขับเคลื่อน: [workflow.md](workflow.md) · `plan-flow.html`
 - Email จุดส่งในแต่ละสถานะ: `plan-email.html` (8 templates)

@@ -259,7 +259,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ### POST /api/v1/documents/{docNo}/actions
 
-ตัวอย่าง positive-path จาก section 06; Section 02 ใช้กรณียอดรวมมากกว่า 100,000 บาท
+ตัวอย่าง positive-path จาก section 06; Section 02 ใช้กรณียอดรวมมากกว่า 50,000 บาท (GM) / 300,000 บาท (AVP) ตาม SDD GI 24/02/2026
 
 #### Request
 

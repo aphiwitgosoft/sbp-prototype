@@ -93,7 +93,7 @@ Dashboard summary API
   "waitingTasks": 24,
   "storesThisMonth": 342,
   "compensationThisMonth": 8420000.0,
-  "abnormalStores": 5,
+  "flagUnder60Days": 5,
   "monthlyChart": [],
   "statusChart": []
 }
@@ -106,7 +106,7 @@ Dashboard summary API
 | waitingTasks | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | storesThisMonth | integer | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
 | compensationThisMonth | number | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| abnormalStores | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| flagUnder60Days | integer | Yes | จำนวนงานที่ยอดขายไม่ครบ 60 วัน (แถวแดง) — เดิมชื่อ abnormalStores ของหน้า Overview ที่ยกเลิกแล้ว (2026-08-06) |
 | monthlyChart | array<object> | Yes | JSON array; element type shown in Type column |
 | statusChart | array<object> | Yes | JSON array; element type shown in Type column |
 

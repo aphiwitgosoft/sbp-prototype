@@ -3,257 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Overview · ระบบประกันรายได้</title>
+<title>ระบบประกันรายได้ · กำลังเปิดหน้างานรอดำเนินการ</title>
+<!--
+  ตัดสินใจ 2026-08-06: ไม่ใช้หน้า Overview แล้ว — หน้าแรกของระบบคือ "เอกสาร → รอดำเนินการ" (k2-list-waiting.html)
+  ไฟล์นี้เหลือเป็น redirect stub เพื่อให้ `open index.html` และ `python3 -m http.server` (ซึ่ง default เป็น index.html) ยังเข้าระบบได้
+  เนื้อหาหน้า Overview เดิม (hero + stat cards + module grid + กิจกรรมล่าสุด) ดูย้อนหลังได้ใน git history
+-->
+<meta http-equiv="refresh" content="0; url=k2-list-waiting.html">
+<link rel="canonical" href="k2-list-waiting.html">
 <link rel="stylesheet" href="assets/sbp.css">
 <style>
-  .hchart svg, .cchart svg{display:block; width:100%;}
-  .hchart .hb-bar, .cchart .cb-bar{transition:opacity .12s;}
-  .hchart g:hover .hb-bar, .cchart g:hover .cb-bar{opacity:.78;}
-  #chartTip{position:fixed; z-index:200; pointer-events:none; background:#1f2937; color:#fff; font-size:12px;
-    padding:6px 10px; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,.22); display:none; white-space:nowrap;}
-  #chartTip small{color:#cbd5e1;}
+  .redirect-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;}
+  .redirect-card{max-width:460px; text-align:center; background:var(--card,#fff); border:1px solid var(--line,#e3e9f0);
+    border-radius:16px; padding:34px 30px; box-shadow:0 8px 26px rgba(31,39,51,.07);}
+  .redirect-card h1{font-size:19px; margin:0 0 10px; color:#1f2733;}
+  .redirect-card p{font-size:13.5px; line-height:1.8; color:#5d6b7a; margin:0 0 20px;}
 </style>
 </head>
-<body data-page="home" data-nav="modules" data-module="home">
-  <div class="layout">
-    <aside id="sidebar"></aside>
-    <main class="content">
-
-      <section class="hero">
-        <svg class="hero-mark" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.1"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3ZM9 12l2 2 4-4"/></svg>
-        <h1>สวัสดี, คุณภัชริดา</h1>
-        <p>ระบบประกันรายได้ — ชดเชยรายได้ร้าน 7-11 Franchise ที่ได้รับผลกระทบจากร้านเปิดใหม่ในรัศมีใกล้เคียง เอกสารเดินตาม Workflow 5 ขั้นตอน (06 → 08 → 01 → 02 → 03) จนเสร็จสิ้นดำเนินการ · วงเงิน ≤ 50,000 จบที่ GM · 50,001–300,000 ผ่าน AVP (SDD GI 24/02/2026) · บัญชีตรวจผ่านรายงาน SBP Mall (SDD v7.5)</p>
-        <div class="hero-actions">
-          <button class="btn btn-light" data-href="k2-list-waiting.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/></svg> งานรอท่านดำเนินการ</button>
-          <button class="btn btn-ghost" data-href="k2-document.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.5 2.5V6L9 3.5m0 16.5 6-2.5m-6 2.5V3.5m6 16.5 5.5 2.5V6L15 3.5m0 16.5V3.5"/></svg> เอกสารร้านถูกกระทบ</button>
-        </div>
-      </section>
-
-      <div class="stat-grid">
-        <div class="stat">
-          <div class="si bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4M7.5 4.2a2 2 0 0 1 1.4-.6h6.2a2 2 0 0 1 1.4.6l1.3 1.3a2 2 0 0 1 .6 1.4v6.2a2 2 0 0 1-.6 1.4l-1.3 1.3a2 2 0 0 1-1.4.6H8.9a2 2 0 0 1-1.4-.6l-1.3-1.3a2 2 0 0 1-.6-1.4V6.9a2 2 0 0 1 .6-1.4Z"/></svg></div>
-          <div><div class="sv num">24</div><div class="sl">เอกสารรอท่านดำเนินการ</div></div>
-        </div>
-        <div class="stat">
-          <div class="si bg-teal"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3ZM9 12l2 2 4-4"/></svg></div>
-          <div><div class="sv num">342</div><div class="sl">สาขาประกันรายได้เดือนนี้</div></div>
-        </div>
-        <div class="stat">
-          <div class="si bg-amber"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-          <div><div class="sv num">8.42</div><div class="sl">ยอดชดเชยเดือนนี้ (ล้านบาท)</div></div>
-        </div>
-        <div class="stat">
-          <div class="si bg-rose"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div>
-          <div><div class="sv num">5</div><div class="sl">ยอดขายไม่ครบ 60 วัน (แถวแดง)</div></div>
-        </div>
-      </div>
-
-      <div class="charts-row">
-        <div class="chart-card">
-          <h3>ยอดชดเชยประกันรายได้รายเดือน</h3>
-          <div class="csub">หน่วย: ล้านบาท · 8 เดือนล่าสุด</div>
-          <div class="cchart" id="chartMonthly"></div>
-        </div>
-        <div class="chart-card" style="grid-column:span 2;">
-          <h3>เอกสารค้างตามขั้นตอน Workflow</h3>
-          <div class="csub">สถานะ "รอ&lt;ผู้ดำเนินการ&gt;ดำเนินการ" ต่อ Section + เสร็จสิ้นเดือนนี้ · จุดสี = สีสถานะทั้งระบบ</div>
-          <div class="hchart" id="chartPipeline"></div>
-        </div>
-      </div>
-
-      <h2 class="section-title">หน้าจอระบบประกันรายได้</h2>
-      <div class="mod-grid">
-
-        <a class="mod-card" href="k2-list-waiting.html">
-          <div class="mh"><div class="mi bg-green"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3Z"/></svg></div>
-            <div><div class="mt">เอกสาร — รอดำเนินการ / ที่เกี่ยวข้อง</div><div class="mcode">Workflow Inbox</div></div></div>
-          <div class="md">inbox ต่อบทบาท: เห็นเฉพาะเอกสารสถานะ "รอ&lt;บทบาทของท่าน&gt;ดำเนินการ" พร้อมสลับมุมมอง 5 ขั้นตอน ค้นหา กรอง และเปิดเอกสารเพื่อพิจารณา/ส่งดำเนินการ</div>
-          <span class="mgo">เข้าสู่งาน<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
-        </a>
-
-        <a class="mod-card" href="k2-create.html">
-          <div class="mh"><div class="mi bg-blue"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M12 12v6M9 15h6"/></svg></div>
-            <div><div class="mt">สร้างเอกสาร</div><div class="mcode">Create New / FS</div></div></div>
-          <div class="md">สร้างเอกสารร้านถูกกระทบกรณีนอกเงื่อนไขของระบบ (เลขที่ YYYY/Running 5 หลัก) และสร้างผ่านระบบ Finance &amp; Account Unit (FS) รอ SBP Statement ส่งกลับ ~1 วัน</div>
-          <span class="mgo">สร้างเอกสาร <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
-        </a>
-
-        <!-- ปิดชั่วคราว รอตัดสินใจหน้าข้อมูลผิดปกติ
-        <a class="mod-card" href="k2-list-abnormal.html">
-          <div class="mh"><div class="mi bg-rose"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div>
-            <div><div class="mt">ข้อมูลผิดปกติ / แจกงาน</div><div class="mcode">Assign Job</div></div></div>
-          <div class="md">รายการร้านถูกกระทบที่ข้อมูลยอดขายไม่ครบ 60 วันหรือผิดปกติ แสดงเป็นสีแดง และแจกงานให้ผู้รับผิดชอบดำเนินการต่อ</div>
-          <span class="mgo">เปิดรายการ <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
-        </a>
-        -->
-
-        <a class="mod-card" href="k2-document.html">
-          <div class="mh"><div class="mi bg-teal"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.5 2.5V6L9 3.5m0 16.5 6-2.5m-6 2.5V3.5m6 16.5 5.5 2.5V6L15 3.5m0 16.5V3.5m-6 0 6 2.5"/></svg></div>
-            <div><div class="mt">เอกสารข้อมูลร้านถูกกระทบ</div><div class="mcode">Workflow Document</div></div></div>
-          <div class="md">หน้าจอหลักของกระบวนการ — ข้อมูลร้านถูกกระทบ ร้านเปิดใหม่ แผนที่ ALLMAP ร้านคู่แข่ง ปัจจัยอื่น ๆ ประวัติการชดเชย ผลการพิจารณา เอกสารแนบ คำนวณเงิน และส่งดำเนินการตาม Role</div>
-          <span class="mgo">เปิดเอกสาร <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
-        </a>
-
-        <a class="mod-card" href="k2-report.html">
-          <div class="mh"><div class="mi bg-violet"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6H9ZM14 3v6h6M8 13h8M8 17h6"/></svg></div>
-            <div><div class="mt">รายงานสรุปสถานะ</div><div class="mcode">Report · Export Excel</div></div></div>
-          <div class="md">ค้นหา ติดตาม และ Export รายงานเอกสารประกันรายได้ ตามรหัสร้าน ภาค ประเภทร้าน สถานะ และ Period Statement (ผลลัพธ์ 19 คอลัมน์)</div>
-          <span class="mgo">ออกรายงาน <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
-        </a>
-
-        <!-- ตัดออกถาวร 2026-08-05 — กำหนดชื่อผู้ปฏิบัติงาน ใช้ระบบ SBP เดิม (group+scope ของ auth-backend + prepared approvers) · ไฟล์ k2-operators.html เก็บไว้อ้างอิง
-        <a class="mod-card" href="k2-operators.html">
-          <div class="mh"><div class="mi bg-amber"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 14v3M19 21v.01"/></svg></div>
-            <div><div class="mt">กำหนดชื่อผู้ปฏิบัติงาน</div><div class="mcode">Master · operator_assignments</div></div></div>
-          <div class="md">กำหนดว่าพนักงานคนใดรับผิดชอบตำแหน่งหรือขั้นตอนใดใน Workflow บันทึกประวัติการเพิ่ม/แก้ไขใน audit_logs</div>
-          <span class="mgo">จัดการข้อมูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
-        </a>
-        -->
-
-        <a class="mod-card" href="k2-factors.html">
-          <div class="mh"><div class="mi bg-blue"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3ZM4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></div>
-            <div><div class="mt">กำหนดปัจจัยภายนอก</div><div class="mcode">Master · external_factors</div></div></div>
-          <div class="md">จัดการ Master ข้อมูลปัจจัยภายนอกที่อาจกระทบยอดขาย รหัสปัจจัยห้ามซ้ำ บันทึกใน external_factors และ audit_logs</div>
-          <span class="mgo">จัดการข้อมูล <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
-        </a>
-
-        <!-- ตัดออกถาวร 2026-08-05 — สิทธิ์การเข้าถึงเมนู ใช้ระบบ SBP เดิม (auth-backend: groups/menus/permissions · หน้า /setting/manage-user-rights) · ไฟล์ k2-permissions.html เก็บไว้อ้างอิง
-        <a class="mod-card" href="k2-permissions.html">
-          <div class="mh"><div class="mi bg-rose"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></div>
-            <div><div class="mt">สิทธิ์การเข้าถึงเมนู</div><div class="mcode">RBAC · SRS 3.1.1</div></div></div>
-          <div class="md">ตารางสิทธิ์ 8 กลุ่มบทบาท (00 Default – 10 UserViewer) ต่อเมนูของระบบ ใช้เป็นแหล่งข้อมูล RBAC ของ Auth ในระบบใหม่</div>
-          <span class="mgo">ดูสิทธิ์ <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
-        </a>
-        -->
-
-      </div>
-
-      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-top:24px;" class="home-bottom">
-        <div class="card" style="margin:0;">
-          <div class="card-head"><h2>กิจกรรมล่าสุด</h2></div>
-          <div style="display:flex;flex-direction:column;gap:2px;">
-            <div style="display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f8;"><span class="pill ok">เสร็จสิ้น</span><span style="flex:1;color:#45525f;">GM อนุมัติชดเชย (≤50,000) เอกสาร 2569/00152 แคราย พลาซ่า → เสร็จสิ้นดำเนินการ</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">09:24</span></div>
-            <div style="display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f8;"><span class="pill violet">คำนวณเงิน</span><span style="flex:1;color:#45525f;">คำนวณเงินชดเชยเรียบร้อย เอกสาร 2569/00140 → รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">08:50</span></div>
-            <div style="display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #f0f3f8;"><span class="pill navy" style="background:#e3e6fb;color:#3730a3;">AVP</span><span style="flex:1;color:#45525f;">เอกสาร 2569/00194 วงเงิน 104,500 บาท → รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">08:12</span></div>
-            <div style="display:flex;gap:12px;align-items:center;padding:11px 0;"><span class="pill fail">แถวแดง</span><span style="flex:1;color:#45525f;">ร้านยอดขายไม่ครบ 60 วัน 5 รายการ ในคิวรอฝ่าย SBP DSA ดำเนินการ</span><span class="num" style="color:#9aa7b6;font-size:12.5px;">07:40</span></div>
-          </div>
-        </div>
-        <div class="card" style="margin:0;">
-          <div class="card-head"><h2>ทางลัด</h2></div>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <button class="btn btn-primary" style="justify-content:flex-start;" data-href="k2-list-waiting.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/></svg> งานรอท่านดำเนินการ</button>
-            <button class="btn btn-soft" style="justify-content:flex-start;" data-href="k2-document.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.5 2.5V6L9 3.5m6 16.5 5.5 2.5V6L15 3.5"/></svg> เปิดเอกสารร้านถูกกระทบ</button>
-            <!-- ปิดชั่วคราว รอตัดสินใจหน้าข้อมูลผิดปกติ
-            <button class="btn btn-ghost" style="justify-content:flex-start;" data-href="k2-list-abnormal.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg> แจกงานข้อมูลผิดปกติ</button>
-            -->
-            <button class="btn btn-ghost" style="justify-content:flex-start;" data-href="k2-report.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/></svg> ออกรายงานสรุปสถานะ</button>
-          </div>
-        </div>
-      </div>
-
-    </main>
+<body>
+  <div class="redirect-wrap">
+    <div class="redirect-card">
+      <h1>กำลังเปิดหน้างานรอดำเนินการ…</h1>
+      <p>หน้าแรกของระบบประกันรายได้เปลี่ยนเป็น <b>เอกสาร → รอดำเนินการ</b> แล้ว<br>ถ้าไม่เปลี่ยนหน้าอัตโนมัติ กดลิงก์ด้านล่าง</p>
+      <a class="btn btn-primary" href="k2-list-waiting.html">ไปหน้างานรอดำเนินการ</a>
+    </div>
   </div>
-  <div id="toast-stack"></div>
-  <div id="chartTip"></div>
-  <script src="assets/sbp.js"></script>
-  <script>
-  (function () {
-    'use strict';
-    /* เอกสารค้างต่อขั้นตอน (สถานะ 6 ค่าตาม workflow.md · ตัดบัญชี 04/05 ตาม SDD v7.5) — 06 = 24 ตรงกับการ์ด "เอกสารรอท่านดำเนินการ" */
-    var PIPELINE = [
-      { label: '06 · รอฝ่าย SBP DSA', dot: '#f59e0b', value: 24 },
-      { label: '08 · รอเจ้าหน้าที่ SBP DSA', dot: '#7c3aed', value: 12 },
-      { label: '01 · รอฝ่ายส่งเสริมธุรกิจ SBP', dot: '#2563eb', value: 18 },
-      { label: '02 · รอ GM ส่งเสริมธุรกิจ SBP', dot: '#ea580c', value: 9 },
-      { label: '03 · รอผู้บริหารสำนักบริหาร SBP', dot: '#4f46e5', value: 4 },
-      { label: 'เสร็จสิ้นดำเนินการ (เดือนนี้)', dot: '#16a34a', value: 73 }
-    ];
-    var MONTHLY = [
-      { label: 'พ.ย.', value: 5.2 }, { label: 'ธ.ค.', value: 6.1 }, { label: 'ม.ค.', value: 5.8 },
-      { label: 'ก.พ.', value: 7.4 }, { label: 'มี.ค.', value: 6.9 }, { label: 'เม.ย.', value: 8.0 },
-      { label: 'พ.ค.', value: 7.6 }, { label: 'มิ.ย.', value: 8.42 }
-    ];
-
-    var tip = document.getElementById('chartTip');
-    function showTip(e, html) {
-      tip.innerHTML = html; tip.style.display = 'block';
-      var x = e.clientX + 14, y = e.clientY + 14;
-      if (x + tip.offsetWidth > window.innerWidth - 8) x = e.clientX - tip.offsetWidth - 10;
-      tip.style.left = x + 'px'; tip.style.top = y + 'px';
-    }
-    function hideTip() { tip.style.display = 'none'; }
-    function wireTips(el, rows, tipFn) {
-      el.querySelectorAll('g[data-i]').forEach(function (g) {
-        var r = rows[+g.getAttribute('data-i')];
-        g.addEventListener('mousemove', function (e) { showTip(e, tipFn(r)); });
-        g.addEventListener('mouseleave', hideTip);
-      });
-    }
-
-    /* กราฟแท่งแนวนอน: แท่งบาง ปลายมน 4px ฝั่งข้อมูล · สีเดียว · ป้ายค่าท้ายแท่ง */
-    function hbarChart(elId, rows, opts) {
-      var el = document.getElementById(elId);
-      var left = opts.left, rowH = 30, barH = 17, W = 640, right = 56;
-      var H = rows.length * rowH + 8;
-      var max = 0; rows.forEach(function (r) { if (r.value > max) max = r.value; });
-      var span = W - left - right;
-      var out = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + opts.aria + '">';
-      out += '<line x1="' + left + '" y1="3" x2="' + left + '" y2="' + (H - 4) + '" stroke="#e4ebf3" stroke-width="1.4"/>';
-      rows.forEach(function (r, i) {
-        var y = i * rowH + 7;
-        var w = Math.max(5, Math.round(span * r.value / max));
-        out += '<g data-i="' + i + '">';
-        out += '<circle cx="10" cy="' + (y + barH / 2) + '" r="4.5" fill="' + r.dot + '"/>';
-        out += '<text x="22" y="' + (y + barH / 2 + 4) + '" font-size="11.5" fill="#55677d" font-family="Prompt,Sarabun,sans-serif">' + r.label + '</text>';
-        out += '<path class="hb-bar" fill="' + opts.color + '" d="M' + left + ',' + y + ' h' + (w - 4)
-          + ' a4,4 0 0 1 4,4 v' + (barH - 8) + ' a4,4 0 0 1 -4,4 h-' + (w - 4) + ' z"/>';
-        out += '<text x="' + (left + w + 8) + '" y="' + (y + barH / 2 + 4) + '" font-size="11.5" font-weight="600" fill="#2b3440" font-family="Sarabun,sans-serif">' + r.value + '</text>';
-        out += '<rect x="0" y="' + (y - 6) + '" width="' + W + '" height="' + rowH + '" fill="transparent"/>';
-        out += '</g>';
-      });
-      out += '</svg>';
-      el.innerHTML = out;
-      wireTips(el, rows, opts.tip);
-    }
-
-    /* กราฟคอลัมน์รายเดือน: หัวมน 4px ฐานเรียบ · ป้ายค่าเฉพาะเดือนล่าสุด (ที่เหลือดูจาก hover) */
-    function colChart(elId, rows, opts) {
-      var el = document.getElementById(elId);
-      var W = 520, H = 205, base = H - 26, top = 22;
-      var max = 0; rows.forEach(function (r) { if (r.value > max) max = r.value; });
-      var slot = W / rows.length, bw = 30;
-      var out = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + opts.aria + '">';
-      [0.33, 0.66, 1].forEach(function (t) {
-        var gy = base - (base - top) * t;
-        out += '<line x1="4" y1="' + gy + '" x2="' + (W - 4) + '" y2="' + gy + '" stroke="#eef2f8" stroke-width="1.2"/>';
-      });
-      out += '<line x1="4" y1="' + base + '" x2="' + (W - 4) + '" y2="' + base + '" stroke="#e4ebf3" stroke-width="1.4"/>';
-      rows.forEach(function (r, i) {
-        var h = Math.max(6, Math.round((base - top) * r.value / max));
-        var x = Math.round(i * slot + (slot - bw) / 2), y = base - h;
-        var last = i === rows.length - 1;
-        out += '<g data-i="' + i + '">';
-        out += '<path class="cb-bar" fill="' + opts.color + '" d="M' + x + ',' + base + ' v-' + (h - 4)
-          + ' a4,4 0 0 1 4,-4 h' + (bw - 8) + ' a4,4 0 0 1 4,4 v' + (h - 4) + ' z"/>';
-        if (last) out += '<text x="' + (x + bw / 2) + '" y="' + (y - 7) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Sarabun,sans-serif">' + r.value + '</text>';
-        out += '<text x="' + (x + bw / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="#8493a5" font-family="Prompt,Sarabun,sans-serif">' + r.label + '</text>';
-        out += '<rect x="' + Math.round(i * slot) + '" y="' + (top - 16) + '" width="' + Math.round(slot) + '" height="' + (H - top + 16) + '" fill="transparent"/>';
-        out += '</g>';
-      });
-      out += '</svg>';
-      el.innerHTML = out;
-      wireTips(el, rows, opts.tip);
-    }
-
-    colChart('chartMonthly', MONTHLY, {
-      color: '#2f6fed', aria: 'ยอดชดเชยรายเดือน',
-      tip: function (r) { return '<b>' + r.label + '</b><br><small>ยอดชดเชย</small> ' + r.value.toFixed(2) + ' ล้านบาท'; }
-    });
-    hbarChart('chartPipeline', PIPELINE, {
-      left: 224, color: '#2f6fed', aria: 'เอกสารค้างตามขั้นตอน workflow',
-      tip: function (r) { return '<b>' + r.label + '</b><br><small>จำนวนเอกสาร</small> ' + r.value + ' รายการ'; }
-    });
-  })();
-  </script>
+  <script>location.replace('k2-list-waiting.html');</script>
 </body>
 </html>

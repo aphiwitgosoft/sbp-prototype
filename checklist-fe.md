@@ -9,7 +9,7 @@
 2. สถานะเอกสาร 6 ค่า verbatim: `รอฝ่าย SBP DSA ดำเนินการ` · `รอเจ้าหน้าที่ SBP DSA ดำเนินการ` · `รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ` · `รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ` · `รอผู้บริหารสำนักบริหาร SBP ดำเนินการ` · `เสร็จสิ้นดำเนินการ`
 3. กฎ 100,000: >100k → ผ่าน AVP(03) แล้ว**จบ** · ≤100k → **จบที่ GM(02)** — logic อยู่ BE, FE แค่แสดงผล
 4. ข้อความไทย verbatim ห้าม paraphrase เช่น `ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ`
-5. ภาค 8 ค่า: `BE BN BS BW RC RE RN RS` — **มี RC ไม่มี RW**
+5. ภาค **13 รหัส**: `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` (SDD v7.5) — โหลดจาก `GET /zones` ห้าม hardcode · ภาคใหม่ขึ้นเองอัตโนมัติ
 6. %ชดเชยรวมทุกร้านเปิดใหม่ = **100%** พอดีก่อน submit
 7. ไฟล์แนบ ≤ **5MB** + นามสกุลตาม `ATTACH_EXTS`
 8. แถวยอดขายไม่ครบ 60 วัน = `tr.flag-red`
@@ -125,7 +125,7 @@
 - [ ] `ColumnChart.tsx` (รายเดือน, มุมโค้ง, label เฉพาะแท่งสุดท้าย)
 
 ### 2.5 Constants + utils
-- [ ] `shared/lib/constants.ts` ตาม plan-fe.md §7 ครบ: `SECTIONS` (5 ขั้น 06/08/01/02/03) · `DOC_STATUSES` (6 ค่า verbatim ข้างบน) · `AVP_THRESHOLD=100_000` · `REGIONS8=['BE','BN','BS','BW','RC','RE','RN','RS']` · `REPORT_REGIONS13` · `SEARCH_STORE_TYPES=['FR Type A','FR Type B','FR Type C','พนักงาน']` · `MAX_FILE_MB=5` · `ATTACH_EXTS` (27 นามสกุล) · `MSG.NO_DECISION='ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ'` + ข้อความอื่นจากหน้า html เดิม
+- [ ] `shared/lib/constants.ts` ตาม plan-fe.md §7 ครบ: `SECTIONS` (5 ขั้น 06/08/01/02/03) · `DOC_STATUSES` (6 ค่า verbatim ข้างบน) · `AVP_THRESHOLD=100_000` · `REGIONS` = 13 รหัส (fallback) + โหลดจริงจาก `GET /zones` · `SEARCH_STORE_TYPES=['FR Type A','FR Type B','FR Type C','พนักงาน']` · `MAX_FILE_MB=5` · `ATTACH_EXTS` (27 นามสกุล) · `MSG.NO_DECISION='ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ'` + ข้อความอื่นจากหน้า html เดิม
 - [ ] `shared/lib/format.ts` — `formatMoney` (คั่นหลักพัน ทศนิยม 2) · `formatDateThai` (ISO ค.ศ. → พ.ศ. จุดเดียว) · `formatDocNo` (`YYYY/xxxxx` พ.ศ.)
 - [ ] `shared/api/query-keys.ts` — key factory รวมศูนย์ (`documentKeys.list(params)` / `.detail(docNo)` / `taskKeys` / `masterKeys` …)
 - [ ] unit test: format ทั้ง 3 + constants (สถานะ 6 ค่า, ภาคมี RC ไม่มี RW, threshold)
@@ -153,7 +153,7 @@
 - [ ] S5 `ActivityFeed.tsx` (pill+เวลา) + `QuickLinks.tsx`
 
 ### 3.2 DocListPage (`features/documents/DocListPage.tsx` — 1 component 2 mode, §k2-list-waiting/related)
-- [ ] ฟอร์มค้นหา `DocumentFilterBar.tsx`: **ปี\*** (dropdown พ.ศ.) · เดือน · สถานะ (6 ค่า — ซ่อนใน waiting) · ภาค (`REGIONS8` multi) · ประเภทร้าน (`SEARCH_STORE_TYPES` 4 ค่า multi) · รหัส/ชื่อร้าน · เลขเอกสาร · ยอดขายลดลง% (min–max) · เงินชดเชย (min–max) · รอ(วัน) (min–max) · ปุ่ม `ล้างตัวกรอง` (`RangeInput.tsx`)
+- [ ] ฟอร์มค้นหา `DocumentFilterBar.tsx`: **ปี\*** (dropdown พ.ศ.) · เดือน · สถานะ (6 ค่า — ซ่อนใน waiting) · ภาค (`REGIONS` multi (13 รหัส · โหลดจาก GET /zones)) · ประเภทร้าน (`SEARCH_STORE_TYPES` 4 ค่า multi) · รหัส/ชื่อร้าน · เลขเอกสาร · ยอดขายลดลง% (min–max) · เงินชดเชย (min–max) · รอ(วัน) (min–max) · ปุ่ม `ล้างตัวกรอง` (`RangeInput.tsx`)
 - [ ] mode `waiting` → `GET /tasks` (inbox: เฉพาะสถานะ "รอ<role ตัวเอง>ดำเนินการ") · mode `related` → `GET /documents` — **ไม่เลือกปี = ไม่ยิง API + แสดง error ใต้ช่องปี**
 - [ ] Stat cards คลิกกรองตาราง: waiting = 4 ใบ (ทั้งหมด / flag60 / รอเกิน 3 วัน / วงเงิน>100,000 เข้า AVP) · related = ทั้งหมด + ต่อสถานะ
 - [ ] `DocumentTable.tsx` คอลัมน์: `ครั้งที่ | เลขที่เอกสาร | รหัสร้าน | ชื่อร้านถูกกระทบ | ภาค | ยอดขายที่ลดลง(%) | จำนวนเงินที่ชดเชย | สถานะ(pill) | รอ (วัน)` · sortable · แถว <60 วัน = `flag-red` · คลิกแถว → `/documents/:docNo`
@@ -249,7 +249,7 @@
 
 ### 6.1 OperatorsPage (§k2-operators — operator_assignments, SRS 3.1.8)
 - [ ] `OperatorsPage.tsx` + `OperatorTable.tsx`: `☑ | ชื่อผู้ปฏิบัติงาน | E-Mail | ชื่อตำแหน่ง | ภาคที่รับผิดชอบ | Action(view/edit/del)` — `GET /operators`
-- [ ] `EntityModal` schema operator: ชื่อ / อีเมล / ชื่อตำแหน่ง (select ตาม `SECTIONS` 5 ค่า) / ภาค (select `REGIONS8` + `-`) / เหตุผล — **ช่องภาคแสดงเฉพาะเมื่อตำแหน่ง = ฝ่ายส่งเสริมธุรกิจ SBP** · POST/PUT/DELETE `/operators/{id}` (reason บังคับ)
+- [ ] `EntityModal` schema operator: ชื่อ / อีเมล / ชื่อตำแหน่ง (select ตาม `SECTIONS` 5 ค่า) / ภาค (select `REGIONS` + `-`) / เหตุผล — **ช่องภาคแสดงเฉพาะเมื่อตำแหน่ง = ฝ่ายส่งเสริมธุรกิจ SBP** · POST/PUT/DELETE `/operators/{id}` (reason บังคับ)
 - [ ] `EmployeeSearchModal.tsx` — ปุ่ม `ค้นหาพนักงาน (Pop Up)` → `GET /employees/search` → เลือก → เติมฟอร์มเพิ่มแถว + toast
 - [ ] `AuditHistoryTable` ผูก `GET /audit-logs?table=operator_assignments` + `SrsConditionsCard`
 
@@ -322,7 +322,7 @@
 
 ### 8.3 คุณภาพ/ความถูกต้อง
 - [ ] ErrorBoundary ต่อ route + fallback ภาษาไทย · query error แสดงใน `<NoticeCard>` ไม่ crash · `lazy()` + `<PageSkeleton>` ครบทุก page
-- [ ] script grep ตรวจข้อความไทย verbatim เทียบ prototype: `MSG.NO_DECISION`, `ไม่พบรายการตามเงื่อนไขที่กรอง`, สถานะ 6 ค่า, ป้ายปุ่มหลัก — และ grep ยืนยัน**ไม่มี** "04", "05", "ฝ่ายบัญชี SBP", "บัญชีปฏิบัติการภาค" ในโค้ด FE
+- [ ] script grep ตรวจข้อความไทย verbatim เทียบ prototype: `MSG.NO_DECISION`, `ไม่พบรายการตามเงื่อนไขที่กรอง`, สถานะ 6 ค่า (ชื่อขั้น 01 = "รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ"), ป้ายปุ่มหลัก — และ grep ยืนยัน**ไม่มี** section 04/05, "ฝ่ายบัญชี SBP", "บัญชีปฏิบัติการภาค", "ฝ่ายส่งเสริม" (ชื่อเก่า) ในโค้ด FE
 - [ ] a11y ขั้นต่ำ: ทุก input มี label · modal focus-trap + Esc ปิด · ปุ่มไอคอนมี `aria-label`
 - [ ] README.md: วิธีรัน dev/test/build + ตาราง env + โครงโฟลเดอร์ย่อ
 - [ ] `pnpm build` + `pnpm preview` + ตรวจ bundle (ไม่มี chart/UI lib แปลกปลอม, code-split ต่อ route)
@@ -381,7 +381,7 @@
 
 - `SECTIONS` (ลำดับตายตัว): `06 ฝ่าย SBP DSA` → `08 เจ้าหน้าที่ SBP DSA` → `01 ฝ่ายส่งเสริมธุรกิจ SBP` → `02 GM ส่งเสริมธุรกิจฯ` → `03 ผู้บริหารสำนักบริหาร SBP (AVP)`
 - `AVP_THRESHOLD = 100_000` — ใช้แค่**แสดงป้าย** (เช่น stat card "วงเงิน>100,000 เข้า AVP", แผง S10) — routing จริงอยู่ BE
-- `REGIONS8 = ['BE','BN','BS','BW','RC','RE','RN','RS']` (มี RC ไม่มี RW) · `REPORT_REGIONS13` = 13 รหัสตาม k2-report.html
+- `REGIONS` = 13 รหัส `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` (ตาม k2-report.html) — fallback เท่านั้น · runtime โหลดจาก `GET /zones`
 - `SEARCH_STORE_TYPES` (ตัวกรองค้นหา 4 ค่า): `FR Type A` `FR Type B` `FR Type C` `พนักงาน` — **คนละชุด**กับประเภทร้าน 8 ตัวเลือกในฟอร์ม k2-create (FR Type A/B/C/C r/บริษัท/พนักงาน/PTT/BGC)
 - `MAX_FILE_MB = 5` · `ATTACH_EXTS` = `vsd dwg afp pdf mda zip wav mp3 gif jpg tif tiff htm html txt xml mpg mov ivs doc docx xls xlsx pps ppt pot csv`
 - เลขเอกสาร `YYYY/xxxxx` ปี**พ.ศ.** (เช่น `2569/00123`) — format ผ่าน `formatDocNo()` จุดเดียว

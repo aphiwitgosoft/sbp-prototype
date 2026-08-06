@@ -49,15 +49,22 @@
   }
 
   /* ---------- module navigation (global) ---------- */
+  /* หน้าแรกของระบบ (2026-08-06) — เดิมเป็น Overview (index.html) ตอนนี้เป็นหน้างานรอดำเนินการ
+     ใช้กับลิงก์โลโก้ (brand), breadcrumb "Home" และ fallback ตอนอ่านชื่อไฟล์จาก URL */
+  var HOME_KEY  = 'k2-list-waiting';
+  var HOME_HREF = 'k2-list-waiting.html';
+
   var MODULES = [
-    { key:'home',        label:'Overview',                href:'index.html',        icon:I.home,      group:'ระบบประกันรายได้ (SBP Mall)' },
-    { key:'k2-create',   label:'สร้างเอกสาร',             href:'k2-create.html',    icon:I.plus,      group:'ระบบประกันรายได้ (SBP Mall)' },
+    // ตัดออกถาวร 2026-08-06 — ไม่ใช้หน้า Overview (index.html) แล้ว · หน้าแรกของระบบคือ "เอกสาร → รอดำเนินการ"
+    // (index.html เหลือเป็น redirect stub ไป k2-list-waiting.html เพื่อให้ open index.html / http.server ยังใช้ได้)
+    // { key:'home',        label:'Overview',                href:'index.html',        icon:I.home,      group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'k2-docs',     label:'เอกสาร',                  icon:I.badge,             group:'ระบบประกันรายได้ (SBP Mall)', children:[
-      { key:'k2-list-waiting',  label:'รอดำเนินการ',   href:'k2-list-waiting.html' },
+      { key:'k2-list-waiting',  label:'รอดำเนินการ',   href:'k2-list-waiting.html' },   // = หน้าแรกของระบบ (2026-08-06)
       { key:'k2-list-related',  label:'ที่เกี่ยวข้อง',  href:'k2-list-related.html' }
-      // ปิดเมนูชั่วคราว — รอตัดสินใจว่าจะใช้หน้าข้อมูลผิดปกติหรือไม่ (ไฟล์ k2-list-abnormal.html ยังอยู่ครบ)
-      // ,{ key:'k2-list-abnormal', label:'ข้อมูลผิดปกติ',  href:'k2-list-abnormal.html' }
+      // เมนู "ข้อมูลผิดปกติ / แจกงาน" ถูกยกเลิกและลบไฟล์ทิ้งแล้ว (2026-08-06) —
+      // ข้อมูลผิดปกติแสดงเป็นธงแถวแดง + stat card "ยอดขายไม่ครบ 60 วัน" ในสองเมนูด้านบนแทน
     ]},
+    { key:'k2-create',   label:'สร้างเอกสาร',             href:'k2-create.html',    icon:I.plus,      group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'k2-report',   label:'รายงานสรุปสถานะ',         href:'k2-report.html',    icon:I.statement, group:'ระบบประกันรายได้ (SBP Mall)' },
     // ตัดออกถาวร 2026-08-05 — กำหนดผู้ปฏิบัติงาน (SRS 3.1.8) และสิทธิ์การเข้าถึงเมนู (SRS 3.1.1) ใช้ระบบ SBP เดิม
     // (auth-backend/ABS: groups/menus/permissions · หน้า /setting/manage-user-rights + prepared approvers ของ @srm/glb-workflow)
@@ -65,9 +72,10 @@
     // { key:'k2-operators',label:'กำหนดผู้ปฏิบัติงาน',      href:'k2-operators.html', icon:I.idcog,     group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ระบบประกันรายได้ (SBP Mall)' },
     // { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ระบบประกันรายได้ (SBP Mall)' },
-    { key:'system-config', label:'ตั้งค่าระบบ (Config)',   href:'system-config.html', icon:I.cog,    group:'ระบบประกันรายได้ (SBP Mall)' },
-    { key:'job-batch',   label:'Batch Job',                href:'job-batch.html',    icon:I.clock,     group:'ระบบประกันรายได้ (SBP Mall)' },
-    { key:'plan-email',  label:'Email Template',            href:'plan-email.html',   icon:I.mail,      group:'ระบบประกันรายได้ (SBP Mall)' },
+    // กลุ่มผู้ดูแลระบบ (2026-08-06) — ย้าย Config / Batch Job / Email Template ออกจากกลุ่มงานประจำวัน
+    { key:'system-config', label:'ตั้งค่าระบบ (Global Config)', href:'system-config.html', icon:I.cog,  group:'ผู้ดูแลระบบ (Admin)' },
+    { key:'job-batch',   label:'Batch Job',                href:'job-batch.html',    icon:I.clock,     group:'ผู้ดูแลระบบ (Admin)' },
+    { key:'plan-email',  label:'Email Template',            href:'plan-email.html',   icon:I.mail,      group:'ผู้ดูแลระบบ (Admin)' },
     { key:'flow-fgi',    label:'Flow FGI/FCS',             href:'flow-fgi.html',     icon:I.flow,      group:'Flow' },
     { key:'k2-flow',     label:'Flow K2',                  href:'k2-flow.html',      icon:I.route,     group:'Flow' },
     { key:'plan-flow',   label:'Flow FGI/FCS + K2',        href:'plan-flow.html',    icon:I.flow,      group:'Flow' },
@@ -105,7 +113,7 @@
     var moduleKey = b.getAttribute('data-module') || b.getAttribute('data-page');
     var mod = moduleByKey(moduleKey);
     var crumb = b.getAttribute('data-crumb') || (mod ? mod.label : '');
-    var crumbHtml = '<a href="index.html">Home</a>';
+    var crumbHtml = (moduleKey === HOME_KEY) ? '<span>Home</span>' : '<a href="' + HOME_HREF + '">Home</a>';
     if (mod && mod.key !== 'home') {
       crumbHtml += sep() + '<a href="' + mod.href + '">SBP Management System</a>';
     } else {
@@ -118,7 +126,7 @@
     h.className = 'app-header';
     h.innerHTML =
       '<button class="hamburger" id="btnMenu" aria-label="เมนู">' + svg(I.menu, '', 24) + '</button>' +
-      '<a class="brand" href="index.html">' +
+      '<a class="brand" href="' + HOME_HREF + '">' +
         '<img class="brand-logo" src="assets/logo-7-11-store-business-partner.png" width="169" height="40" alt="7-Eleven Store Business Partner">' +
       '</a>' +
       '<nav class="breadcrumb">' + crumbHtml + '</nav>' +
@@ -158,7 +166,7 @@
     }
 
     var pageKey = document.body.getAttribute('data-page');
-    var file = location.pathname.split('/').pop() || 'index.html';
+    var file = location.pathname.split('/').pop() || HOME_HREF;
     var full = file + (location.search || '');
     // เมนูลูกที่ active: (1) href ตรงทั้งไฟล์+query → (2) key ตรง data-page → (3) ไฟล์เดียวกัน (ตัวแรกชนะ)
     function activeChildIndex(children) {

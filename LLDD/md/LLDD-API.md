@@ -2,7 +2,7 @@
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
-> ปรับตาม SDD GI 24/02/2026 (วงเงิน GM 50,000 / AVP 300,000 · เปิดเรื่องซ้ำ/งานค้าง) + การตัดสินใจใช้ระบบสิทธิ์เดิม 2026-08-05 (ตัดกลุ่ม Auth & RBAC/ผู้ปฏิบัติงาน — เหลือ 44 endpoints 9 กลุ่ม)
+> ปรับตาม SDD GI 24/02/2026 (วงเงิน GM 50,000 / AVP 300,000 · เปิดเรื่องซ้ำ/งานค้าง) + การตัดสินใจใช้ระบบสิทธิ์เดิม 2026-08-05 (ตัดกลุ่ม Auth & RBAC/ผู้ปฏิบัติงาน — เหลือ 47 endpoints 9 กลุ่ม)
 
 ## 1. Purpose
 
@@ -13,9 +13,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Item | Detail |
 | --- | --- |
 | API base | /api/v1 |
-| Endpoint count | 44 endpoints, 9 groups (เดิม 62 endpoints 10 groups — ตัดกลุ่ม Auth 4 เส้น และเส้นผู้ปฏิบัติงาน/roles/menus/สิทธิ์เมนู 14 เส้น ไปใช้ระบบ SBP เดิม · ตัดสินใจ 2026-08-05) |
+| Endpoint count | 47 endpoints, 9 groups (เดิม 47 endpoints 10 groups — ตัดกลุ่ม Auth 4 เส้น และเส้นผู้ปฏิบัติงาน/roles/menus/สิทธิ์เมนู 14 เส้น ไปใช้ระบบ SBP เดิม · ตัดสินใจ 2026-08-05) |
 | Detailed implementation docs | LLDD-BE-API-Common-Contracts, LLDD-BE-API-Dashboard-Summary, LLDD-BE-API-Document-List-Search, LLDD-BE-API-Document-Create-Update, LLDD-BE-API-Document-Detail-Aggregate, LLDD-BE-API-Document-Workflow-Actions, LLDD-BE-API-Workflow-Instances, LLDD-BE-API-Attachment-Sales-Timeline, LLDD-BE-API-Lookup-RBAC-Email, LLDD-BE-API-Report-Master-Config |
-| Out of scope | Auth/RBAC/ผู้ปฏิบัติงานทั้งหมด (ใช้ระบบ SBP เดิม: Cognito + BFF + auth-backend/ABS — SBPGI รับ user context จาก header `x-api-key` + `x-user-id`/`x-user-group-id`/`x-user-permissions`), SAP/SR process ภายนอก, abnormal-stores endpoints ที่ยัง comment รอตัดสินใจ |
+| Out of scope | Auth/RBAC/ผู้ปฏิบัติงานทั้งหมด (ใช้ระบบ SBP เดิม: Cognito + BFF + auth-backend/ABS — SBPGI รับ user context จาก header `x-api-key` + `x-user-id`/`x-user-group-id`/`x-user-permissions`), SAP/SR process ภายนอก, abnormal-stores endpoints (**ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอข้อมูลผิดปกติ — ข้อมูลผิดปกติเหลือเป็นธง `salesDataDays < 60` ในรายการ) |
 
 ## 2.1 Input / Progress / Output Contract
 
@@ -2338,7 +2338,7 @@ ORDER BY category, config_key;
   "unit": "บาท"
 }
 // วงเงินตาม SDD GI 24/02/2026: workflow.gm_amount_limit = 50000 · workflow.avp_amount_limit = 300000
-// — แทน workflow.avp_amount_threshold = 100000 เดิม
+// — แทน workflow.gm_amount_limit / workflow.avp_amount_limit = 100000 เดิม
 ```
 
 | Error / Condition |
@@ -3586,7 +3586,7 @@ ORDER BY sent_at;
   "waitingTasks": 24,
   "storesThisMonth": 342,
   "compensationThisMonth": 8420000.00,
-  "abnormalStores": 5,
+  "flagUnder60Days": 5,          // ยกเลิกหน้า Overview 2026-08-06 → เส้นนี้ป้อน stat cards หน้างานรอดำเนินการ
   "chart": { "monthly": [ ... ] }
 }
 ```
@@ -3602,7 +3602,7 @@ SQL Reference
 SELECT COUNT(*) AS waiting_tasks       FROM workflow_tasks WHERE task_status = :statusOpen;
 SELECT COUNT(*) AS stores_this_month   FROM compensation_documents WHERE impact_month = :thisMonth;
 SELECT SUM(compensate_amount) AS compensation_this_month FROM compensation_histories WHERE submit_account_month = :thisMonth;
-SELECT COUNT(*) AS abnormal_stores     FROM fgi_impact_sales_summaries WHERE total_working_days < 60;
+SELECT COUNT(*) AS flag_under_60_days  FROM fgi_impact_sales_summaries WHERE total_working_days < 60;  -- stat card หน้าแรก (งานรอดำเนินการ)
 ```
 
 ## 7. API Test Checklist

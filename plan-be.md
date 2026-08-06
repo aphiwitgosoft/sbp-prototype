@@ -1,11 +1,11 @@
 # plan-be.md — Spec สร้าง Backend ระบบ SBPGI (Node.js) ฉบับละเอียด
 
-> **spec สำหรับ AI/นักพัฒนา สร้าง Backend จริงโดยไม่ต้องถามเพิ่ม** อ่านคู่กับ: `checklist-be.md` (ลำดับงาน + เกณฑ์ตรวจรับต่อ Phase) · `api.md` + `plan-api.html` (สัญญา API **44 เส้น 9 กลุ่ม** — **สัญญาผูกมัด** รวม SQL ตัวอย่างต่อเส้นใน `SQL_BY_PATH`) · `database.md` (schema **29 ตาราง**) · `workflow.md` (flow 12 ขั้น + ตาราง transition) · **SDD GI 24/02/2026** (`SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md` — วงเงิน GM/AVP ใหม่ · เปิดเรื่องซ้ำ · งานค้าง) · เอกสารวิเคราะห์ระบบเดิม `SBP/srm-sps-spsap-store-backend.md` + `SBP/srm-sps-spsap-sbp-bff.md` · `plan-fe.md`
+> **spec สำหรับ AI/นักพัฒนา สร้าง Backend จริงโดยไม่ต้องถามเพิ่ม** อ่านคู่กับ: `checklist-be.md` (ลำดับงาน + เกณฑ์ตรวจรับต่อ Phase) · `api.md` + `plan-api.html` (สัญญา API **47 เส้น 9 กลุ่ม** — **สัญญาผูกมัด** รวม SQL ตัวอย่างต่อเส้นใน `SQL_BY_PATH`) · `database.md` (schema **34 ตาราง**) · `workflow.md` (flow 12 ขั้น + ตาราง transition) · **SDD GI 24/02/2026** (`SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md` — วงเงิน GM/AVP ใหม่ · เปิดเรื่องซ้ำ · งานค้าง) · เอกสารวิเคราะห์ระบบเดิม `SBP/srm-sps-spsap-store-backend.md` + `SBP/srm-sps-spsap-sbp-bff.md` · `plan-fe.md`
 >
 > หลักการใหญ่: **รวม EAI + K2 เข้า SBPGI** — Document Service เขียน DB ตรง + Workflow Engine ภายใน (ไม่มีไฟล์ `BPM06001O_/2O_/3O_` และไม่มี K2 REST StartInstance) · interface ภายนอก (QSSI/ALLMAP/IAS/STA/SMTP) คงกลไกไฟล์/SFTP เดิม
 >
 > **กติกาเหล็ก (ห้ามเปลี่ยน):**
-> - workflow **5 ขั้น 06→08→01→02→03** (ตัดขั้นบัญชี 04/05 ตาม SDD v7.5) · สถานะเอกสาร **6 ค่า** (ค่า enum "ส่งฝ่ายส่งเสริมธุรกิจ SBP" เปลี่ยนชื่อเป็น **"ส่งหน่วยงานส่งเสริมธุรกิจ SBP"** ตาม SDD GI — ชื่อสถานะ 6 ค่าคงเดิม)
+> - workflow **5 ขั้น 06→08→01→02→03** (ตัดขั้นบัญชี 04/05 ตาม SDD v7.5) · สถานะเอกสาร **6 ค่า** (เปลี่ยนคำเรียก "ฝ่ายส่งเสริม" → **"หน่วยงานส่งเสริมธุรกิจ"** ทุกจุดตาม SDD GI — ทั้งค่า enum **"ส่งหน่วยงานส่งเสริมธุรกิจ SBP"** และชื่อสถานะ **"รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ"** · ตัดสินใจ 2026-08-06)
 > - กฎวงเงิน (SDD GI 24/02/2026 — แทนเกณฑ์เดียว 100,000 เดิม): เห็นควรชดเชย **≤ 50,000 จบที่ GM (02)** · **50,001–300,000 → AVP (03) แล้วจบ** · **เกิน 300,000 ยังไม่กำหนดเส้นทาง (รอ confirm)**
 > - เห็นควรไม่ชดเชยที่ขั้น **01/02 → เสร็จสิ้นทันที** (ไม่ตีกลับเป็นทอด ๆ · SDD GI) · ขั้น 03 คงเดิม (รอ confirm)
 > - Error ทุกเส้นรูปเดียว `{code,message}` — ข้อความไทย **verbatim ตาม SRS**
@@ -58,15 +58,15 @@ SBPGI ไม่ใช่ระบบโดดเดี่ยว — จะเส
 
 ## 1. Stack และเวอร์ชัน
 
-> ⚠️ ตารางนี้เป็น reference design ตาม spec เดิม — **ประเด็น (1) ในหัวข้อ Alignment ยังไม่ตัดสิน** (ระบบเดิมเป็น NestJS + TypeORM) ห้ามสลับ framework เองจนกว่าจะเคาะ
+> **ตัดสินใจ 2026-08-05: ยึด stack ตามระบบ SBP เดิม (store-backend)** — NestJS + TypeORM + PostgreSQL · ตารางนี้อัปเดตแล้วทั้งหมด
 
 | ส่วน | เลือกใช้ | เหตุผล / ข้อกำหนด |
 |---|---|---|
 | Runtime | **Node.js >= 20** + **TypeScript** (`strict: true`) | ตามโจทย์ |
-| Framework | **Express 4** + โครง layered (route → controller → service → repository) | ตรงไปตรงมา ทีมคุ้นเคย |
-| DB | **PostgreSQL 16** | 29 ตาราง ใช้ transaction/constraint หนัก |
-| Query | **Prisma ORM** (`schema.prisma` = source of truth ของ 29 ตาราง) + `$queryRaw` เฉพาะรายงาน/dashboard (ตัวอย่างใน `SQL_BY_PATH`) | migration + type-safety |
-| Validation | **zod** ต่อ endpoint (body/query/params) — schema อยู่ `*.schema.ts` | error message ไทยตาม SRS |
+| Framework | **NestJS 11** (module-per-domain · controller → service → repository) + `ResponseInterceptor` ห่อ `{success,data}` · `HttpContext` ด้วย AsyncLocalStorage | ตรงกับ `srm-sps-spsap-store-backend` เดิม |
+| DB | **PostgreSQL** (AWS RDS · schema แยกของ SBPGI เช่น `sps_sbpgi` บน database เดียวกับระบบเดิม) รองรับ **read-replica routing** แบบ store-backend | 34 ตาราง ใช้ transaction/constraint หนัก |
+| Query | **TypeORM 0.3** — entity ใน `src/entitys/` (= source of truth ของ 34 ตาราง) · repository provider pattern (`{provide:'X_REPOSITORY', useFactory: ds => ds.getRepository(X), inject:['DATA_SOURCE']}`) · `query()` ดิบเฉพาะรายงาน/dashboard (ตัวอย่างใน `SQL_BY_PATH`) | ตรงกับ convention ระบบเดิม · `synchronize:false` เสมอ |
+| Validation | **class-validator + class-transformer** ผ่าน `ValidationPipe` (DTO ต่อ endpoint ใน `dto/`) | ตรงกับระบบเดิม · error message ไทยตาม SRS |
 | Auth | **ตัดออก — ใช้ระบบเดิม** (ตัดสินใจ 2026-08-05): ไม่มี jsonwebtoken/bcrypt login ใน SBPGI — ตรวจ `x-api-key` จาก BFF + อ่าน user-context headers เท่านั้น | Cognito + BFF + auth-backend ของ SBP เดิม |
 | Scheduler | **node-cron** (in-process) — cron ต่อ job อ่านจาก `job_configs` | Jobs 1–10 |
 | ไฟล์/SFTP | **ssh2-sftp-client** (QSSI/STA) · **mssql** (ALLMAP read-only) · **iconv-lite** (WINDOWS-874/TIS-620) | interface เดิม |
@@ -74,32 +74,36 @@ SBPGI ไม่ใช่ระบบโดดเดี่ยว — จะเส
 | Upload | **multer** (memory) → disk `storage/attachments/` + แถว `document_attachments` | ≤ 5MB + ext whitelist |
 | Log | **pino** (JSON) + request id + redact | |
 | Test | **vitest** + **supertest** (+ postgres จริงสำหรับ integration) | coverage `workflow/` ≥ 90% |
-| Doc | `openapi.yaml` เขียนมือจาก api.md — ต้อง sync 44 เส้น | |
+| Doc | `@nestjs/swagger` generate จาก DTO/decorator — ต้องตรงกับ api.md 47 เส้น | |
 
-เครื่องมือคุณภาพ (Phase 0): **husky + lint-staged + commitlint** (Conventional Commits) · **GitHub Actions CI**: `lint → tsc --noEmit → prisma validate → test → build` (postgres service container) · path alias `@/` = `src/`
+เครื่องมือคุณภาพ (Phase 0): **husky + lint-staged + commitlint** (Conventional Commits) · **Bitbucket Pipelines** (import template กลางของกลุ่ม `srm-sps-spsap` — SonarQube/Trivy → deploy ECS): `lint → tsc --noEmit → test → build` (postgres service container) · path alias `@/` = `src/`
 
 ## 2. โครงสร้างโฟลเดอร์ (บังคับ — module-per-domain + layered)
 
-หลักการชั้น (dependency ทางเดียว): `routes → controller → service → repository → prisma`
+หลักการชั้น (dependency ทางเดียว): `module → controller → service → repository → TypeORM DataSource`
 - **controller**: แปลง HTTP ↔ DTO เท่านั้น — **ห้ามมี business logic**
 - **service**: business logic + transaction ทั้งหมด — **ห้ามแตะ req/res**
-- **repository**: query Prisma/raw SQL เท่านั้น — คืน entity ไม่คืน DTO
+- **repository**: TypeORM repository / QueryBuilder / raw SQL เท่านั้น — คืน entity ไม่คืน DTO
 - ข้าม module ได้เฉพาะชั้น **service** (documents.service → notification.service ได้ · ห้ามข้ามไป repo ของ module อื่น)
-- zod schema = source of truth ของ DTO (`export type X = z.infer<typeof xSchema>`)
+- DTO + class-validator decorator = source of truth ของสัญญา request/response
 
 ```
 sbpgi-be/
-  prisma/schema.prisma          # 29 ตาราง 3 โซน + enum ทุกตัว — แปลงตรงจาก database.md
-  prisma/seed.ts                # §10 — idempotent (upsert)
+  src/entitys/                  # 34 ตาราง 3 โซน + enum ทุกตัว — แปลงตรงจาก database.md (§5)
+  src/migrations/               # TypeORM migration (ห้ามใช้ synchronize)
+  src/database/seed.ts          # §10 — idempotent (upsert)
   storage/                      # attachments/ exports/ (volume แยก — stateless app)
   src/
-    server.ts  app.ts           # bootstrap · helmet+cors+pino-http+errorHandler · graceful shutdown
-    config/env.ts               # zod-validate .env — fail fast (§7.1)
+    main.ts  app.module.ts      # bootstrap · helmet+cors+ValidationPipe+ResponseInterceptor+exception filters · enableShutdownHooks
+    config/                     # ConfigModule + validate .env — fail fast (§7.1) · data-source.ts (DataSource + read replica)
+    common/
+      filters/                  # HttpExceptionFilter + OtherExceptionsFilter → {code,message} (§7.2)
+      interceptors/             # ResponseInterceptor ห่อ {success,data} · LogControllerErrorInterceptor
+      guards/                   # ApiKeyGuard (x-api-key จาก BFF) + PermissionGuard
     middlewares/
       userContext.ts            # ตรวจ x-api-key จาก BFF + อ่าน x-user-id/x-user-group-id/x-user-permissions → req.user (§7.3) — แทน auth.ts/JWT เดิม (ตัดออก — ใช้ระบบเดิม)
       requirePermission.ts      # 403 ถ้าสิทธิ์จาก x-user-permissions/x-user-group-id ไม่พอ (แทน requireRole เดิม)
-      validate.ts               # zod → 400 {code:"VALIDATION", message}
-      errorHandler.ts           # AppError → {code,message} (§7.2)
+      http-context.ts           # AsyncLocalStorage (request id + user context) แบบ store-backend เดิม
       serviceToken.ts           # header Authorization: Bearer <SERVICE_TOKEN> (Job 8b → /workflows/instances)
       apiKey.ts                 # header X-Api-Key (STA callback)
     modules/                    # ไม่มี module auth/ (ตัดออก — ใช้ระบบเดิม) · masters/ เหลือ factors + audit-logs
@@ -133,11 +137,11 @@ sbpgi-be/
 - วันที่ใน payload = ISO-8601 ค.ศ. (FE แปลง พ.ศ.) — ยกเว้นเลขเอกสารและไฟล์ interface ที่เป็น พ.ศ.
 - ทุกเส้นที่แก้ข้อมูลบันทึกผู้ทำจาก `x-user-id` (user context ที่ BFF แนบมา) ลง audit ตามโดเมน (consideration_logs / audit_logs / job_run_histories)
 
-**Error รูปเดียวทั้งระบบ** `{"code":"...","message":"<ไทย verbatim ตาม SRS>"}` — โยน `AppError` แล้ว errorHandler แปลง:
+**Error รูปเดียวทั้งระบบ** `{"code":"...","message":"<ไทย verbatim ตาม SRS>"}` — โยน `AppError` (extends `HttpException`) แล้ว `HttpExceptionFilter` แปลง:
 
 | HTTP | code | ใช้เมื่อ | ตัวอย่าง message (verbatim ที่ SRS กำหนด) |
 |---|---|---|---|
-| 400 | `VALIDATION` | zod fail / กติกาธุรกิจ input | `ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ` |
+| 400 | `VALIDATION` | ValidationPipe fail / กติกาธุรกิจ input | `ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ` |
 | 400 | `DOC_PERCENT_400` | %ชดเชยรวม ≠ 100% | `เปอร์เซ็นต์ชดเชยรวมทุกร้านต้องเท่ากับ 100%` |
 | 400 | `REPORT_YEAR_400` | ไม่ส่งปี (พ.ศ.) ใน /documents, /reports | `กรุณาระบุปีที่ต้องการค้นหา` |
 | 401 | `AUTH_401` | `x-api-key` ผิด/ไม่ส่ง · user-context header ขาด · service token/API key ผิด | |
@@ -245,146 +249,158 @@ sbpgi-be/
 
 > **Skip:** `GET /abnormal-stores` · `POST /abnormal-stores/assign` — comment รอตัดสินใจ ไม่สร้าง route (script Phase 7 ต้องยืนยันว่า**ไม่มี**)
 
-## 5. Prisma schema — enum ทุกตัว + ตัวอย่างตารางหลัก 6 ตัว
+## 5. TypeORM entities — enum ทุกตัว + ตัวอย่าง entity หลัก 6 ตัว
 
-**29 ตาราง**เต็มแปลงจาก `database.md` §Data Dictionary (Zone A 7 · Zone B 9 · Zone C 13 — checklist ต่อตารางใน `checklist-be.md` §0.2–0.4) + ตาราง counter `doc_no_counters` (ไม่นับใน 29)
-**ตารางที่ตัดออก (ตัดสินใจ 2026-08-05 — ใช้ระบบ SBP เดิม · เดิมนับ 34):** `roles` / `menus` / `menu_permissions` (→ auth-backend groups/menus/permissions ต่อ URL) · `user_accounts` (→ Cognito + auth-backend — SBPGI รับตัวตนจาก header) · `operator_assignments` (→ group+scope ของ auth-backend + prepared approvers ของ workflow engine เดิม) — ห้ามสร้าง model เหล่านี้ใน `schema.prisma`
-ทุกตารางใช้ `@@map` เป็น `lower_snake_case` · identity ต่อตาราง (ไม่ใช้ sequence รวม — Errata E18)
+**34 ตาราง**เต็มแปลงจาก `database.md` §Data Dictionary (Zone A 7 · Zone B 11 · Zone C 16 — checklist ต่อตารางใน `checklist-be.md` §0.2–0.4)
+**ตารางที่ตัดออก (ตัดสินใจ 2026-08-05 — ใช้ระบบ SBP เดิม):** `roles` / `menus` / `menu_permissions` (→ auth-backend groups/menus/permissions ต่อ URL) · `user_accounts` (→ Cognito + auth-backend — SBPGI รับตัวตนจาก header) · `operator_assignments` (→ group+scope ของ auth-backend + prepared approvers ของ workflow engine เดิม) — **ห้ามสร้าง entity เหล่านี้**
+**ตารางที่เพิ่มจากการเทียบ DB เดิมของ K2 (2026-08-06 · `script_TB_DB_CPA_FRN_FGI_20260722.sql`):** `zones` (ZoneProfile) · `branch_types` (BranchTypeProfile — เก็บชื่อฝั่ง FMS/FGI แยกกัน) · `decisions` (DecisionProfile — 3 ชื่อต่อรายการ) · `document_running_numbers` (RunningNumber) · `document_cost_details` (ImpactCostDetail) — พร้อมคอลัมน์เติม `workflow_sections.approve_limit_amount`, `compensation_documents.round_no/loop_no/allmap_url/statement_id/approver_snapshot`
 
-### 5.1 Enum ทุกตัว (บังคับระดับ DB — insert นอก enum ต้องถูก reject)
+Convention ตาม `store-backend` เดิม: entity อยู่ `src/entitys/` · `@Entity({ schema: 'sps_sbpgi', name: 'lower_snake_case' })` · identity ต่อตาราง (ไม่ใช้ sequence รวม — Errata E18) · `synchronize: false` เสมอ · เปลี่ยน schema ผ่าน migration เท่านั้น
 
-```prisma
-enum VerifyStatus            { W P Y N }          // fgi_impact_stores.verify_status
-enum WorkflowGenStatus       { W Y N }            // fgi_impact_processes.workflow_generation_status (source of truth)
-enum ActionStatus            { Y W N }            // fgi_impact_processes.action_status
-enum StaStatus               { I C A N S Z }      // interface_transactions.sta_status
-enum InterfaceDataName       { AMS06001O AMS06001I FRBC0001 QSSI_MRS RT040035 RT040078 }
-enum SourceSystem            { ALM USER }         // document_competitors.source_system
-enum ResultCategory          { APPROVE REJECT PENDING }   // consideration_logs
-enum DocumentOrigin          { AUTO MANUAL FS }   // compensation_documents.origin
-enum InstanceStatus          { ACTIVE COMPLETED CANCELLED }   // workflow_instances.instance_status
-enum TaskStatus              { OPEN CLOSED }      // workflow_tasks
-enum ConfigCategory          { IMPACT WORKFLOW DOCUMENT AUTH NOTIFICATION BATCH }
-enum ConfigValueType         { NUMBER STRING BOOLEAN JSON CRON }
-enum AuditActionType         { CREATE UPDATE DELETE RESET }
-enum JobRunStatus            { RUNNING SUCCESS ERROR }
+### 5.1 Enum ทุกตัว (บังคับระดับ DB ด้วย `type: 'enum'` — insert นอกเซ็ตต้องถูก reject)
+
+```ts
+// src/common/enums.ts — ใช้ร่วมกับ @Column({ type: 'enum', enum: X })
+export enum VerifyStatus       { W = 'W', P = 'P', Y = 'Y', N = 'N' }        // fgi_impact_stores.verify_status
+export enum WorkflowGenStatus  { W = 'W', Y = 'Y', N = 'N' }                 // fgi_impact_processes.workflow_generation_status (source of truth)
+export enum ActionStatus       { Y = 'Y', W = 'W', N = 'N' }                 // fgi_impact_processes.action_status
+export enum StaStatus          { I='I', C='C', A='A', N='N', S='S', Z='Z' }  // interface_transactions.sta_status
+export enum InterfaceDataName  { AMS06001O='AMS06001O', AMS06001I='AMS06001I', FRBC0001='FRBC0001', QSSI_MRS='QSSI_MRS', RT040035='RT040035', RT040078='RT040078' }
+export enum SourceSystem       { ALM = 'ALM', USER = 'USER' }                // document_competitors.source_system
+export enum ResultCategory     { APPROVE='APPROVE', REJECT='REJECT', PENDING='PENDING' }  // consideration_logs
+export enum DocumentOrigin     { AUTO='AUTO', FS='FS' }                      // compensation_documents.origin — ตัด MANUAL (2026-08-06: ไม่มีฟอร์มสร้างเอกสารใน FE)
+export enum InstanceStatus     { ACTIVE='ACTIVE', COMPLETED='COMPLETED', CANCELLED='CANCELLED' }
+export enum TaskStatus         { OPEN = 'OPEN', CLOSED = 'CLOSED' }
+export enum ConfigCategory     { IMPACT='IMPACT', WORKFLOW='WORKFLOW', DOCUMENT='DOCUMENT', AUTH='AUTH', NOTIFICATION='NOTIFICATION', BATCH='BATCH' }
+export enum ConfigValueType    { NUMBER='NUMBER', STRING='STRING', BOOLEAN='BOOLEAN', JSON='JSON', CRON='CRON' }
+export enum AuditActionType    { CREATE='CREATE', UPDATE='UPDATE', DELETE='DELETE', RESET='RESET' }
+export enum JobRunStatus       { RUNNING='RUNNING', SUCCESS='SUCCESS', ERROR='ERROR' }
 // enum MenuGroup — ตัดออก (ตารางเมนู/สิทธิ์ใช้ระบบ SBP เดิม · ตัดสินใจ 2026-08-05)
 ```
 
-### 5.2 ตัวอย่าง model 6 ตัวหลัก
+### 5.2 ตัวอย่าง entity 6 ตัวหลัก
 
-```prisma
-model CompensationDocument {
-  docNo              String    @id @map("doc_no")            // "2569/00185" (พ.ศ.)
-  statusCode         String    @map("status_code")
-  currentSectionCode String?   @map("current_section_code")  // NULL เมื่อเสร็จสิ้น
-  impactedStoreCode  String    @map("impacted_store_code")
-  impactProcessId    BigInt?   @unique @map("impact_process_id") // FK ใหม่ 1 รอบ : 1 เอกสาร (MANUAL อาจ NULL)
-  origin             DocumentOrigin @default(AUTO)
-  periodMonth        String    @map("period_month")          // งวด YYYY-MM (ค.ศ.)
-  compensationAmount Decimal?  @map("compensation_amount") @db.Decimal(14, 2)
-  createdBy          String    @map("created_by")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+```ts
+@Entity({ schema: 'sps_sbpgi', name: 'compensation_documents' })
+@Index(['impactedStoreCode', 'periodMonth'])
+@Index(['statusCode', 'currentSectionCode'])
+export class CompensationDocument {
+  @PrimaryColumn({ name: 'doc_no', length: 10 })            docNo: string;            // "2569/00185" (พ.ศ.)
+  @Column({ name: 'status_code', length: 2 })               statusCode: string;
+  @Column({ name: 'current_section_code', length: 2, nullable: true }) currentSectionCode: string | null;  // NULL เมื่อเสร็จสิ้น
+  @Column({ name: 'impacted_store_code', length: 5 })       impactedStoreCode: string;
+  @Column({ name: 'impact_process_id', type: 'bigint', nullable: true, unique: true }) impactProcessId: string | null;  // FK 1 รอบ : 1 เอกสาร
+  @Column({ name: 'origin', type: 'enum', enum: DocumentOrigin, default: DocumentOrigin.AUTO }) origin: DocumentOrigin;
+  @Column({ name: 'period_month', length: 7 })              periodMonth: string;      // งวด YYYY-MM (ค.ศ.)
+  @Column({ name: 'compensation_amount', type: 'numeric', precision: 14, scale: 2, nullable: true }) compensationAmount: string | null;
 
-  status        DocumentStatus     @relation(fields: [statusCode], references: [statusCode])
-  section       WorkflowSection?   @relation(fields: [currentSectionCode], references: [sectionCode])
-  impactProcess FgiImpactProcess?  @relation(fields: [impactProcessId], references: [id])
-  newStores     DocumentNewStore[]
-  competitors   DocumentCompetitor[]
-  factors       DocumentExternalFactor[]
-  logs          ConsiderationLog[]
-  attachments   DocumentAttachment[]
-  instance      WorkflowInstance?
+  // --- เติมจาก CompensateFlow ของ K2 เดิม (2026-08-06) ---
+  @Column({ name: 'round_no', type: 'int', default: 1 })     roundNo: number;          // = CompMainLoopNo — "รอบ 1"
+  @Column({ name: 'loop_no', type: 'int', default: 1 })      loopNo: number;           // = CompLoopNo — "ครั้งที่ 3"
+  @Column({ name: 'allmap_url', type: 'text', nullable: true }) allmapUrl: string | null;   // = CompUrlMap — ปุ่ม Link To ALLMAP
+  @Column({ name: 'statement_id', length: 50, nullable: true }) statementId: string | null; // = CompStatementID — ต้นทางจาก FS/SBP Statement
+  @Column({ name: 'account_year', length: 4, nullable: true }) accountYear: string | null;
+  @Column({ name: 'account_month', length: 2, nullable: true }) accountMonth: string | null;
+  @Column({ name: 'approver_snapshot', type: 'jsonb', nullable: true }) approverSnapshot: ApproverSnapshot | null;
+  // ↑ FC/Section/Manager/GM/AVP + ชื่อ/อีเมล ณ เวลาเปิดเอกสาร — จำเป็นเพราะตำแหน่งมาจาก HR Connect ของระบบเดิมและเปลี่ยนได้
+  //   (SDD GI: ผู้รักษาการเป็นผู้อนุมัติไม่ได้ → ต้อง freeze สายอนุมัติไว้กับเอกสาร)
 
-  // SDD GI: กันซ้ำเฉพาะเอกสาร active — ห้ามใช้ @@unique เต็มคู่ (เอกสารที่จบด้วยหยุด/ไม่เห็นควรชดเชย เปิดใหม่ทับได้)
-  // → partial unique index ผ่าน migration SQL: CREATE UNIQUE INDEX ... ON compensation_documents (impacted_store_code, period_month) WHERE status_code <> '99'
+  @Column({ name: 'created_by' })                            createdBy: string;
+  @CreateDateColumn({ name: 'created_at' })                  createdAt: Date;
+  @UpdateDateColumn({ name: 'updated_at' })                  updatedAt: Date;
+
+  @ManyToOne(() => DocumentStatus)  @JoinColumn({ name: 'status_code' })          status: DocumentStatus;
+  @ManyToOne(() => WorkflowSection) @JoinColumn({ name: 'current_section_code' }) section: WorkflowSection | null;
+  @OneToMany(() => DocumentNewStore, r => r.document)        newStores: DocumentNewStore[];
+  @OneToMany(() => ConsiderationLog, r => r.document)        logs: ConsiderationLog[];
+  @OneToOne(() => WorkflowInstance, r => r.document)         instance: WorkflowInstance;
+
+  // SDD GI: กันซ้ำเฉพาะเอกสาร active — ห้ามใส่ unique เต็มคู่ (เอกสารที่จบด้วยหยุด/ไม่เห็นควรชดเชย เปิดใหม่ทับได้)
+  // → partial unique index ผ่าน migration SQL:
+  //   CREATE UNIQUE INDEX ux_doc_active ON sps_sbpgi.compensation_documents (impacted_store_code, period_month) WHERE status_code <> '99';
   //   + service ตรวจซ้ำใน transaction เดียวกับ POST /documents (คืน 409 เฉพาะพบเอกสาร active)
-  @@index([impactedStoreCode, periodMonth])
-  @@index([statusCode, currentSectionCode])
-  @@map("compensation_documents")
 }
 
-model WorkflowInstance {
-  instanceId  String         @id @map("instance_id")
-  docNo       String         @unique @map("doc_no")        // 1 เอกสาร : 1 instance
-  status      InstanceStatus @default(ACTIVE) @map("instance_status")
-  startedAt   DateTime       @default(now()) @map("started_at")
-  startedBy   String         @map("started_by")
-  completedAt DateTime?      @map("completed_at")
+@Entity({ schema: 'sps_sbpgi', name: 'workflow_instances' })
+export class WorkflowInstance {
+  @PrimaryColumn({ name: 'instance_id', length: 36 })        instanceId: string;
+  @Column({ name: 'doc_no', length: 10, unique: true })      docNo: string;            // 1 เอกสาร : 1 instance
+  @Column({ name: 'instance_status', type: 'enum', enum: InstanceStatus, default: InstanceStatus.ACTIVE }) status: InstanceStatus;
+  @CreateDateColumn({ name: 'started_at' })                  startedAt: Date;
+  @Column({ name: 'started_by' })                            startedBy: string;
+  @Column({ name: 'completed_at', type: 'timestamptz', nullable: true }) completedAt: Date | null;
 
-  document CompensationDocument @relation(fields: [docNo], references: [docNo])
-  tasks    WorkflowTask[]
-  @@map("workflow_instances")
+  @OneToOne(() => CompensationDocument, d => d.instance) @JoinColumn({ name: 'doc_no' }) document: CompensationDocument;
+  @OneToMany(() => WorkflowTask, t => t.instance)            tasks: WorkflowTask[];
 }
 
-model WorkflowTask {
-  taskId             BigInt     @id @default(autoincrement()) @map("task_id")
-  instanceId         String     @map("instance_id")
-  docNo              String     @map("doc_no")
-  sectionCode        String     @map("section_code")
-  assigneeEmployeeId String?    @map("assignee_employee_id")  // NULL = ทั้ง section · resolve จาก group+scope ของ auth-backend + prepared approvers (ไม่มี operator_assignments ใน SBPGI) · SDD GI: เคสต่อเนื่อง auto-assign คนเดิม
-  status             TaskStatus @default(OPEN) @map("task_status")
-  actionResult       String?    @map("action_result")
-  openedAt           DateTime   @default(now()) @map("opened_at")
-  closedAt           DateTime?  @map("closed_at")             // waiting_days = now - opened_at (EM-04/05)
+@Entity({ schema: 'sps_sbpgi', name: 'workflow_tasks' })
+@Index(['sectionCode', 'status'])
+export class WorkflowTask {
+  @PrimaryGeneratedColumn({ name: 'task_id', type: 'bigint' }) taskId: string;
+  @Column({ name: 'instance_id', length: 36 })               instanceId: string;
+  @Column({ name: 'doc_no', length: 10 })                    docNo: string;
+  @Column({ name: 'section_code', length: 2 })               sectionCode: string;
+  @Column({ name: 'assignee_employee_id', nullable: true })  assigneeEmployeeId: string | null;
+  // ↑ NULL = ทั้ง section · resolve จาก group+scope ของ auth-backend + prepared approvers (ไม่มี operator_assignments ใน SBPGI)
+  //   SDD GI: เคสต่อเนื่อง/เห็นควรไม่ชดเชย → auto-assign เจ้าของงานคนเดิม
+  @Column({ name: 'task_status', type: 'enum', enum: TaskStatus, default: TaskStatus.OPEN }) status: TaskStatus;
+  @Column({ name: 'action_result', nullable: true })         actionResult: string | null;
+  @CreateDateColumn({ name: 'opened_at' })                   openedAt: Date;
+  @Column({ name: 'closed_at', type: 'timestamptz', nullable: true }) closedAt: Date | null;
+  // waiting_days = now - opened_at (ใช้กับ EM-04/05 + stat card "รอเกิน 3 วัน")
 
-  instance WorkflowInstance @relation(fields: [instanceId], references: [instanceId])
-  @@index([sectionCode, status])
-  @@map("workflow_tasks")
+  @ManyToOne(() => WorkflowInstance, i => i.tasks) @JoinColumn({ name: 'instance_id' }) instance: WorkflowInstance;
 }
 
-model ConsiderationLog {
-  id             BigInt         @id @default(autoincrement())
-  docNo          String         @map("doc_no")
-  sectionCode    String         @map("section_code")
-  result         String                                  // payload result ไทย verbatim 6-enum
-  detail         String?                                 // required ที่ service เมื่อไม่ชดเชย
-  resultCategory ResultCategory @map("result_category")  // ฐาน filter ประกันรายได้/ไม่ประกันรายได้
-  considerBy     String         @map("consider_by")
-  actionDatetime DateTime       @default(now()) @map("action_datetime")
+@Entity({ schema: 'sps_sbpgi', name: 'consideration_logs' })
+@Index(['docNo', 'actionDatetime'])
+export class ConsiderationLog {
+  @PrimaryGeneratedColumn({ type: 'bigint' })                id: string;
+  @Column({ name: 'doc_no', length: 10 })                    docNo: string;
+  @Column({ name: 'section_code', length: 2 })               sectionCode: string;
+  @Column({ name: 'decision_code', length: 2, nullable: true }) decisionCode: string | null;  // → decisions (master · 2026-08-06)
+  @Column()                                                  result: string;           // ข้อความไทย verbatim ณ เวลากด (snapshot)
+  @Column({ type: 'text', nullable: true })                  detail: string | null;    // required ที่ service เมื่อไม่ชดเชย
+  @Column({ name: 'result_category', type: 'enum', enum: ResultCategory }) resultCategory: ResultCategory;  // ฐาน filter ประกันรายได้/ไม่ประกันรายได้
+  @Column({ name: 'consider_by' })                           considerBy: string;
+  @CreateDateColumn({ name: 'action_datetime' })             actionDatetime: Date;
 
-  document CompensationDocument @relation(fields: [docNo], references: [docNo])
-  @@index([docNo, actionDatetime])
-  @@map("consideration_logs")
+  @ManyToOne(() => CompensationDocument, d => d.logs) @JoinColumn({ name: 'doc_no' }) document: CompensationDocument;
 }
 
-model InterfaceTransaction {
-  id              BigInt            @id @default(autoincrement())
-  dataName        InterfaceDataName @map("data_name")
+@Entity({ schema: 'sps_sbpgi', name: 'interface_transactions' })
+@Index(['dataName', 'sentAt'])
+export class InterfaceTransaction {
+  @PrimaryGeneratedColumn({ type: 'bigint' })                id: string;
+  @Column({ name: 'data_name', type: 'enum', enum: InterfaceDataName }) dataName: InterfaceDataName;
   // typed FK 3 คอลัมน์ — ห้าม polymorphic key (แก้ P1 + บั๊ก parseInt เลขศูนย์นำหน้า)
-  impactProcessId BigInt?           @map("impact_process_id")
-  salesSummaryId  BigInt?           @map("sales_summary_id")
-  docNo           String?           @map("doc_no")
-  fileName        String?           @map("file_name")
-  staStatus       StaStatus?        @map("sta_status")
-  ackAt           DateTime?         @map("ack_at")            // NULL + ส่งไป ≥ 1 วัน = pending-ack (Job 10)
-  sentAt          DateTime          @default(now()) @map("sent_at")
-
-  impactProcess FgiImpactProcess?      @relation(fields: [impactProcessId], references: [id])
-  salesSummary  FgiImpactSalesSummary? @relation(fields: [salesSummaryId], references: [id])
-  document      CompensationDocument?  @relation(fields: [docNo], references: [docNo])
-  @@index([dataName, sentAt])
-  @@map("interface_transactions")
+  @Column({ name: 'impact_process_id', type: 'bigint', nullable: true }) impactProcessId: string | null;
+  @Column({ name: 'sales_summary_id', type: 'bigint', nullable: true })  salesSummaryId: string | null;
+  @Column({ name: 'doc_no', length: 10, nullable: true })    docNo: string | null;
+  @Column({ name: 'file_name', nullable: true })             fileName: string | null;
+  @Column({ name: 'sta_status', type: 'enum', enum: StaStatus, nullable: true }) staStatus: StaStatus | null;
+  @Column({ name: 'acked_at', type: 'timestamptz', nullable: true }) ackedAt: Date | null;  // NULL + ส่งไป ≥ 1 วัน = pending-ack (Job 10)
+  @CreateDateColumn({ name: 'sent_at' })                     sentAt: Date;
 }
 
-model SystemConfig {
-  configKey   String          @id @map("config_key")     // dot notation: workflow.gm_amount_limit / workflow.avp_amount_limit
-  category    ConfigCategory
-  valueType   ConfigValueType @map("value_type")         // validate ก่อนบันทึก
-  value       String                                      // เก็บ string เดียว แปลงตาม valueType
-  description String?
-  isEditable  Boolean         @default(true) @map("is_editable")  // false = ค่าคงที่ธุรกิจ แก้ผ่าน API ไม่ได้
-  updatedBy   String?         @map("updated_by")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
+@Entity({ schema: 'sps_sbpgi', name: 'system_configs' })
+export class SystemConfig {
+  @PrimaryColumn({ name: 'config_key' })                     configKey: string;        // dot notation: workflow.gm_amount_limit / workflow.avp_amount_limit
+  @Column({ type: 'enum', enum: ConfigCategory })            category: ConfigCategory;
+  @Column({ name: 'value_type', type: 'enum', enum: ConfigValueType }) valueType: ConfigValueType;  // validate ก่อนบันทึก
+  @Column({ name: 'config_value', type: 'text' })            configValue: string;      // เก็บ string เดียว แปลงตาม valueType
+  @Column({ type: 'text', nullable: true })                  description: string | null;
+  @Column({ name: 'is_editable', default: true })            isEditable: boolean;      // false = ค่าคงที่ธุรกิจ แก้ผ่าน API ไม่ได้
+  @Column({ name: 'updated_by', nullable: true })            updatedBy: string | null;
+  @UpdateDateColumn({ name: 'updated_at' })                  updatedAt: Date;
   // ห้ามมี secret — POST/PUT ปฏิเสธ key ที่มี password/secret/token (400)
-  @@map("system_configs")
 }
 
-model DocNoCounter {
-  yearBe Int @id @map("year_be")   // ปี พ.ศ. เช่น 2569
-  lastNo Int @default(0) @map("last_no")
-  @@map("doc_no_counters")
+@Entity({ schema: 'sps_sbpgi', name: 'document_running_numbers' })
+export class DocumentRunningNumber {     // = RunningNumber ของ K2 เดิม (2026-08-06) — แทนชื่อ doc_no_counters ในร่างก่อนหน้า
+  @PrimaryColumn({ name: 'be_year', type: 'int' })           beYear: number;           // ปี พ.ศ. เช่น 2569
+  @Column({ name: 'last_running_no', type: 'int', default: 0 }) lastRunningNo: number;
 }
 ```
 
@@ -398,12 +414,12 @@ model DocNoCounter {
 |---|---|---|
 | 06 | รอฝ่าย SBP DSA ดำเนินการ | 06 |
 | 08 | รอเจ้าหน้าที่ SBP DSA ดำเนินการ | 08 |
-| 01 | รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ | 01 |
+| 01 | รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ | 01 |
 | 02 | รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ | 02 |
 | 03 | รอผู้บริหารสำนักบริหาร SBP ดำเนินการ | 03 |
 | 99 | เสร็จสิ้นดำเนินการ | — (END) |
 
-> ชื่อสถานะ 6 ค่าคงเดิมตาม SDD GI (ยังแสดง "รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ") — ที่เปลี่ยนชื่อคือค่า `result` "ส่งหน่วยงานส่งเสริมธุรกิจ SBP" เท่านั้น
+> **ชื่อสถานะของขั้น 01 เปลี่ยนเป็น "รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ"** พร้อมค่า `result` "ส่งหน่วยงานส่งเสริมธุรกิจ SBP" — ตัดสินใจ 2026-08-06: เปลี่ยนคำเรียก "ฝ่ายส่งเสริม" → "หน่วยงานส่งเสริมธุรกิจ" **ทุกจุดของระบบ รวมชื่อสถานะเอกสาร** (SDD GI สั่งเปลี่ยนคำเรียกทั้งระบบ · ภาพหน้าจอในสไลด์ SDD ยังเป็นของเดิม — ถือว่าข้อความสั่งชนะภาพ) · seed `document_statuses` และ `decisions` ต้องใช้ข้อความใหม่
 
 ### 6.2 ตาราง transition เต็มทุกแถว (ลอกจาก `workflow.md` §สถานะเอกสารและเส้นทางพิจารณา · อัปเดตตาม SDD GI 24/02/2026)
 
@@ -480,7 +496,7 @@ export function findTransition(section: string, result: string, amountFlag?: Amo
 
 ## 7. โค้ดตัวอย่าง core (implement ตามนี้ — ปรับได้เฉพาะรายละเอียดไม่ใช่พฤติกรรม)
 
-### 7.1 `config/env.ts` — zod validate ทุกตัวแปร fail fast
+### 7.1 `config/env.validation.ts` — validate ทุกตัวแปร fail fast (ConfigModule + class-validator หรือ zod ก็ได้)
 
 ```ts
 import { z } from 'zod';
@@ -512,14 +528,16 @@ if (!parsed.success) {                            // fail fast — บอกต�
 export const env = parsed.data;
 ```
 
-### 7.2 `lib/errors.ts` + `middlewares/errorHandler.ts`
+### 7.2 `common/errors.ts` + `common/filters/http-exception.filter.ts`
 
 ```ts
 export class AppError extends Error {
   constructor(public code: string, message: string, public status: number) { super(message); }
 }
 
-export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
+@Catch()
+export class HttpExceptionFilter implements ExceptionFilter {
+  catch(err: unknown, host: ArgumentsHost) {
   if (err instanceof AppError)
     return res.status(err.status).json({ code: err.code, message: err.message });
   if (err instanceof ZodError)
@@ -529,7 +547,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
 }
 ```
 
-### 7.3 `middlewares/userContext.ts` + `requirePermission.ts` — **ไม่มี JWT login ใน SBPGI** (ตัดสินใจ 2026-08-05)
+### 7.3 `common/guards/api-key.guard.ts` + `permission.guard.ts` — **ไม่มี JWT login ใน SBPGI** (ตัดสินใจ 2026-08-05)
 
 SBPGI รับ user context จาก BFF ระบบเดิมผ่าน header แบบเดียวกับ backend อื่นของ SBP (store-backend guard: เทียบ `x-api-key` ตรง ๆ · user อ่านจาก header ที่ BFF แนบ):
 
@@ -564,15 +582,18 @@ export const requirePermission = (check: (u: UserContext) => boolean) =>
 ### 7.4 `lib/docNo.ts` — เลขเอกสาร พ.ศ./xxxxx จองด้วย FOR UPDATE
 
 ```ts
-/** เรียกภายใน prisma.$transaction เท่านั้น — race-safe ด้วย row lock */
-export async function nextDocNo(tx: Prisma.TransactionClient, date = new Date()): Promise<string> {
+/** เรียกภายใน dataSource.transaction เท่านั้น — race-safe ด้วย row lock
+ *  ตาราง document_running_numbers = RunningNumber ของ K2 เดิม (เทียบ DB 2026-08-06) */
+export async function nextDocNo(manager: EntityManager, date = new Date()): Promise<string> {
   const yearBe = date.getFullYear() + 543;
-  await tx.$executeRaw`INSERT INTO doc_no_counters (year_be, last_no) VALUES (${yearBe}, 0)
-                       ON CONFLICT (year_be) DO NOTHING`;
-  const [row] = await tx.$queryRaw<{ last_no: number }[]>`
-    SELECT last_no FROM doc_no_counters WHERE year_be = ${yearBe} FOR UPDATE`;
-  const next = row.last_no + 1;
-  await tx.$executeRaw`UPDATE doc_no_counters SET last_no = ${next} WHERE year_be = ${yearBe}`;
+  await manager.query(
+    `INSERT INTO sps_sbpgi.document_running_numbers (be_year, last_running_no) VALUES ($1, 0)
+     ON CONFLICT (be_year) DO NOTHING`, [yearBe]);
+  const [row] = await manager.query(
+    `SELECT last_running_no FROM sps_sbpgi.document_running_numbers WHERE be_year = $1 FOR UPDATE`, [yearBe]);
+  const next = Number(row.last_running_no) + 1;
+  await manager.query(
+    `UPDATE sps_sbpgi.document_running_numbers SET last_running_no = $1 WHERE be_year = $2`, [next, yearBe]);
   return `${yearBe}/${String(next).padStart(5, '0')}`;   // เช่น "2569/00185"
 }
 // test: Promise.all ยิง 20 ครั้งพร้อมกัน → 20 เลขไม่ซ้ำ ต่อเนื่อง
@@ -581,19 +602,19 @@ export async function nextDocNo(tx: Prisma.TransactionClient, date = new Date())
 ### 7.5 `workflow/engine.ts` — applyAction (transaction เต็มของ POST /documents/{docNo}/actions)
 
 ```ts
-export async function applyAction(docNo: string, user: JwtUser,
+export async function applyAction(docNo: string, user: UserContext,
     input: { result?: string; comment?: string }) {
   // 1) validate ก่อนเข้า transaction
   if (!input.result)
-    throw new AppError('VALIDATION',
-      'ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ', 400); // verbatim SRS
+    throw new BadRequestException(
+      'ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ');      // verbatim SRS
 
-  const result = await prisma.$transaction(async tx => {
-    const doc = await tx.compensationDocument.findUnique({ where: { docNo } });
-    if (!doc) throw new AppError('NOT_FOUND', MSG.DOC_NOT_FOUND, 404);
-    if (doc.statusCode === '99') throw new AppError('CONFLICT', MSG.DOC_ALREADY_DONE, 409);
+  const result = await this.dataSource.transaction(async manager => {
+    const doc = await manager.getRepository(CompensationDocument).findOne({ where: { docNo } });
+    if (!doc) throw new NotFoundException(MSG.DOC_NOT_FOUND);
+    if (doc.statusCode === '99') throw new ConflictException(MSG.DOC_ALREADY_DONE);
 
-    const mySection = await sectionOfUser(tx, user);           // map group/scope (auth-backend) + prepared approver → section
+    const mySection = await sectionOfUser(manager, user);      // map group/scope (auth-backend) + prepared approver → section
     if (mySection !== doc.currentSectionCode)
       throw new AppError('FORBIDDEN', MSG.NOT_YOUR_SECTION, 403);
 
@@ -666,18 +687,20 @@ export function checkGenFlowGate(row: FgiImpactStoreView):
 
 ```ts
 export async function runJob(jobNo: string, trigger: 'CRON' | 'MANUAL', by?: string) {
-  const run = await prisma.$transaction(async tx => {
-    const running = await tx.jobRunHistory.findFirst({ where: { jobNo, status: 'RUNNING' } });
-    if (running) throw new AppError('CONFLICT', MSG.JOB_ALREADY_RUNNING, 409);   // กันรันซ้อน
-    return tx.jobRunHistory.create({ data: { jobNo, status: 'RUNNING', trigger, startedBy: by } });
+  const run = await this.dataSource.transaction(async manager => {
+    const repo = manager.getRepository(JobRunHistory);
+    const running = await repo.findOne({ where: { jobNo, status: JobRunStatus.RUNNING } });
+    if (running) throw new ConflictException(MSG.JOB_ALREADY_RUNNING);          // กันรันซ้อน
+    return repo.save(repo.create({ jobNo, status: JobRunStatus.RUNNING, trigger, startedBy: by }));
   });
+  const runs = this.dataSource.getRepository(JobRunHistory);
   try {
     const stats = await JOB_IMPLS[jobNo]();       // { rows, files, note }
-    await prisma.jobRunHistory.update({ where: { runId: run.runId },
-      data: { status: 'SUCCESS', finishedAt: new Date(), ...stats } });
+    await runs.update({ runId: run.runId },
+      { status: JobRunStatus.SUCCESS, finishedAt: new Date(), ...stats });
   } catch (err) {
-    await prisma.jobRunHistory.update({ where: { runId: run.runId },
-      data: { status: 'ERROR', finishedAt: new Date(), errorMessage: String(err) } });
+    await runs.update({ runId: run.runId },
+      { status: JobRunStatus.ERROR, finishedAt: new Date(), errorMessage: String(err) });
     notificationQueue.enqueue({ template: 'EM-07', jobNo, error: String(err) });
     throw err;
   }
@@ -688,14 +711,14 @@ export async function runJob(jobNo: string, trigger: 'CRON' | 'MANUAL', by?: str
 ### 7.8 `lib/audit.ts` — writeAudit (ใช้ร่วมทุก master mutation ใน transaction เดียวกัน)
 
 ```ts
-export async function writeAudit(tx: Prisma.TransactionClient, p: {
+export async function writeAudit(manager: EntityManager, p: {
   tableName: string; refKey: string;
   actionType: 'CREATE' | 'UPDATE' | 'DELETE' | 'RESET';
   oldValue?: unknown; newValue?: unknown;
   reason: string;                                  // บังคับ — controller ตรวจ 400 ก่อนถึงตรงนี้
-  updatedBy: string;                               // จาก JWT
+  updatedBy: string;                               // จาก user-context header ที่ BFF ส่งมา
 }) {
-  await tx.auditLog.create({ data: {
+  await manager.getRepository(AuditLog).save({
     tableName: p.tableName, refKey: p.refKey, actionType: p.actionType,
     oldValue: p.oldValue ? JSON.stringify(p.oldValue) : null,
     newValue: p.newValue ? JSON.stringify(p.newValue) : null,
@@ -736,7 +759,7 @@ Renderer แทนตัวแปร `{{var}}` จาก context · ผู้ร
 | job รอบใด error | EM-07 | ผู้ดูแลระบบ (config ต่อ job ใน job_configs) | jobNo, jobName, errorSummary, runId |
 | Job 10 พบ ACK ค้าง | EM-08 | ผู้ดูแลระบบ | fileName, sentDate, daysWaiting |
 
-## 10. Seed data (`prisma/seed.ts` — idempotent ด้วย upsert ทั้งหมด)
+## 10. Seed data (`src/database/seed.ts` — idempotent ด้วย upsert ทั้งหมด)
 
 | ตาราง | แถว | รายละเอียด |
 |---|---|---|
@@ -756,7 +779,8 @@ Renderer แทนตัวแปร `{{var}}` จาก context · ผู้ร
 
 | ตัวแปร | ตัวอย่าง (dev) | ใช้ทำอะไร |
 |---|---|---|
-| `DATABASE_URL` | postgres://sbpgi:sbpgi@localhost:5432/sbpgi | Prisma |
+| `DB_HOST/PORT/NAME/USER/PASSWORD/SCHEMA` | localhost / 5432 / sbpgi / sbpgi / sbpgi / sps_sbpgi | TypeORM DataSource (ชื่อตัวแปรตาม store-backend เดิม) |
+| `DB_SLAVE_HOSTS/PORTS/USERS/PASSWORDS` | — | read-replica routing (optional · แบบระบบเดิม) |
 | `PORT` / `NODE_ENV` | 3000 / development | server |
 | `BFF_API_KEY` (≥32 ตัว) | random 64 hex | ตรวจ `x-api-key` จาก BFF ระบบเดิม (แทน `JWT_*` เดิม — ตัดออก ใช้ auth ระบบเดิม) |
 | `SERVICE_TOKEN` | random 64 hex | Job 8b → workflows |
@@ -787,16 +811,16 @@ services:
 volumes: { dbdata: {} }
 ```
 
-Dockerfile: multi-stage `node:20-alpine` (deps → build tsc+prisma generate → runtime คัดเฉพาะ dist+node_modules production) · CMD `node dist/server.js` · migrate ตอน deploy ด้วย `prisma migrate deploy` (ไม่ auto ใน CMD)
+Dockerfile: multi-stage `node:20-alpine` (deps → `nest build` → runtime คัดเฉพาะ dist+node_modules production · รันเป็น user `node` · HEALTHCHECK `GET /api/health`) · CMD `node dist/main.js` · migrate ตอน deploy ด้วย `typeorm migration:run` (ไม่ auto ใน CMD)
 
 ## 12. Best practices สากลที่บังคับใช้
 
-- **12-factor**: config ผ่าน env (zod fail fast) · log stdout JSON (pino + request id + redact token/password) · stateless (storage เป็น volume)
-- **Security**: helmet · cors whitelist · ตรวจ `x-api-key`/service token แบบ constant-time (ไม่มี login/bcrypt ใน SBPGI — auth อยู่ Cognito/BFF ระบบเดิม) · Prisma/parameterized เท่านั้น ห้ามต่อ string SQL · ไม่ leak stack ใน 500
-- **Graceful shutdown**: SIGTERM/SIGINT → หยุดรับ request → รอ job ที่กำลังรัน → `prisma.$disconnect()` · `GET /healthz` (liveness) + `GET /readyz` (เช็ค DB)
-- **Transaction boundary ที่ service** — `prisma.$transaction(async tx => …)` ส่ง `tx` ลง repo · side-effect ภายนอก (อีเมล/ไฟล์) นอก transaction เสมอ
+- **12-factor**: config ผ่าน env (ConfigModule validate fail fast) · log stdout JSON (pino + request id + redact token/password) · stateless (storage เป็น volume)
+- **Security**: helmet · cors whitelist · ตรวจ `x-api-key`/service token แบบ constant-time (ไม่มี login/bcrypt ใน SBPGI — auth อยู่ Cognito/BFF ระบบเดิม) · TypeORM parameterized เท่านั้น ห้ามต่อ string SQL · ไม่ leak stack ใน 500 (ใช้ exception filter แบบ store-backend)
+- **Graceful shutdown**: `enableShutdownHooks()` — SIGTERM/SIGINT → หยุดรับ request → รอ job ที่กำลังรัน → `dataSource.destroy()` · `GET /api/health` (liveness) + `GET /readyz` (เช็ค DB)
+- **Transaction boundary ที่ service** — `dataSource.transaction(async manager => …)` ส่ง `manager` ลง repo · side-effect ภายนอก (อีเมล/ไฟล์) นอก transaction เสมอ
 - **Testing pyramid**: unit service (mock repo — เน้น `workflow/transitions` ครบทุก branch) → integration supertest + postgres จริง → golden-file ต่อ interface (encoding, วันที่ พ.ศ., ชื่อ first+last) · coverage `workflow/` ≥ 90%
-- **Migration ผ่าน `prisma migrate` เท่านั้น** (ห้าม `db push`) · seed idempotent
+- **Migration ผ่าน TypeORM migration เท่านั้น** (ห้าม `synchronize: true`) · seed idempotent
 - **API versioning**: ทุกอย่างใต้ `/api/v1` — breaking change = `/api/v2`
 
 ## 13. Definition of Done (ทั้งโปรเจกต์ BE)
@@ -806,4 +830,4 @@ Dockerfile: multi-stage `node:20-alpine` (deps → build tsc+prisma generate →
 3. ข้อความ error ไทยทุกตัวรวมศูนย์ `lib/messages.ts` และตรง verbatim SRS
 4. batch ทุก job รันผ่าน `POST /jobs/{no}/run` สำเร็จบน fixture · Job 4 fail กลางทาง = rollback สถานะไม่ค้าง P
 5. seed แล้ว FE (plan-fe.md) ใช้งานได้ครบทุกหน้า end-to-end ผ่าน `docker compose up`
-6. CI เขียว: lint / tsc / prisma validate / test / build · ไม่มี secret ใน repo/DB/log
+6. CI เขียว: lint / tsc / test / build · ไม่มี secret ใน repo/DB/log

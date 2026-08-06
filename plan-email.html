@@ -156,23 +156,23 @@
             <select id="em01Select">
               <option value="06">รอฝ่าย SBP DSA ดำเนินการ (06)</option>
               <option value="08">รอเจ้าหน้าที่ SBP DSA ดำเนินการ (08)</option>
-              <option value="01" selected>รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ (01)</option>
+              <option value="01" selected>รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ (01)</option>
               <option value="02">รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ (02)</option>
               <option value="03">รอผู้บริหารสำนักบริหาร SBP ดำเนินการ (03)</option>
             </select>
-            <span class="pill wait" id="em01Status">รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</span>
+            <span class="pill wait" id="em01Status">รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</span>
           </div>
           <div class="mail">
             <div class="mail-top">
               <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
-              <div class="mail-row"><span class="k">To</span><span class="v" id="em01To">ฝ่ายส่งเสริมธุรกิจ SBP &lt;sbp-opt-mgr@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">To</span><span class="v" id="em01To">หน่วยงานส่งเสริมธุรกิจ SBP &lt;sbp-opt-mgr@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">Cc</span><span class="v" id="em01Cc">ฝ่าย SBP DSA &lt;sbp-dsa-mgr@cpall.co.th&gt;</span></div>
-              <div class="mail-row"><span class="k">Subject</span><span class="v subj" id="em01Subj">[SBPGI] เอกสารประกันรายได้ 2569/00123 — รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</span></div>
+              <div class="mail-row"><span class="k">Subject</span><span class="v subj" id="em01Subj">[SBPGI] เอกสารประกันรายได้ 2569/00123 — รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</span></div>
             </div>
             <div class="mail-body">
-              เรียน <span id="em01Dear">ฝ่ายส่งเสริมธุรกิจ SBP</span><br>
+              เรียน <span id="em01Dear">หน่วยงานส่งเสริมธุรกิจ SBP</span><br>
               เอกสารประกันรายได้เลขที่ <span class="mf">2569/00123</span> ได้เปลี่ยนสถานะเป็น
-              "<b id="em01BodyStatus">รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</b>" กรุณาเข้าระบบเพื่อตรวจสอบและดำเนินการ
+              "<b id="em01BodyStatus">รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</b>" กรุณาเข้าระบบเพื่อตรวจสอบและดำเนินการ
               <table class="det">
                 <tr><td>เลขที่เอกสาร</td><td><span class="mf">2569/00123</span></td></tr>
                 <tr><td>ร้านถูกกระทบ</td><td><span class="mf">00788</span> — <span class="mf">รัตนอุทิศ ซ.13</span> (ภาค <span class="mf">RS</span>)</td></tr>
@@ -233,24 +233,24 @@
         <div class="card" data-tpl="EM-03">
           <div class="card-head"><h2><span class="tpl-code">EM-03</span> &nbsp;เอกสารถูกส่งกลับ (Back-flow)</h2><span class="flowpoint" style="margin-left:auto;">✉ Stage C · ส่งกลับเพื่อแก้ไข</span></div>
           <div class="tpl-meta">
-            <div class="m"><span class="k">Trigger</span><span class="v">ผลพิจารณา "ส่งกลับ…" ทุกขั้น เช่น GM ส่งกลับฝ่ายส่งเสริมฯ · บัญชีภาคส่งกลับฝ่ายบัญชี</span></div>
+            <div class="m"><span class="k">Trigger</span><span class="v">ผลพิจารณา "ส่งกลับ…" ทุกขั้น เช่น GM ส่งกลับหน่วยงานส่งเสริมธุรกิจฯ · หน่วยงานส่งเสริมฯ ส่งกลับฝ่าย SBP DSA · เจ้าหน้าที่ SBP DSA ส่งกลับฝ่าย SBP DSA</span></div>
             <div class="m"><span class="k">ผู้รับ</span><span class="v">TO = ผู้ดำเนินการที่ถูกส่งกลับหา · CC = ผู้ส่งกลับ</span></div>
             <div class="m"><span class="k">จุดต่างจาก EM-01</span><span class="v">เน้นเหตุผล/ความเห็นของผู้ส่งกลับ เพื่อให้แก้ไขได้ตรงจุด</span></div>
           </div>
           <div class="mail warn">
             <div class="mail-top">
               <div class="mail-row"><span class="k">From</span><span class="v">SBPGI ระบบประกันรายได้ &lt;sbpgi-noreply@cpall.co.th&gt;</span></div>
-              <div class="mail-row"><span class="k">To</span><span class="v">ฝ่ายส่งเสริมธุรกิจ SBP &lt;sbp-opt-mgr@cpall.co.th&gt;</span></div>
+              <div class="mail-row"><span class="k">To</span><span class="v">หน่วยงานส่งเสริมธุรกิจ SBP &lt;sbp-opt-mgr@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">Cc</span><span class="v">GM ส่งเสริมธุรกิจ SBP &lt;sbp-opt-gm@cpall.co.th&gt;</span></div>
               <div class="mail-row"><span class="k">Subject</span><span class="v subj">[SBPGI] เอกสารประกันรายได้ 2569/00123 — ถูกส่งกลับเพื่อแก้ไข</span></div>
             </div>
             <div class="mail-body">
-              เรียน ฝ่ายส่งเสริมธุรกิจ SBP<br>
+              เรียน หน่วยงานส่งเสริมธุรกิจ SBP<br>
               เอกสารประกันรายได้เลขที่ <span class="mf">2569/00123</span> ถูก <b>ส่งกลับ</b> จาก
               <span class="mf">GM ส่งเสริมธุรกิจ SBP</span> เพื่อให้ตรวจสอบ/แก้ไขข้อมูลก่อนส่งพิจารณาอีกครั้ง
               <table class="det">
                 <tr><td>ผู้ส่งกลับ</td><td><span class="mf">GM ส่งเสริมธุรกิจ SBP</span> (section 02)</td></tr>
-                <tr><td>สถานะใหม่</td><td><span class="mf">รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ</span></td></tr>
+                <tr><td>สถานะใหม่</td><td><span class="mf">รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</span></td></tr>
                 <tr><td>ความเห็น / เหตุผล</td><td><span class="mf warn">%ชดเชยของร้านเปิดใหม่รวมไม่เท่ากับ 100% กรุณาปรับสัดส่วนใหม่</span></td></tr>
                 <tr><td>วันที่ส่งกลับ</td><td><span class="mf">20/06/2569</span></td></tr>
               </table>
@@ -440,10 +440,10 @@
   (function () {
     /* EM-01 — สลับตัวอย่างตามสถานะถัดไป (TO/CC ตามตาราง State/Email ใน k2-flow.html) */
     var RULES = {
-      '06': { status:'รอฝ่าย SBP DSA ดำเนินการ',            to:'ฝ่าย SBP DSA', toMail:'sbp-dsa-mgr@cpall.co.th',      cc:'เจ้าหน้าที่ SBP DSA', ccMail:'sbp-dsa-officer@cpall.co.th', action:'เห็นควรไม่ชดเชย (ส่งกลับ)',        actor:'ฝ่ายส่งเสริมธุรกิจ SBP' },
+      '06': { status:'รอฝ่าย SBP DSA ดำเนินการ',            to:'ฝ่าย SBP DSA', toMail:'sbp-dsa-mgr@cpall.co.th',      cc:'เจ้าหน้าที่ SBP DSA', ccMail:'sbp-dsa-officer@cpall.co.th', action:'เห็นควรไม่ชดเชย (ส่งกลับ)',        actor:'หน่วยงานส่งเสริมธุรกิจ SBP' },
       '08': { status:'รอเจ้าหน้าที่ SBP DSA ดำเนินการ',      to:'เจ้าหน้าที่ SBP DSA', toMail:'sbp-dsa-officer@cpall.co.th', cc:'ฝ่าย SBP DSA', ccMail:'sbp-dsa-mgr@cpall.co.th',    action:'เจ้าหน้าที่ SBP DSA ดำเนินการ',     actor:'ฝ่าย SBP DSA' },
-      '01': { status:'รอฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ',   to:'ฝ่ายส่งเสริมธุรกิจ SBP', toMail:'sbp-opt-mgr@cpall.co.th', cc:'ฝ่าย SBP DSA', ccMail:'sbp-dsa-mgr@cpall.co.th',    action:'คำนวณเงินชดเชยเรียบร้อย',           actor:'เจ้าหน้าที่ SBP DSA' },
-      '02': { status:'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ',   to:'GM ส่งเสริมธุรกิจ SBP', toMail:'sbp-opt-gm@cpall.co.th', cc:'ฝ่ายส่งเสริมธุรกิจ SBP', ccMail:'sbp-opt-mgr@cpall.co.th', action:'เห็นควรชดเชย',                    actor:'ฝ่ายส่งเสริมธุรกิจ SBP' },
+      '01': { status:'รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ',   to:'หน่วยงานส่งเสริมธุรกิจ SBP', toMail:'sbp-opt-mgr@cpall.co.th', cc:'ฝ่าย SBP DSA', ccMail:'sbp-dsa-mgr@cpall.co.th',    action:'คำนวณเงินชดเชยเรียบร้อย',           actor:'เจ้าหน้าที่ SBP DSA' },
+      '02': { status:'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ',   to:'GM ส่งเสริมธุรกิจ SBP', toMail:'sbp-opt-gm@cpall.co.th', cc:'หน่วยงานส่งเสริมธุรกิจ SBP', ccMail:'sbp-opt-mgr@cpall.co.th', action:'เห็นควรชดเชย',                    actor:'หน่วยงานส่งเสริมธุรกิจ SBP' },
       '03': { status:'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', to:'ผู้บริหารสำนักบริหาร SBP', toMail:'sbp-avp@cpall.co.th', cc:'GM ส่งเสริมธุรกิจ SBP', ccMail:'sbp-opt-gm@cpall.co.th', action:'เห็นควรชดเชย (50,001–300,000 บาท)',     actor:'GM ส่งเสริมธุรกิจ SBP' }
       /* ตัดสถานะบัญชี 04/05 ตาม SDD v7.5 — บัญชีตรวจสอบผ่านรายงาน SBP Mall นอก workflow */
     };

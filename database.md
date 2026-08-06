@@ -2,7 +2,7 @@
 
 > **เอกสารมีชีวิต (living doc)** — สรุปโครงสร้างฐานข้อมูลเป้าหมายของระบบใหม่
 > **แหล่งอ้างอิงหลัก:** `plan-database.html` (หน้า DB FGI/FCS + K2)
-> **อ้างอิงประกอบ:** `fgi-database.html`, `k2-database.html`, เอกสาร Batch v4.0 (Data Dictionary หน้า 6–10), SRS ประกันรายได้-K2 v3.1
+> **อ้างอิงประกอบ:** `fgi-database.html`, `k2-database.html`, เอกสาร Batch v4.0 (Data Dictionary หน้า 6–10), SRS ประกันรายได้-K2 v3.1, **`script_TB_DB_CPA_FRN_FGI_20260722.sql`** (schema จริงของ K2 เดิม — SQL Server 47 ตาราง · ดูหัวข้อ "ช่องว่างเทียบ DB เดิมของ K2")
 > **กติกา sync:** ทุกครั้งที่คุย/แก้ไขเรื่อง database ให้อ่านไฟล์นี้ก่อน และถ้ามีการตัดสินใจใหม่ ให้อัปเดตทั้งไฟล์นี้และ `plan-database.html` ให้ตรงกัน
 
 ## บริบทระบบใหม่
@@ -17,11 +17,11 @@
 
 ## ภาพรวม
 
-- **29 ตาราง** ใน Target Schema เดียว (1 schema ใช้ร่วมกัน)
+- **34 ตาราง** ใน Target Schema เดียว (1 schema ใช้ร่วมกัน) — เพิ่ม 5 ตารางจากการเทียบ DB เดิมของ K2 เมื่อ 2026-08-06 (ดูหัวข้อ "ช่องว่างเทียบ DB เดิมของ K2" ท้ายไฟล์)
 - **3 Data Zones**: A = FGI/FCS Impact Pipeline · B = K2 เอกสาร & Workflow · C = Master/Config ใช้ร่วม
 - **4 Core IDs** ใช้ trace งาน (Data Spine)
 - มาตรฐานชื่อ: อังกฤษ `lower_snake_case` ทั้ง schema · ป้ายที่มา (FGI/FCS), (K2), (ใหม่) ต้องคงไว้เสมอ
-- **ตัดสินใจ 2026-08-05:** RBAC (`roles`/`menus`/`menu_permissions`/`user_accounts`) และผู้ปฏิบัติงาน (`operator_assignments`) **ไม่สร้างใน SBPGI** — ใช้ระบบสิทธิ์/ผู้ใช้ของระบบ SBP เดิม (ดูหัวข้อ "ตารางที่ตัดออก" ท้าย Zone C) · เดิมนับเป็น 34 ตาราง
+- **ตัดสินใจ 2026-08-05:** RBAC (`roles`/`menus`/`menu_permissions`/`user_accounts`) และผู้ปฏิบัติงาน (`operator_assignments`) **ไม่สร้างใน SBPGI** — ใช้ระบบสิทธิ์/ผู้ใช้ของระบบ SBP เดิม (ดูหัวข้อ "ตารางที่ตัดออก" ท้าย Zone C) · การตัดนี้ทำให้เหลือ 29 ตาราง ก่อนเพิ่มอีก 5 ตารางจากการเทียบ DB เดิมของ K2 (2026-08-06) → รวมเป็น 34
 
 ## Data Spine — เส้นทางข้อมูลหลัก
 
@@ -35,7 +35,7 @@
 | 4 | B | `task_id` | งานของแต่ละ Section และผู้รับผิดชอบ — แหล่งข้อมูลหน้า inbox |
 | 5 | C | `employee_id` | ผู้ปฏิบัติงานที่อ้างร่วมกันทุกขั้น — ตัวตน/สิทธิ์เมนูมาจากระบบ SBP เดิม (auth-backend) ผ่าน user-context header ไม่ใช่ตารางใน SBPGI |
 
-## Data Dictionary (29 ตาราง)
+## Data Dictionary (34 ตาราง)
 
 ### Zone A · FGI/FCS — Impact Pipeline และ External Interfaces
 
@@ -53,23 +53,28 @@
 
 | ตาราง | ที่มา | PK | FK / ความสัมพันธ์หลัก | บทบาท |
 |---|---|---|---|---|
-| `compensation_documents` | K2 | `doc_no` (YYYY/xxxxx) | `status_code` · `current_section_code` · `impacted_store_code` · **`impact_process_id` (ใหม่)** | เอกสารประกันรายได้ — หัวใจโซน B · FK ใหม่เชื่อม hub โซน A แทนไฟล์ 48 ฟิลด์ |
+| `compensation_documents` | K2 | `doc_no` (YYYY/xxxxx) | `status_code` · `current_section_code` · `impacted_store_code` · **`impact_process_id` (ใหม่)** | เอกสารประกันรายได้ — หัวใจโซน B · FK ใหม่เชื่อม hub โซน A แทนไฟล์ 48 ฟิลด์ · **คอลัมน์ที่เติมจาก CompensateFlow เดิม (2026-08-06):** `round_no`/`loop_no` (= CompMainLoopNo/CompLoopNo — หน้าจอแสดง "รอบ 1 · ครั้งที่ 3") · `allmap_url` (= CompUrlMap — ปุ่ม Link To ALLMAP) · **`statement_id`** (= CompStatementID — โยงกลับ SBP Statement ที่เป็นต้นทางการสร้างเอกสารตามกระบวนการ FS ใหม่) · `account_year`/`account_month` (งวดบัญชี) · `approver_snapshot` (JSONB — FC/Section/Manager/GM/AVP + ชื่อ/อีเมล ณ เวลาเปิดเอกสาร ตามที่ CompensateFlow เก็บไว้ 25 คอลัมน์: **จำเป็นเป็นพิเศษเมื่อ RBAC ย้ายไปใช้ระบบเดิม เพราะตำแหน่งจาก HR Connect เปลี่ยนได้ และผู้รักษาการเป็นผู้อนุมัติไม่ได้**) |
 | `document_new_stores` | K2 | id | `doc_no` → compensation_documents | ร้านเปิดใหม่ · `distance_km` · %ชดเชย (**ผลรวมต้อง = 100%**) |
 | `document_competitors` | K2 | id | `doc_no` · `competitor_code` → competitors | คู่แข่งในเอกสาร · `source_system` = ALLMAP (จาก pipeline) / USER (ผู้ใช้เพิ่มเอง) |
 | `document_external_factors` | K2 | id | `doc_no` · `factor_code` → external_factors | ปัจจัยภายนอกที่ใช้ในเอกสาร + ช่วงวันที่ |
 | `consideration_logs` | K2 | id | `doc_no` → compensation_documents | ประวัติพิจารณาทุกขั้น (ผู้พิจารณา · Section · ผล · เวลา) · `result_category` (APPROVE/REJECT/PENDING) สำหรับ filter **ประกันรายได้/ไม่ประกันรายได้** หน้ารายงานตรวจสอบประกันรายได้ (k2-report · SDD v7.5) |
-| `document_attachments` | K2 | id | `doc_no` → compensation_documents | ไฟล์แนบ ≤ 5MB ต่อไฟล์ · แยกตาม Section ที่แนบ |
+| `document_attachments` | K2 | id | `doc_no` → compensation_documents | ไฟล์แนบ ≤ 5MB ต่อไฟล์ · แยกตาม Section ที่แนบ · **เติมจาก AttachFileProfile เดิม (2026-08-06):** `file_size` · `upload_status` + `upload_message` (ผลอัปโหลดขึ้น object storage) · `purge_flag`/`storage_delete_status` (lifecycle ลบไฟล์บน S3 — ของเดิมมี FlagPurgeData/FlagDeleteS3/StatusCodeDeleteS3 ครบ) |
 | `compensation_histories` | K2 | id | `store_code` · `ref_doc_no` | ประวัติชดเชยต่อร้าน/รอบ · `submit_account_month` เดือนส่งบัญชี (→ ไฟล์ FRBC0001 ของ Job 6) |
 | `workflow_instances` | ใหม่ | `instance_id` | `doc_no` → compensation_documents | instance ของ workflow ภายใน (แทน K2 engine) · สถานะ instance แทน workflow_generation_status=Y |
-| `workflow_tasks` | ใหม่ | `task_id` | `instance_id` · `section_code` · `assignee_employee_id` | งานค้างต่อ Section — แหล่งข้อมูลหน้างานรอดำเนินการ (inbox) · ฐานของ reminder รายสัปดาห์ (จันทร์ 10:00) และ escalation 30/45/60 วัน (จาก Approve Flow เดิม — ดู workflow.md) |
+| `workflow_tasks` | ใหม่ | `task_id` | `instance_id` · `section_code` · `assignee_employee_id` | งานค้างต่อ Section — แหล่งข้อมูลหน้างานรอดำเนินการ (inbox) · `waiting_days` (= CompWaitingDays เดิม) · ฐานของ reminder รายสัปดาห์ (จันทร์ 10:00) และ escalation 30/45/60 วัน (จาก Approve Flow เดิม — ดู workflow.md) |
+| `document_cost_details` ★ | K2 (ImpactCostDetail) | id | `doc_no` → compensation_documents · `new_store_code` | **(เพิ่ม 2026-08-06)** ยอดชดเชย**แยกรายเดือน/รายร้านเปิดใหม่** — `cost_year`/`cost_month` · `cost_target` (เป้ายอดขาย) · `cost_amount` · แยกค่าของร้านใหม่ (`_n`) และร้านใหม่สะสม (`_nc`) ตาม ImpactCostDetail เดิม · ของเดิมในโครงเรามีแค่ยอดรวมต่อเอกสาร + %ต่อร้าน ทำให้ทวนยอดรายเดือนกับ Statement/SAP ไม่ได้ |
+| `document_running_numbers` ★ | K2 (RunningNumber) | `be_year` | ออกเลขให้ compensation_documents | **(เพิ่ม 2026-08-06)** ตัวนับเลขเอกสารต่อปี พ.ศ. (`last_running_no`) — ออกเลข `YYYY/xxxxx` แบบ atomic (`UPDATE … RETURNING` / row lock) กันเลขชนกันเมื่อ batch และผู้ใช้สร้างพร้อมกัน · เดิมโครงเราไม่ระบุที่เก็บตัวนับ |
 
 ### Zone C · Shared — Master, RBAC, Configuration และ Audit
 
 | ตาราง | ที่มา | PK | FK / ความสัมพันธ์หลัก | บทบาท |
 |---|---|---|---|---|
-| `stores` | FGI/FCS | `store_code` | ← impacted_stores (subset SP) · ← `document_new_stores.new_store_code` | master สาขา 7-Eleven ทุกประเภท (SP / เปิดใหม่ / ปิด renovate) — แหล่งค้นหาร้านของหน้า `k2-create.html` (API `/stores/search`) |
-| `impacted_stores` | K2 | `store_code` | = `impacted_store_code` ของโซน A (สะพานหลักสองระบบ) · subset SP ของ `stores` | ข้อมูลร้าน SP master |
-| `workflow_sections` / `document_statuses` | K2 | `section_code` / `status_code` | อ้างโดย compensation_documents · workflow_tasks · status_email_rules | ขั้นตอน **06/08/01/02/03 (5 ขั้น · ตัดบัญชี 04/05 ตาม SDD v7.5)** · สถานะเอกสาร **6 ค่า: 06/08/01/02/03/99** โดย 99 = เสร็จสิ้นดำเนินการ — แถวบัญชี (04/05) และสถานะ "รอฝ่ายบัญชี/รอบัญชีปฏิบัติการภาค" ยกเลิกใช้งาน |
+| `stores` | FGI/FCS | `store_code` | ← impacted_stores (subset SP) · ← `document_new_stores.new_store_code` | master สาขา 7-Eleven ทุกประเภท (SP / เปิดใหม่ / ปิด renovate) — แหล่งค้นหาร้านของ popup ร้านเปิดใหม่ในหน้าเอกสาร (API `/stores/search`) |
+| `impacted_stores` | K2 | `store_code` | = `impacted_store_code` ของโซน A (สะพานหลักสองระบบ) · subset SP ของ `stores` | ข้อมูลร้าน SP master · **`transfer_sbp_date` (เพิ่ม 2026-08-06 = CompTransferSBPDate เดิม)** — วันที่โอนเป็นร้าน SP ใช้กับเงื่อนไขร้านก่อน/หลัง 1/10/2557 ของ Approve Flow เดิม |
+| `workflow_sections` / `document_statuses` | K2 | `section_code` / `status_code` | อ้างโดย compensation_documents · workflow_tasks · status_email_rules | ขั้นตอน **06/08/01/02/03 (5 ขั้น · ตัดบัญชี 04/05 ตาม SDD v7.5)** · สถานะเอกสาร **6 ค่า: 06/08/01/02/03/99** โดย 99 = เสร็จสิ้นดำเนินการ — แถวบัญชี (04/05) และสถานะ "รอฝ่ายบัญชี/รอบัญชีปฏิบัติการภาค" ยกเลิกใช้งาน · **`workflow_sections.approve_limit_amount` (เพิ่ม 2026-08-06 = SectionProfile.SectionLimitCost เดิม)** — วงเงินอนุมัติต่อขั้นเป็น **data ไม่ใช่ค่า hardcode**: 02 = 50,000 · 03 = 300,000 ตาม SDD GI (คู่กับ `system_configs.workflow.gm_amount_limit` / `avp_amount_limit` — ตารางนี้เป็นค่าจริงที่ Workflow Engine อ่าน) |
+| `zones` ★ | K2 (ZoneProfile) | `zone_code` | ← stores/impacted_stores · ใช้ในตัวกรองรายงาน | **(เพิ่ม 2026-08-06)** master **ภาค/โซน** — ชุดปัจจุบัน **13 รหัส**: `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` (`zone_code` 2–3 หลัก + `zone_name`) — **SDD GI บังคับ**: "กรณีมีการเพิ่มภาคในระบบ ให้แสดง Checkbox เพิ่มแบบ Auto โดยไม่ต้องแก้หน้าจอ" → รายชื่อภาค 13 ค่าต้องมาจากตารางนี้ ห้าม hardcode ใน FE |
+| `branch_types` ★ | K2 (BranchTypeProfile) | `branch_type_code` | ← stores.branch_type_code · ใช้ใน Gen Flow Gate | **(เพิ่ม 2026-08-06)** master **ประเภทสาขา** — เก็บชื่อ 3 ชุดตามของเดิม: `branch_type_name` · **`fms_name`** · **`fgi_name`** (ระบบ FMS กับ FGI เรียกประเภทเดียวกันคนละชื่อ — ต้อง map ไม่ใช่เทียบ string ตรง) · เซ็ตที่ผ่าน Gen Flow Gate (FAM/FB1/FC1/FB2/FVB/FVC) และประเภทร้าน 8 ชนิด/4 ค่าในรายงาน อ่านจากตารางนี้ |
+| `decisions` ★ | K2 (DecisionProfile) | `decision_code` | ← consideration_logs.decision_code · workflow transition | **(เพิ่ม 2026-08-06)** master **ผลพิจารณา** — `decision_name` (ข้อความบนปุ่ม · ไทย verbatim) · **`flow_name`** (ชื่อที่ใช้ในผังflow) · **`result_name`** (ชื่อที่ใช้แสดงผลในรายงาน/ประวัติ) ซึ่งของเดิมแยกกัน 3 ชุด · ทำให้การเปลี่ยนชื่อปุ่มตาม SDD GI ("ส่งฝ่ายส่งเสริมฯ" → "ส่งหน่วยงานส่งเสริมฯ") แก้ที่ data ไม่ต้อง deploy · `consideration_logs.result` ยังเก็บข้อความ ณ เวลากดไว้เป็น snapshot |
 | `employees` | FGI/FCS | `employee_id` | ← `workflow_tasks.assignee_employee_id` | master พนักงานองค์กร (HR) — batch join อยู่แล้ว · การ resolve ผู้รับผิดชอบต่อ section/พื้นที่ใช้ user–group ของระบบเดิม (auth-backend) ไม่ใช่ตารางใน SBPGI |
 | `external_factors` | K2 · SRS 3.1.9 | `factor_code` | ← document_external_factors | ปัจจัยภายนอก master · รหัสห้ามซ้ำ |
 | `competitors` | K2 | `competitor_code` | ← document_competitors | ร้านคู่แข่ง 24 ราย (108 Shop, Lotus Express, CJ …) |
@@ -94,6 +99,45 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 
 ผลที่ตาม: 8 role (00–10) ของ SRS ถูก map เป็น group ใน auth-backend · `workflow_tasks.assignee_employee_id` ยังอยู่ (เก็บผลการ resolve แล้ว) แต่แหล่งข้อมูลการ resolve คือระบบเดิม · การแก้สิทธิ์/กลุ่มลง audit ของระบบเดิม ไม่ใช่ `audit_logs` ของ SBPGI
 
+## ช่องว่างเทียบ DB เดิมของ K2 (`script_TB_DB_CPA_FRN_FGI_20260722.sql` · ตรวจ 2026-08-06)
+
+สคริปต์ต้นฉบับ = **SQL Server `CPA_FRN_FGI` · 47 ตาราง** (UTF-16, CREATE TABLE ล้วน ไม่มีข้อมูล/ไม่มี index) — ตรวจแล้วนำเข้าเฉพาะสิ่งที่ยังขาดในโครงเป้าหมาย:
+
+### รับเข้าแล้ว (5 ตาราง ★ + คอลัมน์เติมข้างต้น)
+
+| ตารางเดิม (K2) | เข้าเป็น | เหตุผลที่ต้องมี |
+|---|---|---|
+| `ZoneProfile` | `zones` | SDD GI บังคับให้เพิ่มภาคแล้ว checkbox ขึ้นอัตโนมัติ — ต้องเป็น master |
+| `BranchTypeProfile` | `branch_types` | ชื่อประเภทสาขาต่างกันระหว่าง FMS/FGI ต้อง map · Gen Flow Gate อ่านเซ็ตประเภทจากที่นี่ |
+| `DecisionProfile` | `decisions` | ผลพิจารณามีชื่อ 3 ชุด (ปุ่ม/flow/ผลลัพธ์) · เปลี่ยนชื่อปุ่มตาม SDD GI ได้โดยไม่ deploy |
+| `RunningNumber` | `document_running_numbers` | ออกเลข `YYYY/xxxxx` แบบ atomic ต่อปี — กันเลขชนเมื่อ batch + ผู้ใช้สร้างพร้อมกัน |
+| `ImpactCostDetail` | `document_cost_details` | ยอดชดเชยแยกรายเดือน/รายร้านใหม่ — จำเป็นต่อการทวนยอดกับ Statement/SAP |
+| `SectionProfile.SectionLimitCost` | `workflow_sections.approve_limit_amount` | ทำให้วงเงิน GM 50,000 / AVP 300,000 (SDD GI) เป็น data |
+| `CompensateFlow` (84 คอลัมน์) | คอลัมน์เติมใน `compensation_documents` | `round_no`/`loop_no` · `allmap_url` · `statement_id` · งวดบัญชี · `approver_snapshot` |
+| `AttachFileProfile` | คอลัมน์เติมใน `document_attachments` | สถานะอัปโหลด + lifecycle ลบไฟล์บน object storage |
+| `CompTransferSBPDate` | `impacted_stores.transfer_sbp_date` | เงื่อนไขร้านก่อน/หลัง 1/10/2557 |
+
+### ตรวจแล้ว — มีของเทียบเท่าอยู่แล้ว ไม่ต้องเพิ่ม
+
+`CompensateHistory` → `consideration_logs` · `CompetInCompenProfile`/`CompetitionProfile` → `document_competitors`/`competitors` · `FactorInCompenProfile`/`FactorProfile` → `document_external_factors`/`external_factors` · `ImpactProfile` → `fgi_impact_stores` + `document_new_stores` · `StatusProfile` → `document_statuses` · `CommonConfig` → `system_configs` · `MaintainHistory`/`MaintainMasterHistory` → `audit_logs` · `Journal`/`JournalDetail` → `job_run_histories` · `CompDocAttachment`/`CompTempAttachment` → `document_attachments` · `CompensateHistory.ActionWaitingDays` → `workflow_tasks.waiting_days`
+
+### ตัดทิ้งตามการตัดสินใจเดิม (ไม่นำเข้า)
+
+กลุ่ม RBAC/เมนูของ K2 — `ApplicationMenu` · `ApplicationRoles` · `AuthorizedMenu` · `MENU` · `RoleForAuthorizedMenu` · `MasterUserViewer` · `MaintainForm` · `MaintainFormAuthorized` · `FormProfile` · `URLPath` · `CompenOrganizeProfile` (ผู้ปฏิบัติงาน) → **ใช้ระบบ SBP เดิม (auth-backend)** ตามการตัดสินใจ 2026-08-05
+
+### ค้างพิจารณา (P1 — ยังไม่เพิ่มในโครง)
+
+| ตารางเดิม | ประเด็น |
+|---|---|
+| `ListDocumentsPendingRemoval` | นโยบาย **archive/purge เอกสาร** (ArchiveDay → ArchiveDate → PurgeDate → DeleteDate) — โครงใหม่ยังไม่มี data retention plan |
+| `TaskMaster` / `TaskList` | นิยาม **layout ไฟล์ interface แบบ fixed-width** (posstart/fieldlength/formatdate ต่อฟิลด์) — ปัจจุบัน hardcode ในโค้ด job · `job_configs` ยังไม่ครอบ |
+| `MaintainMessage` | master **ข้อความ popup/validation ต่อฟอร์ม** (title/body/type) — ถ้ามี จะแก้ข้อความ SRS verbatim ได้โดยไม่ deploy |
+| `MonitorAdjust` | log **ปรับยอด forecast/actual** ต่อเอกสาร (KeyCallSMO) |
+| `TransectionDeleteStore` | log ลบร้าน/เอกสารพร้อม **SRNumber** — เป็นหลักฐานของปัญหา "ต้องเปิด SR" ที่ SDD GI ยกเลิก · ควรมี log การยกเลิก/ลบเอกสารแบบใหม่แทน |
+| `LogCompensate` / `LogCompensateReturn` | log request/response ข้ามระบบ (FMS) — `interface_transactions` ครอบเฉพาะไฟล์/ACK |
+| `ServerMaster` | เก็บ `username`/`password` เป็น plaintext — **ยืนยันข้อ P0 เดิม**: ย้าย credential ไป Secret Manager |
+| `Versions` / `FGIHelp` | ข้อมูลเวอร์ชันระบบ + เนื้อหาหน้า Help |
+
 ## Canonical Column Contract
 
 DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่อด้านล่างตรงกัน; ชื่อในคอลัมน์ “ยกเลิกใช้” ห้ามปรากฏใน implementation ใหม่
@@ -106,6 +150,9 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 | `consideration_logs` | `result`, `result_category`, `detail`, `consider_by`, `action_datetime` | `result_code`, `comment`, `considered_by`, `considered_at` |
 | `interface_transactions` | PK `id`, เวลา ACK `acked_at` | API อาจ alias เป็น `trackingId`/`receiveDate` แต่ SQL ต้องอ้าง `id`/`acked_at` |
 | `fgi_impact_processes` | `workflow_generation_status` | ห้าม duplicate สถานะเดียวกันใน `fgi_impact_stores` |
+| `workflow_sections` | `approve_limit_amount` (numeric) | ห้าม hardcode วงเงินใน service — อ่านจากคอลัมน์นี้ |
+| `zones` / `branch_types` / `decisions` | `zone_code` · `branch_type_code` · `decision_code` | ห้าม hardcode รายการภาค / ประเภทสาขา / ปุ่มผลพิจารณาใน FE |
+| `document_running_numbers` | `be_year`, `last_running_no` | ห้ามใช้ `MAX(running_no)+1` — ต้อง lock แถวปีนั้น |
 
 ## กุญแจเชื่อมข้ามระบบ (Cross-System Keys)
 
@@ -132,5 +179,5 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 ## เอกสารที่เกี่ยวข้อง
 
 - Flow ที่ใช้ตารางเหล่านี้: [workflow.md](workflow.md) · `plan-flow.html`
-- API ที่อ่าน/เขียนตาราง: [api.md](api.md) · `plan-api.html` (44 endpoints 9 กลุ่ม — กลุ่ม Auth/RBAC และ Master ผู้ปฏิบัติงาน/สิทธิ์ถูกตัดไปใช้ระบบเดิม · รวม System Config 5 เส้น, กลุ่ม Lookup 4 เส้น และ `GET /documents/{docNo}/sales`)
+- API ที่อ่าน/เขียนตาราง: [api.md](api.md) · `plan-api.html` (47 endpoints 9 กลุ่ม — กลุ่ม Auth/RBAC และ Master ผู้ปฏิบัติงาน/สิทธิ์ถูกตัดไปใช้ระบบเดิม · รวม System Config 5 เส้น, กลุ่ม Lookup 4 เส้น และ `GET /documents/{docNo}/sales`)
 - Schema ต้นทางแยกระบบ: `fgi-database.html` (FGI/FCS) · `k2-database.html` (K2, 16 ตาราง + ER diagram)

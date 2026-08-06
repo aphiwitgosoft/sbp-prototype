@@ -1,5 +1,8 @@
 # React Rebuild — TODO Checklist (per หน้า)
 
+> ℹ️ **อัปเดต 2026-08-06:** โฟลเดอร์ `react-app/` ถูกลบแล้ว — เอกสารนี้ใช้เป็น **รายการ component/ฟิลด์ต่อหน้าจอ** สำหรับสร้างโมดูล SBPGI ใน Next.js portal เดิม (`SBP/srm-sps-spsap-web-frontend` · portal `sbpm`) ไม่ใช่ TODO ของ React+Vite app แล้ว · หน้า Overview และหน้าข้อมูลผิดปกติถูกยกเลิก · หน้าสร้างเอกสารไม่มีฟอร์ม
+
+
 เอกสารนี้แตกโครงสร้างของ **prototype HTML 20 หน้า** ให้เป็นรายการงานสำหรับ implement เป็น React
 แต่ละหน้าระบุ: sections, ปุ่ม, กราฟ, ตาราง (คอลัมน์ครบ), ฟอร์ม/ฟิลด์, modal, และ component ที่ต้องสร้าง
 

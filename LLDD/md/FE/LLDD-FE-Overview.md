@@ -1,5 +1,10 @@
 # LLDD FE - Overview Dashboard
 
+> ⚠️ **สถานะเอกสาร (2026-08-06): OUT OF SCOPE — หน้า Overview Dashboard ถูกยกเลิก**
+> ผู้ใช้เข้าระบบมาที่ **เอกสาร → รอดำเนินการ** โดยตรง (`index.html` เหลือเป็น redirect stub) · ตัวเลขสรุปที่เคยอยู่หน้านี้ย้ายไปเป็น **stat cards ของหน้างานรอดำเนินการ** (`GET /dashboard/summary`)
+> เนื้อหาด้านล่างเก็บไว้อ้างอิงเท่านั้น · **ผลกระทบแผนงาน: งาน FE-Overview 39 ชม. ต้องทบทวนกับ PM** (ยังไม่แก้ตัวเลขในตารางแผน/ชั่วโมง)
+
+
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
 ## 1. Overview

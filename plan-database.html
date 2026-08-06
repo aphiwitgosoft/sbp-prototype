@@ -41,7 +41,7 @@
       <div class="page-head">
         <div><h1 class="page-title">ฐานข้อมูล FGI/FCS + K2</h1>
           <p class="page-sub">เริ่มจาก Data Spine แล้วขยายเป็น 3 โซน: Impact Pipeline · เอกสารและ Workflow · Master/Config ใช้ร่วม</p></div>
-        <div class="page-actions"><span class="pill info" style="align-self:center;">Target Schema · 29 ตาราง</span></div>
+        <div class="page-actions"><span class="pill info" style="align-self:center;">Target Schema · 34 ตาราง</span></div>
       </div>
 
       <nav class="db-switcher" aria-label="เลือกแบบฐานข้อมูล">
@@ -76,12 +76,24 @@
           ตาราง <code>roles</code> / <code>menus</code> / <code>menu_permissions</code> / <code>user_accounts</code> (สิทธิ์การเข้าถึงเมนู · SRS 3.1.1) และ <code>operator_assignments</code> (กำหนดผู้ปฏิบัติงาน · SRS 3.1.8)
           <b>ไม่สร้างใน SBPGI</b> — ใช้ระบบผู้ใช้/สิทธิ์ของระบบ SBP ปัจจุบัน (AWS Cognito + BFF + auth-backend/ABS: groups · menus · permissions ต่อ URL — จัดการผ่านหน้า <code>/setting/manage-user-rights</code> ที่มีอยู่แล้ว)
           · การจับกลุ่มผู้ปฏิบัติงานต่อ section/พื้นที่ใช้ group + scope ของ auth-backend และ prepared approvers ของ workflow engine เดิม (<code>@srm/glb-workflow</code>)
-          · หน้าจอ <code>k2-permissions.html</code> / <code>k2-operators.html</code> ถูกถอดจาก sidebar (ไฟล์เก็บไว้อ้างอิง) · เดิมนับเป็น 34 ตาราง
+          · หน้าจอ <code>k2-permissions.html</code> / <code>k2-operators.html</code> ถูกถอดจาก sidebar (ไฟล์เก็บไว้อ้างอิง) · ตัด 5 ตารางนี้ทำให้เหลือ 29 ตาราง (ก่อนเพิ่มอีก 5 ตารางจากการเทียบ DB เดิมของ K2 เมื่อ 2026-08-06 → รวมเป็น 34)
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid #7c3aed;">
+        <div style="font-size:13px;color:#45525f;line-height:1.9;">
+          <b style="color:#2b3440;">ตรวจเทียบ DB เดิมของ K2 เมื่อ 2026-08-06 — <code>script_TB_DB_CPA_FRN_FGI_20260722.sql</code> (SQL Server · 47 ตาราง):</b>
+          รับเข้า <b>5 ตารางใหม่</b> <span class="ref k2">K2</span> ที่โครงเป้าหมายยังขาด — <code>zones</code> (ZoneProfile — SDD GI บังคับให้เพิ่มภาคแล้ว checkbox ขึ้นอัตโนมัติ) ·
+          <code>branch_types</code> (BranchTypeProfile — ชื่อประเภทสาขาต่างกันระหว่าง FMS/FGI ต้อง map) · <code>decisions</code> (DecisionProfile — ผลพิจารณามีชื่อ 3 ชุด ปุ่ม/flow/ผลลัพธ์) ·
+          <code>document_running_numbers</code> (RunningNumber — ออกเลข YYYY/xxxxx แบบ atomic) · <code>document_cost_details</code> (ImpactCostDetail — ยอดชดเชยแยกรายเดือน/รายร้านใหม่)
+          · เติมคอลัมน์สำคัญจาก <code>CompensateFlow</code> (84 คอลัมน์) เข้า <code>compensation_documents</code>: <code>round_no</code>/<code>loop_no</code> · <code>allmap_url</code> · <code>statement_id</code> · <code>approver_snapshot</code>
+          · และ <code>workflow_sections.approve_limit_amount</code> (= SectionLimitCost) ทำให้วงเงิน GM 50,000 / AVP 300,000 เป็น <b>data ไม่ใช่ค่า hardcode</b>
+          · กลุ่ม RBAC/เมนูของ K2 เดิมไม่นำเข้า (ใช้ระบบ SBP เดิมตามการตัดสินใจ 2026-08-05) · รายการค้างพิจารณา P1 ดู <code>database.md</code>
         </div>
       </div>
 
       <div class="db-stat-grid">
-        <div class="db-stat"><b>29</b><span>ตารางใน Target Schema</span></div>
+        <div class="db-stat"><b>34</b><span>ตารางใน Target Schema</span></div>
         <div class="db-stat"><b>3</b><span>Data Zones</span></div>
         <div class="db-stat"><b>1</b><span>Schema ใช้ร่วมกัน</span></div>
         <div class="db-stat"><b>4</b><span>Core IDs ที่ใช้ trace งาน</span></div>
@@ -246,7 +258,7 @@
 
             <rect x="744" y="656" width="304" height="40" rx="8" fill="#fff" stroke="#9fd4b0" stroke-width="1.4"/>
             <text x="756" y="673" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">stores · employees</text>
-            <text x="756" y="688" font-size="9.5" fill="#8493a5">master สาขา 7-Eleven ทุกประเภท + พนักงาน (HR) · ป้อน popup ค้นหาร้าน/พนักงาน (k2-create · 3.1.8)</text>
+            <text x="756" y="688" font-size="9.5" fill="#8493a5">master สาขา 7-Eleven ทุกประเภท + พนักงาน (HR) · ป้อน popup ค้นหาร้านในหน้าเอกสาร</text>
           </g>
 
           <!-- cross arrows A -> B -->
@@ -265,7 +277,7 @@
 
       <!-- ===== all tables ===== -->
       <div class="card">
-        <div class="card-head"><h2>2. Data Dictionary ระดับภาพรวม</h2><span class="pill info">29 ตาราง · 28 รายการกลุ่ม</span></div>
+        <div class="card-head"><h2>2. Data Dictionary ระดับภาพรวม</h2><span class="pill info">34 ตาราง · 33 รายการกลุ่ม</span></div>
         <div class="table-wrap">
           <table class="data">
             <thead><tr><th>ตาราง</th><th>โซน</th><th>ที่มา</th><th>PK</th><th>FK / ความสัมพันธ์หลัก</th><th>บทบาท</th></tr></thead>
@@ -288,10 +300,15 @@
               <tr><td class="tb">compensation_histories</td><td>B</td><td><span class="ref k2">K2</span></td><td class="num">id</td><td>store_code · ref_doc_no</td><td>ประวัติชดเชยต่อร้าน/รอบ · เดือนส่งบัญชี (ผูกไฟล์ FRBC0001 ของ Job 6)</td></tr>
               <tr><td class="tb">workflow_instances</td><td>B</td><td><span class="ref new">ใหม่</span></td><td class="num">instance_id</td><td>doc_no → compensation_documents</td><td>instance workflow ภายใน (แทน K2 engine) · สถานะแทน workflow_generation_status=Y</td></tr>
               <tr><td class="tb">workflow_tasks</td><td>B</td><td><span class="ref new">ใหม่</span></td><td class="num">task_id</td><td>instance_id · section_code · assignee_employee_id</td><td>งานค้างต่อ Section — แหล่งข้อมูลหน้างานรอดำเนินการ (inbox)</td></tr>
+              <tr><td class="tb">document_cost_details ★</td><td>B</td><td><span class="ref k2">K2 · ImpactCostDetail</span></td><td class="num">id</td><td>doc_no → compensation_documents · new_store_code</td><td><b>เพิ่ม 2026-08-06</b> — ยอดชดเชยแยกรายเดือน/รายร้านเปิดใหม่ (cost_year/cost_month · cost_target · cost_amount แยก _n / _nc) จำเป็นต่อการทวนยอดกับ Statement/SAP</td></tr>
+              <tr><td class="tb">document_running_numbers ★</td><td>B</td><td><span class="ref k2">K2 · RunningNumber</span></td><td class="num">be_year</td><td>ออกเลขให้ compensation_documents</td><td><b>เพิ่ม 2026-08-06</b> — ตัวนับเลขเอกสารต่อปี พ.ศ. (last_running_no) ออกเลข YYYY/xxxxx แบบ atomic กันเลขชนเมื่อ batch + ผู้ใช้สร้างพร้อมกัน</td></tr>
               <tr class="zone-row c"><td colspan="6">Zone C · Shared — Master, Configuration และ Audit (RBAC/ผู้ใช้ → ระบบ SBP เดิม)</td></tr>
-              <tr><td class="tb">stores</td><td>C</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">store_code</td><td>← impacted_stores (subset SP) · ← document_new_stores.new_store_code</td><td>master สาขา 7-Eleven ทุกประเภท (SP / เปิดใหม่ / ปิด renovate) — แหล่งค้นหาร้านของหน้า k2-create (API /stores/search)</td></tr>
+              <tr><td class="tb">stores</td><td>C</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">store_code</td><td>← impacted_stores (subset SP) · ← document_new_stores.new_store_code</td><td>master สาขา 7-Eleven ทุกประเภท (SP / เปิดใหม่ / ปิด renovate) — แหล่งค้นหาร้านของ popup ร้านเปิดใหม่ในหน้าเอกสาร (API /stores/search)</td></tr>
               <tr><td class="tb">impacted_stores</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">store_code</td><td>= impacted_store_code ของโซน A (สะพานหลักสองระบบ) · subset SP ของ stores</td><td>ข้อมูลร้าน SP master</td></tr>
               <tr><td class="tb">workflow_sections / document_statuses</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">section_code / status_code</td><td>อ้างโดย compensation_documents · workflow_tasks · status_email_rules</td><td>ขั้นตอน 06/08/01/02/03 (5 ขั้น · ตัดบัญชี 04/05 ตาม SDD v7.5) · สถานะเอกสาร 6 ค่า: 06, 08, 01, 02, 03 และ 99 (เสร็จสิ้น)</td></tr>
+              <tr><td class="tb">zones ★</td><td>C</td><td><span class="ref k2">K2 · ZoneProfile</span></td><td class="num">zone_code</td><td>← stores / impacted_stores · ตัวกรองรายงาน</td><td><b>เพิ่ม 2026-08-06</b> — master ภาค/โซน · ชุดปัจจุบัน <b>13 รหัส</b>: BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL · <b>SDD GI บังคับ</b>: เพิ่มภาคในระบบแล้ว checkbox ต้องขึ้นอัตโนมัติ ห้าม hardcode ใน FE</td></tr>
+              <tr><td class="tb">branch_types ★</td><td>C</td><td><span class="ref k2">K2 · BranchTypeProfile</span></td><td class="num">branch_type_code</td><td>← stores.branch_type_code · Gen Flow Gate</td><td><b>เพิ่ม 2026-08-06</b> — master ประเภทสาขา เก็บชื่อ 3 ชุด (branch_type_name · fms_name · fgi_name) เพราะ FMS/FGI เรียกประเภทเดียวกันคนละชื่อ · เซ็ต FAM/FB1/FC1/FB2/FVB/FVC อ่านจากที่นี่</td></tr>
+              <tr><td class="tb">decisions ★</td><td>C</td><td><span class="ref k2">K2 · DecisionProfile</span></td><td class="num">decision_code</td><td>← consideration_logs.decision_code</td><td><b>เพิ่ม 2026-08-06</b> — master ผลพิจารณา: decision_name (ปุ่ม ไทย verbatim) · flow_name · result_name · เปลี่ยนชื่อปุ่มตาม SDD GI ได้ที่ data ไม่ต้อง deploy</td></tr>
               <tr><td class="tb">employees</td><td>C</td><td><span class="ref fgi">FGI/FCS</span></td><td class="num">employee_id</td><td>← workflow_tasks.assignee_employee_id</td><td>master พนักงานองค์กร (HR) — batch join อยู่แล้ว · การ resolve ผู้รับผิดชอบต่อ section/พื้นที่ใช้ user–group ของระบบเดิม (auth-backend)</td></tr>
               <tr><td class="tb">external_factors</td><td>C</td><td><span class="ref k2">K2 · 3.1.9</span></td><td class="num">factor_code</td><td>← document_external_factors</td><td>ปัจจัยภายนอก master · รหัสห้ามซ้ำ</td></tr>
               <tr><td class="tb">competitors</td><td>C</td><td><span class="ref k2">K2</span></td><td class="num">competitor_code</td><td>← document_competitors</td><td>ร้านคู่แข่ง 24 ราย</td></tr>

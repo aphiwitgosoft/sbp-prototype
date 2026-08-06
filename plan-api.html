@@ -37,7 +37,7 @@
 
       <div class="page-head">
         <div><h1 class="page-title">API Specification</h1>
-          <p class="page-sub">REST API ทั้งหมด 44 เส้น 9 กลุ่มเป็น reference contract สำหรับ Frontend SPA และงานภายใน (+2 เส้นข้อมูลผิดปกติ comment รอตัดสินใจ) · กลุ่ม Auth/สิทธิ์เมนู และเส้นผู้ปฏิบัติงาน (รวม 18 เส้น) ตัดออก — ใช้ระบบ SBP เดิม (Cognito + BFF + auth-backend · ตัดสินใจ 2026-08-05)</p></div>
+          <p class="page-sub">REST API ทั้งหมด 47 เส้น 9 กลุ่มเป็น reference contract สำหรับ Frontend SPA และงานภายใน (+2 เส้นข้อมูลผิดปกติ comment รอตัดสินใจ) · กลุ่ม Auth/สิทธิ์เมนู และเส้นผู้ปฏิบัติงาน (รวม 18 เส้น) ตัดออก — ใช้ระบบ SBP เดิม (Cognito + BFF + auth-backend · ตัดสินใจ 2026-08-05)</p></div>
         <div class="page-actions">
           <button class="btn btn-ghost" data-ack="ดาวน์โหลด OpenAPI 3.0 (ตัวอย่าง)">Export OpenAPI</button>
         </div>
@@ -45,7 +45,7 @@
 
       <div class="stat-grid">
         <div class="stat"><div class="si bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v4c0 1.5-2 3-2 3s2 1.5 2 3v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4c0 1.5 2 3 2 3s-2 1.5-2 3v4a2 2 0 0 1-2 2h-1"/></svg></div>
-          <div><div class="sv num">44</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
+          <div><div class="sv num">47</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
         <div class="stat"><div class="si bg-teal"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 10h18M9 5v14"/></svg></div>
           <div><div class="sv num">10</div><div class="sl">กลุ่มตามโดเมน</div></div></div>
         <div class="stat"><div class="si bg-amber"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></div>
@@ -126,7 +126,7 @@
 (function () {
   "use strict";
 
-  /* ===== API catalog: 44 เส้น 9 กลุ่ม (กลุ่ม Auth + เส้นผู้ปฏิบัติงาน/สิทธิ์เมนู 18 เส้นตัดออก — ใช้ระบบ SBP เดิม · กลุ่มข้อมูลผิดปกติ comment รอตัดสินใจ) ===== */
+  /* ===== API catalog: 47 เส้น 9 กลุ่ม (กลุ่ม Auth + เส้นผู้ปฏิบัติงาน/สิทธิ์เมนู 18 เส้นตัดออก — ใช้ระบบ SBP เดิม · กลุ่มข้อมูลผิดปกติ comment รอตัดสินใจ) ===== */
   var GROUPS = [
     /* ตัดออกถาวร 2026-08-05 — Auth & สิทธิ์ผู้ใช้ทั้งกลุ่ม ใช้ระบบ SBP เดิม (Cognito + BFF + auth-backend/ABS):
        login = redirect {bffUrl}/auth/login (cookie httpOnly) · refresh = BFF /auth/refresh · ข้อมูลผู้ใช้ = /auth/profile + /users/current
@@ -187,7 +187,7 @@
         res:'{\n  "docNo": "2569/00123",\n  "statusCode": "06",\n  "currentSection": "06",\n  "impactedStore": { "storeCode": "00788", ... },\n  "newStores": [ { "storeCode": "15211", "compensatePercent": 60.0 } ],\n  "competitors": [ ... ],\n  "factors": [ ... ],\n  "compensation": { "amount": 95000.00, "salesDropPercent": 12.5 },\n  "permissions": { "canEditSections": ["competitor","factor"], "canAction": true }\n}',
         err:['404 — ไม่พบเอกสาร','401'] },
       { m:'POST', p:'/api/v1/documents', ref:'k2', refT:'K2 · 3.1.6', roles:'02 HQ, 03 User Admin',
-        sum:'สร้างเอกสารใหม่นอกเงื่อนไข หรือสร้างเอกสารที่ FS (สองแท็บของ k2-create.html)',
+        sum:'สร้างเอกสารจากข้อมูลที่ FS/SBP Statement ส่งกลับ — ตัดสินใจ 2026-08-06: ไม่มีฟอร์มสร้างเอกสารใน FE แล้ว (k2-create.html เหลือเป็นหน้าอธิบายกระบวนการ) เส้นนี้เรียกโดย pipeline/service token',
         flow:['ตรวจซ้ำ: ร้าน + เดือนที่ถูกกระทบ ต้องยังไม่มีเอกสาร','ออกเลขที่ YYYY/xxxxx (running ต่อปี เริ่ม 00001 — กติกา SRS)','insert compensation_documents สถานะเริ่มต้น + เปิด workflow_instances / workflow_tasks แรก (Section 06)','ส่งอีเมลตาม status_email_rules'],
         db:[['compensation_documents','W','เอกสารใหม่'],['workflow_instances / workflow_tasks','W','เปิด workflow + งานแรก'],['status_email_rules','R','ผู้รับอีเมล TO/CC']],
         req:'{\n  "impactedStoreCode": "00788",\n  "impactMonth": "2026-06",\n  "source": "MANUAL"   // MANUAL | FS\n}',
@@ -239,7 +239,7 @@
 
     { name:'ข้อมูลอ้างอิง (Lookup / Reference)', refT:'K2 + FGI/FCS · master สำหรับ dropdown', eps:[
       { m:'GET', p:'/api/v1/stores/search', ref:'mix', refT:'FGI/FCS master + K2', roles:'ตามสิทธิ์เมนูเอกสาร',
-        sum:'ค้นหาร้าน (แว่นขยายในหน้า k2-create.html) — ร้านถูกกระทบ (SP) หรือร้านเปิดใหม่ 7-Eleven ตาม type',
+        sum:'ค้นหาร้าน (popup เพิ่ม/แก้ร้านเปิดใหม่ในหน้าเอกสาร) — ร้านถูกกระทบ (SP) หรือร้านเปิดใหม่ 7-Eleven ตาม type',
         flow:['รับ q (รหัส/ชื่อร้าน) + type (impacted | new)','type=impacted → ค้น impacted_stores (ร้าน SP)','type=new → ค้น stores (master สาขา 7-Eleven ทุกประเภท)','คืนรายการสั้นสำหรับ popup เลือก (คงเลขศูนย์นำหน้ารหัสร้าน)'],
         db:[['stores','R','master สาขา 7-Eleven — ร้านเปิดใหม่ (โซน C)'],['impacted_stores','R','ร้าน SP — ร้านถูกกระทบ']],
         req:'Query: ?q=00788&type=impacted\n(type = impacted | new)',
@@ -260,32 +260,38 @@
         res:'{\n  "items": [{ "statusCode": "06", "statusName": "รอฝ่าย SBP DSA ดำเนินการ" }]\n}',
         err:['401'] },
       { m:'GET', p:'/api/v1/workflow-sections', ref:'k2', refT:'K2 · master section', roles:'ทุก role',
-        sum:'รายการ Section 5 ขั้น — dropdown เลือกตำแหน่ง/ขั้น (หน้า 3.1.8) และตัวกรองตาม section',
-        flow:['อ่าน workflow_sections ทั้งหมดเรียงตามลำดับ 06→08→01→02→03'],
-        db:[['workflow_sections','R','ขั้นตอน 06/08/01/02/03']],
+        sum:'รายการ Section 5 ขั้น + วงเงินอนุมัติต่อขั้น — dropdown ตำแหน่ง/ตัวกรอง · FE แสดงวงเงินจากข้อมูล ไม่ hardcode',
+        flow:['อ่าน workflow_sections ทั้งหมดเรียงตามลำดับ 06→08→01→02→03','คืน approve_limit_amount ต่อขั้น (= SectionLimitCost ของ K2 เดิม · GM 50,000 / AVP 300,000 ตาม SDD GI)'],
+        db:[['workflow_sections','R','ขั้นตอน 06/08/01/02/03 + approve_limit_amount']],
         req:'(ไม่มี body)',
-        res:'{\n  "items": [{ "sectionCode": "06", "sectionName": "ฝ่าย SBP DSA" }]\n}',
+        res:'{\n  "items": [\n    { "sectionCode": "06", "sectionName": "ฝ่าย SBP DSA", "approveLimitAmount": null },\n    { "sectionCode": "02", "sectionName": "GM ส่งเสริมธุรกิจ SBP", "approveLimitAmount": 50000.00 },\n    { "sectionCode": "03", "sectionName": "ผู้บริหารสำนักบริหาร SBP", "approveLimitAmount": 300000.00 }\n  ]\n}',
+        err:['401'] },
+      { m:'GET', p:'/api/v1/zones', ref:'k2', refT:'K2 · ZoneProfile (DB เดิม)', roles:'ทุก role',
+        sum:'รายการภาค/โซนจาก master zones — เพิ่ม 2026-08-06 จากการเทียบ DB เดิมของ K2 · SDD GI บังคับให้ภาคใหม่ขึ้น checkbox เองโดยไม่แก้หน้าจอ',
+        flow:['อ่าน zones ทั้งหมดเรียงตาม zone_code','FE เรนเดอร์ checkbox ตัวกรองภาคในรายงานจากผลลัพธ์นี้ ห้าม hardcode 13 ค่า'],
+        db:[['zones','R','master ภาค/โซน (zone_code + zone_name)']],
+        req:'(ไม่มี body)',
+        res:'{\n  "items": [\n    { "zoneCode": "BE", "zoneName": "ภาคตะวันออก" },\n    { "zoneCode": "RS", "zoneName": "ภาคใต้ (ภูมิภาค)" }\n  ]\n}',
+        err:['401'] },
+      { m:'GET', p:'/api/v1/branch-types', ref:'k2', refT:'K2 · BranchTypeProfile (DB เดิม)', roles:'ทุก role',
+        sum:'ประเภทสาขาจาก master branch_types — เก็บชื่อทั้งฝั่ง FMS และ FGI เพราะสองระบบเรียกประเภทเดียวกันคนละชื่อ',
+        flow:['อ่าน branch_types ทั้งหมด','คืน fmsName/fgiName ให้ผู้เรียก map ข้ามระบบได้','flagGenFlow = อยู่ในเซ็ตที่ผ่าน Gen Flow Gate (FAM/FB1/FC1/FB2/FVB/FVC) หรือไม่'],
+        db:[['branch_types','R','master ประเภทสาขา + ชื่อฝั่ง FMS/FGI']],
+        req:'(ไม่มี body)',
+        res:'{\n  "items": [\n    { "branchTypeCode": "FAM", "branchTypeName": "FR Type A", "fmsName": "...", "fgiName": "...", "flagGenFlow": true }\n  ]\n}',
+        err:['401'] },
+      { m:'GET', p:'/api/v1/decisions', ref:'k2', refT:'K2 · DecisionProfile (DB เดิม)', roles:'ทุก role',
+        sum:'ผลพิจารณาจาก master decisions — FE เรนเดอร์ปุ่มพิจารณาจากเส้นนี้ ไม่ hardcode 6-enum (เปลี่ยนชื่อปุ่มตาม SDD GI ได้ที่ data)',
+        flow:['อ่าน decisions ที่ใช้งานอยู่ กรองตาม sectionCode ที่ส่งมา (ปุ่มต่างกันตามขั้น)','คืน decisionName (ข้อความปุ่มไทย verbatim) · flowName (ชื่อในผัง flow) · resultName (ชื่อที่แสดงในรายงาน/ประวัติ)'],
+        db:[['decisions','R','master ผลพิจารณา 3 ชื่อต่อรายการ']],
+        req:'Query: ?sectionCode=06',
+        res:'{\n  "items": [\n    { "decisionCode": "01", "decisionName": "ส่งหน่วยงานส่งเสริมธุรกิจ SBP", "flowName": "ส่งต่อ 01", "resultName": "ประกันรายได้" }\n  ]\n}',
         err:['401'] }
     ]},
 
-    /* ปิดชั่วคราว — รอตัดสินใจหน้าข้อมูลผิดปกติ (k2-list-abnormal.html) · เปิดคืนโดยลบ comment นี้
-    { name:'ข้อมูลผิดปกติ / แจกงาน', refT:'K2 + FGI/FCS', eps:[
-      { m:'GET', p:'/api/v1/abnormal-stores', ref:'mix', refT:'FGI/FCS (ข้อมูล) + K2 (หน้าจอ)', roles:'05 Assign Job',
-        sum:'รายการร้านข้อมูลผิดปกติ (ยอดขาย < 60 วัน) จาก pipeline batch — หน้าจอ k2-list-abnormal.html',
-        flow:['query fgi_impact_sales_summaries ที่ total_working_days < 60','join ข้อมูลร้าน + ผู้รับผิดชอบปัจจุบัน','FE แสดงเป็นแถวแดง (flag-red) ตามหน้าจอเดิม'],
-        db:[['fgi_impact_sales_summaries','R','เกณฑ์วันทำการ < 60 (โซน A)'],['fgi_impact_stores','R','ข้อมูลคู่ร้าน']],
-        req:'Query: ?page=1&size=20',
-        res:'{\n  "items": [{\n    "storeCode": "01045",\n    "storeName": "บางบัวทอง ก.ม.8",\n    "workingDays": 42,\n    "impactMonth": "2026-06",\n    "assignee": null\n  }]\n}',
-        err:['401','403'] },
-      { m:'POST', p:'/api/v1/abnormal-stores/assign', ref:'k2', refT:'K2 (Assign Job)', roles:'05 Assign Job',
-        sum:'แจกงานร้านผิดปกติให้เจ้าหน้าที่ตรวจสอบ (เลือกหลายร้านพร้อมกันได้)',
-        flow:['ตรวจ role 05','สร้าง workflow_tasks ประเภทตรวจสอบข้อมูล ให้ผู้รับผิดชอบ','แจ้งอีเมลผู้รับงาน'],
-        db:[['workflow_tasks','W','งานตรวจสอบต่อร้าน'],['operator_assignments','R','รายชื่อเจ้าหน้าที่ (3.1.8)']],
-        req:'{\n  "storeCodes": ["01045", "00788"],\n  "assigneeEmpId": "57123"\n}',
-        res:'{ "assigned": 2 }',
-        err:['404 — ไม่พบเจ้าหน้าที่','403'] }
-    ]},
-    */
+    /* กลุ่ม "ข้อมูลผิดปกติ / แจกงาน" (GET /abnormal-stores · POST /abnormal-stores/assign) ถูกยกเลิกและลบทิ้งแล้ว 2026-08-06
+       พร้อมหน้าจอ k2-list-abnormal.html — ทดแทนด้วย salesDataDays ใน GET /tasks และ GET /documents (FE ทำแถวแดง +
+       ตัวกรอง "ยอดขายไม่ครบ 60 วัน") · ตัวเลขสรุปอยู่ใน GET /dashboard/summary · จ่ายงานด้วย auto-assign ของ SDD GI */
 
     { name:'Master Data', refT:'K2 · SRS 3.1.9', eps:[
     /* ตัดออกถาวร 2026-08-05 — ผู้ปฏิบัติงาน (SRS 3.1.8) ใช้ระบบ SBP เดิม: group+scope ของ auth-backend
@@ -613,12 +619,12 @@
         req:'(ไม่มี body)',
         res:'{\n  "count": 2,\n  "items": [{ "dataName": "COMPENSATE_INIT_I", "docNo": "2569/00098", "ageDays": 2 }]\n}',
         err:['401'] },
-      { m:'GET', p:'/api/v1/dashboard/summary', ref:'k2', refT:'K2 (หน้าหลัก)', roles:'ทุก role',
-        sum:'ตัวเลขหน้า Dashboard: งานค้าง, ร้านประกันรายได้เดือนนี้, ยอดชดเชย, ข้อมูลผิดปกติ + ข้อมูลกราฟ',
-        flow:['aggregate จากเอกสาร + งานค้าง + ผลชดเชยเดือนปัจจุบัน','cache 5 นาที'],
-        db:[['compensation_documents / workflow_tasks','R','งานค้าง + สถานะ'],['compensation_histories','R','ยอดชดเชยรายเดือน'],['fgi_impact_sales_summaries','R','จำนวนข้อมูลผิดปกติ']],
+      { m:'GET', p:'/api/v1/dashboard/summary', ref:'k2', refT:'K2 (หน้าแรก = งานรอดำเนินการ)', roles:'ทุก role',
+        sum:'ตัวเลข stat cards ของหน้าแรก (งานรอดำเนินการ) — ยกเลิกหน้า Overview/Dashboard แล้ว (ตัดสินใจ 2026-08-06)',
+        flow:['อ่าน sectionCode ของผู้ใช้จาก user context ที่ BFF ส่งมา','นับงานค้างของ section นั้น + แยกกลุ่ม: ยอดขายไม่ครบ 60 วัน · รอเกิน 3 วัน · วงเงินเข้าเส้น AVP (> 50,000 · SDD GI)','cache 5 นาที','ตัด field abnormalStores/chart.monthly ของหน้า Overview เดิมออก'],
+        db:[['workflow_tasks','R','งานค้างของ section + จำนวนวันที่รอ'],['compensation_documents','R','ยอดชดเชยต่อเอกสาร (เกณฑ์วงเงิน AVP)'],['fgi_impact_sales_summaries','R','total_working_days < 60 = แถวแดง']],
         req:'(ไม่มี body)',
-        res:'{\n  "waitingTasks": 24,\n  "storesThisMonth": 342,\n  "compensationThisMonth": 8420000.00,\n  "abnormalStores": 5,\n  "chart": { "monthly": [ ... ] }\n}',
+        res:'{\n  "waitingTasks": 24,\n  "flagUnder60Days": 5,\n  "pendingOver3Days": 7,\n  "overGmLimit": 3\n}',
         err:['401'] }
     ]}
   ];
@@ -668,7 +674,13 @@
     'GET /api/v1/document-statuses':
       'SELECT status_code, status_name, sort_order\nFROM document_statuses\nORDER BY sort_order;',
     'GET /api/v1/workflow-sections':
-      'SELECT section_code, section_name, sort_order\nFROM workflow_sections\nORDER BY sort_order;',
+      '-- approve_limit_amount = SectionLimitCost ของ K2 เดิม (GM 50,000 / AVP 300,000 · SDD GI) — วงเงินเป็น data ไม่ hardcode\nSELECT section_code, section_name, sort_order, approve_limit_amount\nFROM workflow_sections\nORDER BY sort_order;',
+    'GET /api/v1/zones':
+      '-- master ภาค/โซน (= ZoneProfile ของ K2 เดิม) · SDD GI: เพิ่มภาคแล้ว checkbox ต้องขึ้นเอง ห้าม hardcode ใน FE\nSELECT zone_code, zone_name\nFROM zones\nWHERE is_active = true\nORDER BY zone_code;',
+    'GET /api/v1/branch-types':
+      '-- master ประเภทสาขา (= BranchTypeProfile) · เก็บชื่อทั้งฝั่ง FMS และ FGI เพราะสองระบบเรียกคนละชื่อ\nSELECT branch_type_code, branch_type_name, fms_name, fgi_name, flag_gen_flow\nFROM branch_types\nORDER BY branch_type_code;',
+    'GET /api/v1/decisions':
+      '-- master ผลพิจารณา (= DecisionProfile) · 3 ชื่อต่อรายการ: ปุ่ม / ผัง flow / ผลลัพธ์ในรายงาน\nSELECT decision_code, decision_name, flow_name, result_name, result_category\nFROM decisions\nWHERE is_active = true\n  AND (:sectionCode IS NULL OR section_code = :sectionCode)\nORDER BY sort_order;',
     'GET /api/v1/operators':
       'SELECT id AS operator_assignment_id, emp_name, emp_mail, section_code, zone_code\nFROM operator_assignments\nWHERE (:q IS NULL OR emp_name LIKE :q)\n  AND (:sectionCode IS NULL OR section_code = :sectionCode)\nORDER BY emp_name\nLIMIT :size OFFSET :offset;',
     'POST /api/v1/operators':
@@ -744,7 +756,7 @@
     'GET /api/v1/interfaces/pending-ack':
       '-- เกณฑ์ watchdog Job 10: return_code NULL · interface แบบไฟล์ · อายุ ≥ 1 วัน\nSELECT data_name, doc_no, sent_at, (CURRENT_DATE - sent_at::date) AS age_days\nFROM interface_transactions\nWHERE return_code IS NULL\n  AND data_name IN (:staDatasets)\n  AND sent_at < CURRENT_DATE - 1\nORDER BY sent_at;',
     'GET /api/v1/dashboard/summary':
-      '-- รวมตัวเลขหน้า Dashboard (cache 5 นาที)\nSELECT COUNT(*) AS waiting_tasks       FROM workflow_tasks WHERE task_status = :statusOpen;\nSELECT COUNT(*) AS stores_this_month   FROM compensation_documents WHERE impact_month = :thisMonth;\nSELECT SUM(compensate_amount) AS compensation_this_month FROM compensation_histories WHERE submit_account_month = :thisMonth;\nSELECT COUNT(*) AS abnormal_stores     FROM fgi_impact_sales_summaries WHERE total_working_days < 60;'
+      '-- stat cards หน้าแรก = งานรอดำเนินการ (cache 5 นาที) · ยกเลิกหน้า Overview แล้ว (2026-08-06)\nSELECT COUNT(*) AS waiting_tasks\nFROM workflow_tasks WHERE section_code = :mySection AND task_status = :statusOpen;\n\nSELECT COUNT(*) AS flag_under_60_days\nFROM workflow_tasks t\nJOIN compensation_documents d ON d.doc_no = t.doc_no\nJOIN fgi_impact_sales_summaries s ON s.impact_process_id = d.impact_process_id\nWHERE t.section_code = :mySection AND t.task_status = :statusOpen AND s.total_working_days < 60;\n\nSELECT COUNT(*) AS pending_over_3_days\nFROM workflow_tasks WHERE section_code = :mySection AND task_status = :statusOpen\n  AND opened_at < :threeDaysAgo;\n\n-- วงเงินเข้าเส้น AVP (> workflow.gm_amount_limit = 50,000 · SDD GI)\nSELECT COUNT(*) AS over_gm_limit\nFROM workflow_tasks t JOIN compensation_documents d ON d.doc_no = t.doc_no\nWHERE t.section_code = :mySection AND t.task_status = :statusOpen AND d.total_compensation_amount > :gmLimit;'
   };
 
   /* ===== Flowchart (inline SVG · เฉพาะ endpoint ที่ซับซ้อน) ===== */
