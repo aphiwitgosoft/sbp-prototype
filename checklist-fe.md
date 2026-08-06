@@ -107,7 +107,7 @@
 
 ### 2.1 Primitives (`shared/components/`)
 - [ ] `Pill.tsx` — variant `wait/violet/info/orange/navy/teal/muted/ok/fail/del` มีจุดสี · `Chip.tsx` + `RefChip.tsx` (source tag `fgi/k2/new/mix` + suffix เช่น `K2 · 3.1.1`) — **Pill ≠ Chip ห้ามใช้สลับ**
-- [ ] `StatCard.tsx` + `StatGrid.tsx` — ไอคอน+ตัวเลข+label, variant สี bg-blue/teal/amber/rose/navy · รองรับ clickable+active (ใช้กรองตารางใน Phase 3)
+- [ ] ~~`StatCard.tsx` + `StatGrid.tsx`~~ **ไม่ต้องสร้าง** — ถอด stat cards ออกจากทุกหน้าแล้ว (2026-08-06)
 - [ ] `InfoCard.tsx` / `NoticeCard.tsx` (callout ขอบซ้ายน้ำเงิน+ไอคอน) · `FlowLegend.tsx`
 
 ### 2.2 DataTable + Pager
@@ -148,25 +148,25 @@
 - [ ] `HomePage.tsx` ผูก `GET /dashboard/summary` (react-query, BE cache 5 นาที)
 - [ ] S1 Hero: โลโก้โล่ + `สวัสดี, คุณ<ชื่อจาก /auth/me>` + ปุ่ม `งานรอท่านดำเนินการ` (→`/documents/waiting`) · `เอกสารร้านถูกกระทบ`
 - [ ] S2 StatGrid 4 ใบ: เอกสารรอท่านดำเนินการ · สาขาประกันรายได้เดือนนี้ · ยอดชดเชยเดือนนี้ (ล้านบาท) · ยอดขายไม่ครบ 60 วัน (แถวแดง)
-- [ ] S3: `<ColumnChart>` "ยอดชดเชยประกันรายได้รายเดือน" + `<HBarChart>` "เอกสารค้างตามขั้นตอน Workflow" (**แถวตาม 5 section + เสร็จสิ้น — ไม่มี 04/05**) — ตัวเลข sync กับ stat cards
+- [ ] ~~S3 กราฟหน้าแรก~~ **ไม่ต้องสร้าง** — ยกเลิกหน้า Overview แล้ว (2026-08-06)
 - [ ] S4 `ModuleGrid.tsx`/`ModuleCard.tsx` — การ์ดทางลัดทุกโมดูล (card abnormal ปิดด้วย feature flag)
 - [ ] S5 `ActivityFeed.tsx` (pill+เวลา) + `QuickLinks.tsx`
 
 ### 3.2 DocListPage (`features/documents/DocListPage.tsx` — 1 component 2 mode, §k2-list-waiting/related)
 - [ ] ฟอร์มค้นหา `DocumentFilterBar.tsx`: **ปี\*** (dropdown ค.ศ.) · เดือน · สถานะ (6 ค่า — ซ่อนใน waiting) · ภาค (`REGIONS` multi (13 รหัส · โหลดจาก GET /store/all-regions ของระบบ SBP เดิม)) · ประเภทร้าน (`SEARCH_STORE_TYPES` 4 ค่า multi) · รหัส/ชื่อร้าน · เลขเอกสาร · ยอดขายลดลง% (min–max) · เงินชดเชย (min–max) · รอ(วัน) (min–max) · ปุ่ม `ล้างตัวกรอง` (`RangeInput.tsx`)
 - [ ] mode `waiting` → `GET /tasks` (inbox: เฉพาะสถานะ "รอ<role ตัวเอง>ดำเนินการ") · mode `related` → `GET /documents` — **ไม่เลือกปี = ไม่ยิง API + แสดง error ใต้ช่องปี**
-- [ ] Stat cards คลิกกรองตาราง: waiting = 4 ใบ (ทั้งหมด / flag60 / รอเกิน 3 วัน / วงเงิน 50,001–300,000 เข้า AVP) · related = ทั้งหมด + ต่อสถานะ
+- [x] ~~Stat cards~~ **ถอดออก 2026-08-06** — ทั้ง 2 หน้าเหลือฟอร์มตัวกรอง + ตาราง · หน้า related เปิดช่อง **สถานะ** ในฟอร์มแทนการคลิกการ์ด/กราฟ
 - [ ] `DocumentTable.tsx` คอลัมน์: `ครั้งที่ | เลขที่เอกสาร | รหัสร้าน | ชื่อร้านถูกกระทบ | ภาค | ยอดขายที่ลดลง(%) | จำนวนเงินที่ชดเชย | สถานะ(pill) | รอ (วัน)` · sortable · แถว <60 วัน = `flag-red` · คลิกแถว → `/documents/:docNo`
 - [ ] `<Pager>` ผูก `?page&size` ↔ `{page,size,total,items}` + note card ("แดง = ยอดขายไม่ครบ 60 วัน …")
 
 **✔ เกณฑ์ตรวจรับ Phase 3**
-- [ ] เปิด `/` → stat 4 ใบ + 2 กราฟขึ้นจากข้อมูล BE จริง · HBar ไม่มีแถว 04/05
+- [x] ~~เปิด `/` → stat + กราฟ~~ **ไม่มีแล้ว** (ยกเลิกหน้า Overview 2026-08-06 และถอด stat cards)
 - [ ] เปิด `/documents/waiting` → เห็นเฉพาะเอกสารสถานะของ role ตัวเอง
 - [ ] เปิด `/documents/related` ไม่เลือกปีแล้วกดค้นหา → error แสดง, network tab **ไม่มี** request
 - [ ] เลือกปี+ภาค BN+ประเภท FR Type A → ผลตรง seed · กด `ล้างตัวกรอง` → ฟอร์มกลับค่าเริ่ม
 - [ ] แถวร้านยอดขาย <60 วันเป็นสีแดง · คลิกแถว → ไป `/documents/2026/00123` (route ถูก)
 - [ ] เปลี่ยน per-page 10→50, กด goto หน้า → ตาราง+info `แสดง X–Y จาก N` ถูกต้อง
-- [ ] คลิก stat card "วงเงินเข้า AVP" → ตารางเหลือเฉพาะแถวเงินชดเชย 50,001–300,000
+- [ ] กรองด้วยช่วง **เงินชดเชย 50,001–300,000** ในฟอร์มตัวกรอง → ตารางเหลือเฉพาะเอกสารที่เข้าเส้น AVP
 
 ---
 
@@ -179,7 +179,7 @@
 
 ### 4.2 ส่วนข้อมูล + กราฟ
 - [ ] S3 `DocMetaGrid.tsx` — รอบ/ครั้งที่/เดือน, สถานะ, เลขที่, วันที่สร้าง (ค.ศ.), รหัส/ชื่อร้าน, ภาค, ประเภท, เจ้าของ, นิติบุคคล, วันที่โอน, ผู้ดำเนินการ, ยอดขายลดลง %, ชดเชยล่าสุด, ไฟล์แนบ + ปุ่ม `ข้อมูลยอดขายเพิ่มเติม`
-- [ ] S4 `SalesTrendChart.tsx` (เส้น/พื้นที่ 2 ชุด ก่อน–หลัง + marker วันเปิดสาขา + เส้นเฉลี่ย) + `SalesAvgBarChart.tsx` (2 แท่ง + badge −%) — ข้อมูลจาก `GET /documents/{docNo}/sales` (4 หน้าต่าง × 15 วัน)
+- [x] ~~S4 กราฟยอดขายในหน้าเอกสาร~~ **ถอดออก 2026-08-06** — ไม่ต้องสร้าง `SalesTrendChart` / `SalesAvgBarChart` · ข้อมูลยอดขายดูผ่านปุ่ม `ข้อมูลยอดขายเพิ่มเติม` (ลิงก์ QlikView BI) · `GET /documents/{docNo}/sales` คงไว้เป็นข้อมูลประกอบ
 
 ### 4.3 ร้านเปิดใหม่ (S5) — validate 100%
 - [ ] `NewStoresTable.tsx` คอลัมน์: `ลำดับ | รหัสร้าน | ชื่อร้านเปิดใหม่ | ภาค | ประเภทร้าน | เจ้าของร้าน | นิติบุคคล | วันที่เปิดร้าน | วันที่ปิดร้าน | ระยะห่าง(กม.) | %ชดเชย(input) | เงินชดเชย(ร้านใหม่)` · แก้ %ชดเชย ได้เมื่อ section อยู่ใน `editableSections`
@@ -234,7 +234,7 @@
 - [ ] คอนโทรลทุกชนิดในฟอร์มสูงเท่ากัน (46px) — ใช้ token กลาง ไม่ตั้งความสูงรายหน้า
 - [ ] ตารางผล 19 คอลัมน์ **sort ได้ทุกคอลัมน์** (text / number / date) คลิกหัวคอลัมน์สลับ asc–desc
 - [ ] ไม่เลือกปี → error + ไม่ยิง API (กฎเดียวกับ related)
-- [ ] `Preview Report` → `GET /reports/status-summary` → `SummaryLine` (พบ N รายการ / ยอดชดเชยรวม / วงเงินเข้า AVP / แถวแดง) + 2 `<HBarChart>` (ตามสถานะ 6 ค่า / ยอดเงินตามภาค)
+- [ ] `Preview Report` → `GET /reports/status-summary` → `SummaryLine` (พบ N รายการ / ยอดชดเชยรวม / วงเงินเข้า AVP / แถวแดง) · **ไม่มีกราฟในหน้ารายงานแล้ว (ถอด 2026-08-06)**
 - [ ] `ReportResultTable.tsx` 19 คอลัมน์ (scroll ใน `.table-wrap`): `รหัสร้านถูกกระทบ | ชื่อร้านถูกกระทบ | ภาค | ประเภทร้าน | เดือนปีที่ถูกกระทบ | วันที่โอนเป็นร้าน SP | Period Statement | รหัสร้านเปิดใหม่ | ชื่อร้านเปิดใหม่ | ภาค (ร้านใหม่) | ประเภทร้าน (ร้านใหม่) | ยอดเงินชดเชย | สถานะ | ชื่อ-นามสกุลผู้ดำเนินการ | ผลการพิจารณา | รอดำเนินการ (วัน) | ครั้งที่ | วันที่สร้าง | เลขที่เอกสาร` · `flag-red` · pill สถานะ
 - [ ] ปุ่ม **`Export CSV to Batch`** → `GET /reports/status-summary/export` (เงื่อนไขเดียวกับ preview) → ดาวน์โหลดไฟล์ CSV
 

@@ -112,17 +112,6 @@
         <span style="color:#c0392b;">ยอดขายไม่ครบ 60 วัน (แถวแดง) <b>2</b> รายการ</span>
       </div>
 
-      <div class="charts-row" style="grid-template-columns:1.2fr 1fr;">
-        <div class="chart-card">
-          <h3>เอกสารตามสถานะ</h3><div class="csub">จากผลการค้นหา 10 รายการ · จุดสีหน้าชื่อ = สีสถานะที่ใช้ทั้งระบบ</div>
-          <div class="hchart" id="chartStatus"></div>
-        </div>
-        <div class="chart-card">
-          <h3>ยอดเงินชดเชยตามภาค</h3><div class="csub">หน่วย: บาท · จากผลการค้นหา</div>
-          <div class="hchart" id="chartRegion"></div>
-        </div>
-      </div>
-
       <div class="card">
         <div class="card-head"><h2>ผลการค้นหารายชื่อร้าน</h2>
           <span class="pill fail" style="margin-left:auto;font-weight:600;">แถวแดง = ยอดขายไม่ครบ 60 วัน</span>
@@ -235,14 +224,6 @@
       });
     }
 
-    hbarChart('chartStatus', STATUS_DATA, {
-      left: 196, color: '#2f6fed', aria: 'จำนวนเอกสารตามสถานะ',
-      tip: function (r) { return '<b>' + r.label + '</b><br><small>จำนวนเอกสาร</small> ' + r.value + ' รายการ'; }
-    });
-    hbarChart('chartRegion', REGION_DATA, {
-      left: 46, color: '#0f9f90', aria: 'ยอดเงินชดเชยตามภาค',
-      tip: function (r) { return '<b>ภาค ' + r.label + '</b><br><small>ยอดเงินชดเชย</small> ' + fmt(r.value) + ' บาท'; }
-    });
   })();
   </script>
 </body>

@@ -120,7 +120,7 @@ srm-sps-spsap-web-frontend/
       admin/system-config/page.tsx  ·  admin/email-templates/page.tsx  ·  admin/batch-jobs/page.tsx
     components/sbpgi/                      # ★ component เฉพาะโดเมน
       DecisionPanel.tsx  WorkflowSteps.tsx  DocumentSections/*  StatCards.tsx
-      charts/DonutChart.tsx  charts/SalesTrendChart.tsx        # SVG เขียนเอง (พอร์ตจาก prototype)
+      charts/DonutChart.tsx                                   # SVG เขียนเอง (พอร์ตจาก prototype · กราฟยอดขาย/สัดส่วนชดเชยถอดออก 2026-08-06)
     services/sbpgi/                        # ★ service ต่อกลุ่ม API (axios instance กลางของ portal)
       documents.service.ts  tasks.service.ts  reports.service.ts  masters.service.ts  jobs.service.ts  lookups.service.ts
     types/sbpgi/                           # ★ DTO ตาม §8
@@ -548,7 +548,7 @@ interface EntityModalProps {
 interface DonutChartProps { values: number[]; labels: string[]; colors: string[]; center?: string }  // เลขกลาง + legend
 interface BarChartProps { values: number[]; labels: string[]; color?: string }
 interface SparkChartProps { values: number[]; color?: string }
-interface HBarChartProps {                            // แนวนอน + dot สถานะ + tooltip (index, k2-report)
+interface HBarChartProps {                            // แนวนอน + dot สถานะ + tooltip (ยังไม่มีผู้ใช้หลังถอดกราฟ 2026-08-06)
   rows: { label: string; value: number; dotColor?: string }[];
   color?: string; formatValue?: (v: number) => string;
   tip?: (row) => string;                              // HTML tooltip — <ChartTooltip> fixed กันหลุด viewport
@@ -616,7 +616,7 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 - โหลด: `GET /dashboard/summary` (`dashboardKeys.summary` — BE cache 5 นาที)
 - S1 Hero: `สวัสดี, คุณ<ชื่อจาก GET /users/current>` + ปุ่ม `งานรอท่านดำเนินการ` (→`/documents/waiting`) · `เอกสารร้านถูกกระทบ`
 - S2 StatGrid 4 ใบ: เอกสารรอท่านดำเนินการ · สาขาประกันรายได้เดือนนี้ · ยอดชดเชยเดือนนี้ (ล้านบาท) · ยอดขายไม่ครบ 60 วัน
-- S3: `<ColumnChart>` "ยอดชดเชยประกันรายได้รายเดือน" + `<HBarChart>` "เอกสารค้างตามขั้นตอน Workflow" — **แถว = 5 section + เสร็จสิ้น เท่านั้น (ห้ามมี 04/05)** · ตัวเลข sync กับ stat cards
+- ~~S3 กราฟหน้าแรก~~ **ไม่มีแล้ว** — ยกเลิกหน้า Overview และถอด stat cards ทั้งหมด (2026-08-06)
 - S4 `<ModuleGrid>` การ์ดทางลัด (card abnormal ซ่อนตาม flag) · S5 `<ActivityFeed>` + `<QuickLinks>`
 - ไม่มี mutation
 
@@ -644,7 +644,7 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 - โหลด `GET /documents/{docNo}` (`documentKeys.detail`) ครั้งเดียว → ได้ `myRoleView` + `editableSections` + `resultOptions` — **render 12 ส่วนตามธงจาก BE ไม่เดา role เอง** (แทนกลไก `data-editrole`/`data-roleonly`/`.edit-only` ของ prototype)
 - S2 head: `เอกสารข้อมูลร้านถูกกระทบ <docNo>` + `<StatusPill>` + ปุ่ม `พิมพ์` (window.print) · `<WorkflowStepper>` 5 ขั้น `06›08›01›02›03` + pill `ขั้นตอนที่ N/5`
 - S3 `<DocMetaGrid>`: รอบ/ครั้งที่/เดือน, สถานะ, เลขที่, วันที่สร้าง (พ.ศ.), รหัส/ชื่อร้าน, ภาค, ประเภท, เจ้าของ, นิติบุคคล, วันที่โอน, ผู้ดำเนินการ, ยอดขายลดลง %, ชดเชยล่าสุด, ไฟล์แนบ + ปุ่ม `ข้อมูลยอดขายเพิ่มเติม`
-- S4 กราฟ: `GET /documents/{docNo}/sales` (`documentKeys.sales`) → `<SalesTrendChart>` (เส้น/พื้นที่ ก่อน–หลัง + marker วันเปิดสาขา + เส้นเฉลี่ย) + `<SalesAvgBarChart>` (2 แท่ง + badge −%) — 4 หน้าต่าง × 15 วัน
+- ~~S4 กราฟยอดขาย~~ **ถอดออก 2026-08-06** — หน้าเอกสารไม่มีกราฟแล้ว · `GET /documents/{docNo}/sales` (`documentKeys.sales`) คงไว้เป็นข้อมูลประกอบ และมีปุ่ม `ข้อมูลยอดขายเพิ่มเติม` ลิงก์ออก QlikView BI
 - S5 `<NewStoresTable>` (แก้ได้เมื่อ `'newStores' ∈ editableSections`): คอลัมน์ 12 ตาม checklist · `%ชดเชย` เป็น input · แสดงสด `เงินชดเชย = ยอดตั้งต้น × %/100` · ปุ่ม `รีเฟรช`/`คืนค่าก่อนแก้ไข`/`คำนวณเงินชดเชย` — **%รวม ≠ 100 → `<WarningPopup>` (ข้อความ verbatim จากหน้าเดิม) และไม่ยิง PUT** · %รวม = 100 → `PUT /documents/{docNo}` → invalidate detail + toast ok
 - S6 `<AllMapPoi>` SVG (วงรัศมี, pulse, หมุดร้านใหม่, คู่แข่ง, legend) + ปุ่ม `Link To ALLMAP`
 - S7 คู่แข่ง (editable ตามธง): dropdown จาก `GET /competitors` · ป้ายที่มา ALM/USER · เพิ่ม/แก้/ลบ ผ่าน `<EntityModal>` → `PUT /documents/{docNo}`
@@ -663,7 +663,7 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 - ฟอร์ม `<ReportSearchForm>` (ผังจริง 2026-08-06 — เรียง: รหัสร้านกระทบ|ชื่อร้าน · รหัสร้านเปิดใหม่|ประเภทร้าน · **เดือน/ปีที่ถูกกระทบ From–To เต็มแถว** · สถานะ|ผลการพิจารณา · ภาคเต็มแถว · Period Statement เต็มแถว): ปี* · เดือน/ปีที่ถูกกระทบ From–To (`MonthRangeInput` เต็มแถว รูปแบบเดียวกับ Period Statement) · รหัสร้านกระทบ (+`StorePickerModal` → `GET /store/search` (ระบบ SBP เดิม)) · ชื่อร้าน (readonly) · รหัสร้านเปิดใหม่ · สถานะ (select `DOC_STATUSES`) · **radio ผลการพิจารณา\* (บังคับ): `ประกันรายได้` / `ไม่ประกันรายได้`** · ภาค (checkbox `REPORT_REGIONS13` — **ภาคใหม่ที่เพิ่มในระบบต้องแสดงเป็น checkbox อัตโนมัติ**: render จาก lookup API ไม่ hardcode 13 ค่าใน UI · SDD GI/v7.5) · ประเภทร้าน (checkbox **A/B/C/E**) · Period Statement From–To (เต็มแถว) · ปุ่ม `เคลียร์` / `Preview Report` / `Export` · **คอนโทรลทุกชนิดสูง 46px เท่ากัน** · **ตารางผล sort ได้ทุกคอลัมน์**
 - ไม่เลือกปี → error + ไม่ยิง API (กฎเดียวกับ related)
 - **`periodStatement` บังคับเมื่อสถานะ = `เสร็จสิ้นดำเนินการ`** (SDD GI) — zod refine: status เป็นเสร็จสิ้นฯ แต่ Period Statement ว่าง → error ใต้ช่อง + ไม่ยิง API
-- `Preview Report` → `GET /reports/status-summary` (`reportKeys.statusSummary`) → `<SummaryLine>` (พบ N รายการ / ยอดชดเชยรวม / วงเงิน >50,000 เข้า AVP / แถวแดง) + `<HBarChart>` ×2 (ตามสถานะ 6 ค่า / ยอดเงินตามภาค)
+- `Preview Report` → `GET /reports/status-summary` (`reportKeys.statusSummary`) → `<SummaryLine>` (พบ N รายการ / ยอดชดเชยรวม / วงเงิน 50,001–300,000 เข้า AVP / แถวแดง) · **ไม่มีกราฟในหน้ารายงาน (ถอด 2026-08-06)**
 - ตารางผล **19 คอลัมน์** (scroll ใน `.table-wrap`) ตาม checklist · flag-red · pill สถานะ · เงินคั่นหลักพัน · วันที่ พ.ศ.
 - ปุ่ม `Export CSV to Batch` → `GET /reports/status-summary/export` (query เดียวกับ preview) → ดาวน์โหลด CSV (UTF-8 BOM เปิด Excel ไทยไม่เพี้ยน)
 

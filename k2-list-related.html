@@ -79,10 +79,8 @@
 
       <div class="page-head">
         <div><h1 class="page-title" id="pageTitle">เอกสารประกันรายได้ — รอดำเนินการ</h1>
-          <p class="page-sub" id="pageSub">ระบบประกันรายได้ · คลิกรายการเพื่อเปิดเอกสารร้านถูกกระทบ · คลิกการ์ดสถานะด้านล่างเพื่อกรองตาราง</p></div>
+          <p class="page-sub" id="pageSub">ระบบประกันรายได้ · คลิกรายการเพื่อเปิดเอกสารร้านถูกกระทบ</p></div>
       </div>
-
-      <div class="stat-grid eight" id="statGrid"><!-- การ์ด stat ถูก render ด้วยสคริปต์ตามโหมด/บทบาท --></div>
 
       <div class="card">
         <!-- แยกหน้าตามเมนู sidebar: ?tab=waiting | ?tab=related (สคริปต์ท้ายหน้าเลือก pane) -->
@@ -252,6 +250,15 @@
                   <input type="number" id="fDayMaxR" placeholder="สูงสุด" min="0" aria-label="รอ (วัน) สูงสุด">
                 </div>
               </div>
+              <div class="ffield">
+                <span class="flabel">ผลการพิจารณา</span>
+                <select id="fResultR" aria-label="กรองตามผลการพิจารณา">
+                  <option value="">ทุกผลการพิจารณา</option>
+                  <option>ประกันรายได้</option>
+                  <option>ไม่ประกันรายได้</option>
+                  <option value="__none">ยังไม่มีผล (อยู่ระหว่างดำเนินการ)</option>
+                </select>
+              </div>
             </div>
             <div class="ffoot">
               <button class="btn btn-ghost" id="fClearR" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg> ล้างตัวกรอง</button>
@@ -302,10 +309,10 @@
     if (MODE === 'related') {
       document.getElementById('roleBar').style.display = 'none';
       // เอา filter สถานะออกจากแผงกรอง — ใช้การ์ด stat ด้านบนกรองสถานะแทน (element ยังอยู่แบบซ่อนให้การ์ดใช้)
-      var fsFieldR = document.getElementById('fStatusR').closest('.ffield');
-      if (fsFieldR) fsFieldR.style.display = 'none';
+      /* เดิมซ่อนช่องสถานะเพราะกรองผ่านกราฟวงกลม — ถอด stat card/กราฟออกแล้ว (2026-08-06)
+         จึงต้องเปิดช่องสถานะให้กรองได้ตามปกติ */
       document.getElementById('pageTitle').textContent = 'เอกสารประกันรายได้ — ที่เกี่ยวข้องกับท่าน';
-      document.getElementById('pageSub').textContent = 'ระบบประกันรายได้ · เอกสารที่ท่านเคยดำเนินการหรือมีส่วนเกี่ยวข้อง · คลิกสถานะบนกราฟวงกลมเพื่อกรองตาราง';
+      document.getElementById('pageSub').textContent = 'ระบบประกันรายได้ · เอกสารที่ท่านเคยดำเนินการหรือมีส่วนเกี่ยวข้อง';
       document.body.setAttribute('data-crumb', 'เอกสาร · ที่เกี่ยวข้อง');
       document.title = 'เอกสารที่เกี่ยวข้อง · SBP Management System';
     } else {
@@ -434,13 +441,15 @@
         // เคสต่อเนื่อง = ครั้งที่ 2 ขึ้นไป (เดือนก่อนหน้าฝ่าย SBP DSA เห็นควรไม่ชดเชย)
         // → SDD GI สไลด์ 46/48/64: ระบบดึงเข้าหน้างานค้างเดือนถัดไป พร้อม "เจ้าของงานคนเดิม"
         var carryOver = !done && roundNo > 1;
+        // ผลการพิจารณา (SDD v7.5) — มีค่าเฉพาะเอกสารที่เสร็จสิ้นแล้ว: ประกันรายได้ = อนุมัติชดเชย
+        var result = done ? ((i % 3 === 0) ? 'ไม่ประกันรายได้' : 'ประกันรายได้') : '';
         // เจ้าของงานผูกกับรหัสร้าน → ร้านเดิมได้เจ้าหน้าที่คนเดิมทุกครั้งที่ (จำลอง auto-assign)
         var owner = OWNERS[parseInt(storeCode, 10) % OWNERS.length];
         var dt = docDate(i);
         html += '<tr' + (flag60 ? ' class="flag-red"' : '') + ' data-href="k2-document.html"'
           + ' data-date="' + dt.iso + '" data-type="' + TYPES[(j * 7) % TYPES.length] + '"'
           + ' data-flag60="' + (flag60 ? 1 : 0) + '"'
-          + ' data-drop="' + drop.toFixed(2) + '" data-comp="' + comp.toFixed(2) + '">'
+          + ' data-drop="' + drop.toFixed(2) + '" data-comp="' + comp.toFixed(2) + '" data-result="' + result + '">'
           + '<td class="num">' + roundNo + '</td>'
           + '<td class="num">' + cfg.docPrefix + pad(cfg.docStart + i, 5) + '</td>'
           + '<td class="num">' + storeCode + '</td>'
@@ -466,6 +475,7 @@
       var fDropMin = el('fDropMin'), fDropMax = el('fDropMax');
       var fCompMin = el('fCompMin'), fCompMax = el('fCompMax');
       var fDayMin = el('fDayMin'), fDayMax = el('fDayMax');
+      var fResult = el('fResult');   /* มีเฉพาะหน้า "ที่เกี่ยวข้อง" */
       var pager = document.getElementById(cfg.pagerId);
       var page = 1, perPage = 10, special = null;
 
@@ -479,6 +489,7 @@
 
       function matched() {
         var q = fSearch.value.trim().toLowerCase(), st = fStatus.value, rg = fRegion.value, tp = fType.value;
+        var rs = fResult ? fResult.value : '';
         var df = fDateFrom.value, dto = fDateTo.value;
         var dmin = numVal(fDropMin), dmax = numVal(fDropMax);
         var cmin = numVal(fCompMin), cmax = numVal(fCompMax);
@@ -490,6 +501,10 @@
           if (st && pillText(tr) !== st) return false;
           if (rg && rowRegion(tr) !== rg) return false;
           if (tp && rowType(tr) !== tp) return false;
+          if (rs) {
+            var rv = tr.getAttribute('data-result') || '';
+            if (rs === '__none' ? rv !== '' : rv !== rs) return false;
+          }
           var iso = tr.getAttribute('data-date');
           if (df && iso < df) return false;
           if (dto && iso > dto) return false;
@@ -635,7 +650,7 @@
       el('qsClear').addEventListener('click', function () { qsText.value = ''; qsField.value = '-1'; onQuick(); });
 
       /* preset: เก็บค่าฟิลเตอร์ทั้งชุดไว้ใน localStorage */
-      var FIELDS = [fSearch, fStatus, fRegion, fType, fDateFrom, fDateTo, fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax];
+      var FIELDS = [fSearch, fStatus, fRegion, fType, fDateFrom, fDateTo, fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax].concat(fResult ? [fResult] : []);
       function readPresets() { try { return JSON.parse(localStorage.getItem(PRESET_KEY)) || {}; } catch (e) { return {}; } }
       function writePresets(p) { try { localStorage.setItem(PRESET_KEY, JSON.stringify(p)); } catch (e) {} }
       function renderPresets(sel) {
@@ -686,11 +701,11 @@
 
       function onFilter() { page = 1; apply(); }
       fSearch.addEventListener('input', onFilter);
-      [fStatus, fRegion, fType, fDateFrom, fDateTo].forEach(function (c) { c.addEventListener('change', onFilter); });
+      [fStatus, fRegion, fType, fDateFrom, fDateTo].concat(fResult ? [fResult] : []).forEach(function (c) { c.addEventListener('change', onFilter); });
       [fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax].forEach(function (c) { c.addEventListener('input', onFilter); });
       el('fClear').addEventListener('click', function () {
         [fSearch, fStatus, fRegion, fType, fDateFrom, fDateTo, fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax]
-          .forEach(function (c) { c.value = ''; });
+          .concat(fResult ? [fResult] : []).forEach(function (c) { c.value = ''; });
         qsText.value = ''; qsField.value = '-1'; quick = { col: -1, q: '' }; el('qsHit').textContent = '';
         fPreset.value = ''; el('fPresetDel').hidden = true;
         special = null; specialKey = ''; relatedKey = '';
@@ -747,91 +762,12 @@
       over3: function (tr) { return parseFloat(tr.cells[8].textContent) > 3; },
       over100k: function (tr) { return parseFloat(tr.getAttribute('data-comp')) > 50000; }  // เข้าเส้น AVP ตาม SDD GI
     };
-    function renderWaitingStats() {
-      var grid = document.getElementById('statGrid');
-      grid.innerHTML = '';
-      var base = waiting.rows.filter(roleMatch);
-      function count(fn) { return base.filter(fn).length; }
-      var cards = [
-        { key: '', bg: 'bg-blue', icon: ICO.doc, value: base.length,
-          label: 'งานรอดำเนินการ · ' + currentRole.short, title: 'ทั้งหมดของบทบาทนี้ (ล้างตัวกรอง)' },
-        { key: 'flag60', bg: 'bg-rose', icon: ICO.warn, value: count(SPECIALS.flag60), label: 'ยอดขายไม่ครบ 60 วัน (แถวแดง)' },
-        { key: 'over3', bg: 'bg-amber', icon: ICO.clock, value: count(SPECIALS.over3), label: 'รอเกิน 3 วัน' },
-        { key: 'over100k', bg: 'bg-navy', icon: ICO.money, value: count(SPECIALS.over100k), label: 'วงเงิน > 50,000 (เข้าเส้น AVP · SDD GI)' }
-      ];
-      cards.forEach(function (c) {
-        var d = statCard(c);
-        d.addEventListener('click', function () {
-          specialKey = c.key;
-          if (!c.key) waiting.clearFilters();
-          waiting.setSpecial(c.key ? SPECIALS[c.key] : null);
-        });
-        grid.appendChild(d);
-      });
-      syncStatActive();
-    }
+    /* renderWaitingStats — ถอด stat card ออกจากหน้า (2026-08-06) */
+    function renderWaitingStats() { /* no-op */ }
 
     // โหมดที่เกี่ยวข้อง: กราฟวงกลมสรุปสัดส่วนสถานะ (คลิก legend เพื่อกรอง) + การ์ดพิเศษ 3 ใบ
-    function renderRelatedStats() {
-      var grid = document.getElementById('statGrid');
-      grid.className = 'rel-stats';
-      grid.innerHTML = '';
-      function count(fn) { return related.rows.filter(fn).length; }
-
-      // ---- กราฟวงกลม: สัดส่วนเอกสารตามสถานะ 6 ค่า (แทนการ์ดสถานะ 6 ใบเดิม) ----
-      var sd = STATUSES.map(function (s) {
-        var m = STATUS_META[s.label];
-        return { key: s.label, color: m.color,
-          value: count(function (tr) { return pillText(tr) === s.label; }) };
-      });
-      var total = sd.reduce(function (a, x) { return a + x.value; }, 0) || 1;
-      var donutCard = document.createElement('div');
-      donutCard.className = 'rel-donut';
-      var chart = document.createElement('div');
-      chart.className = 'donut-wrap';
-      chart.innerHTML = donutSVG(sd.map(function (x) { return x.value; }),
-        sd.map(function (x) { return x.color; }), total, 'เอกสาร');
-      var legend = document.createElement('div');
-      legend.className = 'legend-row';
-      sd.forEach(function (x) {
-        var lg = document.createElement('div');
-        lg.className = 'lg';
-        lg.setAttribute('data-lstatus', x.key);
-        lg.innerHTML = '<i style="background:' + x.color + '"></i>' + esc(x.key) + '<b>' + x.value + '</b>';
-        lg.addEventListener('click', function () {
-          relatedKey = (relatedKey === x.key) ? '' : x.key;   // คลิกซ้ำ = ล้างตัวกรอง
-          if (!relatedKey) { related.clearFilters(); related.setSpecial(null); }
-          else { related.statusSelect.value = x.key; related.setSpecial(null); }
-        });
-        legend.appendChild(lg);
-      });
-      donutCard.appendChild(chart);
-      donutCard.appendChild(legend);
-      grid.appendChild(donutCard);
-      requestAnimationFrame(function () {
-        chart.querySelectorAll('.donutSeg').forEach(function (s) { s.style.strokeDashoffset = '0'; });
-      });
-
-      // ---- การ์ดพิเศษ 3 ใบ: มุมมองที่มีผลจริงกับงาน (คลิกเพื่อกรอง) ----
-      var specials = document.createElement('div');
-      specials.className = 'rel-specials';
-      [
-        { key: 'flag60', bg: 'bg-rose', icon: ICO.warn, value: count(SPECIALS.flag60), label: 'ยอดขายไม่ครบ 60 วัน (แถวแดง)' },
-        { key: 'over3', bg: 'bg-orange', icon: ICO.clock, value: count(SPECIALS.over3), label: 'รอเกิน 3 วัน' },
-        { key: 'over100k', bg: 'bg-navy', icon: ICO.money, value: count(SPECIALS.over100k), label: 'วงเงิน > 50,000 (AVP)' }
-      ].forEach(function (c) {
-        var d = statCard(c);
-        d.addEventListener('click', function () {
-          relatedKey = (relatedKey === c.key) ? '' : c.key;   // คลิกซ้ำ = ล้างตัวกรอง
-          if (!relatedKey) { related.clearFilters(); related.setSpecial(null); return; }
-          related.statusSelect.value = '';
-          related.setSpecial(SPECIALS[c.key]);
-        });
-        specials.appendChild(d);
-      });
-      grid.appendChild(specials);
-      syncStatActive();
-    }
+    /* renderRelatedStats — ถอด stat card ออกจากหน้า (2026-08-06) */
+    function renderRelatedStats() { /* no-op */ }
 
     // สร้าง SVG กราฟวงกลม (โครงเดียวกับ donut() ใน sbp.js — ใช้ class เดิมให้สไตล์/อนิเมชันตรงกัน)
     function donutSVG(vals, cols, total, center) {
@@ -874,14 +810,12 @@
         specialKey = '';
         waiting.clearFilters();
         renderSteps();
-        renderWaitingStats();
         waiting.setSpecial(null);
       };
 
       roleSel.addEventListener('change', function () { setRole(+roleSel.value); });
       setRole(0);
     } else {
-      renderRelatedStats();
     }
   })();
   </script>

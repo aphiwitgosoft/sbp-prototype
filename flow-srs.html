@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Flow ประกอบเอกสาร SRS · ระบบประกันรายได้ (SBP Mall)</title>
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  body{background:#fff;}
+  .figwrap{background:#fff; padding:26px 30px 30px; margin:0 0 26px;}
+  .figtitle{font-size:19px; font-weight:600; color:#1f2733; margin:0 0 4px;}
+  .figsub{font-size:13.5px; color:#6b7888; margin:0 0 20px; line-height:1.7;}
+  svg.seq{display:block; font-family:"Prompt","Sarabun",sans-serif;}
+</style>
+</head>
+<body>
+  <div id="figs"></div>
+
+<script>
+/* ============================================================================
+   ตัวเรนเดอร์ sequence diagram แบบ lane — วาดจาก spec ด้านล่าง
+   ออกแบบให้ "อ่านง่ายบนกระดาษ A4": ตัวอักษรใหญ่ ระยะห่างเยอะ สีอ่อน ไม่มีเส้นรก
+   ============================================================================ */
+var LANE_W = 250, LANE_GAP = 26, TOP = 96, ROW = 84, PAD = 40, TEXT_PAD = 300;
+
+var PALETTE = {
+  ext:   { fill:'#f3f0ff', stroke:'#c9bdf5', ink:'#5b3fc4' },   /* ระบบภายนอก */
+  core:  { fill:'#e7f6f0', stroke:'#9fd9c4', ink:'#12795a' },   /* SBPGI (ระบบเรา) */
+  data:  { fill:'#fff3e2', stroke:'#f2cf9b', ink:'#a05a00' },   /* ข้อมูล/ไฟล์ */
+  fin:   { fill:'#e9f1ff', stroke:'#b3cdf7', ink:'#1d4ed8' },   /* การเงิน/บัญชี */
+};
+
+function el(tag, attrs, text){
+  var n = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (var k in attrs) n.setAttribute(k, attrs[k]);
+  if (text != null) n.textContent = text;
+  return n;
+}
+function wrap(s, max){
+  var words = String(s).split(' '), lines = [], cur = '';
+  words.forEach(function(w){
+    if ((cur + ' ' + w).trim().length > max){ if(cur) lines.push(cur); cur = w; }
+    else cur = (cur ? cur + ' ' : '') + w;
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function draw(spec){
+  var lanes = spec.lanes, steps = spec.steps;
+  var longestSelf = steps.reduce(function(m,s){ return s.kind==='self' ? Math.max(m, s.text.length) : m; }, 0);
+  var textPad = longestSelf ? Math.min(TEXT_PAD, Math.max(160, Math.ceil(longestSelf/2)*7)) : 30;
+  var W = PAD*2 + lanes.length*LANE_W + (lanes.length-1)*LANE_GAP + textPad;
+  var rows = steps.reduce(function(a,s){ return a + (s.tall ? 1.55 : 1); }, 0);
+  var H = TOP + rows*ROW + 34;
+  var svg = el('svg', { class:'seq', viewBox:'0 0 '+W+' '+H, width:'100%', style:'max-width:'+W+'px;' });
+
+  var defs = el('defs');
+  ['#5b6b7f','#12795a','#a05a00'].forEach(function(c,i){
+    var m = el('marker', { id:'ah'+i, viewBox:'0 0 10 10', refX:'9', refY:'5', markerWidth:'7', markerHeight:'7', orient:'auto-start-reverse' });
+    m.appendChild(el('path', { d:'M0,1 L10,5 L0,9 z', fill:c }));
+    defs.appendChild(m);
+  });
+  svg.appendChild(defs);
+
+  /* ---- lane: หัวคอลัมน์ + พื้นหลัง + เส้นชีวิต ---- */
+  var cx = [];
+  lanes.forEach(function(l, i){
+    var x = PAD + i*(LANE_W+LANE_GAP), p = PALETTE[l.kind];
+    cx.push(x + LANE_W/2);
+    svg.appendChild(el('rect', { x:x, y:TOP-24, width:LANE_W, height:H-TOP-16, rx:14, fill:p.fill, opacity:'.45' }));
+    svg.appendChild(el('rect', { x:x, y:34, width:LANE_W, height:52, rx:12, fill:p.fill, stroke:p.stroke, 'stroke-width':'1.6' }));
+    var t1 = el('text', { x:x+LANE_W/2, y:56, 'text-anchor':'middle', 'font-size':'14.5', 'font-weight':'600', fill:p.ink }, l.name);
+    var t2 = el('text', { x:x+LANE_W/2, y:74, 'text-anchor':'middle', 'font-size':'11.5', fill:p.ink, opacity:'.8' }, l.sub || '');
+    svg.appendChild(t1); svg.appendChild(t2);
+    svg.appendChild(el('line', { x1:x+LANE_W/2, y1:86, x2:x+LANE_W/2, y2:H-30, stroke:p.stroke, 'stroke-width':'2' }));
+  });
+
+  /* ---- steps ---- */
+  var y = TOP + 26;
+  steps.forEach(function(s, idx){
+    var from = cx[s.from], to = cx[s.to === undefined ? s.from : s.to];
+    var col = s.kind === 'self' ? 1 : (s.kind === 'file' ? 2 : 0);
+    var ink = ['#5b6b7f','#12795a','#a05a00'][col];
+
+    if (s.kind === 'self') {                       /* งานภายในระบบเดียวกัน */
+      /* เลนขวาสุดให้วนลูปไปทางซ้าย เพื่อไม่ให้ข้อความล้นออกนอกภาพ */
+      var mirror = (s.from === lanes.length - 1);
+      var dir = mirror ? -1 : 1;
+      svg.appendChild(el('path', { d:'M'+from+','+(y-9)+' q '+(44*dir)+',0 '+(44*dir)+',12 q 0,12 '+(-44*dir)+',12',
+        fill:'none', stroke:ink, 'stroke-width':'2', 'marker-end':'url(#ah1)' }));
+      var avail = mirror ? (from - 72 - PAD) : (W - PAD - (from + 72));
+      var lines = wrap(s.text, Math.max(18, Math.floor(avail / 6.6)));
+      lines.forEach(function(t,i){
+        svg.appendChild(el('text', {
+          x: from + 72*dir, y: y - 4 + i*18, 'font-size':'12.5', fill:'#37414e',
+          'text-anchor': mirror ? 'end' : 'start' }, t));
+      });
+    } else if (s.kind === 'file') {                /* วางไฟล์/ส่งไฟล์ */
+      svg.appendChild(el('line', { x1:from, y1:y, x2:to, y2:y, stroke:ink, 'stroke-width':'2', 'stroke-dasharray':'7 5', 'marker-end':'url(#ah2)' }));
+      svg.appendChild(el('text', { x:(from+to)/2, y:y-11, 'text-anchor':'middle', 'font-size':'12.5', 'font-weight':'500', fill:'#a05a00' }, s.text));
+      if (s.note) wrap(s.note, 56).forEach(function(t,i){
+        svg.appendChild(el('text', { x:(from+to)/2, y:y+19+i*16, 'text-anchor':'middle', 'font-size':'11.5', fill:'#8b7a5e' }, t)); });
+    } else {                                       /* เรียก API / ส่งข้อมูล */
+      svg.appendChild(el('line', { x1:from, y1:y, x2:to, y2:y, stroke:ink, 'stroke-width':'2', 'marker-end':'url(#ah0)' }));
+      svg.appendChild(el('text', { x:(from+to)/2, y:y-11, 'text-anchor':'middle', 'font-size':'12.5', 'font-weight':'500', fill:'#37414e' }, s.text));
+      if (s.note) wrap(s.note, 56).forEach(function(t,i){
+        svg.appendChild(el('text', { x:(from+to)/2, y:y+19+i*16, 'text-anchor':'middle', 'font-size':'11.5', fill:'#7c8794' }, t)); });
+    }
+
+    /* หมายเลขขั้น */
+    var nx = Math.min(from, to) - (s.kind === 'self' ? -2 : 0);
+    svg.appendChild(el('circle', { cx:from, cy:y, r:'12.5', fill:'#2b3440' }));
+    svg.appendChild(el('text', { x:from, y:y+4.5, 'text-anchor':'middle', 'font-size':'11.5', 'font-weight':'700', fill:'#fff' }, String(idx+1)));
+
+    y += ROW * (s.tall ? 1.55 : 1);
+  });
+
+  return svg;
+}
+
+function figure(spec){
+  var d = document.createElement('div'); d.className = 'figwrap';
+  var h = document.createElement('div'); h.className = 'figtitle'; h.textContent = spec.title;
+  var p = document.createElement('div'); p.className = 'figsub'; p.innerHTML = spec.sub;
+  d.appendChild(h); d.appendChild(p); d.appendChild(draw(spec));
+  document.getElementById('figs').appendChild(d);
+}
+
+/* ===================== รูปที่ 1 — รับข้อมูลและคำนวณยอด ===================== */
+figure({
+  title:'รูปที่ 1  ระยะที่ 1 — รับข้อมูลผลกระทบและคำนวณยอดขาย (ต้นเดือน – กลางเดือน)',
+  sub:'ระบบประกันรายได้ (SBPGI) รับข้อมูลร้านที่ถูกกระทบจาก AllMap แล้วขอยอดขายจาก MIS เพื่อคำนวณอัตราการเติบโตที่ลดลง ' +
+      '<b>ทุกอย่างในกรอบนี้เป็นงานอัตโนมัติ ผู้ใช้ยังไม่ต้องทำอะไร</b>',
+  lanes:[
+    { name:'AllMap', sub:'ระบบแผนที่สาขา', kind:'ext' },
+    { name:'ระบบประกันรายได้', sub:'SBPGI (ระบบใหม่)', kind:'core' },
+    { name:'MIS', sub:'ระบบยอดขาย', kind:'ext' },
+  ],
+  steps:[
+    { from:0, to:1, text:'ส่งรายชื่อร้านที่ถูกกระทบและร้านเปิดใหม่', note:'ทุกวันที่ 7 เวลา 07:00 · พร้อมระยะห่างและลิงก์แผนที่' },
+    { from:1, kind:'self', text:'ตรวจเงื่อนไขรับเรื่อง: ระยะห่างในรัศมี (กรุงเทพฯ 1 กม. / ต่างจังหวัด 2 กม.), ประเภทสาขาที่เข้าเกณฑ์, ไม่ใช่นิติบุคคลเดียวกัน', tall:true },
+    { from:1, to:2, kind:'file', text:'ขอยอดขายรายวันของร้านที่ถูกกระทบ', note:'วันที่ 7–16 เวลา 16:00' },
+    { from:2, kind:'self', text:'ประมวลผลยอดขายย้อนหลังตามช่วงเวลาที่ขอ' },
+    { from:2, to:1, kind:'file', text:'ส่งไฟล์ยอดขายกลับ', note:'วันที่ 7–16 เวลา 16:30' },
+    { from:1, kind:'self', text:'คำนวณอัตราการเติบโตก่อน–หลังสาขาใหม่เปิด และนับจำนวนวันที่มีข้อมูลยอดขาย (ต้องครบ 60 วัน)', tall:true },
+  ],
+});
+
+/* ===================== รูปที่ 2 — สร้างเอกสารและพิจารณา ===================== */
+figure({
+  title:'รูปที่ 2  ระยะที่ 2 — สร้างเอกสารและพิจารณาอนุมัติ (กลางเดือน – สิ้นเดือน)',
+  sub:'เมื่อข้อมูลครบเงื่อนไข ระบบ<b>สร้างเอกสารประกันรายได้ให้อัตโนมัติ</b>แล้วเปิดขั้นตอนพิจารณาให้ผู้ปฏิบัติงาน ' +
+      'กรณีร้านที่อยู่นอกเงื่อนไข ผู้ใช้คีย์ข้อมูลต้นทางที่ระบบ FS แล้วรอ SBP Statement ส่งกลับประมาณ 1 วัน',
+  lanes:[
+    { name:'ระบบ FS', sub:'Finance & Account Unit', kind:'fin' },
+    { name:'ระบบประกันรายได้', sub:'SBPGI (ระบบใหม่)', kind:'core' },
+    { name:'ผู้ปฏิบัติงาน', sub:'5 ขั้นตามบทบาท', kind:'ext' },
+  ],
+  steps:[
+    { from:0, to:1, text:'ส่งข้อมูลต้นทางกลับผ่าน SBP Statement', note:'เฉพาะเคสนอกเงื่อนไขที่คีย์ที่ระบบ FS · ใช้เวลาประมาณ 1 วัน' },
+    { from:1, kind:'self', text:'ออกเลขที่เอกสารรูปแบบ ปี/เลขลำดับ 5 หลัก แล้วสร้างเอกสารประกันรายได้', tall:true },
+    { from:1, kind:'self', text:'เปิดขั้นตอนพิจารณาขั้นแรก (ฝ่าย SBP DSA) และกำหนดผู้รับผิดชอบ' },
+    { from:1, to:2, text:'แจ้งอีเมลถึงผู้ที่ต้องดำเนินการ', note:'ทุกครั้งที่สถานะเปลี่ยน' },
+    { from:2, to:1, text:'ผู้ปฏิบัติงานเปิดเอกสาร ตรวจข้อมูล และส่งผลการพิจารณา', note:'ลำดับ 5 ขั้น: ฝ่าย SBP DSA → เจ้าหน้าที่ SBP DSA → หน่วยงานส่งเสริมธุรกิจ SBP → GM ส่งเสริมธุรกิจ SBP → ผู้บริหารสำนักบริหาร SBP', tall:true },
+    { from:1, kind:'self', text:'ตรวจวงเงินอนุมัติ: ไม่เกิน 50,000 บาท จบที่ GM · 50,001–300,000 บาท ต้องผ่านผู้บริหารสำนักบริหาร SBP', tall:true },
+  ],
+});
+
+/* ===================== รูปที่ 3 — ส่งผลชดเชยและกระทบยอดบัญชี ===================== */
+figure({
+  title:'รูปที่ 3  ระยะที่ 3 — ส่งผลชดเชยเข้าระบบบัญชีและติดตามผล (สิ้นเดือน)',
+  sub:'เมื่อเอกสารเสร็จสิ้น ระบบส่งยอดชดเชยเข้าระบบ STA เพื่อจ่ายจริง ' +
+      'ทีมบัญชีตรวจสอบยอดผ่านหน้ารายงานของระบบเอง <b>ไม่มีขั้นอนุมัติของบัญชีในเอกสารอีกต่อไป</b>',
+  lanes:[
+    { name:'ระบบประกันรายได้', sub:'SBPGI (ระบบใหม่)', kind:'core' },
+    { name:'STA', sub:'ระบบตั้งเบิก/จ่าย', kind:'ext' },
+    { name:'ทีมบัญชี', sub:'ตรวจผ่านรายงาน + SAP', kind:'fin' },
+  ],
+  steps:[
+    { from:0, to:1, kind:'file', text:'ส่งยอดชดเชยที่อนุมัติแล้วเข้า STA', note:'ทุกวันเวลา 17:00' },
+    { from:1, kind:'self', text:'ตั้งรายการจ่ายให้ร้าน Store Partner ตามยอดที่ได้รับ' },
+    { from:1, to:0, text:'ตอบกลับผลการรับข้อมูลและสถานะการจ่าย' },
+    { from:0, kind:'self', text:'อัปเดตสถานะการส่งข้อมูลของเอกสาร และแจ้งเตือนเมื่อไม่ได้รับผลตอบกลับ', tall:true },
+    { from:2, to:0, text:'ทีมบัญชีเปิดหน้ารายงานสรุปสถานะ เลือกเงื่อนไข แล้วกด Preview' },
+    { from:0, to:2, text:'ส่งออกไฟล์รายงานเพื่อนำไปกระทบยอดกับระบบ SAP', note:'กรณียอดไม่ตรง แจ้งทีมดูแลระบบแก้เป็นรายครั้ง' },
+  ],
+});
+</script>
+</body>
+</html>

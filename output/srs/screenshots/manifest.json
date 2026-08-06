@@ -50,25 +50,25 @@
   {
     "file": "k2-list-waiting.html",
     "width": 1440,
-    "height": 1636,
+    "height": 1528,
     "output": "k2-list-waiting.png"
   },
   {
     "file": "k2-list-related.html",
     "width": 1440,
-    "height": 1667,
+    "height": 1447,
     "output": "k2-list-related.png"
   },
   {
     "file": "k2-document.html",
     "width": 1440,
-    "height": 4432,
+    "height": 4069,
     "output": "k2-document.png"
   },
   {
     "file": "k2-report.html",
     "width": 1440,
-    "height": 2019,
+    "height": 1671,
     "output": "k2-report.png"
   },
   {
@@ -98,7 +98,7 @@
   {
     "file": "plan-api.html",
     "width": 1440,
-    "height": 5039,
+    "height": 4992,
     "output": "plan-api.png"
   }
 ]

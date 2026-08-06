@@ -75,6 +75,7 @@ Interactivity is simulated by declaring attributes/classes in markup:
 - The modal engine is driven by `data-entity` on the table, keyed to hand-written `SCHEMAS` in `sbp.js` (~line 424). Schema fields map to columns **by exact header text** — renaming a `<th>` silently breaks the modal round-trip. `data-entity="k2doc"` bypasses modals and populates the `#openedDoc` detail panel instead.
 - Tabs: container `[data-tabs]` with child `.tab[data-tab=key]` toggles every `[data-tabpane]` **document-wide** whose key doesn't match.
 - Charts: `<div data-chart="bar|donut|spark" data-values data-labels data-colors data-center>` renders inline SVG. All other diagrams (BPMN flowchart in k2-flow, ER diagram in k2-database, AllMap map in k2-document, per-endpoint flowcharts in plan-api) are hand-authored inline SVG — no chart/diagram libraries.
+- **2026-08-06 — charts and stat cards were stripped from the working screens:** `k2-document.html` lost its daily-sales and compensation-share charts (the AllMap map stays), `k2-report.html` lost both HBar charts, and both list twins lost the entire `#statGrid` stat-card row (their `renderWaitingStats`/`renderRelatedStats` are now no-ops, and the related page's **สถานะ** filter field was un-hidden since the donut that used to filter by status is gone). `GET /dashboard/summary` was deleted from the API design as a result (47 endpoints). Charts still live on the design/plan pages only.
 - Public API is only `window.SBP.toast(msg, kind)`.
 
 ### Styling

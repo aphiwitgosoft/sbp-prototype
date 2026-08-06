@@ -37,7 +37,7 @@
 
       <div class="page-head">
         <div><h1 class="page-title">API Specification</h1>
-          <p class="page-sub">REST API ทั้งหมด 48 เส้น 9 กลุ่มเป็น reference contract สำหรับ Frontend SPA และงานภายใน · กลุ่ม Auth/สิทธิ์เมนู และเส้นผู้ปฏิบัติงาน (18 เส้น) ตัดออกเมื่อ 2026-08-05 · <b>ตัดอีก 3 เส้น (stores/search · zones · branch-types) เมื่อ 2026-08-06 เพราะระบบ SBP ปัจจุบันมี API พร้อมใช้แล้ว</b></p></div>
+          <p class="page-sub">REST API ทั้งหมด 47 เส้น 9 กลุ่มเป็น reference contract สำหรับ Frontend SPA และงานภายใน · กลุ่ม Auth/สิทธิ์เมนู และเส้นผู้ปฏิบัติงาน (18 เส้น) ตัดออกเมื่อ 2026-08-05 · <b>ตัดอีก 3 เส้น (stores/search · zones · branch-types) เมื่อ 2026-08-06 เพราะระบบ SBP ปัจจุบันมี API พร้อมใช้แล้ว</b></p></div>
         <div class="page-actions">
           <button class="btn btn-ghost" data-ack="ดาวน์โหลด OpenAPI 3.0 (ตัวอย่าง)">Export OpenAPI</button>
         </div>
@@ -45,7 +45,7 @@
 
       <div class="stat-grid">
         <div class="stat"><div class="si bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v4c0 1.5-2 3-2 3s2 1.5 2 3v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4c0 1.5 2 3 2 3s-2 1.5-2 3v4a2 2 0 0 1-2 2h-1"/></svg></div>
-          <div><div class="sv num">48</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
+          <div><div class="sv num">47</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
         <div class="stat"><div class="si bg-teal"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 10h18M9 5v14"/></svg></div>
           <div><div class="sv num">9</div><div class="sl">กลุ่มตามโดเมน</div></div></div>
         <div class="stat"><div class="si bg-amber"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></div>
@@ -128,7 +128,7 @@
 (function () {
   "use strict";
 
-  /* ===== API catalog: 48 เส้น 9 กลุ่ม (กลุ่ม Auth + เส้นผู้ปฏิบัติงาน/สิทธิ์เมนู 18 เส้นตัดออก — ใช้ระบบ SBP เดิม · กลุ่มข้อมูลผิดปกติ comment รอตัดสินใจ) ===== */
+  /* ===== API catalog: 47 เส้น 9 กลุ่ม (กลุ่ม Auth + เส้นผู้ปฏิบัติงาน/สิทธิ์เมนู 18 เส้นตัดออก — ใช้ระบบ SBP เดิม · กลุ่มข้อมูลผิดปกติ comment รอตัดสินใจ) ===== */
   var GROUPS = [
     /* ตัดออกถาวร 2026-08-05 — Auth & สิทธิ์ผู้ใช้ทั้งกลุ่ม ใช้ระบบ SBP เดิม (Cognito + BFF + auth-backend/ABS):
        login = redirect {bffUrl}/auth/login (cookie httpOnly) · refresh = BFF /auth/refresh · ข้อมูลผู้ใช้ = /auth/profile + /users/current
@@ -177,7 +177,7 @@
         sum:'ค้นหาเอกสารที่เกี่ยวข้อง — บังคับระบุปี และคืนเฉพาะเอกสารที่มีเลขที่แล้ว (กติกา SRS)',
         flow:['validate: ต้องระบุ year เสมอ ไม่งั้นตอบ 400','ค้น compensation_documents ตามเงื่อนไข (เลขที่ / ร้าน / สถานะ / เดือน)','คืนแบบแบ่งหน้า'],
         db:[['compensation_documents','R','เอกสารตามเงื่อนไข'],['impacted_stores','R','ข้อมูลร้าน']],
-        req:'Query: ?year=2026&impactedStoreCode=00788&status=06&page=1\n(status = section ที่รออยู่ 06/08/01/02/03 หรือ END)',
+        req:'Query: ?year=2026&impactedStoreCode=00788&status=06&result=APPROVE&page=1\n(status = section ที่รออยู่ 06/08/01/02/03 หรือ END)\n(result = APPROVE | REJECT | NONE — ประกันรายได้ / ไม่ประกันรายได้ / ยังไม่มีผล · เพิ่ม 2026-08-06)',
         res:'{\n  "page": 1, "total": 6,\n  "items": [{ "docNo": "2026/00123", "statusCode": "06", ... }]\n}',
         resNote:'items[] ใช้ field ชุดเดียวกับ §6.2.1 GET /api/v1/tasks สำหรับ list response ของ SCR-03/04',
         err:['400 — กรุณาระบุปีที่ต้องการค้นหา (กติกา SRS)','401'] },
@@ -186,7 +186,7 @@
         flow:['โหลดเอกสาร + ร้านใหม่ + คู่แข่ง + ปัจจัย + ไฟล์แนบ + สรุปชดเชย ในคำขอเดียว','คำนวณ compensateAmount ต่อร้านเปิดใหม่ = ยอดชดเชยร้านถูกกระทบ × %ชดเชย (ปัดเศษที่ BE · ผลรวมต้องเท่ากับยอดชดเชยพอดี)','คำนวณ permissions: ส่วนไหนแก้ได้ตาม role + current_section_code (data-editrole เดิม)','FE ใช้ธงนี้แสดงป้าย "อ่านอย่างเดียว" ต่อส่วน + ซ่อนคอลัมน์ checkbox/Action ของตารางที่แก้ไม่ได้'],
         db:[['compensation_documents','R','หัวเอกสาร'],['document_new_stores / document_competitors / document_external_factors','R','ส่วนย่อย'],['document_attachments / consideration_logs','R','ไฟล์แนบ + ประวัติ']],
         req:'(ไม่มี body)',
-        res:'{\n  "docNo": "2026/00123",\n  "statusCode": "06",\n  "currentSection": "06",\n  "impactedStore": { "storeCode": "00788", ... },\n  // newStores[] = แหล่งข้อมูลของทั้งตารางร้านเปิดใหม่และกราฟ "สัดส่วนเงินชดเชยรายร้านเปิดใหม่"\n  // compensateAmount คำนวณที่ BE (= compensation.amount x compensatePercent) — FE ไม่คูณเอง\n  "newStores": [\n    { "newStoreCode": "00990", "storeName": "สาขารัตนาธิเบศร์ 2", "distanceKm": 0.85,\n      "compensatePercent": 60.0, "compensateAmount": 28920.00 },\n    { "newStoreCode": "01180", "storeName": "สาขาซอยวัดกู้", "distanceKm": 1.40,\n      "compensatePercent": 40.0, "compensateAmount": 19280.00 }\n  ],\n  "competitors": [ ... ],\n  "factors": [ ... ],\n  "compensation": { "amount": 48200.00, "salesDropPercent": 12.45 },\n  "permissions": { "canEditSections": ["competitor","factor"], "canAction": true }\n}',
+        res:'{\n  "docNo": "2026/00123",\n  "statusCode": "06",\n  "currentSection": "06",\n  "impactedStore": { "storeCode": "00788", ... },\n  // newStores[] = แหล่งข้อมูลของตารางร้านเปิดใหม่ (กราฟสัดส่วนเงินชดเชยถอดออกแล้ว 2026-08-06)\n  // compensateAmount คำนวณที่ BE (= compensation.amount x compensatePercent) — FE ไม่คูณเอง\n  "newStores": [\n    { "newStoreCode": "00990", "storeName": "สาขารัตนาธิเบศร์ 2", "distanceKm": 0.85,\n      "compensatePercent": 60.0, "compensateAmount": 28920.00 },\n    { "newStoreCode": "01180", "storeName": "สาขาซอยวัดกู้", "distanceKm": 1.40,\n      "compensatePercent": 40.0, "compensateAmount": 19280.00 }\n  ],\n  "competitors": [ ... ],\n  "factors": [ ... ],\n  "compensation": { "amount": 48200.00, "salesDropPercent": 12.45 },\n  "permissions": { "canEditSections": ["competitor","factor"], "canAction": true }\n}',
         err:['404 — ไม่พบเอกสาร','401'] },
       { m:'POST', p:'/api/v1/documents', ref:'k2', refT:'K2 · 3.1.6', roles:'02 HQ, 03 User Admin',
         sum:'สร้างเอกสารจากข้อมูลที่ FS/SBP Statement ส่งกลับ — ตัดสินใจ 2026-08-06: ไม่มีฟอร์มสร้างเอกสารใน FE แล้ว (k2-create.html เหลือเป็นหน้าอธิบายกระบวนการ) เส้นนี้เรียกโดย pipeline/service token',
@@ -300,7 +300,7 @@
 
     /* กลุ่ม "ข้อมูลผิดปกติ / แจกงาน" (GET /abnormal-stores · POST /abnormal-stores/assign) ถูกยกเลิกและลบทิ้งแล้ว 2026-08-06
        พร้อมหน้าจอ k2-list-abnormal.html — ทดแทนด้วย salesDataDays ใน GET /tasks และ GET /documents (FE ทำแถวแดง +
-       ตัวกรอง "ยอดขายไม่ครบ 60 วัน") · ตัวเลขสรุปอยู่ใน GET /dashboard/summary · จ่ายงานด้วย auto-assign ของ SDD GI */
+       แถวแดง "ยอดขายไม่ครบ 60 วัน") · ถอด stat cards + GET /dashboard/summary ออกแล้ว 2026-08-06 · จ่ายงานด้วย auto-assign ของ SDD GI */
 
     { name:'Master Data', refT:'K2 · SRS 3.1.9', eps:[
     /* ตัดออกถาวร 2026-08-05 — ผู้ปฏิบัติงาน (SRS 3.1.8) ใช้ระบบ SBP เดิม: group+scope ของ auth-backend
@@ -628,13 +628,6 @@
         req:'(ไม่มี body)',
         res:'{\n  "count": 2,\n  "items": [{ "dataName": "COMPENSATE_INIT_I", "docNo": "2026/00098", "ageDays": 2 }]\n}',
         err:['401'] },
-      { m:'GET', p:'/api/v1/dashboard/summary', ref:'k2', refT:'K2 (หน้าแรก = งานรอดำเนินการ)', roles:'ทุก role',
-        sum:'ตัวเลข stat cards ของหน้าแรก (งานรอดำเนินการ) — ยกเลิกหน้า Overview/Dashboard แล้ว (ตัดสินใจ 2026-08-06)',
-        flow:['อ่าน sectionCode ของผู้ใช้จาก user context ที่ BFF ส่งมา','นับงานค้างของ section นั้น + แยกกลุ่ม: ยอดขายไม่ครบ 60 วัน · รอเกิน 3 วัน · วงเงินเข้าเส้น AVP (> 50,000 · SDD GI)','cache 5 นาที','ตัด field abnormalStores/chart.monthly ของหน้า Overview เดิมออก'],
-        db:[['workflow_tasks','R','งานค้างของ section + จำนวนวันที่รอ'],['compensation_documents','R','ยอดชดเชยต่อเอกสาร (เกณฑ์วงเงิน AVP)'],['fgi_impact_sales_summaries','R','total_working_days < 60 = แถวแดง']],
-        req:'(ไม่มี body)',
-        res:'{\n  "waitingTasks": 24,\n  "flagUnder60Days": 5,\n  "pendingOver3Days": 7,\n  "overGmLimit": 3\n}',
-        err:['401'] }
     ]}
   ];
 

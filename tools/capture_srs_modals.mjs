@@ -138,6 +138,27 @@ const shots = [
       document.getElementById('qsText').dispatchEvent(new Event('input'));`,
   },
   {
+    file: "flow-srs.html",
+    out: "flow-phase-1.png",
+    title: "รูปที่ 1 ระยะที่ 1 — รับข้อมูลผลกระทบและคำนวณยอดขาย",
+    clip: ".figwrap:nth-of-type(1)",
+    setup: `true;`,
+  },
+  {
+    file: "flow-srs.html",
+    out: "flow-phase-2.png",
+    title: "รูปที่ 2 ระยะที่ 2 — สร้างเอกสารและพิจารณาอนุมัติ",
+    clip: ".figwrap:nth-of-type(2)",
+    setup: `true;`,
+  },
+  {
+    file: "flow-srs.html",
+    out: "flow-phase-3.png",
+    title: "รูปที่ 3 ระยะที่ 3 — ส่งผลชดเชยและกระทบยอดบัญชี",
+    clip: ".figwrap:nth-of-type(3)",
+    setup: `true;`,
+  },
+  {
     file: "k2-competitors.html",
     out: "modal-add-competitor-master.png",
     title: "Modal เพิ่มรายชื่อคู่แข่ง (master)",

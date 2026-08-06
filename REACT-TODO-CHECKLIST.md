@@ -66,7 +66,8 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **Route:** `/k2/documents/waiting` · `/k2/documents/related`
 - **S1 RoleWorkflowBar** (sticky, เฉพาะ mode=waiting): dropdown role profile 5 ขั้น (`code · name`) + stepper คลิกได้ `06›08›01›02›03` + hint
 - **S2 head:** title/sub สลับตาม mode
-- **S3 Stat cards (คลิกกรองตาราง):** waiting = 4 การ์ด (ทั้งหมด / flag60 แถวแดง / รอเกิน 3 วัน / วงเงิน 50,001–300,000 เข้า AVP · SDD GI); related = 10 การ์ด (ทั้งหมด + 6 สถานะ + 3 special)
+- **S2.1 ตัวกรองหน้า “ที่เกี่ยวข้อง”** (2026-08-06): เพิ่ม select **ผลการพิจารณา** เป็น**ช่องสุดท้ายของฟอร์ม** (ต่อจาก “รอ (วัน)”) — `ทุกผลการพิจารณา` / `ประกันรายได้` / `ไม่ประกันรายได้` / `ยังไม่มีผล (อยู่ระหว่างดำเนินการ)` · อิง `data-result` ของแถว (มีค่าเฉพาะเอกสารที่เสร็จสิ้น) · ใช้เฉพาะหน้านี้ หน้า “รอดำเนินการ” ไม่มีเพราะยังไม่มีผลพิจารณาสุดท้าย
+- ~~**S3 Stat cards**~~ **ถอดออกทั้ง 2 หน้า 2026-08-06** — เหลือฟอร์มตัวกรอง + ตารางเท่านั้น · เส้น `GET /dashboard/summary` ถูกตัดตามไปด้วย · หน้า “ที่เกี่ยวข้อง” เปิดช่องตัวกรอง **สถานะ** กลับมาแทนการคลิกกราฟวงกลม
 - **S4 Filter bar:** ค้นหา, สถานะ(ซ่อนใน waiting), ภาค(8), ประเภทร้าน, ช่วงวันที่สร้าง, ยอดขายลดลง% (min–max), เงินชดเชย (min–max), รอ(วัน) (min–max), `ล้างตัวกรอง`
 - **ตาราง `#tblK2`/`#tblRelated`** (คลิกแถว→k2-document, sortable): `ครั้งที่ | เลขที่เอกสาร | รหัสร้าน | ชื่อร้านถูกกระทบ | ภาค | ยอดขายที่ลดลง(%) | จำนวนเงินที่ชดเชย | สถานะ(pill) | รอ (วัน)` · `tr.flag-red` = ยอดขายไม่ครบ 60 วัน
 - **Pager** + note card ("แดง = ยอดขายไม่ครบ 60 วัน · text file 17:00/วัน · Approve A → SAP")
@@ -85,7 +86,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **S1 RoleSwitcherBar** (sticky): `#roleSwitch` (**5 role** — ตัดขั้นบัญชี 04/05) + pill `ขั้นตอนที่ N/5` + stepper คลิกได้ → เปลี่ยน role re-render ทั้งหน้า + toast
 - **S2 head:** `เอกสารข้อมูลร้านถูกกระทบ 2026/00123` + sub + pill สถานะ(สลับตาม role) + ปุ่ม `พิมพ์`
 - **S3 ข้อมูลร้านถูกกระทบ:** doc-meta grid (รอบ/ครั้งที่/เดือน, สถานะ, เลขที่, วันที่สร้าง, รหัส/ชื่อร้าน, ภาค, ประเภท, เจ้าของ, นิติบุคคล, วันที่โอน, ผู้ดำเนินการ, ยอดขายลดลง 12.45%, ชดเชยล่าสุด 48,200฿, ไฟล์แนบ) + ปุ่ม `ข้อมูลยอดขายเพิ่มเติม`
-- **S4 Charts:** `<SalesTrendChart>` (hand-SVG เส้น/พื้นที่ 2 ชุด ก่อน–หลัง + marker สาขาเปิด + เส้นเฉลี่ย) · `<SalesAvgBarChart>` (2 แท่ง 42,450 vs 37,163 + badge −12.45%)
+- ~~**S4 Charts**~~ **ถอดกราฟ “แนวโน้มยอดขายรายวัน” และ “สัดส่วนเงินชดเชยรายร้านเปิดใหม่” ออก 2026-08-06** — ข้อมูลยอดขายดูผ่านปุ่ม `ข้อมูลยอดขายเพิ่มเติม` (ลิงก์ QlikView BI) และยอดชดเชยรายร้านดูจากคอลัมน์ในตารางร้านเปิดใหม่แทน
 - **S5 ร้านเปิดใหม่** (`data-editrole=opt-mgr`): ปุ่ม `รีเฟรช`/`คืนค่าก่อนแก้ไข`/`คำนวณเงินชดเชย` (validate %รวม=100 ไม่งั้น popup) · ตาราง `#tbldocument_new_stores`: `ลำดับ | รหัสร้าน | ชื่อร้านเปิดใหม่ | ภาค | ประเภทร้าน | เจ้าของร้าน | นิติบุคคล | วันที่เปิดร้าน | วันที่ปิดร้าน | ระยะห่าง(กม.) | %ชดเชย(input) | เงินชดเชย(ร้านใหม่)` · สูตร comp = base × %/100
 - **S6 แผนที่ AllMap:** `<AllMapPoi>` hand-SVG (วงรัศมี 1กม., pulse ร้านถูกกระทบ, หมุดร้านใหม่ 1/2, คู่แข่ง C) + legend + ปุ่ม `Link To ALLMAP`
 - **S7 ร้านคู่แข่ง** (`data-editrole`, `data-entity=competitor`): ปุ่ม `เพิ่ม`(add-row) เท่านั้น — **ไม่มีปุ่ม `บันทึก` ระดับการ์ด** (บันทึกใน modal · 2026-08-06) · ตาราง `☑ | ร้านคู่แข่ง | วันที่เปิดกระทบ | รายละเอียดเพิ่มเติม | Action`
@@ -99,7 +100,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **S13 พิจารณา (ส่งดำเนินการ):** radio ตัวเลือกตาม role + textarea `ความคิดเห็นเพิ่มเติม` + ปุ่ม `แนบรูป`/`บันทึก`/`ส่งดำเนินการ` (validate เลือกผล + comment ถ้าบังคับ → popup "ท่านยังไม่เลือกผลการพิจารณา…")
 - **Role-based views:** **5 role** (sbpdsa-mgr, sbpdsa-officer, opt-mgr, opt-gm, avp — role บัญชี acct-mgr/acct-op ถูกตัดออกแล้ว) กำหนด status/pill/edit sections/decision options + กฎวงเงิน SDD GI (≤50,000 จบที่ GM · 50,001–300,000 → AVP)
 - **Modals:** `#k2pop` (warning SRS), `#decHistPop` (รายละเอียดผลพิจารณา), auto view/edit/add/del (competitor/factordoc)
-- **TODO:** `<DocumentPage>` + workflow state provider, `<RoleSwitcherBar>`, `<WorkflowStepper>`, `<DocMetaGrid>`, `<SalesTrendChart>`, `<SalesAvgBarChart>`, `<AllMapPoi>`, `<NewStoresTable>`(edit+validate 100%), `<EditableDataTable>`(competitor/factors), `<AttachmentsTable>`, `<CompensationCalcPanel>`, `<CompensationHistoryTable>`, `<DecisionHistoryTable>`+`<DecisionHistoryModal>`, `<DecisionPanel>`, `<WarningPopup>`, `useWorkflowRole()`
+- **TODO:** `<DocumentPage>` + workflow state provider, `<RoleSwitcherBar>`, `<WorkflowStepper>`, `<DocMetaGrid>`, `<AllMapPoi>`, `<NewStoresTable>`(edit+validate 100%), `<EditableDataTable>`(competitor/factors), `<AttachmentsTable>`, `<CompensationCalcPanel>`, `<CompensationHistoryTable>`, `<DecisionHistoryTable>`+`<DecisionHistoryModal>`, `<DecisionPanel>`, `<WarningPopup>`, `useWorkflowRole()`
 
 ## k2-report.html — รายงานสรุปสถานะ (SRS 3.1.7, 19 คอลัมน์)
 - **Route:** `/k2/report` · **crumb:** `รายงานสรุปสถานะ`
@@ -107,7 +108,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **S2 ฟอร์มค้นหา (ลำดับตามผังจริง 2026-08-06):** รหัสร้านที่ถูกกระทบ(+ปุ่ม picker) | ชื่อร้าน(readonly) · รหัสร้านเปิดกระทบ | **ประเภทร้าน (checkbox `A/B/C/E`)** · **เดือน/ปีที่ถูกกระทบ (From – To) — 2 month input เรียงแถวเดียว เต็มความกว้าง (`col-2`) รูปแบบเดียวกับ Period Statement** · สถานะ\* (select ทีละ 1) | ผลการพิจารณา\* (radio ประกันรายได้/ไม่ประกันรายได้) · ภาค (checkbox 13 รหัส · `col-2`) · Period Statement From–To (`col-2` · บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ) · ปุ่ม `เคลียร์ค่าเริ่มใหม่` · `Preview Report` · `Export`
 - **S2.1 ความสูงคอนโทรล:** input / select / กล่อง checkbox-radio (`.ckgrid`) สูง **46px เท่ากันทุกช่อง** — `sbp.css` คุมด้วย `min-height:46px` (ยกเว้น `[type=checkbox]`/`[type=radio]` ที่ยังเป็น 15px) · กล่องหลายแถว (ภาค) ยืดตามเนื้อหา
 - **S3 Summary line:** พบ N รายการ / ยอดชดเชยรวม / วงเงินเข้า AVP / แถวแดง
-- **S4 Charts:** `<HBarChart>` "เอกสารตามสถานะ" (6 สถานะ, dot สี) · `<HBarChart>` "ยอดเงินชดเชยตามภาค" (13 ภาค, teal)
+- ~~**S4 Charts**~~ **ถอดกราฟ “เอกสารตามสถานะ” และ “ยอดเงินชดเชยตามภาค” ออก 2026-08-06** — หน้ารายงานเหลือ ฟอร์มค้นหา → แถบสรุป → ตาราง 19 คอลัมน์
 - **S5 ตารางผล 19 คอลัมน์:** `รหัสร้านถูกกระทบ | ชื่อร้านถูกกระทบ | ภาค | ประเภทร้าน | เดือนปีที่ถูกกระทบ | วันที่โอนเป็นร้าน SP | Period Statement | รหัสร้านเปิดใหม่ | ชื่อร้านเปิดใหม่ | ภาค (ร้านใหม่) | ประเภทร้าน (ร้านใหม่) | ยอดเงินชดเชย | สถานะ | ชื่อ-นามสกุลผู้ดำเนินการ | ผลการพิจารณา | รอดำเนินการ (วัน) | ครั้งที่ | วันที่สร้าง | เลขที่เอกสาร` · **ทุกคอลัมน์ sort ได้** (`th[data-sort="text|num|date"]` → sorter กลางใน `sbp.js` คลิกสลับ asc/desc) · `tr.flag-red` · pill สถานะ
 - **TODO:** `<K2ReportPage>`, `<ReportSearchForm>`, `<CheckboxGroup>`(×2), `<MonthRangeInput>`(From–To ใช้ซ้ำทั้งเดือน/ปีที่ถูกกระทบและ Period Statement), `<StorePickerModal>`, `<SummaryLine>`, `<HBarChart>`+`<ChartTooltip>`, `<ReportResultTable>`(19-col scroll + sort ทุกคอลัมน์), number formatter (คั่นหลักพันไทย)
 - **ไม่มีในหน้านี้:** กล่องอธิบายขั้นตอนบัญชี/SAP (FBL3H · SAPPOST · SR/BSR) **ถูกลบออก 2026-08-06** — ปลายทางของปุ่ม Export อธิบายไว้ที่ `workflow.md` ขั้น 10 แทน
@@ -250,7 +251,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 ---
 
 ## หมายเหตุ implement รวม
-- **Charts:** prototype ใช้ทั้ง engine `data-chart` (bar/donut/spark) และ hand-SVG (index cols, k2-report hbar, k2-document sales, ทุก diagram/flowchart/ER/map) — React แนะนำ data-drive component; diagram ใหญ่ (BPMN, architecture, ER, zone map) อาจเก็บเป็น SVG asset ก่อนแล้วค่อย data-drive
+- **Charts:** prototype ใช้ทั้ง engine `data-chart` (bar/donut/spark) และ hand-SVG (index cols, ทุก diagram/flowchart/ER/map) — React แนะนำ data-drive component; diagram ใหญ่ (BPMN, architecture, ER, zone map) อาจเก็บเป็น SVG asset ก่อนแล้วค่อย data-drive
 - **หน้า static (ไม่มี state):** flow-fgi, k2-flow, plan-flow, fgi-database, k2-database, plan-database → layout + data เท่านั้น
 - **หน้ามี state จริง:** k2-document (workflow role), k2-permissions (matrix dirty), email-template (editor), job-batch (job select), k2-list-* (filter/sort/page), master pages (CRUD modal)
 - **Mock data → API:** k2-list-* และ master pages ใช้ mock deterministic — เปลี่ยนเป็น REST ตาม plan-api.html
