@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 18 ชั่วโมง |
+| Estimate | 16 ชั่วโมง |
 | Owner | Chidchanok <lin> Saengamnat |
 | Objective | กำหนดสัญญากลางฝั่ง Frontend สำหรับการ consume API ทุกหน้า: auth/session, error handling, pagination, format, document action และ RBAC/menu gating |
 
@@ -251,6 +251,181 @@ Menu/RBAC contract สำหรับ sidebar และ route guard
 | menus[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | menus[].route | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | menus[].group | string | Yes | UTF-8; use value domain described by endpoint purpose |
+
+## 8. Skeleton Code (โครงโค้ดตั้งต้นของหน้าจอนี้)
+
+โค้ดชุดนี้อิง convention ของ portal เดิม `srm-sps-spsap-web-frontend` (build target `sbpm`): Next.js App Router + `'use client'`, PrimeReact ที่ห่อไว้แล้วใน `@/components/Form` และ `@/components/Table`, react-hook-form + yup, Zustand `permissionStore`, axios instance กลาง `@/lib/apiClient` และ react-query 5 — **โปรเจกต์ไม่มี chart library** จึงไม่มีโค้ดกราฟในเอกสารนี้ คัดลอกไปตั้งต้นได้ทันที แล้วเติมจุดที่กำกับ `TODO:`
+
+#### 8.1 ผังไฟล์ที่ต้องสร้าง
+
+โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SBPGI อยู่ใต้ `src/app/(main)/sbpgi/*` และ import ผ่าน alias `@/*` ทุกจุด
+
+| Path ไฟล์ | หน้าที่ |
+| --- | --- |
+| src/types/sbpgi/common.ts | types — ApiResponse / PageResponse / ApiError กลางของโมดูล |
+| src/lib/sbpgi/apiError.ts | helper — แปลง AxiosError เป็นข้อความไทยจาก BE (ไม่ paraphrase) |
+| src/utils/sbpgi/format.ts | helper — formatMonthThai / formatAmount / docNo (ค.ศ. -> พ.ศ. จุดเดียว) |
+| src/services/sbpgi/integration.service.ts | service — เรียก BFF ผ่าน apiClient (GET, POST) |
+| src/hooks/sbpgi/integration.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
+| src/types/sbpgi/integration.ts | types — request/response ตาม API contract ของเอกสารนี้ |
+
+#### 8.2 types/helper กลาง (envelope, error message, formatter)
+
+```ts
+// src/types/sbpgi/common.ts — สัญญากลางที่ทุกหน้าในโมดูล SBPGI ใช้ร่วมกัน
+// envelope ต้องตรงกับ store-backend: { success, data } / { success:false, data:null, error:{code,message} }
+
+export interface ApiError {
+  code: string;    // เช่น VALIDATION, ACTION_RESULT_REQUIRED
+  message: string; // ข้อความไทย verbatim จาก BE — ห้าม paraphrase ฝั่ง FE
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  error?: ApiError | null;
+}
+
+export interface PageResponse<T> {
+  page: number;  // >= 1
+  size: number;  // <= 100
+  total: number;
+  items: T[];
+}
+
+/** payload ของทุก workflow action — FE ส่งได้แค่ 2 field นี้ ห้ามส่ง nextSection เอง */
+export interface DocumentActionRequest {
+  result: string;   // ต้องเป็นค่าจาก actionOptions ที่ API ส่งมาเท่านั้น
+  comment: string;
+}
+
+export interface ActionResponse {
+  statusCode: string;
+  nextSection: string | null;
+  message: string;
+}
+
+// ---------------------------------------------------------------------------
+// src/lib/sbpgi/apiError.ts
+// ---------------------------------------------------------------------------
+import { AxiosError } from 'axios';
+
+export function apiErrorMessage(error: unknown): string {
+  const message = (error as AxiosError<{ error?: ApiError }>)?.response?.data?.error?.message;
+  if (message) return message;                        // ใช้ข้อความจาก BE ตรง ๆ
+  return 'ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง'; // fallback เฉพาะ network/no-response
+}
+
+// ---------------------------------------------------------------------------
+// src/utils/sbpgi/format.ts — จุดเดียวที่แปลง ค.ศ. (payload) -> พ.ศ. (display)
+// ---------------------------------------------------------------------------
+export const formatMonthThai = (isoMonth: string): string => {
+  const [year, month] = isoMonth.split('-');
+  return `${month}/${Number(year) + 543}`;
+};
+
+export const formatAmount = (value: number): string =>
+  value.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// TODO: ยืนยันรูปแบบวันที่/เดือนกับ SRS ก่อนใช้จริง (บางหน้าจอแสดง ค.ศ. ตามระบบ SBP เดิม)
+```
+
+#### 8.3 service — `src/services/sbpgi/integration.service.ts`
+
+```ts
+// src/services/sbpgi/integration.service.ts
+// apiClient = axios instance กลาง (baseURL = bffUrl ซึ่งรวม /api/v1 แล้ว, withCredentials, refresh-token interceptor, global loading)
+// ห้ามสร้าง axios instance ใหม่ และห้าม set Authorization header เอง — session อยู่ใน httpOnly cookie ของ BFF
+
+import apiClient from '@/lib/apiClient';
+import type { ApiResponse } from '@/types/sbpgi/common';
+import type * as T from '@/types/sbpgi/integration';
+
+/** POST /api/v1/documents/{docNo}/actions — Document action contract ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02; FE ห้ามส่งหรือคำนวณปลายทางเอง */
+export async function createDocumentsActions(docNo: string, body: T.CreateDocumentsActionsRequest): Promise<T.CreateDocumentsActionsResponse> {
+  const { data } = await apiClient.post<ApiResponse<T.CreateDocumentsActionsResponse>>(`/documents/${encodeURIComponent(docNo)}/actions`, body);
+  return data.data;
+}
+
+/** GET /api/v1/me/menus — Menu/RBAC contract สำหรับ sidebar และ route guard */
+export async function getMeMenus(): Promise<T.MeMenusResponse> {
+  const { data } = await apiClient.get<ApiResponse<T.MeMenusResponse>>('/me/menus');
+  return data.data;
+}
+
+// TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
+```
+
+#### 8.4 types — `src/types/sbpgi/integration.ts`
+
+```ts
+// src/types/sbpgi/integration.ts — ตรงกับตาราง API ในเอกสารนี้
+// วันที่/เดือนใน payload เป็น ค.ศ. (ISO) เสมอ — แปลงเป็น พ.ศ. เฉพาะตอน display
+
+/** POST /api/v1/documents/{docNo}/actions — request */
+export interface CreateDocumentsActionsRequest {
+  result: string;
+  comment: string;
+}
+
+/** POST /api/v1/documents/{docNo}/actions — response */
+export interface CreateDocumentsActionsResponse {
+  statusCode: string;
+  nextSection: string;
+  message: string;
+}
+
+/** GET /api/v1/me/menus — response */
+export interface MeMenusResponse {
+  menus: {
+    menuCode: string;
+    label: string;
+    route: string;
+    group: string;
+  }[];
+}
+
+// TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
+```
+
+#### 8.5 react-query keys + hooks — `src/hooks/sbpgi/integration.query.ts`
+
+```ts
+// src/hooks/sbpgi/integration.query.ts
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as api from '@/services/sbpgi/integration.service';
+import type * as T from '@/types/sbpgi/integration';
+
+export const integrationKeys = {
+  all: ['sbpgi', 'integration'] as const,
+  meMenus: () => [...integrationKeys.all, 'meMenus'] as const,
+};
+
+export function useMeMenusQuery() {
+  return useQuery({
+    queryKey: integrationKeys.meMenus(),
+    queryFn: () => api.getMeMenus(),
+    staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
+  });
+}
+
+export function useCreateDocumentsActionsMutation(docNo: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: T.CreateDocumentsActionsRequest) => api.createDocumentsActions(docNo, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: integrationKeys.all }); // reload list/detail/timeline
+    },
+    // TODO: onError -> แสดง apiErrorMessage(error) ผ่าน Toast กลาง
+  });
+}
+```
+
+- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
+- เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
+- session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
+- payload ใช้วันที่ ค.ศ. เสมอ; แปลงเป็น พ.ศ. เฉพาะตอนแสดงผลผ่าน formatter กลางจุดเดียว
+- ข้อความ error แสดงจาก `error.message` ของ BE ตรง ๆ (ห้าม paraphrase) — fallback ใช้เฉพาะกรณี network error
 
 ## 9. Processing Flow
 

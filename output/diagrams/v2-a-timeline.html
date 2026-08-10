@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>เส้นเวลาการทำงานเบื้องหลัง — ระบบประกันรายได้</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:#eef2f7; font-family:"Prompt","Sarabun",sans-serif; padding:24px;}
+  .sheet{width:1596px; background:#fff; border-radius:22px; padding:40px 48px 32px;
+         box-shadow:0 18px 60px rgba(31,72,104,.14);}
+
+  /* ---------- หัวเรื่อง ---------- */
+  .head{border-bottom:2px solid #eaeff6; padding-bottom:20px; margin-bottom:22px;}
+  .eyebrow{font-size:13.5px; font-weight:600; color:#2f6fed; letter-spacing:.02em; margin-bottom:7px;}
+  h1{font-size:33px; font-weight:700; color:#18222e; line-height:1.25;}
+  .sub{font-size:15px; color:#5d6b7a; margin-top:10px; line-height:1.7; max-width:1230px;}
+  .sub b{color:#2b3440; font-weight:600;}
+  .howto{display:flex; gap:10px; margin-top:14px; flex-wrap:nowrap;}
+  .howto span{display:inline-flex; align-items:center; gap:8px; font-size:13px; color:#6b7885;
+              font-weight:500; background:#f4f7fb; border-radius:999px; padding:7px 16px;
+              white-space:nowrap;}
+  .howto span b{color:#2b3440; font-weight:600;}
+  .howto span svg{width:16px; height:16px; flex:none;}
+
+  /* ---------- แกนเวลา ---------- */
+  .axiscap{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:7px;}
+  .axiscap .l{font-size:13px; font-weight:700; color:#8493a5; letter-spacing:.03em;}
+  .axiscap .r{font-size:13px; font-weight:600; color:#2f6fed;}
+
+  .g6{display:grid; grid-template-columns:240px 240px 208px 208px 224px 310px; gap:14px;}
+
+  .axisbar{background:#f4f7fb; border:1.5px solid #e2e8f1; border-radius:12px; padding:9px 0 8px;
+           margin-bottom:4px;}
+  .axisbar .tick{text-align:center;}
+  .axisbar .tick .tt{font-family:"Sarabun",sans-serif; font-size:19px; font-weight:700; color:#2b3440;
+                     letter-spacing:.01em;}
+  .axisbar .tick .ts{font-size:11.5px; color:#8493a5; margin-top:2px; line-height:1.35;}
+  .axisbar .tick.off .tt{font-family:"Prompt",sans-serif; font-size:14.5px; color:#6b7885;}
+
+  /* ---------- โครงเส้นเวลา ---------- */
+  .timeline{position:relative; z-index:0;}
+  .guide{position:absolute; top:0; bottom:0; width:0; border-left:1.5px dotted #ccd6e4; z-index:0;}
+  .split{position:absolute; top:0; bottom:0; width:0; border-left:2px dashed #c3cddf; z-index:0;}
+
+  .block{position:relative; margin-bottom:22px;}
+  .block:last-child{margin-bottom:0;}
+  .band{position:absolute; left:-14px; right:-14px; top:56px; bottom:-8px; border-radius:14px; z-index:-1;}
+
+  /* หัวช่วง */
+  .bhead{position:relative; z-index:2; height:56px; display:flex; align-items:center; gap:14px;
+         border-radius:12px; padding:0 18px 0 0; border:1.5px solid; border-left-width:6px;}
+  .bnum{width:34px; height:34px; border-radius:50%; flex:none; margin-left:14px;
+        display:flex; align-items:center; justify-content:center;
+        font-family:"Sarabun",sans-serif; font-size:17px; font-weight:700; color:#fff;}
+  .btitle{font-size:18px; font-weight:600; line-height:1.3;}
+  .bcnt{font-size:12.5px; font-weight:600; color:#5d6b7a; background:#fff; border:1px solid #dde4ee;
+        border-radius:999px; padding:3px 11px; white-space:nowrap;}
+  .bspacer{flex:1;}
+  .bwhen{display:flex; align-items:center; gap:8px;}
+  .bwhen .wchip{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600;
+                border-radius:999px; padding:4px 12px; white-space:nowrap; color:#fff;}
+  .bwhen .wchip.ghost{background:#fff; border:1.5px dashed; }
+  .bwhen svg{width:13px; height:13px;}
+
+  /* แถบวันที่ในเดือน */
+  .mwrap{display:flex; align-items:center; gap:9px; margin-left:4px;}
+  .mlab{font-size:11px; color:#8493a5; font-weight:600; line-height:1.15; text-align:right; white-space:nowrap;}
+  .mstrip{position:relative; width:185px; height:13px; flex:none;
+          background:repeating-linear-gradient(90deg,#d9dfe9 0 5px,transparent 5px 6px);}
+  .mstrip i{position:absolute; top:0; height:13px;}
+  .mends{display:flex; justify-content:space-between; font-size:9.5px; color:#a3aebd; width:185px;
+         margin-top:2px; font-family:"Sarabun",sans-serif;}
+  .mcol{display:flex; flex-direction:column;}
+
+  /* พื้นที่วางงาน */
+  .track{position:relative; z-index:1; padding-top:16px;}
+  .stack{display:flex; flex-direction:column; gap:10px;}
+
+  /* การ์ดงาน */
+  .card{background:#fff; border:1.5px solid #dfe5ef; border-left-width:4px; border-radius:11px;
+        padding:11px 13px 12px; box-shadow:0 2px 5px rgba(24,34,46,.05);}
+  .tchip{display:inline-flex; align-items:center; gap:5px; font-family:"Sarabun",sans-serif;
+         font-size:12px; font-weight:700; border-radius:6px; padding:2px 8px; margin-bottom:7px;
+         letter-spacing:.01em;}
+  .tchip svg{width:11px; height:11px;}
+  .tchip.plain{font-family:"Prompt",sans-serif; font-weight:600; font-size:11.5px;}
+  .card .t{font-size:14.5px; font-weight:600; color:#18222e; line-height:1.45;}
+  .card .d{font-size:12.8px; color:#4c5866; line-height:1.65; margin-top:6px;}
+  .card .d b{color:#2b3440; font-weight:600;}
+  .note{margin-top:9px; border-radius:8px; padding:8px 10px; font-size:12.3px; line-height:1.55;}
+  .note b{font-weight:600;}
+  .chk{margin-top:8px; display:flex; flex-direction:column; gap:5px;}
+  .chk li{list-style:none; position:relative; padding-left:19px; font-size:12.4px; color:#3b4653;
+          line-height:1.5;}
+  .chk li svg{position:absolute; left:0; top:2px; width:13px; height:13px;}
+  .subhead{font-size:12px; font-weight:600; color:#8493a5; margin-top:8px; margin-bottom:6px;}
+  .triple{display:flex; flex-direction:column; gap:7px;}
+  .triple .it{display:flex; gap:9px; align-items:flex-start; background:#fffaf2;
+              border:1px solid #f4e2c8; border-radius:8px; padding:7px 10px;}
+  .triple .it .n{flex:none; width:19px; height:19px; border-radius:5px; background:#b45309; color:#fff;
+                 font-family:"Sarabun",sans-serif; font-size:11.5px; font-weight:700;
+                 display:flex; align-items:center; justify-content:center; margin-top:1px;}
+  .triple .it .x{font-size:12.5px; line-height:1.55; color:#4c5866;}
+  .triple .it .x b{display:block; color:#18222e; font-weight:600; font-size:13px; margin-bottom:1px;}
+  .flagline{margin-top:9px; display:inline-flex; align-items:center; gap:6px; font-size:11.8px;
+            font-weight:600; border-radius:999px; padding:3px 10px;}
+  .flagline svg{width:12px; height:12px;}
+  .ro{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600;
+      color:#5d6b7a; background:#f2f5f9; border:1px solid #e2e8f1; border-radius:999px;
+      padding:2px 9px; margin-top:7px;}
+
+  /* เส้นส่งต่อข้ามช่วง (ซ้ายมือ) */
+  .rail{position:absolute; left:-28px; width:0; border-left:2px dashed #2563eb; z-index:0;}
+  .tap{position:absolute; left:-28px; width:28px; height:0; border-top:2px dashed #2563eb; z-index:0;}
+  .tap::after{content:""; position:absolute; right:-1px; top:-4px; width:7px; height:7px;
+              border-radius:50%; background:#2563eb;}
+
+  /* เลนส่งต่อในช่วงที่ 4 */
+  .carry{position:relative; height:32px; display:flex; align-items:center;}
+  .carry::before{content:""; position:absolute; left:0; right:112px; top:15px; border-top:2px dashed #2563eb;}
+  .carry .cchip{position:relative; z-index:1; background:#eef4ff; border:1.5px solid #bfd4fb;
+                color:#1d4ed8; font-size:12.2px; font-weight:600; border-radius:999px;
+                padding:4px 13px; white-space:nowrap; display:inline-flex; align-items:center; gap:7px;}
+  .carry .cchip svg{width:13px; height:13px;}
+  .carry .down{position:absolute; right:112px; top:22px; width:0; height:0;
+               border-left:7px solid transparent; border-right:7px solid transparent;
+               border-top:9px solid #2563eb;}
+
+  .lanewrap{position:relative; z-index:1;}
+  .lanewrap svg{display:block; width:100%;}
+
+  /* ---------- แผงระบบต้นทาง/ปลายทาง ---------- */
+  .sysrow{display:flex; gap:16px; margin-top:26px;}
+  .panel{border:1.5px solid #e2e8f1; border-radius:14px; padding:14px 16px 16px; background:#fbfcfe;}
+  .panel.a{flex:3;} .panel.b{flex:4;}
+  .ptitle{display:flex; align-items:center; gap:9px; margin-bottom:11px;}
+  .ptitle .pi{width:24px; height:24px; border-radius:7px; display:flex; align-items:center;
+              justify-content:center; flex:none;}
+  .ptitle .pi svg{width:14px; height:14px;}
+  .ptitle .pt{font-size:14.5px; font-weight:600; color:#2b3440;}
+  .ptitle .pn{font-size:11.8px; font-weight:600; color:#8493a5; background:#eef2f7;
+              border-radius:999px; padding:2px 9px;}
+  .pcards{display:flex; gap:10px;}
+  .syscard{flex:1; background:#fff; border:1.5px solid #e2e8f1; border-radius:10px; padding:10px 11px;
+           display:flex; flex-direction:column;}
+  .syscard .tg{margin-top:auto; align-self:flex-start;}
+  .syscard .nm{font-size:13.2px; font-weight:600; color:#18222e; line-height:1.4;}
+  .syscard .ds{font-size:11.8px; color:#6b7885; line-height:1.55; margin-top:5px;}
+  .syscard .tg{display:inline-block; font-size:11px; font-weight:600; border-radius:5px;
+               padding:2px 7px; margin-top:7px;}
+
+  /* ---------- ท้ายภาพ ---------- */
+  .foot{margin-top:22px; border-top:2px solid #eaeff6; padding-top:16px; display:flex; gap:12px;
+        align-items:flex-start;}
+  .foot .fi{width:26px; height:26px; border-radius:8px; background:#eef4ff; flex:none;
+            display:flex; align-items:center; justify-content:center;}
+  .foot .fi svg{width:15px; height:15px;}
+  .foot .fx{font-size:12.8px; color:#5d6b7a; line-height:1.75;}
+  .foot .fx b{color:#2b3440; font-weight:600;}
+</style>
+</head>
+<body>
+<div class="sheet" id="sheet">
+
+  <!-- ================= หัวเรื่อง ================= -->
+  <div class="head">
+    <div class="eyebrow">ระบบประกันรายได้ · Store Business Partner</div>
+    <h1>เส้นเวลาการทำงานเบื้องหลัง — อะไรเกิดขึ้นตอนไหน</h1>
+    <div class="sub">
+      ระบบชดเชยรายได้ให้ร้านคู่ค้าที่ยอดขายตกลง เพราะมีสาขา 7-Eleven ใหม่มาเปิดใกล้ ๆ
+      งานเบื้องหลังมีทั้งหมด <b>11 งาน แบ่งเป็น 5 ช่วง</b> ทุกงานทำเองอัตโนมัติตามเวลาที่ตั้งไว้ ไม่ต้องมีคนคอยกดสั่ง
+    </div>
+    <div class="howto">
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="#2f6fed" stroke-width="2.4" stroke-linecap="round"><path d="M4 12h15"/><path d="M14 7l5 5-5 5"/></svg><b>แนวนอน</b> = เวลาในหนึ่งวัน</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="#2f6fed" stroke-width="2.4" stroke-linecap="round"><path d="M12 4v15"/><path d="M7 14l5 5 5-5"/></svg><b>แนวตั้ง</b> = ลำดับช่วงงาน 1 → 5</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="#2f6fed" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 3"><path d="M4 12h16"/></svg><b>เส้นประ</b> = ของที่ส่งต่อข้ามช่วง</span>
+      <span><b>แถบ 31 ช่อง</b> = วันที่ในเดือนที่งานนั้นทำงาน</span>
+    </div>
+  </div>
+
+  <!-- ================= แกนเวลา ================= -->
+  <div class="axiscap">
+    <div class="l">แกนเวลาในหนึ่งวัน</div>
+    <div class="r">เวลาเดินไปทางขวา →</div>
+  </div>
+  <div class="axisbar g6">
+    <div class="tick off"><div class="tt">รอบของตัวเอง</div><div class="ts">ไม่ผูกกับเวลาในหนึ่งวัน</div></div>
+    <div class="tick"><div class="tt">07:00</div><div class="ts">เช้า</div></div>
+    <div class="tick"><div class="tt">16:00</div><div class="ts">บ่ายแก่</div></div>
+    <div class="tick"><div class="tt">16:30</div><div class="ts">ครึ่งชั่วโมงถัดมา</div></div>
+    <div class="tick"><div class="tt">17:00</div><div class="ts">เย็น</div></div>
+    <div class="tick"><div class="tt">17:30</div><div class="ts">เย็นปลายวัน</div></div>
+  </div>
+
+  <!-- ================= เส้นเวลา ================= -->
+  <div class="timeline">
+    <div class="split" style="left:246px"></div>
+    <div class="guide" style="left:500px"></div>
+    <div class="guide" style="left:722px"></div>
+    <div class="guide" style="left:944px"></div>
+    <div class="guide" style="left:1182px"></div>
+
+    <!-- ---------- ช่วงที่ 1 ---------- -->
+    <div class="block">
+      <div class="band" style="background:rgba(37,99,235,.045)"></div>
+      <div class="rail" style="top:96px; bottom:-22px"></div>
+      <div class="tap" style="top:96px"></div>
+      <div class="bhead" style="background:#f4f8ff; border-color:#cfe0fb; border-left-color:#2563eb">
+        <div class="bnum" style="background:#2563eb">1</div>
+        <div class="btitle" style="color:#1d4ed8">รวบรวมข้อมูลตั้งต้นของร้าน</div>
+        <div class="bcnt">3 งาน</div>
+        <div class="bspacer"></div>
+        <div class="bwhen">
+          <span class="wchip ghost" style="border-color:#9dbdf7; color:#1d4ed8">เดือนละครั้ง</span>
+          <span class="wchip" style="background:#2563eb">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            ทุกวันที่ 7 เวลา 07:00</span>
+        </div>
+        <div class="mwrap">
+          <div class="mlab">วันที่ในเดือน<br>ที่ทำงาน</div>
+          <div class="mcol">
+            <div class="mstrip"><i style="left:36px; width:5px; background:repeating-linear-gradient(90deg,#2563eb 0 5px,transparent 5px 6px)"></i></div>
+            <div class="mends"><span>1</span><span>31</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="track g6">
+        <div style="grid-column:1">
+          <div class="card" style="border-left-color:#2563eb">
+            <span class="tchip plain" style="background:#eef4ff; color:#1d4ed8">เดือนละครั้ง</span>
+            <div class="t">ดึงคะแนนประเมินคุณภาพร้าน</div>
+            <div class="d">เก็บคะแนนของแต่ละร้านไว้ โดย<b>แยกเป็น 6 หมวด</b></div>
+            <span class="flagline" style="background:#eef4ff; color:#1d4ed8">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2.4" stroke-linecap="round"><path d="M12 4v13"/><path d="M7 12l5 5 5-5"/></svg>
+              เก็บไว้ใช้ต่อที่ช่วงที่ 4</span>
+          </div>
+        </div>
+        <div style="grid-column:2" class="stack">
+          <div class="card" style="border-left-color:#2563eb">
+            <span class="tchip" style="background:#e8f0fe; color:#1d4ed8">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>07:00</span>
+            <div class="t">ดึงรายชื่อคู่ร้าน</div>
+            <div class="d">จับคู่ <b>ร้านเดิมที่ถูกกระทบ ↔ ร้านใหม่ที่เพิ่งเปิด</b> เฉพาะคู่ที่อยู่ในระยะกระทบ</div>
+          </div>
+          <div class="card" style="border-left-color:#2563eb">
+            <span class="tchip" style="background:#e8f0fe; color:#1d4ed8">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>07:00</span>
+            <div class="t">ดึงรายชื่อร้านคู่แข่ง</div>
+            <div class="d">ร้านคู่แข่งที่อยู่รอบ ๆ ร้านเดิม ไว้ประกอบการพิจารณา</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- ช่วงที่ 2 ---------- -->
+    <div class="block">
+      <div class="band" style="background:rgba(13,148,136,.05)"></div>
+      <div class="rail" style="top:-22px; bottom:-22px"></div>
+      <div class="bhead" style="background:#f1fcf9; border-color:#bfe9df; border-left-color:#0d9488">
+        <div class="bnum" style="background:#0d9488">2</div>
+        <div class="btitle" style="color:#0f766e">ขอยอดขายมาเทียบก่อน–หลังร้านใหม่เปิด</div>
+        <div class="bcnt">2 งาน</div>
+        <div class="bspacer"></div>
+        <div class="bwhen">
+          <span class="wchip" style="background:#0d9488">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            ทุกวันที่ 7–16 · 16:00 และ 16:30</span>
+        </div>
+        <div class="mwrap">
+          <div class="mlab">วันที่ในเดือน<br>ที่ทำงาน</div>
+          <div class="mcol">
+            <div class="mstrip"><i style="left:36px; width:59px; background:repeating-linear-gradient(90deg,#0d9488 0 5px,transparent 5px 6px)"></i></div>
+            <div class="mends"><span>1</span><span>31</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="track g6">
+        <div style="grid-column:1/7" class="lanewrap">
+          <svg viewBox="0 0 1500 72" xmlns="http://www.w3.org/2000/svg">
+            <defs><marker id="ar2" markerWidth="9" markerHeight="9" refX="4.5" refY="7.5" orient="auto">
+              <path d="M0.5 0 L4.5 8 L8.5 0" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </marker></defs>
+            <path d="M612,68 L612,36 Q612,26 622,26 L824,26 Q834,26 834,36 L834,58"
+                  fill="none" stroke="#0d9488" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ar2)"/>
+            <rect x="588" y="10" width="270" height="32" rx="16" fill="#e7fbf6" stroke="#0d9488" stroke-width="1.5"/>
+            <text x="723" y="31" text-anchor="middle" font-family="Prompt, Sarabun, sans-serif" font-size="13.5" font-weight="600" fill="#0f766e">ระบบข้อมูลยอดขาย</text>
+            <text x="600" y="60" text-anchor="end" font-family="Prompt, Sarabun, sans-serif" font-size="11.5" font-weight="600" fill="#0f766e">ส่งออกไป</text>
+            <text x="846" y="60" text-anchor="start" font-family="Prompt, Sarabun, sans-serif" font-size="11.5" font-weight="600" fill="#0f766e">รับกลับมา</text>
+          </svg>
+        </div>
+        <div style="grid-column:3">
+          <div class="card" style="border-left-color:#0d9488">
+            <span class="tchip" style="background:#d9f5ef; color:#0f766e">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>16:00</span>
+            <div class="t">ส่งรายชื่อร้านที่ถูกกระทบออกไป</div>
+            <div class="d">ส่งไปให้ <b>ระบบข้อมูลยอดขาย</b> ช่วยคำนวณยอดขายรายวันให้</div>
+          </div>
+        </div>
+        <div style="grid-column:4">
+          <div class="card" style="border-left-color:#0d9488">
+            <span class="tchip" style="background:#d9f5ef; color:#0f766e">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#0f766e" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>16:30 · ครึ่งชั่วโมงถัดมา</span>
+            <div class="t">รับยอดขายรายวันกลับมา</div>
+            <div class="d">นำมาเทียบ <b>4 ช่วง ช่วงละ 15 วัน</b> รอบวันที่ร้านใหม่เปิด</div>
+            <div class="note" style="background:#e7fbf6; border:1px solid #bfe9df; color:#0f766e">
+              <b>ผลลัพธ์</b> — รู้ว่าร้านนั้นยอดขายลดลงจริงหรือไม่ และลดลงกี่เปอร์เซ็นต์
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- ช่วงที่ 3 ---------- -->
+    <div class="block">
+      <div class="band" style="background:rgba(180,83,9,.045)"></div>
+      <div class="rail" style="top:-22px; bottom:-22px"></div>
+      <div class="bhead" style="background:#fff8f0; border-color:#f6ddb9; border-left-color:#b45309">
+        <div class="bnum" style="background:#b45309">3</div>
+        <div class="btitle" style="color:#9a4a08">ส่งข้อมูลให้ระบบจัดทำเอกสาร</div>
+        <div class="bcnt">3 งาน</div>
+        <div class="bspacer"></div>
+        <div class="bwhen">
+          <span class="wchip ghost" style="border-color:#e2ac63; color:#9a4a08">ส่ง 3 ชุดแยกกัน ไม่ขึ้นต่อกัน</span>
+          <span class="wchip" style="background:#b45309">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            ทุกวันที่ 7–31 เวลา 17:30</span>
+        </div>
+        <div class="mwrap">
+          <div class="mlab">วันที่ในเดือน<br>ที่ทำงาน</div>
+          <div class="mcol">
+            <div class="mstrip"><i style="left:36px; width:149px; background:repeating-linear-gradient(90deg,#b45309 0 5px,transparent 5px 6px)"></i></div>
+            <div class="mends"><span>1</span><span>31</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="track g6">
+        <div style="grid-column:6">
+          <div class="card" style="border-left-color:#b45309">
+            <span class="tchip" style="background:#fdeed8; color:#9a4a08">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9a4a08" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>17:30</span>
+            <div class="t">ส่งข้อมูล 3 ชุดให้ระบบจัดทำเอกสาร</div>
+            <div class="subhead">แต่ละชุดเป็นงานของตัวเอง ส่งแยกกัน ไม่ต้องรอกัน</div>
+            <div class="triple">
+              <div class="it"><div class="n">1</div><div class="x"><b>ข้อมูลร้านที่ถูกกระทบ</b>พร้อมยอดชดเชย และรายชื่อผู้มีอำนาจอนุมัติของร้านนั้น</div></div>
+              <div class="it"><div class="n">2</div><div class="x"><b>ข้อมูลร้านที่เปิดใหม่</b>ร้านใหม่ที่ทำให้ยอดขายลดลง</div></div>
+              <div class="it"><div class="n">3</div><div class="x"><b>ข้อมูลร้านคู่แข่ง</b>ร้านคู่แข่งที่อยู่รอบข้าง</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- ช่วงที่ 4 ---------- -->
+    <div class="block">
+      <div class="band" style="background:rgba(124,58,237,.045)"></div>
+      <div class="rail" style="top:-22px; height:110px"></div>
+      <div class="tap" style="top:88px"></div>
+      <div class="bhead" style="background:#f7f4ff; border-color:#d9cffb; border-left-color:#7c3aed">
+        <div class="bnum" style="background:#7c3aed">4</div>
+        <div class="btitle" style="color:#6d28d9">เปิดเรื่องให้อนุมัติ และส่งยอดเข้าใบแจ้งยอด</div>
+        <div class="bcnt">2 งาน</div>
+        <div class="bspacer"></div>
+        <div class="bwhen">
+          <span class="wchip ghost" style="border-color:#b49bf3; color:#6d28d9">2 งานนี้คนละรอบเวลา ไม่ต้องรอกัน</span>
+          <span class="wchip" style="background:#7c3aed">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            ทุกวัน เวลา 17:00</span>
+        </div>
+        <div class="mwrap">
+          <div class="mlab">วันที่ในเดือน<br>ที่ทำงาน</div>
+          <div class="mcol">
+            <div class="mstrip"><i style="left:0; width:185px; background:repeating-linear-gradient(90deg,#7c3aed 0 5px,transparent 5px 6px)"></i></div>
+            <div class="mends"><span>1</span><span>31</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="track g6">
+        <div style="grid-column:1/6" class="carry">
+          <span class="cchip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2.4" stroke-linecap="round"><path d="M4 12h14"/><path d="M13 7l5 5-5 5"/></svg>
+            คะแนนประเมินร้าน 6 หมวด ที่เก็บไว้ตั้งแต่ช่วงที่ 1 — ต้องมาครบก่อน จึงจะส่งยอดได้
+          </span>
+          <span class="down"></span>
+        </div>
+        <div style="grid-column:1">
+          <div class="card" style="border-left-color:#7c3aed">
+            <span class="tchip plain" style="background:#f0eafe; color:#6d28d9">รอบแยกของตัวเอง</span>
+            <div class="t">เปิดเรื่องให้พิจารณา</div>
+            <div class="d">ต้อง<b>ผ่านครบทุกข้อ</b>จึงเปิดเรื่อง แล้วส่งให้ผู้มีอำนาจอนุมัติทีละขั้นตามวงเงิน</div>
+            <ul class="chk">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>ร้านใหม่อยู่ในระยะกระทบจริง</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>ยอดขายลดลงถึงเกณฑ์</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>ไม่ใช่เจ้าของรายเดียวกัน</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>มีผู้ดูแลร้านครบ</li>
+            </ul>
+          </div>
+        </div>
+        <div style="grid-column:5">
+          <div class="card" style="border-left-color:#7c3aed">
+            <span class="tchip" style="background:#efe8fd; color:#6d28d9">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#6d28d9" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>17:00 · ทุกวัน</span>
+            <div class="t">ส่งยอดเข้าใบแจ้งยอด</div>
+            <div class="d">ก่อนส่งต้องตรวจว่า<b>คะแนนประเมินร้านมาครบทั้ง 6 หมวด</b>แล้ว จากนั้นจึงส่งยอดชดเชยไปให้ระบบใบแจ้งยอดของร้าน</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- เส้นวนไปเช้าถัดไป ---------- -->
+    <div class="lanewrap" style="margin:8px 0 2px">
+      <svg viewBox="0 0 1500 78" xmlns="http://www.w3.org/2000/svg">
+        <defs><marker id="ar5" markerWidth="9" markerHeight="9" refX="4.5" refY="7.5" orient="auto">
+          <path d="M0.5 0 L4.5 8 L8.5 0" fill="none" stroke="#e11d48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker></defs>
+        <path d="M1064,2 L1064,34 Q1064,44 1054,44 L384,44 Q374,44 374,54 L374,70"
+              fill="none" stroke="#e11d48" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ar5)"/>
+        <text x="719" y="34" text-anchor="middle" font-family="Prompt, Sarabun, sans-serif" font-size="12.8" font-weight="600" fill="#be123c">ยอดที่ส่งไปเมื่อ 17:00 ต้องได้ผลตอบรับกลับ — ข้ามไปตรวจเช้าวันถัดไป</text>
+        <text x="398" y="67" text-anchor="start" font-family="Prompt, Sarabun, sans-serif" font-size="11.5" font-weight="600" fill="#be123c">เช้าวันถัดไป</text>
+      </svg>
+    </div>
+
+    <!-- ---------- ช่วงที่ 5 ---------- -->
+    <div class="block">
+      <div class="band" style="background:rgba(225,29,72,.04)"></div>
+      <div class="bhead" style="background:#fff4f6; border-color:#f7cdd6; border-left-color:#e11d48">
+        <div class="bnum" style="background:#e11d48">5</div>
+        <div class="btitle" style="color:#be123c">เฝ้าระวังและแจ้งเตือนเมื่อมีอะไรค้าง</div>
+        <div class="bcnt">1 งาน</div>
+        <div class="bspacer"></div>
+        <div class="bwhen">
+          <span class="wchip ghost" style="border-color:#f19bad; color:#be123c">อ่านอย่างเดียว ไม่แก้ไขข้อมูลใด ๆ</span>
+          <span class="wchip" style="background:#e11d48">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            ทุกวัน เวลา 07:00</span>
+        </div>
+        <div class="mwrap">
+          <div class="mlab">วันที่ในเดือน<br>ที่ทำงาน</div>
+          <div class="mcol">
+            <div class="mstrip"><i style="left:0; width:185px; background:repeating-linear-gradient(90deg,#e11d48 0 5px,transparent 5px 6px)"></i></div>
+            <div class="mends"><span>1</span><span>31</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="track g6">
+        <div style="grid-column:2">
+          <div class="card" style="border-left-color:#e11d48">
+            <span class="tchip" style="background:#fde3e8; color:#be123c">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#be123c" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>07:00 · เช้าวันถัดไป</span>
+            <div class="t">ตรวจงานค้าง แล้วแจ้งเตือน</div>
+            <div class="d">ตรวจว่ารายการยอดชดเชยที่ส่งไปใบแจ้งยอด <b>ปลายทางตอบรับกลับมาครบหรือยัง</b></div>
+            <div class="note" style="background:#fff1f3; border:1px solid #f7cdd6; color:#be123c">
+              ถ้า<b>ค้างเกิน 1 วัน</b> ส่งอีเมลแจ้งผู้ดูแลระบบทันที เพื่อให้ตามแก้ก่อนกระทบรอบถัดไป
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= ระบบต้นทาง / ปลายทาง ================= -->
+  <div class="sysrow">
+    <div class="panel a">
+      <div class="ptitle">
+        <div class="pi" style="background:#eef4ff">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h13"/><path d="M12 7l5 5-5 5"/><path d="M20 4v16"/></svg>
+        </div>
+        <div class="pt">ระบบต้นทาง — ป้อนข้อมูลเข้ามา</div>
+        <div class="pn">3 ระบบ</div>
+      </div>
+      <div class="pcards">
+        <div class="syscard">
+          <div class="nm">ระบบประเมินคุณภาพร้าน</div>
+          <div class="ds">คะแนน 6 หมวด ส่งให้เดือนละครั้ง</div>
+          <span class="tg" style="background:#eef4ff; color:#1d4ed8">เข้าที่ ช่วง 1 → ใช้ที่ ช่วง 4</span>
+        </div>
+        <div class="syscard">
+          <div class="nm">ระบบแผนที่สาขา</div>
+          <div class="ds">ตำแหน่งร้านทุกสาขา ร้านที่กำลังจะเปิดใหม่ และร้านคู่แข่งรอบข้าง</div>
+          <span class="tg" style="background:#eef4ff; color:#1d4ed8">เข้าที่ ช่วง 1</span>
+        </div>
+        <div class="syscard">
+          <div class="nm">ระบบข้อมูลยอดขาย</div>
+          <div class="ds">รับรายชื่อร้านไปคำนวณยอดขายรายวัน แล้วส่งผลกลับมาให้ — เป็นความสัมพันธ์สองทาง</div>
+          <span class="tg" style="background:#e7fbf6; color:#0f766e">รับ–ส่งกับ ช่วง 2</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel b">
+      <div class="ptitle">
+        <div class="pi" style="background:#f4f7fb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#5d6b7a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h13"/><path d="M15 7l5 5-5 5"/><path d="M4 4v16"/></svg>
+        </div>
+        <div class="pt">ระบบปลายทาง — รับผลไปใช้ต่อ</div>
+        <div class="pn">4 ระบบ</div>
+      </div>
+      <div class="pcards">
+        <div class="syscard">
+          <div class="nm">ระบบจัดทำเอกสาร</div>
+          <div class="ds">รับข้อมูล 3 ชุด ไปตั้งต้นเป็นเอกสารประกันรายได้รายร้าน</div>
+          <span class="tg" style="background:#fdeed8; color:#9a4a08">จาก ช่วง 3</span>
+        </div>
+        <div class="syscard">
+          <div class="nm">ระบบอนุมัติ</div>
+          <div class="ds">ผู้มีอำนาจพิจารณาเห็นควรชดเชยหรือไม่ ตามลำดับขั้นและวงเงิน</div>
+          <span class="tg" style="background:#efe8fd; color:#6d28d9">จาก ช่วง 4</span>
+        </div>
+        <div class="syscard">
+          <div class="nm">ระบบใบแจ้งยอดของร้าน</div>
+          <div class="ds">รับยอดชดเชยไปแสดงและจ่ายให้ร้าน แล้วต้องตอบรับกลับมา</div>
+          <span class="tg" style="background:#efe8fd; color:#6d28d9">จาก ช่วง 4 · เฝ้าดูที่ ช่วง 5</span>
+        </div>
+        <div class="syscard">
+          <div class="nm">อีเมลแจ้งผู้ดูแลระบบ</div>
+          <div class="ds">ทุกช่วงงานส่งอีเมลได้ ทั้งแจ้งผลสำเร็จ แจ้งข้อผิดพลาด และแจ้งงานค้าง</div>
+          <span class="tg" style="background:#f4f7fb; color:#5d6b7a">จากทุกช่วง</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= ท้ายภาพ ================= -->
+  <div class="foot">
+    <div class="fi">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#2f6fed" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6v.2"/></svg>
+    </div>
+    <div class="fx">
+      <b>วิธีอ่าน:</b> ตำแหน่งซ้าย–ขวาบอก <b>เวลาที่งานเริ่มทำ</b> ในหนึ่งวัน (ระยะห่างบนแกนไม่ได้ย่อ–ขยายตามสัดส่วนเวลาจริง) ·
+      คอลัมน์ซ้ายสุดคืองานที่มี <b>รอบของตัวเอง</b> ไม่ผูกกับเวลาในหนึ่งวัน · ช่องว่างบนแกนแปลว่าเวลานั้นไม่มีงานของช่วงนั้น<br>
+      <b>ที่ต้องเสร็จก่อนกัน:</b> คะแนนประเมิน 6 หมวด จาก <b>ช่วงที่ 1</b> ต้องมาครบก่อน <b>ช่วงที่ 4</b> จึงส่งยอดเข้าใบแจ้งยอดได้ ·
+      ยอดที่ส่งไปเย็นนี้ <b>ช่วงที่ 5</b> จะมาตรวจผลตอบรับให้ในเช้าวันถัดไป · นอกนั้นแต่ละงานมีรอบเวลาของตัวเอง ทำงานได้โดยไม่ต้องรอกัน
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

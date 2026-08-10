@@ -7,8 +7,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 30 ชั่วโมง |
-| Owner | Peerakorn <Pete> Sakunkaewphithak |
+| Estimate | 24 ชั่วโมง |
+| Owner | Chidchanok <lin> Saengamnat |
 | Objective | สร้างรายงานตรวจสอบประกันรายได้ตาม SDD สไลด์ 60 (7 ตัวกรอง / 14 คอลัมน์) พร้อมค้นหาข้อมูลและ Export Excel |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -318,6 +318,294 @@ Export Excel ด้วย filter เดียวกับการค้นห�
 | --- | --- | --- | --- |
 | contentType | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+
+## 8. Skeleton Code (โครงโค้ดตั้งต้นของหน้าจอนี้)
+
+โค้ดชุดนี้อิง convention ของ portal เดิม `srm-sps-spsap-web-frontend` (build target `sbpm`): Next.js App Router + `'use client'`, PrimeReact ที่ห่อไว้แล้วใน `@/components/Form` และ `@/components/Table`, react-hook-form + yup, Zustand `permissionStore`, axios instance กลาง `@/lib/apiClient` และ react-query 5 — **โปรเจกต์ไม่มี chart library** จึงไม่มีโค้ดกราฟในเอกสารนี้ คัดลอกไปตั้งต้นได้ทันที แล้วเติมจุดที่กำกับ `TODO:`
+
+#### 8.1 ผังไฟล์ที่ต้องสร้าง
+
+โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SBPGI อยู่ใต้ `src/app/(main)/sbpgi/*` และ import ผ่าน alias `@/*` ทุกจุด
+
+| Path ไฟล์ | หน้าที่ |
+| --- | --- |
+| src/app/(main)/sbpgi/reports/status-summary/page.tsx | route page — หน้ารายงานตรวจสอบประกันรายได้ (filter + ตารางผลลัพธ์ + Export Excel) |
+| src/components/sbpgi/report/ReportForm.tsx | component — ฟอร์ม/ฟิลเตอร์ (react-hook-form + yup + FormInputControl) |
+| src/services/sbpgi/report.service.ts | service — เรียก BFF ผ่าน apiClient (GET) |
+| src/hooks/sbpgi/report.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
+| src/types/sbpgi/report.ts | types — request/response ตาม API contract ของเอกสารนี้ |
+
+#### 8.2 page.tsx — หน้ารายงาน (filter ที่กดค้นหาแล้วค่อยยิง + Export Excel)
+
+```tsx
+'use client';
+// หน้ารายงานตรวจสอบประกันรายได้ (filter + ตารางผลลัพธ์ + Export Excel)
+// route: /sbpgi/reports/status-summary  ·  ต้องมี record ใน GET /menus และสิทธิ์ใน GET /groups/current-user/permissions
+
+import { useState } from 'react';
+// Table/Column import จาก barrel `@/components/Table` เท่านั้น (table.tsx เป็น named export
+// และ re-export `Column = PrimeColumn` ไว้แล้ว — ห้าม import จาก 'primereact/column')
+import { Column, Table } from '@/components/Table';
+import AccessDenied from '@/components/Permission/AccessDenied';
+// permissionStore เป็น named export ของ Zustand store (ไม่มี symbol ชื่อ usePermissionStore ในโปรเจกต์)
+import { permissionStore } from '@/stores/permissionStore';
+import { useReportsStatusSummaryQuery, useReportsStatusSummaryExportDownload } from '@/hooks/sbpgi/report.query';
+import type { ReportsStatusSummaryParams, ReportsStatusSummaryItem } from '@/types/sbpgi/report';
+import ReportForm from '@/components/sbpgi/report/ReportForm';
+
+const PAGE_URL = '/sbpgi/reports/status-summary';
+
+export default function ReportsStatusSummaryPage() {
+  const { hasPermission, isPermissionLoaded } = permissionStore();
+  // ยิง API เฉพาะตอนกด "ค้นหาข้อมูล" -> ก่อนหน้านั้น submitted = null และ query ถูก disable
+  const [submitted, setSubmitted] = useState<ReportsStatusSummaryParams | null>(null);
+  const { data, isFetching } = useReportsStatusSummaryQuery(submitted);
+  const exportExcel = useReportsStatusSummaryExportDownload();
+
+  const canExport = hasPermission(PAGE_URL, 'canExport');
+  // รอ permission โหลดเสร็จก่อน ไม่งั้นจะเห็น AccessDenied แว่บหนึ่งทุกครั้งที่เข้าหน้า
+  if (!isPermissionLoaded) return null;
+  if (!hasPermission(PAGE_URL, 'canView')) return <AccessDenied />;
+
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      {/* "สถานะ" เป็น filter บังคับตัวเดียว — prop ชื่อ onSubmit ต้องตรงกับ component ในหัวข้อฟอร์ม */}
+      <ReportForm onSubmit={setSubmitted} />
+      <div className="flex justify-end gap-2">
+        {canExport && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={!submitted || exportExcel.isPending}
+            onClick={() => submitted && exportExcel.mutate(submitted)} // ใช้ filter ชุดเดียวกับการค้นหาล่าสุด
+          >
+            Export Excel
+          </button>
+        )}
+      </div>
+      <Table value={data?.items ?? []} loading={isFetching} paginator rows={20} emptyMessage="ไม่พบข้อมูล">
+        <Column field="impactedStoreCode" header="รหัสร้านถูกกระทบ" sortable />
+        <Column field="impactedStoreName" header="ชื่อร้านถูกกระทบ" sortable />
+        <Column field="impactedRegion" header="ภาค" sortable />
+        <Column field="impactedStoreType" header="ประเภทร้าน" sortable />
+        <Column field="impactMonth" header="เดือนปีที่ถูกกระทบ" sortable />
+        <Column field="periodStatement" header="Period Statement" sortable />
+        <Column field="newStoreCode" header="รหัสร้านเปิดใหม่" sortable />
+        <Column field="newStoreName" header="ชื่อร้านเปิดใหม่" sortable />
+        <Column field="newRegion" header="ภาค (ร้านใหม่)" sortable />
+        <Column field="newStoreType" header="ประเภทร้าน (ร้านใหม่)" sortable />
+        <Column field="compensationAmount" header="ยอดเงินชดเชย" sortable align="right" />
+        <Column field="roundNo" header="ครั้งที่" sortable align="right" />
+        <Column field="createdDate" header="วันที่สร้าง" sortable />
+        <Column field="docNo" header="เลขที่เอกสาร" sortable />
+        {/* TODO: ยังขาดอีก 5 คอลัมน์ตามตารางฟิลด์ของเอกสารนี้: transferToSpDate, statusName, operatorName, resultText, waitingDays — ต้องให้ BE เพิ่ม field เหล่านี้ใน response ก่อน */}
+      </Table>
+      {/* TODO: summary line (จำนวนรายการ/ยอดรวม) อ่านจาก data.summary */}
+    </div>
+  );
+}
+```
+
+#### 8.3 service — `src/services/sbpgi/report.service.ts`
+
+```ts
+// src/services/sbpgi/report.service.ts
+// apiClient = axios instance กลาง (baseURL = bffUrl ซึ่งรวม /api/v1 แล้ว, withCredentials, refresh-token interceptor, global loading)
+// ห้ามสร้าง axios instance ใหม่ และห้าม set Authorization header เอง — session อยู่ใน httpOnly cookie ของ BFF
+
+import apiClient from '@/lib/apiClient';
+import type { ApiResponse, PageResponse } from '@/types/sbpgi/common';
+import type * as T from '@/types/sbpgi/report';
+
+/** GET /store/search (ระบบ SBP เดิม) — Popup เลือกร้านที่ถูกกระทบ */
+export async function getStoreSearch(params: T.StoreSearchParams): Promise<T.StoreSearchResponse> {
+  const { data } = await apiClient.get<ApiResponse<T.StoreSearchResponse>>('/store/search', { params });
+  return data.data;
+}
+
+/** GET /api/v1/reports/status-summary — ค้นหาข้อมูลรายงานตรวจสอบประกันรายได้ (14 คอลัมน์ · SDD สไลด์ 60) */
+export async function getReportsStatusSummary(params: T.ReportsStatusSummaryParams): Promise<PageResponse<T.ReportsStatusSummaryItem>> {
+  const { data } = await apiClient.get<ApiResponse<PageResponse<T.ReportsStatusSummaryItem>>>('/reports/status-summary', { params });
+  return data.data;
+}
+
+/** GET /api/v1/reports/status-summary/export — Export Excel ด้วย filter เดียวกับการค้นหา */
+export async function getReportsStatusSummaryExport(params: T.ReportsStatusSummaryParams): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>('/reports/status-summary/export', { params, responseType: 'blob' });
+  return data; // TODO: ตั้งชื่อไฟล์จาก content-disposition แล้วบันทึกด้วย file-saver
+}
+
+// TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
+```
+
+#### 8.4 types — `src/types/sbpgi/report.ts`
+
+```ts
+// src/types/sbpgi/report.ts — ตรงกับตาราง API ในเอกสารนี้
+// วันที่/เดือนใน payload เป็น ค.ศ. (ISO) เสมอ — แปลงเป็น พ.ศ. เฉพาะตอน display
+
+import type { PageResponse } from '@/types/sbpgi/common';
+
+/** GET /store/search (ระบบ SBP เดิม) — request */
+export interface StoreSearchParams {
+  q?: string;
+  type?: string;
+}
+
+/** GET /store/search (ระบบ SBP เดิม) — 1 แถวในตาราง */
+export interface StoreSearchItem {
+  storeCode: string;
+  storeName: string;
+  region: string;
+  storeType: string;
+}
+export interface StoreSearchResponse { items: StoreSearchItem[]; }
+
+/** GET /api/v1/reports/status-summary — request */
+export interface ReportsStatusSummaryParams {
+  status?: string;
+  impactedStoreCode?: string;
+  newStoreCode?: string;
+  periodStatementFrom?: string;
+  periodStatementTo?: string;
+  storeTypes?: string[];
+  regions?: string[];
+  result?: string;
+  page?: number;
+  size?: number;
+}
+
+/** GET /api/v1/reports/status-summary — 1 แถวในตาราง */
+export interface ReportsStatusSummaryItem {
+  impactedStoreCode: string;
+  impactedStoreName: string;
+  impactedRegion: string;
+  impactedStoreType: string;
+  impactMonth: string;
+  periodStatement: string;
+  newStoreCode: string;
+  newStoreName: string;
+  newRegion: string;
+  newStoreType: string;
+  compensationAmount: number;
+  roundNo: number;
+  createdDate: string;
+  docNo: string;
+}
+export type ReportsStatusSummaryListResponse = PageResponse<ReportsStatusSummaryItem>;
+
+// TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
+```
+
+#### 8.5 react-query keys + hooks — `src/hooks/sbpgi/report.query.ts`
+
+```ts
+// src/hooks/sbpgi/report.query.ts
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { saveAs } from 'file-saver';
+import * as api from '@/services/sbpgi/report.service';
+import type * as T from '@/types/sbpgi/report';
+
+export const reportKeys = {
+  all: ['sbpgi', 'report'] as const,
+  storeSearch: (params?: T.StoreSearchParams | null) => [...reportKeys.all, 'storeSearch', params] as const,
+  reportsStatusSummary: (params?: T.ReportsStatusSummaryParams | null) => [...reportKeys.all, 'reportsStatusSummary', params] as const,
+};
+
+export function useStoreSearchQuery(params?: T.StoreSearchParams | null) {
+  return useQuery({
+    queryKey: reportKeys.storeSearch(params),
+    queryFn: () => api.getStoreSearch(params!),
+    enabled: !!params, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
+    staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
+  });
+}
+
+export function useReportsStatusSummaryQuery(params?: T.ReportsStatusSummaryParams | null) {
+  return useQuery({
+    queryKey: reportKeys.reportsStatusSummary(params),
+    queryFn: () => api.getReportsStatusSummary(params!),
+    enabled: !!params, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
+    staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
+  });
+}
+
+export function useReportsStatusSummaryExportDownload() {
+  return useMutation({
+    // filter ชุดเดียวกับการค้นหาล่าสุด -> input type = params ของ GET /reports/status-summary
+    mutationFn: (params: T.ReportsStatusSummaryParams) => api.getReportsStatusSummaryExport(params),
+    onSuccess: (blob) => saveAs(blob, 'export.xlsx'), // TODO: อ่านชื่อไฟล์จาก content-disposition
+  });
+}
+```
+
+#### 8.6 ฟอร์ม + validation — `src/components/sbpgi/report/ReportForm.tsx`
+
+```tsx
+'use client';
+// ReportForm — ฟอร์มของ "LLDD FE - Status Summary Report" (ฟิลด์/validation ตามตารางฟิลด์ในเอกสารนี้)
+// ผูก react-hook-form ด้วย FormInputControl (components/Form/Layout/form-input-control.tsx)
+// — InputText เองไม่รับ prop name/control/label/error (extends PrimeInputTextProps เท่านั้น)
+
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import { FormInputControl, InputText } from '@/components/Form';
+
+export interface ReportFormValue {
+  impactedStoreCode: string;
+  newStoreCode: string;
+  impactMonthFrom: string;
+  impactMonthTo: string;
+  storeTypes: string[];
+  status: string;
+}
+
+// TODO: แทนข้อความ validation ด้วยข้อความ verbatim จาก SRS ก่อน UAT
+const schema = yup.object({
+  impactedStoreCode: yup.string().matches(/^\d{5}$/, 'รหัสร้านต้องเป็นตัวเลข 5 หลัก'), // คง leading zero
+  newStoreCode: yup.string().matches(/^\d{5}$/, 'รหัสร้านต้องเป็นตัวเลข 5 หลัก'), // รหัสร้านเปิดกระทบ/ร้านเปิดใหม่
+  impactMonthFrom: yup.string().matches(/^\d{4}-(0[1-9]|1[0-2])$/, 'รูปแบบเดือนต้องเป็น YYYY-MM (ค.ศ.)'), // ส่งเป็น ค.ศ. เช่น 2026-05
+  impactMonthTo: yup.string().matches(/^\d{4}-(0[1-9]|1[0-2])$/, 'รูปแบบเดือนต้องเป็น YYYY-MM (ค.ศ.)'), // ถ้า from > to ให้แสดง validation ก่อน call API
+  storeTypes: yup.array().of(yup.string().defined()), // checkbox เลือกได้มากกว่า 1
+  status: yup.string().required('กรุณาระบุ status'), // บังคับเลือก 1 สถานะก่อน Preview/Export
+});
+
+export default function ReportForm({ defaultValues, onSubmit }: {
+  defaultValues?: Partial<ReportFormValue>;
+  onSubmit: (values: ReportFormValue) => void;
+}) {
+  const { control, handleSubmit, reset } = useForm<ReportFormValue>({
+    resolver: yupResolver(schema) as never,
+    defaultValues: defaultValues as ReportFormValue,
+    mode: 'onSubmit',
+  });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <FormInputControl name="impactedStoreCode" control={control} input={InputText} label="impactedStoreCode" />
+      <FormInputControl name="newStoreCode" control={control} input={InputText} label="newStoreCode" />
+      <FormInputControl name="impactMonthFrom" control={control} input={InputText} label="impactMonthFrom" />
+      <FormInputControl name="impactMonthTo" control={control} input={InputText} label="impactMonthTo" />
+      {/* TODO: ฟิลด์ที่เหลือ (storeTypes, status) ใช้ Dropdown / DatePicker / MultiSelect จาก @/components/Form ผ่าน FormInputControl แบบเดียวกัน */}
+      <div className="col-span-full flex justify-end gap-2">
+        <button type="submit" className="btn btn-primary">
+          ค้นหาข้อมูล
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => reset()}>
+          เคลียร์ค่าเริ่มใหม่
+        </button>
+      </div>
+    </form>
+  );
+}
+```
+
+- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
+- เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
+- session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
+- payload ใช้วันที่ ค.ศ. เสมอ; แปลงเป็น พ.ศ. เฉพาะตอนแสดงผลผ่าน formatter กลางจุดเดียว
+- ข้อความ error แสดงจาก `error.message` ของ BE ตรง ๆ (ห้าม paraphrase) — fallback ใช้เฉพาะกรณี network error
 
 ## 9. Processing Flow
 

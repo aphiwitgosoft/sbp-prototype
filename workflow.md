@@ -2,7 +2,7 @@
 
 > **เอกสารมีชีวิต (living doc)** — สรุป flow การทำงานต้นทางถึงปลายทางของระบบใหม่ เทียบกับระบบเดิม
 > **แหล่งอ้างอิงหลัก:** `plan-flow.html` (หน้า Flow FGI/FCS + K2) · `old-flow.png` (sequence diagram ระบบเดิม) · `new-flow.png` (sequence diagram ระบบใหม่) · `Flow ประกันรายได้.png` (BPMN approve flow ระบบเดิม)
-> **อ้างอิงประกอบ:** `flow-fgi.html`, `k2-flow.html`, `job-batch.html`, เอกสาร Batch v4.0, SRS ประกันรายได้-K2 v3.1 (หน้า 30–38: ผลพิจารณาต่อ role), `workflow_status_document.md` (ตารางสถานะ/อีเมล), **SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI (24/02/2026) — "SDD GI"** (`SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md`): วงเงินอนุมัติใหม่ GM 50,000 / AVP 300,000 · เปิดเรื่องซ้ำได้เอง · หน้างานค้าง + auto-assign · เปลี่ยนชื่อปุ่มเป็น "หน่วยงานส่งเสริมธุรกิจ SBP"
+> **อ้างอิงประกอบ:** `flow-fgi.html`, `k2-flow.html`, `job-batch.html` (Flow Batch Job), เอกสาร Batch v4.0, SRS ประกันรายได้-K2 v3.1 (หน้า 30–38: ผลพิจารณาต่อ role), `workflow_status_document.md` (ตารางสถานะ/อีเมล), **SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI (24/02/2026) — "SDD GI"** (`SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md`): วงเงินอนุมัติใหม่ GM 50,000 / AVP 300,000 · เปิดเรื่องซ้ำได้เอง · หน้างานค้าง + auto-assign · เปลี่ยนชื่อปุ่มเป็น "หน่วยงานส่งเสริมธุรกิจ SBP"
 > **SDD ที่ยึดเป็นหลัก:** **SDD GI (24/02/2026)** เป็น SDD ฉบับเดียวที่เหลือใน repo · ไฟล์ SDD v7.5 (`08102025 SDD ปรับกระบวนการบัญชีประกันรายได้…`) **ถูกลบออก 2026-08-06** — ข้อกำหนดของมัน (ตัดขั้นบัญชี 04/05 · บัญชีตรวจผ่านรายงาน · ภาค 13 รหัส · ประเภทร้าน A/B/C/E ในรายงาน) **ถูกรวมเข้าเอกสารนี้ครบแล้ว** ป้าย `(SDD v7.5)` ที่เหลือคือการอ้างที่มาเชิงประวัติ ไม่ใช่ลิงก์ไปไฟล์
 > **กติกา sync:** ทุกครั้งที่คุย/แก้ไขเรื่อง flow หรือ workflow ให้อ่านไฟล์นี้ก่อน และถ้ามีการตัดสินใจใหม่ ให้อัปเดตทั้งไฟล์นี้และ `plan-flow.html` ให้ตรงกัน
 
@@ -35,12 +35,12 @@
 
 ```
 Frontend (Web SPA — ใช้หน้าจอ prototype ชุดนี้เป็น spec)
-        │  REST API /api/v1 · JSON · 44 เส้น 9 กลุ่ม (ดู plan-api.html) — ผ่าน BFF ของระบบ SBP เดิม
+        │  REST API /api/v1 · JSON · 30 เส้น 6 กลุ่ม (ดู plan-api.html) — ผ่าน BFF ของระบบ SBP เดิม
         ▼
 Backend Services
   ├─ Auth & RBAC — ใช้ระบบ SBP เดิม (Cognito + BFF + auth-backend/ABS · ตัดสินใจ 2026-08-05) ไม่สร้างใน SBPGI
   ├─ Document & Compensation (K2 · SRS 3.1.6)  เอกสาร YYYY/xxxxx · คำนวณชดเชย · แนบไฟล์
-  ├─ Workflow Engine (@srm/glb-workflow ของระบบ SBP เดิม · ตัดสินใจ 2026-08-06)  5 ขั้น 06→08→01→02→03 · วงเงิน GM 50,000 / AVP 300,000 (SDD GI 24/02/2026) — แทน K2 REST (Job 8b) · **ตัดขั้นบัญชี 04/05 ตาม SDD v7.5**
+  ├─ Workflow Engine (@srm/glb-workflow ของระบบ SBP เดิม · **13 ตาราง · schema `sps_store`** · ตัดสินใจ 2026-08-06)  5 ขั้น 06→08→01→02→03 · วงเงิน GM 50,000 / AVP 300,000 (SDD GI 24/02/2026) — แทน K2 REST (Job 8b) · **ตัดขั้นบัญชี 04/05 ตาม SDD v7.5**
   ├─ Batch Scheduler         (FGI/FCS)         Jobs 1–10 · คง cron เดิม · พารามิเตอร์แก้ได้ · กันรันซ้อน
   ├─ Interface Service       (FGI/FCS)         SFTP/ไฟล์/ACK · QSSI · IAS · STA · encoding ต่อ interface
   └─ Report & Notification   (K2 3.1.5/3.1.7 + FGI)  **รายงานตรวจสอบประกันรายได้ (SBP Mall) — ค้นหาข้อมูล + Export Excel · ตัวกรอง 7 ตัว / ผลลัพธ์ 14 คอลัมน์ ตาม SDD สไลด์ 60** · อีเมลตามสถานะ (UTF-8 แทน TIS-620)
@@ -56,11 +56,21 @@ QSSI (SFTP รายเดือน, Job 1) · ALLMAP (SQL Server, Jobs 2–3) �
 
 **สัญญากลางที่ผูกกับ workflow:** ดู `LLDD/BE/LLDD-BE-API-Common-Contracts.md` และ `LLDD/FE/LLDD-FE-Integration-Contracts.md` ก่อน implement ทุกจุดที่เรียก workflow API — `/documents/{docNo}/actions` รับ `{result, comment}` โดย result เป็น 6-enum ไทย verbatim และคืน `{statusCode, nextSection, message}`; positive path คือ `06→08→01→02→03→99` โดย `99` = เสร็จสิ้นและ `nextSection=null` (Section 02 ยอด ≤50,000 จบที่ 99 — SDD GI); `/workflows/instances` ใช้ service token และ Gen Flow Gate W/Y/N เป็นเจ้าของโดย BE Workflow Engine
 
+### ข้อเท็จจริงของ Workflow Engine จากฐานข้อมูลจริง (ยืนยัน 2026-08-10)
+
+> ที่มา: `SBP/db-schema-sps_store.md` · `SBP/db-schema-sps_auth.md` · สรุปที่ `SBP/SBPGI-vs-existing-system.md` §3.1
+
+- **engine มี 13 ตาราง ไม่ใช่ 10** — `workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_transaction` · `workflow_history` · `workflow_approver` · `workflow_part` · `workflow_part_display`
+- **engine ตัวจริงอยู่ schema `sps_store` ไม่ใช่ `sps_auth`** — ทั้งสอง schema มีครบ 13 ตารางชื่อเดียวกันแต่คนละชุด/คนละเวอร์ชัน (`workflow_state` ของ `sps_auth` 3 คอลัมน์ / ของ `sps_store` 4 คอลัมน์) · ปริมาณจริงฝั่ง `sps_store`: `workflow_transaction` 19,283 แถว · `workflow_history` 38,010 · `workflow_approver` 96,542 · ฝั่ง `sps_auth` เป็นชุดของ auth-backend (`workflow_transaction` 55 · `route` 41 · `state` 10) — **ทุกจุดที่อ้าง engine ต้องระบุ schema `sps_store` เสมอ**
+- **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:** `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index ใด ๆ** ทั้งที่มี 19,283 แถว (ตารางชื่อเดียวกันใน `sps_auth` มี PK ปกติ) → ทุก action ต้อง seq-scan · เป็นข้อเท็จจริงจาก schema dump ไม่ใช่ข้อเสนอ · **ยังไม่ตัดสิน**ว่าจะขอ sign-off เพิ่ม index หรือกันซ้ำที่ฝั่ง SBPGI — ดู DP-2 ใน `SBP/SBPGI-vs-existing-system.md`
+- **ชื่อ function ของ engine ยังไม่ยืนยัน — เอกสาร 3 ชุดขัดกัน ห้ามเลือกเอง:** ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` (ชีต Detail) = `eventWorkflow` / `addPreApprover` / `getPendingFlowByUser` · ชุด B ชีต Mermaid seq ของไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` / `AddPreparedApproverUseCase` / `GetPendingFlowUseCase` · ชื่อที่เขียนในเอกสารชุดนี้เป็นเพียง placeholder — **ต้อง confirm กับทีมเจ้าของ `@srm/glb-workflow` ก่อน implement**
+- **`workflow_part` / `workflow_part_display` คุม READ/WRITE รายส่วนของหน้าจอต่อ state** ซึ่ง**ทับซ้อน**กับกลไก `data-editrole` / `.edit-only` ที่ prototype ทำเอง — **บันทึกเป็นข้อสังเกต ยังไม่ตัดสิน** ว่าจะย้ายไปใช้ของ engine หรือคงกลไกของ SBPGI (ดู `SBP/SBPGI-vs-existing-system.md`)
+
 ## Flow ต้นทางถึงปลายทาง (12 ขั้น · เดือนละ 1 รอบใหญ่)
 
 ### Stage A — รับและวิเคราะห์ข้อมูลผลกระทบ · Jobs 1–5
 
-1. **นำเข้าคะแนน QSSI รายเดือน** (FGI/FCS · Job 1) — SFTP จาก QSSI (4 ไฟล์ mrs*) → dedup + จับคู่หมวด → `fcs_qssi_scores` · งวด DB = เดือนก่อนหน้า (off-by-one โดยตั้งใจ)
+1. **นำเข้าคะแนน QSSI รายเดือน** (FGI/FCS · Job 1) — SFTP จาก QSSI (4 ไฟล์ mrs*) → dedup + จับคู่หมวด → **`fcs_qssi_score`** (ชื่อเอกพจน์ · **มีอยู่จริงแล้วใน `sps_store` 23,958,780 แถว พร้อม import pipeline ที่ใช้งานอยู่ `POST /performance/import-qssi` + staging `fcs_tmp_qssi_score` — ห้ามสร้างตารางใหม่ ให้ reuse ของเดิม** · วิธีปรับ constraint/index ของตารางเดิม **ยังไม่ตัดสิน** ดู DP-4 ใน `SBP/SBPGI-vs-existing-system.md`) · งวด DB = เดือนก่อนหน้า (off-by-one โดยตั้งใจ)
 2. **นำเข้าคู่ร้านถูกกระทบ + ร้านคู่แข่ง** (FGI/FCS · Jobs 2–3) — ทุกวันที่ 7 เวลา 07:00 จาก ALLMAP (SQL Server) → `fgi_impact_stores` (กฎ DENY/ON_PROCESS → W/N/P) และ `fgi_impact_competitors`
 3. **ขอยอดขายรายวันจาก IAS** (FGI/FCS · Job 4) — วันที่ 7–16 เวลา 16:00 · เงื่อนไขอายุร้าน 12 เดือน 15 วัน / +16 วัน → ไฟล์ `AMS06001O` · ระบบใหม่ครอบด้วย transaction (แก้ P0 auto-commit)
 4. **รับยอดขาย + คำนวณ Growth Rate** (FGI/FCS · Job 5) — 16:30 รับ `AMS06001I` → `sales_transactions` → คำนวณ sales_diff 4 หน้าต่าง × 15 วัน (outlier |sales_diff| ≥ 50) → `sales_status` Y/N · ระบบใหม่เพิ่ม review case เมื่อ growth_rate_diff เป็น NULL (แก้ P1 auto-accept)
@@ -87,7 +97,7 @@ QSSI (SFTP รายเดือน, Job 1) · ALLMAP (SQL Server, Jobs 2–3) �
 | จุดเชื่อมต่อ | กลไกเดิม | กลไกใหม่ |
 |---|---|---|
 | ส่งข้อมูลชดเชย/ร้านใหม่/คู่แข่ง เข้าระบบเอกสาร | ไฟล์ BPM06001O (48 ฟิลด์) / BPM06002O / BPM06003O ผ่าน SFTP + EAI ไป BPM (Jobs 7, 8, 9) | Document Service เขียน DB ตรง (compensation_documents / document_new_stores / document_competitors) — **ตัดไฟล์ SFTP และ EAI ภายในทิ้ง** |
-| เปิด Workflow | Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded — P0) | **`@srm/glb-workflow`** ของระบบ SBP เดิม (`initializeWorkflow` → `addPreparedApprover` · `referenceId = doc_no`) เรียกผ่าน `POST /workflows/instances` · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ |
+| เปิด Workflow | Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded — P0) | **`@srm/glb-workflow`** ของระบบ SBP เดิม (13 ตาราง · schema `sps_store`) เรียกผ่าน `POST /workflows/instances` · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ · **ชื่อ function (`initializeWorkflow`/`addPreparedApprover`/…) ยังไม่ยืนยัน — เอกสาร 3 ชุดขัดกัน ดูหัวข้อ "ข้อเท็จจริงของ Workflow Engine"** · `referenceId = doc_no` **ยังไม่ตัดสิน** (DP-1 ใน `SBP/SBPGI-vs-existing-system.md` — ระบบเดิมใช้ surrogate id จริง) |
 | รับ ACK ผลประมวลจาก STA | รอ STA อัปเดต return_code ใน tracking · Job 10 ตรวจทุกเช้า | เพิ่ม POST /interfaces/sta/ack (API key) · Job 10 คงไว้เป็น safety net |
 | ตาราง tracking interface | FGI_CONFIRM_RECEIVE_DATA — polymorphic FK + บั๊ก purge (E20) | interface_transactions — typed FK + purge ทำงานจริง |
 | อีเมลแจ้งเตือน | แต่ละ job ต่อ SMTP เอง · TIS-620 · ผู้รับ hardcoded บางจุด (template 34) | Notification Service กลาง · UTF-8 · ผู้รับตาม status_email_rules + config ต่อ job |
@@ -110,7 +120,7 @@ QSSI (SFTP รายเดือน, Job 1) · ALLMAP (SQL Server, Jobs 2–3) �
 
 > FE โหลดรายการสถานะ 6 ค่านี้และ Section 5 ขั้น (06/08/01/02/03) สำหรับ dropdown ตัวกรองในหน้าค้นหาเอกสาร/รายงานผ่านกลุ่ม Lookup: `GET /document-statuses` และ `GET /workflow-sections`
 
-**ตารางเส้นทางพิจารณา (transition)** — อีเมล TO = ผู้ดำเนินการลำดับถัดไป (ตาม `status_email_rules`):
+**ตารางเส้นทางพิจารณา (transition)** — อีเมล TO = ผู้ดำเนินการลำดับถัดไป (ตาม `status_email_rules`) · ⚠️ **[ยังไม่ตัดสิน — DP-5]** engine อาจส่งอีเมลเองผ่าน `sps_store.workflow_route.email_id` ซึ่งจะทำให้ `status_email_rules` ไม่ต้องมี · ยังไม่มีใครพิสูจน์ว่า engine ส่งจริง — ดู [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4:
 
 | Section | ตัวเลือกพิจารณา | สถานะถัดไป |
 |---|---|---|
@@ -188,8 +198,8 @@ QSSI (SFTP รายเดือน, Job 1) · ALLMAP (SQL Server, Jobs 2–3) �
 
 แผนภาพ BPMN "A-Document Approve Flow ประกันรายได้" ของระบบเดิม (8 lanes: admin, ฝ่าย OPT, GM OPT, บัญชี, บัญชีปฏิบัติการภาค, ฝ่าย บชฟ, เจ้าหน้าที่ บชฟ, GM ส่งเสริม) เป็น flow อนุมัติรุ่นก่อน SRS v3.1 — เรื่อง role/ลำดับขั้นให้ยึด workflow 5 ขั้น (06→08→01→02→03 · ตัดบัญชี 04/05 ตาม SDD v7.5) แต่มี 4 พฤติกรรมที่รับเข้าระบบใหม่ **ทั้งหมดอยู่ฝั่งเอกสาร/Workflow (โซน B/C) ไม่กระทบ FGI/FCS pipeline (Jobs 1–10) และ interface ภายนอก**:
 
-1. **อีเมลเตือนงานค้างรายสัปดาห์** — flow เดิมส่งเตือนผู้ดำเนินการทุกวันจันทร์ 10:00 แทบทุกขั้น (จุด 10.1, 20.2, 30.1, 70.1, 80.1, 110.2) → ระบบใหม่: Notification Service เพิ่ม reminder job รายสัปดาห์ อ่านงานค้างจาก **`@srm/glb-workflow`** (`getPendingFlow()` — ตาราง `workflow_transaction`/`workflow_approver` ของระบบ SBP เดิม) ผู้รับตาม `status_email_rules` รอบเวลาแก้ได้ใน config
-2. **Escalation งานค้าง 30/45/60 วัน** — flow เดิมส่งต่อ GM OPT เมื่อครบ 30/45/60 วัน (จุด 20.3) → ระบบใหม่: Workflow Engine ตรวจอายุงานค้าง (`waitingDate` ที่ `getPendingFlow()` คืนมา) แล้วแจ้ง/ส่งต่อหัวหน้า Section ตามเกณฑ์ (ค่ากำหนดแก้ได้)
+1. **อีเมลเตือนงานค้างรายสัปดาห์** — flow เดิมส่งเตือนผู้ดำเนินการทุกวันจันทร์ 10:00 แทบทุกขั้น (จุด 10.1, 20.2, 30.1, 70.1, 80.1, 110.2) → ระบบใหม่: Notification Service เพิ่ม reminder job รายสัปดาห์ อ่านงานค้างจาก **`@srm/glb-workflow`** (`getPendingFlow()` — **ชื่อ function ยังไม่ยืนยัน ดูหัวข้อ "ข้อเท็จจริงของ Workflow Engine"** · อ่านตาราง `sps_store.workflow_transaction`/`workflow_approver` ของระบบ SBP เดิม) ผู้รับตาม `status_email_rules` รอบเวลาแก้ได้ใน config
+2. **Escalation งานค้าง 30/45/60 วัน** — flow เดิมส่งต่อ GM OPT เมื่อครบ 30/45/60 วัน (จุด 20.3) → ระบบใหม่: Workflow Engine ตรวจอายุงานค้าง (`waitingDate` ที่ `getPendingFlow()` — ชื่อ function ยังไม่ยืนยัน — คืนมา) แล้วแจ้ง/ส่งต่อหัวหน้า Section ตามเกณฑ์ (ค่ากำหนดแก้ได้)
 3. **สร้างเอกสารนอกเงื่อนไข** — ขั้น 15 ของ flow เดิม (กรอกข้อมูลร้านเอง เมื่อระบบคำนวณให้ไม่ได้) → ระบบใหม่ (**ตัดสินใจ 2026-08-06**): **ไม่มีฟอร์มสร้างเอกสารใน FE** — ผู้ใช้สร้างข้อมูลต้นทางที่ระบบ **Finance & Account Unit (FS)** แล้วรอ **SBP Statement** ประมวลผลส่งข้อมูลกลับ (~1 วัน) ระบบจึงสร้างเอกสารผ่าน `POST /documents` ลงตารางชุดเดียวกับเส้นอัตโนมัติ · หน้า `k2-create.html` เหลือเป็นหน้าอธิบายกระบวนการ (เฉพาะผู้มีสิทธิ์เข้าถึง) · การคีย์/ปรับข้อมูลร้านและยอดชดเชยตาม SDD GI ทำในหน้าเอกสาร ไม่ใช่หน้าสร้าง
 4. **เงื่อนไขร้านก่อน/หลัง 1/10/2014** — โน้ต 10.1–10.4 แยกจุดเริ่มเอกสารตามวันที่โอนร้านแฟรนไชส์ → ระบบใหม่: ถ้ายืนยันตาม SRS จะเป็นกฎ routing ตอนเปิด instance ใน Workflow Engine — **เกณฑ์ Gen Flow Gate ฝั่ง batch คงเดิมทุกข้อ · สถานะ: รอ verify กับ SRS v3.1**
 
@@ -211,7 +221,7 @@ QSSI (SFTP รายเดือน, Job 1) · ALLMAP (SQL Server, Jobs 2–3) �
 ## เอกสารที่เกี่ยวข้อง
 
 - โครงสร้างตารางที่ flow นี้ใช้: [database.md](database.md) · `plan-database.html`
-- API ทุกเส้น: [api.md](api.md) · `plan-api.html` (47 endpoints 9 กลุ่ม — กลุ่ม Auth/RBAC และเส้นผู้ปฏิบัติงาน/สิทธิ์เมนูถูกตัดไปใช้ระบบเดิม · รวมกลุ่ม **Lookup** 4 เส้น (`/competitors` · `/document-statuses` · `/workflow-sections` · `/decisions` — `/stores/search` `/zones` `/branch-types` ตัดไปใช้ของระบบ SBP เดิม) และ `GET /documents/{docNo}/sales` ที่เพิ่มให้ครบตามหน้าจอ · แต่ละเส้นมีแท็บ Request/Response + Database (พร้อมตัวอย่าง SQL) และ 4 เส้นที่ซับซ้อนมีแท็บ Flowchart · กลุ่มข้อมูลผิดปกติ 2 เส้นยกเลิกและลบทิ้งถาวร 2026-08-06)
-- Email template ทุกจุดส่งใน flow: `email-template.html` (8 templates: EM-01–03 เปลี่ยนสถานะ/จบงาน/ส่งกลับ ตาม status_email_rules · EM-04–05 เตือนงานค้างรายสัปดาห์/escalation 30-45-60 วัน · EM-06–08 ฝั่ง batch: สรุปเปิด workflow ราย DV, job error, watchdog ACK — ผู้รับ TO/CC ตาม SRS 3.1.5, เนื้อหาอีเมลเป็นข้อเสนอระบบใหม่ beyond SRS · Subject/เนื้อหาแก้ไขได้ในหน้า (เก็บ localStorage ต่อเครื่อง, From/To/Cc ล็อกตาม rules) และรีเซ็ตกลับ Default ได้รายตัวหรือทั้งหมด)
-- Flow ต้นฉบับแยกระบบ: `flow-fgi.html` (FGI/FCS pipeline) · `k2-flow.html` (K2 approval BPMN) · `job-batch.html` (Batch console)
+- API ทุกเส้น: [api.md](api.md) · `plan-api.html` (**30 เส้น 6 กลุ่ม** — Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 — กลุ่ม Auth/RBAC และเส้นผู้ปฏิบัติงาน/สิทธิ์เมนูถูกตัดไปใช้ระบบเดิม · กลุ่ม **Lookup** เหลือ 3 เส้น (`/document-statuses` · `/workflow-sections` · `/decisions` — `/stores/search` `/zones` `/branch-types` ตัดไปใช้ของระบบ SBP เดิม) และ `GET /documents/{docNo}/sales` ที่เพิ่มให้ครบตามหน้าจอ · แต่ละเส้นมีแท็บ Request/Response + Database (พร้อมตัวอย่าง SQL) และ 4 เส้นที่ซับซ้อนมีแท็บ Flowchart · กลุ่มข้อมูลผิดปกติ 2 เส้นยกเลิกและลบทิ้งถาวร 2026-08-06)
+- Email template ทุกจุดส่งใน flow: ตาราง **`email_template`** ของระบบ SBP เดิม (8 templates: EM-01–03 เปลี่ยนสถานะ/จบงาน/ส่งกลับ ตาม status_email_rules · EM-04–05 เตือนงานค้างรายสัปดาห์/escalation 30-45-60 วัน · EM-06–08 ฝั่ง batch: สรุปเปิด workflow ราย DV, job error, watchdog ACK — ผู้รับ TO/CC ตาม SRS 3.1.5) · การส่งใช้ `@gosoft-sbp/email-lib` และ log ลง `email_sent` · **หน้าจอ Email Template ของ SBPGI ถูกลบทั้งฟีเจอร์ 2026-08-06** (พร้อม endpoint 5 เส้น) — การแก้ subject/body ทำที่ระบบ SBP เดิม · ตารางสถานะ × action × ผู้รับ ดู `workflow_status_document.md`
+- Flow ต้นฉบับแยกระบบ: `flow-fgi.html` (FGI/FCS pipeline) · `k2-flow.html` (K2 approval BPMN) · `job-batch.html` (Flow Batch Job — flowchart ต่อ job + ตารางฐานข้อมูลที่ใช้)
 - Sequence diagram: `old-flow.png` (เดิม, มี EAI + K2) · `new-flow.png` (ใหม่, รวมเข้า SBPGI แล้ว)

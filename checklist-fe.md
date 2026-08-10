@@ -1,6 +1,6 @@
 # checklist-fe.md — Checklist สร้าง Frontend (React + Vite) ฉบับละเอียด
 
-> ทำตามลำดับ Phase — **ห้ามข้าม Phase** เพราะของหลังพึ่งของก่อน · spec เต็มอยู่ `plan-fe.md` · รายละเอียด component/ฟิลด์ต่อหน้าอยู่ `REACT-TODO-CHECKLIST.md` · API 44 เส้นอยู่ `api.md` · flow/สถานะอยู่ `workflow.md` · สัญญากลางอยู่ `LLDD/FE/LLDD-FE-Integration-Contracts.md` + `LLDD/BE/LLDD-BE-API-Common-Contracts.md`
+> ทำตามลำดับ Phase — **ห้ามข้าม Phase** เพราะของหลังพึ่งของก่อน · spec เต็มอยู่ `plan-fe.md` · รายละเอียด component/ฟิลด์ต่อหน้าอยู่ `REACT-TODO-CHECKLIST.md` · API **30 เส้น 6 กลุ่ม** (Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3) อยู่ `api.md` · flow/สถานะอยู่ `workflow.md` · สัญญากลางอยู่ `LLDD/FE/LLDD-FE-Integration-Contracts.md` + `LLDD/BE/LLDD-BE-API-Common-Contracts.md`
 > ทุก Phase มี **✔ เกณฑ์ตรวจรับ** เป็น test case ที่รันได้จริง — ผ่านครบก่อนไป Phase ถัดไป
 > ทุกข้อออกแบบให้ทำจบใน ~1–2 ชั่วโมง · path ไฟล์ = ใต้ `src/` ตามโครง feature-based ใน plan-fe.md §3
 
@@ -99,7 +99,7 @@
 - [ ] mock access token หมดอายุ (msw ตอบ 401 ครั้งแรก) → refresh อัตโนมัติ 1 ครั้ง → request เดิมสำเร็จ
 - [ ] ยิง 2 request พร้อมกันตอน 401 → refresh ถูกเรียก**ครั้งเดียว** (single-flight)
 - [ ] logout → store ล้าง, localStorage ไม่มี refreshToken, กลับ `/login`
-- [ ] role ไม่มีสิทธิ์เข้า `/admin/system-config` → redirect ออก
+- [ ] role ไม่มีสิทธิ์เข้าเมนูใด ๆ (เช่น `/masters/factors`) → redirect ออก
 
 ---
 
@@ -115,7 +115,7 @@
 - [ ] `Pager.tsx` — per-page select `10/20/50/100` + " / หน้า", info `แสดง X–Y จาก N รายการ (กรองจาก M)`, ปุ่ม `‹` เลขหน้า+`…` `›`, "ไปหน้า" + goto input
 
 ### 2.3 Modal engine
-- [ ] `EntityModal.tsx` — schema-driven view/edit/add (แทน `SCHEMAS`+`data-entity` ของ sbp.js) · โหมด edit บังคับช่อง `เหตุผลการแก้ไข (บันทึกลง audit_logs)`
+- [ ] `EntityModal.tsx` — schema-driven view/edit/add (แทน `SCHEMAS`+`data-entity` ของ sbp.js) · **ไม่มีช่อง `เหตุผลการแก้ไข` แล้ว** — ตัดพร้อมตาราง `audit_logs` 2026-08-07 (22 → **21 ตาราง**) · การเอา audit ของ master กลับมาใช้ของระบบเดิม **ยังไม่ตัดสิน** (DP-12 ใน `SBP/SBPGI-vs-existing-system.md`)
 - [ ] `ConfirmDeleteDialog.tsx` · `Tabs.tsx` (`[data-tabs]` แบบ React)
 - [ ] `AuditHistoryTable.tsx` — 6 คอลัมน์มาตรฐาน `วันที่แก้ไข | ผู้แก้ไข | คำสั่ง | รายการ | ข้อมูลเดิม → ข้อมูลใหม่ | เหตุผลการแก้ไข` · คำสั่ง = pill (`แก้ไข`=info / `เพิ่ม`=ok / `ลบ`/`รีเซ็ต`=fail) · เรียงล่าสุดก่อน — ใช้ทุกหน้า master/admin
 
@@ -145,7 +145,7 @@
 ## Phase 3 — HomePage + DocList
 
 ### 3.1 HomePage (`features/dashboard/` — §index.html)
-- [ ] `HomePage.tsx` ผูก `GET /dashboard/summary` (react-query, BE cache 5 นาที)
+- [x] ~~`HomePage.tsx` ผูก `GET /dashboard/summary`~~ **ไม่ต้องสร้าง** — ยกเลิกหน้า Overview และตัด `GET /dashboard/summary` ถาวร (2026-08-06) · `/` เป็น redirect ไป `/documents/waiting`
 - [ ] S1 Hero: โลโก้โล่ + `สวัสดี, คุณ<ชื่อจาก /auth/me>` + ปุ่ม `งานรอท่านดำเนินการ` (→`/documents/waiting`) · `เอกสารร้านถูกกระทบ`
 - [x] ~~S2 StatGrid 4 ใบ~~ **ไม่ต้องสร้าง** — ยกเลิกหน้า Overview และถอด stat cards ทุกหน้า (2026-08-06)
 - [ ] ~~S3 กราฟหน้าแรก~~ **ไม่ต้องสร้าง** — ยกเลิกหน้า Overview แล้ว (2026-08-06)
@@ -174,6 +174,7 @@
 
 ### 4.1 โครง DocumentPage (`features/documents/DocumentPage.tsx` — §k2-document)
 - [ ] โหลด `GET /documents/{docNo}` ครั้งเดียว → response มีธง `editableSections` + `myRoleView` — **render ตามธง ไม่เดา role เอง** (แทน `data-editrole`/`data-roleonly`/`.edit-only`)
+  > ⚠️ **ยังไม่ตัดสินว่าธงนี้มาจากไหน:** engine `@srm/glb-workflow` มี `workflow_part`/`workflow_part_display` (schema `sps_store`) คุม READ/WRITE รายส่วนหน้าจอต่อ state อยู่แล้ว — ทับซ้อนกับกลไกของ prototype และกับธงที่ SBPGI คำนวณเอง · **ทำตามสเปกนี้ไปก่อน ยังไม่เปลี่ยนดีไซน์** (ดู `SBP/SBPGI-vs-existing-system.md` §3.1 + หัวข้อ 4)
 - [ ] S2 head: `เอกสารข้อมูลร้านถูกกระทบ <docNo>` + pill สถานะ (1 ใน 6 ค่า) + ปุ่ม `พิมพ์`
 - [ ] `WorkflowStepper.tsx` — 5 ขั้น `06›08›01›02›03` + pill `ขั้นตอนที่ N/5`
 
@@ -278,35 +279,15 @@
 
 ---
 
-## Phase 7 — Admin (`features/admin/`)
+## Phase 7 — Admin — **ยกเลิกทั้ง Phase (2026-08-06)**
 
-### 7.1 SystemConfigPage (§system-config — system_configs)
-- [ ] `SystemConfigPage.tsx` + `ConfigTable.tsx`: `☑ | Config Key | หมวดหมู่ | ค่า (Value) | ชนิดข้อมูล | หน่วย | คำอธิบาย | แก้ไขได้ | Action` — `GET /configs` + filter หมวดหมู่ + ค้นหา + `DonutChart` สัดส่วนตามหมวด
-- [ ] แถว `is_editable=false` → ไอคอน lock, ปุ่ม edit/del ซ่อน/disabled — BE ก็ปฏิเสธ
-- [ ] `EntityModal` schema config — **validate ค่า ตาม `value_type`** (number/boolean/string/json) ก่อน `PUT /configs/{key}` · เพิ่ม `POST /configs` · ปุ่ม `Invalidate Cache`
-- [ ] `AuditHistoryTable` + `InfoCallout` (dot-notation key, cache 5 นาที)
+Phase นี้เดิมมี 3 หน้า (SystemConfigPage / EmailTemplatesPage / BatchJobsPage) — ตัดออกทั้งหมด **ไม่ต้องสร้าง**:
 
-### 7.2 EmailTemplatesPage (§email-template — EM-01–08)
-- [ ] `EmailTemplatesPage.tsx` — `GET /email-templates` · ตาราง map (`Template | ชื่อ | จุดที่ส่งใน Flow | ผู้รับ (TO) | แหล่งกติกาผู้รับ | ความถี่` — คลิกแถวเลื่อนไป card) + Tabs 3 กลุ่ม (Workflow EM-01–03 / เตือนงานค้าง EM-04–05 / Batch EM-06–08)
-- [ ] `EmailTemplateCard.tsx` ×8 — meta grid + `MailPreview` (From/To/Cc/Subject + body) — **From/To/Cc read-only จาก status_email_rules** · EM-01 มี selector 6 สถานะ live-rewrite preview
-- [ ] Editor: `RichTextToolbar` (bold/italic/underline/strike, สี, list, table picker) + `MergeVariableChips` ต่อ template (subject แทรก text, body แทรก atom) — **ห้ามใช้ execCommand ตรง ห้ามเพิ่ม lib ใหญ่เกินจำเป็น**
-- [ ] ปุ่มบันทึก `PUT /email-templates/{code}` · `รีเซ็ต` `POST /email-templates/{code}/reset` · `รีเซ็ตทั้งหมดเป็น Default` `POST /email-templates/reset-all` (confirm ก่อน)
-- [ ] `AuditHistoryTable` (`?table=email_templates`)
+- [x] ~~7.1 SystemConfigPage (§system-config)~~ **ลบทั้งฟีเจอร์** พร้อม endpoint `/configs*` 5 เส้น — ค่ากำหนดกลางอยู่ในตาราง `mas_param` ของระบบ SBP เดิม ซึ่งมีหน้าจอบริหารจัดการอยู่แล้ว · SBPGI แค่อ่านค่าไปใช้
+- [x] ~~7.2 EmailTemplatesPage (§email-template)~~ **ลบทั้งฟีเจอร์** พร้อม endpoint `/email-templates*` 5 เส้น — template อยู่ในตาราง `email_template` ของระบบ SBP เดิม · **อีเมลตามสถานะยังส่งเหมือนเดิม** ผ่าน `@gosoft-sbp/email-lib` (log ลง `email_sent`) โดยไม่ต้องมีหน้าจอ
+- [x] ~~7.3 BatchJobsPage (§job-batch)~~ **ไม่ต้องสร้าง** พร้อมตัด endpoint `/jobs*` 6 เส้น และตาราง `job_configs`/`job_run_histories` — หน้า `job-batch.html` ย้ายไปกลุ่มเมนู **Flow** ("Flow Batch Job") และเหลือเฉพาะ **Flowchart การทำงาน + Database ที่ใช้** (ตัด 2 tab ควบคุมออก) — เป็นเอกสารอ้างอิงผู้พัฒนา ไม่มีงาน FE/BE ให้ทำใน phase นี้ · batch job ทั้ง 11 entry point ยังรันตามปกติ แต่พารามิเตอร์/ตารางเวลากำหนดใน **backend config** (config file/env ฝั่ง BE) และผลการรันเก็บที่ application log
 
-### 7.3 BatchJobsPage (§job-batch — 11 entry points Jobs 1–10 + 8b)
-- [ ] `BatchJobsPage.tsx` — `GET /jobs` · Stat 4 ใบ + Donut/Bar/Spark + `PhaseStrip` เฟส A–E (chip คลิก→select job)
-- [ ] `JobTable.tsx`: `Job | ชื่องาน / Main Class | เฟส | ประเภท | กำหนดการ (Cron) | รอบล่าสุด | ผลล่าสุด | รอบถัดไป | สถานะ | (action)` — คลิก → detail
-- [ ] `JobDetailPanel.tsx` + toggle เปิด/ปิด (`PUT /jobs/{jobNo}/enabled`) + Tabs 4: พารามิเตอร์ (แก้เฉพาะ editable → `PUT /jobs/{jobNo}/params`) / Flowchart SVG / Database ที่ใช้ / ประวัติการรัน (`GET /jobs/{jobNo}/runs` — ตาราง `เริ่มรัน | ระยะเวลา | จำนวนแถว | ไฟล์ที่เกี่ยวข้อง | ผลลัพธ์ | หมายเหตุ`)
-- [ ] run bar: เลือกเดือน + `สั่งรันทันที` → `POST /jobs/{jobNo}/run` — BE guard รันซ้อน → แสดง error message ตรง ๆ
-- [ ] `AuditHistoryTable` (job_configs) + `InfoCard`
-
-**✔ เกณฑ์ตรวจรับ Phase 7**
-- [ ] config `is_editable=false` → กดแก้ไม่ได้จาก UI, ยิง PUT ตรง (curl) BE ก็ปฏิเสธและ FE แสดง message
-- [ ] แก้ config ชนิด number ใส่ตัวอักษร → validate ก่อน save ไม่ผ่าน
-- [ ] แก้ subject EM-01 → preview เปลี่ยนทันที → บันทึก → refresh ค่าคงอยู่ + ลง audit · กดรีเซ็ต → กลับ default
-- [ ] EM-01 selector เปลี่ยนสถานะ → To/Cc/เนื้อหา preview เปลี่ยนตาม rules (แก้เองไม่ได้)
-- [ ] สั่งรัน job ที่กำลังรัน → error จาก BE แสดงตรง ๆ ไม่ crash · toggle ปิด job → สถานะเปลี่ยน + audit ลง
-- [ ] ประวัติรันแสดงเรียงล่าสุดก่อน + ปุ่ม `ดู Log`
+**✔ เกณฑ์ตรวจรับ Phase 7:** ไม่มี — ข้ามไป Phase 8 (ถ้าจะทำ 2 tab ควบคุมของ Batch Job ใน phase ถัดไป ให้เปิดคืนทั้ง tab + endpoint + ตารางพร้อมกัน)
 
 ---
 
@@ -343,7 +324,7 @@
 | Route | หน้า prototype | Endpoints หลักที่ใช้ | Phase |
 |---|---|---|---|
 | `/login` | *(ไม่มี — โทนเดียวกัน)* | `POST /auth/login` · `POST /auth/refresh` · `GET /auth/me` · `GET /me/menus` | 1 |
-| `/` | index.html | `GET /dashboard/summary` | 3 |
+| `/` | index.html *(redirect stub)* | — (ยกเลิกหน้า Overview · เด้งไป `/documents/waiting`) | 3 |
 | `/documents/waiting` | k2-list-waiting.html | `GET /tasks` | 3 |
 | `/documents/related` | k2-list-related.html | `GET /documents` (ปี required) | 3 |
 | `/documents/create` | k2-create.html | `POST /documents` · `GET /store/search` (ระบบ SBP เดิม) | 4 |
@@ -352,9 +333,6 @@
 | `/masters/operators` | k2-operators.html | `GET/POST/PUT/DELETE /operators` · `GET /employees/search` · `GET /workflow-sections` · `GET /audit-logs` | 6 |
 | `/masters/factors` | k2-factors.html | `GET/POST/PUT/DELETE /factors` · `GET /audit-logs` | 6 |
 | `/masters/permissions` | k2-permissions.html | `GET/PUT /menu-permissions` · `GET/POST/PUT/DELETE /roles` · `POST/PUT/DELETE /menus` · `GET /audit-logs` | 6 |
-| `/admin/system-config` | system-config.html | `GET/POST/PUT/DELETE /configs` | 7 |
-| `/admin/email-templates` | email-template.html | `GET/PUT /email-templates` · `POST .../reset` · `POST /email-templates/reset-all` | 7 |
-| `/admin/batch-jobs` | job-batch.html | `GET /jobs` · `PUT /jobs/{no}/params` · `PUT /jobs/{no}/enabled` · `POST /jobs/{no}/run` · `GET /jobs/{no}/runs` | 7 |
 | `/documents/abnormal` | k2-list-abnormal.html *(feature flag)* | `GET /documents` (filter abnormal) + assign | 8 |
 
 > หน้ากลุ่ม Flow/Database/Plan (`flow-fgi`, `k2-flow`, `plan-flow`, `*-database`, `plan-api`) = เอกสารออกแบบ **ไม่พอร์ต**เข้าแอปจริง (plan-fe.md §4)
@@ -374,7 +352,7 @@
 | สถานะ 5 | `รอผู้บริหารสำนักบริหาร SBP ดำเนินการ` | Pill สถานะ (section 03) |
 | สถานะ 6 | `เสร็จสิ้นดำเนินการ` | Pill สถานะ (จบ) |
 | ปุ่มหลัก | `ส่งดำเนินการ` · `บันทึก` · `ล้างตัวกรอง` · `เคลียร์ค่าเริ่มใหม่` · `สร้างเอกสาร` · `ส่งสร้างที่ FS` · `ค้นหาข้อมูล` · `Export Excel` · `แจกงานที่เลือก` · `สั่งรันทันที` · `รีเซ็ตทั้งหมดเป็น Default` · `Invalidate Cache` | ตามหน้า |
-| ช่อง audit | `เหตุผลการแก้ไข (บันทึกลง audit_logs)` | EntityModal edit |
+| ช่อง audit | ~~`เหตุผลการแก้ไข (บันทึกลง audit_logs)`~~ **ตัดออก 2026-08-07** พร้อมตาราง `audit_logs` | — |
 | note ตาราง | `แดง = ยอดขายไม่ครบ 60 วัน` | DocList / Report |
 
 ข้อความที่ grep แล้ว**ต้องไม่เจอ**ในโค้ด FE: `ฝ่ายบัญชี SBP` · `บัญชีปฏิบัติการภาค` · สถานะที่ขึ้นด้วย section 04/05 · ชื่อ lib ต้องห้าม (`tailwind` `@mui` `antd` `recharts` `chart.js` `echarts` `d3`)

@@ -1,0 +1,209 @@
+# LLDD BE - Database Structure and Deployment
+
+SBP Mall - ระบบประกันรายได้ | Low Level Design Document
+
+## 1. Overview
+
+| รายการ | รายละเอียด |
+| --- | --- |
+| Track | BE |
+| Estimate | 24 ชั่วโมง |
+| Owner | Aphiwit <Bank> Khammoon |
+| Objective | กำหนด DDL ของ target schema 21 ตาราง พร้อม index/constraint/seed และสคริปต์ deploy ให้ทุกเอกสาร BE อ้างอิงโครงเดียวกัน — เป็น blocker ที่ต้องปิดในสัปดาห์แรก |
+
+Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
+
+## 2. Screen / Functional Scope
+
+- DDL ครบ 21 ตารางของ target schema (โซน A 7 · โซน B 9 · โซน C 5)
+- Index, unique/partial index, check constraint และ FK ที่ต้องมีก่อน SIT
+- Seed data ที่ต้องมีก่อนเปิดระบบ (decisions · external_factors · competitors · status_email_rules)
+- สคริปต์ deploy/rollback ต่อ environment และลำดับการรันตาม dependency
+- ตารางที่ห้ามสร้างซ้ำเพราะระบบ SBP เดิมมีอยู่แล้ว (workflow engine 13 ตาราง · store/mas_store · common_code · mas_param · business_user · email_template · fcs_qssi_score)
+- บันทึกข้อค้างตัดสินใจด้านโครงสร้างข้อมูล — ยังไม่ตัดสิน
+
+## 4. Implementation Flow Diagram (Reference)
+
+![รูปที่ 1: Implementation flow reference: LLDD BE - Database Structure and Deployment](../../assets/flows/BE-LLDD-BE-Database-Structure.png)
+
+_รูปที่ 1: Implementation flow reference: LLDD BE - Database Structure and Deployment_
+
+## 5. Field, Format, and Validation
+
+| Field / UI | Format | Validation | Behavior |
+| --- | --- | --- | --- |
+| naming | lower_snake_case | บังคับทุกตาราง/คอลัมน์ใหม่ | ห้ามใช้ชื่อไทย/CamelCase หรือชื่อ legacy แบบ FGI_/Comp* |
+| store_code / new_store_code | VARCHAR(5) | ห้ามเก็บเป็น numeric | ต้องคง leading zero (00788) ทุกตาราง |
+| doc_no | VARCHAR(12) รูปแบบ YYYY/xxxxx | unique ต่อปี | ออกเลขผ่าน document_running_numbers แบบ atomic |
+| amount / percent | NUMERIC(15,2) / NUMERIC(5,2) | amount >= 0 · percent 0-100 | ผลรวม compensate_percent ต่อเอกสารต้อง = 100 |
+| period key | CHAR(7) 'YYYY-MM' (ค.ศ.) | ค่าคงรูปแบบเดียวทั้ง schema | แปลงเป็น พ.ศ. เฉพาะตอนแสดงผล |
+| fcs_qssi_score | ตารางเดิมของ sps_store | ห้าม CREATE TABLE ใหม่ | มีอยู่จริง 23,958,780 แถว + import pipeline ใช้งานอยู่ (POST /performance/import-qssi · staging fcs_tmp_qssi_score) |
+
+### 5.1 ขอบเขตตารางในโครง SBPGI (21 ตาราง — CREATE จริง 20 + reuse 1)
+
+DDL เต็มอยู่ที่เอกสาร `LLDD-Database` หัวข้อ Executable DDL · เอกสารฉบับนี้เป็นเจ้าของ **สคริปต์ deploy จริง** และกติกาว่าอะไรสร้างได้/สร้างไม่ได้
+
+⚠️ **21 = จำนวนตารางในโครง ไม่ใช่จำนวนที่ต้อง CREATE** — `fcs_qssi_score` นับอยู่ในโครงโซน A แต่ใช้ตารางเดิมของ `sps_store` (23,958,780 แถว) จึง **ห้าม CREATE TABLE** ดูหัวข้อ 5.1.1 · จำนวนที่ต้อง CREATE จริงคือ **20 ตาราง** · สถานะ reuse ของ `fcs_qssi_score` ยังผูกกับข้อค้าง **DP-4** (จะแก้ตารางเดิมอย่างไร หรือจะสร้างตารางของ SBPGI เอง — ยังไม่ตัดสิน · `SBP/SBPGI-vs-existing-system.md หัวข้อ 4`)
+
+| โซน | จำนวน | ตาราง |
+| --- | --- | --- |
+| A — FGI/FCS pipeline | 7 (CREATE 6 + reuse 1) | fgi_impact_processes, fgi_impact_stores, fgi_impact_sales_summaries, sales_transactions, fgi_impact_competitors, interface_transactions · **+ fcs_qssi_score = reuse ห้าม CREATE (ดู 5.1.1 · DP-4)** |
+| B — เอกสาร/ประวัติ | 9 | compensation_documents, document_new_stores, document_competitors, document_external_factors, consideration_logs, document_attachments, compensation_histories, document_cost_details, document_running_numbers |
+| C — master ที่ SBPGI เป็นเจ้าของ | 5 | impacted_stores, decisions, external_factors, competitors, status_email_rules |
+| รวม | 21 (CREATE 20 + reuse 1) | ตรงกับ database.md (34 -> 24 เมื่อ 2026-08-06 -> 22 เมื่อตัดกลุ่ม batch -> 21 เมื่อยกเลิก audit_logs 2026-08-07) |
+
+#### 5.1.1 ตารางที่ระบบ SBP เดิมมีอยู่แล้ว — ห้าม CREATE TABLE
+
+ตรวจฐานข้อมูลจริง 2026-08-07 (`SBP/db-schema-sps_store.md`) ทุกตารางในตารางนี้อยู่ใน schema **`sps_store`** และมีข้อมูลจริงใช้งานอยู่ การสร้างซ้ำใน SBPGI = ข้อมูลสองชุดที่ไม่มีวันตรงกัน
+
+| ตาราง/กลุ่มตาราง | schema | จำนวนแถวจริง | หมายเหตุ |
+| --- | --- | --- | --- |
+| workflow engine 13 ตาราง | sps_store | workflow_transaction 19,283 · workflow_history 38,010 · workflow_approver 96,542 | ดู LLDD-BE-Workflow-Engine-Definition |
+| fcs_qssi_score (เอกพจน์) | sps_store | 23,958,780 | มี import pipeline ใช้งานอยู่ (POST /performance/import-qssi · staging fcs_tmp_qssi_score) — ห้ามสร้างใหม่ |
+| mas_param | sps_store | 93,752 | ค่ากำหนดกลาง |
+| common_code / common_code_type | sps_store | 2,609 / 376 | วงเงินอนุมัติ code_type = SBPGI_APPROVE_LIMIT |
+| email_template / email_sent | sps_store | 85 / 5,214 | เทมเพลตอีเมลและ log การส่ง |
+| business_user | sps_store | 12,752 | ตัวตนผู้ใช้/ผู้อนุมัติ |
+| store / mas_store | sps_store | 19,402 / 19,647 | master ร้าน |
+| fcs_monthly_sales | sps_store | 711,384 | ยอดขาย**รายเดือน** (key store_id+year+month) — ใช้แทน sales_transactions รายวันไม่ได้ ย้อนกลับเป็นรายวันไม่ได้ · ใช้ cross-check ได้ |
+
+#### 5.1.2 แกนธุรกิจที่ยืนยันแล้วว่าต้องสร้างเอง
+
+ค้นทั้งฐาน 276 ตาราง / 4,396 คอลัมน์ ด้วยคำ `impact` · `compensat` · `guarantee` · `income` · `competitor` · `growth` · `outlier` · `distance` · `radius` · `latitude` · `longitude` · `window_no` ได้ **0 hit ทุกคำ** → ตารางโซน A และแกนเอกสารโซน B ไม่มีของเดิมให้ reuse ต้องสร้างเองทั้งหมด
+
+### 5.2 ลำดับไฟล์ deploy
+
+| ไฟล์ | เนื้อหา | รันเมื่อไร |
+| --- | --- | --- |
+| 01_schema.sql | CREATE TABLE 20 ตาราง เรียงตาม dependency (C master -> A pipeline -> B document) — ไม่รวม fcs_qssi_score ที่ reuse ของเดิม | ครั้งเดียวต่อ environment |
+| 02_index.sql | index, unique/partial index, check constraint | หลัง 01 · rerun ได้เมื่อเพิ่ม index |
+| 03_seed.sql | decisions, external_factors, competitors (01-11), status_email_rules | หลัง 02 |
+| 04_grant.sql | GRANT ให้ role ของ application (แยก read/write) | หลัง 03 |
+| 99_rollback.sql | DROP TABLE ย้อนลำดับ เฉพาะตารางของ SBPGI | เฉพาะกรณี rollback |
+
+```sql
+-- 01_schema.sql (ตัวอย่างส่วนหัว — DDL เต็มอยู่ที่ LLDD-Database)
+-- ห้ามมี CREATE TABLE ของตาราง reuse: ตรวจด้วยคำสั่งนี้ก่อน commit
+--   grep -nE 'CREATE TABLE (workflow_|fcs_qssi_score|mas_param|common_code|business_user|store|mas_store|email_template)' 01_schema.sql
+BEGIN;
+SET search_path TO sps_store;
+
+-- โซน C: master ที่ SBPGI เป็นเจ้าของ (ต้องมาก่อนเพราะโซน A/B อ้างถึง)
+CREATE TABLE decisions (...);
+CREATE TABLE external_factors (...);
+CREATE TABLE competitors (...);
+CREATE TABLE impacted_stores (...);
+CREATE TABLE status_email_rules (...);
+
+-- โซน A: pipeline
+CREATE TABLE fgi_impact_processes (...);
+-- ...
+
+-- โซน B: เอกสาร
+CREATE TABLE compensation_documents (...);
+-- ...
+COMMIT;
+```
+
+### 5.3 Seed ที่ต้องมีตั้งแต่วันแรก
+
+| ตาราง | ข้อมูล seed | ที่มา |
+| --- | --- | --- |
+| decisions | ผลพิจารณาทุกปุ่ม (decision_name/flow_name/result_name) | MSSQL DecisionProfile |
+| competitors | แบรนด์คู่แข่ง 11 รายการ รหัส 01-11 (ไทย+อังกฤษ) | หน้าจอ K2 เดิม (k2-competitors.html) |
+| external_factors | ปัจจัยภายนอกที่ใช้อยู่ | MSSQL FactorProfile |
+| status_email_rules | ผู้รับ TO/CC ต่อสถานะ | ORA WF_EMAIL_RULE / WF_EMAIL_DETAIL / WF_EMAIL_CC |
+| common_code (ระบบเดิม) | SBPGI_APPROVE_LIMIT: GM=50000 · AVP=300000 | SDD GI 24/02/2026 — เขียนที่ common_code ของระบบเดิม ไม่ใช่ตารางของ SBPGI |
+
+### 5.4 ข้อค้างตัดสินใจที่กระทบ DDL (ยังไม่ตัดสิน)
+
+รายการต่อไปนี้ **ยังไม่ตัดสิน** ทั้งหมด · ทางเลือกและผลกระทบเต็มอยู่ที่ `SBP/SBPGI-vs-existing-system.md หัวข้อ 4` การตัดสินใจขั้นสุดท้ายเป็นของเจ้าของโครงการ — เอกสาร LLDD ฉบับนี้บันทึกไว้เป็นข้อค้าง และห้าม dev เลือกทางใดทางหนึ่งเองระหว่าง implement
+
+| ข้อค้าง | ทางเลือก A | ทางเลือก B | สถานะ |
+| --- | --- | --- | --- |
+| DP-3 · `impacted_stores` เป็น view หรือตาราง snapshot | view จากระบบเดิม (`v_sbpgi_sp_store`) — ไม่ต้อง sync แต่ร้านที่ยกเลิกเกิน 1 เดือนหายจาก view ทำให้เอกสารย้อนหลังหาร้านไม่เจอ | ตาราง snapshot ของ SBPGI — เอกสารย้อนหลังหาร้านเจอเสมอ แต่ต้อง sync (มีทางเลือกที่ 3: snapshot เฉพาะร้านที่เคยเข้ารอบชดเชย) | ยังไม่ตัดสิน |
+| DP-4 · `fcs_qssi_score` reuse หรือสร้างใหม่ | reuse ตารางเดิม 23,958,780 แถว — ต้อง backfill + SET NOT NULL บนตารางที่ `performance.service.ts` เขียนอยู่ | สร้างตารางของ SBPGI เอง — ไม่แตะของทีมอื่น แต่มีข้อมูล QSSI สองชุด | ยังไม่ตัดสิน · มติที่แน่นอนแล้วคือ **ห้ามสร้างตารางชื่อ `fcs_qssi_scores` (พหูพจน์)** |
+| DP-9 · master 3 ตัว (decisions/external_factors/competitors) | ยัดลง `common_code` ของระบบเดิม | ตารางเล็กของ SBPGI ตามที่ DDL ปัจจุบันเขียนไว้ | ยังไม่ตัดสิน |
+| DP-1 · `reference_id` ของ workflow | `doc_no` | surrogate id (แบบที่ cooperation-request/inform-evaluate ทำจริง) | ยังไม่ตัดสิน · กระทบว่า `compensation_documents` ต้องมี surrogate PK หรือไม่ |
+| DP-7 · `consideration_logs` | ตาราง timeline เต็มของ SBPGI ตามที่ DDL ปัจจุบันเขียนไว้ | ตารางส่วนขยายบน `sps_store.workflow_history` ของ engine (engine เก็บ state transition แต่ไม่มี decision code / ไฟล์แนบ / ความเห็น) | ยังไม่ตัดสิน · กระทบ DDL ของตารางนี้และ response ของ `GET /documents/{docNo}/timeline` |
+| DP-12 · audit ของ master | เอากลับมาโดยใช้กลไกของระบบเดิม | ไม่มีเลยตามมติ 2026-08-07 (สถานะปัจจุบันของ DDL) | ยังไม่ตัดสิน |
+
+## 5.1 Input / Progress / Output Contract
+
+| Stage | Contract for implementation |
+| --- | --- |
+| Input | User action, route/query state, form values, and permission context for this feature. |
+| Progress | ยืนยันรายการ 21 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL; เขียน 01_schema.sql เรียงตาม dependency: โซน C master -> โซน A pipeline -> โซน B document; เขียน 02_index.sql แยกไฟล์ เพื่อให้ rerun/เพิ่ม index ภายหลังได้โดยไม่แตะ schema; เขียน 03_seed.sql เฉพาะ master ที่ระบบต้องมีตั้งแต่วันแรก |
+| Output | 21 target tables (โซน A/B/C) |
+
+### 5.90 Endpoint Implementation Contract
+
+| Endpoint | Use-case owner | Service/repository behavior | Definition of done |
+| --- | --- | --- | --- |
+| Internal service | กำหนด DDL ของ target schema 21 ตาราง พร้อม index/constraint/seed และสคริปต์ deploy ให้ทุกเอกสาร BE อ้างอิงโครงเดียวกัน — เป็น blocker ที่ต้องปิดในสัปดาห์แรก | เรียกจาก use case ภายในเท่านั้น | DDL รันบนฐานว่างได้ครบในครั้งเดียวโดยไม่มี error ลำดับ FK |
+
+### 5.91 Backend Execution Sequence
+
+| Step | Behavior specific to this LLDD | Failure/test evidence |
+| --- | --- | --- |
+| 1 | ยืนยันรายการ 21 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL | รัน 01+02+03 บนฐานว่าง แล้ว dump schema เทียบกับต้นฉบับ |
+| 2 | เขียน 01_schema.sql เรียงตาม dependency: โซน C master -> โซน A pipeline -> โซน B document | รัน 01 ซ้ำครั้งที่สอง ต้อง fail แบบชัดเจน ไม่สร้างของซ้ำเงียบ ๆ |
+| 3 | เขียน 02_index.sql แยกไฟล์ เพื่อให้ rerun/เพิ่ม index ภายหลังได้โดยไม่แตะ schema | ทดสอบ insert เอกสารที่ compensate_percent รวมไม่ครบ 100 ต้องถูก block |
+| 4 | เขียน 03_seed.sql เฉพาะ master ที่ระบบต้องมีตั้งแต่วันแรก | ทดสอบ insert store_code '00788' แล้วอ่านกลับได้ leading zero ครบ |
+| 5 | ตรวจว่าไม่มี CREATE TABLE ของตารางที่ระบบ SBP เดิมมีอยู่แล้ว | ทดสอบออกเลข doc_no พร้อมกัน 20 request ต้องไม่ซ้ำ |
+| 6 | รันบน environment ว่างแล้ว dump schema กลับมาเทียบกับ DDL ต้นฉบับ | grep หา CREATE TABLE ของตาราง reuse ต้องได้ 0 บรรทัด |
+| 7 | ส่งมอบ DDL ให้ Data-Migration-Cutover ใช้เป็นปลายทาง | รัน 01+02+03 บนฐานว่าง แล้ว dump schema เทียบกับต้นฉบับ |
+
+## 6. Button / User Action Mapping
+
+| Action | Trigger | API / Service | Expected Result |
+| --- | --- | --- | --- |
+| รัน DDL baseline | deploy script | psql -f 01_schema.sql | สร้าง 21 ตารางตามลำดับ dependency |
+| รัน index/constraint | deploy script | psql -f 02_index.sql | index/unique/check ครบก่อนเปิด SIT |
+| รัน seed | deploy script | psql -f 03_seed.sql | master ที่ระบบต้องมีตั้งแต่วันแรก |
+| Rollback | deploy script | psql -f 99_rollback.sql | DROP ย้อนลำดับ · ห้ามแตะตารางของระบบ SBP เดิม |
+
+## 7. API Contract
+
+## 8. Reference DB Mapping (No Database Page Work)
+
+ส่วนนี้เป็นข้อมูลอ้างอิงสำหรับการ implement API/Job เท่านั้น ไม่ใช่งานสร้างหน้า Database, ไม่ใช่งานออกแบบ DB page และไม่ถูกนับเป็น deliverable แยกของ FE/BE
+
+| Table / Object | R/W | Usage |
+| --- | --- | --- |
+| 21 target tables (โซน A/B/C) | W | สร้างจาก DDL baseline ของเอกสารนี้ |
+| workflow engine 13 ตาราง (sps_store) | R | ห้ามสร้างซ้ำ — ใช้ของ @srm/glb-workflow |
+| fcs_qssi_score (sps_store) | R | ห้ามสร้างซ้ำ — 23,958,780 แถว + import pipeline ใช้งานอยู่ |
+| mas_param / common_code / business_user / email_template (sps_store) | R | ค่ากำหนดกลาง/master/ตัวตน/เทมเพลตอีเมลของระบบ SBP เดิม |
+
+## 9. Processing Flow
+
+| Step | Description |
+| --- | --- |
+| 1 | ยืนยันรายการ 21 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL |
+| 2 | เขียน 01_schema.sql เรียงตาม dependency: โซน C master -> โซน A pipeline -> โซน B document |
+| 3 | เขียน 02_index.sql แยกไฟล์ เพื่อให้ rerun/เพิ่ม index ภายหลังได้โดยไม่แตะ schema |
+| 4 | เขียน 03_seed.sql เฉพาะ master ที่ระบบต้องมีตั้งแต่วันแรก |
+| 5 | ตรวจว่าไม่มี CREATE TABLE ของตารางที่ระบบ SBP เดิมมีอยู่แล้ว |
+| 6 | รันบน environment ว่างแล้ว dump schema กลับมาเทียบกับ DDL ต้นฉบับ |
+| 7 | ส่งมอบ DDL ให้ Data-Migration-Cutover ใช้เป็นปลายทาง |
+
+## 10. Acceptance Criteria
+
+- DDL รันบนฐานว่างได้ครบในครั้งเดียวโดยไม่มี error ลำดับ FK
+- จำนวนตารางที่สร้างจริง = 21 ตาราง ตรงกับ database.md
+- ไม่มี CREATE TABLE ของ workflow engine, store master, common_code, mas_param, business_user, email_template หรือ fcs_qssi_score
+- ทุกตารางมี PK และทุก FK ชี้ไปตารางที่มีอยู่จริงในสคริปต์เดียวกัน
+- rollback script ลบเฉพาะตารางของ SBPGI
+- ข้อค้างตัดสินใจถูกบันทึกเป็นข้อค้าง ไม่ถูกตัดสินในเอกสารนี้
+
+## 11. Developer Test Checklist
+
+| No | Test |
+| --- | --- |
+| 1 | รัน 01+02+03 บนฐานว่าง แล้ว dump schema เทียบกับต้นฉบับ |
+| 2 | รัน 01 ซ้ำครั้งที่สอง ต้อง fail แบบชัดเจน ไม่สร้างของซ้ำเงียบ ๆ |
+| 3 | ทดสอบ insert เอกสารที่ compensate_percent รวมไม่ครบ 100 ต้องถูก block |
+| 4 | ทดสอบ insert store_code '00788' แล้วอ่านกลับได้ leading zero ครบ |
+| 5 | ทดสอบออกเลข doc_no พร้อมกัน 20 request ต้องไม่ซ้ำ |
+| 6 | grep หา CREATE TABLE ของตาราง reuse ต้องได้ 0 บรรทัด |

@@ -73,13 +73,16 @@
     { key:'k2-factors',  label:'กำหนดปัจจัยภายนอก',       href:'k2-factors.html',   icon:I.db,        group:'ระบบประกันรายได้ (SBP Mall)' },
     { key:'k2-competitors', label:'กำหนดรายชื่อคู่แข่ง',  href:'k2-competitors.html', icon:I.db,      group:'ระบบประกันรายได้ (SBP Mall)' },
     // { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ระบบประกันรายได้ (SBP Mall)' },
-    // กลุ่มผู้ดูแลระบบ (2026-08-06) — ย้าย Config / Batch Job / Email Template ออกจากกลุ่มงานประจำวัน
-    { key:'system-config', label:'ตั้งค่าระบบ (Global Config)', href:'system-config.html', icon:I.cog,  group:'ผู้ดูแลระบบ (Admin)' },
-    { key:'job-batch',   label:'Batch Job',                href:'job-batch.html',    icon:I.clock,     group:'ผู้ดูแลระบบ (Admin)' },
-    { key:'email-template',  label:'Email Template',            href:'email-template.html',   icon:I.mail,      group:'ผู้ดูแลระบบ (Admin)' },
+    // กลุ่มผู้ดูแลระบบ (Admin) ไม่มีเมนูเหลือแล้ว (2026-08-06):
+    // - ตั้งค่าระบบ (Global Config) และ Email Template ลบทั้งฟีเจอร์ — ค่ากำหนดกลางและ template อีเมล
+    //   บริหารจัดการที่ระบบ SBP เดิม (mas_param / email_template) ไม่มีหน้าจอ/endpoint ใน SBPGI
+    // - Batch Job ย้ายไปกลุ่ม Flow และเหลือแค่ Flowchart + Database ที่ใช้ (ดูรายการกลุ่ม Flow ด้านล่าง)
     { key:'flow-fgi',    label:'Flow FGI/FCS',             href:'flow-fgi.html',     icon:I.flow,      group:'Flow' },
     { key:'k2-flow',     label:'Flow K2',                  href:'k2-flow.html',      icon:I.route,     group:'Flow' },
     { key:'plan-flow',   label:'Flow FGI/FCS + K2',        href:'plan-flow.html',    icon:I.flow,      group:'Flow' },
+    // Batch Job ย้ายจากกลุ่ม Admin มาที่นี่ 2026-08-06 — เหลือเฉพาะแท็บ Flowchart การทำงาน + Database ที่ใช้
+    // (ตัดแบบฟอร์มพารามิเตอร์/ประวัติการรันออก · cron และพารามิเตอร์กำหนดที่ backend config)
+    { key:'job-batch',   label:'Flow Batch Job',           href:'job-batch.html',    icon:I.clock,     group:'Flow' },
     { key:'fgi-database', label:'DB FGI/FCS',               href:'fgi-database.html', icon:I.db,        group:'Database' },
     { key:'k2-database', label:'DB K2',                     href:'k2-database.html',  icon:I.schema,    group:'Database' },
     { key:'plan-database', label:'DB FGI/FCS + K2',         href:'plan-database.html', icon:I.db,       group:'Database' },
@@ -549,25 +552,13 @@
     role: [
       { key: 'code', label: 'รหัส Role (role_code)', col: 'Code' },
       { key: 'name', label: 'ชื่อ Role (role_name)', col: 'Role', wide: true },
-      { key: 'desc', label: 'คำอธิบาย (role_desc)', col: 'คำอธิบาย', wide: true },
-      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
+      { key: 'desc', label: 'คำอธิบาย (role_desc)', col: 'คำอธิบาย', wide: true }
     ],
     operator: [
       { key: 'name', label: 'ชื่อผู้ปฏิบัติงาน (employee_name)', col: 'ชื่อผู้ปฏิบัติงาน', wide: true },
       { key: 'email', label: 'E-Mail (employee_email)', col: 'E-Mail', wide: true },
       { key: 'position', label: 'ชื่อตำแหน่ง (section_code)', col: 'ชื่อตำแหน่ง', type: 'select', options: ['ฝ่าย SBP DSA', 'เจ้าหน้าที่ SBP DSA', 'ส่งเสริมธุรกิจพันธมิตรฯ', 'GM ส่งเสริมธุรกิจฯ', 'ผู้บริหารสำนักบริหาร SBP (AVP)'] },
-      { key: 'zone', label: 'ภาคที่รับผิดชอบ (zone_code)', col: 'ภาคที่รับผิดชอบ', type: 'select', options: ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS', '-'] },
-      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
-    ],
-    config: [
-      { key: 'ckey', label: 'Config Key (config_key)', col: 'Config Key', wide: true },
-      { key: 'cat', label: 'หมวดหมู่ (category)', col: 'หมวดหมู่', type: 'select', options: ['IMPACT', 'WORKFLOW', 'DOCUMENT', 'AUTH', 'NOTIFICATION', 'BATCH'] },
-      { key: 'val', label: 'ค่า (config_value)', col: 'ค่า (Value)', wide: true },
-      { key: 'vtype', label: 'ชนิดข้อมูล (value_type)', col: 'ชนิดข้อมูล', type: 'select', options: ['NUMBER', 'STRING', 'BOOLEAN', 'JSON', 'CRON'] },
-      { key: 'unit', label: 'หน่วย (unit)', col: 'หน่วย' },
-      { key: 'desc', label: 'คำอธิบาย (description)', col: 'คำอธิบาย', wide: true },
-      { key: 'editable', label: 'แก้ไขได้ (is_editable)', col: 'แก้ไขได้', type: 'select', options: ['แก้ได้', 'ค่าคงที่ (ต้องขออนุมัติ)'] },
-      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true }
+      { key: 'zone', label: 'ภาคที่รับผิดชอบ (zone_code)', col: 'ภาคที่รับผิดชอบ', type: 'select', options: ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS', '-'] }
     ],
     /* master ปัจจัยภายนอก — จัดการที่หน้า k2-factors.html (ตาราง external_factors)
        เพิ่ม/แก้ที่นั่นแล้ว dropdown "ปัจจัยอื่นๆ" ในหน้าเอกสารต้องเปลี่ยนตาม */
@@ -576,8 +567,7 @@
     factor: [
       { key: 'code', label: 'รหัสปัจจัยภายนอก (factor_code)', col: 'รหัสปัจจัย', req: true },
       { key: 'name', label: 'ชื่อปัจจัยภายนอก (factor_name)', col: 'ชื่อปัจจัย', wide: true, req: true },
-      { key: 'remark', label: 'รายละเอียดเพิ่มเติม (factor_remark)', col: 'รายละเอียดเพิ่มเติม', wide: true },
-      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true, reqOn: 'edit' }
+      { key: 'remark', label: 'รายละเอียดเพิ่มเติม (factor_remark)', col: 'รายละเอียดเพิ่มเติม', wide: true }
     ],
     /* master รายชื่อคู่แข่ง — จัดการที่หน้า k2-competitors.html (ตรงตาม K2 เดิม 11 รายการ)
        เพิ่ม/แก้ที่นั่นแล้ว dropdown ในหน้าเอกสารต้องเปลี่ยนตาม (ระบบจริงอ่านจากตาราง competitors) */
@@ -589,8 +579,7 @@
       { key: 'code', label: 'รหัสคู่แข่ง (competitor_code)', col: 'รหัสคู่แข่ง', req: true },
       { key: 'nameth', label: 'ชื่อคู่แข่ง (ไทย)', col: 'ชื่อคู่แข่ง (ไทย)', wide: true, req: true, reqMsg: 'กรุณาระบุชื่อคู่แข่ง (ไทย)' },
       { key: 'nameen', label: 'ชื่อคู่แข่ง (อังกฤษ)', col: 'ชื่อคู่แข่ง (อังกฤษ)', wide: true, req: true, reqMsg: 'กรุณาระบุชื่อคู่แข่ง (อังกฤษ)' },
-      { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true },
-      { key: 'reason', label: 'เหตุผลการแก้ไขข้อมูล (บันทึกลง audit_logs)', wide: true, reqOn: 'edit' }
+      { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true }
     ],
     /* ในหน้าเอกสาร: เลือกจาก master เท่านั้น — ตัวเลือกต้องตรงกับ k2-competitors.html (รหัส · ชื่อไทย (ชื่ออังกฤษ)) */
     competitor: [

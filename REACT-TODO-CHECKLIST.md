@@ -26,7 +26,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - [ ] `<Chip>` / `<RefChip>` (source tag: `fgi/k2/new/mix` + suffix เช่น `K2 · 3.1.1`)
 - [x] ~~`<StatCard>` + `<StatGrid>`~~ **ไม่ต้องสร้าง** — ถอด stat cards ออกจากทุกหน้าแล้ว (2026-08-06)
 - [ ] `<DataTable>` — `table.data` ห่อ `.table-wrap` (scroll แนวนอน); รองรับ sortable header (`data-stype`), row action icons `.icon-view/.icon-edit/.icon-del`, checkbox column, empty-state row "ไม่พบรายการตามเงื่อนไขที่กรอง"
-- [ ] `<EntityModal>` — engine view/edit/add ขับเคลื่อนด้วย schema (แทน `SCHEMAS` + `data-entity`); field map กับ header ตาราง; edit ต้องมีช่อง "เหตุผลการแก้ไข (บันทึกลง audit_logs)"
+- [ ] `<EntityModal>` — engine view/edit/add ขับเคลื่อนด้วย schema (แทน `SCHEMAS` + `data-entity`); field map กับ header ตาราง; **ไม่มีช่อง "เหตุผลการแก้ไข" แล้ว** — ตัดพร้อมตาราง `audit_logs` 2026-08-07 (22 → **21 ตาราง**) · จะเอา audit กลับมาโดยใช้ของระบบเดิมหรือไม่ **ยังไม่ตัดสิน** (DP-12 ใน `SBP/SBPGI-vs-existing-system.md`)
 - [ ] `<ConfirmDeleteDialog>`
 - [ ] `<Tabs>` — `[data-tabs]` + `.tab` toggle pane
 - [ ] `<Pager>` — per-page select (10/20/50/100 " / หน้า"), info "แสดง X–Y จาก N รายการ (กรองจาก M)", prev `‹` / เลขหน้า + `…` / next `›`, "ไปหน้า" + goto input (ใช้ใน k2-list-waiting/related/abnormal)
@@ -43,14 +43,10 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 
 # กลุ่ม: ระบบประกันรายได้
 
-## index.html — หน้าแรก / Overview
-- **Route:** `/`  · **body:** `data-page=home` `data-nav=modules` `data-module=home` (ไม่มี data-crumb — เบี่ยงจาก template)
-- **S1 Hero:** โลโก้โล่ + `<h1>สวัสดี, คุณภัชริดา` + ย่อหน้าอธิบาย workflow · ปุ่ม `งานรอท่านดำเนินการ`(→k2-list-waiting) · `เอกสารร้านถูกกระทบ`(→k2-document)
-- **S2 Stat grid (4):** `24` เอกสารรอท่านดำเนินการ · `342` สาขาประกันรายได้เดือนนี้ · `8.42` ยอดชดเชยเดือนนี้ (ล้านบาท) · `5` ยอดขายไม่ครบ 60 วัน (แถวแดง)
-- **S3 Charts:** `<ColumnChart>` "ยอดชดเชยประกันรายได้รายเดือน" (8 เดือน, ล้านบาท, label เฉพาะแท่งสุดท้าย) · `<HBarChart>` "เอกสารค้างตามขั้นตอน Workflow" (8 แถว 06–05 + เสร็จสิ้น, dot สีสถานะ, tooltip) — เลข 24/8.42 ต้อง sync กับ stat cards
-- **S4 Module grid:** การ์ดทางลัด (`<a>`): k2-list-waiting, k2-create, *(k2-list-abnormal — comment ไว้)*, k2-document, k2-report, k2-operators, k2-factors, k2-permissions (แต่ละอันมี title/code/desc/cta)
-- **S5:** การ์ด "กิจกรรมล่าสุด" (4 แถว pill+เวลา) · การ์ด "ทางลัด" (ปุ่ม data-href)
-- **TODO:** `<HomePage>`, `<Hero>`, `<ColumnChart>`, `<HBarChart>`, `<ModuleCard>`/`<ModuleGrid>` (รองรับ card ปิดแบบ feature-flag), `<ActivityFeed>`, `<QuickLinks>`
+## index.html — **redirect stub (ยกเลิกหน้า Overview 2026-08-06)**
+- **Route:** `/` — ไม่มีเนื้อหา ไม่ตาม page contract · ทำหน้าที่เด้งไป **`k2-list-waiting.html` (เอกสาร → รอดำเนินการ) ซึ่งเป็นหน้าแรกของโมดูล**
+- Hero / Stat grid / Charts / Module grid / ActivityFeed / QuickLinks **ถูกถอดออกทั้งหมด** พร้อม endpoint `GET /dashboard/summary`
+- **TODO:** ฝั่ง Next.js ให้ `redirect('/sbpgi/documents/waiting')` ที่ route `/` เท่านั้น — ไม่มี `<HomePage>` component
 
 ## k2-create.html
 > **โครงหน้า (2026-08-06):** การ์ด `สร้างเอกสารที่ FS` = กรอบจำลอง iframe ของระบบ FS (คลาส `.fs-frame` ใน `sbp.css` ใช้ร่วมกับส่วนคำนวณเงินชดเชยของหน้าเอกสาร) · ใต้กรอบเป็นการ์ด **หมายเหตุ · ขั้นตอนการสร้างเอกสาร** (หัวข้อ + 4 ขั้นตอน verbatim + บรรทัด “ใช้กรณี…”) — ไม่มีฟอร์ม/แท็บในหน้านี้ — สร้างเอกสาร
@@ -83,6 +79,9 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 
 ## k2-document.html — เอกสารข้อมูลร้านถูกกระทบ  ⭐ (ซับซ้อนสุด, SRS 3.1.6)
 - **Route:** `/documents/:docNo` · **crumb:** `เอกสารร้านถูกกระทบ` · *ไม่อยู่ใน sidebar (เข้าจากคลิกแถว)*
+> ⚠️ **ข้อสังเกต — กลไกสิทธิ์แก้ไขรายส่วนซ้ำซ้อนกับ workflow engine (ยืนยัน 2026-08-10 · ยังไม่ตัดสิน):**
+> workflow engine `@srm/glb-workflow` มีตาราง **`workflow_part` + `workflow_part_display`** (schema `sps_store` · `workflow_part_display` คุม 12 ส่วน) ที่กำหนด **READ/WRITE รายส่วนของหน้าจอต่อ state ได้อยู่แล้ว** ซึ่ง**ทับซ้อน**กับกลไก `data-editrole` / `data-roleonly` / `.edit-only` ที่ prototype ทำเอง (ดู S5/S7/S8/S10 ด้านล่าง) และกับธง `permissions.canEditSections` ที่ SBPGI จะคำนวณเอง
+> **ยังไม่ตัดสิน**ว่าจะย้ายไปใช้ของ engine หรือคงกลไกของ SBPGI — **ยังไม่เปลี่ยนดีไซน์ ให้ทำตามรายการด้านล่างไปก่อน** · ข้อมูลประกอบ: wrapper ของระบบเดิม register entity แค่ 10 ตัว ยังไม่รวม `WorkflowPart`/`WorkflowPartDisplay` จึงใช้ทันทีไม่ได้ · ดู `SBP/SBPGI-vs-existing-system.md` §3.1 + หัวข้อ 4 (Decision Points 12 ข้อ)
 - **S1 RoleSwitcherBar** (sticky): `#roleSwitch` (**5 role** — ตัดขั้นบัญชี 04/05) + pill `ขั้นตอนที่ N/5` + stepper คลิกได้ → เปลี่ยน role re-render ทั้งหน้า + toast
 - **S2 head:** `เอกสารข้อมูลร้านถูกกระทบ 2026/00123` + sub + pill สถานะ(สลับตาม role) + ปุ่ม `พิมพ์`
 - **S3 ข้อมูลร้านถูกกระทบ:** doc-meta grid (รอบ/ครั้งที่/เดือน, สถานะ, เลขที่, วันที่สร้าง, รหัส/ชื่อร้าน, ภาค, ประเภท, เจ้าของ, นิติบุคคล, วันที่โอน, ผู้ดำเนินการ, ยอดขายลดลง 12.45%, ชดเชยล่าสุด 48,200฿, ไฟล์แนบ) + ปุ่ม `ข้อมูลยอดขายเพิ่มเติม`
@@ -140,39 +139,10 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **Modal `#pmPop`:** add/edit menu + confirm delete (cascade menu_permissions)
 - **TODO:** `<K2PermissionsPage>`(state roles/menus/dirty), `<RolesTable>`, `<PermissionMatrix>`(group main/master), `<MatrixToggleCell>`, `<MenuManageButtons>`, `<AuditLogTable>`, `<PageModal>`, `<DirtyBadge>`; sync คอลัมน์ matrix เมื่อ add/remove role → บันทึก `PUT /api/v1/menu-permissions/{menuCode}`
 
-## system-config.html — ตั้งค่าระบบ (Global Config, system_configs)
-- **Route:** `/system-config` · **crumb:** `ตั้งค่าระบบ (Global Config)`
-- **S1 head:** ปุ่ม `เพิ่ม Config`(add-row)
-- **S2 `<DonutChart>`** "สัดส่วนค่ากำหนดตามหมวดหมู่" (IMPACT4/WORKFLOW3/DOCUMENT3/AUTH2/NOTIFICATION1/BATCH1) + legend
-- **S3 ตาราง `#tblConfigs`** (`data-entity=config`): `☑ | Config Key | หมวดหมู่ | ค่า (Value) | ชนิดข้อมูล | หน่วย | คำอธิบาย | แก้ไขได้ | Action` — 14 config; edit/del เฉพาะแถว "แก้ได้"; ปุ่ม `Invalidate Cache` + filter หมวดหมู่ + ค้นหา
-- **S4 AuditHistoryTable** + **S5 InfoCallout** (dot-notation key, cache 5 นาที, is_editable=false=ค่าคงที่)
-- **TODO:** `<SystemConfigPage>`, `<ConfigCategoryDonut>`, `<ConfigTable>`(filter+cache), `<EntityModal>` schema config (edit/del conditional), `<CategoryChip>`, `<AuditHistoryTable>`
-
-## job-batch.html — Batch Job (FGI/FCS Jobs 1–10 + 8b)
-- **Route:** `/job-batch` · **crumb:** `Batch Job`
-- **S1 head:** ปุ่ม `รีเฟรชสถานะ` · `Export ตาราง Job` (toast)
-- **S2 Stat cards (4):** 11 entry point / 8 interface / 2 ACK ค้าง / 3 ความเสี่ยง P0
-- **S3 Charts (3):** `<DonutChart>` สถานะรอบล่าสุด (9,2) · `<BarChart>` Job ต่อเฟส A–E (3,2,3,2,1) · `<SparkChart>` ACK ค้าง 7 วัน
-- **S4 PhaseStrip:** 5 คอลัมน์เฟส A–E, แต่ละอันมี chip ต่อ job (คลิก→select)
-- **S5 ตาราง `#tblJobs`:** `Job | ชื่องาน / Main Class | เฟส | ประเภท | กำหนดการ (Cron) | รอบล่าสุด | ผลล่าสุด | รอบถัดไป | สถานะ | (action)` — คลิก→detail
-- **S6 JobDetailPanel:** header + chips + toggle เปิด/ปิด + **Tabs 4:**
-  - `แบบฟอร์มพารามิเตอร์` — ฟอร์ม param (แก้ได้/ค่าคงที่) + `บันทึกพารามิเตอร์` + run bar (month + `สั่งรันทันที`) + Runbook meta
-  - `Flowchart การทำงาน` — hand-SVG flowchart (`renderFlow`) + timeline คำอธิบายทีละขั้น
-  - `Database ที่ใช้` — hand-SVG DB diagram (R/W/RW) + ตาราง `ตาราง/วิว | สิทธิ์ | บทบาทใน Job นี้` + relations + link fgi-database
-  - `ประวัติการรัน` — pills สำเร็จ/ล้มเหลว + `ดู Log` + ตาราง `เริ่มรัน | ระยะเวลา | จำนวนแถว | ไฟล์ที่เกี่ยวข้อง | ผลลัพธ์ | หมายเหตุ`
-- **S7 AuditHistoryTable** (job_configs) + **S8 InfoCard**
-- **ข้อมูล:** 2 array `PHASES` + `JOBS` (11 job, แต่ละ job: params/flow/tables/rels/meta/run/hist)
-- **TODO:** `<JobBatchPage>`, `<PhaseStrip>`/`<JobChip>`, `<JobTable>`, `<JobDetailPanel>`+`<EnableToggle>`, `<Tabs>`, `<ParamForm>`, `<ManualRunBar>`, `<FlowchartSvg>`(port renderFlow), `<JobDbDiagramSvg>`(port renderDb), `<RunHistoryTab>`, `<AuditHistoryTable>`
-
-## email-template.html — Email Template (EM-01–08 + WYSIWYG editor)
-- **Route:** `/plan/email-templates` · **crumb:** `Email Template`
-- **S1 head:** pill `8 Templates` + ปุ่ม `รีเซ็ตทั้งหมดเป็น Default`
-- **S2 ตาราง map:** `Template | ชื่อ | จุดที่ส่งใน Flow | ผู้รับ (TO) | แหล่งกติกาผู้รับ | ความถี่` — คลิกแถว→เลื่อนไป template card (สลับ tab + flash)
-- **S3 InfoCallout** + **S4 Tabs:** `Workflow (EM-01–03)` | `เตือนงานค้าง/Escalation (EM-04–05)` | `Batch FGI/FCS (EM-06–08)`
-- **S5–S12 การ์ด template EM-01..08:** แต่ละใบ = head + flowpoint chip + meta grid + mail mockup (From/To/Cc/Subject + body + ตาราง `.det` + `.mail-btn`) + state pill + ปุ่ม แก้ไข/รีเซ็ต; EM-01 มี `#em01Select` (7 สถานะ) live-rewrite; variant สี ok/warn
-- **Editor (inject ต่อ card):** toolbar (undo/redo, bold/italic/underline/strike, สีอักษร 4 + hilite, list 2, table grid picker 6×6 + +/−แถว/คอลัมน์, removeFormat, บันทึก/รีเซ็ต) + ชิปตัวแปร merge (per-template จาก `VARS`) — subject แทรกเป็น text, body แทรกเป็น atom `.mf`
-- **S13 AuditHistoryTable** (email_templates); persist localStorage `sbpEmailTpl:EM-0x`
-- **TODO:** `<EmailTemplatesPage>`, `<TemplateFlowMap>`, `<Tabs>`, `<EmailTemplateCard>`, `<RichTextToolbar>` (แนะนำใช้ rich-text lib จริงแทน execCommand), `<TableGridPicker>`, `<MergeVariableChips>`, `<MailPreview>`, `<EM01StatusSelector>`, `<AuditHistoryTable>`, localStorage hook
+## ~~system-config.html~~ · ~~email-template.html~~ — **ลบทั้งฟีเจอร์ (2026-08-06)**
+- ไฟล์ HTML ทั้งสองถูกลบออกจากโปรเจกต์ พร้อม entry ใน `MODULES`, `SCHEMAS.config` ของ `assets/sbp.js`, endpoint 10 เส้น (`/configs*` · `/email-templates*`) และตาราง `system_configs`/`email_templates`
+- **ไม่ต้องพอร์ตเป็น React** — ค่ากำหนดกลางอยู่ในตาราง `mas_param` และ template อีเมลอยู่ในตาราง `email_template` ของ**ระบบ SBP เดิม** ซึ่งมีหน้าจอบริหารจัดการของตัวเองอยู่แล้ว
+- **อีเมลตามสถานะยังส่งเหมือนเดิม** — service ฝั่ง BE อ่าน `email_template` แล้วส่งผ่าน `@gosoft-sbp/email-lib` (log ลง `email_sent`) โดยไม่ต้องมีหน้าจอใน SBPGI · ตารางสถานะ × ผู้รับ ดู `workflow_status_document.md`
 
 ---
 
@@ -180,7 +150,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 
 ## flow-fgi.html — Flow FGI/FCS (Batch Pipeline, As-Is)
 - **Route:** `/flows/fgi` · **crumb:** `Flow FGI/FCS (Batch)`
-- **S1 head** (pill `ระบบปัจจุบัน (As-Is)`) · **S2 IntroCard** (ลิงก์ job-batch/k2-flow/plan-flow)
+- **S1 head** (pill `ระบบปัจจุบัน (As-Is)`) · **S2 IntroCard** (ลิงก์ k2-flow/plan-flow)
 - **S3 PipelineDiagram** hand-SVG 3 คอลัมน์ (ต้นทาง QSSI/ALLMAP/IAS → เฟส A–E → ปลายทาง BPM/K2/STA/SMTP), เฟส A นำเข้า Master / B แลกเปลี่ยนยอดขาย / C ส่งออก BPM 3 ไฟล์ / D K2·Statement / E Watchdog
 - **S4 ตาราง Cron:** `เวลา | Cron | Job | งาน` (8 แถว) · **S5 ตาราง Interface:** `Interface | ทิศทาง | Encoding | ฟิลด์ | เนื้อหา` (9 แถว)
 - **TODO:** `<FgiFlowPage>`, `<PipelineDiagram>` (พิจารณา data-drive `phases[]`), `<DataTable>` mono cells, `<RefBadge>`
@@ -195,10 +165,23 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **S7 ตาราง State/Email:** `State | สถานะเอกสาร | ผู้ดำเนินการ | อีเมลถึง (TO) | สำเนา (CC)` (9 แถว) · **S8 note วงเงิน**
 - **TODO:** `<FlowPage>`, `<HappyPathStepper>`, `<K2Flowchart>` (static SVG), `<Swimlane>`/`<BranchChip>`, `<DataTable>`(×2), `<InfoCard>`
 
+## job-batch.html — Flow Batch Job (FGI/FCS Jobs 1–10 + 8b) — **ย้ายมากลุ่ม Flow + ลดขอบเขต 2026-08-06**
+- **Route:** `/flows/batch-job` · **crumb:** `Flow Batch Job` · **กลุ่มเมนู `Flow`** (ย้ายจากกลุ่ม Admin)
+- **ขอบเขตใหม่:** เหลือเฉพาะ **`Flowchart การทำงาน`** + **`Database ที่ใช้`** — เป็นเอกสารอ้างอิงผู้พัฒนา ไม่ใช่หน้าจอควบคุม
+- **ตัดออกแล้ว (ไม่ต้องพอร์ต):** แท็บ `แบบฟอร์มพารามิเตอร์` · แท็บ `ประวัติการรัน` · run bar `สั่งรันทันที` · toggle เปิด/ปิด job · ปุ่ม `รีเฟรชสถานะ`/`Export ตาราง Job` · stat cards 4 ใบ · กราฟ 3 ตัว · การ์ด `audit_logs (job_configs)` · endpoint `/jobs*` 6 เส้น · ตาราง `job_configs`/`job_run_histories`
+- **S1 head:** ชื่อหน้า + คำอธิบายขอบเขต (ไม่มีปุ่ม)
+- **S2 PhaseStrip:** 5 คอลัมน์เฟส A–E, chip ต่อ job (คลิก→select)
+- **S3 ตาราง `#tblJobs`:** `Job | ชื่องาน / Main Class | เฟส | ประเภท | กำหนดการ (Cron) | ผลลัพธ์หลัก | (ดู Flow / DB)` — คลิก→detail
+- **S4 JobDetailPanel:** header + chips + **Tabs 2:**
+  - `Flowchart การทำงาน` — hand-SVG flowchart (`renderFlow`) + timeline คำอธิบายทีละขั้น
+  - `Database ที่ใช้` — hand-SVG DB diagram (R/W/RW) + ตาราง `ตาราง/วิว | สิทธิ์ | บทบาทใน Job นี้` + relations + link ไป fgi-database
+- **ข้อมูล:** 2 array `PHASES` + `JOBS` (11 job — ใช้เฉพาะ field `flow` / `tables` / `rels` / meta หัวเรื่อง; field `params`/`run`/`hist` ไม่ถูกใช้แล้ว)
+- **TODO:** `<BatchFlowPage>`, `<PhaseStrip>`/`<JobChip>`, `<JobTable>`, `<JobDetailPanel>`, `<Tabs>`, `<FlowchartSvg>`(port renderFlow), `<JobDbDiagramSvg>`(port renderDb)
+
 ## plan-flow.html — Flow FGI/FCS + K2 (ระบบใหม่, คู่ของ workflow.md)
 - **Route:** `/plan/flow` · **crumb:** `Flow FGI/FCS + K2`
 - **S1 head** (pill `Target Architecture`) · **S2 RefLegendCard** (chip fgi/k2/new/mix + cross-links)
-- **S3 Stat cards (4):** 11 / 7 / 34 tables / 62 endpoints
+- **S3 Stat cards (4):** 11 Batch Entry Points / 5 Approval Sections / 21 tables / 30 endpoints (6 กลุ่ม)
 - **S4 JourneyStrip (5 ขั้น):** รับข้อมูล → วิเคราะห์ → สร้างเอกสาร → อนุมัติ 5 ขั้น → ส่งผล+ติดตาม + rule grid
 - **S5 ArchitectureDiagram** hand-SVG (FE SPA → REST → 6 Backend services → DB รวม → External 5 ระบบ)
 - **S6 Timeline 12 ขั้น** (Stage A–D) พร้อม ref chips
@@ -214,7 +197,7 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **Route:** `/database/fgi` · **crumb:** `DB FGI/FCS`
 - **S2 DbSwitcherNav** (FGI/FCS·K2·FGI/FCS+K2) · **S3 Stat (4):** 7/11/4/3 · **S4 ScopeCard**
 - **S5 ER Diagram** hand-SVG hub-and-spoke รอบ `fgi_impact_processes`
-- **S6 SchemaTableCards** (7: fgi_impact_processes/stores/sales_summaries, sales_transactions, competitors, fcs_qssi_scores, interface_transactions) — spec `Column | Type | Key/Rule` + tag
+- **S6 SchemaTableCards** (7: fgi_impact_processes/stores/sales_summaries, sales_transactions, competitors, **fcs_qssi_score** (เอกพจน์ — **ตารางนี้มีอยู่จริงแล้วใน `sps_store` 23,958,780 แถว ห้ามสร้างใหม่ ให้ reuse**), interface_transactions) — spec `Column | Type | Key/Rule` + tag
 - **S7 StatusDomainGrid** (verify_status/workflow_generation_status/action_status) · **S8 ตาราง SourceSystem:** `ระบบ | Interface | Landing/Domain Table | กติกาสำคัญ` (4)
 - **TODO:** `<DbSwitcherNav>`, `<DbStatGrid>`, `<ERDiagram>`(hub variant), `<SchemaTableCard>`, `<DbTag>`, `<StatusDomainGrid>`, `<SourceSystemTable>`
 
@@ -225,12 +208,12 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 - **S6–S9 SchemaTableCards** จัดกลุ่ม Master(6) / Transaction(9) / Workflow ภายใน(3) / Config(2) — spec `Column | Type | Key` + source chip (SRS/ออกแบบ/ระบบใหม่)
 - **TODO:** `<DbSwitcherNav>`, `<DbStatGrid>`, `<ERDiagram>`(K2 variant), `<SchemaTableCard>`(Key รองรับ PK/FK/enum), `<SourceTag>`, `<SchemaSection>`
 
-## plan-database.html — ฐานข้อมูลรวม 34 ตาราง (Zone A/B/C, คู่ของ database.md)
+## plan-database.html — ฐานข้อมูลรวม 21 ตาราง (Zone A/B/C, คู่ของ database.md)
 - **Route:** `/database/plan` · **crumb:** `DB FGI/FCS + K2`
-- **S2 DbSwitcherNav** · **S3 SourceLegendCard** · **S4 Stat (4):** 34/3/1/4
-- **S5 DataSpine** (5 node: impact_process_id → doc_no → instance_id → task_id → employee_id/role_code) + 3 zone summary cards
+- **S2 DbSwitcherNav** · **S3 SourceLegendCard** · **S4 Stat (4):** 21 ตารางใน Target Schema / 3 Data Zones / 10 ตารางที่ใช้ของระบบ SBP เดิม / 4 Core IDs
+- **S5 DataSpine** (5 node: impact_process_id → doc_no → transaction_id → approver_id → employee_id — สอง node กลางอยู่ที่ `sps_store.workflow_transaction`/`workflow_approver` ของ engine กลาง) + 3 zone summary cards
 - **S6 ZoneMapDiagram** hand-SVG A/B/C (กล่องตาราง, ตารางใหม่=เขียวประ, ลูกศร A→B)
-- **S7 GroupedSchemaTable (34 แถว):** `ตาราง | โซน | ที่มา | PK | FK / ความสัมพันธ์หลัก | บทบาท` — group header สี Zone A(7)/B(9)/C(15)
+- **S7 GroupedSchemaTable (21 แถว):** `ตาราง | โซน | ที่มา | PK | FK / ความสัมพันธ์หลัก | บทบาท` — group header สี Zone A/B/C (จำนวนต่อโซนยึดตาม `database.md` ฉบับปัจจุบัน)
 - **S8 CrossKeyList** (8 bullet) · **S9 ImprovementList** (8, pill P0×3 · P1×4)
 - **TODO:** `<DbSwitcherNav>`, `<DataSpine>`, `<ZoneSummaryCards>`, `<ZoneMapDiagram>`, `<GroupedSchemaTable>`(group-header rows), `<RefChip>`, `<CrossKeyList>`, `<ImprovementList>`
 - ⚠️ ถ้าแก้ schema ต้อง sync `database.md` + `plan-database.html` คู่กัน (living docs)
@@ -239,12 +222,12 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 
 # กลุ่ม: Plan
 
-## plan-api.html — API Specification (62 เส้น 10 กลุ่ม, คู่ของ api.md)
+## plan-api.html — API Specification (30 เส้น 6 กลุ่ม, คู่ของ api.md)
 - **Route:** `/plan-api` · **crumb:** `API`
-- **S1 head:** ปุ่ม `Export OpenAPI`(toast) · **S2 Stat (4):** 62/10/JWT/JSON
+- **S1 head:** ปุ่ม `Export OpenAPI`(toast) · **S2 Stat (4):** 30/6/JWT/JSON
 - **S3 ConventionsCard** (base `/api/v1`, JWT, pagination, error shape, ISO-8601) · **S5 RecommendationsCard**
-- **S4 ApiCatalog:** 10 กลุ่ม (Auth 4 / เอกสาร 9 / Lookup 4 / *[ผิดปกติ 2 comment]* / Master 20 / Config 5 / Email 5 / รายงาน 2 / Batch 6 / Workflow 3 / Interface 4), ตารางต่อกลุ่ม `Method | Path | ทำอะไร | ที่มา` — คลิกแถว→modal
-- **EndpointDetailModal:** chips (ที่มา/สิทธิ์/กลุ่ม) → Flow (นอกแท็บ) → **Tabs:** `1 Request/Response` (2 คอลัมน์ + Error list) · `2 Database + SQL` (ตาราง R/W + `<pre>` SQL จาก `SQL_BY_PATH`) · `3 Flowchart` (เฉพาะ 4 เส้น: actions/instances/documents/jobs run — `renderFlow` SVG)
+- **S4 ApiCatalog:** **6 กลุ่ม / 30 เส้น** (Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 — กลุ่ม Auth/ผิดปกติ/Config/Email/Batch ถูกตัดออกหมดแล้ว), ตารางต่อกลุ่ม `Method | Path | ทำอะไร | ที่มา` — คลิกแถว→modal
+- **EndpointDetailModal:** chips (ที่มา/สิทธิ์/กลุ่ม) → Flow (นอกแท็บ) → **Tabs:** `1 Request/Response` (2 คอลัมน์ + Error list) · `2 Database + SQL` (ตาราง R/W + `<pre>` SQL จาก `SQL_BY_PATH`) · `3 Flowchart` (เฉพาะเส้นซับซ้อน: actions/instances/documents — `renderFlow` SVG · spec ของ jobs run ยังอยู่แต่ไม่ถูกใช้)
 - **TODO:** `<PlanApiPage>`, `<ApiCatalog>`/`<ApiGroup>`/`<EndpointTable>`, `<MethodChip>`/`<SourceRefChip>`, `<EndpointDetailModal>`(Tabs+Flow), `<CodeBlock>`, `<DbTable>`, `<FlowchartSVG>`(port renderFlow); พอร์ต `GROUPS`/`SQL_BY_PATH`/`FLOWCHART_BY_PATH` (อุดมคติ = generate จาก OpenAPI)
 - ⚠️ ถ้าแก้ API ต้อง sync `api.md` + `plan-api.html` (+ database/workflow ถ้ากระทบ)
 
@@ -253,6 +236,6 @@ Header + sidebar **ไม่อยู่ใน HTML** — `sbp.js` inject ตอ
 ## หมายเหตุ implement รวม
 - **Charts:** prototype ใช้ทั้ง engine `data-chart` (bar/donut/spark) และ hand-SVG (index cols, ทุก diagram/flowchart/ER/map) — React แนะนำ data-drive component; diagram ใหญ่ (BPMN, architecture, ER, zone map) อาจเก็บเป็น SVG asset ก่อนแล้วค่อย data-drive
 - **หน้า static (ไม่มี state):** flow-fgi, k2-flow, plan-flow, fgi-database, k2-database, plan-database → layout + data เท่านั้น
-- **หน้ามี state จริง:** k2-document (workflow role), k2-permissions (matrix dirty), email-template (editor), job-batch (job select), k2-list-* (filter/sort/page), master pages (CRUD modal)
+- **หน้ามี state จริง:** k2-document (workflow role), k2-permissions (matrix dirty), k2-list-* (filter/sort/page), master pages (CRUD modal)
 - **Mock data → API:** k2-list-* และ master pages ใช้ mock deterministic — เปลี่ยนเป็น REST ตาม plan-api.html
 - **Living docs:** แก้เรื่อง database/flow/API ต้องอัปเดต `.md` + HTML คู่ของมันพร้อมกันเสมอ

@@ -4,9 +4,10 @@
 
 - Main index: [PDF](../pdf/LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management.pdf)
 - Documents: 40
-- Total estimate: 759 hours
-- Batch Monitor scope: `LLDD-FE-Batch-Monitor` ทำจริงเฉพาะ 2 tab คือ `แบบฟอร์มพารามิเตอร์` และ `ประวัติการรัน`; flowchart/database เป็น reference สำหรับ dev เท่านั้น
-- Reschedule window: 29/07/2026 - 27/08/2026 with 6-person team `Kittisak <New> Kaeowika`, `Peerakorn <Pete> Sakunkaewphithak`, `Chidchanok <lin> Saengamnat` (FE) and `Butsaba <But> Podamrong`, `Tunyatorn <Vava> Kiatkongphongsa`, `Aphiwit <Bank> Khammoon` (BE only)
+- Total estimate: 682 hours
+- ขอบเขต 2026-08-07: ตัด `LLDD-FE-Overview` และ `LLDD-BE-API-Dashboard-Summary` · เพิ่ม `LLDD-BE-Database-Structure`, `LLDD-BE-Data-Migration-Cutover`, `LLDD-BE-Integration-SBP-Platform`, `LLDD-BE-Workflow-Engine-Definition` · เปลี่ยนชื่อ `FE-Master-Config` -> `FE-Master-Data`, `BE-API-Lookup-RBAC-Email` -> `BE-API-Lookup`, `BE-API-Report-Master-Config` -> `BE-API-Report-and-Master-Data`
+- ขอบเขต 2026-08-06: ตัด `LLDD-FE-Batch-Monitor` และ `LLDD-FE-Email-Template` ออกจากชุดส่งมอบ — หน้า Global Config/Email Template ลบทั้งฟีเจอร์ (ใช้ `mas_param`/`email_template` ของระบบ SBP เดิม) และหน้า Batch Job ย้ายไปกลุ่มเมนู Flow เหลือเฉพาะ Flowchart + Database ที่ใช้ (พารามิเตอร์อยู่ใน backend config)
+- Reschedule window: 10/08/2026 - 08/09/2026 with 6-person team `Kittisak <New> Kaeowika`, `Chidchanok <lin> Saengamnat` (FE) and `Butsaba <But> Podamrong`, `Tunyatorn <Vava> Kiatkongphongsa`, `Peerakorn <Pete> Sakunkaewphithak`, `Aphiwit <Bank> Khammoon` (BE) — Peerakorn moved FE -> BE on 2026-08-07
 - Working-time rule: 1 week = 5 days, 1 day = 6 hours (30 hours/week); every developer is allocated more than 3 and no more than 4.5 work weeks
 
 ## Reference Design Documents
@@ -20,17 +21,14 @@
 
 | Document | Owner | Estimate | PDF | DOCX |
 | --- | --- | --- | --- | --- |
-| FE-Integration-Contracts | Chidchanok <lin> Saengamnat | 18h | [PDF](../pdf/FE/LLDD-FE-Integration-Contracts.pdf) | [DOCX](../word/FE/LLDD-FE-Integration-Contracts.docx) |
-| FE-Foundation | Chidchanok <lin> Saengamnat | 42h | [PDF](../pdf/FE/LLDD-FE-Foundation.pdf) | [DOCX](../word/FE/LLDD-FE-Foundation.docx) |
-| FE-Overview | Chidchanok <lin> Saengamnat | 39h | [PDF](../pdf/FE/LLDD-FE-Overview.pdf) | [DOCX](../word/FE/LLDD-FE-Overview.docx) |
-| FE-Document-Lists | Peerakorn <Pete> Sakunkaewphithak | 42h | [PDF](../pdf/FE/LLDD-FE-Document-Lists.pdf) | [DOCX](../word/FE/LLDD-FE-Document-Lists.docx) |
-| FE-Create-Document | Kittisak <New> Kaeowika | 30h | [PDF](../pdf/FE/LLDD-FE-Create-Document.pdf) | [DOCX](../word/FE/LLDD-FE-Create-Document.docx) |
-| FE-Document-Detail | Kittisak <New> Kaeowika | 72h | [PDF](../pdf/FE/LLDD-FE-Document-Detail.pdf) | [DOCX](../word/FE/LLDD-FE-Document-Detail.docx) |
-| FE-Testing-Delivery | Peerakorn <Pete> Sakunkaewphithak | 24h | [PDF](../pdf/FE/LLDD-FE-Testing-Delivery.pdf) | [DOCX](../word/FE/LLDD-FE-Testing-Delivery.docx) |
-| FE-Report | Peerakorn <Pete> Sakunkaewphithak | 30h | [PDF](../pdf/FE/LLDD-FE-Report.pdf) | [DOCX](../word/FE/LLDD-FE-Report.docx) |
-| FE-Master-Config | Peerakorn <Pete> Sakunkaewphithak | 30h | [PDF](../pdf/FE/LLDD-FE-Master-Config.pdf) | [DOCX](../word/FE/LLDD-FE-Master-Config.docx) |
-| FE-Batch-Monitor | Kittisak <New> Kaeowika | 24h | [PDF](../pdf/FE/LLDD-FE-Batch-Monitor.pdf) | [DOCX](../word/FE/LLDD-FE-Batch-Monitor.docx) |
-| FE-Email-Template | Chidchanok <lin> Saengamnat | 21h | [PDF](../pdf/FE/LLDD-FE-Email-Template.pdf) | [DOCX](../word/FE/LLDD-FE-Email-Template.docx) |
+| FE-Integration-Contracts | Chidchanok <lin> Saengamnat | 16h | [PDF](../pdf/FE/LLDD-FE-Integration-Contracts.pdf) | [DOCX](../word/FE/LLDD-FE-Integration-Contracts.docx) |
+| FE-Foundation | Kittisak <New> Kaeowika | 40h | [PDF](../pdf/FE/LLDD-FE-Foundation.pdf) | [DOCX](../word/FE/LLDD-FE-Foundation.docx) |
+| FE-Document-Lists | Chidchanok <lin> Saengamnat | 44h | [PDF](../pdf/FE/LLDD-FE-Document-Lists.pdf) | [DOCX](../word/FE/LLDD-FE-Document-Lists.docx) |
+| FE-Create-Document | Kittisak <New> Kaeowika | 10h | [PDF](../pdf/FE/LLDD-FE-Create-Document.pdf) | [DOCX](../word/FE/LLDD-FE-Create-Document.docx) |
+| FE-Document-Detail | Kittisak <New> Kaeowika | 75h | [PDF](../pdf/FE/LLDD-FE-Document-Detail.pdf) | [DOCX](../word/FE/LLDD-FE-Document-Detail.docx) |
+| FE-Testing-Delivery | Chidchanok <lin> Saengamnat | 20h | [PDF](../pdf/FE/LLDD-FE-Testing-Delivery.pdf) | [DOCX](../word/FE/LLDD-FE-Testing-Delivery.docx) |
+| FE-Report | Chidchanok <lin> Saengamnat | 24h | [PDF](../pdf/FE/LLDD-FE-Report.pdf) | [DOCX](../word/FE/LLDD-FE-Report.docx) |
+| FE-Master-Data | Chidchanok <lin> Saengamnat | 18h | [PDF](../pdf/FE/LLDD-FE-Master-Data.pdf) | [DOCX](../word/FE/LLDD-FE-Master-Data.docx) |
 
 ## Document Detail Role Pack
 
@@ -46,30 +44,33 @@
 
 | Document | Owner | Estimate | PDF | DOCX |
 | --- | --- | --- | --- | --- |
-| BE-API-Common-Contracts | Butsaba <But> Podamrong | 15h | [PDF](../pdf/BE/LLDD-BE-API-Common-Contracts.pdf) | [DOCX](../word/BE/LLDD-BE-API-Common-Contracts.docx) |
-| BE-API-Dashboard-Summary | Butsaba <But> Podamrong | 18h | [PDF](../pdf/BE/LLDD-BE-API-Dashboard-Summary.pdf) | [DOCX](../word/BE/LLDD-BE-API-Dashboard-Summary.docx) |
-| BE-API-Document-List-Search | Butsaba <But> Podamrong | 21h | [PDF](../pdf/BE/LLDD-BE-API-Document-List-Search.pdf) | [DOCX](../word/BE/LLDD-BE-API-Document-List-Search.docx) |
+| BE-API-Common-Contracts | Butsaba <But> Podamrong | 18h | [PDF](../pdf/BE/LLDD-BE-API-Common-Contracts.pdf) | [DOCX](../word/BE/LLDD-BE-API-Common-Contracts.docx) |
+| BE-API-Document-List-Search | Butsaba <But> Podamrong | 24h | [PDF](../pdf/BE/LLDD-BE-API-Document-List-Search.pdf) | [DOCX](../word/BE/LLDD-BE-API-Document-List-Search.docx) |
 | BE-API-Document-Create-Update | Tunyatorn <Vava> Kiatkongphongsa | 27h | [PDF](../pdf/BE/LLDD-BE-API-Document-Create-Update.pdf) | [DOCX](../word/BE/LLDD-BE-API-Document-Create-Update.docx) |
-| BE-API-Document-Detail-Aggregate | Butsaba <But> Podamrong | 27h | [PDF](../pdf/BE/LLDD-BE-API-Document-Detail-Aggregate.pdf) | [DOCX](../word/BE/LLDD-BE-API-Document-Detail-Aggregate.docx) |
-| BE-API-Document-Workflow-Actions | Butsaba <But> Podamrong | 24h | [PDF](../pdf/BE/LLDD-BE-API-Document-Workflow-Actions.pdf) | [DOCX](../word/BE/LLDD-BE-API-Document-Workflow-Actions.docx) |
-| BE-API-Workflow-Instances | Tunyatorn <Vava> Kiatkongphongsa | 21h | [PDF](../pdf/BE/LLDD-BE-API-Workflow-Instances.pdf) | [DOCX](../word/BE/LLDD-BE-API-Workflow-Instances.docx) |
-| BE-API-Attachment-Sales-Timeline | Tunyatorn <Vava> Kiatkongphongsa | 21h | [PDF](../pdf/BE/LLDD-BE-API-Attachment-Sales-Timeline.pdf) | [DOCX](../word/BE/LLDD-BE-API-Attachment-Sales-Timeline.docx) |
-| BE-API-Lookup-RBAC-Email | Tunyatorn <Vava> Kiatkongphongsa | 30h | [PDF](../pdf/BE/LLDD-BE-API-Lookup-RBAC-Email.pdf) | [DOCX](../word/BE/LLDD-BE-API-Lookup-RBAC-Email.docx) |
-| BE-API-Report-Master-Config | Tunyatorn <Vava> Kiatkongphongsa | 30h | [PDF](../pdf/BE/LLDD-BE-API-Report-Master-Config.pdf) | [DOCX](../word/BE/LLDD-BE-API-Report-Master-Config.docx) |
-| BE-Job-Batch-Email-SRM | Butsaba <But> Podamrong | 24h | [PDF](../pdf/BE/LLDD-BE-Job-Batch-Email-SRM.pdf) | [DOCX](../word/BE/LLDD-BE-Job-Batch-Email-SRM.docx) |
+| BE-API-Document-Detail-Aggregate | Tunyatorn <Vava> Kiatkongphongsa | 27h | [PDF](../pdf/BE/LLDD-BE-API-Document-Detail-Aggregate.pdf) | [DOCX](../word/BE/LLDD-BE-API-Document-Detail-Aggregate.docx) |
+| BE-API-Document-Workflow-Actions | Tunyatorn <Vava> Kiatkongphongsa | 27h | [PDF](../pdf/BE/LLDD-BE-API-Document-Workflow-Actions.pdf) | [DOCX](../word/BE/LLDD-BE-API-Document-Workflow-Actions.docx) |
+| BE-API-Workflow-Instances | Butsaba <But> Podamrong | 21h | [PDF](../pdf/BE/LLDD-BE-API-Workflow-Instances.pdf) | [DOCX](../word/BE/LLDD-BE-API-Workflow-Instances.docx) |
+| BE-API-Attachment-Sales-Timeline | Peerakorn <Pete> Sakunkaewphithak | 24h | [PDF](../pdf/BE/LLDD-BE-API-Attachment-Sales-Timeline.pdf) | [DOCX](../word/BE/LLDD-BE-API-Attachment-Sales-Timeline.docx) |
+| BE-API-Lookup | Butsaba <But> Podamrong | 15h | [PDF](../pdf/BE/LLDD-BE-API-Lookup.pdf) | [DOCX](../word/BE/LLDD-BE-API-Lookup.docx) |
+| BE-API-Report-and-Master-Data | Peerakorn <Pete> Sakunkaewphithak | 24h | [PDF](../pdf/BE/LLDD-BE-API-Report-and-Master-Data.pdf) | [DOCX](../word/BE/LLDD-BE-API-Report-and-Master-Data.docx) |
+| BE-Job-Batch-Email-SRM | Peerakorn <Pete> Sakunkaewphithak | 15h | [PDF](../pdf/BE/LLDD-BE-Job-Batch-Email-SRM.pdf) | [DOCX](../word/BE/LLDD-BE-Job-Batch-Email-SRM.docx) |
+| BE-Database-Structure | Aphiwit <Bank> Khammoon | 24h | [PDF](../pdf/BE/LLDD-BE-Database-Structure.pdf) | [DOCX](../word/BE/LLDD-BE-Database-Structure.docx) |
+| BE-Data-Migration-Cutover | Aphiwit <Bank> Khammoon | 30h | [PDF](../pdf/BE/LLDD-BE-Data-Migration-Cutover.pdf) | [DOCX](../word/BE/LLDD-BE-Data-Migration-Cutover.docx) |
+| BE-Integration-SBP-Platform | Butsaba <But> Podamrong | 18h | [PDF](../pdf/BE/LLDD-BE-Integration-SBP-Platform.pdf) | [DOCX](../word/BE/LLDD-BE-Integration-SBP-Platform.docx) |
+| BE-Workflow-Engine-Definition | Tunyatorn <Vava> Kiatkongphongsa | 12h | [PDF](../pdf/BE/LLDD-BE-Workflow-Engine-Definition.pdf) | [DOCX](../word/BE/LLDD-BE-Workflow-Engine-Definition.docx) |
 
 ## BE Batch Job Documents
 
 | Document | Owner | Estimate | PDF | DOCX |
 | --- | --- | --- | --- | --- |
-| BE-Job-1-ImportQSSI | Aphiwit <Bank> Khammoon | 13h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.docx) |
+| BE-Job-1-ImportQSSI | Aphiwit <Bank> Khammoon | 12h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.docx) |
 | BE-Job-2-ImportImpactStore | Aphiwit <Bank> Khammoon | 13h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.docx) |
-| BE-Job-3-ImportImpactCompetitor | Aphiwit <Bank> Khammoon | 10h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.docx) |
-| BE-Job-4-PrepareImpactStoreToIAS | Aphiwit <Bank> Khammoon | 13h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS.docx) |
-| BE-Job-5-ImportImpactSaleFromIAS | Aphiwit <Bank> Khammoon | 13h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.docx) |
+| BE-Job-3-ImportImpactCompetitor | Aphiwit <Bank> Khammoon | 9h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.docx) |
+| BE-Job-4-PrepareImpactStoreToIAS | Aphiwit <Bank> Khammoon | 12h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS.docx) |
+| BE-Job-5-ImportImpactSaleFromIAS | Peerakorn <Pete> Sakunkaewphithak | 13h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.docx) |
 | BE-Job-6-ExportImpactStoreToFS | Aphiwit <Bank> Khammoon | 15h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.docx) |
-| BE-Job-7-SyncCompetitorToDocument | Aphiwit <Bank> Khammoon | 10h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument.docx) |
-| BE-Job-8-CreateCompensationDocument | Aphiwit <Bank> Khammoon | 13h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-8-CreateCompensationDocument.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-8-CreateCompensationDocument.docx) |
-| BE-Job-8b-StartInternalWorkflow | Aphiwit <Bank> Khammoon | 10h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.docx) |
-| BE-Job-9-SyncNewStoreToDocument | Aphiwit <Bank> Khammoon | 10h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument.docx) |
-| BE-Job-10-NotifyNoReceiveData | Aphiwit <Bank> Khammoon | 9h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.docx) |
+| BE-Job-7-SyncCompetitorToDocument | Peerakorn <Pete> Sakunkaewphithak | 10h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument.docx) |
+| BE-Job-8-CreateCompensationDocument | Aphiwit <Bank> Khammoon | 15h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-8-CreateCompensationDocument.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-8-CreateCompensationDocument.docx) |
+| BE-Job-8b-StartInternalWorkflow | Tunyatorn <Vava> Kiatkongphongsa | 12h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.docx) |
+| BE-Job-9-SyncNewStoreToDocument | Peerakorn <Pete> Sakunkaewphithak | 11h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument.docx) |
+| BE-Job-10-NotifyNoReceiveData | Peerakorn <Pete> Sakunkaewphithak | 7h | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.docx) |

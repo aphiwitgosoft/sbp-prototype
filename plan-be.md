@@ -2,8 +2,8 @@
 
 > ## ⚠️ ตัดสินใจ 2026-08-06 — ยึดตาราง/บริการของระบบ SBP เดิม
 >
-> spec นี้เขียนไว้ตอนโครงยังเป็น 34 ตาราง **ตอนนี้เหลือ 24 ตาราง** · ส่วนที่บอกให้สร้างของด้านล่างนี้ **ให้ใช้ของระบบ SBP ปัจจุบันแทน**:
-> `workflow_instances`/`workflow_tasks`/`workflow_sections`/`document_statuses` → **`@srm/glb-workflow`** (`initializeWorkflow` → `addPreparedApprover` → `triggerEvent` · `referenceId = doc_no` · inbox = `getPendingFlow()`) ·
+> spec นี้เขียนไว้ตอนโครงยังเป็น 34 ตาราง **ตอนนี้เหลือ 21 ตาราง / 30 endpoint 6 กลุ่ม** (Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 — ลบกลุ่ม System Config + Email Template 10 เส้น พร้อมหน้าจอ และกลุ่ม Batch Job Admin 6 เส้น + ตาราง `job_configs`/`job_run_histories` เมื่อตัด 2 tab ควบคุมของหน้า Batch Job · 2026-08-06 · แล้วตัด `audit_logs` + `GET /audit-logs` 2026-08-07) · ส่วนที่บอกให้สร้างของด้านล่างนี้ **ให้ใช้ของระบบ SBP ปัจจุบันแทน**:
+> `workflow_instances`/`workflow_tasks`/`workflow_sections`/`document_statuses` → **`@srm/glb-workflow`** (**13 ตาราง · schema `sps_store`** · ชื่อ function `initializeWorkflow`/`addPreparedApprover`/`triggerEvent`/`getPendingFlow` **ยังไม่ยืนยัน — เอกสาร 3 ชุดขัดกัน** ดู §Alignment · `referenceId = doc_no` **ยังไม่ตัดสิน** DP-1) ·
 > `stores`→`store`/`mas_store` · `zones`→`mas_zone` · `branch_types`→`common_code` · `employees`→`business_user` ·
 > `email_templates`→`email_template` + `@gosoft-sbp/email-lib` · `system_configs`→`mas_param` ·
 > วงเงินอนุมัติ → `common_code` (`SBPGI_APPROVE_LIMIT` · **GM 50,000 / AVP 300,000** ตาม SDD GI)
@@ -11,7 +11,7 @@
 > · รายละเอียด: `database.md` §ตารางที่ตัดออกรอบ 2 · `api.md` §เส้นที่เปลี่ยนไปใช้ของระบบ SBP เดิม
 
 
-> **spec สำหรับ AI/นักพัฒนา สร้าง Backend จริงโดยไม่ต้องถามเพิ่ม** อ่านคู่กับ: `checklist-be.md` (ลำดับงาน + เกณฑ์ตรวจรับต่อ Phase) · `api.md` + `plan-api.html` (สัญญา API **47 เส้น 9 กลุ่ม** — **สัญญาผูกมัด** รวม SQL ตัวอย่างต่อเส้นใน `SQL_BY_PATH`) · `database.md` (schema **34 ตาราง**) · `workflow.md` (flow 12 ขั้น + ตาราง transition) · **SDD GI 24/02/2026** (`SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md` — วงเงิน GM/AVP ใหม่ · เปิดเรื่องซ้ำ · งานค้าง) · เอกสารวิเคราะห์ระบบเดิม `SBP/srm-sps-spsap-store-backend.md` + `SBP/srm-sps-spsap-sbp-bff.md` · `plan-fe.md`
+> **spec สำหรับ AI/นักพัฒนา สร้าง Backend จริงโดยไม่ต้องถามเพิ่ม** อ่านคู่กับ: `checklist-be.md` (ลำดับงาน + เกณฑ์ตรวจรับต่อ Phase) · `api.md` + `plan-api.html` (สัญญา API **30 เส้น 6 กลุ่ม** — **สัญญาผูกมัด** รวม SQL ตัวอย่างต่อเส้นใน `SQL_BY_PATH`) · `database.md` (schema **21 ตาราง**) · `workflow.md` (flow 12 ขั้น + ตาราง transition) · **SDD GI 24/02/2026** (`SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md` — วงเงิน GM/AVP ใหม่ · เปิดเรื่องซ้ำ · งานค้าง) · เอกสารวิเคราะห์ระบบเดิม `SBP/srm-sps-spsap-store-backend.md` + `SBP/srm-sps-spsap-sbp-bff.md` · `plan-fe.md`
 >
 > หลักการใหญ่: **รวม EAI + K2 เข้า SBPGI** — Document Service เขียน DB ตรง + Workflow Engine ภายใน (ไม่มีไฟล์ `BPM06001O_/2O_/3O_` และไม่มี K2 REST StartInstance) · interface ภายนอก (QSSI/ALLMAP/IAS/STA/SMTP) คงกลไกไฟล์/SFTP เดิม
 >
@@ -34,7 +34,11 @@
 SBPGI ไม่ใช่ระบบโดดเดี่ยว — จะเสียบเข้าสถาปัตยกรรม SBP ปัจจุบัน (FE → BFF → backend ต่อโดเมน) สรุปข้อเท็จจริงของระบบเดิมที่ spec นี้ต้อง align ด้วย:
 
 - **Stack backend เดิม**: **NestJS 11 + TypeORM 0.3 + PostgreSQL** (AWS RDS · 1 database แบ่ง **schema ต่อโดเมน** เช่น `sps_store`) + **read-replica routing** เขียนเอง (SELECT/WITH สุ่มไป slave pool, write ไป master, fallback master เมื่อ slave fail) · Node 20 alpine · deploy ECS ผ่าน Bitbucket pipeline template กลาง + Dynatrace
-- **Workflow engine ภายในมีอยู่แล้ว**: **`@srm/glb-workflow`** (private CodeArtifact · state machine) — use cases `InitializeWorkflow` / `TriggerEvent` / `AddPreparedApprover` / `GetPendingFlow` / `GetPermission` · **definition ของ flow (states/routes/events) เก็บใน DB 10 ตาราง** (workflow/version/state/status/route/group/group_map + transaction/history/approver) · ใช้งานจริงเต็มรูปแบบกับหนังสือขอความร่วมมือ (versionId 6) · inbox รวมที่ `/api/workflow/pending`
+- **Workflow engine ภายในมีอยู่แล้ว**: **`@srm/glb-workflow`** (private CodeArtifact · state machine) — **definition ของ flow (states/routes/events) เก็บใน DB 13 ตาราง บน schema `sps_store`** (ยืนยันจาก `SBP/db-schema-sps_store.md` 2026-08-10): `workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_transaction` · `workflow_history` · `workflow_approver` · `workflow_part` · `workflow_part_display` · ใช้งานจริงเต็มรูปแบบกับหนังสือขอความร่วมมือ (versionId 6) · inbox รวมที่ `/api/workflow/pending`
+  - **schema ต้องระบุให้ชัดเสมอว่า `sps_store`** — `sps_auth` มีตารางชื่อเดียวกันครบ 13 ตัวแต่เป็นชุดของ auth-backend คนละชุดและคนละเวอร์ชัน (`workflow_state` 3 คอลัมน์ vs 4 คอลัมน์) · ปริมาณจริงฝั่ง `sps_store`: `workflow_transaction` 19,283 · `workflow_history` 38,010 · `workflow_approver` 96,542 · ฝั่ง `sps_auth`: transaction 55 · route 41 · state 10
+  - ⚠️ **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:** `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index ใด ๆ** ทั้งที่มี 19,283 แถว (ตัวเดียวกันใน `sps_auth` มี PK) → seq-scan ทุก action และไม่มีอะไรกัน initialize ซ้ำระดับ DB · **ยังไม่ตัดสิน** ว่าจะขอ sign-off เพิ่ม index หรือกันซ้ำฝั่ง SBPGI — ดู **DP-2** ใน `SBP/SBPGI-vs-existing-system.md`
+  - ⚠️ **ชื่อ use case / function ยังไม่ยืนยัน — เอกสาร 3 ชุดขัดกัน ห้ามเลือกเอง:** ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` (ชีต Detail) = `eventWorkflow` / `addPreApprover` / `getPendingFlowByUser` · ชุด B ชีต Mermaid seq ของไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` / `AddPreparedApproverUseCase` / `GetPendingFlowUseCase` (+ `GetPermissionUseCase`) — ชื่อทุกจุดในไฟล์นี้เป็น **placeholder** ต้อง confirm กับทีมเจ้าของ `@srm/glb-workflow` ก่อน implement
+  - **`workflow_part` / `workflow_part_display`** คุม READ/WRITE รายส่วนของหน้าจอต่อ state — ทับซ้อนกับกลไก `data-editrole`/`.edit-only` ที่ prototype ทำเอง · **เป็นข้อค้างตัดสินใจ ยังไม่เปลี่ยนดีไซน์** (ดู `SBP/SBPGI-vs-existing-system.md`)
 - **BFF (NestJS)**: ผู้ใช้ login ผ่าน **AWS Cognito** (OIDC · token เก็บใน httpOnly cookie ฝั่ง BFF) · BFF proxy ไป backend ภายในด้วย **`x-api-key`** ต่อ backend + **user-context headers** (`x-user-id` / `x-user-group-id` / `x-user-full-name` / `x-user-permissions`) — backend เดิม**ไม่ทำ authentication เอง**
 - **Infra ที่ backend เดิมใช้**: **RabbitMQ** (publish event topic exchange) + **S3** (เก็บไฟล์) + **SMTP** (nodemailer/email-lib · template ในตาราง `email_template` + log `email_sent`)
 
@@ -46,8 +50,8 @@ SBPGI ไม่ใช่ระบบโดดเดี่ยว — จะเส
 - ชื่อ service เสนอ (ไม่ผูกมัด): **`srm-sps-spsap-sbpgi-backend`**
 
 > ✅ **ประเด็นตัดสินใจข้อ (ข) — Workflow Engine: เคาะแล้ว 2026-08-06 → ใช้ `@srm/glb-workflow` ของระบบเดิม (ทางเลือก 2)**
-> เพิ่ม **workflow version ใหม่ 1 ตัว** ของประกันรายได้ (state = 5 ขั้น 06/08/01/02/03 · route = การส่งต่อ/ตีกลับ · status = 6 ค่า) แล้วเรียก `initializeWorkflow({versionId, referenceId: docNo, userId})` → `addPreparedApprover()` → `triggerEvent()` · inbox ใช้ `getPendingFlow()` (มี endpoint รวมทุกระบบอยู่แล้วที่ `GET /api/workflow/pending`)
-> **ผลที่ตามมา (แก้ในเอกสารแล้ว):** ตาราง `workflow_instances`/`workflow_tasks`/`workflow_sections`/`document_statuses` **ถูกตัดออกจาก schema** (34 → 24 ตาราง) · `database.md`/`plan-database.html` และ `api.md`/`plan-api.html` อัปเดตตรงกันแล้ว
+> เพิ่ม **workflow version ใหม่ 1 ตัว** ของประกันรายได้ (state = 5 ขั้น 06/08/01/02/03 · route = การส่งต่อ/ตีกลับ · status = 6 ค่า) แล้วเรียก `initializeWorkflow({versionId, referenceId, userId})` → `addPreparedApprover()` → `triggerEvent()` · inbox ใช้ `getPendingFlow()` (มี endpoint รวมทุกระบบอยู่แล้วที่ `GET /api/workflow/pending`) — **ชื่อ function ทั้ง 4 ตัวนี้ยังไม่ยืนยัน (เอกสาร 3 ชุดขัดกัน ดู §Alignment) และค่า `referenceId` ยังไม่ตัดสิน (DP-1 — ระบบเดิมส่ง surrogate id จริงทั้ง cooperation-request และ inform-evaluate)**
+> **ผลที่ตามมา (แก้ในเอกสารแล้ว):** ตาราง `workflow_instances`/`workflow_tasks`/`workflow_sections`/`document_statuses` **ถูกตัดออกจาก schema** (34 → 24 → 22 → 21 ตาราง) · `database.md`/`plan-database.html` และ `api.md`/`plan-api.html` อัปเดตตรงกันแล้ว
 > **§6–7 (engine ตัวอย่างที่เขียนเอง) คงไว้เป็น reference design เท่านั้น — ห้าม implement ตามนั้น**
 
 ## 0. สัญญากลาง BE/API Common Contracts
@@ -75,8 +79,8 @@ SBPGI ไม่ใช่ระบบโดดเดี่ยว — จะเส
 |---|---|---|
 | Runtime | **Node.js >= 20** + **TypeScript** (`strict: true`) | ตามโจทย์ |
 | Framework | **NestJS 11** (module-per-domain · controller → service → repository) + `ResponseInterceptor` ห่อ `{success,data}` · `HttpContext` ด้วย AsyncLocalStorage | ตรงกับ `srm-sps-spsap-store-backend` เดิม |
-| DB | **PostgreSQL** (AWS RDS · schema แยกของ SBPGI เช่น `sps_sbpgi` บน database เดียวกับระบบเดิม) รองรับ **read-replica routing** แบบ store-backend | 24 ตาราง ใช้ transaction/constraint หนัก |
-| Query | **TypeORM 0.3** — entity ใน `src/entitys/` (= source of truth ของ 24 ตาราง) · repository provider pattern (`{provide:'X_REPOSITORY', useFactory: ds => ds.getRepository(X), inject:['DATA_SOURCE']}`) · `query()` ดิบเฉพาะรายงาน/dashboard (ตัวอย่างใน `SQL_BY_PATH`) | ตรงกับ convention ระบบเดิม · `synchronize:false` เสมอ |
+| DB | **PostgreSQL** (AWS RDS · schema แยกของ SBPGI เช่น `sps_sbpgi` บน database เดียวกับระบบเดิม) รองรับ **read-replica routing** แบบ store-backend | 21 ตาราง ใช้ transaction/constraint หนัก |
+| Query | **TypeORM 0.3** — entity ใน `src/entitys/` (= source of truth ของ 21 ตาราง) · repository provider pattern (`{provide:'X_REPOSITORY', useFactory: ds => ds.getRepository(X), inject:['DATA_SOURCE']}`) · `query()` ดิบเฉพาะรายงาน/dashboard (ตัวอย่างใน `SQL_BY_PATH`) | ตรงกับ convention ระบบเดิม · `synchronize:false` เสมอ |
 | Validation | **class-validator + class-transformer** ผ่าน `ValidationPipe` (DTO ต่อ endpoint ใน `dto/`) | ตรงกับระบบเดิม · error message ไทยตาม SRS |
 | Auth | **ตัดออก — ใช้ระบบเดิม** (ตัดสินใจ 2026-08-05): ไม่มี jsonwebtoken/bcrypt login ใน SBPGI — ตรวจ `x-api-key` จาก BFF + อ่าน user-context headers เท่านั้น | Cognito + BFF + auth-backend ของ SBP เดิม |
 | Scheduler | **node-cron** (in-process) — cron ต่อ job อ่านจาก `job_configs` | Jobs 1–10 |
@@ -85,7 +89,7 @@ SBPGI ไม่ใช่ระบบโดดเดี่ยว — จะเส
 | Upload | **multer** (memory) → disk `storage/attachments/` + แถว `document_attachments` | ≤ 5MB + ext whitelist |
 | Log | **pino** (JSON) + request id + redact | |
 | Test | **vitest** + **supertest** (+ postgres จริงสำหรับ integration) | coverage `workflow/` ≥ 90% |
-| Doc | `@nestjs/swagger` generate จาก DTO/decorator — ต้องตรงกับ api.md 44 เส้น | |
+| Doc | `@nestjs/swagger` generate จาก DTO/decorator — ต้องตรงกับ api.md **30 เส้น 6 กลุ่ม** | |
 
 เครื่องมือคุณภาพ (Phase 0): **husky + lint-staged + commitlint** (Conventional Commits) · **Bitbucket Pipelines** (import template กลางของกลุ่ม `srm-sps-spsap` — SonarQube/Trivy → deploy ECS): `lint → tsc --noEmit → test → build` (postgres service container) · path alias `@/` = `src/`
 
@@ -100,7 +104,7 @@ SBPGI ไม่ใช่ระบบโดดเดี่ยว — จะเส
 
 ```
 sbpgi-be/
-  src/entitys/                  # 34 ตาราง 3 โซน + enum ทุกตัว — แปลงตรงจาก database.md (§5)
+  src/entitys/                  # 21 ตาราง 3 โซน + enum ทุกตัว — แปลงตรงจาก database.md (§5)
   src/migrations/               # TypeORM migration (ห้ามใช้ synchronize)
   src/database/seed.ts          # §10 — idempotent (upsert)
   storage/                      # attachments/ exports/ (volume แยก — stateless app)
@@ -167,7 +171,9 @@ sbpgi-be/
 
 > ข้อความไทยทุกตัวรวมศูนย์ที่ `lib/messages.ts` (const object) — ห้าม hardcode กระจายตามไฟล์ เพื่อให้เทียบ verbatim กับ SRS ได้จุดเดียว
 
-## 4. ตาราง endpoint ครบ 44 เส้น 9 กลุ่ม (สัญญาผูกมัด — path/method ห้ามเปลี่ยน)
+## 4. ตาราง endpoint (สัญญาผูกมัด — path/method ห้ามเปลี่ยน)
+
+> **ตัวเลขปัจจุบัน: 30 เส้น 6 กลุ่ม** (Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3) — ตารางด้านล่างเป็นรายการรุ่น 44 เส้น 9 กลุ่ม แถวที่ทำเครื่องหมาย "ตัดออก" หรืออยู่ในกลุ่ม Auth/System Config/Email Template/Batch Job Admin/`audit_logs`/`dashboard` **ไม่ต้อง implement** · ยึด `api.md` / `plan-api.html` เป็นสัญญาจริง
 
 สิทธิ์: `ทุก role` = ผ่าน user context จาก BFF (x-api-key + headers) · `admin` = สิทธิ์จัดการจาก `x-user-permissions` (group ผู้ดูแล — role 01 Admin / 03 User Admin ของ SRS map เป็น group ใน auth-backend) · `section` = ผู้เรียกต้องเป็น section ปัจจุบันของเอกสาร · `svc` = SERVICE_TOKEN · `key` = API key ของ STA
 ตาราง R = อ่าน · W = เขียน · SQL แนวทางต่อเส้น = `SQL_BY_PATH['METHOD path']` ใน `plan-api.html`
@@ -262,7 +268,7 @@ sbpgi-be/
 
 ## 5. TypeORM entities — enum ทุกตัว + ตัวอย่าง entity หลัก 6 ตัว
 
-**34 ตาราง**เต็มแปลงจาก `database.md` §Data Dictionary (Zone A 7 · Zone B 11 · Zone C 16 — checklist ต่อตารางใน `checklist-be.md` §0.2–0.4)
+**21 ตาราง** ตาม `database.md` §Data Dictionary ฉบับปัจจุบัน (รายการด้านล่างเขียนไว้ตอน 34 ตาราง — ตารางที่ถูกตัด 13 ตัวห้ามสร้าง entity · checklist ต่อตารางใน `checklist-be.md` §0.2–0.4)
 **ตารางที่ตัดออก (ตัดสินใจ 2026-08-05 — ใช้ระบบ SBP เดิม):** `roles` / `menus` / `menu_permissions` (→ auth-backend groups/menus/permissions ต่อ URL) · `user_accounts` (→ Cognito + auth-backend — SBPGI รับตัวตนจาก header) · `operator_assignments` (→ group+scope ของ auth-backend + prepared approvers ของ workflow engine เดิม) — **ห้ามสร้าง entity เหล่านี้**
 **ตารางที่เพิ่มจากการเทียบ DB เดิมของ K2 (2026-08-06 · `script_TB_DB_CPA_FRN_FGI_20260722.sql`):** `zones` (ZoneProfile) · `branch_types` (BranchTypeProfile — เก็บชื่อฝั่ง FMS/FGI แยกกัน) · `decisions` (DecisionProfile — 3 ชื่อต่อรายการ) · `document_running_numbers` (RunningNumber) · `document_cost_details` (ImpactCostDetail) — พร้อมคอลัมน์เติม `workflow_sections.approve_limit_amount`, `compensation_documents.round_no/loop_no/allmap_url/statement_id/approver_snapshot`
 
@@ -744,7 +750,7 @@ export async function writeAudit(manager: EntityManager, p: {
 
 | Job | ชื่อ/หน้าที่ | Cron เดิม | Input → Output | ตารางที่แตะ | Error handling |
 |---|---|---|---|---|---|
-| 1 | นำเข้าคะแนน QSSI | รายเดือน | SFTP 4 ไฟล์ `mrs*` → upsert คะแนน 6 หมวด (8,9,12,1,10,16) | W: `fcs_qssi_scores` · UK กันซ้ำ | ไฟล์ขาดหมวด → fail ทั้งรอบ + EM-07 · งวด DB = เดือนก่อนหน้า (off-by-one ตั้งใจ) |
+| 1 | นำเข้าคะแนน QSSI | รายเดือน | SFTP 4 ไฟล์ `mrs*` → upsert คะแนน 6 หมวด (8,9,12,1,10,16) | W: **`fcs_qssi_score`** (เอกพจน์ · **มีอยู่จริงแล้วใน `sps_store` 23,958,780 แถว — ห้ามสร้างใหม่ ให้ reuse**) · UK กันซ้ำ **ยังไม่มีในตารางเดิม** | ไฟล์ขาดหมวด → fail ทั้งรอบ + EM-07 · งวด DB = เดือนก่อนหน้า (off-by-one ตั้งใจ) |
 | 2 | นำเข้าร้านกระทบจาก ALLMAP | รายวัน | SELECT จาก SQL Server (read-only) → แถวร้านกระทบ | W: `fgi_impact_stores`, `fgi_impact_processes` | connection fail → retry 3 → EM-07 |
 | 3 | นำเข้าคู่แข่งจาก ALLMAP | รายวัน | SELECT คู่แข่งรัศมี → แถว `data_source='ALM'` งวดล่าสุดต่อร้าน | W: `fgi_impact_competitors` | เหมือน Job 2 |
 | 4 | export ยอดขายไป MIS | 16:00 วันที่ 7–16 | รอบที่ `action_status='W'` → ไฟล์ `AMS06001O_YYYYMMDD` | R: sales pipeline · W: `interface_transactions`, สถานะ W→P | **P0: transaction/outbox — เขียนไฟล์สำเร็จก่อนค่อย commit W→P** · fail = rollback ทั้งก้อน |

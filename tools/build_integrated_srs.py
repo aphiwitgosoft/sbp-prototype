@@ -74,7 +74,6 @@ SCREEN_LABELS = {
     "fgi-database.html": "Database FGI/FCS",
     "k2-database.html": "Database K2",
     "plan-database.html": "Target Database Schema",
-    "job-batch.html": "Batch Job Console",
     "k2-create.html": "Create Document",
     "k2-list-waiting.html": "Task Inbox",
     "k2-list-related.html": "Related Documents",
@@ -84,8 +83,6 @@ SCREEN_LABELS = {
     "k2-factors.html": "External Factor Master",
     "k2-competitors.html": "Competitor Master",
     "k2-permissions.html": "RBAC Matrix",
-    "system-config.html": "Global Config",
-    "email-template.html": "Email Template",
     "plan-api.html": "API Specification",
 }
 
@@ -181,6 +178,16 @@ def parse_plan_database() -> list[list[str]]:
     return rows
 
 
+def target_table_total() -> int:
+    """จำนวนตารางใน target schema — อ่านสดจาก `database.md` หัวข้อ Data Dictionary
+    (เคย hardcode ไว้ 24 แล้วค้างเมื่อโครงลดเหลือ 21 · อย่า hardcode อีก)."""
+    text = (ROOT / "database.md").read_text(encoding="utf-8")
+    m = re.search(r"##\s*Data Dictionary\s*\((\d+)\s*ตาราง\)", text)
+    if not m:
+        raise SystemExit("build_integrated_srs: อ่านจำนวนตารางจาก database.md ไม่ได้ (หัวข้อ 'Data Dictionary (NN ตาราง)')")
+    return int(m.group(1))
+
+
 def parse_plan_flow_migration() -> list[list[str]]:
     root = read_html("plan-flow.html")
     tables = root.xpath(
@@ -256,7 +263,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
                 {"k": "io", "t": "เชื่อมต่อ SFTP ผ่าน qssi-monthly", "d": "Secret Manager + strict known_hosts"},
                 {"k": "d", "t": "ดาวน์โหลดครบและ checksum ถูกต้อง?", "no": "quarantine / FAILED; ไม่แก้คะแนนเดิม", "noKind": "err", "d": ""},
                 {"k": "p", "t": "parse และ validate 4 prefix / WINDOWS-874", "d": "reject ราย record พร้อมเหตุผล"},
-                {"k": "p", "t": "transaction upsert fcs_qssi_scores", "d": "UNIQUE(store_code, category_code, score_period)"},
+                {"k": "p", "t": "transaction upsert fcs_qssi_score", "d": "UNIQUE(store_code, category_code, score_period)"},
                 {"k": "p", "t": "archive source และ reconcile count", "d": "checksum เดิมให้ SKIP"},
                 {"k": "end", "t": "จบ"},
             ],
@@ -533,7 +540,7 @@ SRS_JOB_USER_CATALOG: dict[str, dict[str, str]] = {
         "input": "ไฟล์คะแนน QSSI รายเดือน 4 ชุดจาก SFTP, งวดเดือนที่ต้องประมวลผล, และหมวดคะแนนที่ระบบกำหนด",
         "summary": "ระบบอ่านไฟล์ ตรวจรูปแบบและงวดข้อมูล คัดรายการล่าสุดต่อร้าน/หมวดคะแนน แล้วปรับปรุงคะแนน QSSI ของงวดนั้นให้เป็นชุดล่าสุด",
         "output": "คะแนน QSSI ของร้านถูกบันทึกพร้อมใช้งานสำหรับงานส่ง Statement และรายงานผลการประมวลผลแสดงจำนวนไฟล์/จำนวนรายการ/สถานะสำเร็จหรือผิดพลาด",
-        "visible": "Admin ติดตามได้จาก Batch Job Console และประวัติการรัน; ผู้ใช้ธุรกิจเห็นผลผ่านข้อมูลประกอบเอกสาร/รายงาน",
+        "visible": "ทีมผู้ดูแลระบบติดตามได้จาก application log; ผู้ใช้ธุรกิจเห็นผลผ่านข้อมูลประกอบเอกสาร/รายงาน",
     },
     "2": {
         "purpose": "นำเข้าคู่ร้านที่ได้รับผลกระทบจากร้านเปิดใหม่ เพื่อสร้างฐานข้อมูลการพิจารณาชดเชย",
@@ -568,7 +575,7 @@ SRS_JOB_USER_CATALOG: dict[str, dict[str, str]] = {
         "input": "เอกสารหรือรายการชดเชยที่อนุมัติแล้ว, ข้อมูล QSSI ที่เกี่ยวข้อง, และสถานะรายการที่ต้องส่ง Statement",
         "summary": "ระบบคัดรายการที่พร้อมส่ง ตรวจเงื่อนไขสำคัญ สร้างข้อมูลส่งออกไป STA และบันทึก tracking เพื่อรอการตอบกลับ",
         "output": "รายการชดเชยถูกส่งไป STA/Statement และระบบมีรายการติดตาม ACK สำหรับ reconcile",
-        "visible": "ทีมบัญชีและ Admin เห็นสถานะส่งออก/รอ ACK ผ่านรายงานและ Batch Job Console",
+        "visible": "ทีมบัญชีและผู้ดูแลระบบเห็นสถานะส่งออก/รอ ACK ผ่านรายงานและ API ติดตาม interface",
     },
     "7": {
         "purpose": "บันทึกข้อมูลคู่แข่งที่เกี่ยวข้องเข้าเอกสารประกันรายได้",
@@ -697,9 +704,6 @@ SRS_ARTIFACT_LABELS = {
     "plan-api.html": "API specification screen",
     "plan-database.html": "Database design screen",
     "plan-flow.html": "Integrated flow screen",
-    "email-template.html": "Email template screen",
-    "job-batch.html": "Batch job console",
-    "system-config.html": "Global config screen",
     "index.html": "Portal screen",
     "flow-fgi.html": "FGI/FCS flow screen",
     "k2-flow.html": "K2 flow screen",
@@ -784,6 +788,7 @@ def build_model() -> Model:
     api_groups = data["apiGroups"]
     endpoint_total = sum(len(group["eps"]) for group in api_groups)
     api_group_total = len(api_groups)
+    table_total = target_table_total()
     migration_rows = parse_plan_flow_migration()
 
     model = Model()
@@ -969,7 +974,7 @@ def build_model() -> Model:
         ["REQ-OPS-001", "Jobs 1-10 และ 8b ต้องรองรับ rerun โดยไม่สร้างข้อมูลซ้ำและต้องรายงาน input/success/reject/skipped", "rerun/reconcile evidence"],
         ["REQ-SCR-001", "ระบบต้องมีหน้าจอ committed SCR-01 ถึง SCR-08 ตาม requirement รายหน้าจอ", "screen/UAT traceability"],
         ["SYS-API-001", f"ระบบต้องมี API capability {endpoint_total} endpoints ใน {api_group_total} กลุ่มตาม catalog", "OpenAPI/contract coverage"],
-        ["SYS-DAT-001", "ระบบต้องมี logical data model 24 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ)", "migration/schema test"],
+        ["SYS-DAT-001", f"ระบบต้องมี logical data model {table_total} ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ)", "migration/schema test"],
         ["SYS-NFR-001", "ระบบต้องมี correlation log, metrics, alert และ audit ที่เชื่อม request/job/interface กับผลธุรกิจได้", "observability trace"],
     ]
     model.table(["Requirement ID", "Atomic shall statement", "Verification"], requirement_rows, [0.16, 0.58, 0.26])
@@ -984,7 +989,7 @@ def build_model() -> Model:
     model.pagebreak()
     model.heading("3.1.1 End-to-end flow", 3)
     stages = [
-        ("A1", "นำเข้าคะแนน QSSI รายเดือน", "Job 1 รับ 4 ไฟล์ผ่าน SFTP, dedup และบันทึก fcs_qssi_scores"),
+        ("A1", "นำเข้าคะแนน QSSI รายเดือน", "Job 1 รับ 4 ไฟล์ผ่าน SFTP, dedup และบันทึก fcs_qssi_score"),
         ("A2", "นำเข้าคู่ร้านและคู่แข่ง", "Jobs 2-3 อ่าน ALLMAP ทุกวันที่ 7 และตั้ง verify_status ตามกฎ DENY/ON_PROCESS"),
         ("A3", "ขอยอดขายรายวัน", "Job 4 สร้าง AMS06001O วันที่ 7-16 เวลา 16:00"),
         ("A4", "รับยอดขายและคำนวณ", "Job 5 รับ AMS06001I, คำนวณ 4x15 วัน, outlier |sales_diff| >= 50"),
@@ -1108,11 +1113,12 @@ def build_model() -> Model:
         "แต่ละ job ทำเพื่ออะไร รับข้อมูลหรือเงื่อนไขอะไร ระบบทำอะไรโดยสรุป และผลลัพธ์ที่ต้องเห็นคืออะไร "
         "ไม่ลงรายละเอียด coding, SQL, class/script หรือ transaction ภายใน"
     )
-    model.heading("3.3.1 Batch console", 3)
-    add_screen_capture(model, "job-batch.html", "Batch Job Console - 11 jobs")
-    model.para(
-        "หน้า Batch Job Console สำหรับ Admin แสดง pipeline A-E, รายการ 11 entry points, "
-        "สถานะรอบล่าสุด/ถัดไป, เปิดปิดงาน, พารามิเตอร์ที่อนุญาตให้แก้, manual run, ลำดับงาน และ run history"
+    model.heading("3.3.1 รายการงาน Batch", 3)
+    model.note(
+        "ตัดสินใจ 6 สิงหาคม 2569: หน้าจอ Batch Job ย้ายไปอยู่กลุ่มเมนู Flow และเหลือเฉพาะ "
+        "ลำดับการทำงาน (Flowchart) กับ ตารางฐานข้อมูลที่ใช้ เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม "
+        "งาน Batch ทั้ง 11 รายการยังทำงานตามปกติ แต่กำหนดตารางเวลาและพารามิเตอร์ที่ backend config "
+        "(config file/env ของฝั่ง Backend) และบันทึกผลการรันไว้ที่ application log แทนตารางในฐานข้อมูล"
     )
     model.table(
         ["Job", "Name", "Thai name", "Phase", "Schedule", "Output"],
@@ -1121,12 +1127,11 @@ def build_model() -> Model:
     )
     model.heading("3.3.2 Common controls", 3)
     for rule in [
-        "สิทธิ์จัดการ Batch Job เป็น Admin 01 เท่านั้น",
-        "Manual run ต้องระบุงวดข้อมูลและสร้าง run_id; API ตอบ 202 Accepted",
+        "การเปิด/ปิดงานและการแก้พารามิเตอร์ทำที่ backend config แล้ว deploy เท่านั้น ไม่มีหน้าจอและไม่มี API",
+        "Manual run/rerun สั่งผ่าน CLI หรือ runbook ของทีม Operations โดยระบุงวดข้อมูล",
         "ห้ามรัน job เดียวกันซ้อน และต้องป้องกัน shared temp resource ของ Job 1",
-        "แก้ไขได้เฉพาะ parameter ที่ระบุ editable; business constants ต้องถูก lock",
-        "ทุกการเปิด/ปิด แก้ parameter และ manual run ต้องบันทึก audit",
-        "run history ต้องเก็บ start/end, status, row count, file, error, correlation id และผู้สั่งรัน",
+        "business constants ต้องถูก lock ไว้ใน config ไม่ให้เปลี่ยนโดยไม่ผ่านการ review",
+        "ทุกรอบการรันต้องบันทึก application log แบบมีโครงสร้าง เก็บ start/end, status, row count, file, error, correlation id และผู้สั่งรัน",
         "การ re-run ต้องปฏิบัติตาม runbook ของแต่ละ job โดยตรวจ DB, tracking, backup และปลายทางก่อน",
     ]:
         model.bullet(rule)
@@ -1141,7 +1146,7 @@ def build_model() -> Model:
                 ["รับข้อมูล/เงื่อนไข", catalog.get("input", "งวดข้อมูลและพารามิเตอร์ของงาน")],
                 ["ระบบทำอะไรโดยสรุป", catalog.get("summary", job.get("desc", ""))],
                 ["ผลลัพธ์ที่ต้องได้", catalog.get("output", job.get("out", ""))],
-                ["ผู้ใช้ติดตามได้จาก", catalog.get("visible", "ติดตามได้จาก Batch Job Console และ run history")],
+                ["ผู้ใช้ติดตามได้จาก", catalog.get("visible", "ติดตามได้จาก application log ของงาน Batch")],
             ],
             [0.22, 0.78],
         )
@@ -1159,7 +1164,7 @@ def build_model() -> Model:
     model.pagebreak()
     model.heading("3.4 K2 Screen Requirements", 2)
     model.note(
-        "Committed implementation scope ของหน้าจอ SBP Mall คือ 8 หน้าในตารางนี้ (+ Email Template และ Batch Job Console ในหัวข้อแยก) — "
+        "Committed implementation scope ของหน้าจอ SBP Mall คือ 7 หน้าในตารางนี้ (หน้า Global Config และ Email Template ยกเลิกทั้งฟีเจอร์ · หน้า Batch Job ย้ายไปกลุ่มเมนู Flow เหลือเฉพาะ Flowchart และตารางฐานข้อมูลที่ใช้ · ตัดสินใจ 6 สิงหาคม 2569) — "
         "ปรับตามการตัดสินใจ 2026-08-06: ตัดหน้า Overview/Dashboard ออก โดยหน้าแรกของระบบเปลี่ยนเป็นหน้าเอกสารรอดำเนินการ (SCR-02) "
         "และลบหน้าข้อมูลผิดปกติ/แจกงานถาวร (ข้อมูลผิดปกติเหลือเป็นธงสีแดงในแถวตาราง) · "
         "หน้ากำหนดผู้ปฏิบัติงานและสิทธิ์การเข้าถึงเมนูไม่อยู่ใน scope SBPGI — ใช้ระบบผู้ใช้/สิทธิ์ของระบบ SBP เดิม (ตัดสินใจ 2026-08-05)"
@@ -1256,20 +1261,6 @@ def build_model() -> Model:
                 "รายการนี้ต้องเป็นแหล่งข้อมูลเดียวของ dropdown ร้านคู่แข่งในหน้าเอกสาร ห้าม hardcode ใน FE",
             ],
         },
-        {
-            "id": "SCR-08",
-            "file": "system-config.html",
-            "name": "ตั้งค่าระบบ (Global Config)",
-            "purpose": "จัดการค่ากำหนดกลางที่ใช้ร่วมทั้งระบบ เช่น รัศมีผลกระทบ เกณฑ์ข้อมูล วงเงินอนุมัติ timeout และ notification switch",
-            "actors": "Admin และผู้ดูแลระบบที่ได้รับมอบหมาย",
-            "rules": [
-                "config_key ต้องเป็น dot notation และห้ามซ้ำ",
-                "value_type ต้อง validate ค่า NUMBER, STRING, BOOLEAN, JSON หรือ CRON ก่อนบันทึก",
-                "ค่าที่ is_editable=false เป็นค่าคงที่ทางธุรกิจ แก้หรือลบผ่าน UI/API ไม่ได้",
-                "ห้ามเก็บ secret เช่น password, API key หรือ connection string ใน system_configs",
-                "ทุกการเพิ่ม แก้ ลบ และ invalidate cache ต้องบันทึก audit_logs พร้อมเหตุผล",
-            ],
-        },
     ]
     screen_outcomes = {
         "SCR-01": "ระบบสร้างเอกสารเพียงหนึ่งรายการต่อร้าน/งวด ออกเลขเอกสาร และเปิดงานเริ่มต้นสำเร็จ",
@@ -1279,7 +1270,6 @@ def build_model() -> Model:
         "SCR-05": "ผลบนหน้าจอและไฟล์ CSV ตรงกันภายใต้ filter เดียวกันและนำไปตรวจสอบบัญชีได้",
         "SCR-06": "external factor master พร้อมใช้งานในเอกสารและตรวจสอบผู้แก้/เหตุผลย้อนหลังได้",
         "SCR-07": "master รายชื่อคู่แข่งพร้อมใช้งานใน dropdown ของหน้าเอกสาร และตรวจสอบผู้แก้/เหตุผลย้อนหลังได้",
-        "SCR-08": "ค่ากำหนดที่ผ่าน validation ถูกเผยแพร่ให้บริการที่เกี่ยวข้องโดยไม่เปิดเผย secret",
     }
     for screen in screens:
         inv = page_inventory(screen["file"])
@@ -1312,24 +1302,25 @@ def build_model() -> Model:
             model.bullet(rule)
     model.heading("3.4.13 Notification template requirements", 3)
     model.note(
-        "ระบบต้องรองรับการจัดการเนื้อหาและกฎการส่ง notification ตามรายการในหัวข้อนี้ "
-        "โดยหน้าจอจัดการ template เป็นส่วนหนึ่งของขอบเขตผู้ดูแลระบบ"
+        "ตัดสินใจ 6 สิงหาคม 2569: หน้าจอจัดการ Email Template ของระบบประกันรายได้ถูกยกเลิกทั้งฟีเจอร์ "
+        "เนื้อหาอีเมลทั้ง 8 template เก็บอยู่ในตาราง email_template ของระบบ SBP เดิม ซึ่งมีหน้าจอบริหารจัดการอยู่แล้ว "
+        "ระบบประกันรายได้เพียงอ่าน template ไปประกอบอีเมลแล้วส่งผ่านไลบรารีกลางของระบบเดิม และบันทึกการส่งลงตาราง email_sent"
     )
-    add_screen_capture(model, "email-template.html", "Email Template Administration")
     model.table(
         ["Item", "Requirement"],
         [
-            ["Purpose", "จัดการเนื้อหาอีเมล 8 template ของ Notification Service และจุดส่ง workflow/batch"],
-            ["Scope status", "Committed - ครอบคลุมหน้าจอผู้ดูแล template และพฤติกรรม Notification Service"],
+            ["Purpose", "ส่งอีเมลแจ้งเตือนตามสถานะเอกสารและงาน Batch โดยใช้ template และบริการส่งอีเมลของระบบ SBP เดิม"],
+            ["Scope status", "Committed - ครอบคลุมเฉพาะพฤติกรรม Notification Service ไม่มีหน้าจอจัดการ template ในระบบนี้"],
         ],
         [0.2, 0.8],
     )
     for rule in [
         "รองรับ template EM-01 ถึง EM-08 ครอบคลุม workflow transition, reminder, escalation, batch error และ STA ACK watchdog",
-        "แก้ไขได้เฉพาะ subject/body และตัวแปร merge ที่รองรับของ template นั้น",
-        "From/To/Cc ต้องล็อกตาม status_email_rules หรือ config ต่อ job ไม่ให้แก้ใน template",
-        "ต้องรีเซ็ตกลับ Default ได้ทั้งราย template และทั้งหมด",
-        "ทุกการแก้ไขหรือรีเซ็ตต้องบันทึก audit_logs พร้อมเหตุผล",
+        "ตัวแปร merge ที่ใช้ต้องตรงกับที่ template รองรับ และต้องไม่มีตัวแปรที่แทนค่าไม่ได้หลงเหลือในอีเมลที่ส่งออก",
+        "From/To/Cc กำหนดตาม status_email_rules หรือ config ต่อ job ไม่ได้มาจากผู้ใช้",
+        "การส่งอีเมลต้องอยู่นอก transaction ของ workflow และการส่งล้มเหลวต้องไม่ทำให้ workflow ล้มเหลว",
+        "การส่งทุกฉบับต้องบันทึกไว้ที่ตาราง email_sent เพื่อการตรวจสอบย้อนหลัง",
+        "การแก้ไขเนื้อหา template เป็นงานของระบบ SBP เดิม และบันทึก audit ที่ระบบเดิม",
     ]:
         model.bullet(rule)
     model.heading("3.4.14 Shared UI contract", 3)
@@ -1457,7 +1448,7 @@ def build_model() -> Model:
         ["REQ-OPS-001", "Batch rerun", "idempotency และ run reconciliation", "3.0, 3.3"],
         ["REQ-SCR-001", "Committed screens", "SCR-01..04 และ SCR-06..11", "3.4"],
         ["SYS-API-001", "API capability", f"{endpoint_total} endpoints / {api_group_total} groups", "3.5"],
-        ["SYS-DAT-001", "Data model", "24 tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม)", "3.2"],
+        ["SYS-DAT-001", "Data model", f"{table_total} tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม)", "3.2"],
         ["SYS-NFR-001", "Observability", "correlation/metrics/alert/audit evidence", "4"],
         ["FLOW-01", "Batch pipeline", "ขั้นตอนนำเข้า คำนวณ สร้างเอกสาร ส่ง Statement และติดตาม ACK", "3.1, 3.3"],
         ["FLOW-02", "Approval workflow", "Section 06 -> 08 -> 01 -> 02 และ Section 03 ตามวงเงิน", "3.1.1, 3.1.3"],

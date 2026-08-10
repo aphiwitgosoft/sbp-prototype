@@ -7,15 +7,15 @@
 
 ## ภาพรวม
 
-- **47 เส้น · 9 กลุ่มตามโดเมน** เป็น reference contract สำหรับ FE/BE alignment (กลุ่มข้อมูลผิดปกติ 2 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ — ดูท้ายไฟล์)
+- **30 เส้น · 6 กลุ่มตามโดเมน** เป็น reference contract สำหรับ FE/BE alignment (กลุ่มข้อมูลผิดปกติ 2 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ · กลุ่ม System Config และ Email Template รวม 10 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ — ดูท้ายไฟล์)
 - Base URL `/api/v1` · การยืนยันตัวตน: ผ่าน BFF ของระบบ SBP เดิม — SBPGI รับ user context จาก header (`x-api-key` + `x-user-id`/`x-user-group-id`/`x-user-permissions`) · callback ภายนอกใช้ API key/service token
 - **ตัดสินใจ 2026-08-05:** กลุ่ม Auth & สิทธิ์ผู้ใช้ (เดิมกลุ่ม 1 · 4 เส้น) และ API ผู้ปฏิบัติงาน/roles/menus/สิทธิ์เมนู (เดิมอยู่กลุ่ม Master Data · 14 เส้น) **ตัดออก — ใช้ระบบ SBP เดิม** (Cognito + BFF + auth-backend/ABS) ดูหัวข้อ "เส้นที่ตัดออก" ท้ายไฟล์ · เดิมนับเป็น 62 เส้น 10 กลุ่ม
-- **ตัดสินใจ 2026-08-06 (รอบ 2) — ยึด API/DB ของระบบ SBP เดิมเป็นหลัก:** ตรวจ `SBP/README.md` + `srm-sps-spsap-store-backend` แล้วตัดอีก **3 เส้น** ที่มีของพร้อมใช้อยู่แล้ว (`/stores/search` → `GET /store/search` · `/zones` → `GET /store/all-regions` · `/branch-types` → `GET /common/common-code`) → **เหลือ 44 เส้น** · และเปลี่ยนแหล่งข้อมูลของอีก 4 เส้นให้ไปอ่าน/เขียนของระบบเดิมแทนตารางของ SBPGI (ดูตาราง "เส้นที่เปลี่ยนไปใช้ของระบบ SBP เดิม" ท้ายไฟล์)
+- **ตัดสินใจ 2026-08-06 (รอบ 2) — ยึด API/DB ของระบบ SBP เดิมเป็นหลัก:** ตรวจ `SBP/README.md` + `srm-sps-spsap-store-backend` แล้วตัดอีก **3 เส้น** ที่มีของพร้อมใช้อยู่แล้ว (`/stores/search` → `GET /store/search` · `/zones` → `GET /store/all-regions` · `/branch-types` → `GET /common/common-code`) → เหลือ 47 เส้น (ต่อมาลดเหลือ 31 เส้น เมื่อลบกลุ่ม System Config + Email Template และกลุ่ม Batch Job Admin · แล้วเหลือ **30 เส้น** เมื่อยกเลิกระบบ `audit_logs` 2026-08-07) · และเปลี่ยนแหล่งข้อมูลของอีก 4 เส้นให้ไปอ่าน/เขียนของระบบเดิมแทนตารางของ SBPGI (ดูตาราง "เส้นที่เปลี่ยนไปใช้ของระบบ SBP เดิม" ท้ายไฟล์)
 - แบ่งหน้า `?page=1&size=20` → ตอบ `{"page","size","total","items":[]}`
 - Error รูปแบบเดียวกันทุกเส้น `{"code":"DOC_409","message":"ข้อความไทยตรงตาม SRS"}` — **ข้อความ popup ต้องตรงตัวตาม SRS**
 - **วันที่และเลขเอกสารเป็น ค.ศ. ทั้งหมด** (payload = ISO-8601 ค.ศ. · `docNo` = `YYYY/xxxxx` ค.ศ.) — ยึดตามระบบ SBP ปัจจุบัน (FE `DatePicker` default `buddhistEra=false` · BE helper `toAD()`), แสดงผล พ.ศ. เฉพาะจุดที่เปิด flag ที่ component · JSON UTF-8 ทุกเส้น (เลิก TIS-620)
 - Code namespace ต้องไม่ตีความปนกัน: `roleCode` = RBAC role 00/01/02/03/04/05/06/10, `sectionCode` = workflow section 06/08/01/02/03, `statusCode` = document status lookup; ทุก response ที่ต้องแสดงสถานะให้ส่ง code เป็น canonical value แล้ว FE resolve label จาก `/document-statuses`
-- Batch Monitor scope note: API กลุ่ม Batch Job Admin เป็น reference contract สำหรับ 2 tab ของ FE Batch Monitor เท่านั้น (`แบบฟอร์มพารามิเตอร์`, `ประวัติการรัน`); ไม่ออกแบบ tab Flowchart การทำงาน, step-by-step batch flow, หรือ Database ที่ใช้ของ batch job ใน `plan-api.html` และไม่ต้องใส่รายละเอียด endpoint รายเส้นในเอกสาร FE หน้านั้น
+- **Batch Job — ตัด API ทั้งกลุ่ม (2026-08-06):** กลุ่ม Batch Job Admin 6 เส้น (`/jobs*`) ถูกลบออกจากแบบ · หน้า `job-batch.html` **ย้ายไปกลุ่มเมนู `Flow` ชื่อ "Flow Batch Job" และเหลือเฉพาะ 2 แท็บ `Flowchart การทำงาน` + `Database ที่ใช้`** (ตัดแบบฟอร์มพารามิเตอร์ · ประวัติการรัน · ปุ่มสั่งรัน/เปิด-ปิด job · stat cards · กราฟ · การ์ด audit ออกทั้งหมด) — เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม · **batch job ของ SBPGI ยังทำงานตามปกติ** แต่พารามิเตอร์/ตารางเวลากำหนดใน **backend config** (config file/env ฝั่ง BE) และผลการรันเก็บที่ application log / `interface_transactions` แทน ไม่มีหน้าจอและไม่มี API แก้ค่า
 - ป้ายที่มาต่อเส้น: **(FGI/FCS)** เอกสาร Batch v4.0 · **(K2)** SRS v3.1 · **(ใหม่)** เพิ่มในระบบใหม่ · **(ผสม)**
 
 ## สัญญากลาง API/FE ที่ทุก endpoint ต้องใช้
@@ -32,7 +32,7 @@
 | Format | `docNo` = `YYYY/xxxxx` **ค.ศ.** (เช่น `2026/00123`) · `storeCode/newStoreCode` เป็น string 5 หลักคง leading zero · date/month ใน payload เป็น ค.ศ. ISO · amount/percent เป็น number 2 decimals | BE validate/serialize · FE format display |
 | Workflow transition | `/documents/{docNo}/actions` รับ `{result,comment}` โดย `result` เป็น 6-enum ไทย verbatim (ค่า "ส่งฝ่ายส่งเสริมธุรกิจ SBP" เปลี่ยนชื่อเป็น "ส่งหน่วยงานส่งเสริมธุรกิจ SBP" ตาม SDD GI 24/02/2026) และคืน `{nextSection,statusCode,message}`; positive path คือ `06→08→01→02→03→99` โดย `99` = เสร็จสิ้นและ `nextSection=null`; ที่ Section 02 ยอด ≤50,000 จบเป็น 99 โดยไม่ผ่าน 03 · 50,001–300,000 → 03 (SDD GI) | BE Workflow Action เป็น source of truth; FE ไม่คำนวณ route เอง |
 | RBAC/Menu | sidebar/route guard ใช้ของระบบเดิม: BFF `GET /menus` + `GET /groups/current-user/permissions` (`canView/canManage/canExport/canOther` ต่อ URL) · `GET /documents/{docNo}` ยังคืน `permissions.canEditSections` และ `permissions.canAction` (ธงเชิง workflow ที่ SBPGI คำนวณเอง) | ระบบเดิมคุมเมนู/สิทธิ์เข้าหน้า · BE task-owner guard · FE เปิด/ปิด UI |
-| Audit/Reason | mutation master/config/email/RBAC ต้องมี `reason`; workflow action ลง `consideration_logs`; batch ลง `job_run_histories` | BE transaction/audit service · FE บังคับ reason field |
+| Audit | **ไม่มี audit กลางของ master แล้ว** (ยกเลิก `audit_logs` 2026-08-07 · mutation master ไม่ต้องส่ง `reason`); workflow action ลง `consideration_logs`; batch เขียน application log | BE ไม่ต้องมี audit service · FE ไม่มีช่องเหตุผล |
 | Idempotency | endpoint ที่สร้างจาก job/service ใช้ `requestId` หรือ business key; duplicate ต้องคืน existing result หรือ 409 ตามกฎ endpoint | BE service · Job rerun |
 
 ## โครงหน้าจอ plan-api (modal รายละเอียดต่อ endpoint)
@@ -40,14 +40,16 @@
 catalog รวมทุกเส้น → คลิกแถว → เปิด modal ที่มีโครงดังนี้ (ดู `selectEp()` ใน `plan-api.html`):
 
 1. **ชิป** ที่มา · สิทธิ์ · กลุ่ม
-2. **Flow (ลำดับการทำงาน)** — แสดง **นอกแท็บ** (ไม่ใช่แท็บแล้ว) เหนือแท็บ · ถ้าเส้นนั้นมี flowchart จะมี pill "มี Flowchart ในแท็บ 3" · ยกเว้นกลุ่ม Batch Job Admin ซึ่งแสดงเป็น reference note เท่านั้น
+2. **Flow (ลำดับการทำงาน)** — แสดง **นอกแท็บ** (ไม่ใช่แท็บแล้ว) เหนือแท็บ · ถ้าเส้นนั้นมี flowchart จะมี pill "มี Flowchart ในแท็บ 3"
 3. **แท็บ 1 · Request / Response** — request (query/body) + response + Error ที่ต้องรองรับ
-4. **แท็บ 2 · Database + SQL** — ตารางที่เกี่ยวข้อง (R/W/RW) + **ตัวอย่าง SQL ต่อเส้น** (illustrative, bind params ขึ้นต้น `:`) เก็บใน `SQL_BY_PATH` keyed ด้วย `'METHOD path'` — ไม่แสดงในกลุ่ม Batch Job Admin
-5. **แท็บ 3 · Flowchart** — โผล่**เฉพาะ 3 เส้นที่ซับซ้อน** (มี branching/หลายขั้น) · เป็น inline SVG เรนเดอร์จาก node spec ใน `FLOWCHART_BY_PATH` ผ่าน mini-renderer `renderFlow()` · ไม่แสดงในกลุ่ม Batch Job Admin
+4. **แท็บ 2 · Database + SQL** — ตารางที่เกี่ยวข้อง (R/W/RW) + **ตัวอย่าง SQL ต่อเส้น** (illustrative, bind params ขึ้นต้น `:`) เก็บใน `SQL_BY_PATH` keyed ด้วย `'METHOD path'`
+5. **แท็บ 3 · Flowchart** — โผล่**เฉพาะ 3 เส้นที่ซับซ้อน** (มี branching/หลายขั้น) · เป็น inline SVG เรนเดอร์จาก node spec ใน `FLOWCHART_BY_PATH` ผ่าน mini-renderer `renderFlow()`
 
 **3 เส้นที่มีแท็บ Flowchart:** `POST /documents/{docNo}/actions` (routing 5 ขั้น + วงเงิน GM 50,000 / AVP 300,000) · `POST /workflows/instances` (Gen Flow Gate) · `POST /documents` (สร้าง + กันซ้ำเฉพาะเอกสาร active)
 
-## รายการ endpoint ทั้ง 9 กลุ่ม
+## รายการ endpoint ทั้ง 6 กลุ่ม
+
+> **การนับ:** หัวข้อย่อยด้านล่างเลข 1–7 แต่ **หัวข้อ 1 (Auth) ถูกตัดออกทั้งกลุ่มและไม่มี endpoint** — กลุ่มที่นับจริงคือหัวข้อ 2–7 รวม **6 กลุ่ม / 30 เส้น** (11 + 3 + 8 + 2 + 3 + 3) ตรงกับ `GROUPS` ใน `plan-api.html` ที่เรนเดอร์เลขกลุ่ม 1–6 (คงเลขหัวข้อเดิมไว้เพื่อไม่ให้ลิงก์อ้างอิงเดิมเสีย)
 
 ### 1. Auth & สิทธิ์ผู้ใช้ — **ตัดออก · ใช้ระบบ SBP เดิม** (ตัดสินใจ 2026-08-05)
 
@@ -68,60 +70,43 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 | GET | `/documents/{docNo}/attachments/download-all` | **(เพิ่ม 2026-08-06)** ดาวน์โหลดไฟล์แนบทั้งหมดเป็น `.zip` — ปุ่ม “ดาวน์โหลดทั้งหมด” ระดับการ์ด (เทียบเท่าปุ่ม `Download` ของ K2 เดิม) · 404 เมื่อไม่มีไฟล์แนบ |
 | GET | `/documents/{docNo}/sales` | ยอดขาย 4 หน้าต่าง × 15 วัน — ใช้กับปุ่ม "ข้อมูลยอดขายเพิ่มเติม" · **กราฟแนวโน้มยอดขายรายวันในหน้าเอกสารถูกถอดออก 2026-08-06** เหลือเป็นข้อมูลประกอบการตรวจสอบและลิงก์ออก QlikView BI |
 
-### 3. ข้อมูลอ้างอิง (Lookup / Reference) · K2 + FGI/FCS **(4 เส้น · ตัด `/stores/search` `/zones` `/branch-types` 2026-08-06 — ใช้ของระบบ SBP เดิม)**
+### 3. ข้อมูลอ้างอิง (Lookup / Reference) · K2 + FGI/FCS **(3 เส้น · lookup อ่านอย่างเดียวที่ไม่มีหน้าจอดูแล master · ตัด `/stores/search` `/zones` `/branch-types` 2026-08-06 — ใช้ของระบบ SBP เดิม)**
 
 > **ใช้ของระบบ SBP ปัจจุบันแทน:** ค้นหาร้าน → `GET /store/search` (+ `/store/list` `/store/detail` `/store/opt-name`) · ภาค/โซน → `GET /store/all-regions` (+ `/store/regions-by-email` `/store/province-by-region`) · ประเภทสาขา → `GET /common/common-code` (+ `/master/common`) — ทั้งหมดอยู่ใน `srm-sps-spsap-store-backend` และเรียกผ่าน BFF ตัวเดียวกับที่ FE ใช้อยู่แล้ว
 
 | Method | Path | ทำอะไร |
 |---|---|---|
-| GET | `/competitors` | **master แบรนด์ร้านคู่แข่ง 11 รายการ** (รหัส 01–11 · ชื่อไทย+อังกฤษ) — dropdown เพิ่มคู่แข่งในเอกสาร · จัดการที่หน้า `k2-competitors.html` (**ใหม่ 2026-08-06** ตามหน้าจอ K2 เดิม) · ต่างจาก `document_competitors` ที่เก็บ**รายสาขา**พร้อมรหัสจาก ALLMAP (อ้างอิงไฟล์ตัวอย่างจริง — ดู `docs/K2-interface-files.md`) |
 | GET | `/document-statuses` | รายการสถานะเอกสาร — dropdown ตัวกรอง (ค้นหา/รายงาน) |
 | GET | `/workflow-sections` | รายการ Section 5 ขั้น (06/08/01/02/03) + `approveLimitAmount` ต่อขั้น — dropdown ตำแหน่ง/ตัวกรอง · FE ใช้แสดงวงเงิน ไม่ hardcode |
 | GET | `/decisions` | **(เพิ่ม 2026-08-06)** ผลพิจารณาจาก master `decisions` (`decisionName` = ข้อความปุ่มไทย verbatim) — FE เรนเดอร์ปุ่มพิจารณาจากเส้นนี้ ไม่ hardcode 6-enum |
 
-### 4. Master Data · K2 3.1.9 (8 เส้น · เพิ่ม CRUD คู่แข่ง 3 เส้น 2026-08-06)
+> **🔸 ข้อค้างตัดสินใจ DP-9 — ยังไม่ตัดสิน:** มี**ข้อเสนอ**ให้ย้าย master 3 ตัว (`decisions` · `external_factors` · `competitors`) ไปเก็บใน **`common_code` ของระบบ SBP เดิม** (`common_code` 2,609 แถว · `common_code_type` 376 แถว · มี API `GET /common/common-code` + `/master/common` พร้อมใช้) แทนการสร้างตารางใหม่ใน SBPGI · **ยังไม่ตัดสินและยังไม่เปลี่ยนดีไซน์** — เอกสารชุดนี้ (`api.md` / `plan-api.html` / `database.md`) ยังคง 3 ตารางและ 7 endpoint (`/decisions` · `/factors*` · `/competitors*`) ไว้ตามเดิม · รายละเอียดข้อเสนอและผลกระทบดู **`SBP/SBPGI-vs-existing-system.md` หัวข้อ 4 (Decision Points · DP-9)** · ถ้าตัดสินให้ย้าย จะกระทบ: กลุ่ม Lookup เหลือ 2 เส้น · กลุ่ม Master Data หายทั้งกลุ่ม (8 เส้น) · หน้า `k2-factors.html` / `k2-competitors.html` เปลี่ยนเป็นหน้าจอของระบบเดิม
+
+### 4. Master Data · K2 3.1.9 (8 เส้น · master ที่มีหน้าจอดูแลของตัวเอง — ปัจจัยภายนอก + รายชื่อคู่แข่ง · CRUD คู่แข่งเพิ่ม 2026-08-06 · ตัด `/audit-logs` 2026-08-07)
 | Method | Path | ทำอะไร |
 |---|---|---|
-| GET/POST/PUT/DELETE | `/factors` · `/factors/{code}` | ปัจจัยภายนอก (external_factors) — รหัสห้ามซ้ำ · reason บังคับ |
-| POST/PUT/DELETE | `/competitors` · `/competitors/{code}` | **(เพิ่ม 2026-08-06)** master แบรนด์คู่แข่ง (competitors) — `code` + `nameTh` + `nameEn` บังคับ · รหัสห้ามซ้ำ · reason บังคับ → `audit_logs` · หน้าจอ `k2-competitors.html` |
-| GET | `/audit-logs` | ประวัติแก้ master (= MaintainMasterHistory เดิม) |
+| GET/POST/PUT/DELETE | `/factors` · `/factors/{code}` | ปัจจัยภายนอก (external_factors) — รหัสห้ามซ้ำ |
+| GET/POST/PUT/DELETE | `/competitors` · `/competitors/{code}` | **master แบรนด์ร้านคู่แข่ง 11 รายการ** (รหัส 01–11 · ชื่อไทย+อังกฤษ) — `code` + `nameTh` + `nameEn` บังคับ · รหัสห้ามซ้ำ · หน้าจอ `k2-competitors.html` (**ใหม่ 2026-08-06** ตามหน้าจอ K2 เดิม) · `GET` เป็นแหล่งของ dropdown "ร้านคู่แข่ง (Master)" ในหน้าเอกสารด้วย · ต่างจาก `document_competitors` ที่เก็บ**รายสาขา**พร้อมรหัสจาก ALLMAP (ดู `docs/K2-interface-files.md`) |
+
+> **กติกาการจัดกลุ่ม (ปรับให้ตรงกันทั้ง `api.md` และ `plan-api.html` · 2026-08-06):** master ที่**มีหน้าจอดูแลของตัวเอง** (ปัจจัยภายนอก → `k2-factors.html` · รายชื่อคู่แข่ง → `k2-competitors.html`) ให้เก็บ **CRUD ทั้งชุดไว้ในกลุ่ม Master Data** แม้ `GET` จะถูกใช้เป็น dropdown ในหน้าเอกสารด้วยก็ตาม — ส่วนกลุ่ม **Lookup** เหลือเฉพาะรายการอ้างอิงที่**อ่านอย่างเดียวและไม่มีหน้าจอดูแล** (`/document-statuses` · `/workflow-sections` · `/decisions`) เดิมทั้งสองไฟล์จัด `/competitors` คนละกลุ่มกัน ทำให้ตัวเลขต่อกลุ่มไม่ตรง
+
+> **🔸 ข้อค้างตัดสินใจ DP-9 (เดียวกับกลุ่ม Lookup) — ยังไม่ตัดสิน:** ทั้ง 8 เส้นของกลุ่มนี้ผูกกับตาราง `external_factors` และ `competitors` ของ SBPGI · มี**ข้อเสนอ**ให้ย้ายไปใช้ `common_code` ของระบบ SBP เดิมแทน (คนละ `code_type`) ซึ่งจะทำให้**กลุ่ม Master Data หายไปทั้งกลุ่ม** · **ยังไม่ตัดสิน — ดีไซน์ปัจจุบันยังคงไว้ตามเดิม** · ดู `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4 (DP-9)
 
 > เส้นผู้ปฏิบัติงาน (`/operators*` · `/employees/search`) และสิทธิ์เมนู (`/roles*` · `/menus*` · `/menu-permissions*`) รวม 14 เส้น **ตัดออก — ใช้ระบบ SBP เดิม** (ดูท้ายไฟล์)
 
-### 5. System Config (Global) · เขียนลงตาราง `mas_param` ของระบบ SBP เดิม (5 เส้น)
-| Method | Path | ทำอะไร |
-|---|---|---|
-| GET | `/configs` · `/configs/{key}` | ค่ากำหนดกลาง — อ่าน/เขียนตาราง **`mas_param`** ของระบบ SBP เดิม (ไม่สร้าง `system_configs` ใหม่ · ตัดสินใจ 2026-08-06) · อ่านรายตัว cache 5 นาที |
-| POST/PUT/DELETE | `/configs` · `/configs/{key}` | เพิ่ม/แก้/ลบ · `is_editable=false` (ค่าคงที่ธุรกิจ ข้อ 8.2) แก้ผ่าน API ไม่ได้ · ห้ามเก็บ secret |
-
-### 6. Email Template (Notification) · เขียนลงตาราง `email_template` ของระบบ SBP เดิม (5 เส้น)
-| Method | Path | ทำอะไร |
-|---|---|---|
-| GET | `/email-templates` · `/email-templates/{code}` | 8 template (EM-01–08) subject/body + ตัวแปร merge — **8 แถวในตาราง `email_template` เดิม** (`subject_format`/`body_format`) การส่งใช้ `@gosoft-sbp/email-lib` และ log ลง `email_sent` |
-| PUT | `/email-templates/{code}` | แก้ subject/body — From/To/Cc ล็อกตาม status_email_rules |
-| POST | `/email-templates/{code}/reset` · `/email-templates/reset-all` | รีเซ็ตเป็น Default รายตัว/ทั้งหมด |
-
-### 7. รายงาน · K2 3.1.7 + SDD v7.5 (2 เส้น)
+### 5. รายงาน · K2 3.1.7 + SDD v7.5 (2 เส้น)
 | Method | Path | ทำอะไร |
 |---|---|---|
 | GET | `/reports/status-summary` | **รายงานตรวจสอบประกันรายได้ (SBP Mall)** — ค้นหาข้อมูล · **บังคับระบุปี** · filter ตาม **SDD สไลด์ 60** 7 ตัว: `status`* (Drop-down 6 ค่า · บังคับ) · `impactedStoreCode` (numeric) · `newStoreCode` (numeric) · `periodStatementFrom`/`periodStatementTo` (ปฏิทิน **วัน/เดือน/ปี ค.ศ.** หรือกรอกเอง · **บังคับเมื่อ status = เสร็จสิ้นดำเนินการ**) · `storeType[]` (checkbox **A/B/C/E**) · `region[]` (checkbox 13 รหัส · ภาคใหม่แสดงอัตโนมัติ) · `result` (Radio ประกันรายได้/ไม่ประกันรายได้ · **ไม่บังคับ**) · กติกาคู่: ระบุ `impactedStoreCode` แล้วต้องระบุ `newStoreCode` ด้วย มิฉะนั้น 400 · ผลลัพธ์ **14 คอลัมน์ตาม SDD** |
 | GET | `/reports/status-summary/export` | **Export Excel** — ส่งออกผลการค้นหา 14 คอลัมน์เป็น Excel ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไข filter เดียวกับ `/reports/status-summary` |
 
-### 8. Batch Job Admin · FGI/FCS Jobs 1–10 (6 เส้น)
-| Method | Path | ทำอะไร |
-|---|---|---|
-| GET | `/jobs` · `/jobs/{jobNo}` | รายการ 11 entry points + schedule/input/output/current status/run controls |
-| PUT | `/jobs/{jobNo}/params` · `/jobs/{jobNo}/enabled` | แก้พารามิเตอร์ (editable เท่านั้น) · เปิด/ปิด |
-| POST | `/jobs/{jobNo}/run` | สั่งรันนอกรอบ — รายละเอียด flow อยู่ใน BE/Runbook ไม่ใช่ tab ที่ต้องทำใน FE Batch Monitor |
-| GET | `/jobs/{jobNo}/runs` | ประวัติการรัน |
-
-### 9. Workflow ภายใน · K2 3.1.4 + FGI/FCS Job 8b (3 เส้น)
+### 6. Workflow ภายใน · K2 3.1.4 + FGI/FCS Job 8b (3 เส้น)
 | Method | Path | ทำอะไร |
 |---|---|---|
 | POST | `/workflows/instances` | เปิด workflow (แทน K2 StartInstance) — Gen Flow Gate (service token · มี Flowchart) |
 | GET | `/workflows/instances/{id}` · `/workflows/summary` | สถานะ instance · ตัวเลขเฝ้าระวัง W/Y/N + งานค้างต่อ section |
 
-### 10. Interface & Dashboard · FGI/FCS (4 เส้น)
+### 7. Interface & Dashboard · FGI/FCS (3 เส้น · ตัด `/dashboard/summary` 2026-08-06)
 | Method | Path | ทำอะไร |
 |---|---|---|
 | GET | `/interfaces/tracking` · `/interfaces/pending-ack` | สถานะรับ–ส่งไฟล์ (interface_transactions) · ACK ค้าง ≥ 1 วัน (Job 10) |
@@ -144,8 +129,8 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 - **เลขเอกสาร YYYY/xxxxx** (ปี **ค.ศ.** · running ต่อปี เริ่ม 00001) · **เลขเอกสารและวันที่ทั้งระบบเป็น ค.ศ.** (ตัดสินใจ 2026-08-06 — ยึดตามระบบ SBP ปัจจุบัน: DatePicker ของ FE ตั้งค่า `buddhistEra = false` เป็นค่าเริ่มต้น และ BE มี helper `toAD(y) = y >= 2500 ? y - 543 : y` บังคับแปลงค่าที่หลุดมาเป็น พ.ศ. ให้เป็น ค.ศ. · แสดงผลเป็น พ.ศ. ได้เฉพาะจุดที่เปิด `buddhistEra` ที่ระดับ component เท่านั้น · ภาพหน้าจอ K2 จริงก็ใช้ ค.ศ. เช่นกัน เช่น `2026/01870`)
 - **Gen Flow Gate** ใน `/workflows/instances` (เกณฑ์คงเดิมทุกข้อ — ดูขั้น 6 ใน `workflow.md`)
 - `POST /workflows/instances` เป็น BE internal Workflow Engine contract สำหรับ Job 8b เท่านั้น ไม่ใช่งาน FE/Flow page: request `{impactProcessId, sourceJobNo:"8b", requestId}`; ผ่าน gate → สร้าง/คืน `{docNo, instanceId, workflowGenerationStatus:"Y", firstSection:"06", statusCode:"06"}`; fail ถาวร (branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10) → ตั้ง `N`; เฉพาะ distance/juristic/growth เป็น NULL หรือ sales_status ยังไม่พร้อม → คง `W` และคืน 422/reason เพื่อ rerun
-- **แก้ master ต้องระบุ reason → audit_logs** ทุกครั้ง (factors/configs/email-templates) · การแก้สิทธิ์/กลุ่มผู้ใช้ลง audit ของระบบเดิม
-- ทุกเส้นที่แก้ข้อมูลบันทึกผู้ทำ (จาก JWT) ลง audit ตามโดเมน (consideration_logs / audit_logs / job_run_histories)
+- **ยกเลิกระบบ audit ของ master ทั้งหมด (2026-08-07)** — ไม่มีตาราง `audit_logs` · ไม่มีเส้น `GET /audit-logs` · ไม่ต้องส่ง `reason` ตอนแก้ factors/competitors อีกต่อไป · การแก้สิทธิ์/กลุ่มผู้ใช้ และ config/email template ยังลง audit ของ**ระบบ SBP เดิม**ตามกลไกของระบบนั้น
+- เส้นที่แก้**เอกสาร** ยังบันทึกผู้ทำและผลพิจารณาลง `consideration_logs` ตามเดิม (นี่ไม่ใช่ audit ของ master)
 
 ## การกระทบยอด SAP และแก้ข้อมูลผิดปกติ (SDD v7.5)
 
@@ -162,6 +147,46 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 
 **ทดแทนด้วย:** ข้อมูลผิดปกติเป็น *ธงของแถว* ไม่ใช่หน้าจอแยก — `GET /tasks` และ `GET /documents` คืน `salesDataDays` ให้ FE ทำ **แถวแดง** · **ตัดสินใจปิดประเด็นแล้ว 2026-08-06:** ไม่ทำตัวกรอง "ยอดขายไม่ครบ 60 วัน" ทดแทน — ข้อมูลผิดปกติเหลือเป็น **แถวแดง** อย่างเดียว ผู้ใช้สังเกตจากสีแถวในตาราง · ไม่มีตัวเลขสรุป (ตัด `GET /dashboard/summary` แล้ว) · การจ่ายงานใช้ auto-assign ของ SDD GI (เจ้าของงานคนเดิม) แทนการแจกงานด้วยมือ
 
+## กลุ่ม System Config (Global) และ Email Template — ยกเลิกและลบทิ้ง (ตัดสินใจ 2026-08-06 · 10 เส้น)
+
+**ลบทิ้งแล้ว** — ทั้ง 10 endpoint ถูกเอาออกจาก `plan-api.html` (GROUPS) และหน้าจอทั้งสองถูกลบออกจากโปรเจกต์ (`system-config.html`, `email-template.html`) พร้อม entry ใน `MODULES` และ `SCHEMAS.config` ของ `assets/sbp.js`:
+
+| กลุ่มเดิม | เส้นที่ลบ |
+|---|---|
+| System Config (Global) · 5 | `GET /configs` · `GET /configs/{key}` · `POST /configs` · `PUT /configs/{key}` · `DELETE /configs/{key}` |
+| Email Template (Notification) · 5 | `GET /email-templates` · `GET /email-templates/{code}` · `PUT /email-templates/{code}` · `POST /email-templates/{code}/reset` · `POST /email-templates/reset-all` |
+
+**เหตุผล:** ทั้งสองกลุ่มออกแบบไว้เพื่อรองรับหน้าจอ admin 2 หน้านี้โดยตรง และ**เขียนลงตารางของระบบ SBP เดิมอยู่แล้ว** (`mas_param` / `email_template`) ซึ่งระบบเดิมมีหน้าจอบริหารจัดการของตัวเองอยู่ — SBPGI จึงไม่ต้องทำหน้าจอและ endpoint ซ้ำ
+
+**สิ่งที่ยังอยู่ (ฝั่ง BE ภายใน ไม่ใช่ REST ของ SBPGI):**
+- **ส่งอีเมลตามสถานะ** ยังทำงานเหมือนเดิม — service ภายในอ่าน `email_template` (`subject_format`/`body_format`) แล้วส่งผ่าน `@gosoft-sbp/email-lib` และ log ลง `email_sent` · จุดส่งต่อสถานะดู `workflow_status_document.md`
+- **ค่ากำหนดกลาง** ยังอ่านจาก `mas_param` ของระบบเดิม (รวมค่าที่หน้าจออื่นใช้ เช่น URL QlikView BI) · **วงเงินอนุมัติ GM/AVP** อ่านจาก `common_code` (`code_type = SBPGI_APPROVE_LIMIT`) ผ่าน `GET /workflow-sections` เหมือนเดิม
+- การแก้ template/config เป็นงานของ**ระบบ SBP เดิม** — audit อยู่ที่ระบบเดิมทั้งหมด
+
+## กลุ่ม Batch Job Admin — ลบออกจากแบบ (ตัดสินใจ 2026-08-06 · 6 เส้น)
+
+**ลบทิ้งแล้ว** — ทั้ง 6 endpoint ถูกเอาออกจาก `plan-api.html` (GROUPS) · หน้า `job-batch.html` **ย้ายไปกลุ่มเมนู `Flow` ชื่อ "Flow Batch Job" และเหลือเฉพาะ 2 แท็บ `Flowchart การทำงาน` + `Database ที่ใช้`** (ตัดแบบฟอร์มพารามิเตอร์ · ประวัติการรัน · ปุ่มสั่งรัน/เปิด-ปิด job · stat cards · กราฟ · การ์ด audit ออกทั้งหมด) — เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม:
+
+| เส้นที่ลบ |
+|---|
+| `GET /jobs` · `GET /jobs/{jobNo}` · `PUT /jobs/{jobNo}/params` · `PUT /jobs/{jobNo}/enabled` · `POST /jobs/{jobNo}/run` · `GET /jobs/{jobNo}/runs` |
+
+**เหตุผล:** ทั้ง 6 เส้นมีไว้รองรับ 2 tab ที่ถูกตัดออกจากหน้าจอโดยตรง (`แบบฟอร์มพารามิเตอร์`, `ประวัติการรัน`) — ส่วนที่เหลือของหน้า (Flowchart + Database ที่ใช้) เป็นเนื้อหา static ไม่ต้องเรียก API
+
+**สิ่งที่ยังอยู่:**
+- **batch job ทั้ง 11 entry point (Jobs 1–10 + 8b) ยังทำงานตามปกติ** ตามเอกสาร Batch v4.0 — ไม่กระทบ pipeline FGI/FCS
+- **พารามิเตอร์และตารางเวลา** ย้ายไปกำหนดใน **backend config** (config file/env ของฝั่ง BE) แทนตาราง `job_configs` — แก้ค่าโดยการ deploy config ไม่ใช่ผ่านหน้าจอ
+- **ผลการรัน** เก็บที่ application log ของ BE และ `interface_transactions` (สถานะรับ–ส่งไฟล์/ACK ซึ่งยังมี endpoint กลุ่ม Interface อยู่) แทนตาราง `job_run_histories`
+- ตาราง `job_configs` และ `job_run_histories` **ถูกลบจาก target schema** (24 → 22 ตาราง)
+
+## ระบบ audit ของ master — ยกเลิกและลบทิ้ง (ตัดสินใจ 2026-08-07 · 1 เส้น)
+
+**ลบทิ้งแล้ว** — `GET /audit-logs` ถูกเอาออกจาก `plan-api.html` (GROUPS + `SQL_BY_PATH`) · ตาราง `audit_logs` ถูกลบจาก target schema (22 → 21 ตาราง) · การ์ด "ประวัติการแก้ไขข้อมูล" ถูกลบจาก `k2-factors.html` และ `k2-competitors.html` · ฟิลด์ **"เหตุผลการแก้ไขข้อมูล"** ถูกลบจาก `SCHEMAS` ใน `assets/sbp.js` ทั้ง 4 จุด
+
+**ผลที่ตามมาที่ต้องรับทราบ:** เดิมเก็บ `audit_logs` ไว้เพราะ**ระบบ SBP เดิมไม่มี audit กลางของ master** (มีเฉพาะ `general_upload_data_page_audit_log` ของงาน upload) — หลังยกเลิกจึง **ไม่มีร่องรอยว่าใครแก้ master ปัจจัยภายนอก/รายชื่อคู่แข่ง เมื่อไร จากค่าอะไรเป็นอะไร และด้วยเหตุผลใด** · ถ้าภายหลังต้องการ audit กลับมา ให้พิจารณาใช้กลไก audit ของระบบ SBP เดิมแทนการสร้างตารางใหม่
+
+**สิ่งที่ยังอยู่:** `consideration_logs` (ประวัติผลพิจารณารายเอกสาร — คนละเรื่องกับ audit ของ master) · `interface_transactions` (tracking รับ–ส่งไฟล์) · audit ของ RBAC/config/email template ที่อยู่ฝั่งระบบ SBP เดิม
+
 ## เส้นที่ตัดออก — ใช้ระบบ SBP เดิม (ตัดสินใจ 2026-08-05 · 18 เส้น)
 
 comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเหตุ — ไม่ใช่ "รอตัดสินใจ" แต่เป็นการตัดถาวรเพราะระบบ SBP ปัจจุบันมีอยู่แล้ว (คู่กับหน้า `k2-permissions.html` / `k2-operators.html` ที่ถอดจาก sidebar):
@@ -172,7 +197,7 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 | Master ผู้ปฏิบัติงาน (5) | `GET/POST/PUT/DELETE /operators` · `/operators/{id}` · `GET /employees/search` | group+scope ของ auth-backend (จัดการหน้า `/setting/manage-user-rights`) · ค้นพนักงานผ่าน employee backend เดิม |
 | Master สิทธิ์เมนู (9) | `GET /menu-permissions` · `PUT /menu-permissions/{menuCode}` · `GET/POST/PUT/DELETE /roles` · `/roles/{roleCode}` · `POST/PUT/DELETE /menus` · `/menus/{menuCode}` | auth-backend: `/groups` · `/groups/{id}/permissions` · `/groups/permissions/template` · `/menus` |
 
-## เส้นที่เปลี่ยนไปใช้ของระบบ SBP เดิม (ตัดสินใจ 2026-08-06 · 3 ตัด + 5 เปลี่ยนแหล่งข้อมูล)
+## เส้นที่เปลี่ยนไปใช้ของระบบ SBP เดิม (ตัดสินใจ 2026-08-06 · 3 ตัด + 5 เปลี่ยนแหล่งข้อมูล · เดิมมี `/email-templates/*` และ `/configs` ด้วย แต่ถูกลบทั้งกลุ่มแล้ว)
 
 ตรวจ `SBP/README.md` + repo `srm-sps-spsap-store-backend` (79 entity · 25 controller) แล้วยึด**ของที่มีอยู่จริงเป็นหลัก**:
 
@@ -186,15 +211,33 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 
 ### คงเส้นไว้ แต่เปลี่ยนแหล่งข้อมูลไปที่ของระบบเดิม
 
+> **Workflow engine ของระบบเดิม — ข้อเท็จจริงจากฐานข้อมูลจริง** (ตรวจ 2026-08-10 · `SBP/db-schema-sps_store.md` · `SBP/db-schema-sps_auth.md`)
+>
+> - **engine มี 13 ตาราง ไม่ใช่ 10** (เอกสารเดิมของเราเขียนผิด): `workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_transaction` · `workflow_history` · `workflow_approver` · `workflow_part` · `workflow_part_display`
+> - **engine ตัวจริงที่ SBPGI ต้องต่อคือชุดใน schema `sps_store` ไม่ใช่ `sps_auth`** — ทั้งสอง schema มี 13 ตารางชื่อเดียวกันครบ แต่เป็นคนละชุดข้อมูลและ**คนละเวอร์ชัน** (`workflow_state` ของ `sps_auth` 3 คอลัมน์ / ของ `sps_store` 4 คอลัมน์)
+>   - `sps_store`: `workflow_transaction` **19,283 แถว** · `workflow_history` **38,010** · `workflow_approver` **96,542** (ของใช้งานจริง)
+>   - `sps_auth`: `workflow_transaction` 55 · `route` 41 · `state` 10 (ชุดของ auth-backend คนละเรื่อง)
+>   - → ทุกที่ที่เอกสารนี้อ้างตาราง engine ให้อ่านว่า **`sps_store.<table>`**
+> - ⚠️ **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:** `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index เลย** ทั้งที่มี 19,283 แถว (ตารางชื่อเดียวกันใน `sps_auth` มี PK ปกติ) — กระทบ performance ของ `GET /tasks` / `POST /documents/{docNo}/actions` ที่ต้อง query ตาราง**นี้ทุกครั้ง** · เป็นข้อเท็จจริงที่ตรวจพบ ไม่ใช่ข้อเสนอ · **ยังไม่ตัดสิน**ว่าจะแก้อย่างไร (เพิ่ม index / ขอ library เวอร์ชันใหม่ / อ่านผ่าน view)
+> - **ข้อสังเกต (ยังไม่ตัดสิน):** `workflow_part` + `workflow_part_display` ของ engine คุมการแสดงผล**รายส่วนของหน้าจอ** (READ/WRITE ต่อ state) ซึ่ง**ทับซ้อน**กับกลไก `data-editrole` / `.edit-only` ที่ prototype ทำเอง และกับธง `permissions.canEditSections` ที่ `GET /documents/{docNo}` คืน — ต้องเลือกว่าจะให้ engine เป็นเจ้าของสิทธิ์แก้รายส่วนหรือให้ SBPGI คำนวณเอง (ดู `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4)
+>
+> **⚠️ ชื่อ function ของ engine ยังไม่ยืนยัน — มี 3 ชุดขัดกัน (ห้ามยึดชุดใดชุดหนึ่งจนกว่าจะ confirm กับทีมเจ้าของ library):**
+>
+> | ชุด | แหล่ง | ชื่อที่ใช้ |
+> |---|---|---|
+> | A | `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — ชีต **Detail** (LLDD ต้นฉบับ) | `eventWorkflow` · `addPreApprover` · `getPendingFlowByUser` |
+> | B | `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — ชีต **Mermaid seq** (ไฟล์เดียวกัน) | `triggerEvent` |
+> | C | `SBP/srm-sps-spsap-store-backend.md` §1.5 (โค้ดจริง) | `TriggerEventUseCase` · `AddPreparedApproverUseCase` · `GetPendingFlowUseCase` |
+>
+> ชื่อ function ที่ปรากฏในตารางด้านล่างและใน `plan-api.html` เขียนตาม**ชุด B/C** ไว้ก่อนเป็น placeholder — **ยังไม่ตัดสิน** · ต้อง confirm กับ `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` และทีมเจ้าของ `@srm/glb-workflow` ก่อนเขียนโค้ดจริง
+
 | เส้น | เดิมอ่าน/เขียนตาราง | เปลี่ยนเป็น |
 |---|---|---|
-| `GET /tasks` | `workflow_tasks` ของ SBPGI | **`@srm/glb-workflow`** — `getPendingFlow({userData:{userId, groupId}, versionId})` แล้ว join ข้อมูลเอกสารของ SBPGI · inbox รวมทุกระบบที่มีอยู่แล้วคือ `GET /api/workflow/pending` (store-backend) |
-| `POST /documents/{docNo}/actions` | `workflow_instances` + `workflow_tasks` | `triggerEvent({versionId, referenceId: docNo, event, remark, userId, nextApproverId})` ของ engine · ผู้อนุมัติขั้นถัดไปใช้ `addPreparedApprover()` |
-| `GET /documents/{docNo}/timeline` | `consideration_logs` อย่างเดียว | `getHistory()` ของ engine (state transition) **join** `consideration_logs` ของ SBPGI (decision · ไฟล์แนบ · ความเห็น) |
-| `GET /workflow-sections` · `GET /document-statuses` | `workflow_sections` / `document_statuses` | `workflow_state` / `workflow_route` / `workflow_status` ของ engine + **วงเงินอนุมัติจาก `common_code`** (`code_type = SBPGI_APPROVE_LIMIT`) |
-| `GET/PUT /email-templates/*` | `email_templates` ของ SBPGI | ตาราง **`email_template`** เดิม (`email_template_id` · `subject_format` · `body_format`) · การส่งใช้ `@gosoft-sbp/email-lib` และ log ลง `email_sent` — ไม่เขียน mail sender เอง |
-| `GET/PUT /configs` | `system_configs` ของ SBPGI | ตาราง **`mas_param`** เดิม (เพิ่มคอลัมน์ที่ขาดในตารางเดิม ไม่สร้างตารางใหม่) |
-| `POST /documents/{docNo}/attachments` · `GET .../download` | เขียน storage layer เอง | เก็บ metadata ใน `document_attachments` ของ SBPGI แต่ **ไฟล์ใช้ service S3 เดิม** `POST /statement/upload-file-aws` · `POST /statement/download-file-aws` |
+| `GET /tasks` | `workflow_tasks` ของ SBPGI | **`@srm/glb-workflow`** (schema `sps_store`) — `getPendingFlow({userData:{userId, groupId}, versionId})` **[ชื่อยังไม่ยืนยัน — ดู 3 ชุดด้านบน]** · **[DP-1 · DP-2]** คีย์ที่ใช้ join กลับเอกสาร (`reference_id`) ยังไม่ตัดสิน และ `sps_store.workflow_transaction` ไม่มี PK/index (19,283 แถว) จึงเป็น seq-scan — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4 แล้ว join ข้อมูลเอกสารของ SBPGI · อ่าน `sps_store.workflow_transaction` + `workflow_approver` · inbox รวมทุกระบบที่มีอยู่แล้วคือ `GET /api/workflow/pending` (store-backend) |
+| `POST /documents/{docNo}/actions` | `workflow_instances` + `workflow_tasks` | `triggerEvent({versionId, referenceId, event, remark, userId, nextApproverId})` — **[referenceId ยังไม่ตัดสิน — DP-1 ดู [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4]** (หลักฐานจากระบบเดิม cooperation-request · inform-evaluate ใช้ surrogate id ทุกจุด) ของ engine · ผู้อนุมัติขั้นถัดไปใช้ `addPreparedApprover()` — **ทั้งสองชื่อยังไม่ยืนยัน มี 3 ชุดขัดกัน (ดูตารางด้านบน)** · เขียน `sps_store.workflow_transaction` / `workflow_history` / `workflow_approver` |
+| `GET /documents/{docNo}/timeline` | `consideration_logs` อย่างเดียว | `getHistory()` ของ engine (state transition · **ชื่อยังไม่ยืนยัน**) อ่าน `sps_store.workflow_history` **join** `consideration_logs` ของ SBPGI (decision · ไฟล์แนบ · ความเห็น) · **[ยังไม่ตัดสิน — DP-7]** `consideration_logs` จะเป็น timeline เต็ม หรือเป็นตารางส่วนขยายบน `workflow_history` ของ engine (กระทบรูปแบบ response ของเส้นนี้โดยตรง) · **[DP-1]** `referenceId` ที่ใช้เรียก `getHistory()` ยังไม่ตัดสิน — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4 |
+| `GET /workflow-sections` · `GET /document-statuses` | `workflow_sections` / `document_statuses` | `sps_store.workflow_state` / `workflow_route` / `workflow_status` ของ engine + **วงเงินอนุมัติจาก `common_code`** (`code_type = SBPGI_APPROVE_LIMIT`) |
+| `POST /documents/{docNo}/attachments` · `GET .../download` | เขียน storage layer เอง | เก็บ metadata ใน `document_attachments` ของ SBPGI แต่ **ไฟล์ใช้ service S3 เดิม** `POST /statement/upload-file-aws` · `POST /statement/download-file-aws` · **[ยังไม่ตัดสิน — DP-8]** จะใช้ตาราง `document_attachments` ของเราเอง หรือต่อยอด `upload_general` ของระบบเดิม (`job_id`/`audit_log_id` เป็น nullable ไม่ติด FK — เหตุผลจริงคือขาด `file_size`/`content_type`/`section_code`/`upload_status`/`purge_flag`) — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4 |
 
 **Envelope ต้องตรงกับของเดิม:** สำเร็จ `{"success": true, "data": …}` · ผิดพลาด `{"success": false, "data": null, "error": {"code","message"}}` (ResponseInterceptor + HttpExceptionFilter ของ store-backend) — ข้อความ error ยังต้องเป็นไทย verbatim ตาม SRS
 
@@ -210,6 +253,9 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 
 ## เอกสารที่เกี่ยวข้อง
 
-- ตารางที่แต่ละเส้นอ่าน/เขียน: [database.md](database.md) · `plan-database.html` (24 ตาราง)
+- ตารางที่แต่ละเส้นอ่าน/เขียน: [database.md](database.md) · `plan-database.html` (**21 ตาราง** หลังตัด `audit_logs` 2026-08-07)
+- เทียบ SBPGI กับระบบ SBP เดิม + **12 ข้อค้างตัดสินใจ (Decision Points)**: `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4
+- Schema จริงของระบบเดิม (ที่มาของตัวเลขทุกตัวในหัวข้อ workflow engine): `SBP/db-schema-sps_store.md` · `SBP/db-schema-sps_auth.md`
+- LLDD ของ workflow engine (ที่มาของชื่อ function ชุด A/B): `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md`
 - Flow ที่ API ขับเคลื่อน: [workflow.md](workflow.md) · `plan-flow.html`
-- Email จุดส่งในแต่ละสถานะ: `email-template.html` (8 templates)
+- Email จุดส่งในแต่ละสถานะ: `workflow_status_document.md` (ตารางสถานะ × action × ผู้รับ × อีเมล) — หน้าจอ Email Template ถูกลบ 2026-08-06 · template อยู่ในตาราง `email_template` ของระบบ SBP เดิม

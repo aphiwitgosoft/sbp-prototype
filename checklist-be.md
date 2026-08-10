@@ -2,17 +2,23 @@
 
 > ## ⚠️ ตัดสินใจ 2026-08-06 — ยึดตาราง/บริการของระบบ SBP เดิม (อ่านก่อนเริ่ม Phase ตาราง)
 >
-> ไฟล์นี้เขียนไว้ตอนโครงยังเป็น 34 ตาราง **ตอนนี้เหลือ 24 ตาราง** — งานสร้างตารางด้านล่างที่ตรงกับรายการนี้ **ห้ามสร้างใหม่ ให้ใช้ของระบบ SBP ปัจจุบัน** (`srm-sps-spsap-store-backend`):
+> ไฟล์นี้เขียนไว้ตอนโครงยังเป็น 34 ตาราง **ตอนนี้เหลือ 21 ตาราง / 30 endpoint 6 กลุ่ม** (Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 — ลบกลุ่ม System Config + Email Template 10 เส้น พร้อมหน้าจอ และกลุ่ม Batch Job Admin 6 เส้น + ตาราง `job_configs`/`job_run_histories` เมื่อตัด 2 tab ควบคุมของหน้า Batch Job · 2026-08-06 · แล้วตัด `audit_logs` + `GET /audit-logs` 2026-08-07) — งานสร้างตารางด้านล่างที่ตรงกับรายการนี้ **ห้ามสร้างใหม่ ให้ใช้ของระบบ SBP ปัจจุบัน** (`srm-sps-spsap-store-backend`):
 >
 > | รายการในไฟล์นี้ | ใช้ของเดิมแทน |
 > |---|---|
-> | `workflow_instances` · `workflow_tasks` · `workflow_sections` · `document_statuses` | **`@srm/glb-workflow`** (`workflow_transaction` · `workflow_approver` · `workflow_history` · `workflow_state`/`route`/`status`) — ขอ workflow version ใหม่ 1 ตัว · `referenceId = doc_no` · inbox = `getPendingFlow()` |
+> | `workflow_instances` · `workflow_tasks` · `workflow_sections` · `document_statuses` | **`@srm/glb-workflow`** — **13 ตาราง บน schema `sps_store`**: `workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_transaction` · `workflow_history` · `workflow_approver` · `workflow_part` · `workflow_part_display` (ยืนยันจาก `SBP/db-schema-sps_store.md` · `sps_auth` มีชื่อเดียวกันครบ 13 ตัวแต่คนละชุด/คนละเวอร์ชัน **ห้ามชี้ไป `sps_auth`**) — ขอ workflow version ใหม่ 1 ตัว · `referenceId = doc_no` **ยังไม่ตัดสิน (DP-1)** · inbox = `getPendingFlow()` **ชื่อ function ยังไม่ยืนยัน (เอกสาร 3 ชุดขัดกัน — ดูหมายเหตุใต้ตาราง)** |
 > | `stores` · `zones` · `branch_types` · `employees` | `store`/`mas_store`/`sevenshop` · `mas_zone` · `common_code` · `business_user` |
 > | `email_templates` | `email_template` + `email_sent` + `@gosoft-sbp/email-lib` |
 > | `system_configs` | `mas_param` (เพิ่มคอลัมน์ในตารางเดิมถ้าจำเป็น) |
 > | วงเงินอนุมัติ (`workflow.avp_amount_threshold`) | `common_code` (`code_type = SBPGI_APPROVE_LIMIT`) — **GM 50,000 / AVP 300,000 ตาม SDD GI** ไม่ใช่ 100,000 |
 >
-> รายละเอียดเต็ม: `database.md` §ตารางที่ตัดออกรอบ 2 · `api.md` §เส้นที่เปลี่ยนไปใช้ของระบบ SBP เดิม
+> **หมายเหตุ workflow engine (ยืนยันจากฐานข้อมูลจริง 2026-08-10 · `SBP/db-schema-sps_store.md` / `db-schema-sps_auth.md`):**
+> - engine มี **13 ตาราง ไม่ใช่ 10** และตัวจริงอยู่ **schema `sps_store`** — ปริมาณจริง `workflow_transaction` 19,283 · `workflow_history` 38,010 · `workflow_approver` 96,542 (ฝั่ง `sps_auth` มี transaction 55 · route 41 · state 10 เป็นของ auth-backend)
+> - ⚠️ `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index เลย** ทั้งที่มี 19,283 แถว — **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library** · ยังไม่ตัดสิน (DP-2)
+> - ⚠️ **ชื่อ function ของ engine ยังไม่ยืนยัน เอกสาร 3 ชุดขัดกัน ห้ามเลือกเอง:** ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow`/`addPreApprover`/`getPendingFlowByUser` · ชุด B ชีต Mermaid seq ไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase`/`AddPreparedApproverUseCase`/`GetPendingFlowUseCase`
+> - `workflow_part`/`workflow_part_display` ของ engine คุม READ/WRITE รายส่วนของหน้าจอ — ทับซ้อนกับกลไกสิทธิ์แก้ไขที่ prototype ทำเอง · **เป็นข้อค้างตัดสินใจ**
+>
+> รายละเอียดเต็ม: `database.md` §ตารางที่ตัดออกรอบ 2 · `api.md` §เส้นที่เปลี่ยนไปใช้ของระบบ SBP เดิม · **ข้อค้างตัดสินใจ 12 ข้อ (DP-1…DP-12): `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4**
 
 
 > **วิธีใช้:** ทำตามลำดับ Phase 0 → 7 ติ๊กทีละข้อ — ทุก Phase มี **✔ เกณฑ์ตรวจรับ** เป็น test case รันได้จริง ต้องผ่านครบก่อนไปต่อ
@@ -29,7 +35,7 @@
 
 ---
 
-## Phase 0 — Scaffold + Schema (24 ตาราง — ดูรายการที่ตัดในกล่องเตือนหัวไฟล์)
+## Phase 0 — Scaffold + Schema (21 ตาราง — ดูรายการที่ตัดในกล่องเตือนหัวไฟล์)
 
 ### 0.1 โครงโปรเจกต์
 - [ ] init โปรเจกต์ TypeScript strict + Express 4 + pino + helmet/cors — โครงโฟลเดอร์ **module-per-domain + layered** ตาม plan-be.md §2 (`routes → controller → service → repository → prisma` · controller ห้ามมี business logic · service ห้ามแตะ req/res · ข้าม module ได้เฉพาะชั้น service)
@@ -55,7 +61,7 @@
 - [ ] `fgi_impact_sales_summaries` — PK `id` · FK `impact_process_id` · `growth_rate_diff` (nullable — เคส NULL = รอตรวจสอบ) · `total_working_days` (เกณฑ์ 60 วัน)
 - [ ] `sales_transactions` — PK `id` · FK `sales_summary_id` → fgi_impact_sales_summaries · ยอดขายรายวัน 4 หน้าต่าง × 15 วัน · `sales_diff` / outlier ≥ 50
 - [ ] `fgi_impact_competitors` — PK `id` · FK `impact_process_id` · `data_source = 'ALM'` · งวดล่าสุดต่อร้าน
-- [ ] `fcs_qssi_scores` — PK `id` · **UK: store_id + category_code + งวด** · 6 หมวด (8,9,12,1,10,16)
+- [ ] `fcs_qssi_score` (เอกพจน์) — **ห้ามสร้างใหม่** ตารางนี้มีอยู่จริงแล้วใน `sps_store` **23,958,780 แถว** พร้อม import pipeline ที่ทำงานอยู่ (`POST /performance/import-qssi` + staging `fcs_tmp_qssi_score`) → งานที่ต้องทำคือ **ต่อของเดิม** ไม่ใช่ migrate ใหม่ · โครงเดิม: PK `id` · `store_id`/`category`/`month`/`year` **nullable ทั้ง 4 และยังไม่มี UK** · การเพิ่ม `NOT NULL`/UK/index บน 23.9M แถว **ยังไม่ตัดสิน** — ดู **DP-4** ใน `SBP/SBPGI-vs-existing-system.md` (ต้องคุยกับเจ้าของ `performance.service.ts` ก่อน) · หมวดที่ใช้ 6 ค่า (8,9,12,1,10,16)
 - [ ] `interface_transactions` — PK `id` · **typed FK 3 คอลัมน์: `impact_process_id` / `sales_summary_id` / `doc_no` — ห้าม polymorphic key** · `data_name` เป็น enum · enum `sta_status` (I/C/A/N/S/Z)
 
 ### 0.3 Prisma schema — Zone B · K2 เอกสาร & Workflow (9 ตาราง)
@@ -81,13 +87,9 @@
 - [ ] `employees` — PK `employee_id` — master HR (แหล่ง `/employees/search`)
 - [ ] `external_factors` — PK `factor_code` — **รหัสห้ามซ้ำ**
 - [ ] `competitors` — PK `competitor_code` — **11 ราย** (01–11) · `name_th` + `name_en` (ตามหน้าจอ K2 เดิม)
-- [ ] `audit_logs` — PK `id` · generic `table_name` + `ref_key` · `action_type` · `old_value` → `new_value` · `reason` · `updated_by` · `updated_at`
+- [x] ~~`audit_logs`~~ **ตัดออกจาก target schema 2026-08-07** (22 → 21 ตาราง) พร้อม `GET /audit-logs` — ไม่ต้องสร้าง entity/ตาราง · การเอา audit ของ master กลับมาโดยใช้ของระบบเดิม (`user_log` · `user_audit_events` · `common_log`) **ยังไม่ตัดสิน** — ดู **DP-12** ใน `SBP/SBPGI-vs-existing-system.md`
 - [ ] `status_email_rules` — PK `status_code` · `to_section_code` / `cc_section_code` → workflow_sections
-- [ ] `email_templates` — PK `template_code` (EM-01–08) · subject/body + ตัวแปร merge + default สำหรับ reset
 - [ ] `user_accounts` — PK `employee_id` · FK `role_code` → roles · password bcrypt
-- [ ] `job_configs` — PK `job_no` · cron + พารามิเตอร์ editable · `enabled` (11 jobs)
-- [ ] `job_run_histories` — PK `run_id` · FK `job_no` · เวลา/แถว/ไฟล์/ผล · สถานะ RUNNING ใช้เป็น lock
-- [ ] `system_configs` — PK `config_key` (dot notation) · `category` (IMPACT/WORKFLOW/DOCUMENT/AUTH/NOTIFICATION/BATCH) · `value_type` (NUMBER/STRING/BOOLEAN/JSON/CRON) · `is_editable` · **ห้ามมี secret**
 - [ ] ตาราง counter เลขเอกสาร (`document_running_numbers` PK ปี **ค.ศ.** + `last_running_no`) สำหรับ `FOR UPDATE`
 
 ### 0.5 Migration แรก
@@ -258,70 +260,56 @@
 
 ## Phase 4 — Reports + Dashboard (2 + 1 เส้น)
 
-- [ ] `GET /reports/status-summary` — **ปี (ค.ศ.) required → 400** · filter ครบ 6 ตัว:
-  - `status` (6 ค่า) · `result` (**ประกันรายได้/ไม่ประกันรายได้** — จาก `consideration_logs.result_category` **ล่าสุด** APPROVE/REJECT) · `region` (13 รหัส: BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL + ภาคใหม่อัตโนมัติ) · `storeType` (**A/B/C/E** เลือกได้หลายค่า — ยืนยันจากภาพหน้าจอ K2 จริง) · `impactedStoreCode` · `newStoreCode`
-  - ออกเฉพาะรายการ**มีเลขเอกสาร** · SQL ตาม `SQL_BY_PATH` ($queryRaw parameterized)
-- [ ] `GET /reports/status-summary/export` — เงื่อนไขเดียวกัน → **CSV UTF-8 มี BOM** (`﻿`) · เก็บสำเนา `storage/exports/` + ส่งไฟล์กลับ (Content-Disposition)
-- [ ] `GET /dashboard/summary` — ตัวเลข 4 ก้อน + chart data (SQL ตาม SQL_BY_PATH) · **cache in-memory TTL 5 นาที**
+- [ ] `GET /reports/status-summary` — **ปี (ค.ศ.) required → 400** · **`status` required → 400** · filter 7 ตัวตาม **SDD สไลด์ 60**:
+  - `status` (Drop-down 6 ค่า · **บังคับ**) · `impactedStoreCode` (numeric) · `newStoreCode` (numeric) — **ระบุตัวหนึ่งต้องระบุอีกตัวด้วย ไม่งั้น 400** · `periodStatementFrom`/`To` (**วัน/เดือน/ปี ค.ศ.** · บังคับเมื่อ `status = เสร็จสิ้นดำเนินการ`) · `storeType[]` (**A/B/C/E**) · `region[]` (13 รหัส: BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL + ภาคใหม่อัตโนมัติ) · `result` (**ประกันรายได้/ไม่ประกันรายได้** — จาก `consideration_logs.result_category` **ล่าสุด** APPROVE/REJECT · **ไม่บังคับ**)
+  - คืน **14 คอลัมน์ตาม SDD** · ออกเฉพาะรายการ**มีเลขเอกสาร** · SQL ตาม `SQL_BY_PATH` ($queryRaw parameterized)
+- [ ] `GET /reports/status-summary/export` — เงื่อนไขเดียวกัน → **ไฟล์ Excel `.xlsx` 14 คอลัมน์** · เก็บสำเนา `storage/exports/` + ส่งไฟล์กลับ (Content-Disposition)
 
 ### ✔ เกณฑ์ตรวจรับ Phase 4
-- [ ] `GET /reports/status-summary` ไม่ส่งปี → 400 · ส่งปี+filter → จำนวนแถวตรงกับ seed ที่คำนวณมือ (ทดสอบอย่างน้อย filter status, result, region อย่างละเคส)
+- [ ] `GET /reports/status-summary` ไม่ส่งปี → 400 · ไม่ส่ง `status` → 400 · ส่ง `impactedStoreCode` เดี่ยว ๆ → 400 · ส่งปี+status+filter → จำนวนแถวตรงกับ seed ที่คำนวณมือ (ทดสอบอย่างน้อย filter status, result, region อย่างละเคส)
 - [ ] filter `result=ประกันรายได้` → ได้เฉพาะเอกสารที่ log ล่าสุด APPROVE (เอกสาร back-flow แล้ว REJECT ทีหลังต้องไม่ติดมา)
-- [ ] export → header `text/csv` · ไบต์แรก = EF BB BF (BOM) · เปิด Excel ภาษาไทยไม่เพี้ยน · มีไฟล์สำเนาใน `storage/exports/`
-- [ ] `GET /dashboard/summary` ยิง 2 ครั้งใน 5 นาที → query log ครั้งเดียว (ดู pino) · ครั้งที่ 3 หลัง TTL → query ใหม่
+- [ ] export → header `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` · เปิดใน Excel ภาษาไทยไม่เพี้ยน · 14 คอลัมน์ตรงกับผลค้นหา · มีไฟล์สำเนาใน `storage/exports/`
 
 ---
 
-## Phase 5 — Config + Email Templates + Notification (5 + 5 เส้น)
+## Phase 5 — Notification (ไม่มี endpoint)
 
-### 5.1 System Config (5 เส้น)
-- [ ] `GET /configs` (filter category) · `GET /configs/{key}` (cache 5 นาที)
-- [ ] `POST /configs` — validate ค่าตาม `value_type` (NUMBER/STRING/BOOLEAN/JSON/CRON) ก่อนบันทึก → ผิด type → 400
-- [ ] `PUT /configs/{key}` — `is_editable=false` → **403** · **key หน้าตาเป็น secret (มี password/secret/token/key คู่ credential) → 400 ปฏิเสธ** · reason → audit · แก้แล้ว **invalidate cache** ทันที
-- [ ] `DELETE /configs/{key}` — is_editable=false → 403 · reason → audit
+> **ตัดสินใจ 2026-08-06:** หน้าจอ **ตั้งค่าระบบ (Global Config)** และ **Email Template** ถูกลบทั้งฟีเจอร์ พร้อม endpoint 10 เส้น (`/configs*` 5 · `/email-templates*` 5) — ทั้งสองเขียนลงตารางของระบบ SBP เดิม (`mas_param` / `email_template`) ซึ่งมีหน้าจอบริหารจัดการอยู่แล้ว SBPGI จึงไม่ทำซ้ำ
 
-### 5.2 Email Templates (5 เส้น)
-- [ ] seed `email_templates` EM-01–08 + `status_email_rules` (TO/CC ต่อสถานะตาม SRS 3.1.5)
-- [ ] `GET /email-templates` · `GET /email-templates/{code}` — subject/body + ตัวแปร merge
-- [ ] `PUT /email-templates/{code}` — แก้ subject/body เท่านั้น (From/To/Cc ล็อกตาม status_email_rules) · reason → audit
-- [ ] `POST /email-templates/{code}/reset` · `POST /email-templates/reset-all` — คืน default · audit
+- [x] ~~5.1 System Config (5 เส้น)~~ **ไม่ต้องทำ** — ค่ากำหนดกลางอ่านจาก `mas_param` ของระบบเดิม (read-only จากฝั่ง SBPGI) · วงเงินอนุมัติ GM/AVP อ่านจาก `common_code` (`code_type = SBPGI_APPROVE_LIMIT`) ผ่าน `GET /workflow-sections`
+- [x] ~~5.2 Email Templates (5 เส้น)~~ **ไม่ต้องทำ** — template 8 ฉบับ (EM-01–08) อยู่ในตาราง `email_template` เดิม (`subject_format`/`body_format`) · SBPGI แค่**อ่าน**ไปประกอบอีเมล การแก้ทำที่ระบบเดิม
 
 ### 5.3 Notification Service
-- [ ] `notification/` — nodemailer (SMTP UTF-8) + render ตัวแปร merge จาก template + **คิว in-memory + retry 3 ครั้ง** (ส่งเมลอยู่นอก transaction เสมอ)
+- [ ] `notification/` — **ใช้ `@gosoft-sbp/email-lib` ของระบบ SBP เดิม (ไม่เขียน mail sender เอง)** · อ่าน `email_template` (`subject_format`/`body_format`) + render ตัวแปร merge + log ทุกฉบับลง `email_sent` · **retry ตามที่ lib รองรับ** (ส่งเมลอยู่นอก transaction เสมอ)
 - [ ] hook เข้ากับ Workflow Engine: เปลี่ยนสถานะ → **EM-01** · เสร็จสิ้น → **EM-02** · ส่งกลับ (back-flow) → **EM-03** — TO/CC จาก status_email_rules
-- [ ] cron **EM-04** เตือนงานค้างรายสัปดาห์ จันทร์ 10:00 (อ่าน workflow_tasks เปิด · รอบเวลาแก้ได้ใน config)
+- [ ] cron **EM-04** เตือนงานค้างรายสัปดาห์ จันทร์ 10:00 (อ่านงานที่เปิดอยู่จาก workflow engine · **รอบเวลากำหนดใน backend config** ไม่ใช่ตาราง config)
 - [ ] cron **EM-05** escalation งานค้าง 30/45/60 วัน (waiting_days ของ workflow_tasks → แจ้งหัวหน้า section)
 
 ### ✔ เกณฑ์ตรวจรับ Phase 5 (mailpit/mailhog)
 - [ ] `docker run mailpit` → เดิน Scenario 1 ของ Phase 3 ใหม่ → กล่อง mailpit มี EM-01 ทุกครั้งที่เปลี่ยนสถานะ · EM-02 ตอนจบ · ผู้รับ TO/CC ตรง status_email_rules · ตัวแปร (docNo, ร้าน, สถานะ) ถูกแทนครบไม่มี `{{...}}` หลงเหลือ
 - [ ] back-flow (Scenario 3) → EM-03 ออก
-- [ ] `PUT /configs/workflow.avp_amount_threshold` → 403 · `PUT /configs/x` value_type=NUMBER ส่ง "abc" → 400 · `POST /configs` key `smtp.password` → 400
-- [ ] แก้ config editable แล้ว `GET /configs/{key}` ทันที → ได้ค่าใหม่ (cache invalidated)
-- [ ] ดับ SMTP ชั่วคราวแล้วเดิน workflow → เมล retry 3 ครั้ง (ดู log) · workflow ไม่ fail
+- [ ] ดับ SMTP ชั่วคราวแล้วเดิน workflow → `@gosoft-sbp/email-lib` retry ตามค่าที่ตั้งไว้ (ดู log + แถวใน `email_sent`) · workflow ไม่ fail
 
 ---
 
-## Phase 6 — Batch Jobs + Interfaces (6 + 4 เส้น)
+## Phase 6 — Batch Jobs + Interfaces (3 เส้น · ตัด Job Admin API 6 เส้น)
 
+> **ตัดสินใจ 2026-08-06 — ตัด 2 tab ควบคุมของหน้า Batch Job:** endpoint กลุ่ม **Job Admin API 6 เส้น** (`/jobs*`) และตาราง **`job_configs` / `job_run_histories`** ถูกลบออกจากแบบ · หน้า `job-batch.html` ย้ายไปกลุ่มเมนู **Flow** ("Flow Batch Job") และเหลือเฉพาะ **Flowchart การทำงาน + Database ที่ใช้** (ตัด 2 tab ควบคุมออก) — เป็นเอกสารอ้างอิงผู้พัฒนา ไม่มีงาน FE/BE ให้ทำใน phase นี้ · **batch job ทั้ง 11 entry point ยังต้องทำและรันตามปกติ** — เปลี่ยนแค่ที่มาของค่า: **cron/พารามิเตอร์กำหนดใน backend config** (config file/env) และ **ผลการรันเขียนลง application log** (+ `interface_transactions` สำหรับไฟล์/ACK) แทนตาราง
+>
 > **Jobs 7/8/9 ตัดทิ้ง** — ไฟล์ BPM06001O_/2O_/3O_ ผ่าน EAI ไม่มีในระบบใหม่ (แทนด้วย Document Service เขียน DB ตรง + Job 8b เรียก workflow ภายใน) — **ไม่ต้องสร้าง** แต่ให้คง job_no ไว้ในเอกสาร/seed เป็นแถว `enabled=false` + หมายเหตุ "removed — replaced by direct DB write" เพื่อ traceability
 
 ### 6.1 Runner กลาง
-- [ ] seed `job_configs` 11 แถว (cron ตามเอกสาร Batch v4.0) · `batch/runner.ts` — lock กันรันซ้อน (แถว RUNNING ใน job_run_histories) → รันซ้อน **409** · ทุก run บันทึก job_run_histories (เวลา/แถว/ไฟล์/ผล) · จบ Error → **EM-07**
-- [ ] `batch/scheduler.ts` — node-cron อ่าน cron จาก job_configs · `POST /jobs/{jobNo}/run` ใช้ runner ตัวเดียวกับ cron
+- [ ] นิยาม job 11 ตัว (cron + พารามิเตอร์ ตามเอกสาร Batch v4.0) ใน **backend config** (config file/env — ไม่มีตาราง `job_configs`) · `batch/runner.ts` — lock กันรันซ้อนด้วย distributed lock/advisory lock (ไม่ใช่แถว RUNNING ในตาราง) · ทุก run เขียน **application log** แบบ structured (เวลา/แถว/ไฟล์/ผล) · จบ Error → **EM-07**
+- [ ] `batch/scheduler.ts` — node-cron อ่าน cron จาก backend config · การสั่งรันนอกรอบทำผ่าน CLI/ops runbook (ไม่มี endpoint `POST /jobs/{jobNo}/run` แล้ว) โดยใช้ runner ตัวเดียวกับ cron
 
-### 6.2 Job Admin API (6 เส้น)
-- [ ] `GET /jobs` — 11 entry points + สถานะล่าสุด
-- [ ] `GET /jobs/{jobNo}` — รายละเอียด + พารามิเตอร์
-- [ ] `PUT /jobs/{jobNo}/params` — แก้เฉพาะพารามิเตอร์ editable → แก้ตัว non-editable → 400
-- [ ] `PUT /jobs/{jobNo}/enabled` — เปิด/ปิด
-- [ ] `POST /jobs/{jobNo}/run` — สั่งรันนอกรอบ (guard 6.1)
-- [ ] `GET /jobs/{jobNo}/runs` — ประวัติรัน paginate
+### 6.2 Job Admin API — **ตัดออกทั้งหมด (2026-08-06)**
+- [x] ~~`GET /jobs` · `GET /jobs/{jobNo}` · `PUT /jobs/{jobNo}/params` · `PUT /jobs/{jobNo}/enabled` · `POST /jobs/{jobNo}/run` · `GET /jobs/{jobNo}/runs`~~ **ไม่ต้องทำ** — ตัด 2 tab ควบคุม (`แบบฟอร์มพารามิเตอร์` / `ประวัติการรัน`) ออกจากหน้าจอแล้ว · เปิด/ปิด job และแก้พารามิเตอร์ทำผ่าน **backend config + deploy** · ดูประวัติการรันจาก **application log** (หรือเครื่องมือ log ที่ทีม ops ใช้)
 
 ### 6.3 File codec
 - [ ] `interfaces/fileCodec.ts` — fixed-width + iconv-lite (WINDOWS-874/TIS-620/UTF-8) + **golden-file tests**: วันที่ พ.ศ. · ชื่อประกอบ first+last · เลขศูนย์นำหน้า store_code ไม่หาย
 
 ### 6.4 Jobs รายตัว (checkbox ต่อ job — input / output / เกณฑ์ผ่าน)
-- [ ] **Job 1 — นำเข้า QSSI** · Input: SFTP QSSI 4 ไฟล์ `mrs*` (รายเดือน) · Output: แถว `fcs_qssi_scores` (UK กัน dup) · เกณฑ์ผ่าน: dedup ทำงาน (รันซ้ำไฟล์เดิมแถวไม่เพิ่ม) · งวดใน DB = **เดือนก่อนหน้า** (off-by-one ตั้งใจ) · ครบ 6 หมวด (8,9,12,1,10,16)
+- [ ] **Job 1 — นำเข้า QSSI** · Input: SFTP QSSI 4 ไฟล์ `mrs*` (รายเดือน) · Output: แถว **`fcs_qssi_score`** (เอกพจน์ · ตาราง reuse 23.9M แถว **ห้ามสร้างใหม่** · UK กัน dup **ยังไม่มีในตารางเดิม — DP-4**) · เกณฑ์ผ่าน: dedup ทำงาน (รันซ้ำไฟล์เดิมแถวไม่เพิ่ม) · งวดใน DB = **เดือนก่อนหน้า** (off-by-one ตั้งใจ) · ครบ 6 หมวด (8,9,12,1,10,16)
 - [ ] **Job 2 — นำเข้าคู่ร้านกระทบ** · Input: ALLMAP SQL Server (**read-only** · mssql) ทุกวันที่ 7 07:00 · Output: `fgi_impact_stores` (กฎ DENY/ON_PROCESS → W/N/P) · เกณฑ์ผ่าน: mapping สถานะถูกตาม fixture
 - [ ] **Job 3 — นำเข้าคู่แข่ง** · Input: ALLMAP read-only · Output: `fgi_impact_competitors` (`data_source=ALM` · งวดล่าสุดต่อร้าน) · เกณฑ์ผ่าน: แถวซ้ำงวดเดิมถูกแทนที่ไม่งอก
 - [ ] **Job 4 — export ยอดขายไป MIS** (**P0**) · Input: fgi_impact_stores เข้าเกณฑ์ (อายุร้าน 12 เดือน 15 วัน / +16 วัน) วันที่ 7–16 16:00 · Output: ไฟล์ `AMS06001O_` + สถานะ W→P · เกณฑ์ผ่าน: **ครอบ transaction/outbox — ห้าม commit W→P ก่อนเขียนไฟล์สำเร็จ** · จำลอง fail กลางทาง (mock fs โยน error) → rollback สถานะไม่ค้าง P
@@ -330,15 +318,14 @@
 - [ ] **Job 8b (แทน) — เปิด workflow** · Input: fgi_impact_stores ที่ workflow_generation_status=W · Output: เรียก `POST /workflows/instances` ภายใน (service token) ต่อแถว + **EM-06** สรุปราย DV · เกณฑ์ผ่าน: แถวผ่าน Gate → status Y + เอกสาร+instance เกิด · branch type นอกเซ็ต → N · ข้อมูลยังไม่พร้อม → คง W + reason ใน log · **ไม่มี K2 REST อีกแล้ว**
 - [ ] **Job 10 — watchdog ACK จาก STA** · Input: interface_transactions ที่ ACK ค้าง ≥ 1 วัน (ตรวจ 07:00) · Output: **EM-08** · เกณฑ์ผ่าน: fixture แถวค้าง 2 วัน → เมลออก · แถวค้าง 0 วัน → เงียบ
 
-### 6.5 Interface endpoints (4 เส้น)
+### 6.5 Interface endpoints (3 เส้น · ตัด `/dashboard/summary` 2026-08-06)
 - [ ] `GET /interfaces/tracking` — สถานะรับ–ส่งไฟล์ (filter data_name/ช่วงวัน · paginate)
 - [ ] `GET /interfaces/pending-ack` — รายการ ACK ค้าง ≥ 1 วัน (ฐานเดียวกับ Job 10)
 - [ ] `POST /interfaces/sta/ack` — callback STA · auth ด้วย header `X-Api-Key` — **key ผิด/ไม่ส่ง → 401** · อัปเดต sta_status
-- [ ] `GET /dashboard/summary` — (ทำแล้ว Phase 4 — เช็คว่า route อยู่ครบในกลุ่ม 10)
 
 ### ✔ เกณฑ์ตรวจรับ Phase 6
-- [ ] `POST /jobs/{n}/run` ทุก job (1,2,3,4,5,6,8b,10) รันสำเร็จบน fixture (SFTP/ALLMAP mock) · job_run_histories มีแถวผลถูกต้อง
-- [ ] ยิง `POST /jobs/1/run` ซ้อนขณะ RUNNING → **409**
+- [ ] สั่งรันทุก job (1,2,3,4,5,6,8b,10) ผ่าน CLI/runner บน fixture (SFTP/ALLMAP mock) สำเร็จ · application log มีบรรทัดผลถูกต้อง
+- [ ] สั่งรัน job 1 ซ้อนขณะกำลังรัน → runner ปฏิเสธ (lock ทำงาน) ไม่รันซ้อน
 - [ ] Job 4 fail กลางทาง → สถานะใน DB ไม่ค้าง P (rollback) · รันใหม่ได้
 - [ ] golden-file tests ผ่านทุกไฟล์ (AMS06001O, FRBC0001) — เทียบ byte รวม encoding
 - [ ] `POST /interfaces/sta/ack` key ถูก → 200 + sta_status เปลี่ยน · key ผิด → 401
@@ -348,8 +335,8 @@
 
 ## Phase 7 — Hardening & Delivery
 
-- [ ] script เทียบ route table กับ `api.md` — รายงาน **"62/62 matched"** path/method ตรงทุกตัว (+ ยืนยัน abnormal-stores 2 เส้น**ไม่มี** route)
-- [ ] `openapi.yaml` ครบ 44 เส้น + ตัวอย่าง request/response ตรง plan-api.html
+- [ ] script เทียบ route table กับ `api.md` — รายงาน **"30/30 matched"** path/method ตรงทุกตัว (+ ยืนยัน abnormal-stores 2 เส้น**ไม่มี** route)
+- [ ] `openapi.yaml` ครบ **30 เส้น 6 กลุ่ม** + ตัวอย่าง request/response ตรง plan-api.html
 - [ ] security: rate limit login (มีแล้ว P1 — ทวน) · pino redact token/รหัสผ่าน/Authorization header · สแกนยืนยัน**ไม่มี secret ใน DB** (`SELECT * FROM system_configs WHERE config_key ~* 'password|secret|token'` → 0 แถว) และไม่มีใน log
 - [ ] index DB จุด query หนัก: `compensation_documents(status_code, current_section_code)` · `(impact_process_id)` · `compensation_histories(submit_account_month)` · `workflow_tasks(section_code, status)`
 - [ ] graceful shutdown: SIGTERM/SIGINT → หยุดรับ request → รอ job ที่กำลังรัน → `prisma.$disconnect()` · `GET /readyz` เช็ค DB
@@ -367,6 +354,8 @@
 ---
 
 ## ภาคผนวก A — Traceability: 62 endpoint ↔ ตาราง DB ↔ Phase
+
+> ตารางนี้เป็นชุด 62 เส้นเดิม · **ปัจจุบันเหลือ 30 เส้น 6 กลุ่ม** (Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3) — แถวที่ระบุ "ตัดออก" ในคอลัมน์ Phase คือเส้นที่ไม่ทำแล้ว (Auth/RBAC ใช้ระบบ SBP เดิม 2026-08-05 · `/configs*` `/email-templates*` `/jobs*` `/dashboard/summary` ตัด 2026-08-06)
 
 | # | Method | Path | ตารางหลัก (R/W) | Phase |
 |---|---|---|---|---|
@@ -406,31 +395,31 @@
 | 34 | PUT | /menus/{menuCode} | menus, audit_logs (W) | 2 |
 | 35 | DELETE | /menus/{menuCode} | menus, menu_permissions (cascade), audit_logs (W) | 2 |
 | 36 | GET | /audit-logs | audit_logs (R) | 2 |
-| 37 | GET | /configs | system_configs (R) | 5 |
-| 38 | GET | /configs/{key} | system_configs (R · cache 5 นาที) | 5 |
-| 39 | POST | /configs | system_configs, audit_logs (W) | 5 |
-| 40 | PUT | /configs/{key} | system_configs, audit_logs (W) | 5 |
-| 41 | DELETE | /configs/{key} | system_configs, audit_logs (W) | 5 |
-| 42 | GET | /email-templates | email_templates (R) | 5 |
-| 43 | GET | /email-templates/{code} | email_templates, status_email_rules (R) | 5 |
-| 44 | PUT | /email-templates/{code} | email_templates, audit_logs (W) | 5 |
-| 45 | POST | /email-templates/{code}/reset | email_templates, audit_logs (W) | 5 |
-| 46 | POST | /email-templates/reset-all | email_templates, audit_logs (W) | 5 |
+| 37 | GET | /configs | system_configs (R) | **ตัดออก 2026-08-06** |
+| 38 | GET | /configs/{key} | system_configs (R · cache 5 นาที) | **ตัดออก 2026-08-06** |
+| 39 | POST | /configs | system_configs, audit_logs (W) | **ตัดออก 2026-08-06** |
+| 40 | PUT | /configs/{key} | system_configs, audit_logs (W) | **ตัดออก 2026-08-06** |
+| 41 | DELETE | /configs/{key} | system_configs, audit_logs (W) | **ตัดออก 2026-08-06** |
+| 42 | GET | /email-templates | email_templates (R) | **ตัดออก 2026-08-06** |
+| 43 | GET | /email-templates/{code} | email_templates, status_email_rules (R) | **ตัดออก 2026-08-06** |
+| 44 | PUT | /email-templates/{code} | email_templates, audit_logs (W) | **ตัดออก 2026-08-06** |
+| 45 | POST | /email-templates/{code}/reset | email_templates, audit_logs (W) | **ตัดออก 2026-08-06** |
+| 46 | POST | /email-templates/reset-all | email_templates, audit_logs (W) | **ตัดออก 2026-08-06** |
 | 47 | GET | /reports/status-summary | compensation_documents, consideration_logs, document_new_stores (R) | 4 |
 | 48 | GET | /reports/status-summary/export | เดียวกับ 47 (R) + ไฟล์ storage/exports | 4 |
-| 49 | GET | /jobs | job_configs, job_run_histories (R) | 6 |
-| 50 | GET | /jobs/{jobNo} | job_configs (R) | 6 |
-| 51 | PUT | /jobs/{jobNo}/params | job_configs, audit_logs (W) | 6 |
-| 52 | PUT | /jobs/{jobNo}/enabled | job_configs, audit_logs (W) | 6 |
-| 53 | POST | /jobs/{jobNo}/run | job_run_histories (W) + ตารางตาม job | 6 |
-| 54 | GET | /jobs/{jobNo}/runs | job_run_histories (R) | 6 |
+| 49 | GET | /jobs | job_configs, job_run_histories (R) | **ตัดออก 2026-08-06** |
+| 50 | GET | /jobs/{jobNo} | job_configs (R) | **ตัดออก 2026-08-06** |
+| 51 | PUT | /jobs/{jobNo}/params | job_configs, audit_logs (W) | **ตัดออก 2026-08-06** |
+| 52 | PUT | /jobs/{jobNo}/enabled | job_configs, audit_logs (W) | **ตัดออก 2026-08-06** |
+| 53 | POST | /jobs/{jobNo}/run | job_run_histories (W) + ตารางตาม job | **ตัดออก 2026-08-06** |
+| 54 | GET | /jobs/{jobNo}/runs | job_run_histories (R) | **ตัดออก 2026-08-06** |
 | 55 | POST | /workflows/instances | fgi_impact_stores, compensation_documents, workflow_instances, workflow_tasks (W) | 3 |
 | 56 | GET | /workflows/instances/{id} | workflow_instances, workflow_tasks (R) | 3 |
 | 57 | GET | /workflows/summary | fgi_impact_stores, workflow_tasks (R) | 3 |
 | 58 | GET | /interfaces/tracking | interface_transactions (R) | 6 |
 | 59 | GET | /interfaces/pending-ack | interface_transactions (R) | 6 |
 | 60 | POST | /interfaces/sta/ack | interface_transactions (W) | 6 |
-| 61 | GET | /dashboard/summary | หลายตาราง aggregate (R · cache 5 นาที) | 4 |
+| 61 | GET | /dashboard/summary | หลายตาราง aggregate (R · cache 5 นาที) | **ตัดออก 2026-08-06** |
 
 > **Skip (comment รอตัดสินใจ):** `GET /abnormal-stores` · `POST /abnormal-stores/assign` — ไม่ implement ใน scope นี้
 

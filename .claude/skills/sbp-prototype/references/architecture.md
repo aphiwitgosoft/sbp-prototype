@@ -56,41 +56,37 @@ Entry แบบมี `children: [{key,label,href}]` (ไม่มี href บ�
 | | `k2-list-waiting.html` / `k2-list-related.html` | รอดำเนินการ / ที่เกี่ยวข้อง — **ฝาแฝด ต่างแค่ `MODE` const, title, body attrs — แก้ทั้งคู่เสมอ** |
 | | ~~`k2-list-abnormal.html`~~ | ข้อมูลผิดปกติ/แจกงาน — **ลบไฟล์ทิ้งแล้ว 2026-08-06** พร้อมเมนู/กลุ่ม API · เหลือเป็นธงแถวแดง + ตัวกรองในหน้ารอดำเนินการ |
 | | `k2-document.html` | หน้าเอกสารร้านถูกกระทบ (SRS 3.1.6 — ซับซ้อนสุด) มี dropdown สลับ role demo 7 มุมมองผ่าน `data-editrole`/`data-roleonly`/`.edit-only` · **ไม่อยู่ใน sidebar** เข้าจากคลิกแถวตาราง |
-| | `k2-report.html` | รายงานสรุปสถานะ 19 คอลัมน์ (SRS 3.1.7) |
+| | `k2-report.html` | รายงานสรุปสถานะ — **ตัวกรอง 7 ตัว / ผลลัพธ์ 14 คอลัมน์ ตาม SDD สไลด์ 60** (SRS 3.1.7 · ปรับ 2026-08-06) |
 | | `k2-factors.html` | master ปัจจัยภายนอก (3.1.9) |
 | | ~~`k2-operators.html`~~ / ~~`k2-permissions.html`~~ | **ถอดจาก sidebar 2026-08-05** — ผู้ปฏิบัติงาน (3.1.8) + สิทธิ์เมนู (3.1.1) ใช้ระบบ SBP เดิม (auth-backend) · ไฟล์เก็บไว้อ้างอิง |
-| Admin | `system-config.html` | Global config key–value (ตาราง `system_configs`) — **กลุ่ม ผู้ดูแลระบบ (Admin) ตั้งแต่ 2026-08-06** |
-| | `job-batch.html` | Batch console Jobs 1–10 + 8b (จากเอกสาร Batch v4.0) — กลุ่ม Admin |
-| | `email-template.html` | Email templates EM-01–08 + WYSIWYG editor (ดูหัวข้อถัดไป) — กลุ่ม Admin |
+| ~~Admin~~ | ~~`system-config.html`~~ / ~~`email-template.html`~~ | **ลบไฟล์ทิ้งทั้งฟีเจอร์ 2026-08-06** พร้อม endpoint 10 เส้น (`/configs*` · `/email-templates*`) และ `SCHEMAS.config` — ค่ากำหนดกลาง/template อีเมลอยู่ที่ระบบ SBP เดิม (`mas_param` / `email_template`) SBPGI แค่อ่าน · อีเมลยังส่งผ่าน `@gosoft-sbp/email-lib` |
+| | | **กลุ่ม ผู้ดูแลระบบ (Admin) ไม่มีเมนูเหลือแล้ว** |
 | Flow | `flow-fgi.html` / `k2-flow.html` / `plan-flow.html` | FGI/FCS pipeline / K2 approval BPMN / flow รวมระบบใหม่ (คู่ของ workflow.md) |
-| Database | `fgi-database.html` / `k2-database.html` / `plan-database.html` | schema FGI/FCS / schema K2 16 ตาราง + ER / schema รวม 24 ตาราง (คู่ของ database.md · RBAC/ผู้ปฏิบัติงาน + workflow engine + store/zone/employee master + email template + config ตัดไปใช้ของระบบ SBP เดิม · 2026-08-05/06) |
-| Plan | `plan-api.html` | REST API spec 44 เส้น 9 กลุ่ม (กลุ่ม Auth + เส้นสิทธิ์/ผู้ปฏิบัติงาน 18 เส้น comment ตัดถาวร — ใช้ระบบเดิม · กลุ่มข้อมูลผิดปกติ 2 เส้นถูกลบทิ้ง 2026-08-06) |
+| | `job-batch.html` — **Flow Batch Job** | **ย้ายจากกลุ่ม Admin มากลุ่ม Flow 2026-08-06 และเหลือ 2 แท็บ: `Flowchart การทำงาน` + `Database ที่ใช้`** (ตัดแบบฟอร์มพารามิเตอร์ · ประวัติการรัน · ปุ่มสั่งรัน/เปิด-ปิด · stat cards · กราฟ · การ์ด audit ออก) — เอกสารอ้างอิงผู้พัฒนา ไม่ใช่หน้าจอควบคุม · endpoint 6 เส้น (`/jobs*`) + ตาราง `job_configs`/`job_run_histories` ถูกลบจากแบบ · batch job ยังรันปกติ พารามิเตอร์อยู่ใน backend config |
+| Database | `fgi-database.html` / `k2-database.html` / `plan-database.html` | schema FGI/FCS / schema K2 16 ตาราง + ER / schema รวม **21 ตาราง** (คู่ของ database.md · RBAC/ผู้ปฏิบัติงาน + workflow engine + store/zone/employee master + email template + config ตัดไปใช้ของระบบ SBP เดิม · 2026-08-05/06) |
+| Plan | `plan-api.html` | REST API spec **30 เส้น 6 กลุ่ม** (Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 · กลุ่ม Auth + เส้นสิทธิ์/ผู้ปฏิบัติงาน 18 เส้น comment ตัดถาวร — ใช้ระบบเดิม · กลุ่มข้อมูลผิดปกติ 2 เส้น · กลุ่ม System Config + Email Template 10 เส้น · กลุ่ม Batch Job Admin 6 เส้น — ลบทิ้งทั้งหมด 2026-08-06) |
 
 หมายเหตุ: `k2-database.html` (ER + 16 ตาราง) และ BPMN ใน `k2-flow.html` เป็นของ**เพิ่มเกิน SRS** — ชื่อตาราง/FK ที่เพิ่มไม่ใช่ SRS-mandated
 
-## email-template.html — internals ของ editor
+## ~~email-template.html~~ — ลบทั้งฟีเจอร์แล้ว (2026-08-06)
 
-- 8 การ์ด template แต่ละใบมี `data-tpl="EM-0x"` · Subject = `.mail-row .v.subj` · เนื้อหา = `.mail-body`
-- กด "แก้ไข" → contenteditable + แถบ `.tpl-editor` (สร้างโดย JS) โผล่เหนือ `.mail` แบบ **sticky** ใต้ header
-- Toolbar ใช้ `document.execCommand`: undo/redo, bold/italic/underline/strike, สีอักษร 4 ค่า + hilite, list 2 แบบ, **ตาราง** (grid picker 6×6 แทรก `table.det` + ปุ่ม +แถว/+คอลัมน์/−แถว/−คอลัมน์ ทำงานกับตารางที่เคอร์เซอร์อยู่), removeFormat
-- ปุ่ม **บันทึก/รีเซ็ต sticky** อยู่ขวาสุดของ toolbar (`data-act`) — delegate ไปที่ปุ่มเดิมบน card-head
-- ตัวแปร merge ต่อ template อยู่ใน object `VARS` (inline script) — ชิป `.rt-var` คลิกแทรก ณ เคอร์เซอร์ (body = ชิป `.mf contenteditable=false` · subject = ข้อความเปล่า)
-- ระหว่างแก้ไข `.mf` เป็น atom (คลิกครั้งเดียวเลือกทั้งก้อน) — attribute contenteditable ถูก**ถอดออกก่อนบันทึก**
-- เก็บใน localStorage key `sbpEmailTpl:EM-0x` เป็น JSON `{subj, body}` · From/To/Cc ล็อกตาม `status_email_rules`
-- EM-01 มี dropdown `#em01Select` สลับตัวอย่างตาม section ถัดไป — object `RULES` ในหน้า ต้องตรงกับตาราง State/Email ใน k2-flow
-- CSS ระวัง: ปุ่มใน toolbar ใช้ selector `.rt-toolbar button:not(.btn)` เพื่อไม่ทับสไตล์ปุ่ม `.btn` ของ save/reset
+หน้าจอ Email Template (8 การ์ด EM-01–08 + WYSIWYG editor ในตัว) และหน้า ตั้งค่าระบบ (Global Config) **ถูกลบออกจากโปรเจกต์** พร้อม endpoint 10 เส้น, `SCHEMAS.config` ใน `sbp.js` และเอกสาร LLDD-FE-Email-Template
+
+- ค่ากำหนดกลางอยู่ในตาราง **`mas_param`** และ template อีเมลอยู่ในตาราง **`email_template`** ของระบบ SBP เดิม ซึ่งมีหน้าจอบริหารจัดการของตัวเองอยู่แล้ว — SBPGI **อ่านอย่างเดียว**
+- อีเมลตามสถานะยังส่งเหมือนเดิมผ่าน `@gosoft-sbp/email-lib` (log ลง `email_sent`) · ตารางสถานะ × action × ผู้รับ × อีเมล ดู `workflow_status_document.md`
+- ถ้าต้องกลับมาดูของเดิม: กู้จาก git history (commit ก่อน 2026-08-06)
 
 ## plan-api.html — internals ของ modal + SQL + Flowchart
 
-- catalog `GROUPS` (44 เส้น 9 กลุ่ม · inline script) → คลิกแถว → `selectEp()` เปิด modal
+- catalog `GROUPS` (**30 เส้น 6 กลุ่ม** · inline script) → คลิกแถว → `selectEp()` เปิด modal
 - โครง modal: ชิป (ที่มา/สิทธิ์/กลุ่ม) → **Flow (ลำดับการทำงาน) อยู่นอกแท็บ** → แท็บ 1 Request/Response → แท็บ 2 Database + SQL → แท็บ 3 Flowchart (โผล่เฉพาะเส้นที่มี spec)
 - **`SQL_BY_PATH`** — ตัวอย่าง SQL ต่อ endpoint keyed `'METHOD path'` (เช่น `'GET /api/v1/tasks'`) ครบทุกเส้น active · bind params ขึ้นต้น `:` · illustrative (key ของเส้นที่ตัดออกยังอยู่แต่ไม่ถูกใช้)
-- **`FLOWCHART_BY_PATH`** — spec flowchart (nodes/edges) เฉพาะ 4 เส้นซับซ้อน: `POST /documents/{docNo}/actions` · `POST /workflows/instances` · `POST /documents` · `POST /jobs/{jobNo}/run` · เรนเดอร์ด้วย `renderFlow()` เป็น inline SVG (node type: term/termOk/proc/dec/err)
+- **`FLOWCHART_BY_PATH`** — spec flowchart (nodes/edges) เฉพาะเส้นซับซ้อน: `POST /documents/{docNo}/actions` · `POST /workflows/instances` · `POST /documents` (spec ของ `POST /jobs/{jobNo}/run` ยังอยู่แต่ไม่ถูกใช้ หลังลบกลุ่ม Batch Job Admin) · เรนเดอร์ด้วย `renderFlow()` เป็น inline SVG (node type: term/termOk/proc/dec/err)
 - เพิ่ม endpoint = เพิ่ม object ใน `GROUPS` (+ entry ใน `SQL_BY_PATH`) · ถ้าซับซ้อนพอค่อยเพิ่ม `FLOWCHART_BY_PATH` · อัปเดตตัวเลขสรุป (page-sub + stat cards + comment) และ `api.md`
 - รายการ endpoint เต็ม + กฎธุรกิจต่อเส้น ดู `api.md`
 
 ## กราฟ / charts ในหน้าต่าง ๆ
 
 - engine กลาง `data-chart="bar|donut|spark"` ใน `sbp.js` (`renderCharts()` รันตอนโหลด · bar=สีเดียว+label · donut=หลายสี+เลขกลาง ต้องใส่ legend เอง · spark=เส้นพื้นที่)
-- หน้าที่มีกราฟ: `k2-report` (กราฟ JS ของตัวเอง — hbarChart) · `job-batch` (donut สถานะ + bar ต่อเฟส + spark ACK) · `k2-list-related` (donut สัดส่วนสถานะ) · `k2-document` (แนวโน้มยอดขายรายวัน hand-authored SVG + donut สัดส่วนเงินชดเชยรายร้านเปิดใหม่ · การ์ดสองใบสูงเท่ากันด้วย `align-items:stretch`) — **เอากราฟออกแล้ว**: `index` (ตัดทั้งหน้า) · `system-config` (donut ตาม category)
+- **หน้าทำงานจริงไม่มีกราฟแล้วทั้งหมด (2026-08-06)** — `k2-report` (ถอด hbarChart 2 ตัว + โค้ด/CSS ที่เหลือ) · `k2-document` (ถอดแนวโน้มยอดขายรายวัน + donut สัดส่วนเงินชดเชย · แผนที่ AllMap ยังอยู่) · `k2-list-*` (ถอด stat cards ทั้งแถว) · `index` (ตัดทั้งหน้า) · `system-config` (ลบหน้าไปแล้ว) · `job-batch` (ถอด stat cards + 3 กราฟ เหลือ Flowchart + DB) · กราฟเหลืออยู่เฉพาะหน้าออกแบบ (`plan-*`, `*-database`, `*-flow`)
 - กราฟที่ผูกข้อมูล dynamic ต้องคำนวณจากชุดเดียวกับตัวเลขในหน้า (อย่า hardcode เลขที่หลุดจาก stat cards) · กราฟที่ไม่มีข้อมูลจริงให้กำกับ "ตัวอย่าง" ชัดเจน · เคยลองใส่กราฟใน k2-list(คู่แฝด)/k2-operators/k2-factors แล้ว **เอาออก** ตามที่ตกลง

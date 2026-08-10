@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 30 ชั่วโมง |
+| Estimate | 10 ชั่วโมง |
 | Owner | Kittisak <New> Kaeowika |
 | Objective | สร้างหน้าสร้างเอกสารประกันรายได้แบบ Manual และแบบเอกสารจาก FS โดยใช้ SBP mirror form sync เข้า hidden FS iframe |
 
@@ -189,7 +189,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/configs/fs.createDocumentUrl; POST /api/v1/documents |
+| Input | GET /store/search (ระบบ SBP เดิม); POST /api/v1/documents |
 | Progress | User opens create page; Choose tab: สร้างเอกสารทั่วไป or เอกสารจาก FS; For FS tab load hidden iframe and discover fields; Render SBP mirror form from iframe field metadata |
 | Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
@@ -211,7 +211,6 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
 | GET /store/search (ระบบ SBP เดิม) | ค้นหาร้านสำหรับ popup | Search store (แว่นขยาย) |
-| GET /api/v1/configs/fs.createDocumentUrl | อ่าน URL สำหรับโหลด FS iframe ใน tab เอกสารจาก FS | Open FS tab (tab เอกสารจาก FS) |
 | POST /api/v1/documents | สร้างเอกสาร | Save draft (ปุ่มบันทึก); Submit (ปุ่มส่งดำเนินการ) |
 
 ### 5.92 Create Document Interaction State Machine
@@ -292,38 +291,6 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | items[].storeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].regionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/configs/fs.createDocumentUrl
-
-อ่าน URL สำหรับโหลด FS iframe ใน tab เอกสารจาก FS
-
-#### Query Params
-
-```json
-{}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| - | none | No | No fields |
-
-#### Response
-
-```json
-{
-  "configKey": "fs.createDocumentUrl",
-  "value": "https://fs.example/create-document"
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| configKey | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| value | string | Yes | UTF-8; use value domain described by endpoint purpose |
-
 ### POST /api/v1/documents
 
 สร้างเอกสาร
@@ -371,6 +338,195 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | docNo | string | Yes | พ.ศ. YYYY/xxxxx |
 | statusCode | string | Yes | canonical code; do not replace with display label |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
+
+## 8. Skeleton Code (โครงโค้ดตั้งต้นของหน้าจอนี้)
+
+โค้ดชุดนี้อิง convention ของ portal เดิม `srm-sps-spsap-web-frontend` (build target `sbpm`): Next.js App Router + `'use client'`, PrimeReact ที่ห่อไว้แล้วใน `@/components/Form` และ `@/components/Table`, react-hook-form + yup, Zustand `permissionStore`, axios instance กลาง `@/lib/apiClient` และ react-query 5 — **โปรเจกต์ไม่มี chart library** จึงไม่มีโค้ดกราฟในเอกสารนี้ คัดลอกไปตั้งต้นได้ทันที แล้วเติมจุดที่กำกับ `TODO:`
+
+#### 8.1 ผังไฟล์ที่ต้องสร้าง
+
+โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SBPGI อยู่ใต้ `src/app/(main)/sbpgi/*` และ import ผ่าน alias `@/*` ทุกจุด
+
+| Path ไฟล์ | หน้าที่ |
+| --- | --- |
+| src/app/(main)/sbpgi/documents/create/page.tsx | route page — หน้าสร้างเอกสาร: tab ทั่วไป + tab เอกสารจาก FS (hidden iframe) |
+| (ไม่มี component ฟอร์ม) | หน้านี้เป็น iframe ของหน้าสร้างเอกสารระบบ FS ล้วน ๆ (มติ 2026-08-06) — ไม่มีฟอร์ม/ตารางฝั่ง SBP |
+| src/services/sbpgi/document.service.ts | service — เรียก BFF ผ่าน apiClient (GET, POST) |
+| src/hooks/sbpgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
+| src/types/sbpgi/document.ts | types — request/response ตาม API contract ของเอกสารนี้ |
+
+#### 8.2 page.tsx — หน้าสร้างเอกสาร (iframe ของหน้า FS + postMessage)
+
+```tsx
+'use client';
+// หน้าสร้างเอกสาร: tab ทั่วไป + tab เอกสารจาก FS (hidden iframe)
+//   Tab: สร้างเอกสารทั่วไป
+//   Tab: เอกสารจาก FS ผ่าน hidden iframe
+//
+// ⚠️ มติ 2026-08-06: หน้านี้ **ไม่มีฟอร์มฝั่ง SBP** — main card คือ iframe ของหน้าสร้างเอกสาร
+//    ของระบบ FS ตรง ๆ (เหมือน k2-create.html) และ `POST /documents` เป็น pipeline/service-token
+//    endpoint (Job 8) ไม่ใช่ฟอร์มที่ FE ยิงเอง
+// ⚠️ ห้ามอ่าน/เขียน DOM ข้าม iframe (`contentDocument`) — FS อยู่คนละ origin เบราว์เซอร์บล็อกทันที
+//    ช่องทางสื่อสารเดียวที่ใช้ได้คือ `postMessage` และต้องตรวจ `event.origin` ทุกครั้ง
+
+import { useEffect, useRef, useState } from 'react';
+import AccessDenied from '@/components/Permission/AccessDenied';
+import { permissionStore } from '@/stores/permissionStore';
+
+const PAGE_URL = '/sbpgi/documents/create';
+// TODO: ตั้งใน .env.sbpm.<env> — ต้องเป็น origin ของ FS ที่ยืนยันกับทีม FS แล้ว
+const FS_IFRAME_URL = process.env.NEXT_PUBLIC_FS_CREATE_DOCUMENT_URL ?? '';
+const FS_ORIGIN = process.env.NEXT_PUBLIC_FS_ORIGIN ?? '';
+
+type FsMessage = { type: 'FS_DOC_CREATED' | 'FS_DOC_ERROR'; docNo?: string; message?: string };
+
+export default function CreateDocumentPage() {
+  const { hasPermission, isPermissionLoaded } = permissionStore();
+  const fsFrame = useRef<HTMLIFrameElement | null>(null);
+  const [result, setResult] = useState<FsMessage | null>(null);
+
+  // รับผลลัพธ์จากหน้า FS ผ่าน postMessage เท่านั้น
+  useEffect(() => {
+    const onMessage = (event: MessageEvent<FsMessage>) => {
+      // TODO: ยืนยัน contract ของ message (type/field) กับทีม FS ก่อน UAT
+      if (!FS_ORIGIN || event.origin !== FS_ORIGIN) return; // กัน message จาก origin อื่น
+      if (event.data?.type === 'FS_DOC_CREATED' || event.data?.type === 'FS_DOC_ERROR') setResult(event.data);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
+  if (!isPermissionLoaded) return null;
+  if (!hasPermission(PAGE_URL, 'canManage')) return <AccessDenied />;
+
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      {/* main card = iframe ของหน้า FS (สัดส่วนเดียวกับ .fs-frame ใน prototype) */}
+      <iframe
+        ref={fsFrame}
+        src={FS_IFRAME_URL}
+        title="fs-create-document"
+        className="w-full min-h-[720px] border rounded"
+      />
+      {result?.type === 'FS_DOC_ERROR' && <p className="text-red-600">{result.message}</p>}
+      {/* หมายเหตุ 4 ขั้นตอน (verbatim จากหน้าจอเดิม) อยู่นอกกรอบ iframe — ดูหัวข้อ Screen Design */}
+    </div>
+  );
+}
+```
+
+#### 8.3 service — `src/services/sbpgi/document.service.ts`
+
+⚠️ `src/services/sbpgi/document.service.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+
+```ts
+// src/services/sbpgi/document.service.ts
+// apiClient = axios instance กลาง (baseURL = bffUrl ซึ่งรวม /api/v1 แล้ว, withCredentials, refresh-token interceptor, global loading)
+// ห้ามสร้าง axios instance ใหม่ และห้าม set Authorization header เอง — session อยู่ใน httpOnly cookie ของ BFF
+
+import apiClient from '@/lib/apiClient';
+import type { ApiResponse } from '@/types/sbpgi/common';
+import type * as T from '@/types/sbpgi/document';
+
+/** GET /store/search (ระบบ SBP เดิม) — ค้นหาร้านสำหรับ popup */
+export async function getStoreSearch(params: T.StoreSearchParams): Promise<T.StoreSearchResponse> {
+  const { data } = await apiClient.get<ApiResponse<T.StoreSearchResponse>>('/store/search', { params });
+  return data.data;
+}
+
+/** POST /api/v1/documents — สร้างเอกสาร */
+export async function createDocuments(body: T.CreateDocumentsRequest): Promise<T.CreateDocumentsResponse> {
+  const { data } = await apiClient.post<ApiResponse<T.CreateDocumentsResponse>>('/documents', body);
+  return data.data;
+}
+
+// TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
+```
+
+#### 8.4 types — `src/types/sbpgi/document.ts`
+
+⚠️ `src/types/sbpgi/document.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+
+```ts
+// src/types/sbpgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
+// วันที่/เดือนใน payload เป็น ค.ศ. (ISO) เสมอ — แปลงเป็น พ.ศ. เฉพาะตอน display
+
+/** GET /store/search (ระบบ SBP เดิม) — request */
+export interface StoreSearchParams {
+  q?: string;
+  type?: string;
+}
+
+/** GET /store/search (ระบบ SBP เดิม) — 1 แถวในตาราง */
+export interface StoreSearchItem {
+  storeCode: string;
+  storeName: string;
+  regionCode: string;
+}
+export interface StoreSearchResponse { items: StoreSearchItem[]; }
+
+/** POST /api/v1/documents — request */
+export interface CreateDocumentsRequest {
+  source: string;
+  impactMonth: string;
+  statementPeriod: string;
+  impactedStoreCode: string;
+  newStoreCode: string;
+  roundNo: number;
+  reason: string;
+}
+
+/** POST /api/v1/documents — response */
+export interface CreateDocumentsResponse {
+  docNo: string;
+  statusCode: string;
+  message: string;
+}
+
+// TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
+```
+
+#### 8.5 react-query keys + hooks — `src/hooks/sbpgi/document.query.ts`
+
+⚠️ `src/hooks/sbpgi/document.query.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+
+```ts
+// src/hooks/sbpgi/document.query.ts
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as api from '@/services/sbpgi/document.service';
+import type * as T from '@/types/sbpgi/document';
+
+export const documentKeys = {
+  all: ['sbpgi', 'document'] as const,
+  storeSearch: (params?: T.StoreSearchParams | null) => [...documentKeys.all, 'storeSearch', params] as const,
+};
+
+export function useStoreSearchQuery(params?: T.StoreSearchParams | null) {
+  return useQuery({
+    queryKey: documentKeys.storeSearch(params),
+    queryFn: () => api.getStoreSearch(params!),
+    enabled: !!params, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
+    staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
+  });
+}
+
+export function useCreateDocumentsMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: T.CreateDocumentsRequest) => api.createDocuments(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: documentKeys.all }); // reload list/detail/timeline
+    },
+    // TODO: onError -> แสดง apiErrorMessage(error) ผ่าน Toast กลาง
+  });
+}
+```
+
+- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
+- เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
+- session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
+- payload ใช้วันที่ ค.ศ. เสมอ; แปลงเป็น พ.ศ. เฉพาะตอนแสดงผลผ่าน formatter กลางจุดเดียว
+- ข้อความ error แสดงจาก `error.message` ของ BE ตรง ๆ (ห้าม paraphrase) — fallback ใช้เฉพาะกรณี network error
 
 ## 9. Processing Flow
 

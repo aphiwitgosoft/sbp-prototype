@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 15 ชั่วโมง |
+| Estimate | 18 ชั่วโมง |
 | Owner | Butsaba <But> Podamrong |
 | Objective | กำหนดสัญญากลางของ REST API ทุกเส้นเพื่อไม่ให้ endpoint รายตัวตีความต่างกัน: transport/auth/error/format/pagination/action/RBAC/audit/idempotency |
 
@@ -48,7 +48,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Common Contr
 | amount/percent | number | 2 decimal | format display อยู่ FE; BE validate precision/range |
 | result | verbatim from actionOptions | required for /actions | ต้องเป็นค่าที่ BE ส่งมาใน role profile ของเอกสารนั้น |
 | ActionResponse | {statusCode,nextSection,message} | required for /actions | FE resolve label จาก /document-statuses; mutation response ไม่คืน label ไทยซ้ำ |
-| reason | text | required for master/config/email/RBAC mutation | write audit_logs ใน transaction เดียว |
+| reason | text | ไม่บังคับแล้ว (ยกเลิกระบบ audit ของ master 2026-08-07) | ไม่มีปลายทางเก็บ — ถ้าส่งมาให้ละเว้น |
 
 ### 5.1 Error and Popup Catalog
 
@@ -87,7 +87,7 @@ Matrix นี้เป็น baseline สำหรับ BE authorization guard;
 | Document update/action/attachment upload | PUT /documents/{docNo}, POST /documents/{docNo}/actions, POST /documents/{docNo}/attachments | current action owner; admin override only with policy and audit reason |
 | Attachment download | GET /documents/{docNo}/attachments/{attachId}/download | same as document read; attachment belongs to doc and scanStatus=CLEAN |
 | Lookup | /competitors, /document-statuses, /workflow-sections, /decisions (ร้าน/ภาค/ประเภทสาขา ใช้ /store/* + /common/common-code ของระบบ SBP เดิม · 2026-08-06) | authenticated user with related menu access |
-| Master/RBAC/config | /operators*, /factors*, /menu-permissions*, /roles*, /menus*, /configs* | admin/HQ roles according to menu_permissions |
+| Master/RBAC | /operators*, /factors*, /menu-permissions*, /roles*, /menus* | admin/HQ roles according to menu_permissions |
 | Reports | /reports/status-summary* | admin/HQ/report roles and accounting service user |
 | Internal workflow/interface | /workflows/instances, /interfaces/* callback | service token or API key only |
 
@@ -282,7 +282,240 @@ RBAC/menu contract กลาง
 | menus[].group | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | menus[].canAccess | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-## 9. Processing Flow
+## 8. Skeleton Code (store-backend + BFF)
+
+โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
+
+#### 8.1 ผังไฟล์ที่ต้องสร้าง
+
+| Path | หน้าที่ |
+| --- | --- |
+| store-backend · src/modules/sbpgi-common-contracts/sbpgi-common-contracts.controller.ts | route ทั้งหมดของเอกสารนี้ (1 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
+| store-backend · src/modules/sbpgi-common-contracts/sbpgi-common-contracts.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
+| store-backend · src/modules/sbpgi-common-contracts/sbpgi-common-contracts.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 9) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sbpgi-common-contracts/dto/sbpgi-common-contracts.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
+| store-backend · src/modules/sbpgi-common-contracts/sbpgi-common-contracts.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
+| store-backend · src/providers/sbpgi/sbpgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
+| store-backend · sql/deploy-sbpgi-common-contracts.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
+| BFF · src/common/client-services/sbpgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
+| BFF · src/modules/sbpgi-common-contracts/sbpgi-common-contracts.controller.ts | route ฝั่ง BFF prefix `/bff/sbpgi/…` + `@UseGuards(AuthGuard('jwt'))` |
+| BFF · src/modules/sbpgi-common-contracts/sbpgi-common-contracts.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
+
+เส้นที่ไม่ต้อง implement ใหม่ในเอกสารนี้:
+
+| Endpoint | จุดประสงค์ | เหตุผล |
+| --- | --- | --- |
+| ALL /api/v1/* | Standard error envelope | contract กลาง/wildcard — ไม่ผูกกับ controller ใดเส้นเดียว |
+| GET /api/v1/* | Standard list envelope เมื่อ endpoint เป็นรายการ | contract กลาง/wildcard — ไม่ผูกกับ controller ใดเส้นเดียว |
+| POST /api/v1/documents/{docNo}/actions | Document action contract กลาง; ตัวอย่าง currentSection=01 จ… | **reference — implement ที่เอกสาร `LLDD-BE-API-Document-Workflow-Actions`** (1 เส้น = 1 เจ้าของ ไม่ประกาศ controller ซ้ำ ไม่งั้น NestJS จะ register ทับกันเงียบ ๆ) |
+
+#### 8.2 Controller (store-backend)
+
+```ts
+// src/modules/sbpgi-common-contracts/sbpgi-common-contracts.controller.ts
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { HttpHeaderGuard } from '../../guards/http-header.guard';
+import { UserId } from '../../common/decorators/user-id.decorator';
+import { SbpgiCommonContractsService } from './sbpgi-common-contracts.service';
+
+// LLDD BE - API Common Contracts
+// BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
+@Controller('sbpgi/me')
+@UseGuards(HttpHeaderGuard)
+export class SbpgiCommonContractsController {
+  constructor(private readonly service: SbpgiCommonContractsService) {}
+
+  // GET /api/v1/me/menus — RBAC/menu contract กลาง
+  @Get('menus')
+  getMeMenus(@UserId() userId: string) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.getMeMenus(userId);
+  }
+}
+```
+
+#### 8.3 DTO + Validation
+
+```ts
+// src/modules/sbpgi-common-contracts/dto/sbpgi-common-contracts.dto.ts
+import { Type } from 'class-transformer';
+import {
+  IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
+  IsString, Matches, Max, MaxLength, Min,
+} from 'class-validator';
+
+// ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
+// property ที่ไม่ประกาศที่นี่จะถูก reject เป็น 400 อัตโนมัติ
+
+// payload ของโมดูลนี้
+export class CommonContractsRequestDto {
+  // TODO: endpoint นี้ไม่มี body/query ใน LLDD — เพิ่ม property เมื่อสรุป payload แล้ว
+}
+```
+
+#### 8.4 Service (inject `DATA_SOURCE` + raw SQL)
+
+service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
+
+```ts
+// src/modules/sbpgi-common-contracts/sbpgi-common-contracts.service.ts
+import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+import { SBPGI_SQL } from './sbpgi-common-contracts.sql';
+
+@Injectable()
+export class SbpgiCommonContractsService {
+  private readonly logger = new Logger(SbpgiCommonContractsService.name);
+
+  constructor(
+    // DATA_SOURCE override query(): SELECT/WITH ไป slave pool, write ไป master
+    @Inject('DATA_SOURCE') private readonly dataSource: DataSource,
+  ) {}
+
+  // GET /api/v1/me/menus — RBAC/menu contract กลาง
+  async getMeMenus(userId: string) {
+    const page = 1;
+    const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/me/menus')
+    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
+    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
+    const rows = await this.dataSource.query(SBPGI_SQL.getMeMenus, [
+      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
+      userId, (page - 1) * size, size,
+    ]);
+    // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
+    return { page, size, total: rows.length, items: rows };
+  }
+}
+```
+
+#### 8.5 Repository Providers + Module wiring
+
+```ts
+// src/providers/sbpgi/sbpgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
+// convention ของโฟลเดอร์ providers คือ 1 ไฟล์ต่อโดเมน ตั้งชื่อตามโดเมน (business_user/business_user.ts,
+// common_code/common_code.ts …) ไม่ใช่ index.ts
+//
+// ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SBPGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ
+//    (ชื่อ const แยกต่อเอกสารไว้แล้วเพื่อไม่ให้ชนกัน)
+import { DataSource } from 'typeorm';
+import { CompensationDocument } from '../../entitys/compensation-documents.entity';
+
+export const sbpgiCommonContractsProviders = [
+  {
+    provide: 'COMPENSATION_DOCUMENT_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(CompensationDocument),
+    inject: ['DATA_SOURCE'],
+  },
+];
+
+// src/modules/sbpgi-common-contracts/sbpgi-common-contracts.module.ts
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { DatabaseModule } from '../../database/database.module';
+// UserContextMiddleware อ่าน header x-user-id แล้วเซ็ต request.userId ที่ @UserId() ใช้
+// — app.module.ts **ไม่ได้** apply แบบ global (มีแค่ HttpContext/LoggerContext) แต่ละโมดูลต้อง apply เอง
+// (ดู evaluation-process.module.ts / inform-evaluate.module.ts / cooperation-request.module.ts)
+import { UserContextMiddleware } from '../../common/middleware/user-context.middleware';
+import { sbpgiCommonContractsProviders } from '../../providers/sbpgi/sbpgi';
+import { SbpgiCommonContractsController } from './sbpgi-common-contracts.controller';
+import { SbpgiCommonContractsService } from './sbpgi-common-contracts.service';
+
+@Module({
+  imports: [DatabaseModule],
+  controllers: [SbpgiCommonContractsController],
+  providers: [SbpgiCommonContractsService, ...sbpgiCommonContractsProviders],
+  exports: [SbpgiCommonContractsService],
+})
+export class SbpgiCommonContractsModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // ถ้าไม่ apply ตรงนี้ userId จะเป็น undefined เงียบ ๆ ทุก endpoint
+    consumer.apply(UserContextMiddleware).forRoutes(SbpgiCommonContractsController);
+  }
+}
+// TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SBPGI ตัวอื่น
+```
+
+#### 8.6 BFF Proxy (module + controller + client service)
+
+BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sbpgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
+
+```ts
+// src/common/client-services/sbpgi-client.service.ts
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { BaseClientService } from './base-client.service';
+
+@Injectable()
+export class SbpgiClientService extends BaseClientService implements OnModuleInit {
+  protected logger: Logger = new Logger(SbpgiClientService.name);
+
+  onModuleInit() {
+    // TODO: ถ้า deploy SBPGI แยก service ให้เพิ่ม API_SBPGI_BACKEND_* ใน AppConfigService
+    //       ตอนนี้ชี้ store backend ตัวเดียวกับ StoreClientService
+    this.defaultHeaders[this.config.api.store.key.name] = this.config.api.store.key.value;
+    this.baseUrl = this.config.api.store.url;
+  }
+}
+// BaseClientService แกะ { success, data } ให้แล้ว — service ฝั่ง BFF จึงได้ data ตรง ๆ
+// TODO: เพิ่ม SbpgiClientService ใน providers/exports ของ ClientServiceModule (@Global)
+```
+
+```ts
+// src/modules/sbpgi-common-contracts/sbpgi-common-contracts.service.ts (BFF)
+import { Injectable } from '@nestjs/common';
+import { SbpgiClientService } from '@common/client-services/sbpgi-client.service';
+
+@Injectable()
+export class SbpgiCommonContractsBffService {
+  constructor(private readonly client: SbpgiClientService) {}
+
+  // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  private userHeaders(user: any) {
+    return {
+      'x-user-id': user?.userId,
+      'x-user-group-id': user?.groupId,
+      'x-user-permissions': (user?.permissions ?? []).join(','),
+    };
+  }
+
+  getMeMenus(params: any, user: any) {
+    return this.client.get('/api/v1/me/menus', { params, headers: this.userHeaders(user) });
+  }
+}
+
+// ---------- src/modules/sbpgi-common-contracts/sbpgi-common-contracts.controller.ts (BFF) ----------
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+
+// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sbpgi/...' (ห้ามปนกับแบบไม่มี /bff)
+@Controller('bff/sbpgi/common-contracts')
+@UseGuards(AuthGuard('jwt'))
+export class SbpgiCommonContractsBffController {
+  constructor(private readonly service: SbpgiCommonContractsBffService) {}
+
+  // proxy ของ GET /api/v1/me/menus
+  @Get('me/menus')
+  getMeMenus(@Query() query: any, @Req() req: any) {
+    return this.service.getMeMenus(query, req.user);
+  }
+}
+// TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
+```
+
+## 9. Database SQL
+
+#### 9.1 ตารางที่อ่าน/เขียน
+
+เอกสารนี้ไม่ระบุตารางที่ใช้โดยตรง — ให้ยึด DB Mapping ของ LLDD ที่เกี่ยวข้อง
+
+#### 9.2 SQL จริงต่อ Endpoint
+
+ยังไม่มี SQL ตัวอย่างที่ผูกกับ endpoint ของเอกสารนี้ใน `SQL_BY_PATH` (`plan-api.html`) — ให้เพิ่มที่นั่นก่อน แล้วเอกสารจะดึงมาแสดงอัตโนมัติ (ห้ามเขียน SQL ใหม่ในเอกสารนี้)
+
+#### 9.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+
+ยังไม่มีข้อมูลเงื่อนไข query พอจะเสนอ index — รอ SQL ต่อ endpoint ครบก่อน
+
+## 10. Processing Flow
 
 | Step | Description |
 | --- | --- |
@@ -295,7 +528,7 @@ RBAC/menu contract กลาง
 | 7 | Controller maps result to standard envelope or throws AppError |
 | 8 | Error handler maps all failures to `{code,message}` only |
 
-## 10. Acceptance Criteria
+## 11. Acceptance Criteria
 
 - ทุก endpoint ต้องใช้ common contract นี้
 - ไม่มี endpoint คืน error shape อื่นนอกจาก `{code,message}`
@@ -303,9 +536,9 @@ RBAC/menu contract กลาง
 - GET list ทุกเส้นคืน `{page,size,total,items}`
 - /actions รับ `{result,comment}` เท่านั้นและคืน `{statusCode,nextSection,message}`
 - RBAC ใช้ role/menu/current task owner ฝั่ง BE เป็น source of truth
-- mutation ที่ต้องมี reason ต้องเขียน audit_logs/consideration_logs/job_run_histories ตามโดเมน
+- workflow action ต้องเขียน consideration_logs · master mutation ไม่มี audit แล้ว (ยกเลิกระบบ audit ของ master 2026-08-07)
 
-## 11. Developer Test Checklist
+## 12. Developer Test Checklist
 
 | No | Test |
 | --- | --- |

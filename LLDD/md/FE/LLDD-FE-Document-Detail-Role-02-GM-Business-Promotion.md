@@ -75,7 +75,7 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Document Detail 
 
 | Area | Fields | Validation / Behavior |
 | --- | --- | --- |
-| ข้อมูลประกอบอนุมัติ | totalCompensationAmount, approvalLimitIndicator | read-only จาก API; ใช้แสดง <=100,000 หรือ >100,000 |
+| ข้อมูลประกอบอนุมัติ | totalCompensationAmount, approvalLimitIndicator | read-only จาก API; ใช้แสดงช่วงวงเงินอนุมัติ (<=50,000 จบที่ GM · 50,001-300,000 ผ่าน AVP ตาม SDD GI) |
 | เอกสารแนบ | file, fileName, attachmentType, remark | เพิ่มไฟล์ได้; ขนาด <= 5 MB; extension ต้องอยู่ใน allowlist |
 | แผงพิจารณา | result, comment | result required; comment ตาม actionOptions.requireComment |
 
@@ -87,7 +87,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | --- | --- |
 | เห็นควรชดเชย | comment optional |
 | เห็นควรไม่ชดเชย | comment ตาม actionOptions.requireComment |
-| ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP | comment ตาม actionOptions.requireComment |
+| ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP | comment ตาม actionOptions.requireComment |
 
 ### 5.6 API Response Example
 
@@ -116,15 +116,18 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
   "canAction": true,
   "actionOptions": [
     {
+      "value": "เห็นควรชดเชย",
       "label": "เห็นควรชดเชย",
       "requireComment": false
     },
     {
+      "value": "เห็นควรไม่ชดเชย",
       "label": "เห็นควรไม่ชดเชย",
       "requireComment": false
     },
     {
-      "label": "ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP",
+      "value": "ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP",
+      "label": "ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP",
       "requireComment": false
     }
   ]
@@ -165,7 +168,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | Render profile sections | render เฉพาะ visibleSections ของ P-02: doc-header, sec-sales, sec-map, sec-newstore, sec-competitor, sec-factor, sec-attach, sec-comp-history, sec-decision-history, sec-action; ซ่อน: sec-calc | section ที่ซ่อนต้องไม่อยู่ใน DOM และ section key ที่ไม่รู้จักต้อง log/ignore แบบ fail closed |
 | Apply edit boundary | เปิด mutation control เฉพาะ editableSections ของ P-02: ไม่มี; business section ทั้งหมด read-only | read-only section ไม่มี focusable input/save/add/delete และ payload ต้องไม่มี field นอก editableSections |
 | Attachment control | canUploadAttachment=true สำหรับ GM Business Promotion; ใช้ allowlist, 5 MB และ scan-status contract | ปุ่ม upload ตรง flag, FILE_TOO_LARGE/FILE_SCAN_BLOCKED แสดงที่ attachment section |
-| Render exact action set | แสดง actionOptions ของ P-02 เท่านั้น: เห็นควรชดเชย; เห็นควรไม่ชดเชย; ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP; comment rules: เห็นควรชดเชย: comment optional; เห็นควรไม่ชดเชย: comment ตาม actionOptions.requireComment; ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP: comment ตาม actionOptions.requireComment | radio label/requireComment มาจาก API และ FE ไม่คำนวณ nextSection |
+| Render exact action set | แสดง actionOptions ของ P-02 เท่านั้น: เห็นควรชดเชย; เห็นควรไม่ชดเชย; ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP; comment rules: เห็นควรชดเชย: comment optional; เห็นควรไม่ชดเชย: comment ตาม actionOptions.requireComment; ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP: comment ตาม actionOptions.requireComment | radio label/requireComment มาจาก API และ FE ไม่คำนวณ nextSection |
 | Submit and reload | ส่ง result/comment สำหรับ P-02 แล้ว invalidate detail, timeline, task/list cache | หลัง submit ต้องโหลด status/actionOptions ใหม่และไม่คง action set ของ P-02 เมื่อ workflow เปลี่ยนขั้น |
 
 ## 6. Button / User Action Mapping
@@ -220,15 +223,18 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
   "editableSections": [],
   "actionOptions": [
     {
+      "value": "เห็นควรชดเชย",
       "label": "เห็นควรชดเชย",
       "requireComment": false
     },
     {
+      "value": "เห็นควรไม่ชดเชย",
       "label": "เห็นควรไม่ชดเชย",
       "requireComment": false
     },
     {
-      "label": "ส่งกลับฝ่ายส่งเสริมธุรกิจ SBP",
+      "value": "ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP",
+      "label": "ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP",
       "requireComment": false
     }
   ]
@@ -246,12 +252,13 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | visibleSections | array<string> | Yes | JSON array; element type shown in Type column |
 | editableSections | array<object> | Yes | JSON array; element type shown in Type column |
 | actionOptions | array<object> | Yes | JSON array; element type shown in Type column |
+| actionOptions[].value | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | actionOptions[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | actionOptions[].requireComment | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### POST /api/v1/documents/{docNo}/actions
 
-ตัวอย่าง positive-path จาก section 02; Section 02 ใช้กรณียอดรวมมากกว่า 100,000 บาท
+ตัวอย่าง positive-path จาก section 02; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม 50,001-300,000 บาท และจบที่ GM เมื่อ <= 50,000 บาท (SDD GI)
 
 #### Request
 
@@ -286,6 +293,268 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | statusCode | string | Yes | canonical code; do not replace with display label |
 | nextSection | string | Yes | canonical code; do not replace with display label |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
+
+## 8. Skeleton Code (โครงโค้ดตั้งต้นของหน้าจอนี้)
+
+โค้ดชุดนี้อิง convention ของ portal เดิม `srm-sps-spsap-web-frontend` (build target `sbpm`): Next.js App Router + `'use client'`, PrimeReact ที่ห่อไว้แล้วใน `@/components/Form` และ `@/components/Table`, react-hook-form + yup, Zustand `permissionStore`, axios instance กลาง `@/lib/apiClient` และ react-query 5 — **โปรเจกต์ไม่มี chart library** จึงไม่มีโค้ดกราฟในเอกสารนี้ คัดลอกไปตั้งต้นได้ทันที แล้วเติมจุดที่กำกับ `TODO:`
+
+#### 8.1 ผังไฟล์ที่ต้องสร้าง
+
+โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SBPGI อยู่ใต้ `src/app/(main)/sbpgi/*` และ import ผ่าน alias `@/*` ทุกจุด
+
+| Path ไฟล์ | หน้าที่ |
+| --- | --- |
+| src/app/(main)/sbpgi/documents/[docNo]/page.tsx | route page — ใช้ร่วมกับหน้า detail — view ของ workflow section 02 |
+| src/components/sbpgi/document-detail/RoleView02.tsx | component — view เฉพาะ workflow section 02 (อ่าน visibleSections/editableSections จาก API) |
+| src/components/sbpgi/document-detail/ActionForm02.tsx | component — ฟอร์มผลการพิจารณา (result + comment) ของ section นี้ |
+| src/components/sbpgi/document-detail/DocumentSection.tsx | component ร่วม — render 1 section ตาม sectionKey (ประกาศครั้งเดียวที่ LLDD-FE-Document-Detail) |
+| src/components/sbpgi/document-detail/ActionPanel.tsx | component ร่วม — กล่อง action ของหน้า detail (ประกาศครั้งเดียวที่ LLDD-FE-Document-Detail) |
+| src/services/sbpgi/document.service.ts | service — เรียก BFF ผ่าน apiClient (GET, POST) |
+| src/hooks/sbpgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
+| src/types/sbpgi/document.ts | types — request/response ตาม API contract ของเอกสารนี้ |
+
+#### 8.2 RoleView component — view เฉพาะบทบาทของหน้า Document Detail
+
+```tsx
+'use client';
+// RoleView02 — view ของหน้า Document Detail สำหรับ workflow section 02
+// editableSections ตาม contract: (อ่านอย่างเดียว)
+// actionOptions ที่ API ส่งให้ role นี้ (ยัง render จาก doc.actionOptions ห้าม hardcode ใน component):
+//   - เห็นควรชดเชย (ไม่บังคับความคิดเห็น)
+//   - เห็นควรไม่ชดเชย (ไม่บังคับความคิดเห็น)
+//   - ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP (ไม่บังคับความคิดเห็น)
+
+import DocumentSection from '@/components/sbpgi/document-detail/DocumentSection';
+import ActionPanel from '@/components/sbpgi/document-detail/ActionPanel';
+import type { DocumentsDetailResponse } from '@/types/sbpgi/document';
+
+interface Props {
+  doc: DocumentsDetailResponse;
+  onSubmitAction: (payload: { result: string; comment: string }) => void;
+  submitting?: boolean;
+}
+
+export default function RoleView02({ doc, onSubmitAction, submitting }: Props) {
+  const show = (key: string) => doc.visibleSections.includes(key);
+  const editable = (key: string) => doc.editableSections.includes(key);
+
+  return (
+    <div className="flex flex-col gap-4">
+      {show('doc-header') && <DocumentSection sectionKey="doc-header" doc={doc} editable={editable('doc-header')} />}
+      {show('sec-sales') && <DocumentSection sectionKey="sec-sales" doc={doc} editable={editable('sec-sales')} />}
+      {show('sec-map') && <DocumentSection sectionKey="sec-map" doc={doc} editable={editable('sec-map')} />}
+      {show('sec-newstore') && <DocumentSection sectionKey="sec-newstore" doc={doc} editable={editable('sec-newstore')} />}
+      {show('sec-competitor') && <DocumentSection sectionKey="sec-competitor" doc={doc} editable={editable('sec-competitor')} />}
+      {show('sec-factor') && <DocumentSection sectionKey="sec-factor" doc={doc} editable={editable('sec-factor')} />}
+      {show('sec-attach') && <DocumentSection sectionKey="sec-attach" doc={doc} editable={editable('sec-attach')} />}
+      {show('sec-comp-history') && <DocumentSection sectionKey="sec-comp-history" doc={doc} editable={editable('sec-comp-history')} />}
+      {doc.canAction && (
+        <ActionPanel
+          options={doc.actionOptions}
+          onSubmit={onSubmitAction}   // TODO: บังคับกรอก comment เมื่อ option.requireComment = true
+          disabled={submitting}
+        />
+      )}
+    </div>
+  );
+}
+```
+
+#### 8.3 service — `src/services/sbpgi/document.service.ts`
+
+⚠️ `src/services/sbpgi/document.service.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+
+```ts
+// src/services/sbpgi/document.service.ts
+// apiClient = axios instance กลาง (baseURL = bffUrl ซึ่งรวม /api/v1 แล้ว, withCredentials, refresh-token interceptor, global loading)
+// ห้ามสร้าง axios instance ใหม่ และห้าม set Authorization header เอง — session อยู่ใน httpOnly cookie ของ BFF
+
+import apiClient from '@/lib/apiClient';
+import type { ApiResponse } from '@/types/sbpgi/common';
+import type * as T from '@/types/sbpgi/document';
+
+/** GET /api/v1/documents/{docNo} — โหลด role profile P-02 สำหรับหน้า detail */
+export async function getDocumentsDetail(docNo: string): Promise<T.DocumentsDetailResponse> {
+  const { data } = await apiClient.get<ApiResponse<T.DocumentsDetailResponse>>(`/documents/${encodeURIComponent(docNo)}`);
+  return data.data;
+}
+
+/** POST /api/v1/documents/{docNo}/actions — ตัวอย่าง positive-path จาก section 02; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม 50,001-300,000 บาท และจบที่ GM เมื่อ <= 50,000 บาท (SDD GI) */
+export async function createDocumentsActions(docNo: string, body: T.CreateDocumentsActionsRequest): Promise<T.CreateDocumentsActionsResponse> {
+  const { data } = await apiClient.post<ApiResponse<T.CreateDocumentsActionsResponse>>(`/documents/${encodeURIComponent(docNo)}/actions`, body);
+  return data.data;
+}
+
+// TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
+```
+
+#### 8.4 types — `src/types/sbpgi/document.ts`
+
+⚠️ `src/types/sbpgi/document.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+
+```ts
+// src/types/sbpgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
+// วันที่/เดือนใน payload เป็น ค.ศ. (ISO) เสมอ — แปลงเป็น พ.ศ. เฉพาะตอน display
+
+/** GET /api/v1/documents/{docNo} — response */
+export interface DocumentsDetailResponse {
+  docNo: string;
+  statusCode: string;
+  viewerRbacRoleCode: string;
+  roleProfileCode: string;
+  visibleSections: string[];
+  editableSections: unknown[];
+  actionOptions: {
+    value: string;
+    label: string;
+    requireComment: boolean;
+  }[];
+}
+
+/** POST /api/v1/documents/{docNo}/actions — request */
+export interface CreateDocumentsActionsRequest {
+  result: string;
+  comment: string;
+}
+
+/** POST /api/v1/documents/{docNo}/actions — response */
+export interface CreateDocumentsActionsResponse {
+  statusCode: string;
+  nextSection: string;
+  message: string;
+}
+
+// TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
+```
+
+#### 8.5 react-query keys + hooks — `src/hooks/sbpgi/document.query.ts`
+
+⚠️ `src/hooks/sbpgi/document.query.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+
+```ts
+// src/hooks/sbpgi/document.query.ts
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as api from '@/services/sbpgi/document.service';
+import type * as T from '@/types/sbpgi/document';
+
+export const documentKeys = {
+  all: ['sbpgi', 'document'] as const,
+  documentsDetail: (docNo: string) => [...documentKeys.all, 'documentsDetail', docNo] as const,
+};
+
+export function useDocumentsDetailQuery(docNo: string) {
+  return useQuery({
+    queryKey: documentKeys.documentsDetail(docNo),
+    queryFn: () => api.getDocumentsDetail(docNo),
+    enabled: !!docNo, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
+    staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
+  });
+}
+
+export function useCreateDocumentsActionsMutation(docNo: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: T.CreateDocumentsActionsRequest) => api.createDocumentsActions(docNo, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: documentKeys.all }); // reload list/detail/timeline
+    },
+    // TODO: onError -> แสดง apiErrorMessage(error) ผ่าน Toast กลาง
+  });
+}
+```
+
+#### 8.6 ฟอร์มพิจารณา + validation — `src/components/sbpgi/document-detail/ActionForm02.tsx`
+
+หน้านี้**ไม่มีการค้นหา** — ฟอร์มเดียวของหน้าคือฟอร์มผลการพิจารณาที่ยิง `POST /api/v1/documents/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`
+
+```tsx
+'use client';
+// ActionForm02 — ฟอร์ม "ผลการพิจารณา" ของ workflow section 02
+// payload ที่ส่งจริงมีแค่ 2 field ตาม CreateDocumentsActionsRequest: { result, comment }
+// option ที่ role นี้เห็นตาม contract (render จาก doc.actionOptions ห้าม hardcode ใน JSX):
+//   - เห็นควรชดเชย (value='เห็นควรชดเชย', requireComment=false)
+//   - เห็นควรไม่ชดเชย (value='เห็นควรไม่ชดเชย', requireComment=false)
+//   - ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP (value='ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP', requireComment=false)
+// editableSections ของ role นี้ (ใช้เป็น constant สำหรับ assertion/test เท่านั้น ไม่ใช่เพื่อ hardcode การ render):
+export const EDITABLE_SECTIONS_02 = [] as const;
+
+import { Controller, useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import { RadioButtonGroup } from '@/components/Form';
+import { InputTextarea } from '@/components/Form/InputText/inputtextArea';
+import type { DocumentActionRequest } from '@/types/sbpgi/common';
+
+interface ActionOption { value: string; label: string; requireComment?: boolean }
+
+// ค่าที่ "บังคับกรอกความคิดเห็น" มาจาก contract ของ role นี้
+const REQUIRE_COMMENT: string[] = [/* TODO: ค่าที่บังคับ comment */];
+
+// TODO: แทนข้อความ validation ด้วยข้อความ verbatim จาก SRS ก่อน UAT
+const schema = yup.object({
+  result: yup.string().required('กรุณาเลือกผลการพิจารณา'),
+  comment: yup.string().when('result', {
+    is: (v: string) => REQUIRE_COMMENT.includes(v),
+    then: (s) => s.required('กรุณาระบุความคิดเห็น'),
+    otherwise: (s) => s.optional(),
+  }),
+});
+
+export default function ActionForm02({ options, onSubmit, onCancel, submitting }: {
+  options: ActionOption[];          // = doc.actionOptions จาก API
+  onSubmit: (payload: DocumentActionRequest) => void;
+  onCancel?: () => void;
+  submitting?: boolean;
+}) {
+  const { control, handleSubmit, watch, formState: { errors } } = useForm<DocumentActionRequest>({
+    resolver: yupResolver(schema) as never,
+    defaultValues: { result: '', comment: '' },
+    mode: 'onSubmit',
+  });
+  const mustComment = REQUIRE_COMMENT.includes(watch('result'));
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+      <Controller
+        name="result"
+        control={control}
+        render={({ field }) => (
+          <RadioButtonGroup
+            options={options.map((o) => ({ label: o.label, value: o.value }))}
+            value={field.value}
+            onChange={(e) => field.onChange(e.value)}
+            flex="col"
+            gap="8px"
+          />
+        )}
+      />
+      {errors.result && <span className="text-red-600">{errors.result.message}</span>}
+      <Controller
+        name="comment"
+        control={control}
+        render={({ field }) => (
+          <InputTextarea {...field} rows={4} placeholder={mustComment ? 'ระบุความคิดเห็น (บังคับ)' : 'ความคิดเห็น'} />
+        )}
+      />
+      {errors.comment && <span className="text-red-600">{errors.comment.message}</span>}
+      <div className="flex justify-end gap-2">
+        <button type="submit" className="btn btn-primary" disabled={submitting}>
+          ยืนยัน
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={onCancel}>
+          ยกเลิก
+        </button>
+      </div>
+    </form>
+  );
+}
+```
+
+- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
+- เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
+- session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
+- payload ใช้วันที่ ค.ศ. เสมอ; แปลงเป็น พ.ศ. เฉพาะตอนแสดงผลผ่าน formatter กลางจุดเดียว
+- ข้อความ error แสดงจาก `error.message` ของ BE ตรง ๆ (ห้าม paraphrase) — fallback ใช้เฉพาะกรณี network error
 
 ## 9. Processing Flow
 

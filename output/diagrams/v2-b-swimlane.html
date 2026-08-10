@@ -1,0 +1,513 @@
+<meta charset="utf-8">
+<title>ระบบประกันรายได้ — แผนผังสามเลน</title>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0f1a2e; --ink2:#26364f; --muted:#5d6d86; --soft:#8494ab;
+    --line:#e2e8f2; --band:#f6f8fc;
+    --s1:#2563eb; --s2:#0d9488; --s3:#d97706; --s4:#7c3aed; --s5:#e11d48;
+    --fwd:#3b6fd1; --back:#c2410c;
+    --src:#334155;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:24px;
+    background:#e9eef5;
+    font-family:"Prompt","Sarabun",sans-serif;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .sheet{
+    width:1608px; margin:0 auto; padding:44px 44px 34px;
+    background:#fff; border-radius:22px;
+    box-shadow:0 18px 48px rgba(15,26,46,.13);
+  }
+  .board{width:1520px}
+
+  /* ---------- header ---------- */
+  .kicker{font-size:13px; font-weight:600; letter-spacing:.02em; color:var(--s1); margin-bottom:6px}
+  h1{font-size:35px; line-height:1.2; font-weight:700; margin:0 0 10px; letter-spacing:-.01em}
+  .lead{font-size:15px; line-height:1.75; color:var(--ink2); max-width:1000px; margin:0}
+  .lead b{font-weight:600; color:var(--ink)}
+  .head{display:flex; gap:34px; align-items:flex-start; justify-content:space-between}
+  .head-l{flex:1}
+  .stats{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px}
+  .stat{
+    display:inline-flex; align-items:baseline; gap:6px;
+    background:#f2f6fd; border:1px solid #dde7fa; border-radius:999px;
+    padding:6px 13px; font-size:12.5px; color:var(--ink2);
+  }
+  .stat b{font-size:14px; font-weight:700; color:var(--s1)}
+
+  .legend{
+    width:330px; flex:none; border:1px solid var(--line); border-radius:14px;
+    padding:14px 16px 13px; background:#fbfcfe;
+  }
+  .legend h4{margin:0 0 10px; font-size:12.5px; font-weight:600; color:var(--muted); letter-spacing:.02em}
+  .lg{display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:12.5px; color:var(--ink2); line-height:1.45}
+  .lg:last-child{margin-bottom:0}
+  .lg svg{flex:none}
+
+  .rule{height:1px; background:var(--line); margin:24px 0 22px}
+
+  /* ---------- lane heads ---------- */
+  .lane-head{display:flex; align-items:center; gap:10px; margin:0 0 10px}
+  .lane-head .sq{width:11px; height:11px; border-radius:3px; flex:none}
+  .lane-head .nm{font-size:15.5px; font-weight:600; color:var(--ink)}
+  .lane-head .ds{font-size:12.5px; color:var(--muted)}
+  .lane-head .cnt{
+    margin-left:auto; font-size:12px; color:var(--muted);
+    background:#f2f5fa; border:1px solid var(--line); border-radius:999px; padding:3px 11px;
+  }
+
+  .band{background:var(--band); border:1px solid var(--line); border-radius:16px; padding:14px 0}
+  .band.mid{background:#fff; border-color:#dde5f1}
+  .grid5{display:grid; grid-template-columns:repeat(5,280px); column-gap:30px; padding:0 0}
+  .band .grid5{padding:0}
+  .pad{padding:0 14px}
+
+  /* ---------- source / target boxes ---------- */
+  .cell{display:flex; flex-direction:column; gap:10px; height:100%}
+  .node{
+    background:#fff; border:1px solid #d8e0ec; border-left:4px solid var(--src);
+    border-radius:11px; padding:11px 13px; flex:1;
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .node .t{font-size:14px; font-weight:600; line-height:1.35; color:var(--ink)}
+  .node .d{font-size:12px; line-height:1.55; color:var(--muted); margin-top:4px}
+  .node .tag{
+    display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.02em;
+    border-radius:999px; padding:2px 8px; margin-bottom:6px; align-self:flex-start;
+  }
+  .tag-two{background:#fff2e6; color:#b4530c; border:1px solid #f6d9be}
+  .tag-s3{background:#fdf3e2; color:#a45c06; border:1px solid #f3ddb5}
+  .tag-s4{background:#f2ecfd; color:#6b32d6; border:1px solid #e0d3fa}
+  .n-s3{border-left-color:var(--s3)}
+  .n-s4{border-left-color:var(--s4)}
+  .n-mail{border-left-color:#475569}
+
+  .note{
+    border:1px dashed #c9d4e4; border-radius:11px; background:#fff;
+    padding:12px 15px; font-size:12.5px; line-height:1.65; color:var(--muted);
+    display:flex; align-items:center;
+  }
+  .note b{color:var(--ink2); font-weight:600}
+
+  .pair{display:grid; grid-template-columns:1fr 1fr; gap:14px; height:100%}
+
+  /* ---------- stage cards ---------- */
+  .stage{
+    background:#fff; border:1px solid #dbe3ef; border-top:4px solid var(--c);
+    border-radius:13px; padding:14px 14px 13px;
+    display:flex; flex-direction:column; height:100%;
+    box-shadow:0 2px 8px rgba(15,26,46,.05);
+  }
+  .s-top{display:flex; gap:10px; align-items:flex-start; margin-bottom:9px}
+  .num{
+    width:32px; height:32px; flex:none; border-radius:50%;
+    background:var(--c); color:#fff; font-size:16px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; line-height:1;
+  }
+  .s-top h3{margin:0; font-size:16px; font-weight:600; line-height:1.32; color:var(--ink)}
+  .s-top .jobs{font-size:11.5px; color:var(--c); font-weight:600; margin-top:3px; display:block}
+  .when{
+    display:flex; gap:6px; align-items:flex-start;
+    background:var(--cbg); border:1px solid var(--cbd); border-radius:8px;
+    padding:6px 9px; font-size:12px; font-weight:600; color:var(--cdk); line-height:1.45;
+    margin-bottom:10px;
+  }
+  .when svg{flex:none; margin-top:1px}
+  ul.b{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px}
+  ul.b li{position:relative; padding-left:14px; font-size:12.8px; line-height:1.62; color:var(--ink2)}
+  ul.b li::before{
+    content:""; position:absolute; left:0; top:7px;
+    width:6px; height:6px; border-radius:50%; background:var(--c);
+  }
+  ul.b li b{font-weight:600; color:var(--ink)}
+  .tt{
+    display:inline-block; font-size:11px; font-weight:600; color:var(--cdk);
+    background:var(--cbg); border-radius:5px; padding:1px 6px; margin-right:4px;
+    white-space:nowrap;
+  }
+  .cond{
+    margin-top:6px; border-left:2px solid var(--cbd); padding-left:9px;
+    font-size:11.5px; line-height:1.62; color:var(--muted);
+    display:grid; grid-template-columns:1fr 1fr; column-gap:6px; row-gap:2px;
+  }
+  .cond b{color:var(--ink2); font-weight:600}
+  .mini{
+    margin-top:12px; border:1px solid var(--cbd); background:var(--cbg);
+    border-radius:10px; padding:9px 10px 8px;
+  }
+  .mini .mt{font-size:11px; font-weight:600; color:var(--cdk); margin-bottom:7px}
+  .cells{display:flex; gap:5px}
+  .cells span{
+    flex:1; text-align:center; font-size:10.5px; font-weight:600; color:var(--cdk);
+    background:#fff; border:1px solid var(--cbd); border-radius:6px; padding:5px 2px;
+    line-height:1.3;
+  }
+  .mcap{font-size:10.5px; color:var(--muted); margin-top:7px; line-height:1.45; text-align:center}
+  .out{
+    margin-top:auto; padding-top:10px; border-top:1px dashed #dfe6f0;
+    font-size:12.2px; line-height:1.55; color:var(--ink2); font-weight:600;
+    display:flex; gap:7px; align-items:flex-start;
+  }
+  .out span.k{color:var(--c); font-weight:700; flex:none}
+
+  .s1{--c:var(--s1); --cbg:#eef4ff; --cbd:#d5e3fd; --cdk:#1d4ed8}
+  .s2{--c:var(--s2); --cbg:#e9f8f5; --cbd:#c6ece4; --cdk:#0b7a6b}
+  .s3{--c:var(--s3); --cbg:#fdf4e6; --cbd:#f6e0bb; --cdk:#a75f07}
+  .s4{--c:var(--s4); --cbg:#f4efff; --cbd:#e2d6fb; --cdk:#6428cf}
+  .s5{--c:var(--s5); --cbg:#fdedf1; --cbd:#f8d3dd; --cdk:#be1240}
+
+  /* ---------- mail bar ---------- */
+  .mail{
+    margin:14px 14px 0; border:1px solid #d8e0ec; border-left:4px solid #475569;
+    background:#fff; border-radius:11px; padding:12px 16px;
+    display:flex; align-items:center; gap:14px;
+  }
+  .mail .ic{
+    width:34px; height:34px; border-radius:9px; background:#eef1f6; flex:none;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .mail .t{font-size:14px; font-weight:600; flex:none}
+  .mail .d{font-size:12.5px; color:var(--muted); line-height:1.5}
+  .mail .chip{
+    margin-left:auto; flex:none; font-size:11.5px; font-weight:600; color:#334155;
+    background:#eef1f6; border:1px solid #dde3ec; border-radius:999px; padding:4px 12px;
+  }
+
+  .foot{
+    margin-top:22px; padding-top:16px; border-top:1px solid var(--line);
+    display:flex; gap:11px; align-items:flex-start;
+    font-size:12.8px; line-height:1.75; color:var(--ink2);
+  }
+  .foot b{font-weight:600; color:var(--ink)}
+  .foot .ic{
+    width:22px; height:22px; border-radius:6px; background:#eef4ff; flex:none;
+    display:flex; align-items:center; justify-content:center; margin-top:1px;
+  }
+  svg text{font-family:"Prompt","Sarabun",sans-serif}
+</style>
+
+<div class="sheet" id="sheet">
+  <div class="board">
+
+    <!-- ============ HEADER ============ -->
+    <div class="head">
+      <div class="head-l">
+        <div class="kicker">ระบบประกันรายได้ · ร้านคู่ค้า 7-Eleven (Store Business Partner)</div>
+        <h1>เราคุยกับใครบ้าง — งานเบื้องหลังของระบบประกันรายได้</h1>
+        <p class="lead">
+          เมื่อมีสาขา 7-Eleven ใหม่มาเปิดใกล้ร้านคู่ค้าจนยอดขายตก ระบบจะชดเชยรายได้ให้ร้านนั้น
+          เบื้องหลังมี <b>11 งาน แบ่งเป็น 5 ช่วง</b> ทำงานเองตามเวลาที่ตั้งไว้
+          โดยรับข้อมูลจาก <b>ระบบต้นทาง 3 ระบบ</b> และส่งผลต่อไปให้ <b>ระบบปลายทาง 4 ระบบ</b>
+          <br>อ่านจากซ้ายไปขวาตามช่วงที่ 1 → 5 ลูกศรขึ้น–ลงคือจุดที่ข้อมูลเข้าและออก
+        </p>
+        <div class="stats">
+          <div class="stat"><b>11</b> งานเบื้องหลัง</div>
+          <div class="stat"><b>5</b> ช่วงการทำงาน</div>
+          <div class="stat"><b>3</b> ระบบต้นทาง</div>
+          <div class="stat"><b>4</b> ระบบปลายทาง</div>
+          <div class="stat">ไม่ต้องมีคนคอยกดสั่ง</div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <h4>วิธีอ่านเส้นเชื่อม</h4>
+        <div class="lg">
+          <svg width="44" height="14" viewBox="0 0 44 14"><line x1="2" y1="7" x2="34" y2="7" stroke="#3b6fd1" stroke-width="2.2"/><polygon points="34,2.5 43,7 34,11.5" fill="#3b6fd1"/></svg>
+          <div><b style="font-weight:600">เส้นทึบ</b> — ข้อมูลที่ส่งเข้ามา / ส่งออกไป</div>
+        </div>
+        <div class="lg">
+          <svg width="44" height="14" viewBox="0 0 44 14"><line x1="2" y1="7" x2="34" y2="7" stroke="#c2410c" stroke-width="2.2" stroke-dasharray="5 4"/><polygon points="34,2.5 43,7 34,11.5" fill="#c2410c"/></svg>
+          <div><b style="font-weight:600">เส้นประสีส้ม</b> — ข้อมูลที่ตอบกลับมาหาเรา มี <b style="font-weight:600">2 เส้น</b> คือ ① ②</div>
+        </div>
+        <div class="lg">
+          <svg width="44" height="14" viewBox="0 0 44 14"><line x1="2" y1="7" x2="34" y2="7" stroke="#7c3aed" stroke-width="2.2" stroke-dasharray="2 4" stroke-linecap="round"/><polygon points="34,2.5 43,7 34,11.5" fill="#7c3aed"/></svg>
+          <div><b style="font-weight:600">เส้นจุดสีม่วง</b> — ข้อมูลที่ช่วงหนึ่งเก็บไว้ให้อีกช่วงหนึ่งใช้</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule"></div>
+
+    <!-- ============ LANE A : SOURCES ============ -->
+    <div class="lane-head">
+      <span class="sq" style="background:#334155"></span>
+      <span class="nm">เลนบน · ระบบต้นทาง</span>
+      <span class="ds">— ป้อนข้อมูลเข้ามาให้เรา</span>
+      <span class="cnt">3 ระบบ</span>
+    </div>
+    <div class="band">
+      <div class="grid5 pad">
+        <div class="cell">
+          <div class="node">
+            <div class="t">ระบบประเมินคุณภาพร้าน</div>
+            <div class="d">ส่งคะแนนประเมินของแต่ละร้าน แยกเป็น 6 หมวด · ส่งให้เดือนละครั้ง</div>
+          </div>
+          <div class="node">
+            <div class="t">ระบบแผนที่สาขา</div>
+            <div class="d">ตำแหน่งร้านทุกสาขา ร้านที่กำลังจะเปิดใหม่ และร้านคู่แข่งรอบข้าง</div>
+          </div>
+        </div>
+
+        <div class="cell">
+          <div class="node" style="border-left-color:#c2410c">
+            <span class="tag tag-two">คุยกันสองทาง · ส่งไป แล้วตอบกลับ</span>
+            <div class="t">ระบบข้อมูลยอดขาย</div>
+            <div class="d">รับรายชื่อร้านจากเราไปคำนวณยอดขายรายวัน แล้วส่งผลกลับมาให้ในอีกครึ่งชั่วโมงถัดมา</div>
+          </div>
+        </div>
+
+        <div class="note" style="grid-column:3 / span 3">
+          <div>
+            <b>ตั้งแต่ช่วงที่ 3 เป็นต้นไป ไม่มีข้อมูลใหม่จากภายนอกเข้ามาอีก</b><br>
+            ระบบใช้ข้อมูลที่รวบรวมและคำนวณเสร็จแล้วในช่วงที่ 1–2 ทำงานต่อจนจบ
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- connector A -> B -->
+    <svg width="1520" height="66" viewBox="0 0 1520 66" style="display:block">
+      <!-- col1 : sources feed stage 1 -->
+      <line x1="140" y1="0" x2="140" y2="54" stroke="#3b6fd1" stroke-width="2.2"/>
+      <polygon points="134.5,49 145.5,49 140,60" fill="#3b6fd1"/>
+      <text x="153" y="26" font-size="11.5" fill="#5d6d86">คะแนนประเมิน · ตำแหน่งร้าน · ร้านคู่แข่ง</text>
+
+      <!-- col2 : request up -->
+      <line x1="424" y1="56" x2="424" y2="8" stroke="#3b6fd1" stroke-width="2.2"/>
+      <polygon points="418.5,13 429.5,13 424,2" fill="#3b6fd1"/>
+      <text x="414" y="45" font-size="11.5" fill="#5d6d86" text-anchor="end">ส่งรายชื่อร้าน 16:00</text>
+
+      <!-- col2 : sales data back (dashed return #1) -->
+      <line x1="476" y1="6" x2="476" y2="54" stroke="#c2410c" stroke-width="2.2" stroke-dasharray="6 4"/>
+      <polygon points="470.5,49 481.5,49 476,60" fill="#c2410c"/>
+      <circle cx="476" cy="30" r="9.5" fill="#fff" stroke="#c2410c" stroke-width="1.6"/>
+      <text x="476" y="34" font-size="11.5" font-weight="700" fill="#c2410c" text-anchor="middle">1</text>
+      <text x="492" y="26" font-size="11.5" fill="#c2410c">ยอดขายรายวันตอบกลับมา 16:30</text>
+    </svg>
+
+    <!-- ============ LANE B : OUR WORK ============ -->
+    <div class="lane-head">
+      <span class="sq" style="background:linear-gradient(90deg,#2563eb,#e11d48)"></span>
+      <span class="nm">เลนกลาง · งานเบื้องหลังของเรา</span>
+      <span class="ds">— ไหลจากซ้ายไปขวา ช่วงที่ 1 → 5</span>
+      <span class="cnt">11 งาน · 5 ช่วง</span>
+    </div>
+    <div class="band mid">
+      <div class="grid5 pad">
+
+        <!-- STAGE 1 -->
+        <div class="stage s1">
+          <div class="s-top">
+            <div class="num">1</div>
+            <div><h3>รวบรวมข้อมูลตั้งต้นของร้าน</h3><span class="jobs">3 งาน</span></div>
+          </div>
+          <div class="when">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.4V8l2.5 1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>เดือนละครั้ง · และทุกวันที่ 7 เวลา 07:00</span>
+          </div>
+          <ul class="b">
+            <li><span class="tt">เดือนละครั้ง</span>ดึง<b>คะแนนประเมินคุณภาพร้าน</b> (แยกเป็น 6 หมวด) มาเก็บไว้</li>
+            <li><span class="tt">วันที่ 7 · 07:00</span>ดึงรายชื่อ<b>คู่ร้าน</b> “ร้านเดิมที่ถูกกระทบ ↔ ร้านใหม่ที่เพิ่งเปิด” เฉพาะคู่ที่อยู่ในระยะกระทบ</li>
+            <li><span class="tt">วันที่ 7 · 07:00</span>ดึงรายชื่อ<b>ร้านคู่แข่ง</b>ที่อยู่รอบ ๆ ร้านเดิม ไว้ประกอบการพิจารณา</li>
+          </ul>
+          <div class="mini">
+            <div class="mt">คะแนนประเมินคุณภาพร้าน แยกเป็น 6 หมวด</div>
+            <div class="cells"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+            <div class="mcap">เก็บไว้ก่อน แล้วนำไปตรวจให้ครบในช่วงที่ 4</div>
+          </div>
+          <div class="out"><span class="k">ผลที่ได้</span><span>มีข้อมูลตั้งต้นครบพร้อมใช้ และเก็บคะแนนประเมินไว้ให้ช่วงที่ 4</span></div>
+        </div>
+
+        <!-- STAGE 2 -->
+        <div class="stage s2">
+          <div class="s-top">
+            <div class="num">2</div>
+            <div><h3>ขอยอดขายมาเทียบก่อน–หลังร้านใหม่เปิด</h3><span class="jobs">2 งาน</span></div>
+          </div>
+          <div class="when">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.4V8l2.5 1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>ทุกวันที่ 7–16 ของเดือน</span>
+          </div>
+          <ul class="b">
+            <li><span class="tt">16:00</span><b>ส่งคำขอ</b> — ส่งรายชื่อร้านที่ถูกกระทบไปให้ระบบข้อมูลยอดขายช่วยคำนวณ</li>
+            <li><span class="tt">16:30</span><b>รับผลกลับ</b> (ครึ่งชั่วโมงถัดมา) — นำยอดขายรายวันมาเทียบ <b>4 ช่วง ช่วงละ 15 วัน</b> รอบวันที่ร้านใหม่เปิด</li>
+          </ul>
+          <div class="mini">
+            <div class="mt">นำยอดขายมาเทียบกัน 4 ช่วง ช่วงละ 15 วัน</div>
+            <div class="cells"><span>15 วัน</span><span>15 วัน</span><span>15 วัน</span><span>15 วัน</span></div>
+            <div class="mcap">ทั้ง 4 ช่วงอยู่รอบวันที่ร้านใหม่เปิด ทั้งก่อนเปิดและหลังเปิด</div>
+          </div>
+          <div class="out"><span class="k">ผลที่ได้</span><span>รู้ว่าร้านนั้นยอดขายลดลงจริงหรือไม่ และลดลงกี่เปอร์เซ็นต์</span></div>
+        </div>
+
+        <!-- STAGE 3 -->
+        <div class="stage s3">
+          <div class="s-top">
+            <div class="num">3</div>
+            <div><h3>ส่งข้อมูลให้ระบบจัดทำเอกสาร</h3><span class="jobs">3 งาน</span></div>
+          </div>
+          <div class="when">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.4V8l2.5 1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>ทุกวันที่ 7–31 ของเดือน เวลา 17:30</span>
+          </div>
+          <ul class="b">
+            <li><b>ข้อมูลร้านที่ถูกกระทบ</b> พร้อมยอดชดเชย และรายชื่อผู้มีอำนาจอนุมัติของร้านนั้น</li>
+            <li><b>ข้อมูลร้านที่เปิดใหม่</b> ที่ทำให้ยอดขายลดลง</li>
+            <li><b>ข้อมูลร้านคู่แข่ง</b> ที่อยู่รอบข้างร้านเดิม</li>
+          </ul>
+          <div class="mini">
+            <div class="mt">ส่ง 3 ชุด แยกกัน ไม่ขึ้นต่อกัน</div>
+            <div class="cells"><span>ร้านที่<br>ถูกกระทบ</span><span>ร้านที่<br>เปิดใหม่</span><span>ร้าน<br>คู่แข่ง</span></div>
+            <div class="mcap">ชุดใดพร้อมก่อน ส่งก่อนได้ ไม่ต้องรอกัน</div>
+          </div>
+          <div class="out"><span class="k">ผลที่ได้</span><span>ระบบจัดทำเอกสารมีข้อมูลครบ สำหรับตั้งต้นเอกสารของแต่ละร้าน</span></div>
+        </div>
+
+        <!-- STAGE 4 -->
+        <div class="stage s4">
+          <div class="s-top">
+            <div class="num">4</div>
+            <div><h3>เปิดเรื่องให้อนุมัติ และส่งยอดเข้าใบแจ้งยอด</h3><span class="jobs">2 งาน · คนละรอบเวลา</span></div>
+          </div>
+          <div class="when">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.4V8l2.5 1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>เปิดเรื่อง: มีรอบเวลาแยกของตัวเอง · ส่งยอด: ทุกวัน 17:00</span>
+          </div>
+          <ul class="b">
+            <li><b>เปิดเรื่องให้พิจารณา</b> — ตรวจเงื่อนไขให้ผ่านครบก่อน จึงเปิดเรื่องและส่งให้ผู้มีอำนาจอนุมัติทีละขั้นตามวงเงิน
+              <div class="cond"><span>✓ อยู่ในระยะกระทบจริง</span><span>✓ ยอดขายลดถึงเกณฑ์</span><span>✓ ไม่ใช่เจ้าของเดียวกัน</span><span>✓ มีผู้ดูแลร้านครบ</span></div>
+            </li>
+            <li><span class="tt">ทุกวัน · 17:00</span><b>ส่งยอดเข้าใบแจ้งยอด</b> — ก่อนส่งต้องตรวจว่า<b>คะแนนประเมินร้านมาครบทั้ง 6 หมวด</b>แล้ว จากนั้นจึงส่งยอดชดเชยไปให้ระบบใบแจ้งยอดของร้าน</li>
+          </ul>
+          <div class="out"><span class="k">ผลที่ได้</span><span>เรื่องเข้าสู่การอนุมัติ และยอดชดเชยไปถึงใบแจ้งยอดของร้าน</span></div>
+        </div>
+
+        <!-- STAGE 5 -->
+        <div class="stage s5">
+          <div class="s-top">
+            <div class="num">5</div>
+            <div><h3>เฝ้าระวังและแจ้งเตือนเมื่อมีอะไรค้าง</h3><span class="jobs">1 งาน</span></div>
+          </div>
+          <div class="when">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.6" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.4V8l2.5 1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>ทุกวัน เวลา 07:00</span>
+          </div>
+          <ul class="b">
+            <li>ตรวจว่ารายการยอดชดเชยที่ส่งไปใบแจ้งยอดในช่วงที่ 4 <b>ปลายทางตอบรับกลับมาครบหรือยัง</b></li>
+            <li>ถ้า<b>ค้างเกิน 1 วัน</b> ส่งอีเมลแจ้งผู้ดูแลระบบทันที เพื่อให้ตามแก้ก่อนกระทบรอบถัดไป</li>
+          </ul>
+          <div class="mini">
+            <div class="mt">สิ่งที่ดูทุกเช้า</div>
+            <div class="cells"><span>ตอบรับ<br>กลับมาครบ</span><span>ยังค้าง<br>ไม่เกิน 1 วัน</span><span>ค้างเกิน<br>1 วัน</span></div>
+            <div class="mcap">เจอกรณีค้างเกิน 1 วัน เมื่อไร ส่งอีเมลแจ้งทันที</div>
+          </div>
+          <div class="out"><span class="k">ข้อสังเกต</span><span>เป็นงานอ่านอย่างเดียว ไม่แก้ไขข้อมูลใด ๆ ทั้งสิ้น</span></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- cross-stage link : score kept in stage 1 -> checked in stage 4 -->
+    <svg width="1520" height="58" viewBox="0 0 1520 58" style="display:block">
+      <path d="M140 2 V30 H1058 V14" fill="none" stroke="#7c3aed" stroke-width="2" stroke-dasharray="2.5 5" stroke-linecap="round"/>
+      <polygon points="1052.5,17 1063.5,17 1058,6" fill="#7c3aed"/>
+      <circle cx="140" cy="30" r="4" fill="#7c3aed"/>
+      <rect x="356" y="18" width="486" height="23" rx="11" fill="#f4efff" stroke="#e2d6fb"/>
+      <text x="599" y="34" font-size="12" fill="#6428cf" text-anchor="middle">คะแนนประเมินที่เก็บไว้ตั้งแต่ช่วงที่ 1 ถูกนำมาตรวจให้ครบก่อนส่งยอดในช่วงที่ 4</text>
+    </svg>
+
+    <!-- connector B -> C -->
+    <svg width="1520" height="86" viewBox="0 0 1520 86" style="display:block">
+      <!-- stage 3 -> document system -->
+      <line x1="760" y1="0" x2="760" y2="74" stroke="#3b6fd1" stroke-width="2.2"/>
+      <polygon points="754.5,69 765.5,69 760,80" fill="#3b6fd1"/>
+      <text x="772" y="28" font-size="11.5" fill="#5d6d86">ข้อมูล 3 ชุด</text>
+
+      <!-- stage 4 -> approval -->
+      <line x1="1040" y1="0" x2="1040" y2="74" stroke="#3b6fd1" stroke-width="2.2"/>
+      <polygon points="1034.5,69 1045.5,69 1040,80" fill="#3b6fd1"/>
+      <text x="1030" y="28" font-size="11.5" fill="#5d6d86" text-anchor="end">เปิดเรื่องให้พิจารณา</text>
+
+      <!-- stage 4 -> statement (jogs right) -->
+      <path d="M1122 0 V32 H1330 V72" fill="none" stroke="#3b6fd1" stroke-width="2.2"/>
+      <polygon points="1324.5,67 1335.5,67 1330,80" fill="#3b6fd1"/>
+      <text x="1226" y="24" font-size="11.5" fill="#5d6d86" text-anchor="middle">ยอดชดเชย</text>
+
+      <!-- statement acknowledgement -> watched by stage 5 (dashed return #2) -->
+      <path d="M1430 86 V14" fill="none" stroke="#c2410c" stroke-width="2.2" stroke-dasharray="6 4"/>
+      <polygon points="1424.5,17 1435.5,17 1430,6" fill="#c2410c"/>
+      <circle cx="1430" cy="66" r="9.5" fill="#fff" stroke="#c2410c" stroke-width="1.6"/>
+      <text x="1430" y="70" font-size="11.5" font-weight="700" fill="#c2410c" text-anchor="middle">2</text>
+      <text x="1418" y="34" font-size="11.5" fill="#c2410c" text-anchor="end">ผลตอบรับกลับมา</text>
+    </svg>
+
+    <!-- ============ LANE C : TARGETS ============ -->
+    <div class="lane-head">
+      <span class="sq" style="background:#475569"></span>
+      <span class="nm">เลนล่าง · ระบบปลายทาง</span>
+      <span class="ds">— รับผลจากเราไปทำต่อ</span>
+      <span class="cnt">4 ระบบ</span>
+    </div>
+    <div class="band">
+      <div class="grid5 pad">
+        <div class="note" style="grid-column:1 / span 2">
+          <div>
+            <b>ช่วงที่ 1–2 และช่วงที่ 5 ไม่ส่งผลออกไปให้ระบบอื่น</b><br>
+            ช่วงที่ 1–2 เป็นการเตรียมข้อมูลและพิสูจน์ว่ายอดขายลดลงจริง ส่วนช่วงที่ 5 เป็นงานอ่านอย่างเดียว
+            ทั้งสองส่วนติดต่อออกไปทางอีเมลแจ้งผู้ดูแลระบบเท่านั้น (แถบด้านล่าง)
+          </div>
+        </div>
+
+        <div class="cell">
+          <div class="node n-s3">
+            <span class="tag tag-s3">รับจากช่วงที่ 3</span>
+            <div class="t">ระบบจัดทำเอกสาร</div>
+            <div class="d">รับข้อมูล 3 ชุด ไปตั้งต้นเป็นเอกสารประกันรายได้รายร้าน</div>
+          </div>
+        </div>
+
+        <div class="cell">
+          <div class="node n-s4">
+            <span class="tag tag-s4">รับจากช่วงที่ 4</span>
+            <div class="t">ระบบอนุมัติ</div>
+            <div class="d">ผู้มีอำนาจพิจารณาว่าเห็นควรชดเชยหรือไม่ ตามลำดับขั้นและวงเงิน</div>
+          </div>
+        </div>
+
+        <div class="cell">
+          <div class="node" style="border-left-color:#c2410c">
+            <span class="tag tag-two">รับจากช่วงที่ 4 · แล้วตอบกลับ</span>
+            <div class="t">ระบบใบแจ้งยอดของร้าน</div>
+            <div class="d">รับยอดชดเชยไปแสดงและจ่ายให้ร้าน แล้วต้องตอบรับกลับมาว่ารับเรียบร้อย</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mail">
+        <div class="ic">
+          <svg width="19" height="19" viewBox="0 0 20 20" fill="none"><rect x="1.6" y="4" width="16.8" height="12" rx="2.4" stroke="#475569" stroke-width="1.6"/><path d="M2.6 5.4 10 10.8l7.4-5.4" stroke="#475569" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </div>
+        <div class="t">อีเมลแจ้งผู้ดูแลระบบ</div>
+        <div class="d">ทุกช่วงงานตั้งแต่ช่วงที่ 1 ถึงช่วงที่ 5 ส่งอีเมลได้ทั้งหมด — แจ้งผลสำเร็จ · แจ้งข้อผิดพลาด · แจ้งงานค้างเกิน 1 วัน</div>
+        <div class="chip">รับจากทุกช่วง 1–5</div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div class="ic">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#2563eb" stroke-width="1.5"/><path d="M7 6.2v4M7 4.1v.1" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </div>
+      <div>
+        <b>อ่านภาพนี้อย่างไร:</b> เลนกลางคือสิ่งที่ระบบของเราทำเอง เรียงจากซ้ายไปขวาตามช่วงที่ 1 → 5 ·
+        ลูกศรที่พุ่งขึ้นไปเลนบนหรือลงมาเลนล่าง คือจุดที่เราคุยกับระบบอื่น ·
+        <b>เส้นตอบกลับมี 2 เส้น</b> คือ ① ยอดขายที่ระบบข้อมูลยอดขายส่งกลับมาในช่วงที่ 2 และ ② ผลตอบรับจากใบแจ้งยอดที่ช่วงที่ 5 คอยเฝ้าดู
+        <br>ทั้ง 11 งานทำงานเองตามเวลาที่ตั้งไว้ ไม่ต้องมีคนคอยกดสั่ง และหากงานใดทำไม่สำเร็จ ระบบจะส่งอีเมลแจ้งผู้ดูแลระบบทันที
+      </div>
+    </div>
+
+  </div>
+</div>

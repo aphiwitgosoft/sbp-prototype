@@ -11,8 +11,8 @@
       "script": "FCS_ImportQSSI.sh",
       "cron": "Monthly",
       "cronTh": "รายเดือน (ต้นเดือน)",
-      "out": "fcs_qssi_scores",
-      "desc": "ดาวน์โหลดไฟล์คะแนน QSSI 4 ไฟล์ต่อเดือนผ่าน SFTP โหลดเข้าตารางพัก ทำ dedup และจับคู่หมวดคะแนนแบบ stateful แล้วลบงวดเดิมและ insert ลง fcs_qssi_scores เพื่อให้ Job 6 ใช้ตรวจความครบของคะแนน 6 หมวดก่อนปล่อยสถานะ INIT",
+      "out": "fcs_qssi_score",
+      "desc": "ดาวน์โหลดไฟล์คะแนน QSSI 4 ไฟล์ต่อเดือนผ่าน SFTP โหลดเข้าตารางพัก ทำ dedup และจับคู่หมวดคะแนนแบบ stateful แล้วลบงวดเดิมและ insert ลง fcs_qssi_score เพื่อให้ Job 6 ใช้ตรวจความครบของคะแนน 6 หมวดก่อนปล่อยสถานะ INIT",
       "params": [
         [
           "กำหนดการรัน (Cron)",
@@ -23,7 +23,7 @@
         ],
         [
           "งวดข้อมูล (เดือนที่รัน)",
-          "07/2569",
+          "07/2026",
           "text",
           1,
           "ชื่อไฟล์ใช้เดือนปัจจุบัน แต่งวดใน DB คือเดือนก่อนหน้า (off-by-one โดยตั้งใจ — Errata E10)"
@@ -112,7 +112,7 @@
         },
         {
           "k": "io",
-          "t": "ลบงวด/หมวดเดิม แล้ว batch insert ลง fcs_qssi_scores",
+          "t": "ลบงวด/หมวดเดิม แล้ว batch insert ลง fcs_qssi_score",
           "d": "insert ครั้งละ 10,000 แถว แล้ว commit ต่อไฟล์"
         },
         {
@@ -132,13 +132,13 @@
       ],
       "tables": [
         [
-          "fcs_qssi_scores",
+          "fcs_qssi_score",
           "W",
           "ตารางคะแนนปลายทาง (ลบงวด/หมวดเดิมแล้ว insert ใหม่) โดยผ่านการ staging ข้อมูล"
         ]
       ],
       "rels": [
-        "fcs_qssi_scores (store_id + category_code + impact_month + impact_year) → Job 6 ใช้ตรวจความครบ 6 หมวด (8, 9, 12, 1, 10, 16) จากงวด max เดียวในกรอบ 3 เดือน"
+        "fcs_qssi_score (store_id + category_code + impact_month + impact_year) → Job 6 ใช้ตรวจความครบ 6 หมวด (8, 9, 12, 1, 10, 16) จากงวด max เดียวในกรอบ 3 เดือน"
       ],
       "meta": {
         "trans": "ต่อไฟล์ (TransactionTemplate + savepoint)",
@@ -147,13 +147,13 @@
         "risk": "convertStrToDouble แปลงพลาดกลายเป็น 0.0 เงียบ ๆ / ห้ามรันพร้อมกัน (temp table ใช้ร่วมทั้งระบบ)"
       },
       "run": [
-        "01/07/2569 06:00",
+        "01/07/2026 06:00",
         "ok",
-        "01/08/2569 06:00"
+        "01/08/2026 06:00"
       ],
       "hist": [
         [
-          "01/07/2569 06:00",
+          "01/07/2026 06:00",
           "4 นาที 12 วิ",
           "48,220",
           "mrs1–mrs5 (4 ไฟล์)",
@@ -161,7 +161,7 @@
           ""
         ],
         [
-          "01/06/2569 06:00",
+          "01/06/2026 06:00",
           "3 นาที 58 วิ",
           "47,105",
           "mrs1–mrs5 (4 ไฟล์)",
@@ -169,7 +169,7 @@
           ""
         ],
         [
-          "01/05/2569 06:00",
+          "01/05/2026 06:00",
           "1 นาที 03 วิ",
           "0",
           "mrs3trnf_ ขาดหาย",
@@ -177,7 +177,7 @@
           "ไฟล์ไม่ครบ — เมลแจ้งแล้ว ไฟล์ถูกย้าย backup ต้องนำกลับก่อนรันซ้ำ"
         ],
         [
-          "01/04/2569 06:00",
+          "01/04/2026 06:00",
           "4 นาที 21 วิ",
           "46,890",
           "mrs1–mrs5 (4 ไฟล์)",
@@ -318,13 +318,13 @@
         "risk": "E4: updateList เป็น dead code / INNER JOIN ทำแถวที่ master ไม่ครบหายเงียบ (P1)"
       },
       "run": [
-        "07/06/2569 07:00",
+        "07/06/2026 07:00",
         "ok",
-        "07/07/2569 07:00"
+        "07/07/2026 07:00"
       ],
       "hist": [
         [
-          "07/06/2569 07:00",
+          "07/06/2026 07:00",
           "58 วิ",
           "312",
           "—",
@@ -332,7 +332,7 @@
           "คู่ใหม่ 312 / ข้ามของเดิม 1,840"
         ],
         [
-          "07/05/2569 07:00",
+          "07/05/2026 07:00",
           "1 นาที 04 วิ",
           "287",
           "—",
@@ -340,7 +340,7 @@
           ""
         ],
         [
-          "07/04/2569 07:00",
+          "07/04/2026 07:00",
           "1 นาที 12 วิ",
           "301",
           "—",
@@ -450,13 +450,13 @@
         "risk": "กันซ้ำระดับงวดเท่านั้น — ไม่ใช่ upsert (E15)"
       },
       "run": [
-        "07/06/2569 07:05",
+        "07/06/2026 07:05",
         "ok",
-        "07/07/2569 07:05"
+        "07/07/2026 07:05"
       ],
       "hist": [
         [
-          "07/06/2569 07:05",
+          "07/06/2026 07:05",
           "42 วิ",
           "2,410",
           "—",
@@ -464,7 +464,7 @@
           ""
         ],
         [
-          "07/05/2569 07:05",
+          "07/05/2026 07:05",
           "40 วิ",
           "2,377",
           "—",
@@ -472,7 +472,7 @@
           ""
         ],
         [
-          "07/04/2569 07:05",
+          "07/04/2026 07:05",
           "44 วิ",
           "2,395",
           "—",
@@ -608,13 +608,13 @@
         "risk": "P0: commit W→P เกิดก่อนเขียนไฟล์ — แนะนำ transactional outbox ในระบบใหม่"
       },
       "run": [
-        "16/06/2569 16:00",
+        "16/06/2026 16:00",
         "ok",
-        "07/07/2569 16:00"
+        "07/07/2026 16:00"
       ],
       "hist": [
         [
-          "16/06/2569 16:00",
+          "16/06/2026 16:00",
           "35 วิ",
           "118",
           "AMS06001O_202606161600.txt",
@@ -622,7 +622,7 @@
           ""
         ],
         [
-          "15/06/2569 16:00",
+          "15/06/2026 16:00",
           "33 วิ",
           "96",
           "AMS06001O_202606151600.txt",
@@ -630,7 +630,7 @@
           ""
         ],
         [
-          "14/06/2569 16:00",
+          "14/06/2026 16:00",
           "31 วิ",
           "0",
           "—",
@@ -638,7 +638,7 @@
           "ไม่มีรายการเข้าเงื่อนไขวันที่"
         ],
         [
-          "13/06/2569 16:00",
+          "13/06/2026 16:00",
           "38 วิ",
           "104",
           "AMS06001O_202606131600.txt",
@@ -791,13 +791,13 @@
         "risk": "P1: growth_rate_diff = NULL ถูก accept อัตโนมัติ / ต้องทดสอบ ก.พ. ปีอธิกสุรทิน และร้านไม่มียอดขาย"
       },
       "run": [
-        "16/06/2569 16:30",
+        "16/06/2026 16:30",
         "ok",
-        "07/07/2569 16:30"
+        "07/07/2026 16:30"
       ],
       "hist": [
         [
-          "16/06/2569 16:30",
+          "16/06/2026 16:30",
           "2 นาที 45 วิ",
           "7,080",
           "AMS06001I_202606161628.txt",
@@ -805,7 +805,7 @@
           "Y 74 / N 22 / pre-accept 22"
         ],
         [
-          "15/06/2569 16:30",
+          "15/06/2026 16:30",
           "2 นาที 12 วิ",
           "5,760",
           "AMS06001I_202606151629.txt",
@@ -813,7 +813,7 @@
           ""
         ],
         [
-          "14/06/2569 16:30",
+          "14/06/2026 16:30",
           "12 วิ",
           "0",
           "—",
@@ -893,7 +893,7 @@
           "k": "d",
           "t": "QSSI ครบ 6 หมวด? (งวด max เดียว ในกรอบ 3 เดือน)",
           "no": "ข้ามเส้นทาง INIT — สาย APPROVE ยังไปต่อ",
-          "d": "หมวด 8, 9, 12, 1, 10, 16 จาก fcs_qssi_scores (Job 1)"
+          "d": "หมวด 8, 9, 12, 1, 10, 16 จาก fcs_qssi_score (Job 1)"
         },
         {
           "k": "p",
@@ -951,7 +951,7 @@
           "สถานะค่าชดเชย I/C/A/N/S/Z และข้อมูลร้าน/ผู้อนุมัติ/ค่าชดเชยร้านใหม่"
         ],
         [
-          "fcs_qssi_scores",
+          "fcs_qssi_score",
           "R",
           "ตรวจความครบคะแนน 6 หมวด (จาก Job 1)"
         ],
@@ -963,7 +963,7 @@
       ],
       "rels": [
         "hub fgi_impact_processes (id) → แม่ของ fgi_impact_stores ทั้งหมดที่ถูก mutate",
-        "fcs_qssi_scores → เงื่อนไขปล่อยสถานะ INIT (ครบ 6 หมวดจากงวดเดียว)",
+        "fcs_qssi_score → เงื่อนไขปล่อยสถานะ INIT (ครบ 6 หมวดจากงวดเดียว)",
         "สถานะ COMPENSATE I/C/A/N/S/Z บน fgi_impact_stores → กำหนด data_name ของ tracking ที่ Job 10 เฝ้าดู"
       ],
       "meta": {
@@ -973,13 +973,13 @@
         "risk": "บั๊กจริง E20: SQL purge ต่อ data_name สองค่าเป็น string เดียว — tracking ไม่เคยถูกลบ สะสมโตขึ้นเรื่อย ๆ"
       },
       "run": [
-        "01/07/2569 17:00",
+        "01/07/2026 17:00",
         "ok",
-        "02/07/2569 17:00"
+        "02/07/2026 17:00"
       ],
       "hist": [
         [
-          "01/07/2569 17:00",
+          "01/07/2026 17:00",
           "3 นาที 02 วิ",
           "1,254",
           "FRBC0001_20260701170003.txt",
@@ -987,7 +987,7 @@
           "INIT 118 / APPROVE 1,136"
         ],
         [
-          "30/06/2569 17:00",
+          "30/06/2026 17:00",
           "2 นาที 51 วิ",
           "1,190",
           "FRBC0001_20260630170002.txt",
@@ -995,7 +995,7 @@
           ""
         ],
         [
-          "29/06/2569 17:00",
+          "29/06/2026 17:00",
           "2 นาที 47 วิ",
           "0",
           "—",
@@ -1003,7 +1003,7 @@
           "SFTP ไป STA ไม่ได้ — rollback + ลบไฟล์แล้ว รันรอบถัดไปสำเร็จ"
         ],
         [
-          "28/06/2569 17:00",
+          "28/06/2026 17:00",
           "2 นาที 58 วิ",
           "1,201",
           "FRBC0001_20260628170001.txt",
@@ -1134,13 +1134,13 @@
         "risk": "แถวที่ข้อมูลผู้จัดการ SBP ไม่ครบถูกตัดทิ้งเงียบ ๆ — ควรมี metric นับ"
       },
       "run": [
-        "30/06/2569 17:30",
+        "30/06/2026 17:30",
         "ok",
-        "07/07/2569 17:30"
+        "07/07/2026 17:30"
       ],
       "hist": [
         [
-          "30/06/2569 17:30",
+          "30/06/2026 17:30",
           "51 วิ",
           "486",
           "BPM06003O_202606301730.txt",
@@ -1148,7 +1148,7 @@
           ""
         ],
         [
-          "29/06/2569 17:30",
+          "29/06/2026 17:30",
           "48 วิ",
           "452",
           "BPM06003O_202606291730.txt",
@@ -1156,7 +1156,7 @@
           ""
         ],
         [
-          "28/06/2569 17:30",
+          "28/06/2026 17:30",
           "12 วิ",
           "0",
           "—",
@@ -1299,13 +1299,13 @@
         "risk": "P0: ห้ามรวม Job 8 กับ 8b — การกู้คืนไฟล์ export กับการเปิด workflow ต้องแยกจากกันเสมอ"
       },
       "run": [
-        "30/06/2569 17:30",
+        "30/06/2026 17:30",
         "ok",
-        "07/07/2569 17:30"
+        "07/07/2026 17:30"
       ],
       "hist": [
         [
-          "30/06/2569 17:30",
+          "30/06/2026 17:30",
           "1 นาที 18 วิ",
           "118",
           "BPM06001O_202606301731.txt",
@@ -1313,7 +1313,7 @@
           ""
         ],
         [
-          "29/06/2569 17:30",
+          "29/06/2026 17:30",
           "1 นาที 22 วิ",
           "96",
           "BPM06001O_202606291731.txt",
@@ -1321,7 +1321,7 @@
           "ตัดแถวผู้อนุมัติไม่ครบ 3 แถว (เงียบ)"
         ],
         [
-          "28/06/2569 17:30",
+          "28/06/2026 17:30",
           "14 วิ",
           "0",
           "—",
@@ -1459,13 +1459,13 @@
         "risk": "P0: credential hardcoded + endpoint เป็น HTTP / เฝ้า metric: จำนวน candidate, HTTP \"Running\", start ล้มเหลว, นับ W/Y/N"
       },
       "run": [
-        "30/06/2569 18:00",
+        "30/06/2026 18:00",
         "ok",
         "ยืนยันกับ Ops"
       ],
       "hist": [
         [
-          "30/06/2569 18:00",
+          "30/06/2026 18:00",
           "44 วิ",
           "62",
           "K2 StartInstance × 62",
@@ -1473,7 +1473,7 @@
           "Y 58 / N 4 / ค้าง W 0"
         ],
         [
-          "29/06/2569 18:00",
+          "29/06/2026 18:00",
           "41 วิ",
           "48",
           "K2 StartInstance × 48",
@@ -1481,7 +1481,7 @@
           ""
         ],
         [
-          "28/06/2569 18:00",
+          "28/06/2026 18:00",
           "52 วิ",
           "51",
           "K2 StartInstance × 51",
@@ -1612,13 +1612,13 @@
         "risk": "ฟิลด์ 19–20 ว่างโดยตั้งใจ — อย่าตีความว่าเป็นบั๊กตอน re-implement"
       },
       "run": [
-        "30/06/2569 17:30",
+        "30/06/2026 17:30",
         "ok",
-        "07/07/2569 17:30"
+        "07/07/2026 17:30"
       ],
       "hist": [
         [
-          "30/06/2569 17:30",
+          "30/06/2026 17:30",
           "39 วิ",
           "54",
           "BPM06002O_202606301732.txt",
@@ -1626,7 +1626,7 @@
           ""
         ],
         [
-          "29/06/2569 17:30",
+          "29/06/2026 17:30",
           "36 วิ",
           "61",
           "BPM06002O_202606291732.txt",
@@ -1634,7 +1634,7 @@
           ""
         ],
         [
-          "28/06/2569 17:30",
+          "28/06/2026 17:30",
           "11 วิ",
           "0",
           "—",
@@ -1736,13 +1736,13 @@
         "risk": "บั๊ก purge ของ Job 6 (E20) ทำให้ตารางที่เฝ้าโตขึ้นเรื่อย ๆ — ระวังเวลา query ช้าลง"
       },
       "run": [
-        "02/07/2569 07:00",
+        "02/07/2026 07:00",
         "fail",
-        "03/07/2569 07:00"
+        "03/07/2026 07:00"
       ],
       "hist": [
         [
-          "02/07/2569 07:00",
+          "02/07/2026 07:00",
           "8 วิ",
           "2",
           "อีเมลเตือน 1 ฉบับ",
@@ -1750,7 +1750,7 @@
           "พบ ACK ค้าง 2 รายการ (COMPENSATE_INIT_I) — แจ้งผู้ดูแลแล้ว"
         ],
         [
-          "01/07/2569 07:00",
+          "01/07/2026 07:00",
           "7 วิ",
           "0",
           "—",
@@ -1758,7 +1758,7 @@
           "ไม่พบรายการค้าง"
         ],
         [
-          "30/06/2569 07:00",
+          "30/06/2026 07:00",
           "7 วิ",
           "0",
           "—",
@@ -1782,14 +1782,14 @@
           "sum": "งานรอท่านดำเนินการ — เอกสารที่ค้างอยู่ที่ section ของผู้ใช้ (หน้า k2-list-waiting.html)",
           "flow": [
             "อ่าน sectionCode ของผู้ใช้จาก JWT",
-            "อ่านงานค้างจาก engine เดิม: getPendingFlow({userData:{userId,groupId}, versionId}) ของ @srm/glb-workflow (ไม่มีตาราง workflow_tasks ของ SBPGI แล้ว)",
+            "อ่านงานค้างจาก engine เดิม (schema sps_store): getPendingFlow({userData:{userId,groupId}, versionId}) ของ @srm/glb-workflow [ชื่อ function ยังไม่ยืนยัน — มี 3 ชุดขัดกัน ดูการ์ด \"ชื่อ function ของ workflow engine\" ด้านบน] — ไม่มีตาราง workflow_tasks ของ SBPGI แล้ว",
             "join compensation_documents + stores + fgi_impact_sales_summaries คืน 9 คอลัมน์ตามหน้าจอและ salesDataDays สำหรับ red flag"
           ],
           "db": [
             [
-              "workflow_transaction / workflow_approver",
+              "sps_store.workflow_transaction / workflow_approver",
               "R",
-              "งานค้างจาก @srm/glb-workflow (ระบบ SBP เดิม)"
+              "งานค้างจาก @srm/glb-workflow (engine 13 ตาราง · schema sps_store · workflow_transaction 19,283 แถว ไม่มี PK/index — ดูการ์ดด้านบน)"
             ],
             [
               "compensation_documents",
@@ -1808,7 +1808,7 @@
             ]
           ],
           "req": "Query: ?page=1&size=20&q=00788\n(q = เลขที่เอกสาร / รหัสร้าน / ชื่อร้าน)",
-          "res": "{\n  \"page\": 1, \"total\": 24,\n  \"items\": [{\n    \"roundNo\": 1,\n    \"docNo\": \"2569/00123\",\n    \"impactedStoreCode\": \"00788\",\n    \"impactedStoreName\": \"รัตนอุทิศ ซ.13\",\n    \"regionCode\": \"BE\",\n    \"salesDeclinePercent\": 12.5,\n    \"totalCompensationAmount\": 48200.00,\n    \"statusCode\": \"06\",\n    \"currentSection\": \"06\",\n    \"daysPending\": 3,\n    \"salesDataDays\": 58\n  }]\n}",
+          "res": "{\n  \"page\": 1, \"total\": 24,\n  \"items\": [{\n    \"roundNo\": 1,\n    \"docNo\": \"2026/00123\",\n    \"impactedStoreCode\": \"00788\",\n    \"impactedStoreName\": \"รัตนอุทิศ ซ.13\",\n    \"regionCode\": \"BE\",\n    \"salesDeclinePercent\": 12.5,\n    \"totalCompensationAmount\": 48200.00,\n    \"statusCode\": \"06\",\n    \"currentSection\": \"06\",\n    \"daysPending\": 3,\n    \"salesDataDays\": 58\n  }]\n}",
           "err": [
             "401"
           ]
@@ -1837,8 +1837,8 @@
               "ข้อมูลร้าน"
             ]
           ],
-          "req": "Query: ?year=2569&impactedStoreCode=00788&status=06&page=1\n(status = section ที่รออยู่ 06/08/01/02/03 หรือ END)",
-          "res": "{\n  \"page\": 1, \"total\": 6,\n  \"items\": [{ \"docNo\": \"2569/00123\", \"statusCode\": \"06\", ... }]\n}",
+          "req": "Query: ?year=2026&impactedStoreCode=00788&status=06&result=APPROVE&page=1\n(status = section ที่รออยู่ 06/08/01/02/03 หรือ END)\n(result = APPROVE | REJECT | NONE — ประกันรายได้ / ไม่ประกันรายได้ / ยังไม่มีผล · เพิ่ม 2026-08-06)",
+          "res": "{\n  \"page\": 1, \"total\": 6,\n  \"items\": [{ \"docNo\": \"2026/00123\", \"statusCode\": \"06\", ... }]\n}",
           "resNote": "items[] ใช้ field ชุดเดียวกับ §6.2.1 GET /api/v1/tasks สำหรับ list response ของ SCR-03/04",
           "err": [
             "400 — กรุณาระบุปีที่ต้องการค้นหา (กติกา SRS)",
@@ -1876,7 +1876,7 @@
             ]
           ],
           "req": "(ไม่มี body)",
-          "res": "{\n  \"docNo\": \"2569/00123\",\n  \"statusCode\": \"06\",\n  \"currentSection\": \"06\",\n  \"impactedStore\": { \"storeCode\": \"00788\", ... },\n  // newStores[] = แหล่งข้อมูลของทั้งตารางร้านเปิดใหม่และกราฟ \"สัดส่วนเงินชดเชยรายร้านเปิดใหม่\"\n  // compensateAmount คำนวณที่ BE (= compensation.amount x compensatePercent) — FE ไม่คูณเอง\n  \"newStores\": [\n    { \"newStoreCode\": \"00990\", \"storeName\": \"สาขารัตนาธิเบศร์ 2\", \"distanceKm\": 0.85,\n      \"compensatePercent\": 60.0, \"compensateAmount\": 28920.00 },\n    { \"newStoreCode\": \"01180\", \"storeName\": \"สาขาซอยวัดกู้\", \"distanceKm\": 1.40,\n      \"compensatePercent\": 40.0, \"compensateAmount\": 19280.00 }\n  ],\n  \"competitors\": [ ... ],\n  \"factors\": [ ... ],\n  \"compensation\": { \"amount\": 48200.00, \"salesDropPercent\": 12.45 },\n  \"permissions\": { \"canEditSections\": [\"competitor\",\"factor\"], \"canAction\": true }\n}",
+          "res": "{\n  \"docNo\": \"2026/00123\",\n  \"statusCode\": \"06\",\n  \"currentSection\": \"06\",\n  \"impactedStore\": { \"storeCode\": \"00788\", ... },\n  // newStores[] = แหล่งข้อมูลของตารางร้านเปิดใหม่ (กราฟสัดส่วนเงินชดเชยถอดออกแล้ว 2026-08-06)\n  // compensateAmount คำนวณที่ BE (= compensation.amount x compensatePercent) — FE ไม่คูณเอง\n  \"newStores\": [\n    { \"newStoreCode\": \"00990\", \"storeName\": \"สาขารัตนาธิเบศร์ 2\", \"distanceKm\": 0.85,\n      \"compensatePercent\": 60.0, \"compensateAmount\": 28920.00 },\n    { \"newStoreCode\": \"01180\", \"storeName\": \"สาขาซอยวัดกู้\", \"distanceKm\": 1.40,\n      \"compensatePercent\": 40.0, \"compensateAmount\": 19280.00 }\n  ],\n  \"competitors\": [ ... ],\n  \"factors\": [ ... ],\n  \"compensation\": { \"amount\": 48200.00, \"salesDropPercent\": 12.45 },\n  \"permissions\": { \"canEditSections\": [\"competitor\",\"factor\"], \"canAction\": true }\n}",
           "err": [
             "404 — ไม่พบเอกสาร",
             "401"
@@ -1892,7 +1892,7 @@
           "flow": [
             "ตรวจซ้ำ: ร้าน + เดือนที่ถูกกระทบ ต้องยังไม่มีเอกสาร",
             "ออกเลขที่ YYYY/xxxxx (running ต่อปี เริ่ม 00001 — กติกา SRS)",
-            "insert compensation_documents สถานะเริ่มต้น + เรียก initializeWorkflow({versionId, referenceId: docNo, userId}) ของ @srm/glb-workflow แล้ว addPreparedApprover ขั้น 06",
+            "insert compensation_documents สถานะเริ่มต้น + เรียก initializeWorkflow({versionId, referenceId: docNo, userId}) [ชื่อ function ยังไม่ยืนยัน — มี 3 ชุดขัดกัน ดูการ์ด \"ชื่อ function ของ workflow engine\" ด้านบน] ของ @srm/glb-workflow แล้ว addPreparedApprover ขั้น 06",
             "ส่งอีเมลตาม status_email_rules"
           ],
           "db": [
@@ -1902,9 +1902,9 @@
               "เอกสารใหม่"
             ],
             [
-              "workflow_transaction / workflow_approver",
+              "sps_store.workflow_transaction / workflow_approver",
               "W",
-              "เปิด instance + ผู้รับผิดชอบขั้นแรกผ่าน @srm/glb-workflow"
+              "เปิด instance + ผู้รับผิดชอบขั้นแรกผ่าน @srm/glb-workflow (schema sps_store)"
             ],
             [
               "status_email_rules",
@@ -1913,7 +1913,7 @@
             ]
           ],
           "req": "{\n  \"impactedStoreCode\": \"00788\",\n  \"impactMonth\": \"2026-06\",\n  \"source\": \"MANUAL\"   // MANUAL | FS\n}",
-          "res": "201 Created\n{\n  \"docNo\": \"2569/00124\"\n}",
+          "res": "201 Created\n{\n  \"docNo\": \"2026/00124\"\n}",
           "err": [
             "409 — ร้านนี้ในเดือนนี้มีเอกสารที่ยังดำเนินการอยู่ (active) — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้ · SDD GI",
             "422 — ข้อมูลบังคับไม่ครบ"
@@ -1929,7 +1929,8 @@
           "flow": [
             "ตรวจว่า role + section ปัจจุบันมีสิทธิ์แก้ส่วนที่ส่งมา (เช่น Section 01 แก้คู่แข่ง/ปัจจัยได้)",
             "validate %ชดเชยของร้านใหม่รวมกันต้องเท่ากับ 100% แล้วคำนวณ compensateAmount ใหม่ทุกแถว",
-            "ส่งอาร์เรย์มา = ชุดข้อมูลเต็มของส่วนนั้น — รายการที่หายไปจากอาร์เรย์ถือว่าถูกลบ (รองรับปุ่ม \"ลบที่เลือก\" ในหน้าเอกสาร)",
+            "validate require field ของแถวที่ผู้ใช้เพิ่มเอง: คู่แข่ง = รหัสแบรนด์จาก master /competitors (01–11) + วันที่เปิดกระทบ · ปัจจัย = รหัสจาก master /factors + วันที่เริ่มต้น (วันที่สิ้นสุดถ้ามีต้อง ≥ วันที่เริ่มต้น)",
+            "ส่งอาร์เรย์มา = ชุดข้อมูลเต็มของส่วนนั้น — รายการที่หายไปจากอาร์เรย์ถือว่าถูกลบ (รองรับปุ่ม \"ลบที่เลือก\") · ฝั่ง FE เรียกเส้นนี้ทันทีเมื่อกดบันทึกใน modal หรือยืนยันลบ ไม่มีปุ่มบันทึกระดับการ์ดแล้ว",
             "บันทึกและคืนเอกสารล่าสุด"
           ],
           "db": [
@@ -1949,11 +1950,13 @@
               "ปัจจัยภายนอก — ลบรายการที่ไม่ได้ส่งมา"
             ]
           ],
-          "req": "{\n  \"newStores\": [ { \"newStoreCode\": \"00990\", \"compensatePercent\": 60.0 },\n                 { \"newStoreCode\": \"01180\", \"compensatePercent\": 40.0 } ],\n  // ส่งเฉพาะส่วนที่แก้ · อาร์เรย์ที่ส่งมาคือชุดเต็มของส่วนนั้น\n  \"competitors\": [ { \"id\": 12, \"impactDate\": \"2566-10-10\" } ]   // id 13 หายไป = ลบ\n}",
+          "req": "{\n  \"newStores\": [ { \"newStoreCode\": \"00990\", \"compensatePercent\": 60.0 },\n                 { \"newStoreCode\": \"01180\", \"compensatePercent\": 40.0 } ],\n  // ส่งเฉพาะส่วนที่แก้ · อาร์เรย์ที่ส่งมาคือชุดเต็มของส่วนนั้น\n  \"competitors\": [ { \"id\": 12, \"impactDate\": \"2023-10-10\" } ]   // id 13 หายไป = ลบ\n}",
           "res": "200 OK — เอกสารฉบับล่าสุด (โครงเดียวกับ GET)",
           "err": [
             "403 — ไม่มีสิทธิ์แก้ส่วนนี้ในขั้นปัจจุบัน",
-            "422 — \"%ชดเชย ... รวมกันแล้วไม่เท่ากับ 100%\" (ข้อความตรงตาม SRS)"
+            "422 — \"%ชดเชย ... รวมกันแล้วไม่เท่ากับ 100%\" (ข้อความตรงตาม SRS)",
+            "400 — \"กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ\" / \"กรุณาเลือกปัจจัยอื่นๆ ที่ท่านต้องการ\" (require field · ข้อความตรงตาม SRS)",
+            "400 — \"วันที่สิ้นสุดต้องมีค่าเท่ากับหรือมากกว่าวันที่เริ่มต้น\""
           ]
         },
         {
@@ -1964,7 +1967,7 @@
           "roles": "เจ้าของ task ปัจจุบัน",
           "sum": "ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · วงเงิน GM 50,000 / AVP 300,000 (SDD GI 24/02/2026)",
           "flow": [
-            "ตรวจว่าผู้ใช้เป็น approver ของ state ปัจจุบันใน @srm/glb-workflow (getTransaction / getPermissionEvents)",
+            "ตรวจว่าผู้ใช้เป็น approver ของ state ปัจจุบันใน @srm/glb-workflow schema sps_store (getTransaction / getPermissionEvents [ชื่อ function ยังไม่ยืนยัน — มี 3 ชุดขัดกัน ดูการ์ด \"ชื่อ function ของ workflow engine\" ด้านบน])",
             "validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว",
             "คำนวณขั้นถัดไปตามตารางเส้นทาง (workflow.md · SDD GI): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 01/02 เห็นควรไม่ชดเชย → เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น) · 02 ชดเชย ≤ 50,000 → เสร็จสิ้น (จบที่ GM) · 50,001–300,000 → 03 → จบ (เกิน 300,000 รอ confirm) · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ",
             "insert consideration_logs + ปิด task เดิม เปิด task ใหม่ · กรณี 06 เห็นควรไม่ชดเชย ระบบตั้งงานเดือนถัดไปให้เจ้าของงานคนเดิม (SDD GI)",
@@ -1972,9 +1975,9 @@
           ],
           "db": [
             [
-              "workflow_transaction / workflow_history / workflow_approver",
+              "sps_store.workflow_transaction / workflow_history / workflow_approver",
               "R/W",
-              "triggerEvent() ของ engine เดิม — เดิน state + บันทึก history + ตั้ง approver ขั้นถัดไป"
+              "triggerEvent() + addPreparedApprover() ของ engine เดิม (schema sps_store) — เดิน state + บันทึก history + ตั้ง approver ขั้นถัดไป · ชื่อ function ยังไม่ยืนยัน มี 3 ชุดขัดกัน"
             ],
             [
               "compensation_documents",
@@ -2088,6 +2091,32 @@
         },
         {
           "m": "GET",
+          "p": "/api/v1/documents/{docNo}/attachments/download-all",
+          "ref": "k2",
+          "refT": "K2 · 3.1.6",
+          "roles": "ตามสิทธิ์อ่านเอกสาร",
+          "sum": "ดาวน์โหลดไฟล์แนบทั้งหมดของเอกสารเป็นไฟล์ .zip — ปุ่ม \"ดาวน์โหลดทั้งหมด\" ระดับการ์ด (เทียบเท่าปุ่ม Download ของ K2 เดิม)",
+          "flow": [
+            "ตรวจสิทธิ์อ่านเอกสารเหมือนเส้นดาวน์โหลดรายไฟล์",
+            "รวมเฉพาะไฟล์ที่ผ่าน AV clean guard",
+            "stream .zip ชื่อ {docNo}-attachments.zip"
+          ],
+          "db": [
+            [
+              "document_attachments",
+              "R",
+              "รายการไฟล์แนบของเอกสาร"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "200 OK · application/zip (Content-Disposition: attachment; filename=\"2026-00123-attachments.zip\")",
+          "err": [
+            "404 — ไม่มีไฟล์แนบในเอกสารนี้",
+            "403"
+          ]
+        },
+        {
+          "m": "GET",
           "p": "/api/v1/documents/{docNo}/sales",
           "ref": "k2",
           "refT": "K2 · 3.1.6",
@@ -2127,31 +2156,8 @@
     {
       "name": "ข้อมูลอ้างอิง (Lookup / Reference)",
       "refT": "K2 + FGI/FCS · master สำหรับ dropdown",
+      "note": "<b>🔸 ข้อค้างตัดสินใจ DP-9 — ยังไม่ตัดสิน:</b> มี<b>ข้อเสนอ</b>ให้ย้าย master 3 ตัว (<code>decisions</code> · <code>external_factors</code> · <code>competitors</code>) ไปเก็บใน <code>common_code</code> ของระบบ SBP เดิม (<code>common_code</code> 2,609 แถว · <code>common_code_type</code> 376 แถว · มี <code>GET /common/common-code</code> + <code>/master/common</code> พร้อมใช้) แทนการสร้างตารางใหม่ใน SBPGI · <b>ยังไม่ตัดสินและยังไม่เปลี่ยนดีไซน์</b> — หน้านี้ยังคง 3 ตารางและ 7 เส้น (<code>/decisions</code> · <code>/factors*</code> · <code>/competitors*</code>) ไว้ตามเดิม · ถ้าตัดสินให้ย้าย: กลุ่มนี้เหลือ 2 เส้น และกลุ่ม Master Data หายทั้งกลุ่ม · ดู <code>SBP/SBPGI-vs-existing-system.md</code> หัวข้อ 4 (Decision Points · DP-9)",
       "eps": [
-        {
-          "m": "GET",
-          "p": "/api/v1/competitors",
-          "ref": "k2",
-          "refT": "K2 · master คู่แข่ง",
-          "roles": "ตาม section ปัจจุบัน",
-          "sum": "รายการร้านคู่แข่ง master 24 ราย — dropdown ตอนกดปุ่ม \"เพิ่ม\" ตารางร้านคู่แข่งเปิดกระทบ (k2-document.html)",
-          "flow": [
-            "query competitors ทั้งหมด / ตามคำค้น",
-            "คืนรหัส + ชื่อคู่แข่งสำหรับเลือกใส่ document_competitors"
-          ],
-          "db": [
-            [
-              "competitors",
-              "R",
-              "master ร้านคู่แข่ง 24 ราย (108 Shop, Lotus Express, CJ …)"
-            ]
-          ],
-          "req": "Query: ?q=lotus",
-          "res": "{\n  \"items\": [{ \"competitorCode\": \"C007\", \"competitorName\": \"Lotus Express\" }]\n}",
-          "err": [
-            "401"
-          ]
-        },
         {
           "m": "GET",
           "p": "/api/v1/document-statuses",
@@ -2228,7 +2234,112 @@
     {
       "name": "Master Data",
       "refT": "K2 · SRS 3.1.9",
+      "note": "<b>🔸 ข้อค้างตัดสินใจ DP-9 (เดียวกับกลุ่ม Lookup) — ยังไม่ตัดสิน:</b> ทั้ง 8 เส้นของกลุ่มนี้ผูกกับตาราง <code>external_factors</code> และ <code>competitors</code> ของ SBPGI · มี<b>ข้อเสนอ</b>ให้ย้ายไปใช้ <code>common_code</code> ของระบบ SBP เดิม (คนละ <code>code_type</code>) ซึ่งจะทำให้<b>กลุ่มนี้หายไปทั้งกลุ่ม</b> พร้อมหน้าจอ <code>k2-factors.html</code> / <code>k2-competitors.html</code> · <b>ยังไม่ตัดสิน — ดีไซน์ปัจจุบันคงไว้ตามเดิม</b> · ดู <code>SBP/SBPGI-vs-existing-system.md</code> หัวข้อ 4 (DP-9)",
       "eps": [
+        {
+          "m": "GET",
+          "p": "/api/v1/competitors",
+          "ref": "k2",
+          "refT": "K2 · master คู่แข่ง",
+          "roles": "ตาม section ปัจจุบัน",
+          "sum": "master แบรนด์ร้านคู่แข่ง 11 รายการ (รหัส 01–11 · ชื่อไทย+อังกฤษ) — dropdown ตอนกดปุ่ม \"เพิ่ม\" ตารางร้านคู่แข่งเปิดกระทบ (k2-document.html) · จัดการที่หน้า k2-competitors.html",
+          "flow": [
+            "query competitors ทั้งหมด / ตามคำค้น",
+            "คืนรหัส + ชื่อคู่แข่งสำหรับเลือกใส่ document_competitors"
+          ],
+          "db": [
+            [
+              "competitors",
+              "R",
+              "master แบรนด์คู่แข่ง 11 ราย (Lotus Express, Mini Big C, Tops Daily, Family Mart, Jiffy, CJ Express, Max Valu, Super Cheap, Lawson 108, Joy, Other)"
+            ]
+          ],
+          "req": "Query: ?q=lotus",
+          "res": "{\n  \"items\": [{ \"competitorCode\": \"C007\", \"competitorName\": \"Lotus Express\" }]\n}",
+          "err": [
+            "401"
+          ]
+        },
+        {
+          "m": "POST",
+          "p": "/api/v1/competitors",
+          "ref": "k2",
+          "refT": "K2 · master",
+          "roles": "Admin / ผู้ดูแล master",
+          "sum": "เพิ่มแบรนด์ร้านคู่แข่งใน master (หน้า k2-competitors.html) — เพิ่ม 2026-08-06 ตามหน้าจอ K2 เดิม",
+          "flow": [
+            "validate code / nameTh / nameEn ครบทั้งสามช่อง",
+            "ตรวจรหัสซ้ำ → 409",
+            "insert competitors"
+          ],
+          "db": [
+            [
+              "competitors",
+              "W",
+              "แถวใหม่ (code · name_th · name_en · remark)"
+            ]
+          ],
+          "req": "{\n  \"code\": \"12\",\n  \"nameTh\": \"ร้านคู่แข่งรายใหม่\",\n  \"nameEn\": \"New Competitor\",\n  \"remark\": \"\"\n}",
+          "res": "201 Created",
+          "err": [
+            "409 — รหัสคู่แข่งซ้ำ",
+            "422 — ข้อมูลบังคับไม่ครบ"
+          ]
+        },
+        {
+          "m": "PUT",
+          "p": "/api/v1/competitors/{code}",
+          "ref": "k2",
+          "refT": "K2 · master",
+          "roles": "Admin / ผู้ดูแล master",
+          "sum": "แก้ไขชื่อไทย/อังกฤษ/รายละเอียดของแบรนด์คู่แข่ง — แก้รหัสไม่ได้",
+          "flow": [
+            "แก้ได้เฉพาะ nameTh / nameEn / remark"
+          ],
+          "db": [
+            [
+              "competitors",
+              "W",
+              "ค่าใหม่"
+            ]
+          ],
+          "req": "{\n  \"nameEn\": \"Lawson 108\"\n}",
+          "res": "200 OK",
+          "err": [
+            "404 — ไม่พบรหัส",
+            "422 — ข้อมูลบังคับไม่ครบ"
+          ]
+        },
+        {
+          "m": "DELETE",
+          "p": "/api/v1/competitors/{code}",
+          "ref": "k2",
+          "refT": "K2 · master",
+          "roles": "Admin / ผู้ดูแล master",
+          "sum": "ลบแบรนด์คู่แข่งออกจาก master — ห้ามลบถ้ายังถูกอ้างในเอกสาร",
+          "flow": [
+            "ตรวจว่าไม่มี document_competitors อ้างรหัสนี้ → ไม่งั้น 409",
+            "ลบแถว"
+          ],
+          "db": [
+            [
+              "competitors",
+              "W",
+              "ลบแถว"
+            ],
+            [
+              "document_competitors",
+              "R",
+              "ตรวจการอ้างอิง"
+            ]
+          ],
+          "req": "(ไม่มี body)",
+          "res": "204 No Content",
+          "err": [
+            "409 — ยังถูกอ้างในเอกสาร",
+            "404"
+          ]
+        },
         {
           "m": "GET",
           "p": "/api/v1/factors",
@@ -2261,18 +2372,13 @@
           "sum": "เพิ่มปัจจัยภายนอก — รหัสห้ามซ้ำ (กติกา SRS)",
           "flow": [
             "ตรวจ factor_code ไม่ซ้ำ",
-            "insert + audit_logs"
+            "insert external_factors"
           ],
           "db": [
             [
               "external_factors",
               "W",
               "แถวใหม่"
-            ],
-            [
-              "audit_logs",
-              "W",
-              "audit"
             ]
           ],
           "req": "{ \"factorCode\": \"F009\", \"factorName\": \"คู่แข่งจัดโปรโมชัน\", \"factorRemark\": \"\" }",
@@ -2289,26 +2395,20 @@
           "roles": "03 User Admin",
           "sum": "แก้ไขปัจจัยภายนอก",
           "flow": [
-            "validate: ต้องระบุ reason เสมอ (กติกา SRS)",
-            "update + audit_logs (EDIT · old_value → new_value · เหตุผล)"
+            "แก้ได้เฉพาะชื่อปัจจัยและรายละเอียด",
+            "update external_factors"
           ],
           "db": [
             [
               "external_factors",
               "W",
               "แก้ไข"
-            ],
-            [
-              "audit_logs",
-              "W",
-              "audit"
             ]
           ],
-          "req": "{\n  \"factorName\": \"คู่แข่งจัดโปรโมชันใหญ่\",\n  \"reason\": \"ขยายนิยามให้ชัดเจนขึ้น\"   // บังคับ (SRS)\n}",
+          "req": "{\n  \"factorName\": \"คู่แข่งจัดโปรโมชันใหญ่\"\n}",
           "res": "200 OK",
           "err": [
-            "422 — กรุณาระบุเหตุผลการแก้ไขข้อมูล",
-            "404"
+            "404 — ไม่พบรหัสปัจจัย"
           ]
         },
         {
@@ -2320,7 +2420,7 @@
           "sum": "ลบปัจจัยภายนอก (ต้องไม่ถูกใช้ในเอกสารใด)",
           "flow": [
             "ตรวจไม่ถูกอ้างใน document_external_factors",
-            "ลบ + audit_logs"
+            "ลบแถว"
           ],
           "db": [
             [
@@ -2332,358 +2432,12 @@
               "document_external_factors",
               "R",
               "ตรวจการใช้งาน"
-            ],
-            [
-              "audit_logs",
-              "W",
-              "audit"
             ]
           ],
-          "req": "{ \"reason\": \"เลิกใช้\" }",
+          "req": "(ไม่มี body)",
           "res": "204 No Content",
           "err": [
             "409 — ปัจจัยถูกใช้ในเอกสารอยู่ ลบไม่ได้"
-          ]
-        },
-        {
-          "m": "GET",
-          "p": "/api/v1/audit-logs",
-          "ref": "k2",
-          "refT": "K2 · 3.1.9",
-          "roles": "01 Admin, 02 HQ, 03 User Admin",
-          "sum": "ประวัติการแก้ไขข้อมูล master แบบหลายรายการ (ใคร · ทำอะไร · ค่าเดิม→ใหม่ · เหตุผล · เมื่อไร) — แผงประวัติท้ายหน้าจอ 3.1.9",
-          "flow": [
-            "query audit_logs ตาม table_name (+ ref_key ถ้าระบุเฉพาะรายการ)",
-            "เรียงล่าสุดก่อน แบ่งหน้า"
-          ],
-          "db": [
-            [
-              "audit_logs",
-              "R",
-              "ประวัติหลายรายการต่อข้อมูล (= MaintainMasterHistory เดิม)"
-            ]
-          ],
-          "req": "Query: ?table=operator_assignments&refKey=12&page=1",
-          "res": "{\n  \"items\": [{\n    \"actionType\": \"EDIT\",\n    \"refKey\": \"12\",\n    \"oldValue\": \"zoneCode=RS\",\n    \"newValue\": \"zoneCode=RN\",\n    \"reason\": \"ปรับพื้นที่รับผิดชอบตามโครงสร้างใหม่\",\n    \"updatedBy\": \"ภัชริดา ประดิษฐ์ทองใส\",\n    \"updatedAt\": \"2026-07-02T14:20:00\"\n  }]\n}",
-          "err": [
-            "401",
-            "403"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "System Config (Global)",
-      "refT": "ระบบ SBP เดิม · mas_param",
-      "eps": [
-        {
-          "m": "GET",
-          "p": "/api/v1/configs",
-          "ref": "new",
-          "refT": "ใหม่ · Global Config",
-          "roles": "01 Admin",
-          "sum": "รายการค่ากำหนดกลางทั้งหมด กรองตามหมวด/คำค้นได้ (หน้าจอ system-config.html)",
-          "flow": [
-            "query mas_param (ตารางของระบบ SBP เดิม) ตาม category / คำค้น",
-            "คืนครบทุก field รวม value_type · unit · is_editable"
-          ],
-          "db": [
-            [
-              "mas_param (ระบบ SBP เดิม)",
-              "R",
-              "ค่ากำหนดกลางทั้งหมด — ไม่สร้างตาราง system_configs ใหม่"
-            ]
-          ],
-          "req": "Query: ?category=WORKFLOW&q=escalation",
-          "res": "{\n  \"items\": [{\n    \"configKey\": \"workflow.escalation_days\",\n    \"category\": \"WORKFLOW\",\n    \"value\": \"[30, 45, 60]\",\n    \"valueType\": \"JSON\",\n    \"unit\": \"วัน\",\n    \"description\": \"ลำดับวัน escalation งานค้าง\",\n    \"isEditable\": true\n  }]\n}",
-          "err": [
-            "401",
-            "403"
-          ]
-        },
-        {
-          "m": "GET",
-          "p": "/api/v1/configs/{key}",
-          "ref": "new",
-          "refT": "ใหม่ · Global Config",
-          "roles": "ทุก role (อ่าน) / service token",
-          "sum": "อ่านค่ากำหนดรายตัว — เส้นที่ทุก service เรียกตอนใช้งานจริง พร้อม cache 5 นาที",
-          "flow": [
-            "อ่าน mas_param ด้วย config_key (param_name)",
-            "ตอบพร้อม header Cache-Control (TTL 5 นาที) — service ฝั่งเรียก cache ตาม",
-            "ค่า BOOLEAN/NUMBER/JSON ตอบเป็น typed value ตาม value_type ไม่ใช่ string ล้วน"
-          ],
-          "db": [
-            [
-              "mas_param (ระบบ SBP เดิม)",
-              "R",
-              "ค่ารายตัว"
-            ]
-          ],
-          "req": "(ไม่มี body)",
-          "res": "{\n  \"configKey\": \"workflow.gm_amount_limit\",\n  \"value\": 50000,\n  \"valueType\": \"NUMBER\",\n  \"unit\": \"บาท\"\n}",
-          "err": [
-            "404 — ไม่พบ config key นี้",
-            "401"
-          ]
-        },
-        {
-          "m": "POST",
-          "p": "/api/v1/configs",
-          "ref": "new",
-          "refT": "ใหม่ · Global Config",
-          "roles": "01 Admin",
-          "sum": "เพิ่มค่ากำหนดใหม่ — key ห้ามซ้ำ และ validate ค่าตาม value_type",
-          "flow": [
-            "validate config_key รูปแบบ dot notation และไม่ซ้ำ",
-            "validate ค่า parse ได้ตาม value_type (NUMBER/BOOLEAN/JSON/CRON)",
-            "ปฏิเสธค่าที่เป็น secret (รหัสผ่าน/API key ต้องอยู่ Secret Manager)",
-            "insert + บันทึก audit_logs (ADD)"
-          ],
-          "db": [
-            [
-              "mas_param (ระบบ SBP เดิม)",
-              "W",
-              "แถวใหม่"
-            ],
-            [
-              "audit_logs",
-              "W",
-              "audit การเพิ่ม"
-            ]
-          ],
-          "req": "{\n  \"configKey\": \"report.export_max_rows\",\n  \"category\": \"DOCUMENT\",\n  \"value\": \"50000\",\n  \"valueType\": \"NUMBER\",\n  \"unit\": \"แถว\",\n  \"description\": \"จำนวนแถวสูงสุดต่อไฟล์ export\"\n}",
-          "res": "201 Created",
-          "err": [
-            "409 — Config Key นี้มีอยู่แล้ว",
-            "422 — ค่าไม่ตรงกับชนิดข้อมูล (value_type)"
-          ]
-        },
-        {
-          "m": "PUT",
-          "p": "/api/v1/configs/{key}",
-          "ref": "new",
-          "refT": "ใหม่ · Global Config",
-          "roles": "01 Admin",
-          "sum": "แก้ค่ากำหนด — ต้องระบุเหตุผล · ค่าคงที่ทางธุรกิจ (is_editable=false) แก้ผ่าน API ไม่ได้",
-          "flow": [
-            "ตรวจ is_editable — ค่าคงที่ทางธุรกิจ (รัศมี · วงเงิน GM 50,000/AVP 300,000 · เกณฑ์ 60 วัน · เกณฑ์ −10 ตามข้อ 8.2) ตอบ 422",
-            "validate ค่าใหม่ตาม value_type + ต้องระบุ reason เสมอ",
-            "update + บันทึก audit_logs (EDIT · old_value → new_value · เหตุผล)",
-            "broadcast invalidate cache ให้ทุก service อ่านค่าใหม่ทันที"
-          ],
-          "db": [
-            [
-              "mas_param (ระบบ SBP เดิม)",
-              "W",
-              "ค่าใหม่"
-            ],
-            [
-              "audit_logs",
-              "W",
-              "audit ผู้แก้ + ค่าเดิม/ใหม่ + เหตุผล"
-            ]
-          ],
-          "req": "{\n  \"value\": \"[30, 45, 60]\",\n  \"reason\": \"เพิ่มขั้นเตือน 45 วันตามมติที่ประชุม\"   // บังคับ\n}",
-          "res": "200 OK",
-          "err": [
-            "422 — key นี้เป็นค่าคงที่ทางธุรกิจ แก้ผ่าน API ไม่ได้",
-            "422 — กรุณาระบุเหตุผลการแก้ไขข้อมูล",
-            "404"
-          ]
-        },
-        {
-          "m": "DELETE",
-          "p": "/api/v1/configs/{key}",
-          "ref": "new",
-          "refT": "ใหม่ · Global Config",
-          "roles": "01 Admin",
-          "sum": "ลบค่ากำหนด — ลบได้เฉพาะ key ที่ไม่ใช่ค่าระบบ และต้องระบุเหตุผล",
-          "flow": [
-            "ตรวจ is_editable = true (ค่าคงที่ทางธุรกิจ/ค่าระบบลบไม่ได้)",
-            "ลบ + บันทึก audit_logs (DELETE + เหตุผล)",
-            "broadcast invalidate cache"
-          ],
-          "db": [
-            [
-              "mas_param (ระบบ SBP เดิม)",
-              "W",
-              "ลบแถว"
-            ],
-            [
-              "audit_logs",
-              "W",
-              "audit + เหตุผล"
-            ]
-          ],
-          "req": "{ \"reason\": \"เลิกใช้หลังย้ายไปกำหนดใน job_configs\" }",
-          "res": "204 No Content",
-          "err": [
-            "409 — ค่าระบบ/ค่าคงที่ทางธุรกิจ ลบไม่ได้",
-            "404"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Email Template (Notification)",
-      "refT": "ระบบ SBP เดิม · email_template",
-      "eps": [
-        {
-          "m": "GET",
-          "p": "/api/v1/email-templates",
-          "ref": "new",
-          "refT": "ใหม่ · Notification",
-          "roles": "01 Admin",
-          "sum": "รายการ 8 email template (EM-01–08) พร้อมสถานะว่าถูกแก้จาก Default หรือยัง (หน้าจอ email-template.html)",
-          "flow": [
-            "query email_template (ตารางของระบบ SBP เดิม) ทั้ง 8 รหัส EM-01–08",
-            "join จุดส่งใน flow (status_email_rules) เพื่อแสดงผู้รับ TO/CC ที่ล็อกไว้",
-            "คืน subject/body ปัจจุบัน + is_customized"
-          ],
-          "db": [
-            [
-              "email_template (ระบบ SBP เดิม)",
-              "R",
-              "เนื้อหา template ทั้งหมด (ตารางใหม่)"
-            ],
-            [
-              "status_email_rules",
-              "R",
-              "ผู้รับ TO/CC ที่ล็อกต่อสถานะ"
-            ]
-          ],
-          "req": "(ไม่มี body)",
-          "res": "{\n  \"items\": [{\n    \"templateCode\": \"EM-01\",\n    \"name\": \"แจ้งผู้ดำเนินการลำดับถัดไป\",\n    \"subject\": \"[SBPGI] เอกสารประกันรายได้ {{doc_no}} — {{next_status}}\",\n    \"isCustomized\": false\n  }]\n}",
-          "err": [
-            "401",
-            "403"
-          ]
-        },
-        {
-          "m": "GET",
-          "p": "/api/v1/email-templates/{code}",
-          "ref": "new",
-          "refT": "ใหม่ · Notification",
-          "roles": "01 Admin",
-          "sum": "อ่าน template รายตัว (EM-01–08) พร้อมชุดตัวแปร merge ที่ใช้ได้ในฉบับนั้น",
-          "flow": [
-            "อ่าน email_template (ระบบ SBP เดิม) ด้วย template_code (EM-01–08)",
-            "คืน subject/body + รายการตัวแปร merge ที่รองรับ + ผู้รับ TO/CC (อ่านอย่างเดียว)"
-          ],
-          "db": [
-            [
-              "email_template (ระบบ SBP เดิม)",
-              "R",
-              "เนื้อหารายตัว"
-            ],
-            [
-              "status_email_rules",
-              "R",
-              "ผู้รับ TO/CC (ล็อก)"
-            ]
-          ],
-          "req": "(ไม่มี body)",
-          "res": "{\n  \"templateCode\": \"EM-01\",\n  \"subject\": \"[SBPGI] เอกสารประกันรายได้ {{doc_no}} — {{next_status}}\",\n  \"body\": \"<p>เรียน {{next_actor}} ...</p>\",\n  \"variables\": [\"doc_no\", \"store_code\", \"next_status\", \"doc_url\"],\n  \"lockedRecipients\": { \"to\": \"ผู้ดำเนินการลำดับถัดไป\", \"cc\": \"ตาม status_email_rules\" }\n}",
-          "err": [
-            "404 — ไม่พบ template code นี้",
-            "401"
-          ]
-        },
-        {
-          "m": "PUT",
-          "p": "/api/v1/email-templates/{code}",
-          "ref": "new",
-          "refT": "ใหม่ · Notification",
-          "roles": "01 Admin",
-          "sum": "บันทึกเนื้อหา template — แก้ได้เฉพาะ subject/body และตัวแปร · ผู้รับ From/To/Cc แก้ผ่านเส้นนี้ไม่ได้ (ล็อกตาม status_email_rules)",
-          "flow": [
-            "validate ใช้เฉพาะตัวแปร merge ที่รองรับของ template นั้น",
-            "ปฏิเสธการแก้ From/To/Cc — ผู้รับกำหนดที่ status_email_rules เท่านั้น",
-            "update email_template (ระบบ SBP เดิม) + set is_customized = true",
-            "บันทึก audit_logs (EDIT · old → new · เหตุผล)"
-          ],
-          "db": [
-            [
-              "email_template (ระบบ SBP เดิม)",
-              "W",
-              "subject/body ใหม่"
-            ],
-            [
-              "audit_logs",
-              "W",
-              "audit ผู้แก้ + ค่าเดิม/ใหม่ + เหตุผล"
-            ]
-          ],
-          "req": "{\n  \"subject\": \"[SBPGI] เอกสาร {{doc_no}} — {{next_status}}\",\n  \"body\": \"<p>เรียน {{next_actor}} ...</p>\",\n  \"reason\": \"เพิ่มลิงก์เปิดเอกสาร {{doc_url}}\"   // บังคับ\n}",
-          "res": "200 OK",
-          "err": [
-            "422 — ใช้ตัวแปร merge ที่ไม่รองรับใน template นี้",
-            "422 — แก้ผู้รับ From/To/Cc ผ่านเส้นนี้ไม่ได้",
-            "422 — กรุณาระบุเหตุผลการแก้ไข",
-            "404"
-          ]
-        },
-        {
-          "m": "POST",
-          "p": "/api/v1/email-templates/{code}/reset",
-          "ref": "new",
-          "refT": "ใหม่ · Notification",
-          "roles": "01 Admin",
-          "sum": "รีเซ็ต template ฉบับเดียวกลับเป็น Default (ปุ่ม \"รีเซ็ต\" รายตัวในหน้าจอ)",
-          "flow": [
-            "คืน subject/body เป็นชุด Default ของ template นั้น",
-            "set is_customized = false",
-            "บันทึก audit_logs (RESET + เหตุผล)"
-          ],
-          "db": [
-            [
-              "email_template (ระบบ SBP เดิม)",
-              "W",
-              "คืนค่า Default"
-            ],
-            [
-              "audit_logs",
-              "W",
-              "audit การรีเซ็ต"
-            ]
-          ],
-          "req": "{ \"reason\": \"ยกเลิกถ้อยคำที่ทดลองปรับ\" }",
-          "res": "200 OK",
-          "err": [
-            "404 — ไม่พบ template code นี้",
-            "401"
-          ]
-        },
-        {
-          "m": "POST",
-          "p": "/api/v1/email-templates/reset-all",
-          "ref": "new",
-          "refT": "ใหม่ · Notification",
-          "roles": "01 Admin",
-          "sum": "รีเซ็ต template ทั้ง 8 ฉบับกลับเป็น Default พร้อมกัน (ปุ่ม \"รีเซ็ตทั้งหมดเป็น Default\")",
-          "flow": [
-            "คืน subject/body ของทุก template เป็นชุด Default",
-            "set is_customized = false ทุกฉบับ",
-            "บันทึก audit_logs หนึ่งรายการต่อ template ที่เปลี่ยนจริง"
-          ],
-          "db": [
-            [
-              "email_template (ระบบ SBP เดิม)",
-              "W",
-              "คืนค่า Default ทั้ง 8"
-            ],
-            [
-              "audit_logs",
-              "W",
-              "audit ต่อ template ที่เปลี่ยน"
-            ]
-          ],
-          "req": "{ \"reason\": \"ล้างค่าทดสอบทั้งหมดก่อนส่งมอบ\" }",
-          "res": "200 OK\n{ \"resetCount\": 3 }",
-          "err": [
-            "401",
-            "403"
           ]
         }
       ]
@@ -2698,12 +2452,14 @@
           "ref": "k2",
           "refT": "K2 · 3.1.7 + SDD v7.5",
           "roles": "บัญชี / 06 Report Admin",
-          "sum": "รายงานตรวจสอบประกันรายได้ (SBP Mall) — Preview Report · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)",
+          "sum": "รายงานตรวจสอบประกันรายได้ (SBP Mall) — ค้นหาข้อมูล · filter 7 ตัวและผลลัพธ์ 14 คอลัมน์ ตาม SDD สไลด์ 60 · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)",
           "flow": [
-            "validate ปี (ไม่ระบุ → 400)",
-            "query compensation_documents + compensation_histories ตามเงื่อนไข (status 6 ค่า · region 13 · storeType A-D · รหัสถูกกระทบ/เปิดกระทบ)",
-            "กรอง result (APPROVE/REJECT) จากผลพิจารณาล่าสุดใน consideration_logs — filter \"ประกันรายได้/ไม่ประกันรายได้\" หน้า k2-report",
-            "คืนแบบแบ่งหน้าตามหน้าจอ k2-report.html"
+            "validate ปี (ไม่ระบุ → 400) และ status (ไม่ระบุ → 400 · Required Field ตาม SDD)",
+            "validate คู่รหัสร้าน: ระบุ impactedStoreCode แล้วต้องระบุ newStoreCode ด้วย (และกลับกัน) ไม่งั้น 400",
+            "ถ้า status = เสร็จสิ้นดำเนินการ ต้องมี periodStatementFrom/To (ค.ศ.) ไม่งั้น 400",
+            "query compensation_documents + compensation_histories ตามเงื่อนไข (status 6 ค่า · region 13 รหัส + ภาคใหม่อัตโนมัติ · storeType A/B/C/E · รหัสถูกกระทบ/เปิดกระทบ · ช่วง Period Statement)",
+            "กรอง result (APPROVE/REJECT) จากผลพิจารณาล่าสุดใน consideration_logs — Radio \"ประกันรายได้/ไม่ประกันรายได้\" (ไม่บังคับ)",
+            "คืน 14 คอลัมน์ตาม SDD แบบแบ่งหน้า (ร้านถูกกระทบ 4 · เดือน/ปีที่ถูกกระทบ · Period Statement · ร้านเปิดกระทบ 4 · ยอดเงินชดเชย · ครั้งที่ · วันที่สร้าง · เลขที่เอกสาร)"
           ],
           "db": [
             [
@@ -2727,10 +2483,12 @@
               "ผลพิจารณาล่าสุด (กรองประกัน/ไม่ประกัน)"
             ]
           ],
-          "req": "Query: ?year=2569&statusCode=06&result=APPROVE&region=RSU&storeType=A&impactedStoreCode=00233&newStoreCode=22864&page=1\n(result = APPROVE | REJECT — ประกันรายได้ / ไม่ประกันรายได้)",
-          "res": "{\n  \"page\": 1, \"total\": 212,\n  \"items\": [{ \"docNo\": \"2569/00098\", \"storeCode\": \"00788\", \"status\": \"เสร็จสิ้นดำเนินการ\", \"compensateAmount\": 85000.00, ... }]\n}",
+          "req": "Query: ?year=2026&status=เสร็จสิ้นดำเนินการ&periodStatementFrom=2026-06-01&periodStatementTo=2026-06-30\n       &storeType=A&storeType=B&region=RSU&region=BW&impactedStoreCode=00788&newStoreCode=00990&result=APPROVE&page=1\n(status บังคับ · result = APPROVE | REJECT — ประกันรายได้ / ไม่ประกันรายได้ · ไม่บังคับ)",
+          "res": "{\n  \"page\": 1, \"total\": 212,\n  \"items\": [{\n    \"impactedStoreCode\": \"00788\", \"impactedStoreName\": \"รัตนอุทิศ ซ.13\", \"impactedRegion\": \"RSU\", \"impactedStoreType\": \"B\",\n    \"impactMonth\": \"05/2026\", \"periodStatement\": \"07/06/2026\",\n    \"newStoreCode\": \"00990\", \"newStoreName\": \"เซเว่นฯ รัตนาธิเบศร์ 12\", \"newRegion\": \"RSU\", \"newStoreType\": \"A\",\n    \"compensateAmount\": 48200.00, \"round\": 1, \"createdDate\": \"12/06/2026\", \"docNo\": \"2026/00123\"\n  }]\n}",
           "err": [
-            "400 — กรุณาระบุปีที่ต้องการค้นหา"
+            "400 — กรุณาระบุปีที่ต้องการค้นหา",
+            "400 — กรุณาเลือกสถานะก่อนค้นหาข้อมูล",
+            "400 — กรณีระบุรหัสร้านถูกกระทบ ต้องระบุรหัสร้านเปิดกระทบด้วย"
           ]
         },
         {
@@ -2739,10 +2497,10 @@
           "ref": "k2",
           "refT": "K2 · 3.1.7",
           "roles": "04 / 06 Report Admin",
-          "sum": "Export CSV to Batch — ส่งไฟล์ CSV เข้า Batch ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไขเดียวกับเส้นค้นหา",
+          "sum": "Export Excel — ส่งออกผลการค้นหา 14 คอลัมน์เป็น Excel ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไขเดียวกับเส้นค้นหา",
           "flow": [
-            "เงื่อนไขเดียวกับ status-summary",
-            "สร้างไฟล์ CSV แล้วส่งเข้า Batch (ทีมบัญชีนำไปกระทบ SAP)"
+            "เงื่อนไขเดียวกับ status-summary (รวม validate status และคู่รหัสร้าน)",
+            "สร้างไฟล์ Excel 14 คอลัมน์ตาม SDD สไลด์ 60 ให้ทีมบัญชีนำไปกระทบ SAP"
           ],
           "db": [
             [
@@ -2751,109 +2509,10 @@
               "ข้อมูลชุดเดียวกับรายงาน"
             ]
           ],
-          "req": "Query: ?year=2569&result=APPROVE&region=RSU&storeType=A\n(เงื่อนไขชุดเดียวกับเส้นค้นหา รวม result ประกันรายได้/ไม่ประกันรายได้)",
-          "res": "200 OK\nContent-Type: text/csv; charset=utf-8\nContent-Disposition: attachment; filename=\"insurance-verification-2569.csv\"\nX-Batch-Job: queued",
+          "req": "Query: ?year=2026&status=เสร็จสิ้นดำเนินการ&region=RSU&storeType=A&result=APPROVE\n(เงื่อนไขชุดเดียวกับเส้นค้นหา รวม result ประกันรายได้/ไม่ประกันรายได้)",
+          "res": "200 OK\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\nContent-Disposition: attachment; filename=\"insurance-verification-2026.xlsx\"",
           "err": [
             "400 — ไม่ระบุปี"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Batch Job Admin",
-      "refT": "FGI/FCS · Jobs 1–10",
-      "eps": [
-        {
-          "m": "GET",
-          "p": "/api/v1/jobs",
-          "ref": "fgi",
-          "refT": "FGI/FCS",
-          "roles": "01 Admin",
-          "sum": "รายการ batch job ทั้ง 11 entry points พร้อมสถานะรอบล่าสุด — reference contract สำหรับแบบฟอร์มพารามิเตอร์และประวัติการรันเท่านั้น",
-          "flow": [],
-          "db": [],
-          "req": "(ไม่มี body)",
-          "res": "{\n  \"items\": [{\n    \"jobNo\": \"6\",\n    \"name\": \"ExportImpactStoreToFS\",\n    \"cron\": \"0 17 * * *\",\n    \"enabled\": true,\n    \"lastRun\": { \"status\": \"SUCCESS\", \"rows\": 1254, \"startedAt\": \"2026-07-01T17:00:00\" }\n  }]\n}",
-          "err": [
-            "401",
-            "403"
-          ]
-        },
-        {
-          "m": "GET",
-          "p": "/api/v1/jobs/{jobNo}",
-          "ref": "fgi",
-          "refT": "FGI/FCS",
-          "roles": "01 Admin",
-          "sum": "รายละเอียด job หนึ่งตัวสำหรับ tab แบบฟอร์มพารามิเตอร์: schedule, input/configurable parameters, output และ current status",
-          "flow": [],
-          "db": [],
-          "req": "(ไม่มี body)",
-          "res": "{\n  \"jobNo\": \"1\",\n  \"name\": \"ImportQSSI\",\n  \"params\": [\n    { \"key\": \"sftpPort\", \"value\": \"218\", \"editable\": true },\n    { \"key\": \"encoding\", \"value\": \"WINDOWS-874\", \"editable\": false }\n  ]\n}",
-          "err": [
-            "404"
-          ]
-        },
-        {
-          "m": "PUT",
-          "p": "/api/v1/jobs/{jobNo}/params",
-          "ref": "fgi",
-          "refT": "FGI/FCS + ข้อ 8.2",
-          "roles": "01 Admin",
-          "sum": "แก้พารามิเตอร์ที่ editable ของ job — ค่าคงที่ทางธุรกิจแก้ผ่าน UI/API ไม่ได้",
-          "flow": [],
-          "db": [],
-          "req": "{\n  \"params\": { \"cron\": \"0 18 * * *\", \"batchSize\": 20000 }\n}",
-          "res": "200 OK",
-          "err": [
-            "422 — key นี้เป็นค่าคงที่ทางธุรกิจ แก้ผ่าน API ไม่ได้",
-            "404"
-          ]
-        },
-        {
-          "m": "POST",
-          "p": "/api/v1/jobs/{jobNo}/run",
-          "ref": "fgi",
-          "refT": "FGI/FCS · Runbook 7.1",
-          "roles": "01 Admin",
-          "sum": "สั่งรัน job นอกรอบ พร้อมระบุงวดข้อมูล — รายละเอียด flow การทำงานอยู่ในเอกสาร BE/Runbook ไม่ใช่ tab ที่ต้องทำใน FE Batch Monitor",
-          "flow": [],
-          "db": [],
-          "req": "{\n  \"period\": \"2026-07\"   // งวดข้อมูล (YYYY-MM)\n}",
-          "res": "202 Accepted\n{ \"runId\": 4451 }",
-          "err": [
-            "409 — Job กำลังรันอยู่ ห้ามรันซ้อน",
-            "422 — job ถูกปิดใช้งาน"
-          ]
-        },
-        {
-          "m": "PUT",
-          "p": "/api/v1/jobs/{jobNo}/enabled",
-          "ref": "fgi",
-          "refT": "FGI/FCS",
-          "roles": "01 Admin",
-          "sum": "เปิด/ปิดการทำงานของ job ตามรอบเวลา",
-          "flow": [],
-          "db": [],
-          "req": "{ \"enabled\": false, \"reason\": \"ปิดชั่วคราวช่วงปิดงบ\" }",
-          "res": "200 OK",
-          "err": [
-            "404"
-          ]
-        },
-        {
-          "m": "GET",
-          "p": "/api/v1/jobs/{jobNo}/runs",
-          "ref": "fgi",
-          "refT": "FGI/FCS",
-          "roles": "01 Admin",
-          "sum": "ประวัติการรันของ job สำหรับ tab ประวัติการรันในหน้า Batch Monitor",
-          "flow": [],
-          "db": [],
-          "req": "Query: ?page=1&size=20",
-          "res": "{\n  \"items\": [{\n    \"runId\": 4451, \"status\": \"SUCCESS\", \"rows\": 48220,\n    \"file\": \"mrs1-mrs5 (4 ไฟล์)\", \"startedAt\": \"2026-07-01T06:00:00\", \"durationSec\": 252\n  }]\n}",
-          "err": [
-            "404"
           ]
         }
       ]
@@ -2900,7 +2559,7 @@
             ]
           ],
           "req": "{\n  \"impactProcessId\": 88123,\n  \"sourceJobNo\": \"8b\",\n  \"requestId\": \"job8b-88123-256907\"\n}",
-          "res": "201 Created\n{\n  \"docNo\": \"2569/00124\",\n  \"instanceId\": \"WF-2569-00124\",\n  \"workflowGenerationStatus\": \"Y\",\n  \"firstSection\": \"06\",\n  \"statusCode\": \"06\"\n}",
+          "res": "201 Created\n{\n  \"docNo\": \"2026/00124\",\n  \"instanceId\": \"WF-2569-00124\",\n  \"workflowGenerationStatus\": \"Y\",\n  \"firstSection\": \"06\",\n  \"statusCode\": \"06\"\n}",
           "err": [
             "422 — ไม่ผ่าน Gen Flow Gate (ตอบเหตุผล + สถานะ W/N ที่ตั้งให้)",
             "401 — service token ไม่ถูกต้อง"
@@ -2924,7 +2583,7 @@
             ]
           ],
           "req": "(ไม่มี body)",
-          "res": "{\n  \"instanceId\": 501,\n  \"docNo\": \"2569/00124\",\n  \"status\": \"ACTIVE\",\n  \"currentTask\": { \"section\": \"02\", \"openedAt\": \"2026-07-01T09:00:00\" }\n}",
+          "res": "{\n  \"instanceId\": 501,\n  \"docNo\": \"2026/00124\",\n  \"status\": \"ACTIVE\",\n  \"currentTask\": { \"section\": \"02\", \"openedAt\": \"2026-07-01T09:00:00\" }\n}",
           "err": [
             "404"
           ]
@@ -2981,7 +2640,7 @@
             ]
           ],
           "req": "Query: ?dataName=COMPENSATE_INIT_I&pending=true&page=1",
-          "res": "{\n  \"items\": [{\n    \"trackingId\": 9912,\n    \"dataName\": \"COMPENSATE_INIT_I\",\n    \"docNo\": \"2569/00098\",\n    \"sentAt\": \"2026-06-30T17:02:00\",\n    \"returnCode\": null\n  }]\n}",
+          "res": "{\n  \"items\": [{\n    \"trackingId\": 9912,\n    \"dataName\": \"COMPENSATE_INIT_I\",\n    \"docNo\": \"2026/00098\",\n    \"sentAt\": \"2026-06-30T17:02:00\",\n    \"returnCode\": null\n  }]\n}",
           "err": [
             "401"
           ]
@@ -3031,43 +2690,7 @@
             ]
           ],
           "req": "(ไม่มี body)",
-          "res": "{\n  \"count\": 2,\n  \"items\": [{ \"dataName\": \"COMPENSATE_INIT_I\", \"docNo\": \"2569/00098\", \"ageDays\": 2 }]\n}",
-          "err": [
-            "401"
-          ]
-        },
-        {
-          "m": "GET",
-          "p": "/api/v1/dashboard/summary",
-          "ref": "k2",
-          "refT": "K2 (หน้าแรก = งานรอดำเนินการ)",
-          "roles": "ทุก role",
-          "sum": "ตัวเลข stat cards ของหน้าแรก (งานรอดำเนินการ) — ยกเลิกหน้า Overview/Dashboard แล้ว (ตัดสินใจ 2026-08-06)",
-          "flow": [
-            "อ่าน sectionCode ของผู้ใช้จาก user context ที่ BFF ส่งมา",
-            "นับงานค้างของ section นั้น + แยกกลุ่ม: ยอดขายไม่ครบ 60 วัน · รอเกิน 3 วัน · วงเงินเข้าเส้น AVP (> 50,000 · SDD GI)",
-            "cache 5 นาที",
-            "ตัด field abnormalStores/chart.monthly ของหน้า Overview เดิมออก"
-          ],
-          "db": [
-            [
-              "workflow_tasks",
-              "R",
-              "งานค้างของ section + จำนวนวันที่รอ"
-            ],
-            [
-              "compensation_documents",
-              "R",
-              "ยอดชดเชยต่อเอกสาร (เกณฑ์วงเงิน AVP)"
-            ],
-            [
-              "fgi_impact_sales_summaries",
-              "R",
-              "total_working_days < 60 = แถวแดง"
-            ]
-          ],
-          "req": "(ไม่มี body)",
-          "res": "{\n  \"waitingTasks\": 24,\n  \"flagUnder60Days\": 5,\n  \"pendingOver3Days\": 7,\n  \"overGmLimit\": 3\n}",
+          "res": "{\n  \"count\": 2,\n  \"items\": [{ \"dataName\": \"COMPENSATE_INIT_I\", \"docNo\": \"2026/00098\", \"ageDays\": 2 }]\n}",
           "err": [
             "401"
           ]

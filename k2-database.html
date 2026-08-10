@@ -19,6 +19,7 @@
   @media (max-width:960px){ .ent-grid{ grid-template-columns:1fr; } }
   .ent h3 { font-size:13.5px; margin:0 0 8px; color:#2b3440; display:flex; align-items:center; gap:8px; }
   .ent h3 code { font-family:ui-monospace,Menlo,monospace; font-size:12.5px; color:#2f6fed; }
+  .cut-note{margin:8px 0 0;padding:9px 11px;border-left:3px solid #d97706;border-radius:0 8px 8px 0;background:#fffbeb;color:#92400e;font-size:12px;line-height:1.65;}
 </style>
 </head>
 <body data-page="k2-database" data-nav="modules" data-module="k2-database" data-crumb="DB K2">
@@ -207,19 +208,6 @@
           </div>
 
           <div class="ent">
-            <h3><code>audit_logs</code> <span class="src-srs">SRS</span></h3>
-            <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
-              <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
-              <tr><td class="k">table_name</td><td class="ty">varchar(60)</td><td></td></tr>
-              <tr><td class="k">ref_key</td><td class="ty">varchar(60)</td><td></td></tr>
-              <tr><td class="k">action_type</td><td class="ty">varchar(10)</td><td></td></tr>
-              <tr><td class="k">old_value · new_value</td><td class="ty">text</td><td></td></tr>
-              <tr><td class="k">reason</td><td class="ty">varchar(255)</td><td></td></tr>
-              <tr><td class="k">updated_by · updated_at</td><td class="ty">varchar · datetime</td><td></td></tr>
-            </tbody></table>
-          </div>
-
-          <div class="ent">
             <h3><code>competitors</code> <span class="src-add">ออกแบบ</span></h3>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">competitor_code</td><td class="ty">varchar(10)</td><td><span class="pk">PK</span></td></tr>
@@ -247,7 +235,7 @@
               <tr><td class="k">sort_order</td><td class="ty">int</td><td></td></tr>
               <tr><td class="k">is_system</td><td class="ty">bit</td><td></td></tr>
             </tbody></table>
-            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">Role 00–10 ตามตารางสิทธิ์ (3.1.1) · เพิ่ม/แก้/ลบผ่านหน้าจอ 3.1.1 — <code>is_system</code> กัน role/เมนูหลักถูกลบ · ประวัติลง audit_logs</p>
+            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">Role 00–10 ตามตารางสิทธิ์ (3.1.1) · เพิ่ม/แก้/ลบผ่านหน้าจอ 3.1.1 — <code>is_system</code> กัน role/เมนูหลักถูกลบ · <b>RBAC ย้ายไปใช้ระบบ SBP เดิม (2026-08-05) — ประวัติการแก้อยู่ที่ระบบนั้น</b></p>
           </div>
 
         </div>
@@ -360,11 +348,13 @@
 
       <!-- Internal workflow tables -->
       <div class="card">
-        <div class="card-head"><h2>ตาราง Workflow ภายใน</h2><span class="pill info" style="margin-left:auto;">แทน K2 Engine ภายนอก</span></div>
+        <div class="card-head"><h2>ตาราง Workflow ภายใน</h2><span class="pill warn" style="margin-left:auto;">ภาพ K2 as-designed · ไม่ใช่ target schema</span></div>
+        <p class="cut-note">หน้านี้เป็น <b>ภาพ schema ของ K2 ตามที่ออกแบบไว้เดิม</b> ไม่ใช่ target schema ของ SBPGI · ตาราง workflow ทั้งหมดในหัวข้อนี้ถูกตัดออกเมื่อ 2026-08-06 แล้วเปลี่ยนไปใช้ engine กลาง <b>@srm/glb-workflow</b> (13 ตาราง · schema <code>sps_store</code>) — <b>ห้ามสร้างตารางเหล่านี้ใหม่</b></p>
         <div class="ent-grid">
 
           <div class="ent">
-            <h3><code>workflow_instances</code> <span class="src-add">ระบบใหม่</span></h3>
+            <h3><code>workflow_instances</code> <span class="src-add">K2 as-designed · ตัดออกแล้ว</span></h3>
+            <p class="cut-note">⚠️ <b>ถูกแทนที่แล้ว (มติ 2026-08-06)</b> — ระบบใหม่ใช้ <b>@srm/glb-workflow</b> (13 ตาราง · schema <code>sps_store</code>): <code>workflow_transaction</code> / <code>workflow_approver</code> / <code>workflow_history</code> · โครงด้านล่างคงไว้เป็น<b>ภาพ K2 as-designed เท่านั้น ห้ามสร้างใหม่</b> — target schema จริงดูที่ <code>plan-database.html</code> / <code>database.md</code></p>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">instance_id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
@@ -375,7 +365,8 @@
           </div>
 
           <div class="ent">
-            <h3><code>workflow_tasks</code> <span class="src-add">ระบบใหม่</span></h3>
+            <h3><code>workflow_tasks</code> <span class="src-add">K2 as-designed · ตัดออกแล้ว</span></h3>
+            <p class="cut-note">⚠️ <b>ถูกแทนที่แล้ว (มติ 2026-08-06)</b> — ระบบใหม่ใช้ <b>@srm/glb-workflow</b> (13 ตาราง · schema <code>sps_store</code>): <code>workflow_transaction</code> / <code>workflow_approver</code> / <code>workflow_history</code> · โครงด้านล่างคงไว้เป็น<b>ภาพ K2 as-designed เท่านั้น ห้ามสร้างใหม่</b> — target schema จริงดูที่ <code>plan-database.html</code> / <code>database.md</code></p>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">task_id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">instance_id</td><td class="ty">bigint</td><td><span class="fk">FK</span></td></tr>

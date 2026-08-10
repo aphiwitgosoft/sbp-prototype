@@ -100,7 +100,7 @@
 | A | **หน้าคำนวณชดเชยแยกตามประเภทร้าน 2 แบบ** — `Type A, C` / `Type B, E, V(B)` | 33 · 36 | ❌ | `k2-document.html` มีการ์ดคำนวณใบเดียว 3 ฟิลด์ ไม่แยกตาม type |
 | B | ตาราง **Type A, C**: Performance Index · ยอดขายเฉลี่ยรายวัน · ยอดขายเฉลี่ยรายวันรวมบัตร · **GP (บาท) มาตรฐานก่อน Split** | 33 | ❌ | ไม่มีทั้งใน UI และ `database.md` |
 | C | ตาราง **Type B, E, V(B)**: Performance Index · **Incentive Guarantee** · **ส่วนแบ่งรายได้ของ SBP ตามเป้า** · ยอดชดเชย | 36 | ❌ | เช่นเดียวกัน |
-| D | **Performance Index มาจาก QSSI** — เป็นตัวตั้งของการคำนวณ | 33 · 36 · 40 | ⚠️ | มี `fcs_qssi_scores` (คะแนน 6 หมวดดิบ) แต่ยังไม่มีตัว index ที่ derive ออกมา |
+| D | **Performance Index มาจาก QSSI** — เป็นตัวตั้งของการคำนวณ | 33 · 36 · 40 | ⚠️ | มี **`fcs_qssi_score`** (เอกพจน์ · คะแนน 6 หมวดดิบ — **ตารางนี้มีอยู่จริงแล้วใน `sps_store` 23,958,780 แถว พร้อม import pipeline ที่ทำงานอยู่ ห้ามสร้างใหม่ ให้ reuse**) แต่ยังไม่มีตัว index ที่ derive ออกมา |
 | E | **checklist ตรวจสอบของบัญชี 5 ข้อ** — ยอดคำนวณ **3 จุดตรงกัน** · Performance Index · สาขาถูกกระทบ+ใกล้เคียง · กรณี **ร้าน Take** · Center ตรวจจากรายงาน | 40 | ❌ | บัญชีย้ายมาทำผ่านหน้ารายงานแล้ว แต่ยังไม่มีบันทึกว่าเขาต้องตรวจอะไรบ้าง → **P3** |
 | F | **สาเหตุยอดไม่ตรง 2 ข้อ** — K2 คำนวณไม่ตรงไฟล์ PDF · ต้นทางแจ้งข้อมูลไม่ครบ | 40 | ❌ | ควรอยู่คู่กับกระบวนการ SR → **P3** |
 | G | **ปริมาณงานจริง** — 150–170 ฉบับ/เดือน · ~4 นาที/ฉบับ · ผจก.แผนกตรวจ ~5 นาที ≈ 10 ชม./เดือน | 41 | ❌ | ตัวเลข sizing/NFR ที่ควรบันทึก → **P4** |
@@ -130,9 +130,28 @@
 - **ยกเลิกหน้า Overview/Dashboard** → หน้าแรกคือ **เอกสาร → รอดำเนินการ** (`index.html` เหลือ redirect stub)
 - **ลบหน้าข้อมูลผิดปกติ / แจกงาน** (ไฟล์ + 2 endpoint) — เหลือเป็น **ธงแถวแดง** ในหน้ารายการอย่างเดียว (ถอด stat card ออกเมื่อ 2026-08-06 · ไม่ทำตัวกรองทดแทน)
 - **RBAC + ผู้ปฏิบัติงาน ใช้ระบบ SBP เดิม** (auth-backend/ABS) — ตัด 5 ตาราง + 18 endpoint · ถอดหน้า `k2-permissions` / `k2-operators`
-- **เทียบ DB เดิมของ K2** (`script_TB_DB_CPA_FRN_FGI_20260722.sql`) → เพิ่ม 5 ตาราง (`zones`, `branch_types`, `decisions`, `document_running_numbers`, `document_cost_details`) + คอลัมน์ `approve_limit_amount`, `round_no`/`loop_no`, `allmap_url`, `statement_id`, `approver_snapshot` → รวม 34 ตาราง / 47 endpoint · **แล้วตัดอีก 10 ตาราง / 3 endpoint เมื่อ 2026-08-06 (รอบ 2) เพราะระบบ SBP ปัจจุบันมีอยู่แล้ว → เหลือ 24 ตาราง / 44 endpoint**
+- **เทียบ DB เดิมของ K2** (`script_TB_DB_CPA_FRN_FGI_20260722.sql`) → เพิ่ม 5 ตาราง (`zones`, `branch_types`, `decisions`, `document_running_numbers`, `document_cost_details`) + คอลัมน์ `approve_limit_amount`, `round_no`/`loop_no`, `allmap_url`, `statement_id`, `approver_snapshot` → รวม 34 ตาราง / 47 endpoint · **แล้วตัดอีก 10 ตาราง / 3 endpoint เมื่อ 2026-08-06 (รอบ 2) เพราะระบบ SBP ปัจจุบันมีอยู่แล้ว → เหลือ 24 ตาราง / 47 endpoint** · **แล้วลบอีก 2 ตาราง / 16 endpoint เมื่อ 2026-08-06 (ลบหน้า Global Config + Email Template ทั้งฟีเจอร์ 10 เส้น และตัด 2 tab ควบคุมของหน้า Batch Job ทำให้ตัด 6 เส้น + `job_configs`/`job_run_histories`) → เหลือ 22 ตาราง / 31 endpoint** · แล้วตัด `audit_logs` + `GET /audit-logs` เมื่อ 2026-08-07 → **ตัวเลขปัจจุบัน 21 ตาราง / 30 endpoint 6 กลุ่ม** (Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3)
 - **เป้าหมาย FE/BE** = โมดูลใน `srm-sps-spsap-web-frontend` (portal `sbpm`, Next.js) และ NestJS + TypeORM ตาม `srm-sps-spsap-store-backend` · โฟลเดอร์ `react-app/` ถูกลบ (กู้จาก git `003b661`)
 - ย้าย **ตั้งค่าระบบ / Batch Job / Email Template** ไปกลุ่มเมนู **ผู้ดูแลระบบ (Admin)** · เมนู **สร้างเอกสาร** อยู่บนสุดของกลุ่มระบบประกันรายได้
+
+---
+
+## 10. ข้อเท็จจริงจากฐานข้อมูลจริงของระบบ SBP เดิม (เพิ่ม 2026-08-10)
+
+> ที่มา: `SBP/db-schema-sps_store.md` · `SBP/db-schema-sps_auth.md` · สรุป + **ข้อค้างตัดสินใจ 12 ข้อ (DP-1…DP-12)** อยู่ที่ **`SBP/SBPGI-vs-existing-system.md` หัวข้อ 4** — ทุกข้อด้านล่างเป็น**ข้อเท็จจริง/ข้อสังเกต ยังไม่ตัดสินแทนเจ้าของโครงการ**
+
+| # | ข้อเท็จจริง | ผลต่อเอกสารชุดนี้ |
+|---|---|---|
+| J | **Workflow engine `@srm/glb-workflow` มี 13 ตาราง ไม่ใช่ 10** — `workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_transaction` · `workflow_history` · `workflow_approver` · `workflow_part` · `workflow_part_display` | ทุกจุดที่เขียน "10 ตารางของ engine" ต้องแก้เป็น 13 |
+| K | **engine ตัวจริงอยู่ schema `sps_store` ไม่ใช่ `sps_auth`** — สอง schema มีครบ 13 ตารางชื่อเดียวกันแต่คนละชุดคนละเวอร์ชัน (`workflow_state` 3 vs 4 คอลัมน์) · `sps_store`: transaction 19,283 · history 38,010 · approver 96,542 · `sps_auth`: transaction 55 · route 41 · state 10 | ต้องระบุ schema ให้ชัดทุกจุดที่อ้าง engine |
+| L | ⚠️ `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index เลย** ทั้งที่มี 19,283 แถว (ตัวเดียวกันใน `sps_auth` มี PK) | **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library** · ยังไม่ตัดสิน → **DP-2** |
+| M | ⚠️ **ชื่อ function ของ engine ยังขัดกัน 3 ชุด — ห้ามเลือกเอง:** ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow`/`addPreApprover`/`getPendingFlowByUser` · ชุด B ชีต Mermaid seq ไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase`/`AddPreparedApproverUseCase`/`GetPendingFlowUseCase` | ชื่อ function ในเอกสารทุกฉบับเป็น placeholder — **รอ confirm กับทีมเจ้าของ library** |
+| N | `workflow_part` + `workflow_part_display` ของ engine คุม **READ/WRITE รายส่วนของหน้าจอต่อ state** ทับซ้อนกับ `data-editrole`/`.edit-only` ที่ prototype ทำเอง | **ข้อค้างตัดสินใจ ยังไม่เปลี่ยนดีไซน์** (บันทึกไว้ที่ `plan-fe.md` §11.5 และ `REACT-TODO-CHECKLIST.md` หน้า k2-document) |
+| O | **`fcs_qssi_score` (เอกพจน์) มีอยู่จริงแล้ว 23,958,780 แถว** ใน `sps_store` พร้อม import pipeline ที่ทำงานอยู่ (`POST /performance/import-qssi` + staging `fcs_tmp_qssi_score`) · โครงเดิม `store_id`/`category`/`month`/`year` nullable ทั้ง 4 และไม่มี UK | **ห้ามสร้างตารางใหม่ ให้ reuse** · วิธีเพิ่ม constraint/index บน 23.9M แถว **ยังไม่ตัดสิน** → **DP-4** |
+| P | **แกนธุรกิจประกันรายได้ไม่มีในระบบเดิมเลย** — ค้น 276 ตาราง / 4,396 คอลัมน์ ด้วย impact · compensat · guarantee · income · competitor · growth · outlier · distance · radius · latitude · longitude · window_no → **0 hit ทุกคำ** | ยืนยันว่าโซน A และแกนเอกสารโซน B **ต้องสร้างเอง** |
+| Q | `fcs_monthly_sales` เป็น**ยอดขายรายเดือน** (711,384 แถว · key `store_id`+`year`+`month`) | **ใช้แทน `sales_transactions` (รายวัน 4 หน้าต่าง × 15 วัน) ไม่ได้** — ย้อนกลับเป็นรายวันไม่ได้ · ใช้ cross-check ได้ |
+| R | แก้ความเข้าใจผิดเดิม 2 จุด: (ก) `upload_general` **ไม่ได้ติด FK `job_id`** (`job_id`/`audit_log_id` nullable ทั้งคู่) — เหตุผลจริงที่ต้องมีตารางเองคือขาด `file_size`/`content_type`/`section_code`/`upload_status`/`purge_flag` · (ข) **มีที่เก็บ CC ของอีเมลอยู่แล้ว 3 ที่**: `email_sent.mail_cc` · `fcs_reminder_log.reminder_cc` · `fml_email_account` | ปรับเหตุผลประกอบใน `database.md` (ไฟล์นั้นไม่อยู่ในขอบเขตการแก้ครั้งนี้) |
+| S | ปริมาณจริงของตาราง reuse: `mas_param` 93,752 · `common_code` 2,609 · `common_code_type` 376 · `email_template` 85 · `email_sent` 5,214 · `business_user` 12,752 · `mas_store` 19,647 · `store` 19,402 | ใช้ประกอบการประเมินผลกระทบตอน reuse |
 
 ---
 

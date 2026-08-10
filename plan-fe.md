@@ -1,7 +1,7 @@
 # plan-fe.md — Spec สร้าง Frontend ระบบ SBPGI (โมดูลใน Next.js portal `sbpm`) ฉบับละเอียด
 
 > **เอกสารนี้คือ spec สมบูรณ์สำหรับ AI/นักพัฒนา สร้าง Frontend จริงจาก prototype HTML ในโฟลเดอร์นี้ — อ่านจบต้องสร้างได้โดยไม่ต้องถาม**
-> อ่านคู่กับ: `checklist-fe.md` (ลำดับงาน + เกณฑ์ตรวจรับ) · `REACT-TODO-CHECKLIST.md` (แตก component ต่อหน้า ครบทุกหน้า) · `api.md` (44 endpoint / 9 กลุ่ม — Auth/RBAC/ผู้ปฏิบัติงานตัดไปใช้ระบบ SBP เดิม · ตัดสินใจ 2026-08-05) · `workflow.md` (flow/สถานะ) · `database.md` (29 ตาราง) · `plan-be.md` (ฝั่ง Backend)
+> อ่านคู่กับ: `checklist-fe.md` (ลำดับงาน + เกณฑ์ตรวจรับ) · `REACT-TODO-CHECKLIST.md` (แตก component ต่อหน้า ครบทุกหน้า) · `api.md` (**30 endpoint / 6 กลุ่ม** — Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 · Auth/RBAC/ผู้ปฏิบัติงานตัดไปใช้ระบบ SBP เดิม ตัดสินใจ 2026-08-05) · `workflow.md` (flow/สถานะ) · `database.md` (**21 ตาราง**) · `plan-be.md` (ฝั่ง Backend)
 > **prototype HTML = spec หน้าจอที่ผูกมัด** — layout, ป้ายข้อความไทย, สี, ตาราง, modal ต้องตรงกับหน้า `*.html` เดิม ข้อความ popup/validation ห้าม paraphrase (verbatim จาก SRS)
 
 **กติกาเหล็ก (ผิดข้อใดข้อหนึ่ง = ไม่ผ่าน — ซ้ำกับ checklist-fe.md โดยตั้งใจ):**
@@ -117,12 +117,12 @@ srm-sps-spsap-web-frontend/
       documents/create/page.tsx            #   หน้าอธิบายกระบวนการ FS (ไม่มีฟอร์ม · 2026-08-06)
       reports/income-audit/page.tsx
       masters/factors/page.tsx
-      admin/system-config/page.tsx  ·  admin/email-templates/page.tsx  ·  admin/batch-jobs/page.tsx
+      # ไม่มีโฟลเดอร์ admin/ แล้ว — Global Config + Email Template ลบทั้งฟีเจอร์ · Batch Job ย้ายไปกลุ่ม Flow เหลือ Flowchart + DB (2026-08-06)
     components/sbpgi/                      # ★ component เฉพาะโดเมน
       DecisionPanel.tsx  WorkflowSteps.tsx  DocumentSections/*        # ไม่มี StatCards แล้ว (2026-08-06)
       charts/DonutChart.tsx                                   # SVG เขียนเอง (พอร์ตจาก prototype · กราฟยอดขาย/สัดส่วนชดเชยถอดออก 2026-08-06)
     services/sbpgi/                        # ★ service ต่อกลุ่ม API (axios instance กลางของ portal)
-      documents.service.ts  tasks.service.ts  reports.service.ts  masters.service.ts  jobs.service.ts  lookups.service.ts
+      documents.service.ts  tasks.service.ts  reports.service.ts  masters.service.ts  lookups.service.ts
     types/sbpgi/                           # ★ DTO ตาม §8
     hooks/sbpgi/                           # ★ react-query hook ต่อ endpoint (query keys §6)
     lib/sbpgi/constants.ts                 # ★ ค่าคงที่ธุรกิจ §7 (สถานะ/section/วงเงิน/ext)
@@ -142,17 +142,15 @@ Convention การตั้งชื่อ (ตาม repo เดิม):
 
 | Route (ใต้ portal `sbpm`) | หน้า prototype | Page | สิทธิ์ (role อ้างอิง) | Endpoints หลัก |
 |---|---|---|---|---|
-| `/sbpgi/documents/waiting` ★ | k2-list-waiting.html | `documents/waiting/page.tsx` — **หน้าแรกของโมดูล** (ยกเลิกหน้า Overview 2026-08-06) | ทุก role | `GET /tasks` · `GET /dashboard/summary` (stat cards) |
+| `/sbpgi/documents/waiting` ★ | k2-list-waiting.html | `documents/waiting/page.tsx` — **หน้าแรกของโมดูล** (ยกเลิกหน้า Overview 2026-08-06) | ทุก role | `GET /tasks` (ไม่มี stat cards แล้ว) |
 | `/sbgpi/documents/related` | k2-list-related.html | `documents/related/page.tsx` | ทุก role | `GET /documents` (ปี required) |
 | `/sbpgi/documents/create` | k2-create.html | `documents/create/page.tsx` — **หน้าอธิบายกระบวนการ ไม่มีฟอร์ม** (2026-08-06 · ต้นทางสร้างที่ FS แล้วรอ SBP Statement ~1 วัน) | ตามสิทธิ์เมนู | — (ไม่เรียก API) |
 | `/sbpgi/documents/[year]/[running]` | k2-document.html | `documents/[year]/[running]/page.tsx` | ตาม role/section | `GET/PUT /documents/{docNo}` + ลูก ๆ |
 | `/sbpgi/reports/income-audit` | k2-report.html | `reports/income-audit/page.tsx` | 01/04/06 | `GET /reports/status-summary` (+`/export`) · `GET /store/all-regions` (ระบบ SBP เดิม) (checkbox ภาคอัตโนมัติ) |
 | `/sbpgi/masters/factors` | k2-factors.html | `masters/factors/page.tsx` | 01/03 | `/factors` CRUD |
-| `/sbpgi/admin/system-config` | system-config.html | `admin/system-config/page.tsx` | 01 | `/configs` CRUD |
-| `/sbpgi/admin/email-templates` | email-template.html | `admin/email-templates/page.tsx` | 01 | `/email-templates` |
-| `/sbpgi/admin/batch-jobs` | job-batch.html | `admin/batch-jobs/page.tsx` | 01 | `/jobs` + params/enabled/run/runs |
 
 หมายเหตุ route:
+- **ไม่มีกลุ่ม `/admin/*` แล้ว (2026-08-06):** `system-config.html` (ตั้งค่าระบบ Global Config) และ `email-template.html` (Email Template) **ถูกลบทั้งฟีเจอร์** — ค่ากำหนดกลางและ template อีเมลบริหารจัดการที่ระบบ SBP เดิม (`mas_param` / `email_template`) · `job-batch.html` **ย้ายไปกลุ่มเมนู Flow ("Flow Batch Job") และเหลือแค่ Flowchart + Database ที่ใช้** — batch job ยังรันปกติแต่พารามิเตอร์/ตารางเวลากำหนดใน backend config
 - **หน้า `k2-operators.html` / `k2-permissions.html` ไม่พอร์ต** (ตัดสินใจ 2026-08-05) — กำหนดผู้ปฏิบัติงานและสิทธิ์เมนูใช้ระบบ SBP เดิม (auth-backend: groups/menus/permissions ต่อ URL · จัดการผ่านหน้า `/setting/manage-user-rights` ที่มีอยู่แล้ว)
 - **หน้า Overview และหน้าข้อมูลผิดปกติ/แจกงานถูกยกเลิก** (2026-08-06) — หน้าแรกของโมดูลคือ `documents/waiting` · ข้อมูลผิดปกติเหลือเป็นแถวแดง + ตัวกรอง "ยอดขายไม่ครบ 60 วัน" ในหน้ารายการ
 - `docNo` มี `/` ข้างใน (`2026/00123`) → route เป็น `[year]/[running]` แล้วประกอบเป็น docNo ใน page (`${year}/${running}`) — ห้าม encode `/` เป็น `%2F`
@@ -266,7 +264,7 @@ export function RequirePermission({ children }: { children: React.ReactNode }) {
 - pagination: ส่ง `?page&size` รับ `{page,size,total,items}` → ผูกกับ `<Pager>`
 - วันที่จาก API = ISO + ค.ศ. → แปลงแสดง **พ.ศ.** ที่ `formatDateThai()` จุดเดียว
 
-### 6.1 `shared/api/query-keys.ts` (factory ครบ 9 กลุ่มตาม api.md + ชุด auth ของระบบเดิม)
+### 6.1 `shared/api/query-keys.ts` (factory ครบ 6 กลุ่มตาม api.md + ชุด auth ของระบบเดิม)
 ```ts
 export const authKeys = {                 // เส้นของระบบเดิมผ่าน BFF (ไม่ใช่ SBPGI)
   profile: ['auth', 'profile'] as const,          // GET /users/current
@@ -295,24 +293,10 @@ export const masterKeys = {
   auditLogs: (table: string) => ['masters', 'audit-logs', table] as const,
   // operators/employees/roles/menus/menuPermissions ตัดออก — ใช้ระบบ SBP เดิม (2026-08-05)
 };
-export const configKeys = {
-  all: ['configs'] as const,
-  detail: (key: string) => ['configs', key] as const,
-};
-export const emailKeys = {
-  all: ['email-templates'] as const,
-  detail: (code: string) => ['email-templates', code] as const,
-};
+// configKeys / emailKeys / jobKeys ตัดออก 2026-08-06 — ลบหน้า Global Config + Email Template ทั้งฟีเจอร์
+// และตัด API ของ Batch Job (ไม่มี endpoint /configs · /email-templates · /jobs แล้ว)
 export const reportKeys = {
   statusSummary: (params: Record<string, unknown>) => ['reports', 'status-summary', params] as const,
-};
-export const jobKeys = {
-  all: ['jobs'] as const,
-  detail: (jobNo: string) => ['jobs', jobNo] as const,
-  runs: (jobNo: string) => ['jobs', jobNo, 'runs'] as const,
-};
-export const dashboardKeys = {
-  summary: ['dashboard', 'summary'] as const,
 };
 ```
 กติกา: **ห้าม**พิมพ์ array key มือเปล่าในไฟล์ hook — import จาก factory เท่านั้น (grep `useQuery({ queryKey: ['` ต้องไม่เจอ)
@@ -380,7 +364,8 @@ export const MSG = {
   NO_DECISION: 'ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ',
   EMPTY_TABLE: 'ไม่พบรายการตามเงื่อนไขที่กรอง',
   FLAG_RED_NOTE: 'แดง = ยอดขายไม่ครบ 60 วัน',
-  AUDIT_REASON_LABEL: 'เหตุผลการแก้ไข (บันทึกลง audit_logs)',
+  // AUDIT_REASON_LABEL — **ตัดออก 2026-08-07** พร้อมตาราง `audit_logs` (22 → 21 ตาราง) · mutation master ไม่ต้องส่ง `reason` อีกต่อไป
+  // (การเอา audit ของ master กลับมาโดยใช้ของระบบเดิม `user_log`/`user_audit_events`/`common_log` ยังไม่ตัดสิน — DP-12 ใน SBP/SBPGI-vs-existing-system.md)
   /* ข้อความ popup อื่น ๆ คัดจากหน้า html เดิม + RDM-SRS-…-รายการหน้าจอ.md ตอน implement หน้านั้น */
 } as const;
 ```
@@ -529,14 +514,14 @@ interface EntityField {
   type: 'text'|'email'|'select'|'textarea'|'date'|'month'|'number'|'readonly';
   options?: { value: string; label: string }[];
   required?: boolean;
-  visibleWhen?: (values: Record<string, unknown>) => boolean;  // ช่องโผล่ตามค่า field อื่น (เช่น หน่วยตาม value_type ใน system-config)
+  visibleWhen?: (values: Record<string, unknown>) => boolean;  // ช่องโผล่ตามค่า field อื่น (เช่น ช่องที่ขึ้นกับค่าที่เลือกในฟอร์ม master)
   lockedOnEdit?: boolean;                            // เช่น factor_code แก้ไม่ได้ตอน edit
 }
 interface EntityModalProps {
   mode: 'view'|'edit'|'add';
   title: string; fields: EntityField[];
   initialValues?: Record<string, unknown>;
-  requireReason?: boolean;   // mode edit/add ของ master = true → บังคับช่อง MSG.AUDIT_REASON_LABEL
+  // requireReason — **ตัดออก 2026-08-07** พร้อม `audit_logs` · master mutation ไม่มีช่องเหตุผลแล้ว (DP-12 ยังไม่ตัดสินว่าจะเอา audit กลับมา)
   onSubmit: (values: Record<string, unknown>) => Promise<void>;
   onClose: () => void;
 }
@@ -595,9 +580,7 @@ export const MODULES: ModuleEntry[] = [
   { key: 'k2-report',      label: 'รายงานสรุปสถานะ',       route: '/reports/income-audit',  icon: 'statement', group: 'ระบบประกันรายได้ (SBP Mall)' },
   // k2-operators (กำหนดผู้ปฏิบัติงาน) และ k2-permissions (สิทธิ์การเข้าถึงเมนู) ตัดออก — ใช้ระบบ SBP เดิม (/setting/manage-user-rights · ตัดสินใจ 2026-08-05)
   { key: 'k2-factors',     label: 'กำหนดปัจจัยภายนอก',     route: '/masters/factors',       icon: 'db',        group: 'ระบบประกันรายได้ (SBP Mall)' },
-  { key: 'system-config',  label: 'ตั้งค่าระบบ (Config)',  route: '/admin/system-config',   icon: 'cog',       group: 'ระบบประกันรายได้ (SBP Mall)' },
-  { key: 'job-batch',      label: 'Batch Job',             route: '/admin/batch-jobs',      icon: 'clock',     group: 'ระบบประกันรายได้ (SBP Mall)' },
-  { key: 'email-template',     label: 'Email Template',        route: '/admin/email-templates', icon: 'mail',      group: 'ระบบประกันรายได้ (SBP Mall)' },
+  // system-config (Global Config) และ email-template ลบทั้งฟีเจอร์ · job-batch ย้ายไปกลุ่ม Flow — ไม่มีกลุ่ม Admin ในเมนู (2026-08-06)
 ];
 ```
 
@@ -612,13 +595,9 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 - หลังกลับมา `<RequireAuth>` bootstrap: `GET /users/current` + `GET /menus` + `GET /groups/current-user/permissions` → เก็บใน stores (§5.1) → เข้าแอป
 - ระหว่างโหลด/refresh แสดง `<PageSkeleton>` — 401/refresh fail → redirect BFF login (ไม่ crash)
 
-### 11.2 `/` — HomePage (index.html)
-- โหลด: `GET /dashboard/summary` (`dashboardKeys.summary` — BE cache 5 นาที)
-- S1 Hero: `สวัสดี, คุณ<ชื่อจาก GET /users/current>` + ปุ่ม `งานรอท่านดำเนินการ` (→`/documents/waiting`) · `เอกสารร้านถูกกระทบ`
-- S2 StatGrid 4 ใบ: เอกสารรอท่านดำเนินการ · สาขาประกันรายได้เดือนนี้ · ยอดชดเชยเดือนนี้ (ล้านบาท) · ยอดขายไม่ครบ 60 วัน
-- ~~S3 กราฟหน้าแรก~~ **ไม่มีแล้ว** — ยกเลิกหน้า Overview และถอด stat cards ทั้งหมด (2026-08-06)
-- S4 `<ModuleGrid>` การ์ดทางลัด (card abnormal ซ่อนตาม flag) · S5 `<ActivityFeed>` + `<QuickLinks>`
-- ไม่มี mutation
+### 11.2 `/` — **ไม่มี HomePage/Overview แล้ว (2026-08-06)**
+- `index.html` เหลือเป็น redirect stub เท่านั้น — **landing page คือ `เอกสาร → รอดำเนินการ` (`/documents/waiting`)**
+- `GET /dashboard/summary` และ `dashboardKeys` **ตัดออกถาวร** พร้อมกับการถอด stat cards ทั้งหมด · route `/` ให้ `redirect('/sbpgi/documents/waiting')` ฝั่ง Next.js
 
 ### 11.3 `/documents/waiting` + `/documents/related` — DocListPage (1 component 2 mode)
 - mode `waiting` → `GET /tasks` (`taskKeys.list(params)`) — inbox เฉพาะสถานะของ role ตัวเอง · mode `related` → `GET /documents` (`documentKeys.list`)
@@ -642,6 +621,7 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 
 ### 11.5 `/documents/:docNo` — DocumentPage ⭐ (k2-document.html — ซับซ้อนสุด)
 - โหลด `GET /documents/{docNo}` (`documentKeys.detail`) ครั้งเดียว → ได้ `myRoleView` + `editableSections` + `resultOptions` — **render 12 ส่วนตามธงจาก BE ไม่เดา role เอง** (แทนกลไก `data-editrole`/`data-roleonly`/`.edit-only` ของ prototype)
+  > ⚠️ **ข้อค้างตัดสินใจ — ที่มาของธง `editableSections` ยังไม่สรุป:** workflow engine `@srm/glb-workflow` มีตาราง **`workflow_part` + `workflow_part_display`** (schema `sps_store`) ที่คุม **READ/WRITE รายส่วนของหน้าจอต่อ state อยู่แล้ว** (`workflow_part_display` มี 12 ส่วน) ซึ่ง**ทับซ้อน**กับกลไกสิทธิ์แก้ไขที่ prototype ทำเอง (`data-editrole`/`.edit-only`) และกับธงที่ SBPGI จะคำนวณเอง · **ยังไม่ตัดสิน**ว่าจะให้ธงมาจาก engine หรือ SBPGI คำนวณเอง — **ยังไม่เปลี่ยนดีไซน์ ทำตามสเปกนี้ไปก่อน** · ข้อมูลประกอบ: wrapper ของระบบเดิม register entity แค่ 10 ตัว ยังไม่รวม `WorkflowPart`/`WorkflowPartDisplay` จึงใช้ทันทีไม่ได้ · ดู `SBP/SBPGI-vs-existing-system.md` §3.1 + หัวข้อ 4 (Decision Points)
 - S2 head: `เอกสารข้อมูลร้านถูกกระทบ <docNo>` + `<StatusPill>` + ปุ่ม `พิมพ์` (window.print) · `<WorkflowStepper>` 5 ขั้น `06›08›01›02›03` + pill `ขั้นตอนที่ N/5`
 - S3 `<DocMetaGrid>`: รอบ/ครั้งที่/เดือน, สถานะ, เลขที่, วันที่สร้าง (พ.ศ.), รหัส/ชื่อร้าน, ภาค, ประเภท, เจ้าของ, นิติบุคคล, วันที่โอน, ผู้ดำเนินการ, ยอดขายลดลง %, ชดเชยล่าสุด, ไฟล์แนบ + ปุ่ม `ข้อมูลยอดขายเพิ่มเติม`
 - ~~S4 กราฟยอดขาย~~ **ถอดออก 2026-08-06** — หน้าเอกสารไม่มีกราฟแล้ว · `GET /documents/{docNo}/sales` (`documentKeys.sales`) คงไว้เป็นข้อมูลประกอบ และมีปุ่ม `ข้อมูลยอดขายเพิ่มเติม` ลิงก์ออก QlikView BI
@@ -668,7 +648,7 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 - ปุ่ม `Export Excel` → `GET /reports/status-summary/export` (query เดียวกับการค้นหา) → ดาวน์โหลด `.xlsx` 14 คอลัมน์
 
 ### 11.7 ~~`/masters/operators` — OperatorsPage~~ **ตัดออก — ใช้ระบบ SBP เดิม (ตัดสินใจ 2026-08-05)**
-- ไม่พอร์ต `k2-operators.html` (SRS 3.1.8) — กำหนดผู้ปฏิบัติงานทำผ่าน group + scope ของ auth-backend ระบบเดิม (หน้า `/setting/manage-user-rights`) · ผูกผู้อนุมัติรายเอกสารด้วย prepared approvers ของ workflow engine เดิม (`@srm/glb-workflow`)
+- ไม่พอร์ต `k2-operators.html` (SRS 3.1.8) — กำหนดผู้ปฏิบัติงานทำผ่าน group + scope ของ auth-backend ระบบเดิม (หน้า `/setting/manage-user-rights`) · ผูกผู้อนุมัติรายเอกสารด้วย prepared approvers ของ workflow engine เดิม (`@srm/glb-workflow` — **13 ตาราง บน schema `sps_store`** · ชื่อ function ที่ใช้เรียก **ยังไม่ยืนยัน เอกสาร 3 ชุดขัดกัน** ดู `plan-be.md` §Alignment)
 - API ที่เคยอ้าง (`/operators*` · `GET /employees/search`) ถูกตัดจาก api.md แล้ว — ค้นพนักงานใช้ employee backend เดิม
 - ข้อจำกัดจาก HR Connect (SDD GI): ผู้รักษาการ (acting) ตั้งเป็นผู้อนุมัติไม่ได้ (ระบบยึดตำแหน่งจริง) · พนักงานลาออกยังต้องเปิด SR แก้ชื่อผู้ดำเนินการ
 
@@ -682,24 +662,10 @@ Sidebar render: group ตามลำดับ first-appearance · **filter ร�
 - 8 role ตาม SRS (00 Default … 10 UserViewer) map เป็น **group** ของระบบเดิมตอนตั้งค่า — ไม่มีตาราง/หน้า RBAC ใน SBPGI
 - ฝั่ง SBPGI FE เหลือแค่**ผู้บริโภคสิทธิ์**: `GET /menus` + `GET /groups/current-user/permissions` (ดู §5)
 
-### 11.10 `/admin/system-config` — SystemConfigPage (system-config.html)
-- `GET /configs` (`configKeys.all`) · `<DonutChart>` สัดส่วนตามหมวด · ตาราง `☑ | Config Key | หมวดหมู่ | ค่า (Value) | ชนิดข้อมูล | หน่วย | คำอธิบาย | แก้ไขได้ | Action` + filter หมวด + ค้นหา
-- แถว `is_editable=false` → ไอคอน lock, edit/del disabled (BE ปฏิเสธซ้ำ)
-- `<EntityModal>` schema config — **validate ค่า ตาม `value_type`** (number/boolean/string/json — zod refine) ก่อน `PUT /configs/{key}` · `POST /configs` เพิ่ม · ปุ่ม `Invalidate Cache`
-- invalidate `configKeys.all` + auditLogs('system_configs')
-
-### 11.11 `/admin/email-templates` — EmailTemplatesPage (email-template.html, EM-01–08)
-- `GET /email-templates` (`emailKeys.all`) · ตาราง map (คลิกแถวเลื่อนไป card) + Tabs 3 กลุ่ม (Workflow EM-01–03 / เตือนงานค้าง EM-04–05 / Batch EM-06–08)
-- `<EmailTemplateCard>` ×8: meta grid + `<MailPreview>` (From/To/Cc/Subject + body) — **From/To/Cc read-only ตาม status_email_rules** · EM-01 มี selector 6 สถานะ live-rewrite preview
-- Editor: `<RichTextToolbar>` + `<MergeVariableChips>` ต่อ template (subject แทรก text, body แทรก atom) — ห้าม execCommand ตรง, ห้ามเพิ่ม lib ใหญ่เกินจำเป็น (contentEditable + Selection API เขียนเอง)
-- mutations: `PUT /email-templates/{code}` · `POST /email-templates/{code}/reset` · `POST /email-templates/reset-all` (confirm ก่อน) → invalidate `emailKeys` + auditLogs('email_templates')
-
-### 11.12 `/admin/batch-jobs` — BatchJobsPage (job-batch.html, Jobs 1–10 + 8b)
-- `GET /jobs` (`jobKeys.all`) · Stat 4 ใบ + Donut/Bar/Spark + `<PhaseStrip>` เฟส A–E (chip คลิก→select job)
-- `<JobTable>`: `Job | ชื่องาน / Main Class | เฟส | ประเภท | กำหนดการ (Cron) | รอบล่าสุด | ผลล่าสุด | รอบถัดไป | สถานะ | (action)` — คลิก → `<JobDetailPanel>`
-- DetailPanel: toggle เปิด/ปิด → `PUT /jobs/{jobNo}/enabled` · Tabs 4: พารามิเตอร์ (แก้เฉพาะ editable → `PUT /jobs/{jobNo}/params`) / Flowchart SVG / Database ที่ใช้ / ประวัติการรัน (`GET /jobs/{jobNo}/runs` — เรียงล่าสุดก่อน + ปุ่ม `ดู Log`)
-- run bar: เลือกเดือน + `สั่งรันทันที` → `POST /jobs/{jobNo}/run` — BE guard กันรันซ้อน → error แสดง message ตรง ๆ ไม่ crash
-- invalidate `jobKeys` หลังทุก mutation + `<AuditHistoryTable>` (job_configs)
+### 11.10–11.12 กลุ่ม `/admin/*` — **ตัดออกทั้งหมด (2026-08-06)**
+- `/admin/system-config` (SystemConfigPage) และ `/admin/email-templates` (EmailTemplatesPage) **ลบทั้งฟีเจอร์** พร้อม endpoint 10 เส้น — ค่ากำหนดกลางอยู่ใน `mas_param` และ template อีเมลอยู่ใน `email_template` ของระบบ SBP เดิม ซึ่งมีหน้าจอบริหารจัดการของตัวเองแล้ว · FE ของ SBPGI ไม่มีหน้าจอทั้งสอง
+- `/admin/batch-jobs` (BatchJobsPage) **ไม่ทำ** พร้อมตัด endpoint กลุ่ม Batch Job Admin 6 เส้น และตาราง `job_configs`/`job_run_histories` — หน้า `job-batch.html` ย้ายไปกลุ่มเมนู **Flow** ("Flow Batch Job") และเหลือเฉพาะ **Flowchart การทำงาน + Database ที่ใช้** (ตัด 2 tab ควบคุมออก) — เป็นเอกสารอ้างอิงผู้พัฒนา ไม่มีงาน FE/BE ให้ทำใน phase นี้ · batch job ทั้ง 11 entry point ยังรันตามปกติ แต่พารามิเตอร์/ตารางเวลากำหนดใน **backend config** (config file/env ฝั่ง BE) และผลการรันเก็บที่ application log · ถ้าทำ 2 tab ควบคุมใน phase ถัดไปให้กลับมาเปิดทั้ง 3 ส่วน (tab + endpoint + ตาราง) พร้อมกัน
+- อีเมลตามสถานะ **ยังส่งเหมือนเดิม** — service ฝั่ง BE อ่าน `email_template` แล้วส่งผ่าน `@gosoft-sbp/email-lib` (log ลง `email_sent`) โดยไม่ต้องมีหน้าจอใน SBPGI
 
 ### 11.13 `/documents/abnormal` — AbnormalListPage (k2-list-abnormal.html — **ปิด flag**)
 - สร้างครบแต่เปิด/ปิดด้วย `isFeatureEnabled('abnormal')` จุดเดียว (route + เมนู + card หน้าแรก) — flag ปิดแล้วเข้า URL ตรง → redirect `/`

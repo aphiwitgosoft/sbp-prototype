@@ -36,7 +36,7 @@ Version 1.0
 - รายละเอียดเชิงออกแบบต้องไม่เพิ่ม ลด หรือเปลี่ยน requirement โดยไม่มีการอนุมัติ change request
 - รายการที่ระบุ OPEN ยังไม่ถือเป็นขอบเขตที่อนุมัติจนกว่าจะมีข้อยุติและปรับ baseline
 - ข้อมูลตัวอย่างและพฤติกรรม prototype ใช้ยืนยัน UX เท่านั้น ต้องไม่ถูกนำไปใช้เป็นข้อมูล Production
-- ขอบเขต API ใน SRS ประกอบด้วย 44 endpoints / 9 กลุ่ม โดยบริการยืนยันตัวตนเป็นบริการ platform กลาง
+- ขอบเขต API ใน SRS ประกอบด้วย 30 endpoints / 6 กลุ่ม โดยบริการยืนยันตัวตนเป็นบริการ platform กลาง
 
 ## 1.4 How to read this document
 
@@ -167,11 +167,11 @@ Version 1.0
 | REQ-SEC-001 | ระบบต้องไม่เก็บ password hash หรือ credential ของ platform identity ภายใน user account ของ SBPGI | schema/secret scan |
 | REQ-SEC-002 | การเชื่อมต่อภายนอกต้องอ่าน secret จาก Secret Manager และบังคับ TLS/host verification | deployment/security evidence |
 | REQ-FIL-001 | ไฟล์แนบต้องไม่เกิน 5 MB ผ่าน type/AV scan และดาวน์โหลดได้เฉพาะผู้มีสิทธิ์เมื่อสถานะ CLEAN | upload/download security test |
-| REQ-RPT-001 | รายงานหน้าจอและ CSV ต้องใช้ filter/dataset เดียวกันและมีข้อมูลครบ 19 คอลัมน์ | preview/export reconciliation |
+| REQ-RPT-001 | รายงานหน้าจอและไฟล์ Excel ต้องใช้ filter/dataset เดียวกันและมีข้อมูลครบ 14 คอลัมน์ (SDD สไลด์ 60) | preview/export reconciliation |
 | REQ-OPS-001 | Jobs 1-10 และ 8b ต้องรองรับ rerun โดยไม่สร้างข้อมูลซ้ำและต้องรายงาน input/success/reject/skipped | rerun/reconcile evidence |
 | REQ-SCR-001 | ระบบต้องมีหน้าจอ committed SCR-01 ถึง SCR-08 ตาม requirement รายหน้าจอ | screen/UAT traceability |
-| SYS-API-001 | ระบบต้องมี API capability 44 endpoints ใน 9 กลุ่มตาม catalog | OpenAPI/contract coverage |
-| SYS-DAT-001 | ระบบต้องมี logical data model 24 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ) | migration/schema test |
+| SYS-API-001 | ระบบต้องมี API capability 30 endpoints ใน 6 กลุ่มตาม catalog | OpenAPI/contract coverage |
+| SYS-DAT-001 | ระบบต้องมี logical data model 21 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ) | migration/schema test |
 | SYS-NFR-001 | ระบบต้องมี correlation log, metrics, alert และ audit ที่เชื่อม request/job/interface กับผลธุรกิจได้ | observability trace |
 
 
@@ -205,7 +205,7 @@ Version 1.0
 
 | Step | Process | Requirement |
 | --- | --- | --- |
-| A1 | นำเข้าคะแนน QSSI รายเดือน | Job 1 รับ 4 ไฟล์ผ่าน SFTP, dedup และบันทึก fcs_qssi_scores |
+| A1 | นำเข้าคะแนน QSSI รายเดือน | Job 1 รับ 4 ไฟล์ผ่าน SFTP, dedup และบันทึก fcs_qssi_score |
 | A2 | นำเข้าคู่ร้านและคู่แข่ง | Jobs 2-3 อ่าน ALLMAP ทุกวันที่ 7 และตั้ง verify_status ตามกฎ DENY/ON_PROCESS |
 | A3 | ขอยอดขายรายวัน | Job 4 สร้าง AMS06001O วันที่ 7-16 เวลา 16:00 |
 | A4 | รับยอดขายและคำนวณ | Job 5 รับ AMS06001I, คำนวณ 4x15 วัน, outlier \|sales_diff\| >= 50 |
@@ -214,7 +214,7 @@ Version 1.0
 | C1 | SBP DSA ตรวจสอบ | Section 06 และ 08 ตรวจข้อมูลและคำนวณเงินชดเชย |
 | C2 | ฝ่ายส่งเสริมธุรกิจปรับข้อมูล | Section 01 แก้ร้านเปิดใหม่ คู่แข่ง ปัจจัย และตรวจ % ชดเชยรวม 100% |
 | C3 | GM/AVP อนุมัติ | Section 02; ยอด > 100,000 ผ่าน Section 03 แล้วจบ, ยอด <= 100,000 จบที่ GM |
-| C4 | บัญชีตรวจสอบนอก workflow | เมื่อเอกสารเสร็จสิ้น ทีมบัญชีใช้รายงาน SBP Mall และ Export CSV to Batch เพื่อกระทบ SAP |
+| C4 | บัญชีตรวจสอบนอก workflow | เมื่อเอกสารเสร็จสิ้น ทีมบัญชีใช้รายงาน SBP Mall และ Export Excel เพื่อกระทบ SAP |
 | D1 | ส่ง Statement | Job 6 ส่ง FRBC0001 ไป STA เวลา 17:00 ทุกวัน |
 | D2 | ติดตาม ACK | STA callback อัปเดต ACK และ Job 10 เป็น safety net เมื่อค้าง >= 1 วัน |
 
@@ -252,7 +252,7 @@ Version 1.0
 | Connection | Legacy | Target |
 | --- | --- | --- |
 | ส่งข้อมูลชดเชย/ร้านใหม่/คู่แข่ง เข้าระบบเอกสาร | ไฟล์ BPM06001O (48 ฟิลด์) / BPM06002O / BPM06003O ผ่าน SFTP ไป BPM (Jobs 7, 8, 9) | Document Service เขียน DB ตรง (compensation_documents / document_new_stores / document_competitors) - ตัดไฟล์และ SFTP ภายในทิ้ง |
-| เปิด Workflow | Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded - ความเสี่ยง P0) | @srm/glb-workflow ของระบบ SBP เดิม (initializeWorkflow -> addPreparedApprover) เรียกผ่าน POST /workflows/instances · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ |
+| เปิด Workflow | Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded - ความเสี่ยง P0) | @srm/glb-workflow ของระบบ SBP เดิม (13 ตาราง · schema sps_store ) เรียกผ่าน POST /workflows/instances · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ · ชื่อ function (initializeWorkflow -> addPreparedApprover) ยังไม่ยืนยัน - เอกสาร 3 ชุดขัดกัน · referenceId ยังไม่ตัดสิน (DP-1) |
 | รับ ACK ผลประมวลจาก STA | รอ STA อัปเดต return_code ใน tracking · Job 10 ตรวจทุกเช้า | เพิ่ม POST /interfaces/sta/ack (API key) · Job 10 คงไว้เป็น safety net |
 | ตาราง tracking interface | FGI_CONFIRM_RECEIVE_DATA - transaction_key เป็น polymorphic FK + บั๊ก purge (E20) | interface_transactions - typed FK ต่อประเภทข้อมูล + งาน purge ทำงานจริง |
 | อีเมลแจ้งเตือน | แต่ละ job ต่อ SMTP เอง · encoding TIS-620 · ผู้รับ hardcoded บางจุด (template 34) | Notification Service กลาง · UTF-8 · ผู้รับตาม status_email_rules + config ต่อ job |
@@ -266,7 +266,7 @@ Version 1.0
 - กฎ candidate selection ต้องใช้รัศมีไม่เกิน 1 กิโลเมตรสำหรับกรุงเทพฯ/ปริมณฑล และไม่เกิน 2 กิโลเมตรสำหรับต่างจังหวัด โดยรวมค่าขอบเขตเท่ากับเกณฑ์
 - รายการที่ข้อมูลยอดขายไม่ครบ 60 วันต้องแสดงเป็นข้อมูลผิดปกติและแถวสีแดง
 - ระบบต้องกันเปิดงาน/เอกสารซ้ำต่อ impact process/document
-- บัญชีตรวจสอบยอดผ่านรายงาน SBP Mall และ Export CSV to Batch นอก workflow
+- บัญชีตรวจสอบยอดผ่านรายงาน SBP Mall และ Export Excel นอก workflow
 - งานเตือนรายสัปดาห์ทำงานวันจันทร์ 10:00 และ escalation งานค้าง 30/45/60 วันต้องอ่านค่าจาก config
 - การเปลี่ยนกฎธุรกิจ เช่น -10, 50, 60 วัน และ 100,000 บาท ต้องผ่าน Business sign-off
 - ทุก action ต้องบันทึก consideration_logs, ผู้กระทำ, เวลา, สถานะก่อน/หลัง และ correlation id
@@ -333,19 +333,13 @@ Version 1.0
 > SRS ส่วนนี้อธิบายงาน Batch Job ในระดับที่ผู้ใช้ธุรกิจและผู้ดูแลระบบต้องเข้าใจ: แต่ละ job ทำเพื่ออะไร รับข้อมูลหรือเงื่อนไขอะไร ระบบทำอะไรโดยสรุป และผลลัพธ์ที่ต้องเห็นคืออะไร ไม่ลงรายละเอียด coding, SQL, class/script หรือ transaction ภายใน
 
 
-### 3.3.1 Batch console
+### 3.3.1 รายการงาน Batch
 
-![รูปที่ 11: Batch Job Console - 11 jobs - ส่วนที่ 1/3](job-batch-01.png)
-
-![รูปที่ 12: Batch Job Console - 11 jobs - ส่วนที่ 2/3](job-batch-02.png)
-
-![รูปที่ 13: Batch Job Console - 11 jobs - ส่วนที่ 3/3](job-batch-03.png)
-
-หน้า Batch Job Console สำหรับ Admin แสดง pipeline A-E, รายการ 11 entry points, สถานะรอบล่าสุด/ถัดไป, เปิดปิดงาน, พารามิเตอร์ที่อนุญาตให้แก้, manual run, ลำดับงาน และ run history
+> ตัดสินใจ 6 สิงหาคม 2569: หน้าจอ Batch Job ย้ายไปอยู่กลุ่มเมนู Flow และเหลือเฉพาะ ลำดับการทำงาน (Flowchart) กับ ตารางฐานข้อมูลที่ใช้ เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม งาน Batch ทั้ง 11 รายการยังทำงานตามปกติ แต่กำหนดตารางเวลาและพารามิเตอร์ที่ backend config (config file/env ของฝั่ง Backend) และบันทึกผลการรันไว้ที่ application log แทนตารางในฐานข้อมูล
 
 | Job | Name | Thai name | Phase | Schedule | Output |
 | --- | --- | --- | --- | --- | --- |
-| 1 | ImportQSSI | นำเข้าคะแนน QSSI รายเดือน | A | Monthly (รายเดือน (ต้นเดือน)) | fcs_qssi_scores |
+| 1 | ImportQSSI | นำเข้าคะแนน QSSI รายเดือน | A | Monthly (รายเดือน (ต้นเดือน)) | fcs_qssi_score |
 | 2 | ImportImpactStore | นำเข้าคู่ร้านถูกกระทบจาก ALLMAP | A | 0 07 7 * * (ทุกวันที่ 7 เวลา 07:00) | fgi_impact_stores |
 | 3 | ImportImpactCompetitor | นำเข้าร้านคู่แข่งจาก ALLMAP | A | 0 07 7 * * (ทุกวันที่ 7 เวลา 07:00) | fgi_impact_competitors |
 | 4 | PrepareImpactStoreToIAS | เตรียมและส่งคำขอยอดขายไป IAS | B | 0 16 7-16 * * (วันที่ 7-16 เวลา 16:00) | AMS06001O (UTF-8) |
@@ -360,12 +354,11 @@ Version 1.0
 
 ### 3.3.2 Common controls
 
-- สิทธิ์จัดการ Batch Job เป็น Admin 01 เท่านั้น
-- Manual run ต้องระบุงวดข้อมูลและสร้าง run_id; API ตอบ 202 Accepted
+- การเปิด/ปิดงานและการแก้พารามิเตอร์ทำที่ backend config แล้ว deploy เท่านั้น ไม่มีหน้าจอและไม่มี API
+- Manual run/rerun สั่งผ่าน CLI หรือ runbook ของทีม Operations โดยระบุงวดข้อมูล
 - ห้ามรัน job เดียวกันซ้อน และต้องป้องกัน shared temp resource ของ Job 1
-- แก้ไขได้เฉพาะ parameter ที่ระบุ editable; business constants ต้องถูก lock
-- ทุกการเปิด/ปิด แก้ parameter และ manual run ต้องบันทึก audit
-- run history ต้องเก็บ start/end, status, row count, file, error, correlation id และผู้สั่งรัน
+- business constants ต้องถูก lock ไว้ใน config ไม่ให้เปลี่ยนโดยไม่ผ่านการ review
+- ทุกรอบการรันต้องบันทึก application log แบบมีโครงสร้าง เก็บ start/end, status, row count, file, error, correlation id และผู้สั่งรัน
 - การ re-run ต้องปฏิบัติตาม runbook ของแต่ละ job โดยตรวจ DB, tracking, backup และปลายทางก่อน
 
 ### 3.3.3 Job business requirement catalog
@@ -379,7 +372,7 @@ Version 1.0
 | รับข้อมูล/เงื่อนไข | ไฟล์คะแนน QSSI รายเดือน 4 ชุดจาก SFTP, งวดเดือนที่ต้องประมวลผล, และหมวดคะแนนที่ระบบกำหนด |
 | ระบบทำอะไรโดยสรุป | ระบบอ่านไฟล์ ตรวจรูปแบบและงวดข้อมูล คัดรายการล่าสุดต่อร้าน/หมวดคะแนน แล้วปรับปรุงคะแนน QSSI ของงวดนั้นให้เป็นชุดล่าสุด |
 | ผลลัพธ์ที่ต้องได้ | คะแนน QSSI ของร้านถูกบันทึกพร้อมใช้งานสำหรับงานส่ง Statement และรายงานผลการประมวลผลแสดงจำนวนไฟล์/จำนวนรายการ/สถานะสำเร็จหรือผิดพลาด |
-| ผู้ใช้ติดตามได้จาก | Admin ติดตามได้จาก Batch Job Console และประวัติการรัน; ผู้ใช้ธุรกิจเห็นผลผ่านข้อมูลประกอบเอกสาร/รายงาน |
+| ผู้ใช้ติดตามได้จาก | ทีมผู้ดูแลระบบติดตามได้จาก application log; ผู้ใช้ธุรกิจเห็นผลผ่านข้อมูลประกอบเอกสาร/รายงาน |
 
 
 #### 3.3.3.2 Job 2 - นำเข้าคู่ร้านถูกกระทบจาก ALLMAP
@@ -434,7 +427,7 @@ Version 1.0
 | รับข้อมูล/เงื่อนไข | เอกสารหรือรายการชดเชยที่อนุมัติแล้ว, ข้อมูล QSSI ที่เกี่ยวข้อง, และสถานะรายการที่ต้องส่ง Statement |
 | ระบบทำอะไรโดยสรุป | ระบบคัดรายการที่พร้อมส่ง ตรวจเงื่อนไขสำคัญ สร้างข้อมูลส่งออกไป STA และบันทึก tracking เพื่อรอการตอบกลับ |
 | ผลลัพธ์ที่ต้องได้ | รายการชดเชยถูกส่งไป STA/Statement และระบบมีรายการติดตาม ACK สำหรับ reconcile |
-| ผู้ใช้ติดตามได้จาก | ทีมบัญชีและ Admin เห็นสถานะส่งออก/รอ ACK ผ่านรายงานและ Batch Job Console |
+| ผู้ใช้ติดตามได้จาก | ทีมบัญชีและผู้ดูแลระบบเห็นสถานะส่งออก/รอ ACK ผ่านรายงานและ API ติดตาม interface |
 
 
 #### 3.3.3.7 Job 7 - บันทึกข้อมูลคู่แข่งเข้าเอกสาร
@@ -506,12 +499,12 @@ Version 1.0
 
 ## 3.4 K2 Screen Requirements
 
-> Committed implementation scope ของหน้าจอ SBP Mall คือ 8 หน้าในตารางนี้ (+ Email Template และ Batch Job Console ในหัวข้อแยก) - ปรับตามการตัดสินใจ 2026-08-06: ตัดหน้า Overview/Dashboard ออก โดยหน้าแรกของระบบเปลี่ยนเป็นหน้าเอกสารรอดำเนินการ (SCR-02) และลบหน้าข้อมูลผิดปกติ/แจกงานถาวร (ข้อมูลผิดปกติเหลือเป็นธงสีแดงในแถวตาราง) · หน้ากำหนดผู้ปฏิบัติงานและสิทธิ์การเข้าถึงเมนูไม่อยู่ใน scope SBPGI - ใช้ระบบผู้ใช้/สิทธิ์ของระบบ SBP เดิม (ตัดสินใจ 2026-08-05)
+> Committed implementation scope ของหน้าจอ SBP Mall คือ 7 หน้าในตารางนี้ (หน้า Global Config และ Email Template ยกเลิกทั้งฟีเจอร์ · หน้า Batch Job ย้ายไปกลุ่มเมนู Flow เหลือเฉพาะ Flowchart และตารางฐานข้อมูลที่ใช้ · ตัดสินใจ 6 สิงหาคม 2569) - ปรับตามการตัดสินใจ 2026-08-06: ตัดหน้า Overview/Dashboard ออก โดยหน้าแรกของระบบเปลี่ยนเป็นหน้าเอกสารรอดำเนินการ (SCR-02) และลบหน้าข้อมูลผิดปกติ/แจกงานถาวร (ข้อมูลผิดปกติเหลือเป็นธงสีแดงในแถวตาราง) · หน้ากำหนดผู้ปฏิบัติงานและสิทธิ์การเข้าถึงเมนูไม่อยู่ใน scope SBPGI - ใช้ระบบผู้ใช้/สิทธิ์ของระบบ SBP เดิม (ตัดสินใจ 2026-08-05)
 
 
 ### SCR-01 สร้างเอกสาร
 
-![รูปที่ 14: สร้างเอกสาร](k2-create-01.png)
+![รูปที่ 11: สร้างเอกสาร](k2-create-01.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -531,9 +524,9 @@ Version 1.0
 
 ### SCR-02 เอกสารรอดำเนินการ
 
-![รูปที่ 15: เอกสารรอดำเนินการ - ส่วนที่ 1/2](k2-list-waiting-01.png)
+![รูปที่ 12: เอกสารรอดำเนินการ - ส่วนที่ 1/2](k2-list-waiting-01.png)
 
-![รูปที่ 16: เอกสารรอดำเนินการ - ส่วนที่ 2/2](k2-list-waiting-02.png)
+![รูปที่ 13: เอกสารรอดำเนินการ - ส่วนที่ 2/2](k2-list-waiting-02.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -567,7 +560,7 @@ Version 1.0
 
 ### SCR-03 เอกสารที่เกี่ยวข้อง
 
-![รูปที่ 17: เอกสารที่เกี่ยวข้อง](k2-list-related-01.png)
+![รูปที่ 14: เอกสารที่เกี่ยวข้อง](k2-list-related-01.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -601,11 +594,11 @@ Version 1.0
 
 ### SCR-04 เอกสารข้อมูลร้านถูกกระทบ
 
-![รูปที่ 18: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 1/3](k2-document-01.png)
+![รูปที่ 15: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 1/3](k2-document-01.png)
 
-![รูปที่ 19: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 2/3](k2-document-02.png)
+![รูปที่ 16: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 2/3](k2-document-02.png)
 
-![รูปที่ 20: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 3/3](k2-document-03.png)
+![รูปที่ 17: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 3/3](k2-document-03.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -632,7 +625,7 @@ Version 1.0
 
 #### Actions
 
-พิมพ์ · Copy Doc Link · ข้อมูลยอดขายเพิ่มเติม (QlikView BI) · Link To ALLMAP · รีเฟรช · คืนค่าก่อนแก้ไข · คำนวณเงินชดเชย · เพิ่ม · ล้างการเลือก · ลบที่เลือก · เพิ่มข้อมูล · ดาวน์โหลดทั้งหมด (.zip) · แนบเอกสาร · บันทึก · ส่งดำเนินการ · ยกเลิก · OK · ปิด · ดาวน์โหลดเอกสาร
+พิมพ์ · Copy Doc Link · ข้อมูลยอดขายเพิ่มเติม (QlikView BI) · Link To ALLMAP · รีเฟรช · คืนค่าก่อนแก้ไข · คำนวณเงินชดเชย · เพิ่ม · ล้างการเลือก · ลบที่เลือก · ดาวน์โหลดทั้งหมด (.zip) · แนบเอกสาร · บันทึก · ส่งดำเนินการ · ยกเลิก · OK · ปิด · ดาวน์โหลดเอกสาร
 
 
 #### Business rules / acceptance
@@ -646,13 +639,13 @@ Version 1.0
 
 ### SCR-05 รายงานสรุปสถานะ
 
-![รูปที่ 21: รายงานสรุปสถานะ - ส่วนที่ 1/2](k2-report-01.png)
+![รูปที่ 18: รายงานสรุปสถานะ - ส่วนที่ 1/2](k2-report-01.png)
 
-![รูปที่ 22: รายงานสรุปสถานะ - ส่วนที่ 2/2](k2-report-02.png)
+![รูปที่ 19: รายงานสรุปสถานะ - ส่วนที่ 2/2](k2-report-02.png)
 
 | Item | Requirement |
 | --- | --- |
-| Purpose | ค้นหา แสดงกราฟ/ผล 19 คอลัมน์ และ Export CSV to Batch |
+| Purpose | ค้นหาข้อมูล แสดงผล 14 คอลัมน์ (SDD สไลด์ 60) และ Export Excel |
 | Actor | Admin 01, HQ 02, Report Admin 04, Report Admin Special 06 |
 | Pre-condition | ผ่านการยืนยันตัวตนจาก platform กลาง และมีสิทธิ์เมนู/ข้อมูล |
 | Post-condition / expected outcome | ผลบนหน้าจอและไฟล์ CSV ตรงกันภายใต้ filter เดียวกันและนำไปตรวจสอบบัญชีได้ |
@@ -661,16 +654,16 @@ Version 1.0
 
 #### Input / filter fields
 
-รหัสร้านที่ถูกกระทบ · ชื่อร้านที่ถูกกระทบ · รหัสร้านเปิดกระทบ (ร้านเปิดใหม่) · ประเภทร้าน (เลือกได้มากกว่า 1) · A · B · C · E · เดือน/ปีที่ถูกกระทบ (From - To) · สถานะ * (บังคับ · เลือก 1 สถานะ) · ผลการพิจารณา * (บังคับ) · ประกันรายได้ · ไม่ประกันรายได้ · ภาค (เลือกได้มากกว่า 1 · เพิ่มภาคใหม่อัตโนมัติ) · BE · BS · NEU · REU · RSU · BG · BW · RC · RN · BN · NEL · REL · RSL · Period Statement (From - To) * - บังคับเมื่อเลือกสถานะ “เสร็จสิ้นดำเนินการ” (SDD)
+สถานะ * (บังคับ · เลือก 1 สถานะ) · รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ · ประเภทร้าน (เลือกได้มากกว่า 1) · A · B · C · E · Period Statement (From - To) * - ปฏิทิน วัน/เดือน/ปี (ค.ศ.) · บังคับเมื่อเลือกสถานะ “เสร็จสิ้นดำเนินการ” (SDD) · ภาค (เลือกได้มากกว่า 1 · เพิ่มภาคใหม่อัตโนมัติ) · BE · BS · NEU · REU · RSU · BG · BW · RC · RN · BN · NEL · REL · RSL · ผลการพิจารณา (เลือกอย่างใดอย่างหนึ่ง) · ประกันรายได้ · ไม่ประกันรายได้
 
 
 #### Displayed tables
 
-- Table: รหัสร้านถูกกระทบ | ชื่อร้านถูกกระทบ | ภาค | ประเภทร้าน | เดือนปีที่ถูกกระทบ | วันที่โอนเป็นร้าน SP | Period Statement | รหัสร้านเปิดใหม่ | ชื่อร้านเปิดใหม่ | ภาค (ร้านใหม่) | ประเภทร้าน (ร้านใหม่) | ยอดเงินชดเชย | สถานะ | ชื่อ-นามสกุลผู้ดำเนินการ | ผลการพิจารณา | รอดำเนินการ (วัน) | ครั้งที่ | วันที่สร้าง | เลขที่เอกสาร
+- Table: รหัสร้านถูกกระทบ | ชื่อร้านถูกกระทบ | ภาค | ประเภทร้าน | เดือน/ปีที่ถูกกระทบ | Period Statement | รหัสร้านเปิดกระทบ | ชื่อร้านเปิดกระทบ | ยอดเงินชดเชย | ครั้งที่ | วันที่สร้าง | เลขที่เอกสาร
 
 #### Actions
 
-เคลียร์ค่าเริ่มใหม่ · Preview Report · Export
+เคลียร์ค่าเริ่มใหม่ · ค้นหาข้อมูล · Export Excel
 
 
 #### Business rules / acceptance
@@ -683,7 +676,7 @@ Version 1.0
 
 ### SCR-06 กำหนดปัจจัยภายนอก
 
-![รูปที่ 23: กำหนดปัจจัยภายนอก](k2-factors-01.png)
+![รูปที่ 20: กำหนดปัจจัยภายนอก](k2-factors-01.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -697,7 +690,6 @@ Version 1.0
 #### Displayed tables
 
 - tblFactors: รหัสปัจจัย | ชื่อปัจจัย | รายละเอียดเพิ่มเติม | Action
-- Table: วันที่แก้ไข | ผู้แก้ไข | คำสั่ง | รายการ | ข้อมูลเดิม -> ข้อมูลใหม่ | เหตุผลการแก้ไข
 
 #### Actions
 
@@ -712,9 +704,9 @@ Version 1.0
 
 ### SCR-07 กำหนดรายชื่อคู่แข่ง
 
-![รูปที่ 24: กำหนดรายชื่อคู่แข่ง - ส่วนที่ 1/2](k2-competitors-01.png)
+![รูปที่ 21: กำหนดรายชื่อคู่แข่ง - ส่วนที่ 1/2](k2-competitors-01.png)
 
-![รูปที่ 25: กำหนดรายชื่อคู่แข่ง - ส่วนที่ 2/2](k2-competitors-02.png)
+![รูปที่ 22: กำหนดรายชื่อคู่แข่ง - ส่วนที่ 2/2](k2-competitors-02.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -728,7 +720,6 @@ Version 1.0
 #### Displayed tables
 
 - tblCompetitorMaster: รหัสคู่แข่ง | ชื่อคู่แข่ง (ไทย) | ชื่อคู่แข่ง (อังกฤษ) | รายละเอียดเพิ่มเติม | Action
-- Table: วันที่แก้ไข | ผู้แก้ไข | คำสั่ง | รายการ | ข้อมูลเดิม -> ข้อมูลใหม่ | เหตุผลการแก้ไข
 
 #### Actions
 
@@ -742,59 +733,21 @@ Version 1.0
 - การแก้ไขและการลบต้องระบุเหตุผลและบันทึกลง audit log
 - รายการนี้ต้องเป็นแหล่งข้อมูลเดียวของ dropdown ร้านคู่แข่งในหน้าเอกสาร ห้าม hardcode ใน FE
 
-### SCR-08 ตั้งค่าระบบ (Global Config)
-
-![รูปที่ 26: ตั้งค่าระบบ (Global Config) - ส่วนที่ 1/2](system-config-01.png)
-
-![รูปที่ 27: ตั้งค่าระบบ (Global Config) - ส่วนที่ 2/2](system-config-02.png)
-
-| Item | Requirement |
-| --- | --- |
-| Purpose | จัดการค่ากำหนดกลางที่ใช้ร่วมทั้งระบบ เช่น รัศมีผลกระทบ เกณฑ์ข้อมูล วงเงินอนุมัติ timeout และ notification switch |
-| Actor | Admin และผู้ดูแลระบบที่ได้รับมอบหมาย |
-| Pre-condition | ผ่านการยืนยันตัวตนจาก platform กลาง และมีสิทธิ์เมนู/ข้อมูล |
-| Post-condition / expected outcome | ค่ากำหนดที่ผ่าน validation ถูกเผยแพร่ให้บริการที่เกี่ยวข้องโดยไม่เปิดเผย secret |
-| Scope status | Committed |
-
-
-#### Displayed tables
-
-- tblConfigs: Config Key | หมวดหมู่ | ค่า (Value) | ชนิดข้อมูล | หน่วย | คำอธิบาย | แก้ไขได้ | Action
-- Table: วันที่แก้ไข | ผู้แก้ไข | คำสั่ง | รายการ | ข้อมูลเดิม -> ข้อมูลใหม่ | เหตุผลการแก้ไข
-
-#### Actions
-
-เพิ่ม Config · Invalidate Cache
-
-
-#### Business rules / acceptance
-
-- config_key ต้องเป็น dot notation และห้ามซ้ำ
-- value_type ต้อง validate ค่า NUMBER, STRING, BOOLEAN, JSON หรือ CRON ก่อนบันทึก
-- ค่าที่ is_editable=false เป็นค่าคงที่ทางธุรกิจ แก้หรือลบผ่าน UI/API ไม่ได้
-- ห้ามเก็บ secret เช่น password, API key หรือ connection string ใน system_configs
-- ทุกการเพิ่ม แก้ ลบ และ invalidate cache ต้องบันทึก audit_logs พร้อมเหตุผล
-
 ### 3.4.13 Notification template requirements
 
-> ระบบต้องรองรับการจัดการเนื้อหาและกฎการส่ง notification ตามรายการในหัวข้อนี้ โดยหน้าจอจัดการ template เป็นส่วนหนึ่งของขอบเขตผู้ดูแลระบบ
-
-![รูปที่ 28: Email Template Administration - ส่วนที่ 1/3](email-template-01.png)
-
-![รูปที่ 29: Email Template Administration - ส่วนที่ 2/3](email-template-02.png)
-
-![รูปที่ 30: Email Template Administration - ส่วนที่ 3/3](email-template-03.png)
+> ตัดสินใจ 6 สิงหาคม 2569: หน้าจอจัดการ Email Template ของระบบประกันรายได้ถูกยกเลิกทั้งฟีเจอร์ เนื้อหาอีเมลทั้ง 8 template เก็บอยู่ในตาราง email_template ของระบบ SBP เดิม ซึ่งมีหน้าจอบริหารจัดการอยู่แล้ว ระบบประกันรายได้เพียงอ่าน template ไปประกอบอีเมลแล้วส่งผ่านไลบรารีกลางของระบบเดิม และบันทึกการส่งลงตาราง email_sent
 
 | Item | Requirement |
 | --- | --- |
-| Purpose | จัดการเนื้อหาอีเมล 8 template ของ Notification Service และจุดส่ง workflow/batch |
-| Scope status | Committed - ครอบคลุมหน้าจอผู้ดูแล template และพฤติกรรม Notification Service |
+| Purpose | ส่งอีเมลแจ้งเตือนตามสถานะเอกสารและงาน Batch โดยใช้ template และบริการส่งอีเมลของระบบ SBP เดิม |
+| Scope status | Committed - ครอบคลุมเฉพาะพฤติกรรม Notification Service ไม่มีหน้าจอจัดการ template ในระบบนี้ |
 
 - รองรับ template EM-01 ถึง EM-08 ครอบคลุม workflow transition, reminder, escalation, batch error และ STA ACK watchdog
-- แก้ไขได้เฉพาะ subject/body และตัวแปร merge ที่รองรับของ template นั้น
-- From/To/Cc ต้องล็อกตาม status_email_rules หรือ config ต่อ job ไม่ให้แก้ใน template
-- ต้องรีเซ็ตกลับ Default ได้ทั้งราย template และทั้งหมด
-- ทุกการแก้ไขหรือรีเซ็ตต้องบันทึก audit_logs พร้อมเหตุผล
+- ตัวแปร merge ที่ใช้ต้องตรงกับที่ template รองรับ และต้องไม่มีตัวแปรที่แทนค่าไม่ได้หลงเหลือในอีเมลที่ส่งออก
+- From/To/Cc กำหนดตาม status_email_rules หรือ config ต่อ job ไม่ได้มาจากผู้ใช้
+- การส่งอีเมลต้องอยู่นอก transaction ของ workflow และการส่งล้มเหลวต้องไม่ทำให้ workflow ล้มเหลว
+- การส่งทุกฉบับต้องบันทึกไว้ที่ตาราง email_sent เพื่อการตรวจสอบย้อนหลัง
+- การแก้ไขเนื้อหา template เป็นงานของระบบ SBP เดิม และบันทึก audit ที่ระบบเดิม
 
 ### 3.4.14 Shared UI contract
 
@@ -836,41 +789,27 @@ Version 1.0
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo}/timeline | ตามสิทธิ์เมนู | ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร) |
 | งาน & เอกสารประกันรายได้ | POST | /api/v1/documents/{docNo}/attachments | ตาม section ปัจจุบัน | แนบไฟล์เข้าเอกสาร - จำกัด 5MB ต่อไฟล์ตาม SRS |
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo}/attachments/{attachId}/download | ตามสิทธิ์อ่านเอกสาร | ดาวน์โหลดไฟล์แนบผ่าน BE stream โดยตรวจสิทธิ์เอกสารและ scanStatus=CLEAN ก่อนส่ง binary |
+| งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo}/attachments/download-all | ตามสิทธิ์อ่านเอกสาร | ดาวน์โหลดไฟล์แนบทั้งหมดของเอกสารเป็นไฟล์ .zip - ปุ่ม "ดาวน์โหลดทั้งหมด" ระดับการ์ด (เทียบเท่าปุ่ม Download ของ K2 เดิม) |
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo}/sales | ตามสิทธิ์เมนู | ข้อมูลยอดขายเพิ่มเติมของเอกสาร (4 หน้าต่าง x 15 วัน) - ปุ่ม "ข้อมูลยอดขายเพิ่มเติม" ในหน้าเอกสาร Document Detail |
-| ข้อมูล Lookup | GET | /api/v1/competitors | ตาม section ปัจจุบัน | รายการร้านคู่แข่ง master 24 ราย - dropdown ตอนกดปุ่ม "เพิ่ม" ตารางร้านคู่แข่งเปิดกระทบ (Document Detail) |
 | ข้อมูล Lookup | GET | /api/v1/document-statuses | ทุก role | รายการสถานะเอกสารทั้งหมด - เติม dropdown ตัวกรองสถานะในหน้าค้นหาเอกสาร (เอกสารที่เกี่ยวข้อง) และรายงาน (รายงานสรุปสถานะ) |
 | ข้อมูล Lookup | GET | /api/v1/workflow-sections | ทุก role | รายการ Section 5 ขั้น + วงเงินอนุมัติต่อขั้น - dropdown ตำแหน่ง/ตัวกรอง · FE แสดงวงเงินจากข้อมูล ไม่ hardcode |
 | ข้อมูล Lookup | GET | /api/v1/decisions | ทุก role | ผลพิจารณาจาก master decisions - FE เรนเดอร์ปุ่มพิจารณาจากเส้นนี้ ไม่ hardcode 6-enum (เปลี่ยนชื่อปุ่มตาม SDD GI ได้ที่ data) |
+| Master Data | GET | /api/v1/competitors | ตาม section ปัจจุบัน | master แบรนด์ร้านคู่แข่ง 11 รายการ (รหัส 01-11 · ชื่อไทย+อังกฤษ) - dropdown ตอนกดปุ่ม "เพิ่ม" ตารางร้านคู่แข่งเปิดกระทบ (Document Detail) · จัดการที่หน้า Competitor Master |
+| Master Data | POST | /api/v1/competitors | Admin / ผู้ดูแล master | เพิ่มแบรนด์ร้านคู่แข่งใน master (หน้า Competitor Master) - เพิ่ม 2026-08-06 ตามหน้าจอ K2 เดิม |
+| Master Data | PUT | /api/v1/competitors/{code} | Admin / ผู้ดูแล master | แก้ไขชื่อไทย/อังกฤษ/รายละเอียดของแบรนด์คู่แข่ง - แก้รหัสไม่ได้ |
+| Master Data | DELETE | /api/v1/competitors/{code} | Admin / ผู้ดูแล master | ลบแบรนด์คู่แข่งออกจาก master - ห้ามลบถ้ายังถูกอ้างในเอกสาร |
 | Master Data | GET | /api/v1/factors | 03 User Admin | รายการปัจจัยภายนอก (external_factors) |
 | Master Data | POST | /api/v1/factors | 03 User Admin | เพิ่มปัจจัยภายนอก - รหัสห้ามซ้ำ (กติกา SRS) |
 | Master Data | PUT | /api/v1/factors/{code} | 03 User Admin | แก้ไขปัจจัยภายนอก |
 | Master Data | DELETE | /api/v1/factors/{code} | 03 User Admin | ลบปัจจัยภายนอก (ต้องไม่ถูกใช้ในเอกสารใด) |
-| Master Data | GET | /api/v1/audit-logs | 01 Admin, 02 HQ, 03 User Admin | ประวัติการแก้ไขข้อมูล master แบบหลายรายการ (ใคร · ทำอะไร · ค่าเดิม->ใหม่ · เหตุผล · เมื่อไร) - แผงประวัติท้ายหน้าจอ 3.1.9 |
-| System Config (Global) | GET | /api/v1/configs | 01 Admin | รายการค่ากำหนดกลางทั้งหมด กรองตามหมวด/คำค้นได้ (หน้าจอ Global Config) |
-| System Config (Global) | GET | /api/v1/configs/{key} | ทุก role (อ่าน) / service token | อ่านค่ากำหนดรายตัว - เส้นที่ทุก service เรียกตอนใช้งานจริง พร้อม cache 5 นาที |
-| System Config (Global) | POST | /api/v1/configs | 01 Admin | เพิ่มค่ากำหนดใหม่ - key ห้ามซ้ำ และ validate ค่าตาม value_type |
-| System Config (Global) | PUT | /api/v1/configs/{key} | 01 Admin | แก้ค่ากำหนด - ต้องระบุเหตุผล · ค่าคงที่ทางธุรกิจ (is_editable=false) แก้ผ่าน API ไม่ได้ |
-| System Config (Global) | DELETE | /api/v1/configs/{key} | 01 Admin | ลบค่ากำหนด - ลบได้เฉพาะ key ที่ไม่ใช่ค่าระบบ และต้องระบุเหตุผล |
-| Email Template (Notification) | GET | /api/v1/email-templates | 01 Admin | รายการ 8 email template (EM-01-08) พร้อมสถานะว่าถูกแก้จาก Default หรือยัง (หน้าจอ Email Template) |
-| Email Template (Notification) | GET | /api/v1/email-templates/{code} | 01 Admin | อ่าน template รายตัว (EM-01-08) พร้อมชุดตัวแปร merge ที่ใช้ได้ในฉบับนั้น |
-| Email Template (Notification) | PUT | /api/v1/email-templates/{code} | 01 Admin | บันทึกเนื้อหา template - แก้ได้เฉพาะ subject/body และตัวแปร · ผู้รับ From/To/Cc แก้ผ่านเส้นนี้ไม่ได้ (ล็อกตาม status_email_rules) |
-| Email Template (Notification) | POST | /api/v1/email-templates/{code}/reset | 01 Admin | รีเซ็ต template ฉบับเดียวกลับเป็น Default (ปุ่ม "รีเซ็ต" รายตัวในหน้าจอ) |
-| Email Template (Notification) | POST | /api/v1/email-templates/reset-all | 01 Admin | รีเซ็ต template ทั้ง 8 ฉบับกลับเป็น Default พร้อมกัน (ปุ่ม "รีเซ็ตทั้งหมดเป็น Default") |
-| รายงาน | GET | /api/v1/reports/status-summary | บัญชี / 06 Report Admin | รายงานตรวจสอบประกันรายได้ (SBP Mall) - Preview Report · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS) |
-| รายงาน | GET | /api/v1/reports/status-summary/export | 04 / 06 Report Admin | Export CSV to Batch - ส่งไฟล์ CSV เข้า Batch ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไขเดียวกับเส้นค้นหา |
-| Batch Job Admin | GET | /api/v1/jobs | 01 Admin | รายการ batch job ทั้ง 11 entry points พร้อมสถานะรอบล่าสุด - reference contract สำหรับแบบฟอร์มพารามิเตอร์และประวัติการรันเท่านั้น |
-| Batch Job Admin | GET | /api/v1/jobs/{jobNo} | 01 Admin | รายละเอียด job หนึ่งตัวสำหรับ tab แบบฟอร์มพารามิเตอร์: schedule, input/configurable parameters, output และ current status |
-| Batch Job Admin | PUT | /api/v1/jobs/{jobNo}/params | 01 Admin | แก้พารามิเตอร์ที่ editable ของ job - ค่าคงที่ทางธุรกิจแก้ผ่าน UI/API ไม่ได้ |
-| Batch Job Admin | POST | /api/v1/jobs/{jobNo}/run | 01 Admin | สั่งรัน job นอกรอบ พร้อมระบุงวดข้อมูล - รายละเอียด flow การทำงานอยู่ในเอกสาร BE/Runbook ไม่ใช่ tab ที่ต้องทำใน FE Batch Monitor |
-| Batch Job Admin | PUT | /api/v1/jobs/{jobNo}/enabled | 01 Admin | เปิด/ปิดการทำงานของ job ตามรอบเวลา |
-| Batch Job Admin | GET | /api/v1/jobs/{jobNo}/runs | 01 Admin | ประวัติการรันของ job สำหรับ tab ประวัติการรันในหน้า Batch Monitor |
+| รายงาน | GET | /api/v1/reports/status-summary | บัญชี / 06 Report Admin | รายงานตรวจสอบประกันรายได้ (SBP Mall) - ค้นหาข้อมูล · filter 7 ตัวและผลลัพธ์ 14 คอลัมน์ ตาม SDD สไลด์ 60 · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS) |
+| รายงาน | GET | /api/v1/reports/status-summary/export | 04 / 06 Report Admin | Export Excel - ส่งออกผลการค้นหา 14 คอลัมน์เป็น Excel ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไขเดียวกับเส้นค้นหา |
 | Workflow ภายใน | POST | /api/v1/workflows/instances | service token (ภายใน) | เปิด workflow ให้รายการที่ผ่าน Gen Flow Gate - เส้นภายในที่ Batch Scheduler เรียกแทนการยิง K2 REST เดิม |
 | Workflow ภายใน | GET | /api/v1/workflows/instances/{id} | 01 Admin / เจ้าของงาน | สถานะ instance และงานขั้นปัจจุบัน (ใช้ debug/ติดตาม) |
 | Workflow ภายใน | GET | /api/v1/workflows/summary | 01 Admin | ตัวเลขเฝ้าระวังตามเอกสาร: นับ workflow_generation_status W/Y/N, จำนวน start ล้มเหลว, งานค้างต่อขั้น |
 | Interface & Dashboard | GET | /api/v1/interfaces/tracking | 01 Admin | สถานะการรับ-ส่งไฟล์กับระบบภายนอก (interface_transactions ใหม่ แทน FGI_CONFIRM_RECEIVE_DATA) |
 | Interface & Dashboard | POST | /api/v1/interfaces/sta/ack | API key ของระบบ STA | Callback ให้ระบบ STA ยิงตอบรับ (ACK) ตรง - แทนการรออัปเดต return_code ฝั่งเดียว |
 | Interface & Dashboard | GET | /api/v1/interfaces/pending-ack | 01 Admin | รายการ ACK ค้างเกิน 1 วัน (เกณฑ์เดียวกับ watchdog) - ใช้ทั้งหน้า dashboard และอีเมลเตือน |
-| Interface & Dashboard | GET | /api/v1/dashboard/summary | ทุก role | ตัวเลข stat cards ของหน้าแรก (งานรอดำเนินการ) - ยกเลิกหน้า Overview/Dashboard แล้ว (ตัดสินใจ 2026-08-06) |
 
 
 ### 3.5.3 API contract requirements
@@ -930,7 +869,7 @@ Version 1.0
 - ผลรวม % ชดเชย 100% ถูกตรวจทั้ง FE และ BE
 - ร้านยอดขายไม่ครบ 60 วันถูก flag ใน inbox/report และมีเหตุผลตรวจสอบย้อนกลับ
 - Jobs 1-10/8b รันซ้ำตาม runbook โดยไม่สร้างข้อมูลซ้ำหรือสูญหาย
-- API capability 44 endpoints ใน scope ต้องผ่าน authorization, validation, audit, duplicate guard/idempotency, pagination และ error-contract test; Auth Group 1 เป็น platform service
+- API capability 30 endpoints ใน scope ต้องผ่าน authorization, validation, audit, duplicate guard/idempotency, pagination และ error-contract test; Auth Group 1 เป็น platform service
 - ข้อมูล export/import ทุก interface ผ่าน golden-file test เรื่อง encoding/date/delimiter/field count
 - หน้าจอรายงานและ CSV Export to Batch ให้ผลตรงกันภายใต้ filter เดียวกัน
 
@@ -951,8 +890,8 @@ Version 1.0
 | REQ-RPT-001 | Report export | 19 columns และ preview/export reconciliation | 3.0, SCR-07 |
 | REQ-OPS-001 | Batch rerun | idempotency และ run reconciliation | 3.0, 3.3 |
 | REQ-SCR-001 | Committed screens | SCR-01..04 และ SCR-06..11 | 3.4 |
-| SYS-API-001 | API capability | 44 endpoints / 9 groups | 3.5 |
-| SYS-DAT-001 | Data model | 24 tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม) | 3.2 |
+| SYS-API-001 | API capability | 30 endpoints / 6 groups | 3.5 |
+| SYS-DAT-001 | Data model | 21 tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม) | 3.2 |
 | SYS-NFR-001 | Observability | correlation/metrics/alert/audit evidence | 4 |
 | FLOW-01 | Batch pipeline | ขั้นตอนนำเข้า คำนวณ สร้างเอกสาร ส่ง Statement และติดตาม ACK | 3.1, 3.3 |
 | FLOW-02 | Approval workflow | Section 06 -> 08 -> 01 -> 02 และ Section 03 ตามวงเงิน | 3.1.1, 3.1.3 |
@@ -967,7 +906,7 @@ Version 1.0
 | K2-07 | Competitor Master | Competitor brand master 01-11 (Thai/English) | SCR-07 |
 | K2-08 | Global Config | Global system configuration (ตาราง mas_param ของระบบ SBP เดิม) | SCR-08 |
 | EMAIL-01 | Email Template | หน้าจอผู้ดูแล template และกฎ Notification Service | 3.4.13 |
-| API-01 | REST API | Capability catalog 44 endpoints และข้อกำหนด contract กลาง | 3.5 |
+| API-01 | REST API | Capability catalog 30 endpoints และข้อกำหนด contract กลาง | 3.5 |
 
 
 ---

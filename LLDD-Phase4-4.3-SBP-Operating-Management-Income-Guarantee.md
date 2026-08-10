@@ -34,7 +34,7 @@ Release: `Phase #4`
 
 - การรับ/เชื่อมข้อมูลจาก SRM สำหรับงานประกันรายได้
 - หน้าจอและ API ที่ใช้แสดง สร้าง ดำเนินการ และติดตามเอกสารประกันรายได้
-- การจัดการรายงาน Master/Config Batch Monitor และ Email Template ที่เกี่ยวข้องกับ SBP Mall
+- การจัดการรายงานและ Master ที่เกี่ยวข้องกับ SBP Mall (Global Config / Email Template ใช้ของระบบ SBP เดิม · Batch Job เหลือ Flowchart + DB ในกลุ่ม Flow · 2026-08-06)
 - Validation, error handling, audit และ test cases ที่ต้องรองรับ
 
 ## 4. Scope
@@ -51,7 +51,6 @@ Release: `Phase #4`
 | Document Action | บันทึกร่าง ส่งดำเนินการ อนุมัติ ไม่อนุมัติ ส่งกลับ และบันทึก comment/history |
 | Report | รายงานตรวจสอบประกันรายได้ (7 ตัวกรอง / 14 คอลัมน์ · SDD สไลด์ 60), ค้นหาข้อมูล, Export Excel สำหรับบัญชี |
 | Master/Config | ผู้ปฏิบัติงาน, ปัจจัยภายนอก, สิทธิ์เมนู, ตั้งค่าระบบ |
-| Batch/Email | Batch Job Monitor, Job History, Retry/Re-run, Log Detail, Email Template/Preview |
 
 ### 4.2 Out of Scope
 
@@ -87,7 +86,7 @@ SBP Mall API / Backend
   |-- Report Service
   |-- Master/Config Service
   |-- Batch Monitor Service
-  |-- Email Template Service
+  |-- Notification Service (ใช้ @gosoft-sbp/email-lib + ตาราง email_template ของระบบ SBP เดิม)
   |
   v
 Existing Data Store / Mock Repository / Shared Services
@@ -201,9 +200,6 @@ Integration (SRM) ใช้รับข้อมูลตั้งต้นห�
 | `/masters/operators` | OperatorMaster | กำหนดผู้ปฏิบัติงาน |
 | `/masters/factors` | ExternalFactorMaster | กำหนดปัจจัยภายนอก |
 | `/permissions` | MenuPermission | สิทธิ์การเข้าถึงเมนู |
-| `/configs` | SystemConfig | ตั้งค่าระบบ |
-| `/jobs` | BatchJobMonitor | Batch Job Monitor |
-| `/email-templates` | EmailTemplate | Email Template |
 
 ### 8.3 Shared Components
 
@@ -228,8 +224,7 @@ Integration (SRM) ใช้รับข้อมูลตั้งต้นห�
 | Create Document | Store selector, period, source, save/submit | `POST /documents` |
 | Document Detail | Header, store, new stores, map, history, competitors, factors, attachments, action | `GET /documents/{docNo}`, `PUT /documents/{docNo}`, `POST /documents/{docNo}/actions` |
 | Report | Filter, preview, export | `GET /reports/status-summary`, `GET /reports/status-summary/export` |
-| Master/Config | CRUD table, modal, reason, audit | `/operators`, `/factors`, `/menu-permissions`, `/configs` |
-| Batch/Email | job list/history/log/retry, template preview | `/jobs`, `/email-templates` |
+| Master | CRUD table, modal, reason, audit | `/operators`, `/factors`, `/menu-permissions` |
 
 ## 9. Backend Low Level Design
 
@@ -289,9 +284,6 @@ src/modules/incomeGuarantee/
 | `GET/POST/PUT/DELETE` | `/api/v1/operators` | ผู้ปฏิบัติงาน |
 | `GET/POST/PUT/DELETE` | `/api/v1/factors` | ปัจจัยภายนอก |
 | `GET/PUT` | `/api/v1/menu-permissions` | สิทธิ์เมนู |
-| `GET/POST/PUT/DELETE` | `/api/v1/configs` | ตั้งค่าระบบ |
-| `GET/POST/PUT` | `/api/v1/jobs` | Batch monitor/run history/retry |
-| `GET/PUT/POST` | `/api/v1/email-templates` | Email template/preview/reset |
 | `POST` | `/api/v1/integrations/srm/income-guarantee` | Inbound SRM integration, provisional |
 
 ### 9.3 Service Responsibilities

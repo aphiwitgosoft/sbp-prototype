@@ -11,10 +11,10 @@ const pages = [
   "flow-fgi.html",
   "k2-flow.html",
   "plan-flow.html",
+  "job-batch.html",
   "fgi-database.html",
   "k2-database.html",
   "plan-database.html",
-  "job-batch.html",
   "k2-create.html",
   "k2-list-waiting.html",
   "k2-list-related.html",
@@ -22,8 +22,6 @@ const pages = [
   "k2-report.html",
   "k2-factors.html",
   "k2-competitors.html",
-  "system-config.html",
-  "email-template.html",
   "plan-api.html",
 ];
 
@@ -116,12 +114,6 @@ async function capture(file) {
     })()`,
     returnByValue: true,
   });
-  if (file === "job-batch.html") {
-    await cdp.send("Runtime.evaluate", {
-      expression: "document.querySelector('#tblJobs tbody tr[data-job=\"1\"]')?.click(); true",
-      returnByValue: true,
-    });
-  }
   await new Promise((resolve) => setTimeout(resolve, 500));
   const metrics = await cdp.send("Page.getLayoutMetrics");
   const width = Math.ceil(metrics.cssContentSize.width);

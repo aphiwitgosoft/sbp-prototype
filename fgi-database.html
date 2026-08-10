@@ -83,7 +83,7 @@
               <text x="102" y="186" fill="#56606c" font-size="10.5">verify_status · workflow_generation_status</text>
 
               <rect x="88" y="318" width="242" height="104" rx="10" fill="#fff" stroke="#16a34a" stroke-width="1.6"/>
-              <text x="102" y="339" fill="#15803d" font-size="12.5" font-weight="700">fcs_qssi_scores</text>
+              <text x="102" y="339" fill="#15803d" font-size="12.5" font-weight="700">fcs_qssi_score</text>
               <line x1="88" y1="348" x2="330" y2="348" stroke="#dcefe3"/>
               <text x="102" y="368" fill="#56606c" font-size="10.5">store_id + category_code + period ◄ UK</text>
               <text x="102" y="387" fill="#56606c" font-size="10.5">score_value · source_file</text>
@@ -192,7 +192,7 @@
           </div>
 
           <div class="db-entity">
-            <h3><code>fcs_qssi_scores</code><span class="db-tag source">QSSI / Job 1</span></h3>
+            <h3><code>fcs_qssi_score</code><span class="db-tag source">QSSI / Job 1</span></h3>
             <div class="table-wrap"><table class="db-spec"><thead><tr><th>Column</th><th>Type</th><th>Key / Rule</th></tr></thead><tbody>
               <tr><td>id</td><td>bigint</td><td><span class="db-key">PK</span></td></tr>
               <tr><td>store_id · category_code</td><td>varchar</td><td><span class="db-key">UK</span> ต่องวด</td></tr>
@@ -234,7 +234,7 @@
           <table class="data">
             <thead><tr><th>ระบบ</th><th>Interface</th><th>Landing / Domain Table</th><th>กติกาสำคัญ</th></tr></thead>
             <tbody>
-              <tr><td>QSSI</td><td>SFTP · mrs* 4 ไฟล์</td><td><code>fcs_qssi_scores</code></td><td>ครบ 6 หมวดจากงวดเดียวในกรอบ 3 เดือน</td></tr>
+              <tr><td>QSSI</td><td>SFTP · mrs* 4 ไฟล์</td><td><code>fcs_qssi_score</code></td><td>ครบ 6 หมวดจากงวดเดียวในกรอบ 3 เดือน</td></tr>
               <tr><td>ALLMAP</td><td>SQL Server Views</td><td><code>fgi_impact_stores</code> · <code>fgi_impact_competitors</code></td><td>Dedup ต่อร้านและงวด · data_source=ALM</td></tr>
               <tr><td>IAS</td><td>AMS06001O / AMS06001I</td><td><code>fgi_impact_sales_summaries</code> · <code>sales_transactions</code></td><td>4 หน้าต่าง × 15 วัน · outlier ≥ 50</td></tr>
               <tr><td>STA</td><td>FRBC0001 + ACK</td><td><code>interface_transactions</code></td><td>callback ก่อน · Job 10 เป็น safety net เมื่อค้าง ≥ 1 วัน</td></tr>

@@ -1,2 +1,12 @@
 .claude/settings.local.json
 .DS_Store
+
+# โค้ดของระบบ SBP เดิม — clone ไว้อ่านอ้างอิงเท่านั้น ไม่ใช่ source ของ prototype
+# (ไฟล์วิเคราะห์ SBP/*.md ยังตามปกติ — pattern ปิดท้ายด้วย / จึงจับเฉพาะโฟลเดอร์)
+SBP/srm-sps-spsap-sbp-bff/
+SBP/srm-sps-spsap-store-backend/
+SBP/srm-sps-spsap-web-frontend/
+
+# ไฟล์ SQL ทั้งหมด — dump/สคริปต์ DB ไม่เก็บใน git
+# (ไฟล์ยังอยู่บนเครื่อง · database.md อ้างถึงเป็นแหล่ง migration เท่านั้น)
+*.sql

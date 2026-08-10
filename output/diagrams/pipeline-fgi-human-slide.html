@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ภาพรวมการทำงานเบื้องหลัง — แนวนอนสำหรับสไลด์</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:#eef2f7; font-family:"Prompt","Sarabun",sans-serif; padding:36px;}
+
+  /* สัดส่วน 16:9 สำหรับวางในสไลด์ */
+  .sheet{width:1600px; background:#fff; border-radius:20px; padding:38px 44px 30px;
+         box-shadow:0 18px 60px rgba(31,72,104,.14); display:flex; flex-direction:column;}
+
+  .head{margin-bottom:20px;}
+  .eyebrow{font-size:13px; font-weight:600; color:#2f6fed; margin-bottom:6px;}
+  h1{font-size:29px; font-weight:700; color:#1b2733; line-height:1.25;}
+  .sub{font-size:15px; color:#5d6b7a; margin-top:7px; line-height:1.55;}
+
+  /* แถบระบบต้นทาง */
+  .band{display:flex; align-items:center; gap:12px; background:#f6f8fc; border:1.5px solid #e4eaf2;
+        border-radius:14px; padding:11px 18px; margin-bottom:16px;}
+  .band .lbl{font-size:13px; font-weight:700; color:#8493a5; flex:0 0 auto; padding-right:14px;
+             border-right:1.5px solid #dde4ee;}
+  .band .items{display:flex; gap:26px; flex-wrap:wrap; font-size:14.5px; color:#3b4653;}
+  .band .items span{display:flex; align-items:center; gap:8px;}
+  .band .items i{width:8px; height:8px; border-radius:50%; background:#a8b4c2; display:inline-block;}
+
+  /* 5 ขั้นเรียงแนวนอน */
+  .flow{display:grid; grid-template-columns:repeat(5, 1fr); gap:14px; align-items:stretch;}
+  .step{position:relative; border-radius:16px; border:1.5px solid; padding:18px 16px 16px;
+        display:flex; flex-direction:column;}
+  .step .num{width:38px; height:38px; border-radius:50%; display:flex; align-items:center;
+             justify-content:center; font-family:"Sarabun",sans-serif; font-size:19px;
+             font-weight:700; color:#fff; margin-bottom:11px;}
+  .step h2{font-size:17px; font-weight:600; line-height:1.35; min-height:46px;}
+  .step h2 .cnt{display:inline-block; font-size:11.5px; font-weight:600; color:#8493a5;
+                background:#f2f5f9; border-radius:999px; padding:2px 9px; vertical-align:3px; white-space:nowrap;}
+  .step .when{display:inline-flex; align-items:center; gap:6px; align-self:flex-start;
+              margin:9px 0 12px; font-size:12px; font-weight:600; border-radius:999px; padding:4px 11px;}
+  .step .when svg{width:12px; height:12px;}
+  .step ul{list-style:none; display:flex; flex-direction:column; gap:9px;}
+  .step li{position:relative; padding-left:16px; font-size:13.8px; color:#3b4653; line-height:1.55;}
+  .step li::before{content:""; position:absolute; left:0; top:8px; width:7px; height:7px; border-radius:50%;}
+  .step .out{margin-top:16px; padding-top:13px; border-top:1px dashed #d9e0ea;
+             font-size:12.5px; color:#6b7885; line-height:1.5;}
+  .step .out b{display:block; font-size:11px; font-weight:700; color:#9aa7b6; margin-bottom:3px;}
+
+  /* ลูกศรระหว่างขั้น */
+  .step::after{content:""; position:absolute; right:-14px; top:38px; width:14px; height:2.4px;
+               background:#b9c3cf; z-index:1;}
+  .step:last-child::after{display:none;}
+  .step::before{content:""; position:absolute; right:-10px; top:38px; margin-top:-4.6px;
+                border-left:8px solid #b9c3cf; border-top:5px solid transparent;
+                border-bottom:5px solid transparent; z-index:2;}
+  .step:last-child::before{display:none;}
+
+  .s1{border-color:#b8cdf6; background:#f7faff;} .s1 .num{background:#2f6fed;} .s1 h2{color:#1d4ed8;}
+  .s1 .when{background:#e4edfd; color:#1d4ed8;} .s1 li::before{background:#8fb2f4;}
+  .s2{border-color:#a8ded6; background:#f5fcfa;} .s2 .num{background:#0f9b8a;} .s2 h2{color:#0f766e;}
+  .s2 .when{background:#dcf3ef; color:#0f766e;} .s2 li::before{background:#6ec9bc;}
+  .s3{border-color:#f2d3a0; background:#fffbf4;} .s3 .num{background:#d97706;} .s3 h2{color:#b45309;}
+  .s3 .when{background:#fdeeda; color:#b45309;} .s3 li::before{background:#eab672;}
+  .s4{border-color:#cdbdf3; background:#faf8ff;} .s4 .num{background:#7c3aed;} .s4 h2{color:#6d28d9;}
+  .s4 .when{background:#eee7fd; color:#6d28d9;} .s4 li::before{background:#a98cee;}
+  .s5{border-color:#f3bfbf; background:#fff8f8;} .s5 .num{background:#dc2626;} .s5 h2{color:#c0392b;}
+  .s5 .when{background:#fce4e4; color:#c0392b;} .s5 li::before{background:#eb9494;}
+
+  .foot{margin-top:16px; font-size:13.5px; color:#6b7885; line-height:1.6;}
+  .foot b{color:#2b3440; font-weight:600;}
+</style>
+</head>
+<body>
+<div class="sheet" id="sheet">
+
+  <div class="head">
+    <div class="eyebrow">ระบบประกันรายได้ · Store Business Partner</div>
+    <h1>งานเบื้องหลังที่ทำให้ร้านได้รับเงินชดเชย — 11 งาน แบ่งเป็น 5 ช่วง</h1>
+    <p class="sub">ทุกงานทำงานเองอัตโนมัติตามเวลาที่ตั้งไว้ ไม่ต้องมีคนคอยกดสั่ง</p>
+  </div>
+
+  <div class="band">
+    <span class="lbl">ข้อมูลที่รับเข้ามาจากระบบอื่น</span>
+    <span class="items">
+      <span><i></i>ระบบประเมินคุณภาพร้าน (คะแนน 6 หมวด)</span>
+      <span><i></i>ระบบแผนที่สาขา (ร้านเปิดใหม่ · ร้านคู่แข่ง)</span>
+      <span><i></i>ระบบข้อมูลยอดขาย (ส่งไป–รับกลับ)</span>
+    </span>
+  </div>
+
+  <div class="flow">
+
+    <div class="step s1">
+      <div class="num">1</div>
+      <h2>รวบรวมข้อมูลตั้งต้นของร้าน <span class="cnt">3 งาน</span></h2>
+      <div class="when"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>คะแนน: เดือนละครั้ง · คู่ร้าน: วันที่ 7 · 07:00</div>
+      <ul>
+        <li>คะแนนประเมินคุณภาพของแต่ละร้าน (ใช้ตอนส่งยอดในช่วงที่ 4)</li>
+        <li>คู่ร้าน “ร้านเดิมที่ถูกกระทบ ↔ ร้านใหม่ที่เพิ่งเปิด” เฉพาะคู่ที่อยู่ในระยะกระทบ</li>
+        <li>ร้านคู่แข่งที่อยู่รอบ ๆ ร้านเดิม</li>
+      </ul>
+      <div class="out"><b>ได้อะไร</b>รายชื่อร้านที่ต้องตรวจสอบในรอบนี้</div>
+    </div>
+
+    <div class="step s2">
+      <div class="num">2</div>
+      <h2>ขอยอดขายมาเทียบ ก่อน–หลังร้านใหม่เปิด <span class="cnt">2 งาน</span></h2>
+      <div class="when"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>วันที่ 7–16 · ส่งขอ 16:00 รับกลับ 16:30</div>
+      <ul>
+        <li><b>ส่งคำขอ</b> รายชื่อร้าน → <b>รับผลกลับ</b> ยอดขายรายวัน</li>
+        <li>เทียบ 4 ช่วง ช่วงละ 15 วัน ทั้งก่อนและหลังร้านใหม่เปิด</li>
+      </ul>
+      <div class="out"><b>ได้อะไร</b>คำตอบว่ายอดขายลดลงจริงหรือไม่ และลดลงเท่าไร</div>
+    </div>
+
+    <div class="step s3">
+      <div class="num">3</div>
+      <h2>ส่งข้อมูลให้ระบบจัดทำเอกสาร <span class="cnt">3 งาน</span></h2>
+      <div class="when"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>วันที่ 7–31 · 17:30</div>
+      <ul>
+        <li>ส่ง <b>ข้อมูลร้านที่ถูกกระทบ</b> พร้อมรายชื่อผู้มีอำนาจอนุมัติ</li>
+        <li>ส่ง <b>ข้อมูลร้านที่เปิดใหม่</b> และ <b>ข้อมูลร้านคู่แข่ง</b></li>
+        <li>ทั้ง 3 ชุดส่งแยกกัน ไม่ขึ้นต่อกัน</li>
+      </ul>
+      <div class="out"><b>ได้อะไร</b>เอกสารประกันรายได้ของร้าน พร้อมให้ผู้เกี่ยวข้องตรวจสอบ</div>
+    </div>
+
+    <div class="step s4">
+      <div class="num">4</div>
+      <h2>เปิดเรื่องให้อนุมัติ และส่งยอดเข้าใบแจ้งยอด <span class="cnt">2 งาน</span></h2>
+      <div class="when"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>เปิดเรื่อง: รอบแยก · ส่งยอด: ทุกวัน 17:00</div>
+      <ul>
+        <li><b>เปิดเรื่อง</b> — ตรวจเงื่อนไขก่อน เช่น อยู่ในระยะกระทบจริง · ยอดลดถึงเกณฑ์ · ไม่ใช่เจ้าของรายเดียวกัน แล้วส่งให้อนุมัติทีละขั้นตามวงเงิน</li>
+        <li><b>ส่งยอด</b> — เช็คว่าคะแนนประเมินร้านมาครบ 6 หมวดก่อน จึงส่งยอดชดเชยไปใบแจ้งยอด</li>
+      </ul>
+      <div class="out"><b>ได้อะไร</b>เรื่องเข้าสู่การอนุมัติ และยอดที่อนุมัติแล้วเข้าใบแจ้งยอดเพื่อจ่ายจริง</div>
+    </div>
+
+    <div class="step s5">
+      <div class="num">5</div>
+      <h2>เฝ้าระวังและแจ้งเตือนเมื่อมีอะไรค้าง <span class="cnt">1 งาน</span></h2>
+      <div class="when"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>ทุกวัน 07:00</div>
+      <ul>
+        <li>ตรวจว่ารายการที่ส่งไปใบแจ้งยอด ปลายทาง<b>ตอบรับกลับมาครบหรือยัง</b></li>
+        <li>ค้างเกิน 1 วัน → ส่งอีเมลแจ้งผู้ดูแลทันที</li>
+      </ul>
+      <div class="out"><b>ได้อะไร</b>จับปัญหาได้ก่อนกระทบรอบถัดไป</div>
+    </div>
+
+  </div>
+
+  <p class="foot"><b>สรุปสั้น ๆ:</b> ช่วง 1–2 เก็บข้อมูลและพิสูจน์ว่ายอดขายตกจริง · ช่วง 3–4 ทำเอกสาร อนุมัติ และจ่ายเงิน ·
+    ช่วง 5 เป็นตาข่ายนิรภัย <b>หากงานใดทำงานไม่สำเร็จ ระบบจะส่งอีเมลแจ้งผู้ดูแลทันที</b></p>
+
+</div>
+</body>
+</html>

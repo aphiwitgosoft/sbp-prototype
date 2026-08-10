@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository is a static Thai-language HTML prototype for the SBP/K2 income-guarantee workflow. Source pages live in the repository root, for example `index.html`, `k2-document.html`, `job-batch.html`, and `plan-api.html`. Shared assets are limited to `assets/sbp.css` and `assets/sbp.js`.
+This repository is a static Thai-language HTML prototype for the SBP/K2 income-guarantee workflow. Source pages live in the repository root, for example `index.html`, `k2-document.html`, `k2-report.html`, and `plan-api.html`. Shared assets are limited to `assets/sbp.css` and `assets/sbp.js`.
 
 Every K2 page should follow the existing page contract: a `<body>` with `data-page`, `data-nav`, `data-module`, and optional `data-crumb`; an empty `<aside id="sidebar"></aside>`; page content inside `<main class="content">`; and `assets/sbp.js` loaded at the end. Add new sidebar entries to the `MODULES` array in `assets/sbp.js`.
 

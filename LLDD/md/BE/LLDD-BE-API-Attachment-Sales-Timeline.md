@@ -7,8 +7,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 21 ชั่วโมง |
-| Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Estimate | 24 ชั่วโมง |
+| Owner | Peerakorn <Pete> Sakunkaewphithak |
 | Objective | ออกแบบ APIs สำหรับไฟล์แนบ ข้อมูลยอดขายเพิ่มเติม และ timeline/history |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -280,7 +280,451 @@ Timeline/history API
 | sales_transactions | R | ยอดขายรายวัน 4 windows |
 | consideration_logs | R | timeline/history |
 
-## 9. Processing Flow
+## 9. Skeleton Code (store-backend + BFF)
+
+โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
+
+#### 9.1 ผังไฟล์ที่ต้องสร้าง
+
+| Path | หน้าที่ |
+| --- | --- |
+| store-backend · src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
+| store-backend · src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
+| store-backend · src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sbpgi-attachment-sales-timeline/dto/sbpgi-attachment-sales-timeline.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
+| store-backend · src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
+| store-backend · src/entitys/document-attachments.entity.ts | entity ของ `document_attachments` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
+| store-backend · src/entitys/compensation-documents.entity.ts | entity ของ `compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
+| store-backend · src/entitys/fgi-impact-sales-summaries.entity.ts | entity ของ `fgi_impact_sales_summaries` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/providers/sbpgi/sbpgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
+| store-backend · sql/deploy-sbpgi-attachment-sales-timeline.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
+| BFF · src/common/client-services/sbpgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
+| BFF · src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.controller.ts | route ฝั่ง BFF prefix `/bff/sbpgi/…` + `@UseGuards(AuthGuard('jwt'))` |
+| BFF · src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
+
+เส้นที่ไม่ต้อง implement ใหม่ในเอกสารนี้:
+
+| Endpoint | จุดประสงค์ | เหตุผล |
+| --- | --- | --- |
+| GET /api/v1/documents/{docNo}/timeline | Timeline/history API | **reference — implement ที่เอกสาร `LLDD-BE-API-Document-Workflow-Actions`** (1 เส้น = 1 เจ้าของ ไม่ประกาศ controller ซ้ำ ไม่งั้น NestJS จะ register ทับกันเงียบ ๆ) |
+
+#### 9.2 Controller (store-backend)
+
+```ts
+// src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.controller.ts
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { HttpHeaderGuard } from '../../guards/http-header.guard';
+import { UserId } from '../../common/decorators/user-id.decorator';
+import { SbpgiAttachmentSalesTimelineService } from './sbpgi-attachment-sales-timeline.service';
+import { CreateDocumentsAttachmentsBodyDto } from './dto/sbpgi-attachment-sales-timeline.dto';
+
+// LLDD BE - API Attachment Sales and Timeline
+// BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
+@Controller('sbpgi/documents')
+@UseGuards(HttpHeaderGuard)
+export class SbpgiAttachmentSalesTimelineController {
+  constructor(private readonly service: SbpgiAttachmentSalesTimelineService) {}
+
+  // POST /api/v1/documents/{docNo}/attachments — Upload attachment API
+  @Post(':docNo/attachments')
+  createDocumentsAttachments(
+    @Param('docNo') docNo: string,
+    @Body() body: CreateDocumentsAttachmentsBodyDto,
+    @UserId() userId: string,
+  ) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.createDocumentsAttachments(docNo, body, userId);
+  }
+
+  // GET /api/v1/documents/{docNo}/sales — Sales detail API
+  @Get(':docNo/sales')
+  getDocumentsSales(@Param('docNo') docNo: string, @UserId() userId: string) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.getDocumentsSales(docNo, userId);
+  }
+}
+```
+
+#### 9.3 DTO + Validation
+
+```ts
+// src/modules/sbpgi-attachment-sales-timeline/dto/sbpgi-attachment-sales-timeline.dto.ts
+import { Type } from 'class-transformer';
+import {
+  IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
+  IsString, Matches, Max, MaxLength, Min,
+} from 'class-validator';
+
+// ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
+// property ที่ไม่ประกาศที่นี่จะถูก reject เป็น 400 อัตโนมัติ
+
+// body ของ POST /api/v1/documents/{docNo}/attachments
+export class CreateDocumentsAttachmentsBodyDto {
+  /** validate extension and content type */
+  // TODO: ใช้ FileInterceptor + ValidationPipe แยก ไม่ผ่าน class-validator
+  file: Express.Multer.File;
+
+  /** บันทึกว่าแนบในขั้นไหน */
+  @IsNotEmpty()
+  @IsString()
+  sectionCode: string;
+}
+```
+
+#### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
+
+service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
+
+```ts
+// src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.service.ts
+import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+import { SBPGI_SQL } from './sbpgi-attachment-sales-timeline.sql';
+
+@Injectable()
+export class SbpgiAttachmentSalesTimelineService {
+  private readonly logger = new Logger(SbpgiAttachmentSalesTimelineService.name);
+
+  constructor(
+    // DATA_SOURCE override query(): SELECT/WITH ไป slave pool, write ไป master
+    @Inject('DATA_SOURCE') private readonly dataSource: DataSource,
+  ) {}
+
+  // POST /api/v1/documents/{docNo}/attachments — Upload attachment API
+  // mutation ต้องอยู่ใน transaction เดียว (ไม่มี audit ของ master แล้ว · 2026-08-07)
+  async createDocumentsAttachments(docNo: string, body: CreateDocumentsAttachmentsBodyDto, userId: string) {
+    const runner = this.dataSource.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      // TODO: lock แถวเป้าหมายของ document_attachments ด้วย SELECT ... FOR UPDATE ก่อนเขียน
+      const [current] = await runner.query(SBPGI_SQL.createDocumentsAttachmentsLock, [docNo]);
+      if (!current) {
+        throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
+      }
+      await runner.query(SBPGI_SQL.createDocumentsAttachments, [/* TODO: ผูกค่าจาก body */]);
+      await runner.commitTransaction();
+      return { message: 'saved' };
+    } catch (error) {
+      await runner.rollbackTransaction();
+      this.logger.error(error);
+      throw error;
+    } finally {
+      await runner.release();
+    }
+  }
+
+  // GET /api/v1/documents/{docNo}/sales — Sales detail API
+  async getDocumentsSales(docNo: string, userId: string) {
+    const page = 1;
+    const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/documents/{docNo}/sales')
+    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
+    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
+    const rows = await this.dataSource.query(SBPGI_SQL.getDocumentsSales, [
+      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
+      userId, (page - 1) * size, size,
+    ]);
+    // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
+    return { page, size, total: rows.length, items: rows };
+  }
+}
+```
+
+#### 9.5 Entity (TypeORM)
+
+```ts
+// src/entitys/document-attachments.entity.ts
+import { Column, Entity, PrimaryColumn } from 'typeorm';
+
+@Entity({ name: 'document_attachments', schema: process.env.DB_SCHEMA })
+export class DocumentAttachment {
+  @PrimaryColumn({ name: 'id', type: 'bigint' })
+  id: number;
+
+  @Column({ name: 'doc_no', type: 'varchar', length: 12 })
+  docNo: string;
+
+  @Column({ name: 'section_code', type: 'varchar', length: 2 })
+  sectionCode: string;
+
+  @Column({ name: 'file_name', type: 'varchar', length: 255 })
+  fileName: string;
+
+  @Column({ name: 'file_path', type: 'varchar', length: 1000 })
+  filePath: string;
+
+  @Column({ name: 'file_size', type: 'int' })
+  fileSize: number;
+
+  @Column({ name: 'content_type', type: 'varchar', length: 100, nullable: true })
+  contentType?: string;
+
+  @Column({ name: 'upload_status', type: 'varchar', length: 1, nullable: true })
+  uploadStatus?: string;
+
+  @Column({ name: 'upload_message', type: 'varchar', length: 500, nullable: true })
+  uploadMessage?: string;
+
+  @Column({ name: 'purge_flag', type: 'char', length: 1, nullable: true })
+  purgeFlag?: string;
+
+  @Column({ name: 'uploaded_by', type: 'varchar', length: 50 })
+  uploadedBy: string;
+
+  @Column({ name: 'uploaded_at', type: 'timestamptz' })
+  uploadedAt: Date;
+
+  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
+  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+}
+```
+
+```ts
+// src/entitys/compensation-documents.entity.ts
+import { Column, Entity, PrimaryColumn } from 'typeorm';
+
+@Entity({ name: 'compensation_documents', schema: process.env.DB_SCHEMA })
+export class CompensationDocument {
+  @PrimaryColumn({ name: 'doc_no', type: 'varchar', length: 12 })
+  docNo: string;
+
+  @Column({ name: 'impact_process_id', type: 'bigint', nullable: true })
+  impactProcessId?: number;
+
+  @Column({ name: 'impacted_store_code', type: 'char', length: 5 })
+  impactedStoreCode: string;
+
+  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  statusCode: string;
+
+  @Column({ name: 'current_section_code', type: 'varchar', length: 2 })
+  currentSectionCode: string;
+
+  @Column({ name: 'round_no', type: 'int', nullable: true })
+  roundNo?: number;
+
+  @Column({ name: 'loop_no', type: 'int', nullable: true })
+  loopNo?: number;
+
+  @Column({ name: 'statement_id', type: 'varchar', length: 30, nullable: true })
+  statementId?: string;
+
+  @Column({ name: 'statement_date', type: 'date', nullable: true })
+  statementDate?: Date;
+
+  @Column({ name: 'account_year', type: 'int', nullable: true })
+  accountYear?: number;
+
+  @Column({ name: 'account_month', type: 'int', nullable: true })
+  accountMonth?: number;
+
+  @Column({ name: 'compensate_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
+  compensateAmount?: string;
+
+  @Column({ name: 'allmap_url', type: 'text', nullable: true })
+  allmapUrl?: string;
+
+  @Column({ name: 'approver_snapshot', type: 'jsonb', nullable: true })
+  approverSnapshot?: Record<string, unknown>;
+
+  @Column({ name: 'created_at', type: 'timestamptz', nullable: true })
+  createdAt?: Date;
+
+  @Column({ name: 'updated_at', type: 'timestamptz', nullable: true })
+  updatedAt?: Date;
+
+  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
+  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+}
+```
+
+ตารางที่เหลือของเอกสารนี้ (`fgi_impact_sales_summaries`, `sales_transactions`, `consideration_logs`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+
+#### 9.6 Repository Providers + Module wiring
+
+```ts
+// src/providers/sbpgi/sbpgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
+// convention ของโฟลเดอร์ providers คือ 1 ไฟล์ต่อโดเมน ตั้งชื่อตามโดเมน (business_user/business_user.ts,
+// common_code/common_code.ts …) ไม่ใช่ index.ts
+//
+// ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SBPGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ
+//    (ชื่อ const แยกต่อเอกสารไว้แล้วเพื่อไม่ให้ชนกัน)
+import { DataSource } from 'typeorm';
+import { DocumentAttachment } from '../../entitys/document-attachments.entity';
+import { CompensationDocument } from '../../entitys/compensation-documents.entity';
+import { FgiImpactSalesSummary } from '../../entitys/fgi-impact-sales-summaries.entity';
+
+export const sbpgiAttachmentSalesTimelineProviders = [
+  {
+    provide: 'DOCUMENT_ATTACHMENT_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(DocumentAttachment),
+    inject: ['DATA_SOURCE'],
+  },
+  {
+    provide: 'COMPENSATION_DOCUMENT_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(CompensationDocument),
+    inject: ['DATA_SOURCE'],
+  },
+  {
+    provide: 'FGI_IMPACT_SALES_SUMMARIES_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(FgiImpactSalesSummary),
+    inject: ['DATA_SOURCE'],
+  },
+];
+
+// src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.module.ts
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { DatabaseModule } from '../../database/database.module';
+// UserContextMiddleware อ่าน header x-user-id แล้วเซ็ต request.userId ที่ @UserId() ใช้
+// — app.module.ts **ไม่ได้** apply แบบ global (มีแค่ HttpContext/LoggerContext) แต่ละโมดูลต้อง apply เอง
+// (ดู evaluation-process.module.ts / inform-evaluate.module.ts / cooperation-request.module.ts)
+import { UserContextMiddleware } from '../../common/middleware/user-context.middleware';
+import { sbpgiAttachmentSalesTimelineProviders } from '../../providers/sbpgi/sbpgi';
+import { SbpgiAttachmentSalesTimelineController } from './sbpgi-attachment-sales-timeline.controller';
+import { SbpgiAttachmentSalesTimelineService } from './sbpgi-attachment-sales-timeline.service';
+
+@Module({
+  imports: [DatabaseModule],
+  controllers: [SbpgiAttachmentSalesTimelineController],
+  providers: [SbpgiAttachmentSalesTimelineService, ...sbpgiAttachmentSalesTimelineProviders],
+  exports: [SbpgiAttachmentSalesTimelineService],
+})
+export class SbpgiAttachmentSalesTimelineModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // ถ้าไม่ apply ตรงนี้ userId จะเป็น undefined เงียบ ๆ ทุก endpoint
+    consumer.apply(UserContextMiddleware).forRoutes(SbpgiAttachmentSalesTimelineController);
+  }
+}
+// TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SBPGI ตัวอื่น
+```
+
+#### 9.7 BFF Proxy (module + controller + client service)
+
+BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sbpgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
+
+```ts
+// src/common/client-services/sbpgi-client.service.ts
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { BaseClientService } from './base-client.service';
+
+@Injectable()
+export class SbpgiClientService extends BaseClientService implements OnModuleInit {
+  protected logger: Logger = new Logger(SbpgiClientService.name);
+
+  onModuleInit() {
+    // TODO: ถ้า deploy SBPGI แยก service ให้เพิ่ม API_SBPGI_BACKEND_* ใน AppConfigService
+    //       ตอนนี้ชี้ store backend ตัวเดียวกับ StoreClientService
+    this.defaultHeaders[this.config.api.store.key.name] = this.config.api.store.key.value;
+    this.baseUrl = this.config.api.store.url;
+  }
+}
+// BaseClientService แกะ { success, data } ให้แล้ว — service ฝั่ง BFF จึงได้ data ตรง ๆ
+// TODO: เพิ่ม SbpgiClientService ใน providers/exports ของ ClientServiceModule (@Global)
+```
+
+```ts
+// src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.service.ts (BFF)
+import { Injectable } from '@nestjs/common';
+import { SbpgiClientService } from '@common/client-services/sbpgi-client.service';
+
+@Injectable()
+export class SbpgiAttachmentSalesTimelineBffService {
+  constructor(private readonly client: SbpgiClientService) {}
+
+  // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  private userHeaders(user: any) {
+    return {
+      'x-user-id': user?.userId,
+      'x-user-group-id': user?.groupId,
+      'x-user-permissions': (user?.permissions ?? []).join(','),
+    };
+  }
+
+  createDocumentsAttachments(docNo: string, body: any, user: any) {
+    return this.client.post(`/api/v1/documents/${docNo}/attachments`, body, { headers: this.userHeaders(user) });
+  }
+
+  getDocumentsSales(docNo: string, params: any, user: any) {
+    return this.client.get(`/api/v1/documents/${docNo}/sales`, { params, headers: this.userHeaders(user) });
+  }
+}
+
+// ---------- src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.controller.ts (BFF) ----------
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+
+// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sbpgi/...' (ห้ามปนกับแบบไม่มี /bff)
+@Controller('bff/sbpgi/attachment-sales-timeline')
+@UseGuards(AuthGuard('jwt'))
+export class SbpgiAttachmentSalesTimelineBffController {
+  constructor(private readonly service: SbpgiAttachmentSalesTimelineBffService) {}
+
+  // proxy ของ POST /api/v1/documents/{docNo}/attachments
+  @Post('documents/:docNo/attachments')
+  createDocumentsAttachments(@Param('docNo') docNo: string, @Body() body: any, @Req() req: any) {
+    return this.service.createDocumentsAttachments(docNo, body, req.user);
+  }
+
+  // proxy ของ GET /api/v1/documents/{docNo}/sales
+  @Get('documents/:docNo/sales')
+  getDocumentsSales(@Param('docNo') docNo: string, @Query() query: any, @Req() req: any) {
+    return this.service.getDocumentsSales(docNo, query, req.user);
+  }
+}
+// TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
+```
+
+## 10. Database SQL
+
+#### 10.1 ตารางที่อ่าน/เขียน
+
+| Table / Object | R/W | Usage |
+| --- | --- | --- |
+| document_attachments | R/W | metadata ไฟล์แนบและ section ที่แนบ |
+| compensation_documents | R | ตรวจเอกสารและ impact_process_id |
+| fgi_impact_sales_summaries | R | หัวข้อมูลยอดขาย growth_rate_diff/total_working_days |
+| sales_transactions | R | ยอดขายรายวัน 4 windows |
+| consideration_logs | R | timeline/history |
+
+#### 10.2 SQL จริงต่อ Endpoint
+
+**POST /api/v1/documents/{docNo}/attachments** — Upload attachment API
+
+```sql
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- ตรวจขนาด ≤ 5MB, sanitize filename, sha256, AV scan=CLEAN ก่อน commit metadata
+INSERT INTO document_attachments (doc_no, section_code, file_name, mime_type, file_size, storage_provider, bucket, object_key, sha256, scan_status, uploaded_by, uploaded_at)
+VALUES (:docNo, :sectionCode, :fileName, :mimeType, :fileSize, :storageProvider, :bucket, :objectKey, :sha256, :scanClean, :empId, :now);
+```
+
+**GET /api/v1/documents/{docNo}/sales** — Sales detail API
+
+```sql
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- หา impact_process_id ของเอกสาร แล้วอ่านยอดขาย 4 หน้าต่าง × 15 วัน
+SELECT ss.id AS sales_summary_id, ss.growth_rate_diff, ss.total_working_days
+FROM compensation_documents d
+JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
+WHERE d.doc_no = :docNo;
+
+SELECT window_no, txn_date, sales_amount, sales_diff, is_outlier
+FROM sales_transactions
+WHERE sales_summary_id = :salesSummaryId
+ORDER BY window_no, txn_date;
+```
+
+#### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+
+| Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
+| --- | --- | --- |
+| fgi_impact_sales_summaries | CREATE INDEX idx_fgi_impact_sales_summaries_impact_process_id ON fgi_impact_sales_summaries (impact_process_id); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
+
+ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sbpgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่
+
+## 11. Processing Flow
 
 | Step | Description |
 | --- | --- |
@@ -290,14 +734,14 @@ Timeline/history API
 | 4 | Load sales summary and transactions |
 | 5 | Return timeline ordered by action time |
 
-## 10. Acceptance Criteria
+## 12. Acceptance Criteria
 
 - file >5MB returns 413
 - unsupported file type returns 415
 - sales windows are ordered
 - timeline newest/oldest order matches FE expectation
 
-## 11. Developer Test Checklist
+## 13. Developer Test Checklist
 
 | No | Test |
 | --- | --- |

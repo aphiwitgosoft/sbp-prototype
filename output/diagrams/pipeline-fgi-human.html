@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ภาพรวมการทำงานเบื้องหลัง — ระบบประกันรายได้</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:#eef2f7; font-family:"Prompt","Sarabun",sans-serif; padding:40px;}
+
+  .sheet{width:1620px; background:#fff; border-radius:24px; padding:44px 48px 36px;
+         box-shadow:0 18px 60px rgba(31,72,104,.14);}
+
+  /* ---------- หัวเรื่อง ---------- */
+  .head{border-bottom:2px solid #eaeff6; padding-bottom:22px; margin-bottom:24px;}
+  .eyebrow{font-size:14px; font-weight:600; color:#2f6fed; letter-spacing:.02em; margin-bottom:8px;}
+  h1{font-size:34px; font-weight:700; color:#1b2733; line-height:1.25;}
+  .sub{font-size:16.5px; color:#5d6b7a; margin-top:10px; line-height:1.65; max-width:1130px;}
+
+  /* ---------- โครง 3 คอลัมน์ ---------- */
+  .grid3{display:grid; grid-template-columns:300px 1fr 320px; gap:24px;}
+  .colhead{margin-bottom:12px;}
+  .colhead span{display:block; font-size:14px; font-weight:700; color:#8493a5; letter-spacing:.03em;
+                text-align:center; background:#f4f7fb; border-radius:999px; padding:8px 0;}
+
+  .row{align-items:stretch; margin-bottom:16px;}
+  .row:last-of-type{margin-bottom:0;}
+
+  /* ---------- กล่องระบบต้นทาง/ปลายทาง ---------- */
+  .side{display:flex; flex-direction:column; gap:10px; padding-top:20px;}
+  .sysbox{background:#fbfcfe; border:1.5px solid #dbe3ed; border-radius:14px; padding:13px 15px;}
+  .sysbox .nm{font-size:14.5px; font-weight:600; color:#2b3440; line-height:1.4;}
+  .sysbox .ds{font-size:12.5px; color:#8493a5; margin-top:4px; line-height:1.5;}
+  .sysbox.back{border-style:dashed; background:#fff;}
+  .sysbox.back .nm{color:#6b7885;}
+  .dirn{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600;
+        color:#7c8a99; background:#eef2f7; border-radius:999px; padding:2px 9px; margin-bottom:6px;}
+
+  /* ---------- การ์ดขั้นตอน ---------- */
+  .step{position:relative; border-radius:18px; padding:20px 26px 20px 92px; border:1.5px solid; background:#fff;}
+  .step .num{position:absolute; left:24px; top:22px; width:46px; height:46px; border-radius:50%;
+             display:flex; align-items:center; justify-content:center;
+             font-family:"Sarabun",sans-serif; font-size:22px; font-weight:700; color:#fff;}
+  .step .toprow{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
+  .step h2{font-size:20px; font-weight:600; line-height:1.35;}
+  .step .cnt{font-size:12.5px; font-weight:600; color:#8493a5; background:#f2f5f9;
+             border-radius:999px; padding:3px 11px; white-space:nowrap;}
+  .step .when{display:inline-flex; align-items:center; gap:7px; margin-top:9px; margin-bottom:12px;
+              font-size:13.5px; font-weight:600; border-radius:999px; padding:5px 13px;}
+  .step .when svg{width:14px; height:14px;}
+  .step ul{list-style:none; display:flex; flex-direction:column; gap:8px;}
+  .step li{position:relative; padding-left:20px; font-size:15.5px; color:#3b4653; line-height:1.6;}
+  .step li::before{content:""; position:absolute; left:0; top:9px; width:8px; height:8px; border-radius:50%;}
+  .step li b{font-weight:600; color:#2b3440;}
+
+  /* สีต่อขั้น */
+  .s1{border-color:#b8cdf6; background:#f7faff;}
+  .s1 .num{background:#2f6fed;} .s1 h2{color:#1d4ed8;}
+  .s1 .when{background:#e4edfd; color:#1d4ed8;} .s1 li::before{background:#8fb2f4;}
+  .s2{border-color:#a8ded6; background:#f5fcfa;}
+  .s2 .num{background:#0f9b8a;} .s2 h2{color:#0f766e;}
+  .s2 .when{background:#dcf3ef; color:#0f766e;} .s2 li::before{background:#6ec9bc;}
+  .s3{border-color:#f2d3a0; background:#fffbf4;}
+  .s3 .num{background:#d97706;} .s3 h2{color:#b45309;}
+  .s3 .when{background:#fdeeda; color:#b45309;} .s3 li::before{background:#eab672;}
+  .s4{border-color:#cdbdf3; background:#faf8ff;}
+  .s4 .num{background:#7c3aed;} .s4 h2{color:#6d28d9;}
+  .s4 .when{background:#eee7fd; color:#6d28d9;} .s4 li::before{background:#a98cee;}
+  .s5{border-color:#f3bfbf; background:#fff8f8;}
+  .s5 .num{background:#dc2626;} .s5 h2{color:#c0392b;}
+  .s5 .when{background:#fce4e4; color:#c0392b;} .s5 li::before{background:#eb9494;}
+
+  /* ---------- ลูกศรเชื่อมระหว่างขั้น ---------- */
+  .arrow{grid-column:2; display:flex; justify-content:center; margin:-2px 0;}
+  .arrow svg{width:26px; height:26px;}
+
+  /* ---------- ท้ายภาพ ---------- */
+  .foot{margin-top:26px; padding-top:20px; border-top:2px solid #eaeff6;
+        display:flex; gap:14px; align-items:flex-start;}
+  .foot .ic{flex:0 0 auto; width:34px; height:34px; border-radius:10px; background:#e4edfd;
+            display:flex; align-items:center; justify-content:center;}
+  .foot p{font-size:15px; color:#5d6b7a; line-height:1.7;}
+  .foot b{color:#2b3440; font-weight:600;}
+</style>
+</head>
+<body>
+<div class="sheet" id="sheet">
+
+  <div class="head">
+    <div class="eyebrow">ระบบประกันรายได้ · Store Business Partner</div>
+    <h1>งานเบื้องหลังที่ทำให้ร้านได้รับเงินชดเชย</h1>
+    <p class="sub">งานทั้งหมด <b>11 งาน แบ่งเป็น 5 ช่วง</b> ทำงานเองอัตโนมัติตามเวลาที่ตั้งไว้
+      ตั้งแต่รวบรวมข้อมูลร้าน พิสูจน์ว่ายอดขายลดลงจริง ส่งต่อให้ทำเอกสาร เปิดเรื่องให้อนุมัติ
+      จนถึงส่งยอดเงินเข้าใบแจ้งยอดของร้าน และคอยเฝ้าระวังว่ามีอะไรค้างหรือไม่</p>
+  </div>
+
+  <div class="grid3 colhead">
+    <span>ข้อมูลที่รับเข้ามา</span>
+    <span>ช่วงการทำงานอัตโนมัติ (11 งาน · 5 ช่วง)</span>
+    <span>ส่งผลไปที่</span>
+  </div>
+
+  <!-- ===== ช่วง 1 (เฟส A) ===== -->
+  <div class="grid3 row">
+    <div class="side">
+      <div class="sysbox">
+        <div class="nm">ระบบประเมินคุณภาพร้าน</div>
+        <div class="ds">คะแนนประเมินของแต่ละสาขา แยกเป็น 6 หมวด · ส่งให้เดือนละครั้ง</div>
+      </div>
+      <div class="sysbox">
+        <div class="nm">ระบบแผนที่สาขา</div>
+        <div class="ds">ตำแหน่งร้านทุกสาขา ร้านที่กำลังจะเปิดใหม่ และร้านคู่แข่งรอบข้าง</div>
+      </div>
+    </div>
+
+    <div class="step s1">
+      <div class="num">1</div>
+      <div class="toprow"><h2>รวบรวมข้อมูลตั้งต้นของร้าน</h2><span class="cnt">3 งาน</span></div>
+      <div class="when">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        คะแนนประเมิน เดือนละครั้ง · คู่ร้านและคู่แข่ง ทุกวันที่ 7 เวลา 07:00
+      </div>
+      <ul>
+        <li>ดึง<b>คะแนนประเมินคุณภาพ</b>ของแต่ละร้านเข้ามาเก็บไว้ (ใช้ตอนส่งยอดในช่วงที่ 4)</li>
+        <li>ดึงรายชื่อ<b>คู่ร้าน “ร้านเดิมที่ถูกกระทบ ↔ ร้านใหม่ที่เพิ่งเปิด”</b> เฉพาะคู่ที่อยู่ในระยะกระทบ</li>
+        <li>ดึงรายชื่อ<b>ร้านคู่แข่ง</b>ที่อยู่รอบ ๆ ร้านเดิม เพื่อใช้ประกอบการพิจารณา</li>
+      </ul>
+    </div>
+
+    <div class="side"></div>
+  </div>
+
+  <div class="grid3"><div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#a8b4c2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16m0 0 6-6m-6 6-6-6"/></svg></div></div>
+
+  <!-- ===== ช่วง 2 (เฟส B) ===== -->
+  <div class="grid3 row">
+    <div class="side">
+      <div class="sysbox">
+        <span class="dirn">ส่งไป–รับกลับ</span>
+        <div class="nm">ระบบข้อมูลยอดขาย</div>
+        <div class="ds">รับรายชื่อร้านไปคำนวณยอดขายรายวัน แล้วส่งผลกลับมาให้ในอีกครึ่งชั่วโมง</div>
+      </div>
+    </div>
+
+    <div class="step s2">
+      <div class="num">2</div>
+      <div class="toprow"><h2>ขอยอดขายมาเทียบก่อน–หลังร้านใหม่เปิด</h2><span class="cnt">2 งาน</span></div>
+      <div class="when">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        ทุกวันที่ 7–16 ของเดือน · ส่งขอ 16:00 และรับกลับ 16:30
+      </div>
+      <ul>
+        <li><b>ส่งคำขอ</b> — ส่งรายชื่อร้านที่ถูกกระทบไปให้ระบบข้อมูลยอดขายช่วยคำนวณ</li>
+        <li><b>รับผลกลับ</b> — นำยอดขายที่ได้มาเทียบ 4 ช่วง ช่วงละ 15 วัน ทั้งก่อนและหลังร้านใหม่เปิด</li>
+        <li>สรุปให้เห็นชัดว่าร้านนั้น <b>ยอดขายลดลงจริงหรือไม่ และลดลงกี่เปอร์เซ็นต์</b></li>
+      </ul>
+    </div>
+
+    <div class="side"></div>
+  </div>
+
+  <div class="grid3"><div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#a8b4c2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16m0 0 6-6m-6 6-6-6"/></svg></div></div>
+
+  <!-- ===== ช่วง 3 (เฟส C) ===== -->
+  <div class="grid3 row">
+    <div class="side"></div>
+
+    <div class="step s3">
+      <div class="num">3</div>
+      <div class="toprow"><h2>ส่งข้อมูลให้ระบบจัดทำเอกสาร</h2><span class="cnt">3 งาน · แยกกันคนละชุด</span></div>
+      <div class="when">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        ทุกวันที่ 7–31 ของเดือน เวลา 17:30
+      </div>
+      <ul>
+        <li>ส่ง <b>ข้อมูลร้านที่ถูกกระทบ</b> พร้อมรายชื่อผู้มีอำนาจอนุมัติของร้านนั้น</li>
+        <li>ส่ง <b>ข้อมูลร้านที่เปิดใหม่</b> ที่ทำให้ยอดขายลดลง</li>
+        <li>ส่ง <b>ข้อมูลร้านคู่แข่ง</b> ที่อยู่รอบข้าง — ทั้ง 3 ชุดส่งแยกกัน ไม่ขึ้นต่อกัน</li>
+      </ul>
+    </div>
+
+    <div class="side">
+      <div class="sysbox">
+        <div class="nm">ระบบจัดทำเอกสาร</div>
+        <div class="ds">รับข้อมูล 3 ชุดไปตั้งต้นเป็นเอกสารประกันรายได้รายร้าน</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid3"><div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#a8b4c2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16m0 0 6-6m-6 6-6-6"/></svg></div></div>
+
+  <!-- ===== ช่วง 4 (เฟส D) ===== -->
+  <div class="grid3 row">
+    <div class="side"></div>
+
+    <div class="step s4">
+      <div class="num">4</div>
+      <div class="toprow"><h2>เปิดเรื่องให้อนุมัติ และส่งยอดเข้าใบแจ้งยอด</h2><span class="cnt">2 งาน · คนละรอบเวลา</span></div>
+      <div class="when">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        เปิดเรื่อง: รอบแยกของตัวเอง · ส่งยอด: ทุกวัน เวลา 17:00
+      </div>
+      <ul>
+        <li><b>เปิดเรื่องให้พิจารณา</b> — ตรวจเงื่อนไขก่อน เช่น อยู่ในระยะกระทบจริง · ยอดขายลดลงถึงเกณฑ์ ·
+            ไม่ใช่เจ้าของรายเดียวกัน · มีผู้ดูแลร้านครบ ผ่านครบจึงเปิดเรื่องส่งให้อนุมัติทีละขั้นตามวงเงิน</li>
+        <li><b>ส่งยอดเข้าใบแจ้งยอด</b> — ก่อนส่งต้องเช็คว่า<b>คะแนนประเมินร้านมาครบทั้ง 6 หมวด</b>แล้ว
+            (คะแนนที่เก็บไว้ตั้งแต่ช่วงที่ 1) จากนั้นจึงส่งยอดชดเชยไปให้ระบบใบแจ้งยอด</li>
+      </ul>
+    </div>
+
+    <div class="side">
+      <div class="sysbox">
+        <div class="nm">ระบบอนุมัติ</div>
+        <div class="ds">ผู้มีอำนาจพิจารณาเห็นควรชดเชยหรือไม่ ตามลำดับขั้นและวงเงิน</div>
+      </div>
+      <div class="sysbox">
+        <div class="nm">ระบบใบแจ้งยอดของร้าน</div>
+        <div class="ds">รับยอดชดเชยไปแสดงในใบแจ้งยอดและจ่ายให้ร้าน แล้ว<b>ตอบรับกลับมา</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid3"><div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="#a8b4c2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16m0 0 6-6m-6 6-6-6"/></svg></div></div>
+
+  <!-- ===== ช่วง 5 (เฟส E) ===== -->
+  <div class="grid3 row">
+    <div class="side">
+      <div class="sysbox back">
+        <span class="dirn">↩ ตอบกลับ</span>
+        <div class="nm">ผลตอบรับจากใบแจ้งยอด</div>
+        <div class="ds">รายการที่ส่งไปในช่วงที่ 4 ปลายทางต้องตอบรับกลับมาว่ารับเรียบร้อย</div>
+      </div>
+    </div>
+
+    <div class="step s5">
+      <div class="num">5</div>
+      <div class="toprow"><h2>เฝ้าระวังและแจ้งเตือนเมื่อมีอะไรค้าง</h2><span class="cnt">1 งาน</span></div>
+      <div class="when">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        ทุกวัน เวลา 07:00
+      </div>
+      <ul>
+        <li>ตรวจว่ารายการที่ส่งไปใบแจ้งยอด <b>ปลายทางตอบรับกลับมาครบหรือยัง</b></li>
+        <li>ถ้าค้างเกิน 1 วัน ส่ง<b>อีเมลแจ้งผู้ดูแลทันที</b> เพื่อให้ตามแก้ก่อนกระทบรอบถัดไป</li>
+      </ul>
+    </div>
+
+    <div class="side">
+      <div class="sysbox">
+        <div class="nm">อีเมลแจ้งผู้ดูแลระบบ</div>
+        <div class="ds">ทุกช่วงงานส่งอีเมลได้หมด ทั้งแจ้งผลสำเร็จ แจ้งข้อผิดพลาด และแจ้งงานค้าง</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="ic">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2f6fed" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+    </div>
+    <p><b>อ่านภาพนี้อย่างไร:</b> ช่วงที่ 1–2 คือการเก็บข้อมูลและพิสูจน์ว่ายอดขายตกจริง ·
+      ช่วงที่ 3–4 คือการทำเอกสาร อนุมัติ และจ่ายเงิน · ช่วงที่ 5 เป็นตาข่ายนิรภัยคอยจับว่ามีอะไรค้าง
+      <b>ทั้ง 11 งานทำงานเองตามเวลาที่ตั้งไว้ ไม่ต้องมีคนคอยกดสั่ง และหากงานใดทำงานไม่สำเร็จ ระบบจะส่งอีเมลแจ้งผู้ดูแลทันที</b></p>
+  </div>
+
+</div>
+</body>
+</html>

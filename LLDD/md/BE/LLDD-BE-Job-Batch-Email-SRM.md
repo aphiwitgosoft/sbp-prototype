@@ -1,4 +1,4 @@
-# LLDD BE - Job Batch Email and SRM Integration
+# LLDD BE - Job Batch and Email Integration
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
@@ -7,26 +7,25 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 24 ชั่วโมง |
-| Owner | Butsaba <But> Podamrong |
-| Objective | ออกแบบ Backend contracts สำหรับ Batch Job Admin, interface tracking/pending ACK, Email Template Service และ SRM Integration Adapter |
+| Estimate | 15 ชั่วโมง |
+| Owner | Peerakorn <Pete> Sakunkaewphithak |
+| Objective | ออกแบบ Backend contracts สำหรับ batch runner (อ่าน config จาก backend), interface tracking/pending ACK และ Notification Service (ส่งผ่าน @gosoft-sbp/email-lib) — ไม่มี Job Admin API, Email Template API (2026-08-06) และไม่มี SRM inbound adapter แล้ว (2026-08-07) |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
 ## 2. Screen / Functional Scope
 
-- Batch Job Admin APIs ครบ 6 endpoints
-- Interface tracking และ pending ACK APIs
-- Job runner guard/history
-- Notification adapter
+- Interface tracking และ pending ACK APIs (3 เส้น)
+- Job runner guard และ application log
+- Notification adapter ผ่าน @gosoft-sbp/email-lib
 - STA ACK callback
-- SRM integration inbound is optional/reference
+- ไม่มี Batch Job Admin API และไม่มี inbound endpoint ของ SRM
 
 ## 4. Implementation Flow Diagram (Reference)
 
-![รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch Email and SRM Integration](../../assets/flows/BE-LLDD-BE-Job-Batch-Email-SRM.png)
+![รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch and Email Integration](../../assets/flows/BE-LLDD-BE-Job-Batch-Email-SRM.png)
 
-_รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch Email and SRM Integration_
+_รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch and Email Integration_
 
 ## 5. Field, Format, and Validation
 
@@ -41,7 +40,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch Email 
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/jobs; GET /api/v1/jobs/{jobNo}; PUT /api/v1/jobs/{jobNo}/params |
+| Input | GET /api/v1/interfaces/tracking; GET /api/v1/interfaces/pending-ack; POST /api/v1/interfaces/sta/ack |
 | Progress | Receive request; Validate schema; Check idempotency; Process records |
 | Output | job_configs; job_run_histories; interface_transactions |
 
@@ -49,20 +48,9 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch Email 
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| GET /api/v1/jobs | รายการ 11 job entry points พร้อมสถานะล่าสุด | Receive request | job run guard prevents duplicate running job |
-| GET /api/v1/jobs/{jobNo} | รายละเอียด job และ typed parameter metadata | Validate schema | SRM duplicate skipped |
-| PUT /api/v1/jobs/{jobNo}/params | บันทึกเฉพาะ parameter key ที่ metadata ระบุ editable | Check idempotency | email preview renders variables |
-| PUT /api/v1/jobs/{jobNo}/enabled | เปิด/ปิด job พร้อม audit reason | Process records | failed records include detail |
-| POST /api/v1/jobs/{jobNo}/run | สั่ง manual run/retry โดยตรวจ enabled และ concurrent run | Log success/failure | job run guard prevents duplicate running job |
-| GET /api/v1/jobs/{jobNo}/runs | ประวัติการรันแบบแบ่งหน้า | Return summary | SRM duplicate skipped |
-| GET /api/v1/interfaces/tracking | ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา | Receive request | email preview renders variables |
-| GET /api/v1/interfaces/pending-ack | รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน | Validate schema | failed records include detail |
-| GET /api/v1/email-templates/{code} | อ่าน template และ merge-variable metadata | Check idempotency | job run guard prevents duplicate running job |
-| PUT /api/v1/email-templates/{code} | บันทึก subject/body | Process records | SRM duplicate skipped |
-| POST /api/v1/email-templates/{code}/preview | render template โดยไม่บันทึก | Log success/failure | email preview renders variables |
-| POST /api/v1/email-templates/{code}/reset | รีเซ็ต template รายตัว | Return summary | failed records include detail |
-| POST /api/v1/interfaces/sta/ack | STA ACK callback ให้ Job 10 เป็น safety net | Receive request | job run guard prevents duplicate running job |
-| POST /api/v1/integrations/srm/income-guarantee | รับข้อมูลประกันรายได้จาก SRM | Validate schema | SRM duplicate skipped |
+| GET /api/v1/interfaces/tracking | ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา | Receive request | job run guard prevents duplicate running job |
+| GET /api/v1/interfaces/pending-ack | รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน | Validate schema | email preview renders variables |
+| POST /api/v1/interfaces/sta/ack | STA ACK callback ให้ Job 10 เป็น safety net | Check idempotency | failed records include detail |
 
 ### 5.91 Backend Execution Sequence
 
@@ -70,10 +58,10 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch Email 
 | --- | --- | --- |
 | 1 | Receive request | run job |
 | 2 | Validate schema | run duplicate |
-| 3 | Check idempotency | SRM missing field |
-| 4 | Process records | SRM duplicate |
-| 5 | Log success/failure | email preview |
-| 6 | Return summary | template save |
+| 3 | Check idempotency | interface tracking filter |
+| 4 | Process records | pending ACK watchdog |
+| 5 | Log success/failure | STA ACK callback |
+| 6 | Return summary | email preview |
 
 ## 6. Button / User Action Mapping
 
@@ -84,319 +72,6 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch Email 
 | Preview email | POST | emailTemplate.render | merged subject/body |
 
 ## 7. API Contract
-
-### GET /api/v1/jobs
-
-รายการ 11 job entry points พร้อมสถานะล่าสุด
-
-#### Query Params
-
-```json
-{
-  "page": 1,
-  "size": 20
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| page | integer | No | >= 1; default 1 |
-| size | integer | No | 1..100; default 20 |
-
-#### Response
-
-```json
-{
-  "page": 1,
-  "size": 20,
-  "total": 11,
-  "items": [
-    {
-      "jobNo": "8b",
-      "name": "StartInternalWorkflow",
-      "enabled": true,
-      "scheduleMode": "AFTER_JOB",
-      "scheduleExpression": "8",
-      "currentStatus": "SUCCESS",
-      "lastRunId": 4451,
-      "lastRunAt": "2026-07-22T05:35:00+07:00"
-    }
-  ]
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| page | integer | Yes | >= 1; default 1 |
-| size | integer | Yes | 1..100; default 20 |
-| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].jobNo | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].name | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].enabled | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].scheduleMode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].scheduleExpression | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].currentStatus | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].lastRunId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].lastRunAt | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-
-### GET /api/v1/jobs/{jobNo}
-
-รายละเอียด job และ typed parameter metadata
-
-#### Query Params
-
-```json
-{
-  "jobNo": "8b"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| jobNo | string | No | UTF-8; use value domain described by endpoint purpose |
-
-#### Response
-
-```json
-{
-  "jobNo": "8b",
-  "name": "StartInternalWorkflow",
-  "enabled": true,
-  "scheduleMode": "AFTER_JOB",
-  "scheduleExpression": "8",
-  "parameters": [
-    {
-      "key": "period",
-      "label": "งวดข้อมูล",
-      "type": "MONTH",
-      "value": "2026-07",
-      "editable": true,
-      "required": true
-    }
-  ]
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| jobNo | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| name | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| enabled | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| scheduleMode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| scheduleExpression | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| parameters | array<object> | Yes | JSON array; element type shown in Type column |
-| parameters[].key | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| parameters[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| parameters[].type | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| parameters[].value | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| parameters[].editable | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| parameters[].required | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### PUT /api/v1/jobs/{jobNo}/params
-
-บันทึกเฉพาะ parameter key ที่ metadata ระบุ editable
-
-#### Request
-
-```json
-{
-  "params": {
-    "period": "2026-07"
-  },
-  "reason": "ปรับงวด rerun"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| params | object | Yes | JSON object; nested fields listed below |
-| params.period | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "jobNo": "8b",
-  "configVersion": 12,
-  "updatedKeys": [
-    "period"
-  ],
-  "message": "saved"
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| jobNo | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| configVersion | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| updatedKeys | array<string> | Yes | JSON array; element type shown in Type column |
-| message | string | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### PUT /api/v1/jobs/{jobNo}/enabled
-
-เปิด/ปิด job พร้อม audit reason
-
-#### Request
-
-```json
-{
-  "enabled": false,
-  "reason": "ปิดชั่วคราวช่วงปิดงบ"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| enabled | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "jobNo": "8b",
-  "enabled": false,
-  "message": "saved"
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| jobNo | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| enabled | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| message | string | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### POST /api/v1/jobs/{jobNo}/run
-
-สั่ง manual run/retry โดยตรวจ enabled และ concurrent run
-
-#### Request
-
-```json
-{
-  "params": {
-    "period": "2026-07"
-  },
-  "reason": "rerun หลังแก้ข้อมูล"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| params | object | Yes | JSON object; nested fields listed below |
-| params.period | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "runId": 4452,
-  "jobNo": "8b",
-  "status": "QUEUED",
-  "queuedAt": "2026-07-22T11:00:00+07:00"
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| runId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| jobNo | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| status | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| queuedAt | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-
-### GET /api/v1/jobs/{jobNo}/runs
-
-ประวัติการรันแบบแบ่งหน้า
-
-#### Query Params
-
-```json
-{
-  "status": "FAILED",
-  "page": 1,
-  "size": 20
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| status | string | No | UTF-8; use value domain described by endpoint purpose |
-| page | integer | No | >= 1; default 1 |
-| size | integer | No | 1..100; default 20 |
-
-#### Response
-
-```json
-{
-  "page": 1,
-  "size": 20,
-  "total": 1,
-  "items": [
-    {
-      "runId": 4450,
-      "jobNo": "8b",
-      "status": "FAILED",
-      "triggerType": "MANUAL",
-      "triggeredBy": "E001",
-      "startedAt": "2026-07-22T05:20:00+07:00",
-      "endedAt": "2026-07-22T05:21:30+07:00",
-      "durationSec": 90,
-      "readCount": 10,
-      "successCount": 9,
-      "rejectCount": 1,
-      "errorCode": "GEN_FLOW_GATE_NOT_READY",
-      "errorMessage": "ข้อมูลผู้อนุมัติยังไม่ครบ"
-    }
-  ]
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| page | integer | Yes | >= 1; default 1 |
-| size | integer | Yes | 1..100; default 20 |
-| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].runId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].jobNo | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].status | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].triggerType | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].triggeredBy | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].startedAt | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| items[].endedAt | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| items[].durationSec | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].readCount | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].successCount | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].rejectCount | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].errorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].errorMessage | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### GET /api/v1/interfaces/tracking
 
@@ -538,167 +213,6 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch Email 
 | items[].ageHours | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].returnCode | string \| null | No | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/email-templates/{code}
-
-อ่าน template และ merge-variable metadata
-
-#### Query Params
-
-```json
-{
-  "code": "EM-01"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| code | string | No | UTF-8; use value domain described by endpoint purpose |
-
-#### Response
-
-```json
-{
-  "code": "EM-01",
-  "name": "แจ้งสร้างเอกสาร",
-  "subject": "เอกสาร {{docNo}}",
-  "body": "กรุณาตรวจสอบเอกสาร {{docNo}}",
-  "variables": [
-    "docNo"
-  ],
-  "fromRule": "SYSTEM",
-  "toRule": "NEXT_SECTION",
-  "ccRule": "NONE"
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| code | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| name | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| subject | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| body | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| variables | array<string> | Yes | JSON array; element type shown in Type column |
-| fromRule | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| toRule | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| ccRule | string | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### PUT /api/v1/email-templates/{code}
-
-บันทึก subject/body
-
-#### Request
-
-```json
-{
-  "subject": "แจ้งเอกสาร {{docNo}}",
-  "body": "กรุณาตรวจสอบเอกสาร {{docNo}}",
-  "reason": "ปรับถ้อยคำ"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| subject | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| body | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "code": "EM-01",
-  "subject": "แจ้งเอกสาร {{docNo}}",
-  "body": "กรุณาตรวจสอบเอกสาร {{docNo}}",
-  "updatedAt": "2026-07-22T10:20:00+07:00"
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| code | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| subject | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| body | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| updatedAt | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-
-### POST /api/v1/email-templates/{code}/preview
-
-render template โดยไม่บันทึก
-
-#### Request
-
-```json
-{
-  "variables": {
-    "docNo": "2026/00123"
-  }
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| variables | object | Yes | JSON object; nested fields listed below |
-| variables.docNo | string | Yes | พ.ศ. YYYY/xxxxx |
-
-#### Response
-
-```json
-{
-  "subject": "แจ้งเอกสาร 2026/00123",
-  "body": "กรุณาตรวจสอบเอกสาร 2026/00123"
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| subject | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| body | string | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### POST /api/v1/email-templates/{code}/reset
-
-รีเซ็ต template รายตัว
-
-#### Request
-
-```json
-{
-  "reason": "คืนค่าเริ่มต้น"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "code": "EM-01",
-  "reset": true
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| code | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| reset | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
 ### POST /api/v1/interfaces/sta/ack
 
 STA ACK callback ให้ Job 10 เป็น safety net
@@ -735,48 +249,6 @@ STA ACK callback ให้ Job 10 เป็น safety net
 | --- | --- | --- | --- |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/integrations/srm/income-guarantee
-
-รับข้อมูลประกันรายได้จาก SRM
-
-#### Request
-
-```json
-{
-  "sourceSystem": "SRM",
-  "sourceRefNo": "SRM-001",
-  "impactedStoreCode": "01234",
-  "periodMonth": "2569-07"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| sourceSystem | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| sourceRefNo | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
-| periodMonth | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-
-#### Response
-
-```json
-{
-  "transactionId": "TX-001",
-  "successRecords": 1,
-  "failedRecords": 0
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| transactionId | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| successRecords | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| failedRecords | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-
 ## 8. Reference DB Mapping (No Database Page Work)
 
 ส่วนนี้เป็นข้อมูลอ้างอิงสำหรับการ implement API/Job เท่านั้น ไม่ใช่งานสร้างหน้า Database, ไม่ใช่งานออกแบบ DB page และไม่ถูกนับเป็น deliverable แยกของ FE/BE
@@ -788,9 +260,518 @@ STA ACK callback ให้ Job 10 เป็น safety net
 | interface_transactions | R/W | tracking file/API interface และ ACK |
 | email_template (SBP) | R/W | subject_format/body_format ของระบบ SBP เดิม |
 | status_email_rules | R | TO/CC ตามสถานะ |
-| audit_logs | R/W | audit การแก้ job/email |
 
-## 9. Processing Flow
+## 9. Skeleton Code (store-backend + BFF)
+
+โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
+
+#### 9.1 ผังไฟล์ที่ต้องสร้าง
+
+| Path | หน้าที่ |
+| --- | --- |
+| store-backend · src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.controller.ts | route ทั้งหมดของเอกสารนี้ (3 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
+| store-backend · src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
+| store-backend · src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sbpgi-job-batch-email-srm/dto/sbpgi-job-batch-email-srm.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
+| store-backend · src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
+| store-backend · src/entitys/job-configs.entity.ts | entity ของ `job_configs` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/entitys/job-run-histories.entity.ts | entity ของ `job_run_histories` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/entitys/interface-transactions.entity.ts | entity ของ `interface_transactions` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/providers/sbpgi/sbpgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
+| store-backend · sql/deploy-sbpgi-job-batch-email-srm.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
+| BFF · src/common/client-services/sbpgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
+| BFF · src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.controller.ts | route ฝั่ง BFF prefix `/bff/sbpgi/…` + `@UseGuards(AuthGuard('jwt'))` |
+| BFF · src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
+
+#### 9.2 Controller (store-backend)
+
+```ts
+// src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.controller.ts
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { HttpHeaderGuard } from '../../guards/http-header.guard';
+import { UserId } from '../../common/decorators/user-id.decorator';
+import { SbpgiJobBatchEmailSRMService } from './sbpgi-job-batch-email-srm.service';
+import { JobBatchEmailSRMQueryDto, ReceiveAckStaBodyDto } from './dto/sbpgi-job-batch-email-srm.dto';
+
+// LLDD BE - Job Batch and Email Integration
+// BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
+@Controller('sbpgi/interfaces')
+@UseGuards(HttpHeaderGuard)
+export class SbpgiJobBatchEmailSRMController {
+  constructor(private readonly service: SbpgiJobBatchEmailSRMService) {}
+
+  // GET /api/v1/interfaces/tracking — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
+  @Get('tracking')
+  getInterfacesTracking(@Query() query: JobBatchEmailSRMQueryDto, @UserId() userId: string) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.getInterfacesTracking(query, userId);
+  }
+
+  // GET /api/v1/interfaces/pending-ack — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
+  @Get('pending-ack')
+  getInterfacesPendingAck(@Query() query: JobBatchEmailSRMQueryDto, @UserId() userId: string) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.getInterfacesPendingAck(query, userId);
+  }
+
+  // POST /api/v1/interfaces/sta/ack — STA ACK callback ให้ Job 10 เป็น safety net
+  @Post('sta/ack')
+  receiveAckSta(@Body() body: ReceiveAckStaBodyDto, @UserId() userId: string) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.receiveAckSta(body, userId);
+  }
+}
+```
+
+#### 9.3 DTO + Validation
+
+```ts
+// src/modules/sbpgi-job-batch-email-srm/dto/sbpgi-job-batch-email-srm.dto.ts
+import { Type } from 'class-transformer';
+import {
+  IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
+  IsString, Matches, Max, MaxLength, Min,
+} from 'class-validator';
+
+// ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
+// property ที่ไม่ประกาศที่นี่จะถูก reject เป็น 400 อัตโนมัติ
+
+// query ร่วมของ GET ทุกเส้นในโมดูลนี้ (path param ใช้ @Param แยก)
+export class JobBatchEmailSRMQueryDto {
+  @IsNotEmpty()
+  @IsString()
+  dataName: string;
+
+  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  pending?: boolean;
+
+  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  @IsOptional()
+  @IsString()
+  sentFrom?: string;
+
+  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  @IsOptional()
+  @IsString()
+  sentTo?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  // TODO: เพิ่ม property ที่เหลือของ payload นี้ให้ครบตามหัวข้อฟิลด์ของเอกสารนี้
+}
+```
+
+```ts
+// body ของ POST /api/v1/interfaces/sta/ack
+export class ReceiveAckStaBodyDto {
+  /** integration log key */
+  @IsNotEmpty()
+  @IsString()
+  transactionId: string;
+
+  @IsNotEmpty()
+  @IsString()
+  returnCode: string;
+
+  @IsNotEmpty()
+  @IsString()
+  receivedAt: string;
+}
+```
+
+#### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
+
+service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
+
+```ts
+// src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.service.ts
+import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+import { WorkflowService } from '../workflow/workflow.service';
+import { SBPGI_SQL } from './sbpgi-job-batch-email-srm.sql';
+
+@Injectable()
+export class SbpgiJobBatchEmailSRMService {
+  private readonly logger = new Logger(SbpgiJobBatchEmailSRMService.name);
+  // versionId ของ workflow ประกันรายได้ (ตั้งใน env เหมือน COOPERATION_WORKFLOW_VERSION_ID)
+  private readonly versionId = Number(process.env.SBPGI_WORKFLOW_VERSION_ID);
+
+  constructor(
+    // DATA_SOURCE override query(): SELECT/WITH ไป slave pool, write ไป master
+    @Inject('DATA_SOURCE') private readonly dataSource: DataSource,
+    private readonly workflow: WorkflowService,
+  ) {}
+
+  // GET /api/v1/interfaces/tracking — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
+  async getInterfacesTracking(query: JobBatchEmailSRMQueryDto, userId: string) {
+    const page = Number(query.page ?? 1);
+    const size = Math.min(Number(query.size ?? 20), 100);
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/interfaces/tracking')
+    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
+    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
+    const rows = await this.dataSource.query(SBPGI_SQL.getInterfacesTracking, [
+      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
+      userId, (page - 1) * size, size,
+    ]);
+    // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
+    return { page, size, total: rows.length, items: rows };
+  }
+
+  // GET /api/v1/interfaces/pending-ack — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
+  async getInterfacesPendingAck(query: JobBatchEmailSRMQueryDto, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/interfaces/pending-ack
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/interfaces/pending-ack')
+    throw new NotImplementedException('getInterfacesPendingAck ยังไม่ implement');
+  }
+
+  // POST /api/v1/interfaces/sta/ack — STA ACK callback ให้ Job 10 เป็น safety net
+  // mutation ต้องอยู่ใน transaction เดียว (ไม่มี audit ของ master แล้ว · 2026-08-07)
+  async receiveAckSta(body: ReceiveAckStaBodyDto, userId: string) {
+    const runner = this.dataSource.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      // TODO: lock แถวเป้าหมายของ job_configs ด้วย SELECT ... FOR UPDATE ก่อนเขียน
+      const [current] = await runner.query(SBPGI_SQL.receiveAckStaLock, [body.docNo]);
+      if (!current) {
+        throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
+      }
+      await runner.query(SBPGI_SQL.receiveAckSta, [/* TODO: ผูกค่าจาก body */]);
+      await runner.commitTransaction();
+      // ⚠️ workflow engine อยู่คนละ DataSource ('workflow-connection' ของ @srm/glb-workflow)
+      //    จึง **atomic ร่วมกับ transaction ข้างบนไม่ได้** — ต้อง commit ฝั่ง SBPGI ให้เสร็จก่อน
+      //    แล้วค่อย triggerEvent (idempotency key = referenceId = docNo)
+      // TODO: เรียก workflow use case ตามตารางหัวข้อ Workflow ด้านล่าง + retry
+      // TODO: ถ้า triggerEvent ล้มเหลว ต้องมี compensating action และบันทึกผลลง
+      //       consideration_logs เพื่อให้ job reconcile ตามเก็บได้
+      return { message: 'saved' };
+    } catch (error) {
+      await runner.rollbackTransaction();
+      this.logger.error(error);
+      throw error;
+    } finally {
+      await runner.release();
+    }
+  }
+}
+```
+
+#### 9.5 Workflow (`@srm/glb-workflow`)
+
+⚠️ **ชื่อ function ของ engine ยังไม่ยืนยัน (บันทึก 2026-08-07)** — แหล่งอ้างอิง 3 แหล่งให้ชื่อไม่ตรงกัน ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow` · `addPreApprover` · `getPendingFlowByUser` · ชุด B ชีต `Mermaid seq` ของไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` · `AddPreparedApproverUseCase` · `GetPendingFlowUseCase` · ชื่อที่ใช้ใน skeleton ด้านล่างเป็น **ชื่อชั่วคราว** ต้องยืนยันกับทีมเจ้าของ library ก่อนเขียนโค้ดจริง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3) · engine มี **13 ตาราง** อยู่ใน schema **`sps_store`** (ไม่ใช่ 10 ตาราง และไม่ใช่ `sps_auth`)
+
+| Endpoint | Use case ที่ต้องเรียก | เหตุผล |
+| --- | --- | --- |
+| GET /api/v1/interfaces/pending-ack | getPendingFlow() | inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header |
+
+```ts
+// src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
+// WorkflowService = wrapper ของ @srm/glb-workflow ที่ store-backend มีอยู่แล้ว
+// (DataSource แยกชื่อ 'workflow-connection', ทุก use case ห่อด้วย TypeOrmUnitOfWork)
+
+  // inbox งานค้าง — ใช้ร่วมกับ /api/workflow/pending ของ backlog เดิมได้
+  const pending = await this.workflow.getPendingFlow({
+    userData: { userId: Number(userId), groupId: Number(groupId) },
+    versionId: this.versionId,
+  });
+  // TODO: join referenceId (= doc_no) กลับไปที่ compensation_documents เพื่อเติมข้อมูลเอกสาร
+```
+
+#### 9.6 Entity (TypeORM)
+
+```ts
+// src/entitys/job-configs.entity.ts
+import { Column, Entity, PrimaryColumn } from 'typeorm';
+
+@Entity({ name: 'job_configs', schema: process.env.DB_SCHEMA })
+export class JobConfig {
+  @PrimaryColumn({ name: 'job_no', type: 'varchar', length: 5 })
+  jobNo: string;
+
+  @Column({ name: 'job_name', type: 'varchar', length: 200 })
+  jobName: string;
+
+  @Column({ name: 'cron_expression', type: 'varchar', length: 50, nullable: true })
+  cronExpression?: string;
+
+  @Column({ name: 'is_enabled', type: 'boolean', default: true })
+  isEnabled: boolean;
+
+  @Column({ name: 'params', type: 'jsonb', nullable: true })
+  params?: Record<string, unknown>;
+
+  @Column({ name: 'updated_by', type: 'varchar', length: 50, nullable: true })
+  updatedBy?: string;
+
+  @Column({ name: 'updated_at', type: 'timestamptz', nullable: true })
+  updatedAt?: Date;
+
+  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
+  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+}
+```
+
+```ts
+// src/entitys/job-run-histories.entity.ts
+import { Column, Entity, PrimaryColumn } from 'typeorm';
+
+@Entity({ name: 'job_run_histories', schema: process.env.DB_SCHEMA })
+export class JobRunHistory {
+  @PrimaryColumn({ name: 'id', type: 'bigint' })
+  id: number;
+
+  @Column({ name: 'job_no', type: 'varchar', length: 5 })
+  jobNo: string;
+
+  @Column({ name: 'run_status', type: 'varchar', length: 20 })
+  runStatus: string;
+
+  @Column({ name: 'started_at', type: 'timestamptz' })
+  startedAt: Date;
+
+  @Column({ name: 'finished_at', type: 'timestamptz', nullable: true })
+  finishedAt?: Date;
+
+  @Column({ name: 'total_records', type: 'int', default: 0 })
+  totalRecords: number;
+
+  @Column({ name: 'success_records', type: 'int', default: 0 })
+  successRecords: number;
+
+  @Column({ name: 'failed_records', type: 'int', default: 0 })
+  failedRecords: number;
+
+  @Column({ name: 'error_message', type: 'text', nullable: true })
+  errorMessage?: string;
+
+  @Column({ name: 'triggered_by', type: 'varchar', length: 50, nullable: true })
+  triggeredBy?: string;
+
+  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
+  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+}
+```
+
+ตารางที่เหลือของเอกสารนี้ (`interface_transactions`, `status_email_rules`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+
+ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
+
+| Object | R/W | ใช้ของระบบเดิมตัวไหน |
+| --- | --- | --- |
+| email_template | R/W | email_template + email_sent + @gosoft-sbp/email-lib |
+
+#### 9.7 Repository Providers + Module wiring
+
+```ts
+// src/providers/sbpgi/sbpgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
+// convention ของโฟลเดอร์ providers คือ 1 ไฟล์ต่อโดเมน ตั้งชื่อตามโดเมน (business_user/business_user.ts,
+// common_code/common_code.ts …) ไม่ใช่ index.ts
+//
+// ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SBPGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ
+//    (ชื่อ const แยกต่อเอกสารไว้แล้วเพื่อไม่ให้ชนกัน)
+import { DataSource } from 'typeorm';
+import { JobConfig } from '../../entitys/job-configs.entity';
+import { JobRunHistory } from '../../entitys/job-run-histories.entity';
+import { InterfaceTransaction } from '../../entitys/interface-transactions.entity';
+
+export const sbpgiJobBatchEmailSRMProviders = [
+  {
+    provide: 'JOB_CONFIG_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(JobConfig),
+    inject: ['DATA_SOURCE'],
+  },
+  {
+    provide: 'JOB_RUN_HISTORIES_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(JobRunHistory),
+    inject: ['DATA_SOURCE'],
+  },
+  {
+    provide: 'INTERFACE_TRANSACTION_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(InterfaceTransaction),
+    inject: ['DATA_SOURCE'],
+  },
+];
+
+// src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.module.ts
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { DatabaseModule } from '../../database/database.module';
+// UserContextMiddleware อ่าน header x-user-id แล้วเซ็ต request.userId ที่ @UserId() ใช้
+// — app.module.ts **ไม่ได้** apply แบบ global (มีแค่ HttpContext/LoggerContext) แต่ละโมดูลต้อง apply เอง
+// (ดู evaluation-process.module.ts / inform-evaluate.module.ts / cooperation-request.module.ts)
+import { UserContextMiddleware } from '../../common/middleware/user-context.middleware';
+import { WorkflowModule } from '../workflow/workflow.module';
+import { sbpgiJobBatchEmailSRMProviders } from '../../providers/sbpgi/sbpgi';
+import { SbpgiJobBatchEmailSRMController } from './sbpgi-job-batch-email-srm.controller';
+import { SbpgiJobBatchEmailSRMService } from './sbpgi-job-batch-email-srm.service';
+
+@Module({
+  imports: [DatabaseModule, WorkflowModule],
+  controllers: [SbpgiJobBatchEmailSRMController],
+  providers: [SbpgiJobBatchEmailSRMService, ...sbpgiJobBatchEmailSRMProviders],
+  exports: [SbpgiJobBatchEmailSRMService],
+})
+export class SbpgiJobBatchEmailSRMModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // ถ้าไม่ apply ตรงนี้ userId จะเป็น undefined เงียบ ๆ ทุก endpoint
+    consumer.apply(UserContextMiddleware).forRoutes(SbpgiJobBatchEmailSRMController);
+  }
+}
+// TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SBPGI ตัวอื่น
+```
+
+#### 9.8 BFF Proxy (module + controller + client service)
+
+BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sbpgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
+
+```ts
+// src/common/client-services/sbpgi-client.service.ts
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { BaseClientService } from './base-client.service';
+
+@Injectable()
+export class SbpgiClientService extends BaseClientService implements OnModuleInit {
+  protected logger: Logger = new Logger(SbpgiClientService.name);
+
+  onModuleInit() {
+    // TODO: ถ้า deploy SBPGI แยก service ให้เพิ่ม API_SBPGI_BACKEND_* ใน AppConfigService
+    //       ตอนนี้ชี้ store backend ตัวเดียวกับ StoreClientService
+    this.defaultHeaders[this.config.api.store.key.name] = this.config.api.store.key.value;
+    this.baseUrl = this.config.api.store.url;
+  }
+}
+// BaseClientService แกะ { success, data } ให้แล้ว — service ฝั่ง BFF จึงได้ data ตรง ๆ
+// TODO: เพิ่ม SbpgiClientService ใน providers/exports ของ ClientServiceModule (@Global)
+```
+
+```ts
+// src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.service.ts (BFF)
+import { Injectable } from '@nestjs/common';
+import { SbpgiClientService } from '@common/client-services/sbpgi-client.service';
+
+@Injectable()
+export class SbpgiJobBatchEmailSRMBffService {
+  constructor(private readonly client: SbpgiClientService) {}
+
+  // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  private userHeaders(user: any) {
+    return {
+      'x-user-id': user?.userId,
+      'x-user-group-id': user?.groupId,
+      'x-user-permissions': (user?.permissions ?? []).join(','),
+    };
+  }
+
+  getInterfacesTracking(params: any, user: any) {
+    return this.client.get('/api/v1/interfaces/tracking', { params, headers: this.userHeaders(user) });
+  }
+
+  getInterfacesPendingAck(params: any, user: any) {
+    return this.client.get('/api/v1/interfaces/pending-ack', { params, headers: this.userHeaders(user) });
+  }
+
+  receiveAckSta(body: any, user: any) {
+    return this.client.post('/api/v1/interfaces/sta/ack', body, { headers: this.userHeaders(user) });
+  }
+}
+
+// ---------- src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.controller.ts (BFF) ----------
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+
+// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sbpgi/...' (ห้ามปนกับแบบไม่มี /bff)
+@Controller('bff/sbpgi/job-batch-email-srm')
+@UseGuards(AuthGuard('jwt'))
+export class SbpgiJobBatchEmailSRMBffController {
+  constructor(private readonly service: SbpgiJobBatchEmailSRMBffService) {}
+
+  // proxy ของ GET /api/v1/interfaces/tracking
+  @Get('interfaces/tracking')
+  getInterfacesTracking(@Query() query: any, @Req() req: any) {
+    return this.service.getInterfacesTracking(query, req.user);
+  }
+
+  // proxy ของ GET /api/v1/interfaces/pending-ack
+  @Get('interfaces/pending-ack')
+  getInterfacesPendingAck(@Query() query: any, @Req() req: any) {
+    return this.service.getInterfacesPendingAck(query, req.user);
+  }
+}
+// TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
+```
+
+## 10. Database SQL
+
+#### 10.1 ตารางที่อ่าน/เขียน
+
+| Table / Object | R/W | Usage |
+| --- | --- | --- |
+| job_configs | R/W | enabled, cron, params ของ batch |
+| job_run_histories | R/W | ประวัติการรันและสถานะล่าสุด |
+| interface_transactions | R/W | tracking file/API interface และ ACK |
+| status_email_rules | R | TO/CC ตามสถานะ |
+| email_template | R/W | ใช้ของระบบเดิม: email_template + email_sent + @gosoft-sbp/email-lib |
+
+#### 10.2 SQL จริงต่อ Endpoint
+
+**GET /api/v1/interfaces/tracking** — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
+
+```sql
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+SELECT id AS tracking_id, data_name, doc_no, sent_at, return_code, acked_at AS receive_date
+FROM interface_transactions
+WHERE (:dataName IS NULL OR data_name = :dataName)
+  AND (:pending  IS NULL OR return_code IS NULL)
+ORDER BY sent_at DESC
+LIMIT :size OFFSET :offset;
+```
+
+**GET /api/v1/interfaces/pending-ack** — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
+
+```sql
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- เกณฑ์ watchdog Job 10: return_code NULL · interface แบบไฟล์ · อายุ ≥ 1 วัน
+SELECT data_name, doc_no, sent_at, (CURRENT_DATE - sent_at::date) AS age_days
+FROM interface_transactions
+WHERE return_code IS NULL
+  AND data_name IN (:staDatasets)
+  AND sent_at < CURRENT_DATE - 1
+ORDER BY sent_at;
+```
+
+**POST /api/v1/interfaces/sta/ack** — STA ACK callback ให้ Job 10 เป็น safety net
+
+```sql
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- callback จากระบบ STA (API key) → บันทึก ACK
+UPDATE interface_transactions
+SET return_code = :returnCode, acked_at = :receiveDate, status = :statusAcked, completed_at = :receiveDate
+WHERE id = :trackingId;
+```
+
+#### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+
+| Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
+| --- | --- | --- |
+| interface_transactions | CREATE INDEX idx_interface_transactions_pending ON interface_transactions (data_name, status, sent_at); | ข้อเสนอ — อนุมานจากเงื่อนไข query ที่เอกสารนี้ระบุ ต้องยืนยันกับ DBA ก่อนใช้จริง |
+
+ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sbpgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่
+
+## 11. Processing Flow
 
 | Step | Description |
 | --- | --- |
@@ -801,20 +782,20 @@ STA ACK callback ให้ Job 10 เป็น safety net
 | 5 | Log success/failure |
 | 6 | Return summary |
 
-## 10. Acceptance Criteria
+## 12. Acceptance Criteria
 
 - job run guard prevents duplicate running job
-- SRM duplicate skipped
 - email preview renders variables
 - failed records include detail
+- ไม่มี inbound endpoint ของ SRM แล้ว (ตัด 2026-08-07) — เอกสารต้องไม่อ้างถึงอีก
 
-## 11. Developer Test Checklist
+## 13. Developer Test Checklist
 
 | No | Test |
 | --- | --- |
 | 1 | run job |
 | 2 | run duplicate |
-| 3 | SRM missing field |
-| 4 | SRM duplicate |
-| 5 | email preview |
-| 6 | template save |
+| 3 | interface tracking filter |
+| 4 | pending ACK watchdog |
+| 5 | STA ACK callback |
+| 6 | email preview |
