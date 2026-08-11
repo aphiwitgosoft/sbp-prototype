@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 13 ชั่วโมง |
+| Estimate | 16 ชั่วโมง |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
 | Objective | รับยอดขายจาก IAS + คำนวณ Growth: อ่านไฟล์ตอบกลับยอดขาย AMS06001I จาก IAS บันทึกยอดขายรายวันลง sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff |
 
@@ -18,7 +18,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Main class/script: fgi.main.ImportImpactSaleFromIAS / FGI_ImportImpactStoreSale.sh
 - Phase: B
 - Output: AMS06001I (รับเข้า)
-- Estimate: 13 ชั่วโมง
+- Estimate: 16 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
 
@@ -509,11 +509,11 @@ repository ของ Job 5 ประกาศเป็น factory provider (`{pr
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
 -- [W] sales_transactions : ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา)
--- TODO: เติมคอลัมน์จริงจาก database.md และยืนยัน unique key ที่กันข้อมูลซ้ำตอน rerun
+-- TODO: เติมคอลัมน์ payload จริงจาก database.md
 INSERT INTO sales_transactions
   (/* TODO: business key + payload + created_by, created_at */)
 VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
-ON CONFLICT (/* TODO: unique key ที่ใช้กันซ้ำ */)
+ON CONFLICT (sales_summary_id, txn_date, window_no)   -- unique key จริงตาม DDL ของ sales_transactions (ห้ามเดา)
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
        updated_at = NOW(), updated_by = 'JOB5';
 
@@ -532,10 +532,11 @@ UPDATE fgi_impact_sales_summaries
 -- [W] interface_transactions : tracking: data_name=IMPORT_SALES_FROM_IAS · typed FK = sales_summary_id
 -- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
 INSERT INTO interface_transactions
-  (job_no, data_name, direction, status, business_key, period_key,
+  (run_id, data_name, direction, status, business_key, period_key,
    file_name, file_checksum, created_at)
-VALUES ('5', $1 /* TODO: data_name ของ Job 5 */, $2 /* IN|OUT|INTERNAL */, 'READY',
-        $3 /* business key ของแถว */, $4 /* YYYYMM */, $5, $6, NOW())
+VALUES ($1 /* run_id = correlation id ของรอบรัน Job 5 จาก application log */,
+        $2 /* TODO: data_name ของ Job 5 */, $3 /* IN|OUT|INTERNAL */, 'READY',
+        $4 /* business key ของแถว */, $5 /* YYYYMM */, $6, $7, NOW())
 ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;
 ```
 

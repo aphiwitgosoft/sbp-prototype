@@ -198,7 +198,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | No | พ.ศ. YYYY/xxxxx |
+| docNo | string | No | ค.ศ. YYYY/xxxxx |
 
 #### Response
 
@@ -245,7 +245,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | statusCode | string | Yes | canonical code; do not replace with display label |
 | viewerRbacRoleCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | roleProfileCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -394,7 +394,7 @@ export async function createDocumentsActions(docNo: string, body: T.CreateDocume
 
 ```ts
 // src/types/sbpgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
-// วันที่/เดือนใน payload เป็น ค.ศ. (ISO) เสมอ — แปลงเป็น พ.ศ. เฉพาะตอน display
+// วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
 /** GET /api/v1/documents/{docNo} — response */
 export interface DocumentsDetailResponse {
@@ -490,9 +490,11 @@ interface ActionOption { value: string; label: string; requireComment?: boolean 
 // ค่าที่ "บังคับกรอกความคิดเห็น" มาจาก contract ของ role นี้
 const REQUIRE_COMMENT: string[] = [/* TODO: ค่าที่บังคับ comment */];
 
-// TODO: แทนข้อความ validation ด้วยข้อความ verbatim จาก SRS ก่อน UAT
+// ⚠️ ข้อความ validation ด้านล่างเป็น verbatim จาก SRS v3.1 — ห้าม paraphrase ห้ามย่อ
+//    (SRS "รายการหน้าจอ" §10/§13 · ตรงกับที่ prototype k2-document.html ใช้)
 const schema = yup.object({
-  result: yup.string().required('กรุณาเลือกผลการพิจารณา'),
+  result: yup.string().required('ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ'),
+  // SRS บังคับให้ความคิดเห็นเป็น required เมื่อเลือกไม่ชดเชย แต่ไม่ได้ระบุข้อความ — ข้อความนี้เรากำหนดเอง
   comment: yup.string().when('result', {
     is: (v: string) => REQUIRE_COMMENT.includes(v),
     then: (s) => s.required('กรุณาระบุความคิดเห็น'),
@@ -553,7 +555,7 @@ export default function ActionForm02({ options, onSubmit, onCancel, submitting }
 - ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
-- payload ใช้วันที่ ค.ศ. เสมอ; แปลงเป็น พ.ศ. เฉพาะตอนแสดงผลผ่าน formatter กลางจุดเดียว
+- payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 - ข้อความ error แสดงจาก `error.message` ของ BE ตรง ๆ (ห้าม paraphrase) — fallback ใช้เฉพาะกรณี network error
 
 ## 9. Processing Flow

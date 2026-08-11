@@ -63,8 +63,8 @@ Entry แบบมี `children: [{key,label,href}]` (ไม่มี href บ�
 | | | **กลุ่ม ผู้ดูแลระบบ (Admin) ไม่มีเมนูเหลือแล้ว** |
 | Flow | `flow-fgi.html` / `k2-flow.html` / `plan-flow.html` | FGI/FCS pipeline / K2 approval BPMN / flow รวมระบบใหม่ (คู่ของ workflow.md) |
 | | `job-batch.html` — **Flow Batch Job** | **ย้ายจากกลุ่ม Admin มากลุ่ม Flow 2026-08-06 และเหลือ 2 แท็บ: `Flowchart การทำงาน` + `Database ที่ใช้`** (ตัดแบบฟอร์มพารามิเตอร์ · ประวัติการรัน · ปุ่มสั่งรัน/เปิด-ปิด · stat cards · กราฟ · การ์ด audit ออก) — เอกสารอ้างอิงผู้พัฒนา ไม่ใช่หน้าจอควบคุม · endpoint 6 เส้น (`/jobs*`) + ตาราง `job_configs`/`job_run_histories` ถูกลบจากแบบ · batch job ยังรันปกติ พารามิเตอร์อยู่ใน backend config |
-| Database | `fgi-database.html` / `k2-database.html` / `plan-database.html` | schema FGI/FCS / schema K2 16 ตาราง + ER / schema รวม **21 ตาราง** (คู่ของ database.md · RBAC/ผู้ปฏิบัติงาน + workflow engine + store/zone/employee master + email template + config ตัดไปใช้ของระบบ SBP เดิม · 2026-08-05/06) |
-| Plan | `plan-api.html` | REST API spec **30 เส้น 6 กลุ่ม** (Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 · กลุ่ม Auth + เส้นสิทธิ์/ผู้ปฏิบัติงาน 18 เส้น comment ตัดถาวร — ใช้ระบบเดิม · กลุ่มข้อมูลผิดปกติ 2 เส้น · กลุ่ม System Config + Email Template 10 เส้น · กลุ่ม Batch Job Admin 6 เส้น — ลบทิ้งทั้งหมด 2026-08-06) |
+| Database | `fgi-database.html` / `k2-database.html` / `plan-database.html` | schema FGI/FCS / schema K2 16 ตาราง + ER / schema รวม **20 ตาราง** (คู่ของ database.md · RBAC/ผู้ปฏิบัติงาน + workflow engine + store/zone/employee master + email template + config ตัดไปใช้ของระบบ SBP เดิม · 2026-08-05/06) |
+| Plan | `plan-api.html` | REST API spec **29 เส้น 6 กลุ่ม** (Lookup 2 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 · กลุ่ม Auth + เส้นสิทธิ์/ผู้ปฏิบัติงาน 18 เส้น comment ตัดถาวร — ใช้ระบบเดิม · กลุ่มข้อมูลผิดปกติ 2 เส้น · กลุ่ม System Config + Email Template 10 เส้น · กลุ่ม Batch Job Admin 6 เส้น — ลบทิ้งทั้งหมด 2026-08-06) |
 
 หมายเหตุ: `k2-database.html` (ER + 16 ตาราง) และ BPMN ใน `k2-flow.html` เป็นของ**เพิ่มเกิน SRS** — ชื่อตาราง/FK ที่เพิ่มไม่ใช่ SRS-mandated
 
@@ -78,7 +78,7 @@ Entry แบบมี `children: [{key,label,href}]` (ไม่มี href บ�
 
 ## plan-api.html — internals ของ modal + SQL + Flowchart
 
-- catalog `GROUPS` (**30 เส้น 6 กลุ่ม** · inline script) → คลิกแถว → `selectEp()` เปิด modal
+- catalog `GROUPS` (**29 เส้น 6 กลุ่ม** · inline script) → คลิกแถว → `selectEp()` เปิด modal
 - โครง modal: ชิป (ที่มา/สิทธิ์/กลุ่ม) → **Flow (ลำดับการทำงาน) อยู่นอกแท็บ** → แท็บ 1 Request/Response → แท็บ 2 Database + SQL → แท็บ 3 Flowchart (โผล่เฉพาะเส้นที่มี spec)
 - **`SQL_BY_PATH`** — ตัวอย่าง SQL ต่อ endpoint keyed `'METHOD path'` (เช่น `'GET /api/v1/tasks'`) ครบทุกเส้น active · bind params ขึ้นต้น `:` · illustrative (key ของเส้นที่ตัดออกยังอยู่แต่ไม่ถูกใช้)
 - **`FLOWCHART_BY_PATH`** — spec flowchart (nodes/edges) เฉพาะเส้นซับซ้อน: `POST /documents/{docNo}/actions` · `POST /workflows/instances` · `POST /documents` (spec ของ `POST /jobs/{jobNo}/run` ยังอยู่แต่ไม่ถูกใช้ หลังลบกลุ่ม Batch Job Admin) · เรนเดอร์ด้วย `renderFlow()` เป็น inline SVG (node type: term/termOk/proc/dec/err)

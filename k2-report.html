@@ -55,10 +55,14 @@
           </div>
           <div class="field"><label>ประเภทร้าน (เลือกได้มากกว่า 1)</label>
             <div class="ckgrid" style="grid-template-columns:repeat(4,minmax(0,1fr));">
+              <!-- ค่าจาก BranchTypeProfile.BranchTypeFGIName ของ CPA_FRN_FGI (ข้อมูล Master K2.xlsx) — 7 ค่า -->
               <label><input type="checkbox"> A</label>
               <label><input type="checkbox"> B</label>
               <label><input type="checkbox"> C</label>
+              <label><input type="checkbox"> D</label>
               <label><input type="checkbox"> E</label>
+              <label><input type="checkbox"> PTT</label>
+              <label><input type="checkbox"> บริษัท</label>
             </div>
           </div>
           <div class="field col-2"><label>Period Statement (From – To) <span id="psStar" style="color:#c0392b;display:none;">*</span>
@@ -83,9 +87,12 @@
             </div>
           </div>
           <div class="field col-2"><label>ผลการพิจารณา (เลือกอย่างใดอย่างหนึ่ง)</label>
-            <div class="ckgrid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+            <div class="ckgrid" style="grid-template-columns:repeat(4,minmax(0,1fr));">
+              <!-- ค่าจาก DecisionProfile.DecisionResultName ของ CPA_FRN_FGI (ข้อมูล Master K2.xlsx) — 4 ค่า -->
               <label><input type="radio" name="verdict" value="ประกันรายได้"> ประกันรายได้</label>
               <label><input type="radio" name="verdict" value="ไม่ประกันรายได้"> ไม่ประกันรายได้</label>
+              <label><input type="radio" name="verdict" value="ยกเลิกโดยระบบ"> ยกเลิกโดยระบบ</label>
+              <label><input type="radio" name="verdict" value="ยังไม่มีผล"> ยังไม่มีผล</label>
             </div>
           </div>
         </div>

@@ -7,8 +7,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 15 ชั่วโมง |
-| Owner | Butsaba <But> Podamrong |
+| Estimate | 10 ชั่วโมง |
+| Owner | Tunyatorn <Vava> Kiatkongphongsa |
 | Objective | ออกแบบ APIs กลุ่ม lookup ที่ใช้ร่วมทุกหน้าจอของ SBP Mall |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -28,10 +28,10 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| q | string | optional | ใช้ค้นหา stores/employees/competitors |
+| q | string | optional | ใช้ค้นหา ร้าน (store/mas_store ระบบเดิม) · พนักงาน (business_user ระบบเดิม) · คู่แข่ง (competitors ของ SBPGI) |
 | type | impacted\|new | required for /store/search (ระบบ SBP เดิม) | เลือกแหล่งร้านถูกกระทบ/ร้านเปิดใหม่ |
-| roleCode | 00-10 | required for permission | อ้าง roles |
-| menuCode | string | required for permission | อ้าง menus |
+| roleCode | 00-10 | required for permission | group ของ auth-backend (ระบบเดิม) — SBPGI ไม่มีตาราง roles |
+| menuCode | string | required for permission | menu ของ auth-backend (ระบบเดิม) — SBPGI ไม่มีตาราง menus |
 | templateCode | EM-01..EM-08 | required | email template key |
 | reason | text | ไม่บังคับแล้ว | ไม่มีปลายทางเก็บ (ยกเลิกระบบ audit ของ master 2026-08-07) |
 
@@ -41,7 +41,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | --- | --- |
 | Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/document-statuses; GET /api/v1/workflow-sections |
 | Progress | Validate query; Read/write table by domain; Return standard envelope for list endpoints |
-| Output | roles / menus / menu_permissions; email_template (SBP) / status_email_rules |
+| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -49,17 +49,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | --- | --- | --- | --- |
 | GET /store/search (ระบบ SBP เดิม) | ค้นหาร้านสำหรับ popup | Validate query | status label ต้องเป็น verbatim |
 | GET /api/v1/document-statuses | รายการสถานะเอกสาร verbatim | Read/write table by domain | permission mutation ต้อง audit |
-| GET /api/v1/workflow-sections | รายการ section 5 ขั้น | Return standard envelope for list endpoints | email recipient From/To/Cc ล็อกจาก status_email_rules |
-| GET /api/v1/employees/search | ค้นหาพนักงานสำหรับ master/operator | Validate query | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
-| GET /api/v1/menu-permissions | อ่าน matrix สิทธิ์เมนูทุก role | Read/write table by domain | status label ต้องเป็น verbatim |
-| PUT /api/v1/menu-permissions/{menuCode} | บันทึกสิทธิ์เมนูรายเมนู | Return standard envelope for list endpoints | permission mutation ต้อง audit |
-| GET /api/v1/roles | อ่านรายการ role | Validate query | email recipient From/To/Cc ล็อกจาก status_email_rules |
-| POST /api/v1/roles | สร้าง role | Read/write table by domain | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
-| PUT /api/v1/roles/{roleCode} | แก้ role ที่ไม่ใช่ system role | Return standard envelope for list endpoints | status label ต้องเป็น verbatim |
-| DELETE /api/v1/roles/{roleCode} | ลบ role ที่ไม่ถูกใช้งาน | Validate query | permission mutation ต้อง audit |
-| POST /api/v1/menus | สร้างเมนูและสิทธิ์เริ่มต้นทุก role | Read/write table by domain | email recipient From/To/Cc ล็อกจาก status_email_rules |
-| PUT /api/v1/menus/{menuCode} | แก้เมนู | Return standard envelope for list endpoints | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
-| DELETE /api/v1/menus/{menuCode} | ลบเมนูพร้อมสิทธิ์ที่เกี่ยวข้อง | Validate query | status label ต้องเป็น verbatim |
+| GET /api/v1/workflow-sections | รายการ section 5 ขั้น | Return standard envelope for list endpoints | อีเมลทั้งหมดส่งโดย engine — SBPGI ไม่กำหนดผู้รับเอง (DP-5) |
 
 ### 5.91 Backend Execution Sequence
 
@@ -74,7 +64,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
 | Store lookup | GET | lookup.service.searchStores | return impacted/new stores |
-| Employee lookup | GET | employee.service.search | return employees for operator popup |
+| Employee lookup | GET | employee backend เดิมของระบบ SBP (ไม่ใช่ endpoint ของ SBPGI) | return business_user for operator popup |
 | Permission save | PUT | rbac.service.saveMenuPermission | update can_access and audit |
 | Email template save/reset | PUT/POST | notificationTemplate.service | update/reset template and audit |
 
@@ -195,424 +185,17 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | items[].sectionCode | string | Yes | canonical code; do not replace with display label |
 | items[].sectionName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/employees/search
-
-ค้นหาพนักงานสำหรับ master/operator
-
-#### Query Params
-
-```json
-{
-  "q": "สมชาย"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| q | string | No | UTF-8; use value domain described by endpoint purpose |
-
-#### Response
-
-```json
-{
-  "items": [
-    {
-      "employeeId": "E001",
-      "employeeName": "สมชาย ใจดี"
-    }
-  ]
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].employeeId | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].employeeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### GET /api/v1/menu-permissions
-
-อ่าน matrix สิทธิ์เมนูทุก role
-
-#### Query Params
-
-```json
-{
-  "roleCode": "04"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| roleCode | string | No | canonical code; do not replace with display label |
-
-#### Response
-
-```json
-{
-  "items": [
-    {
-      "menuCode": "k2-report",
-      "roleCode": "04",
-      "canAccess": true
-    }
-  ]
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].menuCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].roleCode | string | Yes | canonical code; do not replace with display label |
-| items[].canAccess | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### PUT /api/v1/menu-permissions/{menuCode}
-
-บันทึกสิทธิ์เมนูรายเมนู
-
-#### Request
-
-```json
-{
-  "roleCode": "04",
-  "canAccess": true,
-  "reason": "ปรับสิทธิ์รายงาน"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| roleCode | string | Yes | canonical code; do not replace with display label |
-| canAccess | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "message": "saved"
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| message | string | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### GET /api/v1/roles
-
-อ่านรายการ role
-
-#### Query Params
-
-```json
-{
-  "page": 1,
-  "size": 20
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| page | integer | No | >= 1; default 1 |
-| size | integer | No | 1..100; default 20 |
-
-#### Response
-
-```json
-{
-  "page": 1,
-  "size": 20,
-  "total": 11,
-  "items": [
-    {
-      "roleCode": "04",
-      "roleName": "ผู้ดูแลระบบ",
-      "system": true,
-      "active": true
-    }
-  ]
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| page | integer | Yes | >= 1; default 1 |
-| size | integer | Yes | 1..100; default 20 |
-| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].roleCode | string | Yes | canonical code; do not replace with display label |
-| items[].roleName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].system | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### POST /api/v1/roles
-
-สร้าง role
-
-#### Request
-
-```json
-{
-  "roleCode": "11",
-  "roleName": "ผู้ตรวจสอบ",
-  "active": true,
-  "reason": "เพิ่มบทบาทผู้ตรวจสอบ"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| roleCode | string | Yes | canonical code; do not replace with display label |
-| roleName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "roleCode": "11",
-  "roleName": "ผู้ตรวจสอบ",
-  "system": false,
-  "active": true
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| roleCode | string | Yes | canonical code; do not replace with display label |
-| roleName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| system | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### PUT /api/v1/roles/{roleCode}
-
-แก้ role ที่ไม่ใช่ system role
-
-#### Request
-
-```json
-{
-  "roleName": "ผู้ตรวจสอบอาวุโส",
-  "active": true,
-  "reason": "ปรับชื่อบทบาท"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| roleName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "roleCode": "11",
-  "roleName": "ผู้ตรวจสอบอาวุโส",
-  "system": false,
-  "active": true
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| roleCode | string | Yes | canonical code; do not replace with display label |
-| roleName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| system | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### DELETE /api/v1/roles/{roleCode}
-
-ลบ role ที่ไม่ถูกใช้งาน
-
-#### Request
-
-```json
-{
-  "reason": "ยกเลิกบทบาททดสอบ"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "roleCode": "11",
-  "deleted": true
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| roleCode | string | Yes | canonical code; do not replace with display label |
-| deleted | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### POST /api/v1/menus
-
-สร้างเมนูและสิทธิ์เริ่มต้นทุก role
-
-#### Request
-
-```json
-{
-  "menuCode": "k2-audit",
-  "menuName": "ประวัติการแก้ไข",
-  "route": "/audit",
-  "sortOrder": 90,
-  "active": true,
-  "reason": "เพิ่มเมนูตรวจสอบ"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| menuCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| menuName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| route | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| sortOrder | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "menuCode": "k2-audit",
-  "created": true
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| menuCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| created | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### PUT /api/v1/menus/{menuCode}
-
-แก้เมนู
-
-#### Request
-
-```json
-{
-  "menuName": "ประวัติการแก้ไขข้อมูล",
-  "route": "/audit",
-  "sortOrder": 90,
-  "active": true,
-  "reason": "ปรับชื่อเมนู"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| menuName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| route | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| sortOrder | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "menuCode": "k2-audit",
-  "updated": true
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| menuCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| updated | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### DELETE /api/v1/menus/{menuCode}
-
-ลบเมนูพร้อมสิทธิ์ที่เกี่ยวข้อง
-
-#### Request
-
-```json
-{
-  "reason": "ยกเลิกเมนูทดสอบ"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "menuCode": "k2-audit",
-  "deleted": true
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| menuCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| deleted | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
 ## 8. Reference DB Mapping (No Database Page Work)
 
 ส่วนนี้เป็นข้อมูลอ้างอิงสำหรับการ implement API/Job เท่านั้น ไม่ใช่งานสร้างหน้า Database, ไม่ใช่งานออกแบบ DB page และไม่ถูกนับเป็น deliverable แยกของ FE/BE
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| stores / impacted_stores | R | store picker สำหรับร้านถูกกระทบ/ร้านเปิดใหม่ |
-| document_statuses / workflow_sections | R | lookup สถานะ verbatim และ section 5 ขั้น |
-| employees | R | popup ค้นหาพนักงาน |
-| roles / menus / menu_permissions | R/W | RBAC/menu matrix |
-| email_template (SBP) / status_email_rules | R/W | เนื้อหา template ในตารางของระบบ SBP เดิม และผู้รับที่ล็อกตามสถานะ |
+| impacted_stores (SBPGI) / store · mas_store · sevenshop (SBP เดิม) | R | store picker — SBPGI ไม่มีตาราง stores ของตัวเอง |
+| workflow_status / workflow_state (@srm/glb-workflow · sps_store) | R | lookup สถานะ verbatim และ 5 ขั้น 06/08/01/02/03 — ไม่สร้างตารางของ SBPGI เอง |
+| business_user (SBP เดิม) | R | popup ค้นหาพนักงาน — SBPGI ไม่มีตาราง employees |
+| auth-backend groups / menus / permissions (ระบบเดิม) | R | RBAC/menu matrix — จัดการที่หน้า /setting/manage-user-rights เดิม · SBPGI อ่านผ่าน header x-user-permissions เท่านั้น ไม่มีตารางของตัวเอง |
+| email_template + email_sent (SBP เดิม) | R | template และ log การส่ง — engine เป็นผู้ส่ง SBPGI แค่ผูก email_id ที่ workflow_route (DP-5) |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -628,7 +211,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | store-backend · src/modules/sbpgi-lookup/dto/sbpgi-lookup.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sbpgi-lookup/sbpgi-lookup.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/impacted-stores.entity.ts | entity ของ `impacted_stores` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
-| store-backend · src/entitys/status-email-rules.entity.ts | entity ของ `status_email_rules` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/entitys/business-user.entity.ts | entity ของ `business_user` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/entitys/permissions.entity.ts | entity ของ `permissions` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/providers/sbpgi/sbpgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
 | store-backend · sql/deploy-sbpgi-lookup.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
 | BFF · src/common/client-services/sbpgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
@@ -640,16 +224,6 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | Endpoint | จุดประสงค์ | เหตุผล |
 | --- | --- | --- |
 | GET /store/search (ระบบ SBP เดิม) | ค้นหาร้านสำหรับ popup | endpoint ของระบบ SBP เดิม — เรียกใช้ ไม่ต้อง implement ใหม่ |
-| GET /api/v1/employees/search | ค้นหาพนักงานสำหรับ master/operator | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ employee backend เดิมของระบบ SBP |
-| GET /api/v1/menu-permissions | อ่าน matrix สิทธิ์เมนูทุก role | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend /groups/{id}/permissions |
-| PUT /api/v1/menu-permissions/{menuCode} | บันทึกสิทธิ์เมนูรายเมนู | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend /groups/{id}/permissions |
-| GET /api/v1/roles | อ่านรายการ role | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend groups |
-| POST /api/v1/roles | สร้าง role | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend groups |
-| PUT /api/v1/roles/{roleCode} | แก้ role ที่ไม่ใช่ system role | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend groups |
-| DELETE /api/v1/roles/{roleCode} | ลบ role ที่ไม่ถูกใช้งาน | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend groups |
-| POST /api/v1/menus | สร้างเมนูและสิทธิ์เริ่มต้นทุก role | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend menus |
-| PUT /api/v1/menus/{menuCode} | แก้เมนู | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend menus |
-| DELETE /api/v1/menus/{menuCode} | ลบเมนูพร้อมสิทธิ์ที่เกี่ยวข้อง | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend menus |
 
 #### 9.2 Controller (store-backend)
 
@@ -802,43 +376,28 @@ export class ImpactedStore {
 ```
 
 ```ts
-// src/entitys/status-email-rules.entity.ts
+// src/entitys/business-user.entity.ts
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'status_email_rules', schema: process.env.DB_SCHEMA })
-export class StatusEmailRule {
-  @PrimaryColumn({ name: 'status_code', type: 'varchar', length: 2 })
-  statusCode: string;
+@Entity({ name: 'business_user', schema: process.env.DB_SCHEMA })
+export class BusinessUser {
+  @PrimaryColumn({ name: 'id', type: 'bigint' })
+  id: number;
 
-  @Column({ name: 'to_section_code', type: 'varchar', length: 2, nullable: true })
-  toSectionCode?: string;
-
-  @Column({ name: 'cc_section_code', type: 'varchar', length: 2, nullable: true })
-  ccSectionCode?: string;
-
-  @Column({ name: 'template_code', type: 'varchar', length: 10 })
-  templateCode: string;
-
-  @Column({ name: 'is_active', type: 'boolean', default: true })
-  isActive: boolean;
-
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  // TODO: เติมคอลัมน์ที่เหลือของ business_user ตาม database.md (Canonical Column Contract)
+  //       และห้ามประกาศ relation — โมดูลนี้ join ด้วย raw SQL ตาม convention ของทีม
 }
 ```
+
+ตารางที่เหลือของเอกสารนี้ (`permissions`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
 | Object | R/W | ใช้ของระบบเดิมตัวไหน |
 | --- | --- | --- |
-| stores | R | store / mas_store / sevenshop (store-backend) |
-| document_statuses | R | workflow_status (@srm/glb-workflow) |
-| workflow_sections | R | workflow_state (@srm/glb-workflow) |
-| employees | R | business_user (store-backend) |
-| roles | R/W | auth-backend groups |
-| menus | R/W | auth-backend menus |
-| menu_permissions | R/W | auth-backend permissions ต่อ URL |
-| email_template | R/W | email_template + email_sent + @gosoft-sbp/email-lib |
+| workflow_status | R | workflow engine @srm/glb-workflow |
+| workflow_state | R | workflow engine @srm/glb-workflow |
+| menus | R | auth-backend menus |
 
 #### 9.7 Repository Providers + Module wiring
 
@@ -851,7 +410,8 @@ export class StatusEmailRule {
 //    (ชื่อ const แยกต่อเอกสารไว้แล้วเพื่อไม่ให้ชนกัน)
 import { DataSource } from 'typeorm';
 import { ImpactedStore } from '../../entitys/impacted-stores.entity';
-import { StatusEmailRule } from '../../entitys/status-email-rules.entity';
+import { BusinessUser } from '../../entitys/business-user.entity';
+import { Permission } from '../../entitys/permissions.entity';
 
 export const sbpgiLookupProviders = [
   {
@@ -860,8 +420,13 @@ export const sbpgiLookupProviders = [
     inject: ['DATA_SOURCE'],
   },
   {
-    provide: 'STATUS_EMAIL_RULE_REPOSITORY',
-    useFactory: (dataSource: DataSource) => dataSource.getRepository(StatusEmailRule),
+    provide: 'BUSINESS_USER_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(BusinessUser),
+    inject: ['DATA_SOURCE'],
+  },
+  {
+    provide: 'PERMISSION_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(Permission),
     inject: ['DATA_SOURCE'],
   },
 ];
@@ -975,16 +540,12 @@ export class SbpgiLookupBffController {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| impacted_stores | R | store picker สำหรับร้านถูกกระทบ/ร้านเปิดใหม่ |
-| status_email_rules | R/W | เนื้อหา template ในตารางของระบบ SBP เดิม และผู้รับที่ล็อกตามสถานะ |
-| stores | R | ใช้ของระบบเดิม: store / mas_store / sevenshop (store-backend) |
-| document_statuses | R | ใช้ของระบบเดิม: workflow_status (@srm/glb-workflow) |
-| workflow_sections | R | ใช้ของระบบเดิม: workflow_state (@srm/glb-workflow) |
-| employees | R | ใช้ของระบบเดิม: business_user (store-backend) |
-| roles | R/W | ใช้ของระบบเดิม: auth-backend groups |
-| menus | R/W | ใช้ของระบบเดิม: auth-backend menus |
-| menu_permissions | R/W | ใช้ของระบบเดิม: auth-backend permissions ต่อ URL |
-| email_template | R/W | ใช้ของระบบเดิม: email_template + email_sent + @gosoft-sbp/email-lib |
+| impacted_stores | R | store picker — SBPGI ไม่มีตาราง stores ของตัวเอง |
+| business_user | R | popup ค้นหาพนักงาน — SBPGI ไม่มีตาราง employees |
+| permissions | R | RBAC/menu matrix — จัดการที่หน้า /setting/manage-user-rights เดิม · SBPGI อ่านผ่าน header x-user-permissions เท่านั้น ไม่มีตารางของตัวเอง |
+| workflow_status | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| workflow_state | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| menus | R | ใช้ของระบบเดิม: auth-backend menus |
 
 #### 10.2 SQL จริงต่อ Endpoint
 
@@ -1003,12 +564,20 @@ ORDER BY seq;
 **GET /api/v1/workflow-sections** — รายการ section 5 ขั้น
 
 ```sql
--- ⚠️ SQL ตัวอย่างนี้ยังอ้างตารางที่ถูกตัดจาก target design 21 ตารางแล้ว
---    ห้าม implement ตามตัวอักษร ให้แทนที่ก่อนใช้งาน:
---      workflow_sections  ->  workflow_state / route (@srm/glb-workflow)
--- approve_limit_amount = SectionLimitCost ของ K2 เดิม (GM 50,000 / AVP 300,000 · SDD GI) — วงเงินเป็น data ไม่ hardcode
-SELECT section_code, section_name, sort_order, approve_limit_amount
-FROM workflow_sections
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- ตาราง workflow_sections ของ SBPGI ถูกตัดแล้ว — อ่าน state จาก engine กลาง และวงเงินจาก common_code ของระบบเดิม
+-- (approve_limit_amount = SectionLimitCost ของ K2 เดิม · GM 50,000 / AVP 300,000 ตาม SDD GI — เป็น data ไม่ hardcode)
+-- ⚠️ sps_store.workflow_state ไม่มีคอลัมน์ลำดับ (มีแค่ version_id · state_id · state_name · create_date)
+--    ลำดับขั้นต้องเอาจาก workflow_route.seq · วงเงินจับคู่ด้วย common_code.code_value (ไม่มี code_id)
+SELECT s.state_id AS section_code, s.state_name AS section_name,
+       MIN(r.seq) AS sort_order,
+       CAST(c.other_value AS NUMERIC) AS approve_limit_amount
+FROM sps_store.workflow_state s
+LEFT JOIN sps_store.workflow_route r ON r.version_id = s.version_id AND r.from_state_id = s.state_id
+LEFT JOIN common_code c ON c.code_type = 'SBPGI_APPROVE_LIMIT' AND c.code_value = s.state_id
+WHERE s.version_id = :sbpgiVersionId
+GROUP BY s.state_id, s.state_name, c.other_value
 ORDER BY sort_order;
 ```
 
@@ -1028,7 +597,7 @@ ORDER BY sort_order;
 
 - status label ต้องเป็น verbatim
 - permission mutation ต้อง audit
-- email recipient From/To/Cc ล็อกจาก status_email_rules
+- อีเมลทั้งหมดส่งโดย engine — SBPGI ไม่กำหนดผู้รับเอง (DP-5)
 - Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้
 
 ## 13. Developer Test Checklist

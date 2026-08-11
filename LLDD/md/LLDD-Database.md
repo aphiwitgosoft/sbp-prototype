@@ -13,7 +13,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 - Workflow ใช้ engine กลาง `@srm/glb-workflow` **13 ตาราง ใน schema `sps_store`** (workflow · workflow_version · workflow_state · workflow_status · workflow_event · workflow_route · workflow_group · workflow_group_map · workflow_transaction · workflow_history · workflow_approver · workflow_part · workflow_part_display) แทน K2 engine ภายนอก — SBPGI ไม่สร้างตาราง workflow ของตัวเอง (ตัดสินใจ 2026-08-06 · แก้จำนวนตารางจาก 10 เป็น 13 และแก้ schema จาก sps_auth เป็น sps_store เมื่อ 2026-08-07)
 - ตัดขั้นบัญชี 04/05 (SDD v7.5 — รวมเข้าการออกแบบแล้ว ไฟล์ต้นฉบับถูกลบจาก repo 2026-08-06); workflow ใช้ section 06/08/01/02/03; SDD ที่ยึดเป็นหลักคือ SDD GI 24/02/2026
 - มาตรฐานชื่อ table/column เป็น English lower_snake_case
-- ตาราง job_configs และ job_run_histories เป็น schema reference สำหรับ BE/dev; ไม่ใช่ scope ให้ FE Batch Monitor ทำ tab Database ที่ใช้
+- ตาราง job_configs / job_run_histories ถูกตัดออกจาก target schema เมื่อ 2026-08-06 พร้อม 2 แท็บควบคุมของหน้า Batch Job — cron/พารามิเตอร์อยู่ใน backend config · ผลการรันเขียน application log + interface_transactions
 
 ## 2.1 Input / Progress / Output Contract
 
@@ -29,12 +29,12 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- | --- | --- |
 | A | FGI/FCS Impact Pipeline and external interfaces | fgi_impact_processes, fgi_impact_stores, sales, interface_transactions | Batch Jobs 1-7, IAS/ALLMAP/QSSI/STA tracking |
 | B | K2 Document (workflow อยู่ที่ engine กลาง) | compensation_documents, document_* tables, consideration_logs, compensation_histories | Document APIs, workflow actions, FE detail/list/report |
-| C | Master ที่ SBPGI เป็นเจ้าของ (RBAC/config/master ร้าน ใช้ของระบบ SBP เดิม) | impacted_stores, decisions, external_factors, competitors, status_email_rules | Lookup, master maintenance, notification |
+| C | Master ที่ SBPGI เป็นเจ้าของ (RBAC/config/master ร้าน/ผลพิจารณา ใช้ของระบบ SBP เดิม) | impacted_stores, external_factors, competitors | Lookup, master maintenance, notification |
 
 | Order | Key | Meaning | Used by |
 | --- | --- | --- | --- |
 | 1 | impact_process_id | หนึ่งร้านถูกกระทบ + หนึ่งงวด | FGI/FCS pipeline, Job 8/8b |
-| 2 | doc_no | เอกสาร YYYY/xxxxx ปี พ.ศ. | Document APIs, reports, attachments |
+| 2 | doc_no | เอกสาร YYYY/xxxxx ปี ค.ศ. | Document APIs, reports, attachments |
 | 3 | transaction_id (@srm/glb-workflow) | workflow transaction ต่อเอกสาร — reference_id ยังไม่ตัดสินว่าเป็น doc_no หรือ surrogate id (DP-1) | Workflow engine ใน schema sps_store |
 | 4 | approver_id (@srm/glb-workflow) | ผู้อนุมัติต่อ state — แทน task_id เดิม | Inbox/current approver guard |
 | 5 | employee_id / user_id | identity — มาจาก BFF header ไม่ใช่ตารางของ SBPGI | lookup, assignment |
@@ -60,12 +60,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | B | document_cost_details | id | doc_no, new_store_code | monthly cost detail per new store (ImpactCostDetail) |
 | B | document_running_numbers | year | - | atomic YYYY/xxxxx running number |
 | C | impacted_stores | store_code | store.store_code (SBP) | SP impacted store subset |
-| C | decisions | decision_code | - | decision master (button/flow/result names) |
 | C | external_factors | factor_code | - | external factor master |
 | C | competitors | competitor_code | - | competitor master |
-| C | status_email_rules | status_code | workflow state (SBP) | notification recipients |
-| REF | job_configs | job_no | - | schema reference สำหรับ batch schedule/config เท่านั้น — ไม่นับใน 21 ตาราง (ตัดพร้อม 2 tab ควบคุมของหน้า Batch Job 2026-08-06) |
-| REF | job_run_histories | run_id | job_no | schema reference สำหรับประวัติการรัน — ไม่นับใน 21 ตาราง; ผลการรันจริงเขียน application log |
 | - | USE EXISTING SBP TABLES | - | - | workflow engine 13 ตาราง ใน schema sps_store (workflow · workflow_version · workflow_state · workflow_status · workflow_event · workflow_route · workflow_group · workflow_group_map · workflow_transaction · workflow_history · workflow_approver · workflow_part · workflow_part_display) · store/mas_store/sevenshop · mas_zone · common_code · business_user · email_template + email_sent · mas_param · fcs_qssi_score — decided 2026-08-05/2026-08-06: do NOT recreate these in SBPGI |
 
 ### 4.1 Canonical Column Contract
@@ -82,7 +78,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 ## 5. Executable DDL — 21 Tables (+ schema reference)
 
-หัวข้อ 5.1-5.4 เป็น PostgreSQL DDL ของ **21 ตารางในโครง SBPGI** เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น ใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม · ในจำนวนนี้ `fcs_qssi_score` **ไม่มี CREATE TABLE เพราะ reuse ตารางเดิมของ `sps_store`** (สร้างจริง 20 ตาราง) · หัวข้อ **5.5 เป็น schema reference ที่ไม่นับใน 21 ตาราง** (`job_configs` / `job_run_histories` ที่ถูกตัดออกเมื่อ 2026-08-06) ห้ามนำไป deploy
+หัวข้อ 5.1-5.4 เป็น PostgreSQL DDL ของ **19 ตารางในโครง SBPGI** เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น ใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม
 
 ### 5.1 Zone C — Shared Master, RBAC, Config and Operations
 
@@ -90,7 +86,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 -- ❌ ไม่สร้างตาราง stores ใน SBPGI — ใช้ store / mas_store / sevenshop ของระบบ SBP เดิม (API: GET /store/search · /store/list · /store/detail)
 
 CREATE TABLE impacted_stores (
-    store_code VARCHAR(5) PRIMARY KEY REFERENCES stores(store_code),
+    store_code VARCHAR(5) PRIMARY KEY,   -- ร้าน SP · master อยู่ที่ store/mas_store/sevenshop ของระบบเดิม
     dv_code VARCHAR(20), opt_dv_user_id VARCHAR(30), latitude NUMERIC(10,7), longitude NUMERIC(10,7),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -109,22 +105,16 @@ CREATE TABLE impacted_stores (
 -- ❌ ไม่สร้างตาราง employees ใน SBPGI — ใช้ business_user / business_user_group ของระบบ SBP เดิม
 
 ALTER TABLE impacted_stores
-    ADD CONSTRAINT fk_impacted_store_opt_dv FOREIGN KEY (opt_dv_user_id) REFERENCES employees(employee_id);
+    -- opt_dv_user_id ไม่มี FK — ผู้ใช้อยู่ที่ business_user ของระบบ SBP เดิม (ตัด employees 2026-08-05)
 
 -- ❌ ไม่สร้างตาราง operator_assignments ใน SBPGI — ใช้ group + scope ของ auth-backend + prepared approvers ของ @srm/glb-workflow (ตัดสินใจ 2026-08-05)
 
-CREATE TABLE decisions (
-    decision_code VARCHAR(30) PRIMARY KEY,
-    decision_name VARCHAR(200) NOT NULL,
-    flow_name VARCHAR(200), result_name VARCHAR(200),
-    section_code VARCHAR(2) NOT NULL,
-    result_category VARCHAR(20) NOT NULL CHECK (result_category IN ('APPROVE','REJECT','PENDING')),
-    engine_event VARCHAR(20) NOT NULL CHECK (engine_event IN ('save','submit','approve','reject','cancel','sendback')),
-    seq SMALLINT NOT NULL DEFAULT 1,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_decision_section_seq UNIQUE (section_code, seq)
-);
+-- ❌ ไม่สร้างตาราง decisions ใน SBPGI — มติ DP-9 (2026-08-10) ย้ายไป common_code ของระบบ SBP เดิม
+--    code_type='SBPGI_DECISION' · code_value=decision_code · code_name=decision_name
+--    code_mapping=flow_name · other_value=result_name · remark=result_category+engine_event (จำกัด 50 ตัวอักษร)
+--    FE อ่านผ่าน GET /common/common-code?codeType=SBPGI_DECISION (ตัดเส้น GET /decisions ออกแล้ว)
+-- ⚠️ common_code ไม่มี PK และไม่มี unique constraint → กันรหัสซ้ำที่ระดับแอป
+--    และต้องลงทะเบียน code_type ที่ common_code_type ก่อนใช้งาน
 
 CREATE TABLE external_factors (
     factor_code VARCHAR(30) PRIMARY KEY,
@@ -133,23 +123,23 @@ CREATE TABLE external_factors (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — ระบบเดิมเก็บชื่อทั้งไทยและอังกฤษ
+-- คนละระดับกับ document_competitors ที่เก็บ "รายสาขา" พร้อมรหัสจาก ALLMAP (เช่น 4832, TD58_08)
 CREATE TABLE competitors (
     competitor_code VARCHAR(30) PRIMARY KEY,
-    competitor_name VARCHAR(200) NOT NULL,
+    name_th VARCHAR(200) NOT NULL,
+    name_en VARCHAR(200) NOT NULL,
+    remark VARCHAR(500),                 -- คอลัมน์ "รายละเอียดเพิ่มเติม" ของหน้า k2-competitors.html
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ❌ ไม่สร้างตาราง email_templates ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ตาราง email_template ของระบบ SBP เดิม (email_template_id · subject_format · body_format) + email_sent
 
-CREATE TABLE status_email_rules (
-    status_code VARCHAR(2) NOT NULL REFERENCES document_statuses(status_code),
-    template_code VARCHAR(30) NOT NULL REFERENCES email_templates(template_code),
-    to_section_code VARCHAR(2) REFERENCES workflow_sections(section_code),
-    cc_section_code VARCHAR(2) REFERENCES workflow_sections(section_code),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    PRIMARY KEY (status_code, template_code)
-);
+-- ❌ ไม่สร้างตาราง status_email_rules (ปิด DP-5 · 2026-08-11) — engine ส่งอีเมล workflow เองผ่าน workflow_route.email_id
+--    อีเมลของ batch job (EM-07 error · EM-08 watchdog) ไม่ใช่ workflow event → ส่งผ่าน @gosoft-sbp/email-lib ของระบบเดิม
+--    ผู้รับของ batch job อยู่ใน backend config (config file/env) ไม่ใช่ตารางของ SBPGI
+
 
 -- ❌ ไม่สร้างตาราง user_accounts ใน SBPGI — ใช้ AWS Cognito + auth-backend — SBPGI รับตัวตนจาก header ของ BFF (ตัดสินใจ 2026-08-05)
 
@@ -162,7 +152,8 @@ CREATE TABLE status_email_rules (
 CREATE TABLE fgi_impact_processes (
     id BIGSERIAL PRIMARY KEY,
     impacted_store_code VARCHAR(5) NOT NULL REFERENCES impacted_stores(store_code),
-    impact_month CHAR(7) NOT NULL,
+    impact_month CHAR(7) NOT NULL,   -- 'YYYY-MM' (ค.ศ.)
+    impact_year INTEGER NOT NULL,    -- แตกจาก impact_month เพื่อ filter รายปีโดยไม่ต้อง substring
     process_status VARCHAR(30) NOT NULL, action_status VARCHAR(30),
     last_compensation_amount NUMERIC(14,2),
     workflow_generation_status CHAR(1) NOT NULL DEFAULT 'W' CHECK (workflow_generation_status IN ('W','Y','N')),
@@ -175,7 +166,7 @@ CREATE TABLE fgi_impact_stores (
     id BIGSERIAL PRIMARY KEY,
     impact_process_id BIGINT NOT NULL REFERENCES fgi_impact_processes(id),
     impacted_store_code VARCHAR(5) NOT NULL REFERENCES impacted_stores(store_code),
-    new_store_code VARCHAR(5) NOT NULL REFERENCES stores(store_code),
+    new_store_code VARCHAR(5) NOT NULL,   -- ร้านเปิดใหม่ · master ของระบบเดิม
     impact_month CHAR(7) NOT NULL, distance_km NUMERIC(8,3),
     sales_request_status CHAR(1) NOT NULL DEFAULT 'W' CHECK (sales_request_status IN ('W','P','Y','E')),
     forecast_compensate_percent NUMERIC(7,4), adjust_compensate_percent NUMERIC(7,4),
@@ -227,7 +218,8 @@ CREATE TABLE fgi_impact_competitors (
 
 CREATE TABLE interface_transactions (
     id BIGSERIAL PRIMARY KEY,
-    run_id VARCHAR(50) REFERENCES job_run_histories(run_id),
+    -- run_id เป็น correlation id ของรอบรัน (มาจาก application log) — ไม่มี FK เพราะ job_run_histories ถูกตัด 2026-08-06
+    run_id VARCHAR(50),
     data_name VARCHAR(80) NOT NULL, direction VARCHAR(10) NOT NULL CHECK (direction IN ('IN','OUT','INTERNAL')),
     status VARCHAR(20) NOT NULL CHECK (status IN ('READY','SENT','ACKED','COMPLETED','FAILED','FAILED_RETRY')),
     impact_process_id BIGINT REFERENCES fgi_impact_processes(id),
@@ -236,6 +228,8 @@ CREATE TABLE interface_transactions (
     correlation_id VARCHAR(100), file_name VARCHAR(255), file_checksum VARCHAR(64),
     outbox_status VARCHAR(20), return_code VARCHAR(50), return_message VARCHAR(500),
     retry_count INTEGER NOT NULL DEFAULT 0, sent_at TIMESTAMP, acked_at TIMESTAMP,
+    -- marker กัน watchdog (Job 10) ส่งอีเมลเตือนซ้ำในวันเดียวกัน — ย้ายมาจาก audit_logs ที่ยกเลิก 2026-08-07
+    last_ack_notified_on DATE,
     purge_after TIMESTAMP, legal_hold BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, completed_at TIMESTAMP,
     CONSTRAINT uq_interface_business UNIQUE (data_name, direction, business_key, period_key),
@@ -246,16 +240,31 @@ CREATE TABLE interface_transactions (
 ### 5.3 Zone B — Document and Internal Workflow
 
 ```sql
+-- ✅ มติ DP-1 (2026-08-10 · ทางเลือก B): PK เป็น surrogate `id` · `doc_no` เป็น UNIQUE ไม่ใช่ PK
+-- ⚠️ ผลที่ตามมาซึ่งยังต้องตัดสิน: ตารางลูก 8 ตัว (document_new_stores · document_competitors ·
+--    document_external_factors · consideration_logs · document_attachments · document_cost_details ·
+--    compensation_histories · interface_transactions) ยัง FK ด้วย doc_no แบบ NOT NULL
+--    → แปลว่า "ต้องออก doc_no ให้เสร็จก่อนจึงบันทึกส่วนย่อยได้"
+--    ถ้าธุรกิจต้องการสร้างเอกสารก่อนออกเลข ต้องเปลี่ยนตารางลูกไป FK ที่ id แทน (ยังไม่ตัดสิน)
+--    referenceId ที่ส่งให้ @srm/glb-workflow = id (ตรงกับที่ระบบเดิมทำจริงใน cooperation-request/inform-evaluate)
+--    doc_no อาจยังว่างตอนสร้างแถว แล้วออกเลขทีหลัง จึงเป็น NULL ได้
 CREATE TABLE compensation_documents (
-    doc_no VARCHAR(10) PRIMARY KEY,
-    year INTEGER NOT NULL, running_no INTEGER NOT NULL,
+    id BIGSERIAL PRIMARY KEY,
+    doc_no VARCHAR(10) UNIQUE,          -- YYYY/xxxxx (ปี ค.ศ.) · ออกจาก document_running_numbers
+    year INTEGER, running_no INTEGER,   -- แตกจาก doc_no เพื่อ index/ค้นหา (NULL จนกว่าจะออกเลข)
     impact_process_id BIGINT NOT NULL UNIQUE REFERENCES fgi_impact_processes(id),
     impacted_store_code VARCHAR(5) NOT NULL REFERENCES impacted_stores(store_code),
-    impact_month CHAR(7), new_store_code VARCHAR(5) REFERENCES stores(store_code), round_no INTEGER,
+    impact_month CHAR(7), new_store_code VARCHAR(5),   -- master ของระบบเดิม
+    round_no INTEGER, loop_no INTEGER,  -- CompMainLoopNo / CompLoopNo — หน้าจอแสดง "รอบ 1 · ครั้งที่ 3"
     source VARCHAR(20) NOT NULL DEFAULT 'FS' CHECK (source IN ('FS','MANUAL')),
-    status_code VARCHAR(2) NOT NULL REFERENCES document_statuses(status_code),
-    current_section_code VARCHAR(2) REFERENCES workflow_sections(section_code),
+    status_code VARCHAR(2) NOT NULL,   -- ค่าจาก sps_store.workflow_status ของ engine
+    current_section_code VARCHAR(2),   -- ค่าจาก sps_store.workflow_state ของ engine
     total_compensation_amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+    allmap_url VARCHAR(500),                   -- CompUrlMap — ปุ่ม Link To ALLMAP
+    statement_id VARCHAR(50),                  -- CompStatementID — โยงกลับ SBP Statement ต้นทาง
+    statement_date DATE,                       -- Period Statement (ค.ศ.) — ตัวกรอง/คอลัมน์ของรายงาน SDD สไลด์ 60
+    account_year INTEGER, account_month INTEGER,   -- งวดบัญชี
+    approver_snapshot JSONB,                   -- FC/Section/Manager/GM/AVP + ชื่อ/อีเมล ณ เวลาเปิดเอกสาร
     version_no INTEGER NOT NULL DEFAULT 1,
     created_by VARCHAR(30) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(30), updated_at TIMESTAMP,
@@ -269,7 +278,7 @@ ALTER TABLE interface_transactions
 CREATE TABLE document_new_stores (
     id BIGSERIAL PRIMARY KEY,
     doc_no VARCHAR(10) NOT NULL REFERENCES compensation_documents(doc_no) ON DELETE CASCADE,
-    new_store_code VARCHAR(5) NOT NULL REFERENCES stores(store_code),
+    new_store_code VARCHAR(5) NOT NULL,   -- ร้านเปิดใหม่ · master ของระบบเดิม
     distance_km NUMERIC(8,3), compensate_percent NUMERIC(7,4) NOT NULL CHECK (compensate_percent BETWEEN 0 AND 100),
     compensation_amount NUMERIC(14,2) NOT NULL DEFAULT 0,
     source_system VARCHAR(30) NOT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -299,16 +308,19 @@ CREATE TABLE document_external_factors (
 CREATE TABLE consideration_logs (
     id BIGSERIAL PRIMARY KEY,
     doc_no VARCHAR(10) NOT NULL REFERENCES compensation_documents(doc_no),
-    section_code VARCHAR(2) NOT NULL REFERENCES workflow_sections(section_code),
-    result VARCHAR(100) NOT NULL, result_category VARCHAR(50), detail TEXT,
-    consider_by VARCHAR(30) NOT NULL REFERENCES employees(employee_id),
+    section_code VARCHAR(2) NOT NULL,   -- ค่าจาก sps_store.workflow_state ของ engine
+    result VARCHAR(100) NOT NULL,
+    -- APPROVE=ประกันรายได้ · REJECT=ไม่ประกันรายได้ · CANCELLED=ยกเลิกโดยระบบ (decision 14 CancelBySystem) · PENDING=ยังไม่มีผล
+    result_category VARCHAR(50) CHECK (result_category IN ('APPROVE','REJECT','CANCELLED','PENDING')),
+    detail TEXT,
+    consider_by VARCHAR(30) NOT NULL,   -- ผู้ใช้จาก business_user ของระบบเดิม
     action_datetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, request_id VARCHAR(80)
 );
 
 CREATE TABLE document_attachments (
     attach_id BIGSERIAL PRIMARY KEY,
     doc_no VARCHAR(10) NOT NULL REFERENCES compensation_documents(doc_no),
-    section_code VARCHAR(2) NOT NULL REFERENCES workflow_sections(section_code),
+    section_code VARCHAR(2) NOT NULL,   -- ค่าจาก sps_store.workflow_state ของ engine
     file_name VARCHAR(255) NOT NULL, mime_type VARCHAR(100) NOT NULL,
     file_size BIGINT NOT NULL CHECK (file_size <= 5242880),
     storage_provider VARCHAR(30) NOT NULL, bucket VARCHAR(120) NOT NULL,
@@ -321,7 +333,7 @@ CREATE TABLE document_attachments (
 
 CREATE TABLE compensation_histories (
     id BIGSERIAL PRIMARY KEY,
-    store_code VARCHAR(5) NOT NULL REFERENCES stores(store_code),
+    store_code VARCHAR(5) NOT NULL,   -- master ของระบบเดิม
     ref_doc_no VARCHAR(10) REFERENCES compensation_documents(doc_no),
     submit_account_month CHAR(7) NOT NULL, compensate_amount NUMERIC(14,2) NOT NULL,
     accounting_status VARCHAR(30), external_ref VARCHAR(100),
@@ -341,12 +353,18 @@ CREATE TABLE document_cost_details (
 );
 
 CREATE TABLE document_running_numbers (
-    year SMALLINT PRIMARY KEY,
+    year SMALLINT PRIMARY KEY,   -- ปี ค.ศ. เท่านั้น (เช่น 2026) ห้ามเก็บ พ.ศ.
     last_running_no INTEGER NOT NULL DEFAULT 0 CHECK (last_running_no >= 0),
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
--- ออกเลขแบบ atomic: UPDATE document_running_numbers SET last_running_no = last_running_no + 1
---                   WHERE year = :be_year RETURNING last_running_no;   (row lock กันเลขชน)
+-- ⚠️ year เป็น "ค.ศ." (มติ 2026-08-06 · ทั้งระบบเป็น ค.ศ. — หน้าจอ K2 จริงก็ ค.ศ. เช่น 2026/01870)
+--    ห้ามใช้ พ.ศ. · ถ้า client ส่ง พ.ศ. มา ให้ BE แปลงด้วย toAD(y) = y >= 2500 ? y - 543 : y ก่อนเสมอ
+-- ออกเลขแบบ atomic (upsert กันกรณีปีใหม่ยังไม่มีแถว):
+--   INSERT INTO document_running_numbers (year, last_running_no) VALUES (:ad_year, 1)
+--   ON CONFLICT (year) DO UPDATE SET last_running_no = document_running_numbers.last_running_no + 1,
+--                                    updated_at = CURRENT_TIMESTAMP
+--   RETURNING last_running_no;   (row lock กันเลขชนเมื่อ batch และผู้ใช้สร้างพร้อมกัน)
+--   doc_no = :ad_year || '/' || LPAD(last_running_no::text, 5, '0')
 
 -- ❌ ไม่สร้างตาราง workflow_instances ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ workflow_transaction ของ @srm/glb-workflow
 
@@ -386,38 +404,6 @@ WHERE i.id = p.id
 RETURNING i.id, i.data_name, i.business_key;
 ```
 
-### 5.5 Schema Reference — ตารางที่ **ไม่นับใน 21 ตาราง**
-
-```sql
--- ⚠️ ส่วนนี้ไม่ใช่ขอบเขต migration baseline ของ 21 ตาราง
--- job_configs / job_run_histories ถูกตัดออกจาก target schema เมื่อ 2026-08-06 พร้อมกับ 2 แท็บควบคุมของหน้า Batch Job
--- (cron/พารามิเตอร์อยู่ใน backend config · ผลการรันเขียน application log + interface_transactions)
--- DDL ด้านล่างคงไว้เป็น **schema reference** สำหรับกรณีที่แท็บควบคุมกลับมาในเฟสถัดไป — ห้าม deploy ใน 01_schema.sql
-
-CREATE TABLE job_configs (
-    job_no VARCHAR(10) PRIMARY KEY,
-    job_name VARCHAR(200) NOT NULL,
-    cron_expression VARCHAR(100), enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    params_json JSONB NOT NULL DEFAULT '{}'::jsonb,
-    secret_ref VARCHAR(255), version_no INTEGER NOT NULL DEFAULT 1,
-    updated_by VARCHAR(30), updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_job_config_no_inline_secret CHECK (params_json::text !~* '(password|private_key|client_secret)')
-);
-
-CREATE TABLE job_run_histories (
-    run_id VARCHAR(50) PRIMARY KEY,
-    job_no VARCHAR(10) NOT NULL REFERENCES job_configs(job_no),
-    period_key VARCHAR(20), status VARCHAR(20) NOT NULL CHECK (status IN ('QUEUED','RUNNING','WAITING','SUCCESS','FAILED','CANCELLED')),
-    trigger_type VARCHAR(20) NOT NULL, triggered_by VARCHAR(30), params_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
-    total_count INTEGER NOT NULL DEFAULT 0, success_count INTEGER NOT NULL DEFAULT 0,
-    reject_count INTEGER NOT NULL DEFAULT 0, skipped_count INTEGER NOT NULL DEFAULT 0,
-    error_code VARCHAR(80), error_message TEXT,
-    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, ended_at TIMESTAMP
-);
-
-CREATE UNIQUE INDEX uq_job_running ON job_run_histories(job_no, COALESCE(period_key, '')) WHERE status = 'RUNNING';
-```
-
 ## 6. Index and Constraint Plan
 
 | Table | Index / constraint | Reason |
@@ -427,7 +413,6 @@ CREATE UNIQUE INDEX uq_job_running ON job_run_histories(job_no, COALESCE(period_
 | document_new_stores | INDEX(doc_no), CHECK compensate_percent between 0 and 100 | detail load and allocation validation |
 | consideration_logs | INDEX(doc_no, action_datetime DESC), INDEX(result_category) | timeline/report result filter |
 | document_attachments | INDEX(doc_no), INDEX(scan_status), UNIQUE(sha256, doc_no, deleted_flag) | attachment list/download/security |
-| job_run_histories | INDEX(job_no, period, status), UNIQUE(job_no, period) filtered RUNNING | manual run concurrency guard |
 | interface_transactions | INDEX(data_name,status), INDEX(impact_process_id), INDEX(doc_no) | tracking and pending ACK |
 
 ## 7. Transaction Rules
@@ -439,7 +424,6 @@ CREATE UNIQUE INDEX uq_job_running ON job_run_histories(job_no, COALESCE(period_
 | Attachment upload | metadata insert only after storage write and AV clean; objectKey never exposed | storage/scan fail leaves no CLEAN metadata |
 | Job 4 IAS request | durable file (fsync + atomic rename + checksum) ก่อน transaction W→P + outbox READY | file fail คง W; DB fail rollback W→P/outbox; SFTP fail retry transaction เดิม |
 | Interface ACK/purge | ACK compare-and-set บน transaction เดิม; purge เฉพาะ terminal + purge_after + non-held | pending/failed/unacked/legal-hold ห้ามลบ |
-| Job manual run | acquire run lock + job_run_histories RUNNING before processing | fatal fail marks run FAILED and keeps record-level rejects |
 | Master mutation | update entity ใน transaction เดียว | mutation fail ต้อง rollback ครบ |
 
 ## 8. Seed Data
@@ -447,10 +431,9 @@ CREATE UNIQUE INDEX uq_job_running ON job_run_histories(job_no, COALESCE(period_
 | Domain | Required seed |
 | --- | --- |
 | workflow_state / workflow_status (@srm/glb-workflow) | 5 ขั้น 06, 08, 01, 02, 03 + state จบ flow · 6 สถานะเอกสาร (5 waiting + เสร็จสิ้น) — ลงทะเบียนที่ engine ไม่ใช่ตารางของ SBPGI |
-| decisions | ผลพิจารณาทุกปุ่ม (decision_name / flow_name / result_name) |
+| (ไม่สร้าง) decisions | ย้ายไป common_code ของระบบเดิม — มติ DP-9 2026-08-10 |
 | competitors | แบรนด์คู่แข่ง 11 รายการ รหัส 01-11 (ไทย + อังกฤษ) |
 | external_factors | ปัจจัยภายนอกที่ใช้อยู่ |
-| status_email_rules | ผู้รับ TO/CC ต่อสถานะ |
 | email_template (ระบบ SBP เดิม) | EM-01..EM-08 |
 | common_code / mas_param (ระบบ SBP เดิม) | SBPGI_APPROVE_LIMIT: GM=50000 / AVP=300000 (SDD GI), impact radius 1/2 km, sales data threshold=60, growth rate threshold=-10 |
 
@@ -475,24 +458,24 @@ CREATE UNIQUE INDEX uq_job_running ON job_run_histories(job_no, COALESCE(period_
 | LLDD-BE-API-Document-List-Search | workflow_transaction / workflow_approver (@srm/glb-workflow)(R), compensation_documents(R), impacted_stores(R), fgi_impact_sales_summaries(R) |
 | LLDD-BE-API-Document-Create-Update | compensation_documents(R/W), workflow_transaction / workflow_approver (@srm/glb-workflow)(W), document_new_stores(R/W), document_competitors(R/W) |
 | LLDD-BE-API-Document-Detail-Aggregate | compensation_documents(R), impacted_stores(R), document_new_stores(R), document_competitors(R) |
-| LLDD-BE-API-Document-Workflow-Actions | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow)(R/W), compensation_documents(W), consideration_logs(W), status_email_rules(R) |
+| LLDD-BE-API-Document-Workflow-Actions | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow)(R/W), compensation_documents(W), consideration_logs(W), workflow_transaction (@srm/glb-workflow)(R/W) |
 | LLDD-BE-API-Workflow-Instances | fgi_impact_processes / fgi_impact_stores(R/W), compensation_documents(R/W), workflow_transaction (@srm/glb-workflow)(R/W), workflow_approver (@srm/glb-workflow)(W) |
 | LLDD-BE-API-Attachment-Sales-Timeline | document_attachments(R/W), compensation_documents(R), fgi_impact_sales_summaries(R), sales_transactions(R) |
-| LLDD-BE-API-Lookup | stores / impacted_stores(R), document_statuses / workflow_sections(R), employees(R), roles / menus / menu_permissions(R/W) |
-| LLDD-BE-API-Report-and-Master-Data | compensation_documents(R), compensation_histories(R), consideration_logs(R), operator_assignments(R/W) |
-| LLDD-BE-Job-Batch-Email-SRM | job_configs(R/W), job_run_histories(R/W), interface_transactions(R/W), email_template (SBP)(R/W) |
-| LLDD-BE-Database-Structure | 21 target tables (โซน A/B/C)(W), workflow engine 13 ตาราง (sps_store)(R), fcs_qssi_score (sps_store)(R), mas_param / common_code / business_user / email_template (sps_store)(R) |
-| LLDD-BE-Data-Migration-Cutover | ORA FCS_FRN (FGI_IMPACT_* · FCS_QSSI_SCORE · FGI_CONFIRM_RECEIVE_DATA)(R), MSSQL CPA_FRN_FGI (CompensateFlow · CompensateHistory · ImpactProfile · ImpactCostDetail · RunningNumber)(R), 21 target tables (โซน A/B/C)(W), workflow_transaction / workflow_approver / workflow_history (sps_store)(W) |
+| LLDD-BE-API-Lookup | impacted_stores (SBPGI) / store · mas_store · sevenshop (SBP เดิม)(R), workflow_status / workflow_state (@srm/glb-workflow · sps_store)(R), business_user (SBP เดิม)(R), auth-backend groups / menus / permissions (ระบบเดิม)(R) |
+| LLDD-BE-API-Report-and-Master-Data | compensation_documents(R), compensation_histories(R), consideration_logs(R), auth-backend group + scope (business_user_group) / prepared approver ของ @srm/glb-workflow(R) |
+| LLDD-BE-Job-Batch-Email-SRM | (backend config: config file/env)(R), (application log แบบ structured)(W), interface_transactions(R/W), email_template (SBP)(R/W) |
+| LLDD-BE-Database-Structure | 19 target tables (โซน A/B/C)(W), workflow engine 13 ตาราง (sps_store)(R), fcs_qssi_score (sps_store)(R), mas_param / common_code / business_user / email_template (sps_store)(R) |
+| LLDD-BE-Data-Migration-Cutover | ORA FCS_FRN (FGI_IMPACT_* · FCS_QSSI_SCORE · FGI_CONFIRM_RECEIVE_DATA)(R), MSSQL CPA_FRN_FGI (CompensateFlow · CompensateHistory · ImpactProfile · ImpactCostDetail · RunningNumber)(R), 19 target tables (โซน A/B/C)(W), workflow_transaction / workflow_approver / workflow_history (sps_store)(W) |
 | LLDD-BE-Integration-SBP-Platform | mas_param (sps_store)(R), common_code / common_code_type (sps_store)(R), email_template / email_sent (sps_store)(R/W), business_user (sps_store)(R) |
 | LLDD-BE-Workflow-Engine-Definition | workflow / workflow_version / workflow_state / workflow_status / workflow_event / workflow_route (sps_store)(R/W), workflow_group / workflow_group_map (sps_store)(R/W), workflow_transaction / workflow_history / workflow_approver (sps_store)(R/W), workflow_part / workflow_part_display (sps_store)(R/W) |
 | LLDD-BE-Job-1-ImportQSSI | fcs_qssi_score(W) |
 | LLDD-BE-Job-2-ImportImpactStore | fgi_impact_stores(W) |
 | LLDD-BE-Job-3-ImportImpactCompetitor | fgi_impact_competitors(W) |
-| LLDD-BE-Job-4-PrepareImpactStoreToIAS | fgi_impact_stores(R/W), fgi_impact_sales_summaries(R/W), interface_transactions(W), job_run_histories(W) |
+| LLDD-BE-Job-4-PrepareImpactStoreToIAS | fgi_impact_stores(R/W), fgi_impact_sales_summaries(R/W), interface_transactions(W), (application log แบบ structured)(W) |
 | LLDD-BE-Job-5-ImportImpactSaleFromIAS | sales_transactions(W), fgi_impact_sales_summaries(R/W), interface_transactions(W) |
 | LLDD-BE-Job-6-ExportImpactStoreToFS | fgi_impact_processes(R/W), fgi_impact_stores(R/W), fcs_qssi_score(R), interface_transactions(W) |
 | LLDD-BE-Job-7-SyncCompetitorToDocument | fgi_impact_competitors(R), compensation_documents(R), document_competitors(W), interface_transactions(W) |
 | LLDD-BE-Job-8-CreateCompensationDocument | fgi_impact_stores(R/W), fgi_impact_processes(R), compensation_documents(W), interface_transactions(W) |
-| LLDD-BE-Job-8b-StartInternalWorkflow | fgi_impact_stores(R/W), compensation_documents(R/W), workflow_instances(W), workflow_tasks(W) |
+| LLDD-BE-Job-8b-StartInternalWorkflow | fgi_impact_stores(R/W), compensation_documents(R/W), workflow_transaction (@srm/glb-workflow · sps_store)(W), workflow_approver (@srm/glb-workflow · sps_store)(W) |
 | LLDD-BE-Job-9-SyncNewStoreToDocument | fgi_impact_stores(R), compensation_documents(R), document_new_stores(W), interface_transactions(W) |
-| LLDD-BE-Job-10-NotifyNoReceiveData | interface_transactions(R), email_templates(R), status_email_rules(R) |
+| LLDD-BE-Job-10-NotifyNoReceiveData | interface_transactions(R), email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib)(R/W), (backend config)(R) |

@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 12 ชั่วโมง |
+| Estimate | 16 ชั่วโมง |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
 | Objective | เปิด Workflow ภายใน: คัดรายการที่ผ่าน Gen Flow Gate แล้วเรียก Workflow Engine ภายในผ่าน POST /api/v1/workflows/instances แทน K2 REST StartInstance; เกณฑ์ W/Y/N เดิมยังคงใช้สำหรับ reconcile |
 
@@ -17,8 +17,8 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 - Main class/script: workflow.service.startFromImpact / (internal scheduler / service token)
 - Phase: B
-- Output: workflow_instances / workflow_tasks (DB)
-- Estimate: 12 ชั่วโมง
+- Output: sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SBPGI)
+- Estimate: 16 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
 - Depends on LLDD-BE-API-Workflow-Instances; Job 8b เรียก Workflow Engine ภายในและไม่ duplicate Gen Flow Gate logic
@@ -112,15 +112,15 @@ WITH locked_process AS (
 ), gate AS (
     SELECT p.id AS impact_process_id, d.doc_no, d.current_section_code,
            CASE
-             WHEN BOOL_OR(ns.branch_type IS NULL OR ns.branch_type NOT IN ('FAM','FB1','FC1','FB2','FVB','FVC')) THEN 'N'
+             WHEN BOOL_OR(ns.store_type IS NULL OR ns.store_type NOT IN ('FAM','FB1','FC1','FB2','FVB','FVC')) THEN 'N'
              WHEN BOOL_OR(pair.distance_km > CASE
-                    WHEN impacted.region_code = ANY(:bangkok_metro_region_codes) THEN 1.000
+                    WHEN impacted.zone_cd = ANY(:bangkok_metro_region_codes) THEN 1.000
                     ELSE 2.000
                   END) THEN 'N'
              WHEN BOOL_OR(pair.distance_km IS NULL) THEN 'W'
              WHEN ist.opt_dv_user_id IS NULL OR BTRIM(ist.opt_dv_user_id) = '' THEN 'N'
-             WHEN impacted.juristic_name IS NULL OR BOOL_OR(ns.juristic_name IS NULL) THEN 'W'
-             WHEN BOOL_OR(impacted.juristic_name = ns.juristic_name) THEN 'N'
+             WHEN ij.juristic_name IS NULL OR BOOL_OR(nj.juristic_name IS NULL) THEN 'W'
+             WHEN BOOL_OR(ij.juristic_name = nj.juristic_name) THEN 'N'
              WHEN ss.growth_rate_diff IS NULL THEN 'W'
              WHEN ss.growth_rate_diff > -10 THEN 'N'
              WHEN ss.sales_status IS NULL OR ss.sales_status NOT IN ('Y','N') THEN 'W'
@@ -130,12 +130,17 @@ WITH locked_process AS (
     JOIN fgi_impact_processes p ON p.id = lp.id
     JOIN compensation_documents d ON d.impact_process_id = p.id
     JOIN impacted_stores ist ON ist.store_code = p.impacted_store_code
-    JOIN stores impacted ON impacted.store_code = p.impacted_store_code
+    JOIN store impacted ON impacted.store_id = p.impacted_store_code
     JOIN fgi_impact_stores pair ON pair.impact_process_id = p.id
-    JOIN stores ns ON ns.store_code = pair.new_store_code
+    JOIN store ns ON ns.store_id = pair.new_store_code
+    -- นิติบุคคลไม่ได้อยู่บน store — ต้องผ่าน fr_store.juristic_id -> juristic.juristic_name
+    LEFT JOIN fr_store ifs ON ifs.store_id = impacted.store_id
+    LEFT JOIN juristic ij  ON ij.juristic_id = ifs.juristic_id
+    LEFT JOIN fr_store nfs ON nfs.store_id = ns.store_id
+    LEFT JOIN juristic nj  ON nj.juristic_id = nfs.juristic_id
     LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = p.id
     GROUP BY p.id, d.doc_no, d.current_section_code, ist.opt_dv_user_id,
-             impacted.juristic_name, ss.growth_rate_diff, ss.sales_status
+             ij.juristic_name, ss.growth_rate_diff, ss.sales_status
 )
 SELECT * FROM gate;
 ```
@@ -163,7 +168,7 @@ WHERE id = :impact_process_id
   AND workflow_generation_status = 'W'
   AND :gate_decision = 'Y';
 
--- gate_decision='W' ไม่เปลี่ยนสถานะ; บันทึก reason ลง job_run_histories เพื่อ rerun.
+-- gate_decision='W' ไม่เปลี่ยนสถานะ; บันทึก reason ลง application log (structured) เพื่อ rerun — ไม่มีตาราง job_run_histories แล้ว (2026-08-06).
 ```
 
 ### 5.94 Target Node Implementation
@@ -214,9 +219,9 @@ export async function runLlddBeJob8BStartinternalworkflow(ctx, services) {
 | --- | --- | --- |
 | fgi_impact_stores | R/W | อ่าน candidate + เขียน W/Y/N |
 | compensation_documents | R/W | ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency |
-| workflow_instances | W | เปิด instance ภายใน |
-| workflow_tasks | W | สร้าง task แรก Section 06 |
-| status_email_rules | R | ผู้รับอีเมลตามสถานะ |
+| workflow_transaction (@srm/glb-workflow · sps_store) | W | เปิด instance ผ่าน engine — ห้าม insert ตรง |
+| workflow_approver (@srm/glb-workflow · sps_store) | W | prepared approver ขั้นแรก state 06 — ผ่าน engine |
+| (backend config) | R | ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · workflow ใช้ engine ส่งเอง |
 
 ## 9. Skeleton Code (Batch Job 8b)
 
@@ -364,7 +369,7 @@ export class StartInternalWorkflowService {
     // TODO: implement
   }
 
-  // insert workflow_instances + workflow_tasks แรก Section 06
+  // เรียก initialize + add-prepared-approver ของ @srm/glb-workflow (state 06)
   async step06Insert(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -393,7 +398,7 @@ export class StartInternalWorkflowService {
 | 3 | decision | พบเงื่อนไขไม่ผ่านถาวร? | check03Condition() | [branch] ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ |
 | 4 | decision | ข้อมูล Gate พร้อมครบ? | check04Condition() | [branch] distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W |
 | 5 | io | POST /api/v1/workflows/instances | step05Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 6 | process | insert workflow transaction + prepared approver ผ่าน @srm/glb-workflow แรก Section 06 | step06Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 6 | process | เรียก initialize + add-prepared-approver ของ @srm/glb-workflow (state 06) | step06Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 7 | process | workflow_generation_status = Y | step07Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 8 | io | ส่งอีเมลสรุปราย DV ผ่าน Notification Service | step08Notify() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 9 | end | จบ | summarize() | - |
@@ -444,7 +449,7 @@ export class StartInternalWorkflowJob {
       await this.dataSource.transaction(async (manager: EntityManager) => {
         // ขั้นที่ 5: POST /api/v1/workflows/instances · TODO: service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST
         await this.service.step05Workflow(state, manager);
-        // ขั้นที่ 6: insert workflow transaction + prepared approver ผ่าน @srm/glb-workflow แรก Section 06
+        // ขั้นที่ 6: เรียก initialize + add-prepared-approver ของ @srm/glb-workflow (state 06) · TODO: engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · ชื่อ function ยังไม่ยืนยัน ดู LLDD-BE-Workflow-Engine-Definition 5.3
         await this.service.step06Insert(state, manager);
       });
       // ขั้นที่ 7: workflow_generation_status = Y · TODO: เปิด workflow สำเร็จ
@@ -465,7 +470,7 @@ export class StartInternalWorkflowJob {
     // TODO: structured log บรรทัดเดียวจบ — ไม่มีตาราง job_run_histories แล้ว (2026-08-06)
     const summary = {
       event: 'job.finish', jobNo: '8b', jobName: 'StartInternalWorkflow', status,
-      period: state.period, output: 'workflow_instances / workflow_tasks (DB)',
+      period: state.period, output: 'sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SBPGI)',
       read: state.read, written: state.written, skipped: state.skipped,
       rejected: state.rejected, durationMs: Date.now() - startedAt,
     };
@@ -528,9 +533,9 @@ repository ของ Job 8b ประกาศเป็น factory provider (`{p
 | --- | --- | --- | --- |
 | fgi_impact_stores | R/W | อ่าน candidate + เขียน W/Y/N | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | compensation_documents | R/W | ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| workflow_instances | W | เปิด instance ภายใน | ใช้ @srm/glb-workflow (`sps_store.workflow_transaction`) ผ่าน initialize use case แทน SQL ตรง — ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน) |
-| workflow_tasks | W | สร้าง task แรก Section 06 | ใช้ @srm/glb-workflow (`sps_store.workflow_approver` / `workflow_history`) ผ่าน add-prepared-approver + trigger-event use case — ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน) |
-| status_email_rules | R | ผู้รับอีเมลตามสถานะ | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| workflow_transaction (@srm/glb-workflow · sps_store) | W | เปิด instance ผ่าน engine — ห้าม insert ตรง | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| workflow_approver (@srm/glb-workflow · sps_store) | W | prepared approver ขั้นแรก state 06 — ผ่าน engine | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| (backend config) | R | ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · workflow ใช้ engine ส่งเอง | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 8b StartInternalWorkflow — query หลักที่ต้อง implement
@@ -561,11 +566,27 @@ UPDATE compensation_documents
        updated_at = NOW(), updated_by = 'JOB8B'
  WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
 
--- [W] workflow_instances : เปิด instance ภายใน
--- TODO: ห้ามเขียน SQL ตรงกับตารางนี้ — ใช้ @srm/glb-workflow (`sps_store.workflow_transaction`) ผ่าน initialize use case แทน SQL ตรง — ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน)
+-- [W] workflow_transaction (@srm/glb-workflow · sps_store) : เปิด instance ผ่าน engine — ห้าม insert ตรง
+-- TODO: เติมคอลัมน์ payload จริงจาก database.md
+INSERT INTO workflow_transaction (@srm/glb-workflow · sps_store)
+  (/* TODO: business key + payload + created_by, created_at */)
+VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
+-- ⚠️ ตารางของ @srm/glb-workflow — SBPGI ห้าม INSERT/UPDATE ตรง ต้องเรียกผ่าน engine เท่านั้น
+--    (workflow_transaction ไม่มี PK และไม่มี index เลย · ข้อค้าง DP-2)
+ON CONFLICT (/* ไม่ใช้ — ลบ statement นี้ทิ้งแล้วเรียก engine แทน */)
+DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
+       updated_at = NOW(), updated_by = 'JOB8B';
 
--- [W] workflow_tasks : สร้าง task แรก Section 06
--- TODO: ห้ามเขียน SQL ตรงกับตารางนี้ — ใช้ @srm/glb-workflow (`sps_store.workflow_approver` / `workflow_history`) ผ่าน add-prepared-approver + trigger-event use case — ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน)
+-- [W] workflow_approver (@srm/glb-workflow · sps_store) : prepared approver ขั้นแรก state 06 — ผ่าน engine
+-- TODO: เติมคอลัมน์ payload จริงจาก database.md
+INSERT INTO workflow_approver (@srm/glb-workflow · sps_store)
+  (/* TODO: business key + payload + created_by, created_at */)
+VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
+-- ⚠️ ตารางของ @srm/glb-workflow — SBPGI ห้าม INSERT/UPDATE ตรง ต้องเรียกผ่าน engine เท่านั้น
+--    (workflow_transaction ไม่มี PK และไม่มี index เลย · ข้อค้าง DP-2)
+ON CONFLICT (/* ไม่ใช้ — ลบ statement นี้ทิ้งแล้วเรียก engine แทน */)
+DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
+       updated_at = NOW(), updated_by = 'JOB8B';
 ```
 
 #### 9.6 การแจ้งเตือนและการรันซ้ำของ Job 8b
@@ -607,9 +628,9 @@ export class JobFailureNotifier {
           jobNo, jobName: 'StartInternalWorkflow',
           jobTitle: 'เปิด Workflow ภายใน',
           period: ctx.period, triggeredBy: ctx.triggeredBy,
-          output: 'workflow_instances / workflow_tasks (DB)',
+          output: 'sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SBPGI)',
           errorMessage: error.message,
-          rerunNote: 'idempotent ด้วย doc_no/impact_process_id; ตรวจ workflow_instances เดิมก่อนสร้างใหม่',
+          rerunNote: 'idempotent ด้วย doc_no/impact_process_id; ตรวจ workflow_transaction เดิมของ engine ก่อนสร้างใหม่',
         },
       });
     } catch (mailError) {
@@ -622,12 +643,12 @@ export class JobFailureNotifier {
 
 ##### 9.6.2 Checklist การ rerun
 
-- กติกา rerun ของ Job 8b: idempotent ด้วย doc_no/impact_process_id; ตรวจ workflow_instances เดิมก่อนสร้างใหม่
+- กติกา rerun ของ Job 8b: idempotent ด้วย doc_no/impact_process_id; ตรวจ workflow_transaction เดิมของ engine ก่อนสร้างใหม่
 - ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: DB transaction ครอบ create instance/task + update W/Y/N
 - ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: ห้ามเรียก K2 REST endpoint legacy; เก็บไว้เป็น reference migration เท่านั้น
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
 - สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=8b --period=<YYYYMM>`
-- หลังรันซ้ำ ตรวจ output `workflow_instances / workflow_tasks (DB)` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
+- หลังรันซ้ำ ตรวจ output `sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SBPGI)` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
 - ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 
 ## 10. Processing Flow
@@ -639,7 +660,7 @@ export class JobFailureNotifier {
 | 3 | พบเงื่อนไขไม่ผ่านถาวร? \| No: ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ (branch type, distance, missing DV, same juristic หรือ growth > -10 -> N) |
 | 4 | ข้อมูล Gate พร้อมครบ? \| No: distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W (คง W เฉพาะข้อมูลต้นทางที่ยังรอเติมเพื่อให้ rerun ได้) |
 | 5 | POST /api/v1/workflows/instances (service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST) |
-| 6 | insert workflow_instances + workflow_tasks แรก Section 06 |
+| 6 | เรียก initialize + add-prepared-approver ของ @srm/glb-workflow (state 06) (engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · ชื่อ function ยังไม่ยืนยัน ดู LLDD-BE-Workflow-Engine-Definition 5.3) |
 | 7 | workflow_generation_status = Y (เปิด workflow สำเร็จ) |
 | 8 | ส่งอีเมลสรุปราย DV ผ่าน Notification Service |
 | 9 | จบ |

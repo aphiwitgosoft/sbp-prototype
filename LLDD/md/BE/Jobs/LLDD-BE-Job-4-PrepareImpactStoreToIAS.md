@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 12 ชั่วโมง |
+| Estimate | 14 ชั่วโมง |
 | Owner | Aphiwit <Bank> Khammoon |
 | Objective | เตรียมและส่งคำขอยอดขายไป IAS: สร้างไฟล์คำขอยอดขาย IAS/MIS แบบ durable ก่อนเปลี่ยนสถานะ W→P แล้วบันทึก transactional outbox เพื่อส่งซ้ำได้โดยไม่สร้างรายการซ้ำ |
 
@@ -18,7 +18,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Main class/script: fgi.main.PrepareImpactStoreToIAS / FGI_ExportImpactStoreToAMS.sh
 - Phase: B
 - Output: AMS06001O (UTF-8)
-- Estimate: 12 ชั่วโมง
+- Estimate: 14 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
 
@@ -171,7 +171,7 @@ export async function runLlddBeJob4Prepareimpactstoretoias(ctx, services) {
 | fgi_impact_stores | R/W | lock candidate W และเปลี่ยนเป็น P หลัง durable file สำเร็จเท่านั้น |
 | fgi_impact_sales_summaries | R/W | สร้าง/ผูกหัวสรุปยอดขายใน transaction |
 | interface_transactions | W | transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key |
-| job_run_histories | W | run status และ reconcile count |
+| (application log แบบ structured) | W | run status และ reconcile count — ตาราง job_run_histories ถูกตัด 2026-08-06 |
 
 ## 9. Skeleton Code (Batch Job 4)
 
@@ -453,7 +453,7 @@ repository ของ Job 4 ประกาศเป็น factory provider (`{pr
 | fgi_impact_stores | R/W | lock candidate W และเปลี่ยนเป็น P หลัง durable file สำเร็จเท่านั้น | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | fgi_impact_sales_summaries | R/W | สร้าง/ผูกหัวสรุปยอดขายใน transaction | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | interface_transactions | W | transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| job_run_histories | W | run status และ reconcile count | ยกเลิกแล้ว — ผลการรันเขียน application log แบบ structured + interface_transactions |
+| (application log แบบ structured) | W | run status และ reconcile count — ตาราง job_run_histories ถูกตัด 2026-08-06 | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 4 PrepareImpactStoreToIAS — query หลักที่ต้อง implement
@@ -487,14 +487,16 @@ UPDATE fgi_impact_sales_summaries
 -- [W] interface_transactions : transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key
 -- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
 INSERT INTO interface_transactions
-  (job_no, data_name, direction, status, business_key, period_key,
+  (run_id, data_name, direction, status, business_key, period_key,
    file_name, file_checksum, created_at)
-VALUES ('4', $1 /* TODO: data_name ของ Job 4 */, $2 /* IN|OUT|INTERNAL */, 'READY',
-        $3 /* business key ของแถว */, $4 /* YYYYMM */, $5, $6, NOW())
+VALUES ($1 /* run_id = correlation id ของรอบรัน Job 4 จาก application log */,
+        $2 /* TODO: data_name ของ Job 4 */, $3 /* IN|OUT|INTERNAL */, 'READY',
+        $4 /* business key ของแถว */, $5 /* YYYYMM */, $6, $7, NOW())
 ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;
 
--- [W] job_run_histories : run status และ reconcile count
--- TODO: ห้ามเขียน SQL ตรงกับตารางนี้ — ยกเลิกแล้ว — ผลการรันเขียน application log แบบ structured + interface_transactions
+-- [W] (application log แบบ structured) : run status และ reconcile count — ตาราง job_run_histories ถูกตัด 2026-08-06
+-- (application log แบบ structured) ไม่ใช่ตารางในฐานข้อมูล — ไม่มี SQL
+-- บันทึกผลการรันเป็น structured log บรรทัดเดียวจบ (jobNo · runId · period · counts · durationMs · outcome)
 ```
 
 #### 9.6 การแจ้งเตือนและการรันซ้ำของ Job 4

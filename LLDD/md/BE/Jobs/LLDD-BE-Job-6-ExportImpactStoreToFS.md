@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 15 ชั่วโมง |
+| Estimate | 20 ชั่วโมง |
 | Owner | Aphiwit <Bank> Khammoon |
 | Objective | ซิงก์สถานะ + ส่งค่าชดเชยไป STA: รัน 10 mutation ตามลำดับบนตารางสถานะ ตรวจความครบของคะแนน QSSI 6 หมวด สร้างชุดสถานะที่ส่งออกได้ แล้วเขียนไฟล์ FRBC0001 (14 ฟิลด์ ปี พ.ศ.) ส่งให้ระบบ Statement (STA) ภายใน transaction เดียว |
 
@@ -18,7 +18,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Main class/script: fgi.main.ExportImpactStoreToFS / FGI_ExportImpactStoreToSTA.sh
 - Phase: D
 - Output: FRBC0001 (windows-874)
-- Estimate: 15 ชั่วโมง
+- Estimate: 20 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
 
@@ -91,10 +91,10 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 
 ```sql
 SELECT d.doc_no, d.impact_process_id, s.id AS sales_summary_id,
-       d.total_compensation_amount, q.score_value
+       d.total_compensation_amount, q.score
 FROM compensation_documents d
 JOIN fgi_impact_sales_summaries s ON s.impact_process_id = d.impact_process_id
-LEFT JOIN fcs_qssi_score q ON q.store_code = d.impacted_store_code AND q.score_period = d.impact_month
+LEFT JOIN fcs_qssi_score q ON q.store_id = d.impacted_store_code AND q.month = d.impact_month
 JOIN LATERAL (
     SELECT c.result_category
     FROM consideration_logs c
@@ -584,10 +584,11 @@ SELECT /* TODO: columns */
 -- [W] interface_transactions : tracking COMPENSATE_INIT / APPROVE (I,N) · typed FK = impact_process_id
 -- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
 INSERT INTO interface_transactions
-  (job_no, data_name, direction, status, business_key, period_key,
+  (run_id, data_name, direction, status, business_key, period_key,
    file_name, file_checksum, created_at)
-VALUES ('6', $1 /* TODO: data_name ของ Job 6 */, $2 /* IN|OUT|INTERNAL */, 'READY',
-        $3 /* business key ของแถว */, $4 /* YYYYMM */, $5, $6, NOW())
+VALUES ($1 /* run_id = correlation id ของรอบรัน Job 6 จาก application log */,
+        $2 /* TODO: data_name ของ Job 6 */, $3 /* IN|OUT|INTERNAL */, 'READY',
+        $4 /* business key ของแถว */, $5 /* YYYYMM */, $6, $7, NOW())
 ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;
 ```
 

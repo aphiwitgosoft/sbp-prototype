@@ -209,7 +209,7 @@
       desc:'นำคู่ร้านถูกกระทบ–ร้านเปิดใหม่จากวิว ALLMAP เข้า fgi_impact_stores เติมข้อมูลจากตาราง master แล้วใช้กฎ DENY และ ON_PROCESS ตั้งค่า verify_status เป็น W / N / P',
       params:[
         ['กำหนดการรัน (Cron)','0 07 7 * *','text',1,'ทุกวันที่ 7 ของเดือน เวลา 07:00'],
-        ['Argument (ขอบเขต|งวด)','ALL|2569|06','text',1,'รูปแบบ ZONES|YYYY|MM หรือ ALL|YYYY|MM — ไม่ระบุจะใช้งวดตาม modifyDateToString'],
+        ['Argument (ขอบเขต|งวด)','ALL|2569|06','text',1,'รูปแบบ ZONES|YYYY|MM หรือ ALL|YYYY|MM — ไม่ระบุจะใช้งวดตาม modifyDateToString · ⚠️ ปีในตัวอย่างเป็น พ.ศ. (2569) ตามค่าที่ระบบเดิมใช้กับวิว ALLMAP ซึ่งขัดกับกติกา ค.ศ. ทั้งระบบ (มติ 2026-08-06) — ต้องยืนยันกับเจ้าของ ALLMAP ว่าวิวเก็บปีเป็น พ.ศ. จริงหรือไม่ ถ้าไม่ ให้เปลี่ยนเป็น ค.ศ. (2026)'],
         ['Source View','allmapssa.SEVEN_IMPACT_VIEW (SQL Server GSMALLMAP)','text',0,'dedup ด้วย ROW_NUMBER'],
         ['Branch Type ที่เข้าเกณฑ์','B, FAM, FB1, FB2, FC1, FVB, FVC, FPT1','text',0,'FPT1 เข้าเกณฑ์เฉพาะเมื่อ SBP_CANCEL_TYPE_I = 06'],
         ['กฎ DENY (ตรวจก่อน ON_PROCESS)','สาขา N=F / juristic เดียวกัน / สัญญาไม่คลุมงวด / เก่ากว่า 12 เดือน','text',0,''],
@@ -253,7 +253,7 @@
       desc:'นำข้อมูลร้านคู่แข่งรายงวดจากวิว COMPETITOR_IMPACT_VIEW เข้า fgi_impact_competitors ทีละ 10,000 แถว กันซ้ำระดับงวด (ถ้างวดมีข้อมูลแล้วจะข้ามทั้งงวด ไม่มี upsert)',
       params:[
         ['กำหนดการรัน (Cron)','0 07 7 * *','text',1,'สคริปต์ scheduler จริงต้องยืนยันกับ Operations'],
-        ['Argument (งวด)','2569|06','text',1,'รูปแบบ YYYY|MM'],
+        ['Argument (งวด)','2569|06','text',1,'รูปแบบ YYYY|MM · ⚠️ ปีในตัวอย่างเป็น พ.ศ. (2569) ตามค่าที่ระบบเดิมใช้กับวิว ALLMAP — ขัดกับกติกา ค.ศ. ทั้งระบบ ต้องยืนยันกับเจ้าของ ALLMAP ก่อนเขียนโค้ด'],
         ['Chunk Size','10000','number',1,'จำนวนแถวต่อรอบ insert'],
         ['Source View','COMPETITOR_IMPACT_VIEW','text',0,'SELECT DISTINCT / map คอลัมน์ NAMT → NAME_TH, BRANCHT → BRANCH_TH']
       ],

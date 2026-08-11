@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 24 ชั่วโมง |
+| Estimate | 20 ชั่วโมง |
 | Owner | Butsaba <But> Podamrong |
 | Objective | ออกแบบ APIs สำหรับงานรอดำเนินการและค้นหาเอกสารที่เกี่ยวข้อง |
 
@@ -31,13 +31,13 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี พ.ศ. และ running 5 หลัก |
+| docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี **ค.ศ.** และ running 5 หลัก (มติ 2026-08-06) |
 | storeCode | string 5 digits | numeric length = 5 | แสดง leading zero |
 | amount | number, 2 decimals | >= 0 | format `#,##0.00` บาท |
 | percent | number, 2 decimals | 0-100 | ใช้ `%` และรวม allocation ต้องเท่ากับ 100 |
-| date | DD/MM/YYYY | valid date | FE แสดง พ.ศ. หาก source เป็น ISO ค.ศ. |
+| date | DD/MM/YYYY | valid date | payload เป็น ISO ค.ศ. · FE แสดง ค.ศ. เป็นค่าเริ่มต้น (DatePicker buddhistEra=false) แสดง พ.ศ. เฉพาะจุดที่เปิด flag |
 | attachment | file | <= 5 MB | รองรับ vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv |
-| year | พ.ศ. YYYY | required for /documents | ไม่ระบุคืน 400 ตาม SRS |
+| year | ค.ศ. YYYY | required for /documents | ไม่ระบุคืน 400 ตาม SRS · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. |
 | page/size | integer | page>=1 size<=100 | pagination |
 
 ## 5.1 Input / Progress / Output Contract
@@ -114,7 +114,7 @@ Inbox tasks API
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | items[].waitingDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### GET /api/v1/documents
@@ -159,7 +159,7 @@ Document search API
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | items[].statusCode | string | Yes | canonical code; do not replace with display label |
 
 ## 8. Reference DB Mapping (No Database Page Work)
@@ -263,12 +263,10 @@ export class DocumentListSearchQueryDto {
   @Max(100)
   size?: number;
 
-  /** ไม่ระบุคืน 400 ตาม SRS · required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  /** ไม่ระบุคืน 400 ตาม SRS · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. · required เฉพาะบาง endpoin… */
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(2500)
-  @Max(2600)
   year?: number;
 
   /** แสดง leading zero · required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
@@ -606,9 +604,6 @@ export class SbpgiDocumentListSearchBffController {
 **GET /api/v1/tasks** — Inbox tasks API
 
 ```sql
--- ⚠️ SQL ตัวอย่างนี้ยังอ้างตารางที่ถูกตัดจาก target design 21 ตารางแล้ว
---    ห้าม implement ตามตัวอักษร ให้แทนที่ก่อนใช้งาน:
---      stores  ->  store / mas_store / sevenshop (store-backend) หรือ impacted_stores ของ SBPGI
 -- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:
 --      total_compensation_amount  ->  compensate_amount
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -617,33 +612,35 @@ export class SbpgiDocumentListSearchBffController {
 --    getPendingFlow({userData:{userId,groupId}, versionId}) [ชื่อ function ยังไม่ยืนยัน · 3 ชุดขัดกัน]
 -- ⚠️ DP-1 (reference_id = doc_no หรือ surrogate id) · DP-2 (workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan)
 --    ยังไม่ตัดสิน — ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
+WITH wh AS (
+  -- workflow_transaction ไม่มี created_date — ใช้เวลา event แรกจาก workflow_history แทน
+  SELECT transaction_id, MIN(create_date) AS first_event_date
+  FROM sps_store.workflow_history GROUP BY transaction_id
+)
 SELECT d.round_no AS "roundNo",
        d.doc_no AS "docNo",
        d.impacted_store_code AS "impactedStoreCode",
        s.store_name AS "impactedStoreName",
-       s.region_code AS "regionCode",
+       s.zone_cd AS "regionCode",
        GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) AS "salesDeclinePercent",
        d.total_compensation_amount AS "totalCompensationAmount",
        d.status_code AS "statusCode",
        d.current_section_code AS "currentSection",
-       GREATEST(CURRENT_DATE - w.created_date::date, 0) AS "daysPending",
+       GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) AS "daysPending",
        ss.total_working_days AS "salesDataDays"
 FROM sps_store.workflow_approver a
 JOIN sps_store.workflow_transaction w ON w.transaction_id = a.transaction_id
 JOIN compensation_documents d ON d.doc_no = w.reference_id   -- DP-1
-JOIN stores s ON s.store_code = d.impacted_store_code
+JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
 WHERE a.state_id = :sectionFromJwt AND a.state_id = w.current_state_id AND w.version_id = :sbpgiVersionId
-ORDER BY w.created_date
+ORDER BY w.update_date
 LIMIT :size OFFSET :offset;
 ```
 
 **GET /api/v1/documents** — Document search API
 
 ```sql
--- ⚠️ SQL ตัวอย่างนี้ยังอ้างตารางที่ถูกตัดจาก target design 21 ตารางแล้ว
---    ห้าม implement ตามตัวอักษร ให้แทนที่ก่อนใช้งาน:
---      stores  ->  store / mas_store / sevenshop (store-backend) หรือ impacted_stores ของ SBPGI
 -- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:
 --      total_compensation_amount  ->  compensate_amount
 --      d.year  ->  d.account_year
@@ -654,15 +651,16 @@ SELECT d.round_no AS "roundNo",
        d.doc_no AS "docNo",
        d.impacted_store_code AS "impactedStoreCode",
        s.store_name AS "impactedStoreName",
-       s.region_code AS "regionCode",
+       s.zone_cd AS "regionCode",
        GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) AS "salesDeclinePercent",
        d.total_compensation_amount AS "totalCompensationAmount",
        d.status_code AS "statusCode",
        d.current_section_code AS "currentSection",
-       CASE WHEN w.current_status_id <> :statusDone THEN GREATEST(CURRENT_DATE - w.created_date::date, 0) ELSE 0 END AS "daysPending",
+       -- workflow_transaction ไม่มี created_date (มีแค่ update_date) — วันที่เริ่มงานเอาจาก workflow_history
+       CASE WHEN w.current_status_id <> :statusDone THEN GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) ELSE 0 END AS "daysPending",
        ss.total_working_days AS "salesDataDays"
 FROM compensation_documents d
-JOIN stores s ON s.store_code = d.impacted_store_code
+JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
 LEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.doc_no AND w.version_id = :sbpgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)
 WHERE d.year = :year

@@ -7,15 +7,15 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 24 ชั่วโมง |
-| Owner | Chidchanok <lin> Saengamnat |
+| Estimate | 20 ชั่วโมง |
+| Owner | Kittisak <New> Kaeowika |
 | Objective | สร้างรายงานตรวจสอบประกันรายได้ตาม SDD สไลด์ 60 (7 ตัวกรอง / 14 คอลัมน์) พร้อมค้นหาข้อมูลและ Export Excel |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
 ## 2. Screen / Functional Scope
 
-- Report filters (SDD slide 60 · 2026-08-06: สถานะ*|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ|ประเภทร้าน A/B/C/E · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว)
+- Report filters (SDD slide 60 · 2026-08-06: สถานะ*|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ|ประเภทร้าน (รหัสจาก common_code · รหัสที่ 4 รอยืนยัน) · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว)
 - Summary table (sortable 14 columns)
 - Export Excel action
 - Sample data verification
@@ -43,12 +43,12 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 | impactedStoreCode | string 5 digits | optional; numeric only when input | คง leading zero; ปุ่มแว่นขยายเรียก popup เลือกร้านที่ถูกกระทบ |
 | impactedStoreName | string | readonly | แสดงอัตโนมัติหลังเลือกรหัสร้าน; ไม่ส่งเป็น filter หลักถ้ามี storeCode |
 | newStoreCode | string 5 digits | optional; numeric only when input | รหัสร้านเปิดกระทบ/ร้านเปิดใหม่; คง leading zero |
-| impactMonthFrom | YYYY-MM | optional; month picker | ส่งเป็น ค.ศ. เช่น 2026-05; FE แสดงเดือน/ปี พ.ศ. ในตาราง |
+| impactMonthFrom | YYYY-MM | optional; month picker | ส่งและแสดงเป็น ค.ศ. เช่น 2026-05 |
 | impactMonthTo | YYYY-MM | optional; month picker; must be >= from | ถ้า from > to ให้แสดง validation ก่อน call API |
-| storeTypes | array enum A\|B\|C\|D | optional multi select | checkbox เลือกได้มากกว่า 1; ส่งเป็น comma/query array |
-| status | statusCode string | required single select | บังคับเลือก 1 สถานะก่อน Preview/Export; options ตรงกับ document_statuses |
-| resultCategory | APPROVE\|REJECT | required radio | APPROVE=ประกันรายได้, REJECT=ไม่ประกันรายได้ |
-| regions | array enum | optional multi select | รองรับ BE, BS, NEU, REU, RSU, BG, BW, RC, RN, BN, NEL, REL, RSL และภาคใหม่จาก API |
+| storeTypes | array ของ BranchTypeFGIName | optional multi select | **ยืนยันจาก master จริงแล้ว (`ข้อมูล Master K2.xlsx` · ชีต `BranchTypeProfile` จาก `CPA_FRN_FGI`)**: ค่าที่ใช้คือคอลัมน์ `BranchTypeFGIName` มี **7 ค่าไม่ซ้ำ** — `A` (A-Mo) · `B` (B(1)) · `C` (C และ C(Retire CPALL)) · `D` (BGC) · `E` (B(2)) · `PTT` · `บริษัท` (Corporate) · ⚠️ **D กับ E เป็นคนละประเภทและมีจริงทั้งคู่** — เอกสารรุ่นก่อนที่แสดงเพียง 4 ตัวเลือก (A/B/C/E หรือ A/B/C/D) **ผิด** ทั้ง SDD สไลด์ 60 (แสดงบางส่วน) และ SRS (เขียน “พนักงาน” ซึ่ง**ไม่มีใน master**) · ยังคง**ห้าม hardcode** — โหลดจาก `GET /common/common-code` ของระบบ SBP เดิม แล้วใช้ 7 ค่านี้เป็น expected set ตอนทดสอบ |
+| status | statusCode string | required single select | บังคับเลือก 1 สถานะก่อน Preview/Export; options มาจาก sps_store.workflow_status ของ @srm/glb-workflow (ตาราง document_statuses ของ SBPGI ถูกตัดแล้ว) |
+| resultCategory | APPROVE\|REJECT\|CANCELLED\|PENDING | optional radio (status เท่านั้นที่บังคับ) | **4 ค่า** — APPROVE=ประกันรายได้ · REJECT=ไม่ประกันรายได้ · **CANCELLED=ยกเลิกโดยระบบ (เพิ่ม 2026-08-10)** · PENDING/ไม่มีค่า=ยังไม่มีผล · CANCELLED มาจาก master จริง `DecisionProfile` decision 14 `CancelBySystem` (`DecisionResultName` = ยกเลิกโดยระบบ) ซึ่ง SDD สไลด์ 60 ไม่ได้แสดงไว้ |
+| regions | array ของ ZoneName | optional multi select | **ยืนยันจาก master จริงแล้ว (`ข้อมูล Master K2.xlsx` · ชีต `ZoneProfile`)**: **13 ภาค** — BN(10) · BW(20) · BE(30) · BG(40) · BS(70) · REU(81) · NEU(82) · RSU(83) · RSL(84) · RN(85) · RC(86) · REL(90) · NEL(92) (ตัวเลขในวงเล็บคือ `ZoneCode`) — ตรงกับรายการที่ prototype ใช้ **ครบทั้ง 13 ค่า** · รายการ 8 ค่าใน SRS (BE/BN/BS/BW/RC/RE/RN/RS) เป็นของเก่า **ไม่ต้องใช้** · ยังคง**ห้าม hardcode** — โหลดจาก `GET /store/all-regions` ของระบบ SBP เดิม |
 | statementPeriodFrom | YYYY-MM | optional month picker | Period Statement From; ส่ง ค.ศ. format YYYY-MM |
 | statementPeriodTo | YYYY-MM | optional month picker; must be >= from | Period Statement To; validate range ก่อน call API |
 | page | integer | default 1; >=1 | pagination ของ preview table |
@@ -57,22 +57,17 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 | resultTable.storeName | string | display only | คอลัมน์ 2 ชื่อร้านถูกกระทบ |
 | resultTable.region | string | display only | คอลัมน์ 3 ภาค |
 | resultTable.storeType | string | display only | คอลัมน์ 4 ประเภทร้าน |
-| resultTable.impactMonth | MM/YYYY พ.ศ. | display only | คอลัมน์ 5 เดือนปีที่ถูกกระทบ |
-| resultTable.transferToSpDate | DD/MM/YYYY พ.ศ. | nullable | คอลัมน์ 6 วันที่โอนเป็นร้าน SP |
-| resultTable.statementPeriod | MM/YYYY พ.ศ. | nullable | คอลัมน์ 7 Period Statement |
-| resultTable.newStoreCode | string 5 digits or '-' | display only | คอลัมน์ 8 รหัสร้านเปิดใหม่ |
-| resultTable.newStoreName | string or '-' | display only | คอลัมน์ 9 ชื่อร้านเปิดใหม่ |
-| resultTable.newStoreRegion | string or '-' | display only | คอลัมน์ 10 ภาค (ร้านใหม่) |
-| resultTable.newStoreType | string or '-' | display only | คอลัมน์ 11 ประเภทร้าน (ร้านใหม่) |
-| resultTable.compensationAmount | number #,##0.00 | >=0 | คอลัมน์ 12 ยอดเงินชดเชย; align right |
-| resultTable.statusName | string/status badge | required | คอลัมน์ 13 สถานะ; สี badge ตาม status |
-| resultTable.operatorName | string | nullable | คอลัมน์ 14 ชื่อ-นามสกุลผู้ดำเนินการ |
-| resultTable.resultText | string | nullable | คอลัมน์ 15 ผลการพิจารณา |
-| resultTable.waitingDays | integer | >=0 | คอลัมน์ 16 รอดำเนินการ (วัน) |
+| resultTable.impactMonth | MM/YYYY ค.ศ. | display only | คอลัมน์ 5 เดือน/ปีที่ถูกกระทบ |
+| resultTable.statementPeriod | MM/YYYY ค.ศ. | nullable | คอลัมน์ 6 Period Statement |
+| resultTable.newStoreCode | string 5 digits or '-' | display only | คอลัมน์ 7 รหัสร้านเปิดกระทบ |
+| resultTable.newStoreName | string or '-' | display only | คอลัมน์ 8 ชื่อร้านเปิดกระทบ |
+| resultTable.newStoreRegion | string or '-' | display only | คอลัมน์ 9 ภาค (ร้านเปิดกระทบ) |
+| resultTable.newStoreType | string or '-' | display only | คอลัมน์ 10 ประเภทร้าน (ร้านเปิดกระทบ) |
+| resultTable.compensationAmount | number #,##0.00 | >=0 | คอลัมน์ 11 ยอดเงินชดเชย; align right |
 | derived.salesDataDays | integer | <60 = abnormal | ข้อมูลประกอบสำหรับ class flag-red; ไม่ใช่ waitingDays |
-| resultTable.roundNo | integer | >=1 | คอลัมน์ 17 ครั้งที่ |
-| resultTable.createdDate | DD/MM/YYYY พ.ศ. | required | คอลัมน์ 18 วันที่สร้าง |
-| resultTable.docNo | YYYY/xxxxx | required | คอลัมน์ 19 เลขที่เอกสาร; ใช้เปิด detail/preview |
+| resultTable.roundNo | integer | >=1 | คอลัมน์ 12 ครั้งที่ |
+| resultTable.createdDate | DD/MM/YYYY ค.ศ. | required | คอลัมน์ 13 วันที่สร้าง |
+| resultTable.docNo | YYYY/xxxxx | required | คอลัมน์ 14 เลขที่เอกสาร; ใช้เปิด detail/preview |
 
 ## 5.1 Input / Progress / Output Contract
 
@@ -86,7 +81,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 
 | ID | Component / Scope | Single responsibility | Definition of done |
 | --- | --- | --- | --- |
-| C01 | Report filters (SDD slide 60 · 2026-08-06: สถานะ*\|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ\|ประเภทร้าน A/B/C/E · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว) | จัดการ filter 7 ตัวตาม SDD สไลด์ 60 (status, impacted/new store code, store type, period statement, region, result) พร้อม dependency validation | status required, คู่รหัสร้านต้องมาด้วยกัน, period statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ และช่วง from-to ตรวจผ่านก่อนค้นหา/Export |
+| C01 | Report filters (SDD slide 60 · 2026-08-06: สถานะ*\|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ\|ประเภทร้าน (รหัสจาก common_code · รหัสที่ 4 รอยืนยัน) · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว) | จัดการ filter 7 ตัวตาม SDD สไลด์ 60 (status, impacted/new store code, store type, period statement, region, result) พร้อม dependency validation | status required, คู่รหัสร้านต้องมาด้วยกัน, period statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ และช่วง from-to ตรวจผ่านก่อนค้นหา/Export |
 | C02 | Summary table (sortable 14 columns) | map response เป็น summary line และตาราง 14 คอลัมน์ (SDD สไลด์ 60) ด้วย formatter กลาง | คอลัมน์/ยอดรวม/วันที่ (ค.ศ.)/leading zero ตรง response และข้อมูลยอดขายผิดปกติใช้ salesDataDays |
 | C03 | Export Excel action | ส่ง filter snapshot ล่าสุดไป export endpoint และจัดการ download/error state | Export Excel ใช้เงื่อนไขเดียวกับการค้นหา และชื่อไฟล์/content type (.xlsx) ตรง response |
 | C04 | Sample data verification | รองรับ fixture สำหรับ 0 แถว, หลาย region/type, เกิน threshold และยอดขายไม่ครบ 60 วัน | sample verification ครอบคลุม table/export parity 14 คอลัมน์ โดยไม่ฝังข้อมูลทดสอบใน production |
@@ -281,7 +276,7 @@ Popup เลือกร้านที่ถูกกระทบ
 | items[].compensationAmount | number | Yes | number >= 0 with 2 decimals |
 | items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].createdDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-| items[].docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 
 ### GET /api/v1/reports/status-summary/export
 
@@ -388,17 +383,16 @@ export default function ReportsStatusSummaryPage() {
         <Column field="impactedStoreName" header="ชื่อร้านถูกกระทบ" sortable />
         <Column field="impactedRegion" header="ภาค" sortable />
         <Column field="impactedStoreType" header="ประเภทร้าน" sortable />
-        <Column field="impactMonth" header="เดือนปีที่ถูกกระทบ" sortable />
+        <Column field="impactMonth" header="เดือน/ปีที่ถูกกระทบ" sortable />
         <Column field="periodStatement" header="Period Statement" sortable />
-        <Column field="newStoreCode" header="รหัสร้านเปิดใหม่" sortable />
-        <Column field="newStoreName" header="ชื่อร้านเปิดใหม่" sortable />
-        <Column field="newRegion" header="ภาค (ร้านใหม่)" sortable />
-        <Column field="newStoreType" header="ประเภทร้าน (ร้านใหม่)" sortable />
+        <Column field="newStoreCode" header="รหัสร้านเปิดกระทบ" sortable />
+        <Column field="newStoreName" header="ชื่อร้านเปิดกระทบ" sortable />
+        <Column field="newRegion" header="ภาค (ร้านเปิดกระทบ)" sortable />
+        <Column field="newStoreType" header="ประเภทร้าน (ร้านเปิดกระทบ)" sortable />
         <Column field="compensationAmount" header="ยอดเงินชดเชย" sortable align="right" />
         <Column field="roundNo" header="ครั้งที่" sortable align="right" />
         <Column field="createdDate" header="วันที่สร้าง" sortable />
         <Column field="docNo" header="เลขที่เอกสาร" sortable />
-        {/* TODO: ยังขาดอีก 5 คอลัมน์ตามตารางฟิลด์ของเอกสารนี้: transferToSpDate, statusName, operatorName, resultText, waitingDays — ต้องให้ BE เพิ่ม field เหล่านี้ใน response ก่อน */}
       </Table>
       {/* TODO: summary line (จำนวนรายการ/ยอดรวม) อ่านจาก data.summary */}
     </div>
@@ -442,7 +436,7 @@ export async function getReportsStatusSummaryExport(params: T.ReportsStatusSumma
 
 ```ts
 // src/types/sbpgi/report.ts — ตรงกับตาราง API ในเอกสารนี้
-// วันที่/เดือนใน payload เป็น ค.ศ. (ISO) เสมอ — แปลงเป็น พ.ศ. เฉพาะตอน display
+// วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
 import type { PageResponse } from '@/types/sbpgi/common';
 
@@ -565,9 +559,9 @@ export interface ReportFormValue {
 const schema = yup.object({
   impactedStoreCode: yup.string().matches(/^\d{5}$/, 'รหัสร้านต้องเป็นตัวเลข 5 หลัก'), // คง leading zero
   newStoreCode: yup.string().matches(/^\d{5}$/, 'รหัสร้านต้องเป็นตัวเลข 5 หลัก'), // รหัสร้านเปิดกระทบ/ร้านเปิดใหม่
-  impactMonthFrom: yup.string().matches(/^\d{4}-(0[1-9]|1[0-2])$/, 'รูปแบบเดือนต้องเป็น YYYY-MM (ค.ศ.)'), // ส่งเป็น ค.ศ. เช่น 2026-05
+  impactMonthFrom: yup.string().matches(/^\d{4}-(0[1-9]|1[0-2])$/, 'รูปแบบเดือนต้องเป็น YYYY-MM (ค.ศ.)'), // ส่งและแสดงเป็น ค.ศ. เช่น 2026-05
   impactMonthTo: yup.string().matches(/^\d{4}-(0[1-9]|1[0-2])$/, 'รูปแบบเดือนต้องเป็น YYYY-MM (ค.ศ.)'), // ถ้า from > to ให้แสดง validation ก่อน call API
-  storeTypes: yup.array().of(yup.string().defined()), // checkbox เลือกได้มากกว่า 1
+  storeTypes: yup.array().of(yup.string().defined()), // **ยืนยันจาก master จริงแล้ว (`ข้อมูล Master K2.xlsx` · ชีต `BranchType
   status: yup.string().required('กรุณาระบุ status'), // บังคับเลือก 1 สถานะก่อน Preview/Export
 });
 
@@ -604,7 +598,7 @@ export default function ReportForm({ defaultValues, onSubmit }: {
 - ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
-- payload ใช้วันที่ ค.ศ. เสมอ; แปลงเป็น พ.ศ. เฉพาะตอนแสดงผลผ่าน formatter กลางจุดเดียว
+- payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 - ข้อความ error แสดงจาก `error.message` ของ BE ตรง ๆ (ห้าม paraphrase) — fallback ใช้เฉพาะกรณี network error
 
 ## 9. Processing Flow

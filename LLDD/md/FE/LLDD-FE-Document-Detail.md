@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 75 ชั่วโมง |
+| Estimate | 60 ชั่วโมง |
 | Owner | Kittisak <New> Kaeowika |
 | Objective | สร้างหน้าเอกสารรายละเอียดและ Action Panel โดยแสดงผลตาม role profile ของผู้ใช้ที่ login |
 
@@ -47,15 +47,17 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Detail 
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี พ.ศ. และ running 5 หลัก |
+| docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี **ค.ศ.** และ running 5 หลัก (มติ 2026-08-06) |
 | storeCode | string 5 digits | numeric length = 5 | แสดง leading zero |
 | amount | number, 2 decimals | >= 0 | format `#,##0.00` บาท |
 | percent | number, 2 decimals | 0-100 | ใช้ `%` และรวม allocation ต้องเท่ากับ 100 |
-| date | DD/MM/YYYY | valid date | FE แสดง พ.ศ. หาก source เป็น ISO ค.ศ. |
+| date | DD/MM/YYYY | valid date | payload เป็น ISO ค.ศ. · FE แสดง ค.ศ. เป็นค่าเริ่มต้น (DatePicker buddhistEra=false) แสดง พ.ศ. เฉพาะจุดที่เปิด flag |
 | attachment | file | <= 5 MB | รองรับ vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv |
-| result | verbatim from actionOptions | required on submit action | FE แสดง radio ตาม `actionOptions` จาก API เท่านั้น |
-| comment | text | required บาง result | trim before submit |
-| compensatePercent | number | sum = 100 | validate before save |
+| result | verbatim from actionOptions | required on submit action | FE แสดง radio ตาม `actionOptions` จาก API เท่านั้น · ไม่เลือกแล้วกดส่ง → popup **verbatim SRS**: `ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ` |
+| comment | text | required บาง result | trim before submit · SRS บังคับ required เมื่อเลือกไม่ชดเชย แต่ไม่ได้ระบุข้อความ popup |
+| compensatePercent | number | sum = 100 | validate before save · ไม่ครบ 100% → popup `โปรดตรวจสอบ %ชดเชย ของท่าน รวมกันแล้วไม่เท่ากับ 100%` |
+| competitorCode | select จาก master competitors | required เมื่อเพิ่ม/แก้แถวคู่แข่ง | ไม่เลือก → popup **verbatim SRS §10**: `กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ` |
+| factor.startDate / factor.endDate | date | endDate >= startDate | **กติกา SRS §11**: วันที่สิ้นสุดต้องเท่ากับหรือมากกว่าวันที่เริ่มต้น — ถ้าน้อยกว่าต้องแสดง Pop-up แจ้งเตือน (SRS ไม่ได้ระบุข้อความ ให้ยืนยันกับ BA ก่อน UAT) |
 
 ### 5.1 Role-based Render Contract (ไม่ใช่ Routing Spec)
 
@@ -201,7 +203,7 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | No | พ.ศ. YYYY/xxxxx |
+| docNo | string | No | ค.ศ. YYYY/xxxxx |
 
 #### Response
 
@@ -255,7 +257,7 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | statusCode | string | Yes | canonical code; do not replace with display label |
 | viewerRbacRoleCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | roleProfileCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -502,7 +504,7 @@ export async function createDocumentsAttachments(docNo: string, body: T.CreateDo
 
 ```ts
 // src/types/sbpgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
-// วันที่/เดือนใน payload เป็น ค.ศ. (ISO) เสมอ — แปลงเป็น พ.ศ. เฉพาะตอน display
+// วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
 /** GET /api/v1/documents/{docNo} — response */
 export interface DocumentsDetailResponse {
@@ -633,9 +635,11 @@ interface ActionOption { value: string; label: string; requireComment?: boolean 
 // ค่าที่ "บังคับกรอกความคิดเห็น" มาจาก contract ของ role นี้
 const REQUIRE_COMMENT: string[] = [/* TODO: ค่าที่บังคับ comment */];
 
-// TODO: แทนข้อความ validation ด้วยข้อความ verbatim จาก SRS ก่อน UAT
+// ⚠️ ข้อความ validation ด้านล่างเป็น verbatim จาก SRS v3.1 — ห้าม paraphrase ห้ามย่อ
+//    (SRS "รายการหน้าจอ" §10/§13 · ตรงกับที่ prototype k2-document.html ใช้)
 const schema = yup.object({
-  result: yup.string().required('กรุณาเลือกผลการพิจารณา'),
+  result: yup.string().required('ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ'),
+  // SRS บังคับให้ความคิดเห็นเป็น required เมื่อเลือกไม่ชดเชย แต่ไม่ได้ระบุข้อความ — ข้อความนี้เรากำหนดเอง
   comment: yup.string().when('result', {
     is: (v: string) => REQUIRE_COMMENT.includes(v),
     then: (s) => s.required('กรุณาระบุความคิดเห็น'),
@@ -696,7 +700,7 @@ export default function ActionPanel({ options, onSubmit, onCancel, submitting }:
 - ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
-- payload ใช้วันที่ ค.ศ. เสมอ; แปลงเป็น พ.ศ. เฉพาะตอนแสดงผลผ่าน formatter กลางจุดเดียว
+- payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 - ข้อความ error แสดงจาก `error.message` ของ BE ตรง ๆ (ห้าม paraphrase) — fallback ใช้เฉพาะกรณี network error
 
 ## 9. Processing Flow

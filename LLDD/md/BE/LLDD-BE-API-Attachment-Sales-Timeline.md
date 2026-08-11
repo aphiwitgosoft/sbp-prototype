@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 24 ชั่วโมง |
+| Estimate | 26 ชั่วโมง |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
 | Objective | ออกแบบ APIs สำหรับไฟล์แนบ ข้อมูลยอดขายเพิ่มเติม และ timeline/history |
 
@@ -31,11 +31,11 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Attachment S
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี พ.ศ. และ running 5 หลัก |
+| docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี **ค.ศ.** และ running 5 หลัก (มติ 2026-08-06) |
 | storeCode | string 5 digits | numeric length = 5 | แสดง leading zero |
 | amount | number, 2 decimals | >= 0 | format `#,##0.00` บาท |
 | percent | number, 2 decimals | 0-100 | ใช้ `%` และรวม allocation ต้องเท่ากับ 100 |
-| date | DD/MM/YYYY | valid date | FE แสดง พ.ศ. หาก source เป็น ISO ค.ศ. |
+| date | DD/MM/YYYY | valid date | payload เป็น ISO ค.ศ. · FE แสดง ค.ศ. เป็นค่าเริ่มต้น (DatePicker buddhistEra=false) แสดง พ.ศ. เฉพาะจุดที่เปิด flag |
 | attachment | file | <= 5 MB | รองรับ vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv |
 | file | multipart | <=5MB | validate extension and content type |
 | sectionCode | string | required on upload | บันทึกว่าแนบในขั้นไหน |
@@ -125,7 +125,7 @@ WHERE doc_no = :docNo
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | POST /api/v1/documents/{docNo}/attachments; GET /api/v1/documents/{docNo}/sales; GET /api/v1/documents/{docNo}/timeline |
+| Input | POST /api/v1/documents/{docNo}/attachments; GET /api/v1/documents/{docNo}/attachments/{attachId}/download; GET /api/v1/documents/{docNo}/attachments/download-all |
 | Progress | Validate docNo/permission; Validate file size/type; Store file metadata; Load sales summary and transactions |
 | Output | document_attachments |
 
@@ -134,8 +134,10 @@ WHERE doc_no = :docNo
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
 | POST /api/v1/documents/{docNo}/attachments | Upload attachment API | Validate docNo/permission | file >5MB returns 413 |
-| GET /api/v1/documents/{docNo}/sales | Sales detail API | Validate file size/type | unsupported file type returns 415 |
-| GET /api/v1/documents/{docNo}/timeline | Timeline/history API | Store file metadata | sales windows are ordered |
+| GET /api/v1/documents/{docNo}/attachments/{attachId}/download | ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน stream | Validate file size/type | unsupported file type returns 415 |
+| GET /api/v1/documents/{docNo}/attachments/download-all | ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (ไม่คืน zip เปล่า) | Store file metadata | sales windows are ordered |
+| GET /api/v1/documents/{docNo}/sales | Sales detail API | Load sales summary and transactions | timeline newest/oldest order matches FE expectation |
+| GET /api/v1/documents/{docNo}/timeline | Timeline/history API | Return timeline ordered by action time | file >5MB returns 413 |
 
 ### 5.91 Backend Execution Sequence
 
@@ -193,6 +195,70 @@ Upload attachment API
 | attachId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
+### GET /api/v1/documents/{docNo}/attachments/{attachId}/download
+
+ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน stream
+
+#### Query Params
+
+```json
+{}
+```
+
+#### Request Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| - | none | No | No fields |
+
+#### Response
+
+```json
+{
+  "contentType": "application/pdf",
+  "note": "binary stream · ไฟล์จริงอยู่บน S3 ผ่าน service ของระบบ SBP เดิม"
+}
+```
+
+#### Response Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| contentType | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| note | string | Yes | UTF-8; use value domain described by endpoint purpose |
+
+### GET /api/v1/documents/{docNo}/attachments/download-all
+
+ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (ไม่คืน zip เปล่า)
+
+#### Query Params
+
+```json
+{}
+```
+
+#### Request Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| - | none | No | No fields |
+
+#### Response
+
+```json
+{
+  "contentType": "application/zip",
+  "fileName": "2026-00123-attachments.zip"
+}
+```
+
+#### Response Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| contentType | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+
 ### GET /api/v1/documents/{docNo}/sales
 
 Sales detail API
@@ -209,7 +275,7 @@ Sales detail API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | No | พ.ศ. YYYY/xxxxx |
+| docNo | string | No | ค.ศ. YYYY/xxxxx |
 
 #### Response
 
@@ -252,7 +318,7 @@ Timeline/history API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | No | พ.ศ. YYYY/xxxxx |
+| docNo | string | No | ค.ศ. YYYY/xxxxx |
 
 #### Response
 
@@ -288,7 +354,7 @@ Timeline/history API
 
 | Path | หน้าที่ |
 | --- | --- |
-| store-backend · src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
+| store-backend · src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.controller.ts | route ทั้งหมดของเอกสารนี้ (4 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
 | store-backend · src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
 | store-backend · src/modules/sbpgi-attachment-sales-timeline/sbpgi-attachment-sales-timeline.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
 | store-backend · src/modules/sbpgi-attachment-sales-timeline/dto/sbpgi-attachment-sales-timeline.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
@@ -334,6 +400,24 @@ export class SbpgiAttachmentSalesTimelineController {
   ) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.createDocumentsAttachments(docNo, body, userId);
+  }
+
+  // GET /api/v1/documents/{docNo}/attachments/{attachId}/download — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป…
+  @Get(':docNo/attachments/:attachId/download')
+  getDocumentsAttachmentsDownload(
+    @Param('docNo') docNo: string,
+    @Param('attachId') attachId: string,
+    @UserId() userId: string,
+  ) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.getDocumentsAttachmentsDownload(docNo, attachId, userId);
+  }
+
+  // GET /api/v1/documents/{docNo}/attachments/download-all — ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (…
+  @Get(':docNo/attachments/download-all')
+  getDocumentsAttachmentsDownloadAll(@Param('docNo') docNo: string, @UserId() userId: string) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.getDocumentsAttachmentsDownloadAll(docNo, userId);
   }
 
   // GET /api/v1/documents/{docNo}/sales — Sales detail API
@@ -414,19 +498,33 @@ export class SbpgiAttachmentSalesTimelineService {
     }
   }
 
-  // GET /api/v1/documents/{docNo}/sales — Sales detail API
-  async getDocumentsSales(docNo: string, userId: string) {
+  // GET /api/v1/documents/{docNo}/attachments/{attachId}/download — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป…
+  async getDocumentsAttachmentsDownload(docNo: string, attachId: string, userId: string) {
     const page = 1;
     const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
-    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/documents/{docNo}/sales')
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/documents/{docNo}/attachments/{attachId}/download')
     // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
     //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
-    const rows = await this.dataSource.query(SBPGI_SQL.getDocumentsSales, [
+    const rows = await this.dataSource.query(SBPGI_SQL.getDocumentsAttachmentsDownload, [
       // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
       userId, (page - 1) * size, size,
     ]);
     // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
     return { page, size, total: rows.length, items: rows };
+  }
+
+  // GET /api/v1/documents/{docNo}/attachments/download-all — ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (…
+  async getDocumentsAttachmentsDownloadAll(docNo: string, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/documents/{docNo}/attachments/download-all
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/documents/{docNo}/attachments/download-all')
+    throw new NotImplementedException('getDocumentsAttachmentsDownloadAll ยังไม่ implement');
+  }
+
+  // GET /api/v1/documents/{docNo}/sales — Sales detail API
+  async getDocumentsSales(docNo: string, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/documents/{docNo}/sales
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/documents/{docNo}/sales')
+    throw new NotImplementedException('getDocumentsSales ยังไม่ implement');
   }
 }
 ```
@@ -645,8 +743,12 @@ export class SbpgiAttachmentSalesTimelineBffService {
     return this.client.post(`/api/v1/documents/${docNo}/attachments`, body, { headers: this.userHeaders(user) });
   }
 
-  getDocumentsSales(docNo: string, params: any, user: any) {
-    return this.client.get(`/api/v1/documents/${docNo}/sales`, { params, headers: this.userHeaders(user) });
+  getDocumentsAttachmentsDownload(docNo: string, attachId: string, params: any, user: any) {
+    return this.client.get(`/api/v1/documents/${docNo}/attachments/${attachId}/download`, { params, headers: this.userHeaders(user) });
+  }
+
+  getDocumentsAttachmentsDownloadAll(docNo: string, params: any, user: any) {
+    return this.client.get(`/api/v1/documents/${docNo}/attachments/download-all`, { params, headers: this.userHeaders(user) });
   }
 }
 
@@ -666,10 +768,10 @@ export class SbpgiAttachmentSalesTimelineBffController {
     return this.service.createDocumentsAttachments(docNo, body, req.user);
   }
 
-  // proxy ของ GET /api/v1/documents/{docNo}/sales
-  @Get('documents/:docNo/sales')
-  getDocumentsSales(@Param('docNo') docNo: string, @Query() query: any, @Req() req: any) {
-    return this.service.getDocumentsSales(docNo, query, req.user);
+  // proxy ของ GET /api/v1/documents/{docNo}/attachments/{attachId}/download
+  @Get('documents/:docNo/attachments/:attachId/download')
+  getDocumentsAttachmentsDownload(@Param('docNo') docNo: string, @Param('attachId') attachId: string, @Query() query: any, @Req() req: any) {
+    return this.service.getDocumentsAttachmentsDownload(docNo, attachId, query, req.user);
   }
 }
 // TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
@@ -697,6 +799,30 @@ export class SbpgiAttachmentSalesTimelineBffController {
 -- ตรวจขนาด ≤ 5MB, sanitize filename, sha256, AV scan=CLEAN ก่อน commit metadata
 INSERT INTO document_attachments (doc_no, section_code, file_name, mime_type, file_size, storage_provider, bucket, object_key, sha256, scan_status, uploaded_by, uploaded_at)
 VALUES (:docNo, :sectionCode, :fileName, :mimeType, :fileSize, :storageProvider, :bucket, :objectKey, :sha256, :scanClean, :empId, :now);
+```
+
+**GET /api/v1/documents/{docNo}/attachments/{attachId}/download** — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน str…
+
+```sql
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- ตรวจสิทธิ์อ่านเอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน stream ผ่าน BE
+SELECT attach_id, bucket, object_key, file_name, mime_type, scan_status
+FROM document_attachments
+WHERE doc_no = :docNo AND attach_id = :attachId;
+```
+
+**GET /api/v1/documents/{docNo}/attachments/download-all** — ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (ไม่คืน zip เปล่า)
+
+```sql
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- รวมไฟล์แนบทั้งหมดเป็น .zip — ตรวจสิทธิ์อ่านเอกสารก่อน แล้วรวมเฉพาะไฟล์ที่ scan ผ่าน
+-- ไม่มีไฟล์ที่ดาวน์โหลดได้เลย -> 404 (ไม่คืน zip เปล่า)
+SELECT attach_id, bucket, object_key, file_name, mime_type, file_size
+FROM document_attachments
+WHERE doc_no = :docNo AND scan_status = 'CLEAN'
+ORDER BY section_code, attach_id;
 ```
 
 **GET /api/v1/documents/{docNo}/sales** — Sales detail API

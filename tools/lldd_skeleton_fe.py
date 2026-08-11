@@ -576,7 +576,7 @@ def _yup_rule(name: str, fmt: str, validation: str, behavior: str) -> str:
         elif "yyyy-mm" in fmt_l:
             rule += ".matches(/^\\d{4}-(0[1-9]|1[0-2])$/, 'รูปแบบเดือนต้องเป็น YYYY-MM (ค.ศ.)')"
         elif "yyyy/xxxxx" in fmt_l:
-            rule += ".matches(/^\\d{4}\\/\\d{5}$/, 'เลขที่เอกสารต้องเป็น YYYY/xxxxx (พ.ศ.)')"
+            rule += ".matches(/^\\d{4}\\/\\d{5}$/, 'เลขที่เอกสารต้องเป็น YYYY/xxxxx (ค.ศ.)')"
     if required:
         rule += f".required('กรุณาระบุ {name}')"
     note = behavior.split(";")[0].strip()
@@ -674,7 +674,7 @@ def _file_plan_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
         rows += [
             ["src/types/sbpgi/common.ts", "types — ApiResponse / PageResponse / ApiError กลางของโมดูล"],
             ["src/lib/sbpgi/apiError.ts", "helper — แปลง AxiosError เป็นข้อความไทยจาก BE (ไม่ paraphrase)"],
-            ["src/utils/sbpgi/format.ts", "helper — formatMonthThai / formatAmount / docNo (ค.ศ. -> พ.ศ. จุดเดียว)"],
+            ["src/utils/sbpgi/format.ts", "helper — formatMonthThai / formatAmount / docNo (ค.ศ. ทั้งหมด · ไม่แปลง พ.ศ.)"],
         ]
     elif kind == "foundation":
         rows += [
@@ -1179,7 +1179,7 @@ export function apiErrorMessage(error: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
-// src/utils/sbpgi/format.ts — จุดเดียวที่แปลง ค.ศ. (payload) -> พ.ศ. (display)
+// src/utils/sbpgi/format.ts — formatter กลางจุดเดียว · ค.ศ. ทั้ง payload และ display (มติ 2026-08-06)
 // ---------------------------------------------------------------------------
 export const formatMonthThai = (isoMonth: string): string => {
   const [year, month] = isoMonth.split('-');
@@ -1365,7 +1365,7 @@ def _types_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
     domain = prof["domain"]
     lines = [
         f"// src/types/sbpgi/{domain}.ts — ตรงกับตาราง API ในเอกสารนี้",
-        "// วันที่/เดือนใน payload เป็น ค.ศ. (ISO) เสมอ — แปลงเป็น พ.ศ. เฉพาะตอน display",
+        "// วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)",
         "",
         "__ENVELOPE_IMPORT__",
         "",
@@ -1569,9 +1569,11 @@ interface ActionOption {{ value: string; label: string; requireComment?: boolean
 // ค่าที่ "บังคับกรอกความคิดเห็น" มาจาก contract ของ role นี้
 const REQUIRE_COMMENT: string[] = [{require_literal}];
 
-// TODO: แทนข้อความ validation ด้วยข้อความ verbatim จาก SRS ก่อน UAT
+// ⚠️ ข้อความ validation ด้านล่างเป็น verbatim จาก SRS v3.1 — ห้าม paraphrase ห้ามย่อ
+//    (SRS "รายการหน้าจอ" §10/§13 · ตรงกับที่ prototype k2-document.html ใช้)
 const schema = yup.object({{
-  result: yup.string().required('กรุณาเลือกผลการพิจารณา'),
+  result: yup.string().required('ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ'),
+  // SRS บังคับให้ความคิดเห็นเป็น required เมื่อเลือกไม่ชดเชย แต่ไม่ได้ระบุข้อความ — ข้อความนี้เรากำหนดเอง
   comment: yup.string().when('result', {{
     is: (v: string) => REQUIRE_COMMENT.includes(v),
     then: (s) => s.required('กรุณาระบุความคิดเห็น'),
@@ -1779,7 +1781,7 @@ def fe_skeleton_blocks(topic: Any, ctx: Any = None) -> list[dict[str, Any]]:
             "ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์",
             "เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE",
             "session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง",
-            "payload ใช้วันที่ ค.ศ. เสมอ; แปลงเป็น พ.ศ. เฉพาะตอนแสดงผลผ่าน formatter กลางจุดเดียว",
+            "payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)",
             "ข้อความ error แสดงจาก `error.message` ของ BE ตรง ๆ (ห้าม paraphrase) — fallback ใช้เฉพาะกรณี network error",
         ])
     )

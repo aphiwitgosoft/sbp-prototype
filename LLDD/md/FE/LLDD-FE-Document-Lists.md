@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 44 ชั่วโมง |
+| Estimate | 28 ชั่วโมง |
 | Owner | Chidchanok <lin> Saengamnat |
 | Objective | สร้างหน้ารายการเอกสารรอดำเนินการและเอกสารที่เกี่ยวข้อง |
 
@@ -46,7 +46,7 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | docNo | YYYY/xxxxx | optional search | ถ้าคลิก row ส่งไป detail |
-| year | พ.ศ. YYYY | required สำหรับ /documents | default current year |
+| year | ค.ศ. YYYY | required สำหรับ /documents | default current year (ค.ศ.) |
 | status | status code/string | optional single select | ใช้ filter chip |
 | table.roundNo | integer | column 1 | ครั้งที่ (รอบชดเชยของร้าน) |
 | table.docNo | YYYY/xxxxx | column 2 | เลขที่เอกสารและลิงก์เปิด detail |
@@ -168,7 +168,7 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items | array<object> | Yes | JSON array; element type shown in Type column |
 | items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | items[].impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | items[].impactedStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].regionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -235,7 +235,7 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items | array<object> | Yes | JSON array; element type shown in Type column |
 | items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | items[].impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | items[].impactedStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].regionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -363,7 +363,7 @@ export async function getDocuments(params: T.DocumentsParams): Promise<PageRespo
 
 ```ts
 // src/types/sbpgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
-// วันที่/เดือนใน payload เป็น ค.ศ. (ISO) เสมอ — แปลงเป็น พ.ศ. เฉพาะตอน display
+// วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
 import type { PageResponse } from '@/types/sbpgi/common';
 
@@ -472,8 +472,8 @@ export interface DocumentListsFormValue {
 
 // TODO: แทนข้อความ validation ด้วยข้อความ verbatim จาก SRS ก่อน UAT
 const schema = yup.object({
-  docNo: yup.string().matches(/^\d{4}\/\d{5}$/, 'เลขที่เอกสารต้องเป็น YYYY/xxxxx (พ.ศ.)'), // ถ้าคลิก row ส่งไป detail
-  year: yup.string().required('กรุณาระบุ year'), // default current year
+  docNo: yup.string().matches(/^\d{4}\/\d{5}$/, 'เลขที่เอกสารต้องเป็น YYYY/xxxxx (ค.ศ.)'), // ถ้าคลิก row ส่งไป detail
+  year: yup.string().required('กรุณาระบุ year'), // default current year (ค.ศ.)
   status: yup.string(), // ใช้ filter chip
 });
 
@@ -509,7 +509,7 @@ export default function DocumentListsForm({ defaultValues, onSubmit }: {
 - ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
-- payload ใช้วันที่ ค.ศ. เสมอ; แปลงเป็น พ.ศ. เฉพาะตอนแสดงผลผ่าน formatter กลางจุดเดียว
+- payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 - ข้อความ error แสดงจาก `error.message` ของ BE ตรง ๆ (ห้าม paraphrase) — fallback ใช้เฉพาะกรณี network error
 
 ## 9. Processing Flow

@@ -498,21 +498,22 @@ SELECT /* TODO: columns */
  LIMIT $1 OFFSET $2;  -- TODO: อ่านเป็น chunk กัน memory บวม
 
 -- [W] document_new_stores : บันทึกร้านเปิดใหม่เข้าเอกสารโดยตรง
--- TODO: เติมคอลัมน์จริงจาก database.md และยืนยัน unique key ที่กันข้อมูลซ้ำตอน rerun
+-- TODO: เติมคอลัมน์ payload จริงจาก database.md
 INSERT INTO document_new_stores
   (/* TODO: business key + payload + created_by, created_at */)
 VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
-ON CONFLICT (/* TODO: unique key ที่ใช้กันซ้ำ */)
+ON CONFLICT (doc_no, new_store_code)   -- unique key จริงตาม DDL ของ document_new_stores (ห้ามเดา)
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
        updated_at = NOW(), updated_by = 'JOB9';
 
 -- [W] interface_transactions : tracking ภายใน type=INTERNAL_DB_WRITE
 -- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
 INSERT INTO interface_transactions
-  (job_no, data_name, direction, status, business_key, period_key,
+  (run_id, data_name, direction, status, business_key, period_key,
    file_name, file_checksum, created_at)
-VALUES ('9', $1 /* TODO: data_name ของ Job 9 */, $2 /* IN|OUT|INTERNAL */, 'READY',
-        $3 /* business key ของแถว */, $4 /* YYYYMM */, $5, $6, NOW())
+VALUES ($1 /* run_id = correlation id ของรอบรัน Job 9 จาก application log */,
+        $2 /* TODO: data_name ของ Job 9 */, $3 /* IN|OUT|INTERNAL */, 'READY',
+        $4 /* business key ของแถว */, $5 /* YYYYMM */, $6, $7, NOW())
 ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;
 ```
 

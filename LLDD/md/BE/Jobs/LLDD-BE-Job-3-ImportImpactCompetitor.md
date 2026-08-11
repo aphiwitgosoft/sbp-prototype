@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 9 ชั่วโมง |
+| Estimate | 10 ชั่วโมง |
 | Owner | Aphiwit <Bank> Khammoon |
 | Objective | นำเข้าร้านคู่แข่งจาก ALLMAP: นำข้อมูลร้านคู่แข่งรายงวดจากวิว COMPETITOR_IMPACT_VIEW เข้า fgi_impact_competitors ทีละ 10,000 แถว กันซ้ำระดับงวด (ถ้างวดมีข้อมูลแล้วจะข้ามทั้งงวด ไม่มี upsert) |
 
@@ -18,7 +18,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Main class/script: th.co.gosoft.fgi.main.ImportImpactCompetitor / /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh
 - Phase: A
 - Output: fgi_impact_competitors
-- Estimate: 9 ชั่วโมง
+- Estimate: 10 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
 
@@ -33,7 +33,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 3 ImportImpa
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | กำหนดการรัน (Cron) | 0 07 7 * * | แก้ไขได้ | ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh; Operations ตรวจ deployment path และ owner permission ก่อนขึ้น production |
-| Argument (งวด) | 2569\|06 | แก้ไขได้ | รูปแบบ YYYY\|MM |
+| Argument (งวด) | 2569\|06 | แก้ไขได้ | รูปแบบ YYYY\|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ขัดกับกติกา ค.ศ. ทั้งระบบ ต้องยืนยันกับเจ้าของ ALLMAP |
 | Chunk Size | 10000 | แก้ไขได้ | จำนวนแถวต่อรอบ insert |
 | Source View | COMPETITOR_IMPACT_VIEW | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | SELECT DISTINCT / map คอลัมน์ NAMT -> NAME_TH, BRANCHT -> BRANCH_TH |
 
@@ -193,7 +193,7 @@ export interface Job3Config {
   cron: string;
   /** กำหนดการรัน (Cron) — ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh; Operations ตรวจ deployment path และ owner permission ก่อนขึ้น production */
   cron: string;
-  /** Argument (งวด) — รูปแบบ YYYY|MM */
+  /** Argument (งวด) — รูปแบบ YYYY|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ขัดกับกติกา ค.ศ. ทั้งระบบ ต้องยืนยันกับเจ้าของ ALLMAP */
   argument: string;
   /** Chunk Size — จำนวนแถวต่อรอบ insert */
   chunkSize: number;
@@ -210,7 +210,7 @@ export class SbpgiJob3Config implements Job3Config {
   enabled = (process.env.SBPGI_JOB3_ENABLED ?? 'true') === 'true';
   cron = process.env.SBPGI_JOB3_CRON ?? '0 07 7 * *';
   cron = process.env.SBPGI_JOB3_CRON ?? '0 07 7 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  argument = process.env.SBPGI_JOB3_ARGUMENT ?? '2569|06'; // TODO: แก้ผ่าน env/config file แล้ว deploy
+  argument = process.env.SBPGI_JOB3_ARGUMENT ?? '2569|06'; // TODO: ปีเป็น พ.ศ. ตามวิว ALLMAP — ขัดกับกติกา ค.ศ. ทั้งระบบ ต้องยืนยันกับเจ้าของ ALLMAP (⚠️)
   chunkSize = Number(process.env.SBPGI_JOB3_CHUNK_SIZE ?? 10000); // TODO: แก้ผ่าน env/config file แล้ว deploy
   sourceView = process.env.SBPGI_JOB3_SOURCE_VIEW ?? 'COMPETITOR_IMPACT_VIEW'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   mailTo = process.env.SBPGI_JOB3_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: config mailTo / storeretention)
@@ -450,11 +450,11 @@ repository ของ Job 3 ประกาศเป็น factory provider (`{pr
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
 -- [W] fgi_impact_competitors : insert รายงวด data_source=ALM (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP
--- TODO: เติมคอลัมน์จริงจาก database.md และยืนยัน unique key ที่กันข้อมูลซ้ำตอน rerun
+-- TODO: เติมคอลัมน์ payload จริงจาก database.md
 INSERT INTO fgi_impact_competitors
   (/* TODO: business key + payload + created_by, created_at */)
 VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
-ON CONFLICT (/* TODO: unique key ที่ใช้กันซ้ำ */)
+ON CONFLICT (impact_process_id, competitor_code, period_key)   -- unique key จริงตาม DDL ของ fgi_impact_competitors (ห้ามเดา)
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
        updated_at = NOW(), updated_by = 'JOB3';
 ```

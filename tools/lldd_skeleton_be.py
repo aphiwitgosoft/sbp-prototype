@@ -61,6 +61,8 @@ def code(text: str, lang: str = "") -> dict[str, Any]:
 # (ตามการตัดสินใจ 2026-08-05 และ 2026-08-06 ใน database.md)
 # --------------------------------------------------------------------------------------
 REUSED_TABLES: dict[str, str] = {
+    # มติ DP-9 (2026-08-10): decisions ย้ายไป common_code ของระบบเดิม (code_type = SBPGI_DECISION)
+    "decisions": "common_code (code_type = SBPGI_DECISION)",
     "stores": "store / mas_store / sevenshop (store-backend)",
     "zones": "mas_zone (store-backend)",
     "branch_types": "common_code (store-backend)",
@@ -106,7 +108,7 @@ ENDPOINT_OWNER: dict[str, str] = {
 }
 
 # --------------------------------------------------------------------------------------
-# ตารางที่ถูกตัดจาก target design 21 ตาราง — SQL ที่ยังอ้างถึงต้องมีคำเตือนกำกับเสมอ
+# ตารางที่ถูกตัดจาก target design 20 ตาราง — SQL ที่ยังอ้างถึงต้องมีคำเตือนกำกับเสมอ
 # --------------------------------------------------------------------------------------
 CUT_TABLE_REPLACEMENT: dict[str, str] = {
     "workflow_instances": "workflow_transaction (@srm/glb-workflow) ผ่าน getTransaction()/initializeWorkflow()",
@@ -328,16 +330,6 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("return_code", "string", "type: 'varchar', length: 10, nullable: true", False),
         ],
     ),
-    "status_email_rules": (
-        "StatusEmailRule",
-        [
-            ("status_code", "string", "type: 'varchar', length: 2", True),
-            ("to_section_code", "string", "type: 'varchar', length: 2, nullable: true", False),
-            ("cc_section_code", "string", "type: 'varchar', length: 2, nullable: true", False),
-            ("template_code", "string", "type: 'varchar', length: 10", False),
-            ("is_active", "boolean", "type: 'boolean', default: true", False),
-        ],
-    ),
     "external_factors": (
         "ExternalFactor",
         [
@@ -365,17 +357,6 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("competitor_code", "string", "type: 'varchar', length: 2", True),
             ("name_th", "string", "type: 'varchar', length: 200", False),
             ("name_en", "string", "type: 'varchar', length: 200, nullable: true", False),
-            ("is_active", "boolean", "type: 'boolean', default: true", False),
-        ],
-    ),
-    "decisions": (
-        "Decision",
-        [
-            ("decision_code", "string", "type: 'varchar', length: 10", True),
-            ("decision_name", "string", "type: 'varchar', length: 200", False),
-            ("flow_name", "string", "type: 'varchar', length: 200, nullable: true", False),
-            ("result_name", "string", "type: 'varchar', length: 200, nullable: true", False),
-            ("result_category", "string", "type: 'varchar', length: 10", False),
             ("is_active", "boolean", "type: 'boolean', default: true", False),
         ],
     ),
@@ -755,7 +736,7 @@ def _dto_property(name: str, example: Any, info: tuple[str, str, str] | None) ->
     if enum_values and all(_IDENT.match(v.replace("-", "")) or v.isalnum() for v in enum_values):
         decos.append("@IsIn([" + ", ".join(f"'{v}'" for v in enum_values) + "])")
     if "yyyy/xxxxx" in low_fmt:
-        decos.append(r"@Matches(/^\d{4}\/\d{5}$/, { message: 'เลขที่เอกสารต้องอยู่ในรูปแบบ YYYY/xxxxx (พ.ศ.)' })")
+        decos.append(r"@Matches(/^\d{4}\/\d{5}$/, { message: 'เลขที่เอกสารต้องอยู่ในรูปแบบ YYYY/xxxxx (ค.ศ.)' })")
     elif "yyyy-mm-dd" in low_fmt:
         decos.append(r"@Matches(/^\d{4}-\d{2}-\d{2}$/)")
     elif "yyyy-mm" in low_fmt:
@@ -1418,7 +1399,7 @@ def _sql_warnings(sql: str) -> list[str]:
         if tname in CUT_TABLE_REPLACEMENT and tname not in hit_tables:
             hit_tables.append(tname)
     if hit_tables:
-        lines.append("-- ⚠️ SQL ตัวอย่างนี้ยังอ้างตารางที่ถูกตัดจาก target design 21 ตารางแล้ว")
+        lines.append("-- ⚠️ SQL ตัวอย่างนี้ยังอ้างตารางที่ถูกตัดจาก target design 20 ตารางแล้ว")
         lines.append("--    ห้าม implement ตามตัวอักษร ให้แทนที่ก่อนใช้งาน:")
         for tname in hit_tables:
             lines.append(f"--      {tname}  ->  {CUT_TABLE_REPLACEMENT[tname]}")

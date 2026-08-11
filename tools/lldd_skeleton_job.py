@@ -30,6 +30,20 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 
+
+# unique key เชิงธุรกิจของแต่ละตาราง — คัดจาก CONSTRAINT ใน DDL (tools/build_lldd_documents.py)
+# ใช้เติม ON CONFLICT ใน skeleton ให้ตรงของจริง แทนที่จะปล่อยเป็น TODO ให้ dev เดา
+BUSINESS_UNIQUE_KEYS: dict[str, str] = {
+    "fgi_impact_stores": "impacted_store_code, new_store_code, impact_month",
+    "fgi_impact_competitors": "impact_process_id, competitor_code, period_key",
+    "fgi_impact_processes": "impacted_store_code, impact_month",
+    "sales_transactions": "sales_summary_id, txn_date, window_no",
+    "document_competitors": "doc_no, competitor_code",
+    "document_new_stores": "doc_no, new_store_code",
+    "compensation_documents": "source, impacted_store_code, impact_month, new_store_code, round_no",
+    "interface_transactions": "data_name, direction, business_key, period_key",
+}
+
 def p(text: str) -> dict[str, Any]:
     return {"type": "p", "text": text}
 
@@ -518,6 +532,9 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
         iface.append(f"  /** {label}{(' — ' + note) if note else ''} */")
         iface.append(f"  {key}: {ts_type};")
         comment = "แก้ผ่าน env/config file แล้ว deploy" if editable else "ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ"
+        if "⚠️" in note:
+            # ยกคำเตือนจาก note มาไว้บนบรรทัดค่า default ด้วย ไม่ให้ dev อ่านข้ามไป
+            comment = note.split("⚠️", 1)[1].strip() + " (⚠️)"
         if ts_type == "number":
             factory.append(f"  {key} = Number(process.env.{env} ?? {str(value).replace(',', '')}); // TODO: {comment}")
         else:
@@ -829,10 +846,11 @@ def _sql_for_table(name: str, mode: str, usage: str, no: str, job: dict[str, Any
         lines.extend([
             "-- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)",
             "INSERT INTO interface_transactions",
-            "  (job_no, data_name, direction, status, business_key, period_key,",
+            "  (run_id, data_name, direction, status, business_key, period_key,",
             "   file_name, file_checksum, created_at)",
-            f"VALUES ('{no}', $1 /* TODO: data_name ของ Job {no} */, $2 /* IN|OUT|INTERNAL */, 'READY',",
-            "        $3 /* business key ของแถว */, $4 /* YYYYMM */, $5, $6, NOW())",
+            f"VALUES ($1 /* run_id = correlation id ของรอบรัน Job {no} จาก application log */,",
+            f"        $2 /* TODO: data_name ของ Job {no} */, $3 /* IN|OUT|INTERNAL */, 'READY',",
+            "        $4 /* business key ของแถว */, $5 /* YYYYMM */, $6, $7, NOW())",
             "ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;",
             "",
         ])
@@ -870,12 +888,31 @@ def _sql_for_table(name: str, mode: str, usage: str, no: str, job: dict[str, Any
             "",
         ])
         return lines
+    if name.startswith("("):
+        # ไม่ใช่ตารางจริง (เช่น "(application log แบบ structured)" ที่มาแทน job_run_histories ที่ถูกตัด)
+        lines.extend([
+            f"-- {name} ไม่ใช่ตารางในฐานข้อมูล — ไม่มี SQL",
+            "-- บันทึกผลการรันเป็น structured log บรรทัดเดียวจบ (jobNo · runId · period · counts · durationMs · outcome)",
+            "",
+        ])
+        return lines
+    conflict = BUSINESS_UNIQUE_KEYS.get(name)
     lines.extend([
-        "-- TODO: เติมคอลัมน์จริงจาก database.md และยืนยัน unique key ที่กันข้อมูลซ้ำตอน rerun",
+        "-- TODO: เติมคอลัมน์ payload จริงจาก database.md",
         f"INSERT INTO {name}",
         "  (/* TODO: business key + payload + created_by, created_at */)",
         "VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)",
-        "ON CONFLICT (/* TODO: unique key ที่ใช้กันซ้ำ */)",
+        (f"ON CONFLICT ({conflict})   -- unique key จริงตาม DDL ของ {name} (ห้ามเดา)"
+         if conflict else (
+             "-- ⚠️ ตารางของ @srm/glb-workflow — SBPGI ห้าม INSERT/UPDATE ตรง ต้องเรียกผ่าน engine เท่านั้น\n"
+             "--    (workflow_transaction ไม่มี PK และไม่มี index เลย · ข้อค้าง DP-2)\n"
+             "ON CONFLICT (/* ไม่ใช้ — ลบ statement นี้ทิ้งแล้วเรียก engine แทน */)"
+             if name.startswith("workflow_") else
+             "-- ⚠️ ตารางนี้ไม่มี business unique key ใน DDL จริง — ON CONFLICT ใช้ไม่ได้\n"
+             "--    fcs_qssi_score: ข้อค้าง DP-4 (การเพิ่ม unique index ต้อง sign-off เจ้าของ performance.service.ts)\n"
+             "--    ระหว่างยังไม่ปิด: ลบงวดเดิมก่อนแล้ว INSERT ใหม่ใน transaction เดียว\n"
+             "ON CONFLICT (/* ยังใช้ไม่ได้ — ดูหมายเหตุด้านบน */)"
+         )),
         "DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */",
         f"       updated_at = NOW(), updated_by = 'JOB{_job_slug(no)}';",
         "",

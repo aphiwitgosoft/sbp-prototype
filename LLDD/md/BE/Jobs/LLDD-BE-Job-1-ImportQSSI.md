@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 12 ชั่วโมง |
+| Estimate | 16 ชั่วโมง |
 | Owner | Aphiwit <Bank> Khammoon |
 | Objective | นำเข้าคะแนน QSSI รายเดือน: ดาวน์โหลดไฟล์คะแนน QSSI 4 ไฟล์ต่อเดือนผ่าน SFTP โหลดเข้าตารางพัก ทำ dedup และจับคู่หมวดคะแนนแบบ stateful แล้วลบงวดเดิมและ insert ลง fcs_qssi_score เพื่อให้ Job 6 ใช้ตรวจความครบของคะแนน 6 หมวดก่อนปล่อยสถานะ INIT |
 
@@ -18,7 +18,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Main class/script: fcs.main.ImportQSSI / FCS_ImportQSSI.sh
 - Phase: A
 - Output: fcs_qssi_score
-- Estimate: 12 ชั่วโมง
+- Estimate: 16 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
 
@@ -34,7 +34,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 1 ImportQSSI
 | --- | --- | --- | --- |
 | กำหนดการรัน (Cron) | Monthly | แก้ไขได้ | ตั้งเวลาใน scheduler ผ่าน deployment config |
 | งวดข้อมูล (เดือนที่รัน) | 07/2026 | แก้ไขได้ | ชื่อไฟล์ใช้เดือนปัจจุบัน แต่งวดใน DB คือเดือนก่อนหน้า |
-| SFTP endpoint alias | qssi-monthly | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | resolve host/port จาก environment; ไม่รับค่า host/port จาก request หรือ job_configs |
+| SFTP endpoint alias | qssi-monthly | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | resolve host/port จาก environment; ไม่รับค่า host/port จาก request — resolve จาก environment เท่านั้น |
 | Secret reference | secret/sbpgi/interfaces/qssi | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | credential/private key อ่านจาก Secret Manager และบังคับ strict known_hosts |
 | Remote Directory | /export/qssishare/onl/qssi/textfile/SBP/QSSI_Monthly/ | แก้ไขได้ | path เท่านั้น ไม่รวม credential |
 | Local Directory | /appshare/SPS/FCS/interface_data/in/ | แก้ไขได้ | staging/quarantine path |
@@ -67,9 +67,9 @@ download/find files, parse pipe-delimited records, stage temp rows, map category
 | --- | --- | --- |
 | Input identity | QSSI score files from configured SFTP/import paths plus common-code category mapping. | snapshot input file/business key/period in run record |
 | Output identity | FCS_QSSI_SCORE refreshed for the target period/category set; temp rows cleared; run summary contains file name, success/fail status, record count, and error detail. | reconcile input, success, reject and skipped counts |
-| Dedup proof | SHA-256 ของไฟล์ + UNIQUE(store_code, category_code, score_period); checksum เดิมให้ SKIP โดยไม่ลบข้อมูลเดิม | rerun fixture produces no duplicate target business key |
+| Dedup proof | ⚠️ ตารางจริงไม่มี UNIQUE และไม่มีคอลัมน์ checksum — เก็บ SHA-256 ของไฟล์ไว้ที่ interface_transactions.file_checksum แทน แล้ว SKIP ทั้งงวดถ้า checksum ซ้ำ · การเพิ่ม unique index บน fcs_qssi_score เป็นข้อค้าง DP-4 (ต้อง sign-off เจ้าของ performance.service.ts) | rerun fixture produces no duplicate target business key |
 | Transaction proof | parse/validate นอก transaction; upsert คะแนนทั้งไฟล์และบันทึก interface tracking ใน transaction เดียว | injected failure leaves no partial committed state outside documented boundary |
-| Security proof | credential อ่านด้วย secretRef=secret/sbpgi/interfaces/qssi; SFTP บังคับ strict host-key verification จาก known_hosts และห้ามเก็บ password/private key ใน job_configs | config/log/error contains no plaintext secret |
+| Security proof | credential อ่านด้วย secretRef=secret/sbpgi/interfaces/qssi; SFTP บังคับ strict host-key verification จาก known_hosts และห้ามเก็บ password/private key ในไฟล์ config หรือ env โดยตรง (อ่านจาก Secret Manager เท่านั้น) | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
 
@@ -86,30 +86,31 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | Contract | Target implementation |
 | --- | --- |
 | Repository | qssiScoreRepository |
-| Idempotency / dedup | SHA-256 ของไฟล์ + UNIQUE(store_code, category_code, score_period); checksum เดิมให้ SKIP โดยไม่ลบข้อมูลเดิม |
+| Idempotency / dedup | ⚠️ ตารางจริงไม่มี UNIQUE และไม่มีคอลัมน์ checksum — เก็บ SHA-256 ของไฟล์ไว้ที่ interface_transactions.file_checksum แทน แล้ว SKIP ทั้งงวดถ้า checksum ซ้ำ · การเพิ่ม unique index บน fcs_qssi_score เป็นข้อค้าง DP-4 (ต้อง sign-off เจ้าของ performance.service.ts) |
 | Transaction boundary | parse/validate นอก transaction; upsert คะแนนทั้งไฟล์และบันทึก interface tracking ใน transaction เดียว |
-| Security | credential อ่านด้วย secretRef=secret/sbpgi/interfaces/qssi; SFTP บังคับ strict host-key verification จาก known_hosts และห้ามเก็บ password/private key ใน job_configs |
+| Security | credential อ่านด้วย secretRef=secret/sbpgi/interfaces/qssi; SFTP บังคับ strict host-key verification จาก known_hosts และห้ามเก็บ password/private key ในไฟล์ config หรือ env โดยตรง (อ่านจาก Secret Manager เท่านั้น) |
 
 #### Input / candidate query
 
 ```sql
-SELECT store_code, category_code, score_period, score_value, source_checksum
+-- ⚠️ คอลัมน์จริงของ sps_store.fcs_qssi_score มี 7 ตัวเท่านั้น:
+--    id · store_id · category · month · year · score · create_date
+--    ไม่มี source_file_name / source_checksum / updated_at และ "ไม่มี UNIQUE" (index เดียวคือ PK บน id)
+SELECT store_id, category, month, year, score
 FROM fcs_qssi_score
-WHERE score_period = :score_period
-ORDER BY store_code, category_code;
+WHERE month = :month AND year = :year
+ORDER BY store_id, category;
 ```
 
 #### Write / upsert query
 
 ```sql
-INSERT INTO fcs_qssi_score
-    (store_code, category_code, score_period, score_value, source_file_name, source_checksum, updated_at)
-VALUES (:store_code, :category_code, :score_period, :score_value, :source_file_name, :source_checksum, CURRENT_TIMESTAMP)
-ON CONFLICT (store_code, category_code, score_period)
-DO UPDATE SET score_value = EXCLUDED.score_value,
-              source_file_name = EXCLUDED.source_file_name,
-              source_checksum = EXCLUDED.source_checksum,
-              updated_at = CURRENT_TIMESTAMP;
+-- ⚠️ ON CONFLICT ใช้ไม่ได้กับตารางจริง — ไม่มี unique constraint บน (store_id, category, month, year)
+--    ต้องปิดข้อค้าง DP-4 ก่อน (เพิ่ม unique index บนตารางเดิม ต้อง sign-off เจ้าของ performance.service.ts)
+--    ระหว่างยังไม่ปิด: กันซ้ำที่ระดับงาน — ลบงวดเดิมก่อนแล้วค่อย insert ภายใน transaction เดียว
+DELETE FROM fcs_qssi_score WHERE month = :month AND year = :year;
+INSERT INTO fcs_qssi_score (store_id, category, month, year, score, create_date)
+VALUES (:store_id, :category, :month, :year, :score, CURRENT_TIMESTAMP);
 ```
 
 ### 5.94 Target Node Implementation
@@ -200,7 +201,7 @@ export interface Job1Config {
   cron: string;
   /** งวดข้อมูล (เดือนที่รัน) — ชื่อไฟล์ใช้เดือนปัจจุบัน แต่งวดใน DB คือเดือนก่อนหน้า */
   period: string;
-  /** SFTP endpoint alias — resolve host/port จาก environment; ไม่รับค่า host/port จาก request หรือ job_configs */
+  /** SFTP endpoint alias — resolve host/port จาก environment; ไม่รับค่า host/port จาก request — resolve จาก environment เท่านั้น */
   sftpEndpointAlias: string;
   /** Secret reference — credential/private key อ่านจาก Secret Manager และบังคับ strict known_hosts */
   secretReference: string;
@@ -469,11 +470,14 @@ repository ของ Job 1 ประกาศเป็น factory provider (`{pr
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
 -- [W] fcs_qssi_score : ตารางคะแนนปลายทาง (ลบงวด/หมวดเดิมแล้ว insert ใหม่) โดยผ่านการ staging ข้อมูล
--- TODO: เติมคอลัมน์จริงจาก database.md และยืนยัน unique key ที่กันข้อมูลซ้ำตอน rerun
+-- TODO: เติมคอลัมน์ payload จริงจาก database.md
 INSERT INTO fcs_qssi_score
   (/* TODO: business key + payload + created_by, created_at */)
 VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
-ON CONFLICT (/* TODO: unique key ที่ใช้กันซ้ำ */)
+-- ⚠️ ตารางนี้ไม่มี business unique key ใน DDL จริง — ON CONFLICT ใช้ไม่ได้
+--    fcs_qssi_score: ข้อค้าง DP-4 (การเพิ่ม unique index ต้อง sign-off เจ้าของ performance.service.ts)
+--    ระหว่างยังไม่ปิด: ลบงวดเดิมก่อนแล้ว INSERT ใหม่ใน transaction เดียว
+ON CONFLICT (/* ยังใช้ไม่ได้ — ดูหมายเหตุด้านบน */)
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
        updated_at = NOW(), updated_by = 'JOB1';
 ```

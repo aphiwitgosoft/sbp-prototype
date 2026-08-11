@@ -3,7 +3,7 @@
 > **เอกสารมีชีวิต (living doc)** — สรุป flow การทำงานต้นทางถึงปลายทางของระบบใหม่ เทียบกับระบบเดิม
 > **แหล่งอ้างอิงหลัก:** `plan-flow.html` (หน้า Flow FGI/FCS + K2) · `old-flow.png` (sequence diagram ระบบเดิม) · `new-flow.png` (sequence diagram ระบบใหม่) · `Flow ประกันรายได้.png` (BPMN approve flow ระบบเดิม)
 > **อ้างอิงประกอบ:** `flow-fgi.html`, `k2-flow.html`, `job-batch.html` (Flow Batch Job), เอกสาร Batch v4.0, SRS ประกันรายได้-K2 v3.1 (หน้า 30–38: ผลพิจารณาต่อ role), `workflow_status_document.md` (ตารางสถานะ/อีเมล), **SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI (24/02/2026) — "SDD GI"** (`SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md`): วงเงินอนุมัติใหม่ GM 50,000 / AVP 300,000 · เปิดเรื่องซ้ำได้เอง · หน้างานค้าง + auto-assign · เปลี่ยนชื่อปุ่มเป็น "หน่วยงานส่งเสริมธุรกิจ SBP"
-> **SDD ที่ยึดเป็นหลัก:** **SDD GI (24/02/2026)** เป็น SDD ฉบับเดียวที่เหลือใน repo · ไฟล์ SDD v7.5 (`08102025 SDD ปรับกระบวนการบัญชีประกันรายได้…`) **ถูกลบออก 2026-08-06** — ข้อกำหนดของมัน (ตัดขั้นบัญชี 04/05 · บัญชีตรวจผ่านรายงาน · ภาค 13 รหัส · ประเภทร้าน A/B/C/E ในรายงาน) **ถูกรวมเข้าเอกสารนี้ครบแล้ว** ป้าย `(SDD v7.5)` ที่เหลือคือการอ้างที่มาเชิงประวัติ ไม่ใช่ลิงก์ไปไฟล์
+> **SDD ที่ยึดเป็นหลัก:** **SDD GI (24/02/2026)** เป็น SDD ฉบับเดียวที่เหลือใน repo · ไฟล์ SDD v7.5 (`08102025 SDD ปรับกระบวนการบัญชีประกันรายได้…`) **ถูกลบออก 2026-08-06** — ข้อกำหนดของมัน (ตัดขั้นบัญชี 04/05 · บัญชีตรวจผ่านรายงาน · ภาค 13 รหัส · ประเภทร้าน 7 ค่า `A B C D E PTT บริษัท` (BranchTypeProfile.BranchTypeFGIName · ห้าม hardcode) ในรายงาน) **ถูกรวมเข้าเอกสารนี้ครบแล้ว** ป้าย `(SDD v7.5)` ที่เหลือคือการอ้างที่มาเชิงประวัติ ไม่ใช่ลิงก์ไปไฟล์
 > **กติกา sync:** ทุกครั้งที่คุย/แก้ไขเรื่อง flow หรือ workflow ให้อ่านไฟล์นี้ก่อน และถ้ามีการตัดสินใจใหม่ ให้อัปเดตทั้งไฟล์นี้และ `plan-flow.html` ให้ตรงกัน
 
 ## แนวคิดหลักของระบบใหม่
@@ -35,7 +35,7 @@
 
 ```
 Frontend (Web SPA — ใช้หน้าจอ prototype ชุดนี้เป็น spec)
-        │  REST API /api/v1 · JSON · 30 เส้น 6 กลุ่ม (ดู plan-api.html) — ผ่าน BFF ของระบบ SBP เดิม
+        │  REST API /api/v1 · JSON · 29 เส้น 6 กลุ่ม (ดู plan-api.html) — ผ่าน BFF ของระบบ SBP เดิม
         ▼
 Backend Services
   ├─ Auth & RBAC — ใช้ระบบ SBP เดิม (Cognito + BFF + auth-backend/ABS · ตัดสินใจ 2026-08-05) ไม่สร้างใน SBPGI
@@ -54,7 +54,7 @@ QSSI (SFTP รายเดือน, Job 1) · ALLMAP (SQL Server, Jobs 2–3) �
 
 **จุดเปลี่ยนสำคัญ:** ไม่มี BPM/K2 engine ภายนอกอีกต่อไป — การเปิดและเดิน workflow ทำโดย Workflow Engine ใน Backend เอง (แทนไฟล์ BPM06001O/2O/3O + K2 REST StartInstance ของ Jobs 8/8b/9) · interface กับระบบภายนอก (QSSI, ALLMAP, IAS, STA) คงกลไกไฟล์/SFTP เดิมเพราะเป็นระบบของทีมอื่น
 
-**สัญญากลางที่ผูกกับ workflow:** ดู `LLDD/BE/LLDD-BE-API-Common-Contracts.md` และ `LLDD/FE/LLDD-FE-Integration-Contracts.md` ก่อน implement ทุกจุดที่เรียก workflow API — `/documents/{docNo}/actions` รับ `{result, comment}` โดย result เป็น 6-enum ไทย verbatim และคืน `{statusCode, nextSection, message}`; positive path คือ `06→08→01→02→03→99` โดย `99` = เสร็จสิ้นและ `nextSection=null` (Section 02 ยอด ≤50,000 จบที่ 99 — SDD GI); `/workflows/instances` ใช้ service token และ Gen Flow Gate W/Y/N เป็นเจ้าของโดย BE Workflow Engine
+**สัญญากลางที่ผูกกับ workflow:** ดู `LLDD/md/BE/LLDD-BE-API-Common-Contracts.md` และ `LLDD/md/FE/LLDD-FE-Integration-Contracts.md` ก่อน implement ทุกจุดที่เรียก workflow API — `/documents/{docNo}/actions` รับ `{result, comment}` โดย result เป็น 6-enum ไทย verbatim และคืน `{statusCode, nextSection, message}`; positive path คือ `06→08→01→02→03→99` โดย `99` = เสร็จสิ้นและ `nextSection=null` (Section 02 ยอด ≤50,000 จบที่ 99 — SDD GI); `/workflows/instances` ใช้ service token และ Gen Flow Gate W/Y/N เป็นเจ้าของโดย BE Workflow Engine
 
 ### ข้อเท็จจริงของ Workflow Engine จากฐานข้อมูลจริง (ยืนยัน 2026-08-10)
 
@@ -221,7 +221,7 @@ QSSI (SFTP รายเดือน, Job 1) · ALLMAP (SQL Server, Jobs 2–3) �
 ## เอกสารที่เกี่ยวข้อง
 
 - โครงสร้างตารางที่ flow นี้ใช้: [database.md](database.md) · `plan-database.html`
-- API ทุกเส้น: [api.md](api.md) · `plan-api.html` (**30 เส้น 6 กลุ่ม** — Lookup 3 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 — กลุ่ม Auth/RBAC และเส้นผู้ปฏิบัติงาน/สิทธิ์เมนูถูกตัดไปใช้ระบบเดิม · กลุ่ม **Lookup** เหลือ 3 เส้น (`/document-statuses` · `/workflow-sections` · `/decisions` — `/stores/search` `/zones` `/branch-types` ตัดไปใช้ของระบบ SBP เดิม) และ `GET /documents/{docNo}/sales` ที่เพิ่มให้ครบตามหน้าจอ · แต่ละเส้นมีแท็บ Request/Response + Database (พร้อมตัวอย่าง SQL) และ 4 เส้นที่ซับซ้อนมีแท็บ Flowchart · กลุ่มข้อมูลผิดปกติ 2 เส้นยกเลิกและลบทิ้งถาวร 2026-08-06)
+- API ทุกเส้น: [api.md](api.md) · `plan-api.html` (**29 เส้น 6 กลุ่ม** — Lookup 2 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 — กลุ่ม Auth/RBAC และเส้นผู้ปฏิบัติงาน/สิทธิ์เมนูถูกตัดไปใช้ระบบเดิม · กลุ่ม **Lookup** เหลือ 3 เส้น (`/document-statuses` · `/workflow-sections` · `/decisions` — `/stores/search` `/zones` `/branch-types` ตัดไปใช้ของระบบ SBP เดิม) และ `GET /documents/{docNo}/sales` ที่เพิ่มให้ครบตามหน้าจอ · แต่ละเส้นมีแท็บ Request/Response + Database (พร้อมตัวอย่าง SQL) และ 4 เส้นที่ซับซ้อนมีแท็บ Flowchart · กลุ่มข้อมูลผิดปกติ 2 เส้นยกเลิกและลบทิ้งถาวร 2026-08-06)
 - Email template ทุกจุดส่งใน flow: ตาราง **`email_template`** ของระบบ SBP เดิม (8 templates: EM-01–03 เปลี่ยนสถานะ/จบงาน/ส่งกลับ ตาม status_email_rules · EM-04–05 เตือนงานค้างรายสัปดาห์/escalation 30-45-60 วัน · EM-06–08 ฝั่ง batch: สรุปเปิด workflow ราย DV, job error, watchdog ACK — ผู้รับ TO/CC ตาม SRS 3.1.5) · การส่งใช้ `@gosoft-sbp/email-lib` และ log ลง `email_sent` · **หน้าจอ Email Template ของ SBPGI ถูกลบทั้งฟีเจอร์ 2026-08-06** (พร้อม endpoint 5 เส้น) — การแก้ subject/body ทำที่ระบบ SBP เดิม · ตารางสถานะ × action × ผู้รับ ดู `workflow_status_document.md`
 - Flow ต้นฉบับแยกระบบ: `flow-fgi.html` (FGI/FCS pipeline) · `k2-flow.html` (K2 approval BPMN) · `job-batch.html` (Flow Batch Job — flowchart ต่อ job + ตารางฐานข้อมูลที่ใช้)
 - Sequence diagram: `old-flow.png` (เดิม, มี EAI + K2) · `new-flow.png` (ใหม่, รวมเข้า SBPGI แล้ว)

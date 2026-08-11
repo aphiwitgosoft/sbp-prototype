@@ -7,8 +7,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 18 ชั่วโมง |
-| Owner | Chidchanok <lin> Saengamnat |
+| Estimate | 16 ชั่วโมง |
+| Owner | Kittisak <New> Kaeowika |
 | Objective | สร้างหน้าจอ master ที่ SBPGI ดูแลเอง: ปัจจัยภายนอก (SCR-09) และรายชื่อร้านคู่แข่ง (master แบรนด์ 01-11) |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -61,11 +61,13 @@ _รูปที่ 5: Implementation flow reference: LLDD FE - Master Data_
 
 | Screen | Route / Component | Primary model | Main operations |
 | --- | --- | --- | --- |
-| SCR-08 ผู้ปฏิบัติงาน | /admin/operators / OperatorAssignmentPage | OperatorAssignment | search employee, list, add, edit, deactivate, audit reason |
+| ~~SCR-08 ผู้ปฏิบัติงาน~~ **ตัด 2026-08-05** | ไม่มีหน้าจอใน SBPGI | - | ใช้ group + scope ของ auth-backend และ prepared approver ของ @srm/glb-workflow · จัดการที่หน้า /setting/manage-user-rights ของระบบเดิม |
 | SCR-09 ปัจจัยภายนอก | /admin/external-factors / ExternalFactorPage | ExternalFactor | list, add, edit, delete, duplicate-code guard |
-| SCR-10 สิทธิ์เมนู | /admin/menu-permissions / MenuPermissionPage | MenuPermissionMatrix | load roles/menus, toggle canView, save per menu, refresh guard |
+| ~~SCR-10 สิทธิ์เมนู~~ **ตัด 2026-08-05** | ไม่มีหน้าจอใน SBPGI | - | สิทธิ์เมนูจัดการที่หน้า /setting/manage-user-rights ของระบบเดิม · SBPGI อ่านผ่าน header x-user-permissions |
 
-### 5.2 SCR-08 Operator Assignment
+### 5.2 ~~SCR-08 Operator Assignment~~ — ตัดออก 2026-08-05
+
+ไม่มีหน้าจอนี้ใน SBPGI — ผู้ปฏิบัติงาน/ผู้อนุมัติใช้ group + scope ของ auth-backend และ prepared approver ของ `@srm/glb-workflow` · จัดการที่หน้า `/setting/manage-user-rights` ของระบบ SBP เดิม
 
 | Field | Type | Required / Rule | UI behavior |
 | --- | --- | --- | --- |
@@ -87,7 +89,9 @@ _รูปที่ 5: Implementation flow reference: LLDD FE - Master Data_
 | active | boolean | required | inactive rows remain visible under filter |
 | reason | string | required for mutation | include in request and audit |
 
-### 5.4 SCR-10 Menu Permission Matrix
+### 5.4 ~~SCR-10 Menu Permission Matrix~~ — ตัดออก 2026-08-05
+
+ไม่มีหน้าจอนี้ใน SBPGI — สิทธิ์เมนูจัดการที่หน้า `/setting/manage-user-rights` ของระบบเดิม · SBPGI รับสิทธิ์มากับ header `x-user-permissions` จาก BFF
 
 | Field | Type | Required / Rule | UI behavior |
 | --- | --- | --- | --- |
@@ -101,15 +105,15 @@ _รูปที่ 5: Implementation flow reference: LLDD FE - Master Data_
 
 - แต่ละ SCR มี route/component/state แยกและสามารถ test/release แยกกันได้
 - mutation ทุกหน้าส่ง reason และ refresh เฉพาะ resource ที่เปลี่ยน
-- SCR-08 ไม่รับ employeeName ที่พิมพ์เองแทน employeeId จากผลค้นหา
+- (SCR-08 ตัดออก 2026-08-05 — ไม่มีเกณฑ์ตรวจรับสำหรับหน้าจอนี้)
 - SCR-09 กัน factorCode ซ้ำทั้ง client response handling และ BE error
-- SCR-10 rollback toggle เมื่อ save ล้มเหลวและคง dirty indication
+- (SCR-10 ตัดออก 2026-08-05 — ไม่มีเกณฑ์ตรวจรับสำหรับหน้าจอนี้)
 
 ## 5.1 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/operators; POST /api/v1/operators; PUT /api/v1/operators/{id} |
+| Input | GET /api/v1/factors; POST /api/v1/factors; PUT /api/v1/factors/{code} |
 | Progress | Open master page; Load table; Open modal; Validate required/reason |
 | Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
@@ -127,24 +131,18 @@ _รูปที่ 5: Implementation flow reference: LLDD FE - Master Data_
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
-| GET /api/v1/operators | SCR-08 list/filter ผู้ปฏิบัติงาน | Add/Edit/Delete (modal action) |
-| POST /api/v1/operators | SCR-08 เพิ่มผู้ปฏิบัติงาน | Search employee (แว่นขยาย) |
-| PUT /api/v1/operators/{id} | SCR-08 แก้ไข/ปิดใช้งานผู้ปฏิบัติงาน | Save permission (toggle permission) |
-| GET /api/v1/employees/search | SCR-08 popup ค้นหาพนักงาน | Search employee (แว่นขยาย) |
-| GET /api/v1/factors | SCR-09 list/filter ปัจจัยภายนอก | Search employee (แว่นขยาย) |
-| POST /api/v1/factors | SCR-09 เพิ่มปัจจัยภายนอก | Save permission (toggle permission) |
-| PUT /api/v1/factors/{code} | SCR-09 แก้ไขปัจจัยภายนอก | Add/Edit/Delete (modal action) |
-| DELETE /api/v1/factors/{code} | SCR-09 ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน | Search employee (แว่นขยาย) |
-| GET /api/v1/menu-permissions | อ่าน matrix สิทธิ์เมนูทุก role | Save permission (toggle permission) |
-| PUT /api/v1/menu-permissions/{menuCode} | บันทึกสิทธิ์เมนูรายเมนู | Save permission (toggle permission) |
+| GET /api/v1/factors | SCR-09 list/filter ปัจจัยภายนอก | Add/Edit/Delete (modal action) |
+| POST /api/v1/factors | SCR-09 เพิ่มปัจจัยภายนอก | Search employee (แว่นขยาย) |
+| PUT /api/v1/factors/{code} | SCR-09 แก้ไขปัจจัยภายนอก | Save permission (toggle permission) |
+| DELETE /api/v1/factors/{code} | SCR-09 ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน | Add/Edit/Delete (modal action) |
 
 ### 5.92 Master Data Interaction State Machine
 
 | Action | Trigger | API / State transition | Expected visible result |
 | --- | --- | --- | --- |
 | Add/Edit/Delete | modal action | POST/PUT/DELETE master API | update table + audit |
-| Search employee | แว่นขยาย | GET /api/v1/employees/search | select employee |
-| Save permission | toggle permission | PUT /api/v1/menu-permissions/{menuCode} | save matrix |
+| Search employee | แว่นขยาย | employee backend เดิมของระบบ SBP (ไม่ใช่ /api/v1 ของ SBPGI) | select employee |
+| Save permission | toggle permission | จัดการที่หน้า /setting/manage-user-rights ของระบบเดิม — SBPGI ไม่มี endpoint นี้ | save matrix |
 
 ### 5.93 Master Data Feature Failure Checks
 
@@ -161,212 +159,10 @@ _รูปที่ 5: Implementation flow reference: LLDD FE - Master Data_
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
 | Add/Edit/Delete | modal action | POST/PUT/DELETE master API | update table + audit |
-| Search employee | แว่นขยาย | GET /api/v1/employees/search | select employee |
-| Save permission | toggle permission | PUT /api/v1/menu-permissions/{menuCode} | save matrix |
+| Search employee | แว่นขยาย | employee backend เดิมของระบบ SBP (ไม่ใช่ /api/v1 ของ SBPGI) | select employee |
+| Save permission | toggle permission | จัดการที่หน้า /setting/manage-user-rights ของระบบเดิม — SBPGI ไม่มี endpoint นี้ | save matrix |
 
 ## 7. API Contract
-
-### GET /api/v1/operators
-
-SCR-08 list/filter ผู้ปฏิบัติงาน
-
-#### Query Params
-
-```json
-{
-  "q": "สมชาย",
-  "positionCode": "06",
-  "active": true,
-  "page": 1,
-  "size": 20
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| q | string | No | UTF-8; use value domain described by endpoint purpose |
-| positionCode | string | No | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | No | UTF-8; use value domain described by endpoint purpose |
-| page | integer | No | >= 1; default 1 |
-| size | integer | No | 1..100; default 20 |
-
-#### Response
-
-```json
-{
-  "page": 1,
-  "size": 20,
-  "total": 1,
-  "items": [
-    {
-      "id": 1,
-      "employeeId": "E001",
-      "employeeName": "สมชาย ใจดี",
-      "positionCode": "06",
-      "zoneCode": "01",
-      "active": true,
-      "updatedAt": "2026-07-22T10:00:00+07:00"
-    }
-  ]
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| page | integer | Yes | >= 1; default 1 |
-| size | integer | Yes | 1..100; default 20 |
-| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].id | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].employeeId | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].employeeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].positionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].zoneCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].updatedAt | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-
-### POST /api/v1/operators
-
-SCR-08 เพิ่มผู้ปฏิบัติงาน
-
-#### Request
-
-```json
-{
-  "employeeId": "E001",
-  "positionCode": "06",
-  "zoneCode": "01",
-  "active": true,
-  "reason": "เพิ่มผู้รับผิดชอบ"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| employeeId | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| positionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| zoneCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "id": 1,
-  "message": "saved",
-  "auditId": 901
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| id | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| message | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| auditId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### PUT /api/v1/operators/{id}
-
-SCR-08 แก้ไข/ปิดใช้งานผู้ปฏิบัติงาน
-
-#### Request
-
-```json
-{
-  "positionCode": "08",
-  "zoneCode": "01",
-  "active": true,
-  "reason": "ย้ายหน้าที่"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| positionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| zoneCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "id": 1,
-  "message": "saved",
-  "auditId": 902
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| id | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| message | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| auditId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### GET /api/v1/employees/search
-
-SCR-08 popup ค้นหาพนักงาน
-
-#### Query Params
-
-```json
-{
-  "q": "E001",
-  "page": 1,
-  "size": 20
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| q | string | No | UTF-8; use value domain described by endpoint purpose |
-| page | integer | No | >= 1; default 1 |
-| size | integer | No | 1..100; default 20 |
-
-#### Response
-
-```json
-{
-  "page": 1,
-  "size": 20,
-  "total": 1,
-  "items": [
-    {
-      "employeeId": "E001",
-      "employeeName": "สมชาย ใจดี",
-      "email": "somchai@example.test",
-      "active": true
-    }
-  ]
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| page | integer | Yes | >= 1; default 1 |
-| size | integer | Yes | 1..100; default 20 |
-| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].employeeId | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].employeeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].email | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### GET /api/v1/factors
 
@@ -547,97 +343,9 @@ SCR-09 ลบปัจจัยภายนอกที่ไม่ถูกใ�
 | deleted | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | auditId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/menu-permissions
-
-อ่าน matrix สิทธิ์เมนูทุก role
-
-#### Query Params
-
-```json
-{
-  "roleCode": "04"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| roleCode | string | No | canonical code; do not replace with display label |
-
-#### Response
-
-```json
-{
-  "items": [
-    {
-      "menuCode": "k2-report",
-      "roleCode": "04",
-      "canView": true
-    }
-  ]
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].menuCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].roleCode | string | Yes | canonical code; do not replace with display label |
-| items[].canView | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### PUT /api/v1/menu-permissions/{menuCode}
-
-บันทึกสิทธิ์เมนูรายเมนู
-
-#### Request
-
-```json
-{
-  "roleCode": "04",
-  "canView": true,
-  "reason": "ปรับสิทธิ์รายงาน"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| roleCode | string | Yes | canonical code; do not replace with display label |
-| canView | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "message": "saved"
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| message | string | Yes | UTF-8; use value domain described by endpoint purpose |
-
 ## 8. Skeleton Code (โครงโค้ดตั้งต้นของหน้าจอนี้)
 
 โค้ดชุดนี้อิง convention ของ portal เดิม `srm-sps-spsap-web-frontend` (build target `sbpm`): Next.js App Router + `'use client'`, PrimeReact ที่ห่อไว้แล้วใน `@/components/Form` และ `@/components/Table`, react-hook-form + yup, Zustand `permissionStore`, axios instance กลาง `@/lib/apiClient` และ react-query 5 — **โปรเจกต์ไม่มี chart library** จึงไม่มีโค้ดกราฟในเอกสารนี้ คัดลอกไปตั้งต้นได้ทันที แล้วเติมจุดที่กำกับ `TODO:`
-
-เส้นที่อยู่ในตาราง API ของเอกสารนี้แต่ **ถูกตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06 — RBAC/ผู้ปฏิบัติงานใช้ auth-backend ของระบบ SBP เดิม) จึงไม่มี skeleton ให้:
-
-| Endpoint | จุดประสงค์เดิม | ใช้ของระบบเดิมแทน |
-| --- | --- | --- |
-| GET /api/v1/operators | SCR-08 list/filter ผู้ปฏิบัติงาน | ใช้ group + scope ของ auth-backend (หน้า `/setting/manage-user-rights`) |
-| POST /api/v1/operators | SCR-08 เพิ่มผู้ปฏิบัติงาน | ใช้ group + scope ของ auth-backend (หน้า `/setting/manage-user-rights`) |
-| PUT /api/v1/operators/{id} | SCR-08 แก้ไข/ปิดใช้งานผู้ปฏิบัติงาน | ใช้ group + scope ของ auth-backend (หน้า `/setting/manage-user-rights`) |
-| GET /api/v1/employees/search | SCR-08 popup ค้นหาพนักงาน | ใช้ employee backend เดิมของระบบ SBP |
-| GET /api/v1/menu-permissions | อ่าน matrix สิทธิ์เมนูทุก role | ใช้ auth-backend `/groups/{id}/permissions` |
-| PUT /api/v1/menu-permissions/{menuCode} | บันทึกสิทธิ์เมนูรายเมนู | ใช้ auth-backend `/groups/{id}/permissions` |
 
 #### 8.1 ผังไฟล์ที่ต้องสร้าง
 
@@ -764,7 +472,6 @@ export async function removeFactors(code: string, body: T.RemoveFactorsRequest):
   return data.data;
 }
 
-// NOTE: เส้น GET /api/v1/operators, POST /api/v1/operators, PUT /api/v1/operators/{id}, GET /api/v1/employees/search, GET /api/v1/menu-permissions, PUT /api/v1/menu-permissions/{menuCode} ถูกตัดจากดีไซน์แล้ว (ใช้ระบบ SBP เดิม) — ห้ามสร้าง service ให้
 // TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
 ```
 
@@ -772,7 +479,7 @@ export async function removeFactors(code: string, body: T.RemoveFactorsRequest):
 
 ```ts
 // src/types/sbpgi/master.ts — ตรงกับตาราง API ในเอกสารนี้
-// วันที่/เดือนใน payload เป็น ค.ศ. (ISO) เสมอ — แปลงเป็น พ.ศ. เฉพาะตอน display
+// วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
 import type { PageResponse } from '@/types/sbpgi/common';
 
@@ -941,7 +648,7 @@ export default function MasterDataForm({ defaultValues, onSubmit }: {
 - ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
-- payload ใช้วันที่ ค.ศ. เสมอ; แปลงเป็น พ.ศ. เฉพาะตอนแสดงผลผ่าน formatter กลางจุดเดียว
+- payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 - ข้อความ error แสดงจาก `error.message` ของ BE ตรง ๆ (ห้าม paraphrase) — fallback ใช้เฉพาะกรณี network error
 
 ## 9. Processing Flow

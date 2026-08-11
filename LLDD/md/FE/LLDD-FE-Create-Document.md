@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 10 ชั่วโมง |
+| Estimate | 6 ชั่วโมง |
 | Owner | Kittisak <New> Kaeowika |
 | Objective | สร้างหน้าสร้างเอกสารประกันรายได้แบบ Manual และแบบเอกสารจาก FS โดยใช้ SBP mirror form sync เข้า hidden FS iframe |
 
@@ -48,7 +48,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | impactedStoreCode | string 5 digits | required | ค้นหาด้วย popup ร้านถูกกระทบ; คง leading zero |
 | impactedStoreName | string | readonly after select | เติมอัตโนมัติหลังเลือกร้าน |
 | newStoreCode | string 5 digits | required | เลือกร้านเปิดใหม่จาก popup; ส่งรหัสร้านและคง leading zero |
-| impactMonth | YYYY-MM | required | month picker; FE แสดง พ.ศ. แต่ส่ง ค.ศ. |
+| impactMonth | YYYY-MM | required | month picker; ทั้งแสดงและส่งเป็น ค.ศ. |
 | statementPeriod | YYYY-MM | required for FS | Period Statement จาก SRS SCR-02 |
 | roundNo | integer >= 1 | required/default 1 | ครั้งที่ของเอกสาร/งวดชดเชย |
 | reason | text | required for MANUAL/out-of-condition | เหตุผลการสร้างเอกสารนอกเงื่อนไข; trim ก่อนส่ง |
@@ -79,7 +79,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | --- | --- | --- |
 | impactedStoreCode | input[name=impactedStoreCode] หรือ field ที่ FS ระบุเป็นร้านถูกกระทบ | คง string 5 digits; leading zero ต้องไม่หาย |
 | newStoreCode | input[name=newStoreCode] หรือ field ร้านเปิดใหม่ของ FS | คง string 5 digits; validate ก่อน sync |
-| impactMonth | month/date field ของ FS | SBP แสดง พ.ศ. ได้ แต่ sync เป็น format ที่ FS field ต้องการ |
+| impactMonth | month/date field ของ FS | SBP ใช้ ค.ศ. · sync เป็น format ที่ FS field ต้องการ |
 | statementPeriod | period field ของ FS | required สำหรับ FS tab |
 | roundNo | round/sequence field ของ FS | default 1 ถ้า FS field ว่างและ metadata อนุญาต |
 | reason/remark | textarea/input remark ของ FS | trim ก่อน sync; preserve Thai text |
@@ -201,7 +201,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | C02 | Tab: สร้างเอกสารทั่วไป | render manual form, store selectors, period, roundNo และ reason สำหรับเอกสารนอกเงื่อนไข | required/format ผ่านก่อน POST และ docNo จาก response ใช้เปิด detail |
 | C03 | Tab: เอกสารจาก FS ผ่าน hidden iframe | โหลด hidden FS iframe ด้วย config URL และจัด lifecycle timeout/origin/callback | iframe load/error/timeout มี state ชัดเจนและไม่ submit ก่อน bridge พร้อม |
 | C04 | Store selector | ค้นหา impacted/new store, คง leading zero และเติมชื่อ/ภาคจากรายการที่เลือก | เลือกผิด type ไม่ได้และ clear selection ล้าง dependent fields ครบ |
-| C05 | Period/source fields | แปลงเดือน/ปีที่แสดงเป็น พ.ศ. ไป payload YYYY-MM ค.ศ. พร้อม source-specific validation | period/statementPeriod/roundNo ส่ง type และ format ตรง API |
+| C05 | Period/source fields | normalize เดือน/ปีเป็น payload YYYY-MM ค.ศ. พร้อม source-specific validation | period/statementPeriod/roundNo ส่ง type และ format ตรง API |
 | C06 | FS field discovery/mirror form | สร้าง mirror field registry จาก FS metadata และ sync input/select/textarea เข้า iframe | ทุก field มี mapping/type/event และ missing mapping block submit ด้วย FS_FIELD_MAPPING_MISSING |
 | C07 | Validation | รวม client validation, API fieldErrors และ FS bridge errors ใต้ control ที่เกี่ยวข้อง | focus ไป error แรกและข้อความเดิมคงอยู่จนผู้ใช้แก้ field นั้น |
 | C08 | Draft/save/submit UI | แยก Save Draft, Submit MANUAL และ Submit FS พร้อม disable/confirm/dedup ระหว่าง request | double click ไม่สร้างซ้ำและ success/error แสดงผลตาม channel ที่ส่งจริง |
@@ -335,7 +335,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | statusCode | string | Yes | canonical code; do not replace with display label |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
@@ -449,7 +449,7 @@ export async function createDocuments(body: T.CreateDocumentsRequest): Promise<T
 
 ```ts
 // src/types/sbpgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
-// วันที่/เดือนใน payload เป็น ค.ศ. (ISO) เสมอ — แปลงเป็น พ.ศ. เฉพาะตอน display
+// วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
 /** GET /store/search (ระบบ SBP เดิม) — request */
 export interface StoreSearchParams {
@@ -525,7 +525,7 @@ export function useCreateDocumentsMutation() {
 - ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
-- payload ใช้วันที่ ค.ศ. เสมอ; แปลงเป็น พ.ศ. เฉพาะตอนแสดงผลผ่าน formatter กลางจุดเดียว
+- payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 - ข้อความ error แสดงจาก `error.message` ของ BE ตรง ๆ (ห้าม paraphrase) — fallback ใช้เฉพาะกรณี network error
 
 ## 9. Processing Flow

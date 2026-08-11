@@ -7,8 +7,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 27 ชั่วโมง |
-| Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Estimate | 24 ชั่วโมง |
+| Owner | Butsaba <But> Podamrong |
 | Objective | ออกแบบ aggregate API สำหรับโหลดรายละเอียดเอกสารครบทุก section ให้หน้า FE detail |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -31,11 +31,11 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Det
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี พ.ศ. และ running 5 หลัก |
+| docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี **ค.ศ.** และ running 5 หลัก (มติ 2026-08-06) |
 | storeCode | string 5 digits | numeric length = 5 | แสดง leading zero |
 | amount | number, 2 decimals | >= 0 | format `#,##0.00` บาท |
 | percent | number, 2 decimals | 0-100 | ใช้ `%` และรวม allocation ต้องเท่ากับ 100 |
-| date | DD/MM/YYYY | valid date | FE แสดง พ.ศ. หาก source เป็น ISO ค.ศ. |
+| date | DD/MM/YYYY | valid date | payload เป็น ISO ค.ศ. · FE แสดง ค.ศ. เป็นค่าเริ่มต้น (DatePicker buddhistEra=false) แสดง พ.ศ. เฉพาะจุดที่เปิด flag |
 | attachment | file | <= 5 MB | รองรับ vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv |
 | docNo | YYYY/xxxxx | required path param | หาเอกสารและ section ทั้งหมด |
 | visibleSections/editableSections | array | computed by BE | FE render ตาม key ที่ส่งมาเท่านั้น |
@@ -86,7 +86,7 @@ BE เป็น source of truth ของ role profile แต่เอกสา�
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
 | GET /api/v1/documents/{docNo} | Document aggregate API | Validate docNo | 404 when doc not found |
-| GET /api/v1/competitors | Competitor lookup | Load header | role profile output matches FE Document Detail spec |
+| GET /api/v1/competitors | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data (Peerakorn)** · เอกสารนี้เป็นผู้ใช้: อ่าน master คู่แข่งมาทำ dropdown ในหน้าเอกสาร | Load header | role profile output matches FE Document Detail spec |
 
 ### 5.91 Backend Execution Sequence
 
@@ -124,7 +124,7 @@ Document aggregate API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | No | พ.ศ. YYYY/xxxxx |
+| docNo | string | No | ค.ศ. YYYY/xxxxx |
 
 #### Response
 
@@ -166,7 +166,7 @@ Document aggregate API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | statusCode | string | Yes | canonical code; do not replace with display label |
 | viewerRbacRoleCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | roleProfileCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -183,7 +183,7 @@ Document aggregate API
 
 ### GET /api/v1/competitors
 
-Competitor lookup
+**อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data (Peerakorn)** · เอกสารนี้เป็นผู้ใช้: อ่าน master คู่แข่งมาทำ dropdown ในหน้าเอกสาร
 
 #### Query Params
 
@@ -280,7 +280,7 @@ export class SbpgiDocumentDetailAggregateController {
     return this.service.getDocumentsByDocNo(docNo, userId);
   }
 
-  // GET /api/v1/competitors — Competitor lookup
+  // GET /api/v1/competitors — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Ma…
   @Get('competitors')
   getCompetitors(@Query() query: DocumentDetailAggregateQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
@@ -345,7 +345,7 @@ export class SbpgiDocumentDetailAggregateService {
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/competitors — Competitor lookup
+  // GET /api/v1/competitors — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Ma…
   async getCompetitors(query: DocumentDetailAggregateQueryDto, userId: string) {
     // TODO: implement ตาม business rule ของ GET /api/v1/competitors
     //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/competitors')
@@ -613,15 +613,16 @@ SELECT * FROM document_attachments         WHERE doc_no = :docNo;
 SELECT * FROM consideration_logs           WHERE doc_no = :docNo ORDER BY action_datetime;
 ```
 
-**GET /api/v1/competitors** — Competitor lookup
+**GET /api/v1/competitors** — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data (Peerakorn)** · เอกสารนี้เป็นผ…
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
-SELECT competitor_code, competitor_name
+-- master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) · ระบบเดิมเก็บชื่อไทยและอังกฤษ
+SELECT competitor_code, name_th, name_en, remark, is_active
 FROM competitors
-WHERE :q IS NULL OR competitor_name LIKE :q
-ORDER BY competitor_name;
+WHERE (:q IS NULL OR name_th LIKE :q OR name_en LIKE :q)
+ORDER BY competitor_code;
 ```
 
 #### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)

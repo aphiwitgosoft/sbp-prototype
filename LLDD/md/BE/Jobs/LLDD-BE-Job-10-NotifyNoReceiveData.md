@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 7 ชั่วโมง |
+| Estimate | 8 ชั่วโมง |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
 | Objective | Watchdog เฝ้าระวัง ACK ค้าง: งาน safety net ตรวจ interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/interfaces/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน Notification Service กลาง |
 
@@ -18,7 +18,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Main class/script: fgi.main.NotifyNoReceiveData / FGI_NotifyNoReceiveData.sh
 - Phase: E
 - Output: อีเมลเตือน UTF-8 + pending ACK dashboard
-- Estimate: 7 ชั่วโมง
+- Estimate: 8 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
 
@@ -64,7 +64,7 @@ query missing receive data, group by data_name/interface_type, build notificatio
 | Output identity | Notification sent for overdue receive confirmations; run status records grouped counts or no-data success. | reconcile input, success, reject and skipped counts |
 | Dedup proof | คอลัมน์ last_ack_notified_on บน interface_transactions เป็น marker ต่อรายการต่อวัน; rerun วันเดียวกันไม่ส่งอีเมลซ้ำ (ย้ายมาจาก audit_logs ที่ถูกยกเลิก 2026-08-07) | rerun fixture produces no duplicate target business key |
 | Transaction proof | อ่าน pending แบบ read-only; reserve notification marker ก่อนส่ง; ส่งล้มเหลว mark FAILED และ retry ด้วย marker เดิม | injected failure leaves no partial committed state outside documented boundary |
-| Security proof | Notification Service ใช้ workload identity/secretRef; recipient อ่านจาก status_email_rules ไม่ hardcode | config/log/error contains no plaintext secret |
+| Security proof | SBPGI ไม่ส่งอีเมลเอง (ปิด DP-5 · 2026-08-11) — engine ส่งผ่าน workflow_route.email_id · credential/ผู้รับเป็นของระบบ SBP เดิม | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
 
@@ -83,7 +83,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | Repository | pendingAckRepository |
 | Idempotency / dedup | คอลัมน์ last_ack_notified_on บน interface_transactions เป็น marker ต่อรายการต่อวัน; rerun วันเดียวกันไม่ส่งอีเมลซ้ำ (ย้ายมาจาก audit_logs ที่ถูกยกเลิก 2026-08-07) |
 | Transaction boundary | อ่าน pending แบบ read-only; reserve notification marker ก่อนส่ง; ส่งล้มเหลว mark FAILED และ retry ด้วย marker เดิม |
-| Security | Notification Service ใช้ workload identity/secretRef; recipient อ่านจาก status_email_rules ไม่ hardcode |
+| Security | SBPGI ไม่ส่งอีเมลเอง (ปิด DP-5 · 2026-08-11) — engine ส่งผ่าน workflow_route.email_id · credential/ผู้รับเป็นของระบบ SBP เดิม |
 
 #### Input / candidate query
 
@@ -102,7 +102,7 @@ ORDER BY sent_at;
 
 ```sql
 -- ยกเลิกตาราง audit_logs แล้ว (2026-08-07) — marker กันส่งซ้ำย้ายมาไว้บน interface_transactions เอง
--- ต้องเพิ่มคอลัมน์ last_ack_notified_on DATE ใน interface_transactions (ดู database.md)
+-- คอลัมน์ last_ack_notified_on DATE มีอยู่ใน DDL ของ interface_transactions แล้ว (ดู LLDD-Database 5.x)
 UPDATE interface_transactions
    SET last_ack_notified_on = CURRENT_DATE
  WHERE id = ANY(:transaction_ids)
@@ -157,8 +157,8 @@ export async function runLlddBeJob10Notifynoreceivedata(ctx, services) {
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
 | interface_transactions | R | pending ACK จาก STA และสถานะล่าสุด |
-| email_templates | R | template EM-08 watchdog ACK |
-| status_email_rules | R | ผู้รับอีเมล |
+| email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib) | R/W | template EM-08 watchdog ACK — SBPGI ไม่มีตาราง email_templates |
+| (backend config) | R | ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env |
 
 ## 9. Skeleton Code (Batch Job 10)
 
@@ -293,7 +293,7 @@ export class NotifyNoReceiveDataService {
     return true; // TODO: เงื่อนไขจริงตามผัง
   }
 
-  // ส่งอีเมล UTF-8 ผ่าน Notification Service
+  // ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม
   async step04Notify(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -315,7 +315,7 @@ export class NotifyNoReceiveDataService {
 | 1 | start | เริ่ม | createState() | - |
 | 2 | process | อ่าน interface_transactions ฝั่ง STA ที่ยังไม่มี ACK และอายุ >= threshold | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 3 | decision | พบรายการค้าง? | check03Condition() | [end] จบการทำงาน |
-| 4 | io | ส่งอีเมล UTF-8 ผ่าน Notification Service | step04Notify() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 4 | io | ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม | step04Notify() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 5 | process | แสดงรายการใน /interfaces/pending-ack | step05Process() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | end | จบ | summarize() | - |
 
@@ -350,7 +350,7 @@ export class NotifyNoReceiveDataJob {
       if (!ok03) { // NO → จบการทำงาน
         return this.summarize(state, 'SKIPPED', startedAt);
       }
-      // ขั้นที่ 4: ส่งอีเมล UTF-8 ผ่าน Notification Service · TODO: ผู้รับตาม config/status_email_rules
+      // ขั้นที่ 4: ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม · TODO: ผู้รับตาม backend config
       await this.service.step04Notify(state);
       // ขั้นที่ 5: แสดงรายการใน /interfaces/pending-ack · TODO: POST /interfaces/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ
       await this.service.step05Process(state);
@@ -430,8 +430,8 @@ repository ของ Job 10 ประกาศเป็น factory provider (`{p
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
 | interface_transactions | R | pending ACK จาก STA และสถานะล่าสุด | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| email_templates | R | template EM-08 watchdog ACK | ใช้ตาราง email_template + email_sent ของระบบเดิม ผ่าน @gosoft-sbp/email-lib |
-| status_email_rules | R | ผู้รับอีเมล | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib) | R/W | template EM-08 watchdog ACK — SBPGI ไม่มีตาราง email_templates | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| (backend config) | R | ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 10 NotifyNoReceiveData — query หลักที่ต้อง implement
@@ -447,13 +447,22 @@ SELECT id, data_name, direction, status, business_key, period_key, file_name, cr
    AND created_at < NOW() - ($2 || ' hours')::interval  -- TODO: threshold จาก config
  ORDER BY created_at;
 
--- [R] email_templates : template EM-08 watchdog ACK
--- TODO: ห้ามเขียน SQL ตรงกับตารางนี้ — ใช้ตาราง email_template + email_sent ของระบบเดิม ผ่าน @gosoft-sbp/email-lib
+-- [R/W] email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib) : template EM-08 watchdog ACK — SBPGI ไม่มีตาราง email_templates
+-- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
+SELECT /* TODO: PK + คอลัมน์ที่ต้องใช้ */
+  FROM email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib)
+ WHERE /* TODO: เงื่อนไขงวด/สถานะที่ job นี้คัดแถว */ 1 = 1
+   FOR UPDATE SKIP LOCKED;
 
--- [R] status_email_rules : ผู้รับอีเมล
+UPDATE email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib)
+   SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
+       updated_at = NOW(), updated_by = 'JOB10'
+ WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
+
+-- [R] (backend config) : ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env
 -- TODO: เติมเฉพาะคอลัมน์ที่ job ใช้จริง (ห้าม SELECT *) และตรวจว่ามี index รองรับ WHERE นี้
 SELECT /* TODO: columns */
-  FROM status_email_rules
+  FROM (backend config)
  WHERE /* TODO: เงื่อนไขงวด/สถานะที่ job นี้คัดแถว */ 1 = 1
  ORDER BY /* TODO: คีย์ที่ทำให้ลำดับคงที่ */
  LIMIT $1 OFFSET $2;  -- TODO: อ่านเป็น chunk กัน memory บวม
@@ -528,7 +537,7 @@ export class JobFailureNotifier {
 | 1 | เริ่ม |
 | 2 | อ่าน interface_transactions ฝั่ง STA ที่ยังไม่มี ACK และอายุ >= threshold |
 | 3 | พบรายการค้าง? \| No: จบการทำงาน |
-| 4 | ส่งอีเมล UTF-8 ผ่าน Notification Service (ผู้รับตาม config/status_email_rules) |
+| 4 | ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม (ผู้รับตาม backend config) |
 | 5 | แสดงรายการใน /interfaces/pending-ack (POST /interfaces/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ) |
 | 6 | จบ |
 

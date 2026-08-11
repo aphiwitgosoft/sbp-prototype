@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 27 ชั่วโมง |
+| Estimate | 28 ชั่วโมง |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
 | Objective | ออกแบบ APIs สำหรับรับผลพิจารณา ตรวจสิทธิ์ action และบันทึก audit/consideration log |
 
@@ -67,7 +67,7 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 | DP-7 · แหล่งข้อมูลของ `GET /documents/{docNo}/timeline` | อ่าน `consideration_logs` ของ SBPGI เป็น timeline เต็ม (สถานะปัจจุบันของแบบ) | อ่าน `getHistory()` / `sps_store.workflow_history` ของ engine แล้ว join `consideration_logs` เป็นตารางส่วนขยาย (decision code · ไฟล์แนบ · ความเห็น ซึ่ง engine ไม่มี) | ยังไม่ตัดสิน · กระทบทั้ง DDL ของ `consideration_logs` และรูปแบบ response |
 | DP-1 · `referenceId` ที่ส่งเข้า engine | `doc_no` | surrogate id (แบบที่ cooperation-request / inform-evaluate ทำจริงทุกจุด) | ยังไม่ตัดสิน 🔴 |
 | DP-2 · `sps_store.workflow_transaction` ไม่มี PK/index | ขอ sign-off ให้ทีมเจ้าของ library เพิ่ม PK + UNIQUE + index | กันซ้ำและทำ index ที่ฝั่ง SBPGI | ยังไม่ตัดสิน 🔴 · ทุก action ต้อง seq-scan 19,283 แถว |
-| DP-5 · ใครส่งอีเมลหลัง action | engine ส่งเองผ่าน `workflow_route.email_id` | SBPGI ส่งเองด้วย `@gosoft-sbp/email-lib` ตาม `status_email_rules` | ยังไม่ตัดสิน · ยังไม่มีใครพิสูจน์ว่า engine ส่งจริง |
+| DP-5 ✅ ปิดแล้ว 2026-08-11 — **engine ส่งเอง** ผ่าน `workflow_route.email_id` | LLDD ของ engine ชีต 2 ระบุว่าเรียก function ส่งเมลจาก lib · ระบบเดิมมี email_template 85 แถว + email_sent 5,214 แถวครบวงจร | SBPGI ไม่ส่งเอง · ไม่มี Notification Service · ตัดตาราง status_email_rules | ปิดแล้ว |
 
 ## 5.1 Input / Progress / Output Contract
 
@@ -82,7 +82,7 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
 | POST /api/v1/documents/{docNo}/actions | Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02 | Lock current action task | non-owner returns 403 |
-| GET /api/v1/documents/{docNo}/timeline | Timeline API | Validate owner and selected result against actionOptions | missing result returns exact SRS message |
+| GET /api/v1/documents/{docNo}/timeline | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline (Peerakorn)** · เอกสารนี้อ้างเพราะ action ที่ส่งผลพิจารณาเป็นตัวเขียน consideration_logs ที่ timeline อ่าน | Validate owner and selected result against actionOptions | missing result returns exact SRS message |
 
 ### 5.91 Backend Execution Sequence
 
@@ -145,7 +145,7 @@ Document action API ตัวอย่างเมื่อ currentSection=01 �
 
 ### GET /api/v1/documents/{docNo}/timeline
 
-Timeline API
+**อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline (Peerakorn)** · เอกสารนี้อ้างเพราะ action ที่ส่งผลพิจารณาเป็นตัวเขียน consideration_logs ที่ timeline อ่าน
 
 #### Query Params
 
@@ -159,7 +159,7 @@ Timeline API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | No | พ.ศ. YYYY/xxxxx |
+| docNo | string | No | ค.ศ. YYYY/xxxxx |
 
 #### Response
 
@@ -191,7 +191,6 @@ Timeline API
 | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow) | R/W | triggerEvent() เดิน state + บันทึก history |
 | compensation_documents | W | อัปเดต status/current_section/result |
 | consideration_logs | W | บันทึกผลพิจารณาและ comment |
-| status_email_rules | R | ผู้รับอีเมลตาม status |
 | workflow_transaction (@srm/glb-workflow) | R/W | กัน action ซ้ำด้วย getTransaction/getPermissionEvents ก่อน triggerEvent |
 
 ## 9. Skeleton Code (store-backend + BFF)
@@ -209,7 +208,6 @@ Timeline API
 | store-backend · src/modules/sbpgi-document-workflow-actions/sbpgi-document-workflow-actions.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/compensation-documents.entity.ts | entity ของ `compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
 | store-backend · src/entitys/consideration-logs.entity.ts | entity ของ `consideration_logs` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
-| store-backend · src/entitys/status-email-rules.entity.ts | entity ของ `status_email_rules` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/providers/sbpgi/sbpgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
 | store-backend · sql/deploy-sbpgi-document-workflow-actions.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
 | BFF · src/common/client-services/sbpgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
@@ -244,7 +242,7 @@ export class SbpgiDocumentWorkflowActionsController {
     return this.service.submitAction(docNo, body, userId);
   }
 
-  // GET /api/v1/documents/{docNo}/timeline — Timeline API
+  // GET /api/v1/documents/{docNo}/timeline — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sa…
   @Get(':docNo/timeline')
   getTimeline(@Param('docNo') docNo: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
@@ -333,7 +331,7 @@ export class SbpgiDocumentWorkflowActionsService {
     }
   }
 
-  // GET /api/v1/documents/{docNo}/timeline — Timeline API
+  // GET /api/v1/documents/{docNo}/timeline — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sa…
   async getTimeline(docNo: string, userId: string) {
     const page = 1;
     const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
@@ -484,8 +482,6 @@ export class ConsiderationLog {
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`status_email_rules`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
-
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
 | Object | R/W | ใช้ของระบบเดิมตัวไหน |
@@ -506,7 +502,6 @@ export class ConsiderationLog {
 import { DataSource } from 'typeorm';
 import { CompensationDocument } from '../../entitys/compensation-documents.entity';
 import { ConsiderationLog } from '../../entitys/consideration-logs.entity';
-import { StatusEmailRule } from '../../entitys/status-email-rules.entity';
 
 export const sbpgiDocumentWorkflowActionsProviders = [
   {
@@ -517,11 +512,6 @@ export const sbpgiDocumentWorkflowActionsProviders = [
   {
     provide: 'CONSIDERATION_LOG_REPOSITORY',
     useFactory: (dataSource: DataSource) => dataSource.getRepository(ConsiderationLog),
-    inject: ['DATA_SOURCE'],
-  },
-  {
-    provide: 'STATUS_EMAIL_RULE_REPOSITORY',
-    useFactory: (dataSource: DataSource) => dataSource.getRepository(StatusEmailRule),
     inject: ['DATA_SOURCE'],
   },
 ];
@@ -637,7 +627,6 @@ export class SbpgiDocumentWorkflowActionsBffController {
 | --- | --- | --- |
 | compensation_documents | W | อัปเดต status/current_section/result |
 | consideration_logs | W | บันทึกผลพิจารณาและ comment |
-| status_email_rules | R | ผู้รับอีเมลตาม status |
 | workflow_transaction | R/W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_history | R/W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_approver | R/W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
@@ -664,15 +653,16 @@ UPDATE compensation_documents SET status_code = :nextStatus, current_section_cod
 WHERE doc_no = :docNo AND version_no = :versionNo;
 -- งานขั้นถัดไปเปิดโดย engine (addPreparedApprover) ไม่ใช่ INSERT ของ SBPGI
 
--- ผู้รับอีเมล · ชื่อสถานะมาจาก sps_store.workflow_status ของ engine (ตาราง document_statuses ถูกตัดแล้ว)
--- ⚠️ DP-5 ยังไม่ตัดสิน: engine อาจส่งอีเมลเองผ่าน sps_store.workflow_route.email_id ทำให้ status_email_rules ไม่ต้องมี
-SELECT r.status_code, ws.status_name, r.to_section_code, r.cc_section_code
-FROM status_email_rules r
-JOIN sps_store.workflow_status ws ON ws.status_id = r.status_code AND ws.version_id = :sbpgiVersionId
-WHERE r.status_code = :nextStatus;
+-- ✅ ปิด DP-5 (2026-08-11): engine ส่งอีเมลเอง — SBPGI ไม่ query ผู้รับและไม่มีตาราง status_email_rules
+--    ผูก email_id ที่ workflow_route ตอนลงทะเบียน version · template อยู่ที่ email_template · log ที่ email_sent
+-- ตรวจว่าส่งสำเร็จ (อ่านอย่างเดียว ไม่ใช่หน้าที่ SBPGI ส่ง):
+SELECT email_sent_id, mail_to, mail_cc, is_sent, error, sent_date
+FROM email_sent
+WHERE email_id = :routeEmailId
+ORDER BY sent_date DESC LIMIT 5;
 ```
 
-**GET /api/v1/documents/{docNo}/timeline** — Timeline API
+**GET /api/v1/documents/{docNo}/timeline** — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline (Peerakorn)** · เอกสารนี้อ้…
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend

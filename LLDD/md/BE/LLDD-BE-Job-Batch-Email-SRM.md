@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 15 ชั่วโมง |
+| Estimate | 14 ชั่วโมง |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
 | Objective | ออกแบบ Backend contracts สำหรับ batch runner (อ่าน config จาก backend), interface tracking/pending ACK และ Notification Service (ส่งผ่าน @gosoft-sbp/email-lib) — ไม่มี Job Admin API, Email Template API (2026-08-06) และไม่มี SRM inbound adapter แล้ว (2026-08-07) |
 
@@ -42,7 +42,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch and Em
 | --- | --- |
 | Input | GET /api/v1/interfaces/tracking; GET /api/v1/interfaces/pending-ack; POST /api/v1/interfaces/sta/ack |
 | Progress | Receive request; Validate schema; Check idempotency; Process records |
-| Output | job_configs; job_run_histories; interface_transactions |
+| Output | (application log แบบ structured); interface_transactions; email_template (SBP) |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -140,7 +140,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch and Em
 | items[].dataName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].direction | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].businessKey | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | items[].fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].status | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].sentAt | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
@@ -207,7 +207,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch and Em
 | items[].trackingId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].dataName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].businessKey | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | items[].fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].sentAt | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
 | items[].ageHours | integer | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -255,11 +255,10 @@ STA ACK callback ให้ Job 10 เป็น safety net
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| job_configs | R/W | enabled, cron, params ของ batch |
-| job_run_histories | R/W | ประวัติการรันและสถานะล่าสุด |
+| (backend config: config file/env) | R | enabled, cron, params ของ batch — ตาราง job_configs ถูกตัด 2026-08-06 ไม่มีหน้าจอควบคุม |
+| (application log แบบ structured) | W | ประวัติการรันและสถานะล่าสุด — ตาราง job_run_histories ถูกตัด 2026-08-06 |
 | interface_transactions | R/W | tracking file/API interface และ ACK |
 | email_template (SBP) | R/W | subject_format/body_format ของระบบ SBP เดิม |
-| status_email_rules | R | TO/CC ตามสถานะ |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -274,8 +273,6 @@ STA ACK callback ให้ Job 10 เป็น safety net
 | store-backend · src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
 | store-backend · src/modules/sbpgi-job-batch-email-srm/dto/sbpgi-job-batch-email-srm.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
-| store-backend · src/entitys/job-configs.entity.ts | entity ของ `job_configs` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
-| store-backend · src/entitys/job-run-histories.entity.ts | entity ของ `job_run_histories` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/entitys/interface-transactions.entity.ts | entity ของ `interface_transactions` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/providers/sbpgi/sbpgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
 | store-backend · sql/deploy-sbpgi-job-batch-email-srm.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
@@ -443,7 +440,7 @@ export class SbpgiJobBatchEmailSRMService {
     await runner.connect();
     await runner.startTransaction();
     try {
-      // TODO: lock แถวเป้าหมายของ job_configs ด้วย SELECT ... FOR UPDATE ก่อนเขียน
+      // TODO: lock แถวเป้าหมายของ interface_transactions ด้วย SELECT ... FOR UPDATE ก่อนเขียน
       const [current] = await runner.query(SBPGI_SQL.receiveAckStaLock, [body.docNo]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
@@ -492,79 +489,51 @@ export class SbpgiJobBatchEmailSRMService {
 #### 9.6 Entity (TypeORM)
 
 ```ts
-// src/entitys/job-configs.entity.ts
+// src/entitys/interface-transactions.entity.ts
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'job_configs', schema: process.env.DB_SCHEMA })
-export class JobConfig {
-  @PrimaryColumn({ name: 'job_no', type: 'varchar', length: 5 })
-  jobNo: string;
-
-  @Column({ name: 'job_name', type: 'varchar', length: 200 })
-  jobName: string;
-
-  @Column({ name: 'cron_expression', type: 'varchar', length: 50, nullable: true })
-  cronExpression?: string;
-
-  @Column({ name: 'is_enabled', type: 'boolean', default: true })
-  isEnabled: boolean;
-
-  @Column({ name: 'params', type: 'jsonb', nullable: true })
-  params?: Record<string, unknown>;
-
-  @Column({ name: 'updated_by', type: 'varchar', length: 50, nullable: true })
-  updatedBy?: string;
-
-  @Column({ name: 'updated_at', type: 'timestamptz', nullable: true })
-  updatedAt?: Date;
-
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
-}
-```
-
-```ts
-// src/entitys/job-run-histories.entity.ts
-import { Column, Entity, PrimaryColumn } from 'typeorm';
-
-@Entity({ name: 'job_run_histories', schema: process.env.DB_SCHEMA })
-export class JobRunHistory {
+@Entity({ name: 'interface_transactions', schema: process.env.DB_SCHEMA })
+export class InterfaceTransaction {
   @PrimaryColumn({ name: 'id', type: 'bigint' })
   id: number;
 
-  @Column({ name: 'job_no', type: 'varchar', length: 5 })
-  jobNo: string;
+  @Column({ name: 'data_name', type: 'varchar', length: 50 })
+  dataName: string;
 
-  @Column({ name: 'run_status', type: 'varchar', length: 20 })
-  runStatus: string;
+  @Column({ name: 'direction', type: 'varchar', length: 3 })
+  direction: string;
 
-  @Column({ name: 'started_at', type: 'timestamptz' })
-  startedAt: Date;
+  @Column({ name: 'business_key', type: 'varchar', length: 100, nullable: true })
+  businessKey?: string;
 
-  @Column({ name: 'finished_at', type: 'timestamptz', nullable: true })
-  finishedAt?: Date;
+  @Column({ name: 'doc_no', type: 'varchar', length: 12, nullable: true })
+  docNo?: string;
 
-  @Column({ name: 'total_records', type: 'int', default: 0 })
-  totalRecords: number;
+  @Column({ name: 'impact_process_id', type: 'bigint', nullable: true })
+  impactProcessId?: number;
 
-  @Column({ name: 'success_records', type: 'int', default: 0 })
-  successRecords: number;
+  @Column({ name: 'sales_summary_id', type: 'bigint', nullable: true })
+  salesSummaryId?: number;
 
-  @Column({ name: 'failed_records', type: 'int', default: 0 })
-  failedRecords: number;
+  @Column({ name: 'file_name', type: 'varchar', length: 255, nullable: true })
+  fileName?: string;
 
-  @Column({ name: 'error_message', type: 'text', nullable: true })
-  errorMessage?: string;
+  @Column({ name: 'status', type: 'varchar', length: 20 })
+  status: string;
 
-  @Column({ name: 'triggered_by', type: 'varchar', length: 50, nullable: true })
-  triggeredBy?: string;
+  @Column({ name: 'sent_at', type: 'timestamptz', nullable: true })
+  sentAt?: Date;
+
+  @Column({ name: 'acked_at', type: 'timestamptz', nullable: true })
+  ackedAt?: Date;
+
+  @Column({ name: 'return_code', type: 'varchar', length: 10, nullable: true })
+  returnCode?: string;
 
   // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
   //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
 }
 ```
-
-ตารางที่เหลือของเอกสารนี้ (`interface_transactions`, `status_email_rules`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
@@ -582,21 +551,9 @@ export class JobRunHistory {
 // ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SBPGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ
 //    (ชื่อ const แยกต่อเอกสารไว้แล้วเพื่อไม่ให้ชนกัน)
 import { DataSource } from 'typeorm';
-import { JobConfig } from '../../entitys/job-configs.entity';
-import { JobRunHistory } from '../../entitys/job-run-histories.entity';
 import { InterfaceTransaction } from '../../entitys/interface-transactions.entity';
 
 export const sbpgiJobBatchEmailSRMProviders = [
-  {
-    provide: 'JOB_CONFIG_REPOSITORY',
-    useFactory: (dataSource: DataSource) => dataSource.getRepository(JobConfig),
-    inject: ['DATA_SOURCE'],
-  },
-  {
-    provide: 'JOB_RUN_HISTORIES_REPOSITORY',
-    useFactory: (dataSource: DataSource) => dataSource.getRepository(JobRunHistory),
-    inject: ['DATA_SOURCE'],
-  },
   {
     provide: 'INTERFACE_TRANSACTION_REPOSITORY',
     useFactory: (dataSource: DataSource) => dataSource.getRepository(InterfaceTransaction),
@@ -717,10 +674,7 @@ export class SbpgiJobBatchEmailSRMBffController {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| job_configs | R/W | enabled, cron, params ของ batch |
-| job_run_histories | R/W | ประวัติการรันและสถานะล่าสุด |
 | interface_transactions | R/W | tracking file/API interface และ ACK |
-| status_email_rules | R | TO/CC ตามสถานะ |
 | email_template | R/W | ใช้ของระบบเดิม: email_template + email_sent + @gosoft-sbp/email-lib |
 
 #### 10.2 SQL จริงต่อ Endpoint

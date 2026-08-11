@@ -171,7 +171,7 @@ Version 1.0
 | REQ-OPS-001 | Jobs 1-10 และ 8b ต้องรองรับ rerun โดยไม่สร้างข้อมูลซ้ำและต้องรายงาน input/success/reject/skipped | rerun/reconcile evidence |
 | REQ-SCR-001 | ระบบต้องมีหน้าจอ committed SCR-01 ถึง SCR-08 ตาม requirement รายหน้าจอ | screen/UAT traceability |
 | SYS-API-001 | ระบบต้องมี API capability 30 endpoints ใน 6 กลุ่มตาม catalog | OpenAPI/contract coverage |
-| SYS-DAT-001 | ระบบต้องมี logical data model 21 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ) | migration/schema test |
+| SYS-DAT-001 | ระบบต้องมี logical data model 20 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ) | migration/schema test |
 | SYS-NFR-001 | ระบบต้องมี correlation log, metrics, alert และ audit ที่เชื่อม request/job/interface กับผลธุรกิจได้ | observability trace |
 
 
@@ -335,7 +335,7 @@ Version 1.0
 
 ### 3.3.1 รายการงาน Batch
 
-> ตัดสินใจ 6 สิงหาคม 2569: หน้าจอ Batch Job ย้ายไปอยู่กลุ่มเมนู Flow และเหลือเฉพาะ ลำดับการทำงาน (Flowchart) กับ ตารางฐานข้อมูลที่ใช้ เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม งาน Batch ทั้ง 11 รายการยังทำงานตามปกติ แต่กำหนดตารางเวลาและพารามิเตอร์ที่ backend config (config file/env ของฝั่ง Backend) และบันทึกผลการรันไว้ที่ application log แทนตารางในฐานข้อมูล
+> ตัดสินใจ 6 สิงหาคม 2026: หน้าจอ Batch Job ย้ายไปอยู่กลุ่มเมนู Flow และเหลือเฉพาะ ลำดับการทำงาน (Flowchart) กับ ตารางฐานข้อมูลที่ใช้ เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม งาน Batch ทั้ง 11 รายการยังทำงานตามปกติ แต่กำหนดตารางเวลาและพารามิเตอร์ที่ backend config (config file/env ของฝั่ง Backend) และบันทึกผลการรันไว้ที่ application log แทนตารางในฐานข้อมูล
 
 | Job | Name | Thai name | Phase | Schedule | Output |
 | --- | --- | --- | --- | --- | --- |
@@ -347,7 +347,7 @@ Version 1.0
 | 6 | ExportImpactStoreToFS | ซิงก์สถานะ + ส่งค่าชดเชยไป STA | D | 0 17 * * * (ทุกวัน 17:00) | FRBC0001 (windows-874) |
 | 7 | SyncCompetitorToDocument | บันทึกข้อมูลคู่แข่งเข้าเอกสาร | B | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | document_competitors (DB) |
 | 8 | CreateCompensationDocument | สร้างเอกสารประกันรายได้อัตโนมัติ | B | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | compensation_documents (DB) |
-| 8b | StartInternalWorkflow | เปิด Workflow ภายใน | B | after-job-8 (trigger หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ได้ตาม period) | workflow_instances / workflow_tasks (DB) |
+| 8b | StartInternalWorkflow | เปิด Workflow ภายใน | B | after-job-8 (trigger หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ได้ตาม period) | sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SBPGI) |
 | 9 | SyncNewStoreToDocument | บันทึกร้านเปิดใหม่เข้าเอกสาร | B | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | document_new_stores (DB) |
 | 10 | NotifyNoReceiveData | Watchdog เฝ้าระวัง ACK ค้าง | E | 0 07 * * * (ทุกวัน 07:00) | อีเมลเตือน UTF-8 + pending ACK dashboard |
 
@@ -499,7 +499,7 @@ Version 1.0
 
 ## 3.4 K2 Screen Requirements
 
-> Committed implementation scope ของหน้าจอ SBP Mall คือ 7 หน้าในตารางนี้ (หน้า Global Config และ Email Template ยกเลิกทั้งฟีเจอร์ · หน้า Batch Job ย้ายไปกลุ่มเมนู Flow เหลือเฉพาะ Flowchart และตารางฐานข้อมูลที่ใช้ · ตัดสินใจ 6 สิงหาคม 2569) - ปรับตามการตัดสินใจ 2026-08-06: ตัดหน้า Overview/Dashboard ออก โดยหน้าแรกของระบบเปลี่ยนเป็นหน้าเอกสารรอดำเนินการ (SCR-02) และลบหน้าข้อมูลผิดปกติ/แจกงานถาวร (ข้อมูลผิดปกติเหลือเป็นธงสีแดงในแถวตาราง) · หน้ากำหนดผู้ปฏิบัติงานและสิทธิ์การเข้าถึงเมนูไม่อยู่ใน scope SBPGI - ใช้ระบบผู้ใช้/สิทธิ์ของระบบ SBP เดิม (ตัดสินใจ 2026-08-05)
+> Committed implementation scope ของหน้าจอ SBP Mall คือ 7 หน้าในตารางนี้ (หน้า Global Config และ Email Template ยกเลิกทั้งฟีเจอร์ · หน้า Batch Job ย้ายไปกลุ่มเมนู Flow เหลือเฉพาะ Flowchart และตารางฐานข้อมูลที่ใช้ · ตัดสินใจ 6 สิงหาคม 2026) - ปรับตามการตัดสินใจ 2026-08-06: ตัดหน้า Overview/Dashboard ออก โดยหน้าแรกของระบบเปลี่ยนเป็นหน้าเอกสารรอดำเนินการ (SCR-02) และลบหน้าข้อมูลผิดปกติ/แจกงานถาวร (ข้อมูลผิดปกติเหลือเป็นธงสีแดงในแถวตาราง) · หน้ากำหนดผู้ปฏิบัติงานและสิทธิ์การเข้าถึงเมนูไม่อยู่ใน scope SBPGI - ใช้ระบบผู้ใช้/สิทธิ์ของระบบ SBP เดิม (ตัดสินใจ 2026-08-05)
 
 
 ### SCR-01 สร้างเอกสาร
@@ -654,7 +654,7 @@ Version 1.0
 
 #### Input / filter fields
 
-สถานะ * (บังคับ · เลือก 1 สถานะ) · รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ · ประเภทร้าน (เลือกได้มากกว่า 1) · A · B · C · E · Period Statement (From - To) * - ปฏิทิน วัน/เดือน/ปี (ค.ศ.) · บังคับเมื่อเลือกสถานะ “เสร็จสิ้นดำเนินการ” (SDD) · ภาค (เลือกได้มากกว่า 1 · เพิ่มภาคใหม่อัตโนมัติ) · BE · BS · NEU · REU · RSU · BG · BW · RC · RN · BN · NEL · REL · RSL · ผลการพิจารณา (เลือกอย่างใดอย่างหนึ่ง) · ประกันรายได้ · ไม่ประกันรายได้
+สถานะ * (บังคับ · เลือก 1 สถานะ) · รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ · ประเภทร้าน (เลือกได้มากกว่า 1) · A · B · C · D · E · PTT · บริษัท · Period Statement (From - To) * - ปฏิทิน วัน/เดือน/ปี (ค.ศ.) · บังคับเมื่อเลือกสถานะ “เสร็จสิ้นดำเนินการ” (SDD) · ภาค (เลือกได้มากกว่า 1 · เพิ่มภาคใหม่อัตโนมัติ) · BE · BS · NEU · REU · RSU · BG · BW · RC · RN · BN · NEL · REL · RSL · ผลการพิจารณา (เลือกอย่างใดอย่างหนึ่ง) · ประกันรายได้ · ไม่ประกันรายได้ · ยกเลิกโดยระบบ · ยังไม่มีผล
 
 
 #### Displayed tables
@@ -735,7 +735,7 @@ Version 1.0
 
 ### 3.4.13 Notification template requirements
 
-> ตัดสินใจ 6 สิงหาคม 2569: หน้าจอจัดการ Email Template ของระบบประกันรายได้ถูกยกเลิกทั้งฟีเจอร์ เนื้อหาอีเมลทั้ง 8 template เก็บอยู่ในตาราง email_template ของระบบ SBP เดิม ซึ่งมีหน้าจอบริหารจัดการอยู่แล้ว ระบบประกันรายได้เพียงอ่าน template ไปประกอบอีเมลแล้วส่งผ่านไลบรารีกลางของระบบเดิม และบันทึกการส่งลงตาราง email_sent
+> ตัดสินใจ 6 สิงหาคม 2026: หน้าจอจัดการ Email Template ของระบบประกันรายได้ถูกยกเลิกทั้งฟีเจอร์ เนื้อหาอีเมลทั้ง 8 template เก็บอยู่ในตาราง email_template ของระบบ SBP เดิม ซึ่งมีหน้าจอบริหารจัดการอยู่แล้ว ระบบประกันรายได้เพียงอ่าน template ไปประกอบอีเมลแล้วส่งผ่านไลบรารีกลางของระบบเดิม และบันทึกการส่งลงตาราง email_sent
 
 | Item | Requirement |
 | --- | --- |
@@ -891,7 +891,7 @@ Version 1.0
 | REQ-OPS-001 | Batch rerun | idempotency และ run reconciliation | 3.0, 3.3 |
 | REQ-SCR-001 | Committed screens | SCR-01..04 และ SCR-06..11 | 3.4 |
 | SYS-API-001 | API capability | 30 endpoints / 6 groups | 3.5 |
-| SYS-DAT-001 | Data model | 21 tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม) | 3.2 |
+| SYS-DAT-001 | Data model | 20 tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม) | 3.2 |
 | SYS-NFR-001 | Observability | correlation/metrics/alert/audit evidence | 4 |
 | FLOW-01 | Batch pipeline | ขั้นตอนนำเข้า คำนวณ สร้างเอกสาร ส่ง Statement และติดตาม ACK | 3.1, 3.3 |
 | FLOW-02 | Approval workflow | Section 06 -> 08 -> 01 -> 02 และ Section 03 ตามวงเงิน | 3.1.1, 3.1.3 |

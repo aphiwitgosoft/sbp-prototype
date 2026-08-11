@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 24 ชั่วโมง |
+| Estimate | 30 ชั่วโมง |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
 | Objective | ออกแบบ APIs สำหรับรายงานตรวจสอบประกันรายได้ และ Master Data ที่ SBPGI ดูแลเอง (ปัจจัยภายนอก + รายชื่อคู่แข่ง) |
 
@@ -30,11 +30,11 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report and M
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| year | พ.ศ. YYYY | required for report | return 400 if missing |
-| status | statusCode string | required | 6 สถานะเอกสาร; verbatim จาก document_statuses |
-| result | APPROVE\|REJECT | required for report | maps to consideration latest result |
+| year | ค.ศ. YYYY | required for report | return 400 if missing · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. |
+| status | statusCode string | required | 6 สถานะเอกสาร; verbatim จาก sps_store.workflow_status ของ @srm/glb-workflow |
+| result | APPROVE\|REJECT\|CANCELLED\|PENDING | optional for report (บังคับเฉพาะ status) | maps to consideration_logs.result_category ล่าสุด · CANCELLED = ยกเลิกโดยระบบ (เพิ่ม 2026-08-10) |
 | region | array/string | optional | 13 region codes; multi-select |
-| storeType | array/string | optional | A/B/C/E; multi-select |
+| storeType | array ของ BranchTypeFGIName | optional | **7 ค่า** `A B C D E PTT บริษัท` (ยืนยันจาก master `BranchTypeProfile` ของ `CPA_FRN_FGI` 2026-08-10) · multi-select · **ห้าม hardcode** ให้โหลดจาก `GET /common/common-code` ของระบบ SBP เดิม |
 | impactedStoreCode | string 5 digits | optional | คง leading zero |
 | newStoreCode | string 5 digits | optional | คง leading zero |
 | reason | text | required mutation | audit reason |
@@ -44,9 +44,9 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report and M
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/reports/status-summary; GET /api/v1/reports/status-summary/export; GET /api/v1/operators |
+| Input | GET /api/v1/reports/status-summary; GET /api/v1/reports/status-summary/export; GET /api/v1/factors |
 | Progress | Validate filter; Build query; Apply pagination/export mode; Return rows or CSV |
-| Output | operator_assignments; external_factors; mas_param (SBP) |
+| Output | external_factors; competitors; mas_param (SBP) |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -54,13 +54,13 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report and M
 | --- | --- | --- | --- |
 | GET /api/v1/reports/status-summary | รายงานตรวจสอบประกันรายได้ | Validate filter | missing year/status/result fails |
 | GET /api/v1/reports/status-summary/export | Export Excel | Build query | export uses same filters as preview |
-| GET /api/v1/operators | อ่าน operator assignments | Apply pagination/export mode | master edit requires reason |
-| POST /api/v1/operators | สร้าง operator assignment | Return rows or CSV | config locked value cannot edit |
-| PUT /api/v1/operators/{id} | แก้ operator assignment | For mutations validate reason and write audit | missing year/status/result fails |
-| DELETE /api/v1/operators/{id} | ยกเลิก operator assignment | Validate filter | export uses same filters as preview |
-| GET /api/v1/factors | อ่านปัจจัยภายนอก | Build query | master edit requires reason |
-| POST /api/v1/factors | สร้างปัจจัยภายนอก | Apply pagination/export mode | config locked value cannot edit |
-| PUT /api/v1/factors/{code} | แก้ปัจจัยภายนอก | Return rows or CSV | missing year/status/result fails |
+| GET /api/v1/factors | อ่านปัจจัยภายนอก | Apply pagination/export mode | master edit requires reason |
+| POST /api/v1/factors | สร้างปัจจัยภายนอก | Return rows or CSV | config locked value cannot edit |
+| PUT /api/v1/factors/{code} | แก้ปัจจัยภายนอก | For mutations validate reason and write audit | missing year/status/result fails |
+| GET /api/v1/competitors | master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร้านคู่แข่งในหน้าเอกสารด้วย | Validate filter | export uses same filters as preview |
+| POST /api/v1/competitors | เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409 | Build query | master edit requires reason |
+| PUT /api/v1/competitors/{code} | แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก document_competitors | Apply pagination/export mode | config locked value cannot edit |
+| DELETE /api/v1/competitors/{code} | ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409 | Return rows or CSV | missing year/status/result fails |
 | DELETE /api/v1/factors/{code} | ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน | For mutations validate reason and write audit | export uses same filters as preview |
 
 ### 5.91 Backend Execution Sequence
@@ -188,195 +188,6 @@ Export Excel
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### GET /api/v1/operators
-
-อ่าน operator assignments
-
-#### Query Params
-
-```json
-{
-  "employeeId": "E001",
-  "positionCode": "06",
-  "active": true,
-  "page": 1,
-  "size": 20
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| employeeId | string | No | UTF-8; use value domain described by endpoint purpose |
-| positionCode | string | No | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | No | UTF-8; use value domain described by endpoint purpose |
-| page | integer | No | >= 1; default 1 |
-| size | integer | No | 1..100; default 20 |
-
-#### Response
-
-```json
-{
-  "page": 1,
-  "size": 20,
-  "total": 1,
-  "items": [
-    {
-      "id": 101,
-      "employeeId": "E001",
-      "employeeName": "สมชาย ใจดี",
-      "positionCode": "06",
-      "zoneCode": "01",
-      "active": true
-    }
-  ]
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| page | integer | Yes | >= 1; default 1 |
-| size | integer | Yes | 1..100; default 20 |
-| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].id | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].employeeId | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].employeeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].positionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].zoneCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### POST /api/v1/operators
-
-สร้าง operator assignment
-
-#### Request
-
-```json
-{
-  "employeeId": "E001",
-  "positionCode": "06",
-  "zoneCode": "01",
-  "active": true,
-  "reason": "มอบหมายผู้ปฏิบัติงาน"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| employeeId | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| positionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| zoneCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "id": 101,
-  "employeeId": "E001",
-  "positionCode": "06",
-  "zoneCode": "01",
-  "active": true
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| id | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| employeeId | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| positionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| zoneCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### PUT /api/v1/operators/{id}
-
-แก้ operator assignment
-
-#### Request
-
-```json
-{
-  "positionCode": "08",
-  "zoneCode": "01",
-  "active": true,
-  "reason": "ย้ายหน้าที่"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| positionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| zoneCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "id": 101,
-  "employeeId": "E001",
-  "positionCode": "08",
-  "zoneCode": "01",
-  "active": true
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| id | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| employeeId | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| positionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| zoneCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-
-### DELETE /api/v1/operators/{id}
-
-ยกเลิก operator assignment
-
-#### Request
-
-```json
-{
-  "reason": "สิ้นสุดการมอบหมาย"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
-
-#### Response
-
-```json
-{
-  "id": 101,
-  "deleted": true
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| id | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| deleted | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### GET /api/v1/factors
 
@@ -519,6 +330,159 @@ Export Excel
 | factorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
+### GET /api/v1/competitors
+
+master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร้านคู่แข่งในหน้าเอกสารด้วย
+
+#### Query Params
+
+```json
+{
+  "q": "108"
+}
+```
+
+#### Request Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| q | string | No | UTF-8; use value domain described by endpoint purpose |
+
+#### Response
+
+```json
+{
+  "items": [
+    {
+      "code": "01",
+      "nameTh": "108 Shop",
+      "nameEn": "108 Shop",
+      "remark": "",
+      "isActive": true
+    }
+  ]
+}
+```
+
+#### Response Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items[].code | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].nameTh | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].nameEn | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].remark | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].isActive | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
+
+### POST /api/v1/competitors
+
+เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
+
+#### Request
+
+```json
+{
+  "code": "12",
+  "nameTh": "ร้านคู่แข่งรายใหม่",
+  "nameEn": "New Competitor",
+  "remark": ""
+}
+```
+
+#### Request Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| code | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| nameTh | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| nameEn | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| remark | string | Yes | UTF-8; use value domain described by endpoint purpose |
+
+#### Response
+
+```json
+{
+  "code": "12",
+  "message": "saved"
+}
+```
+
+#### Response Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| code | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| message | string | Yes | UTF-8; use value domain described by endpoint purpose |
+
+### PUT /api/v1/competitors/{code}
+
+แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก document_competitors
+
+#### Request
+
+```json
+{
+  "nameTh": "ลอว์สัน 108",
+  "nameEn": "Lawson 108",
+  "remark": "",
+  "isActive": true
+}
+```
+
+#### Request Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| nameTh | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| nameEn | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| remark | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| isActive | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
+
+#### Response
+
+```json
+{
+  "message": "saved"
+}
+```
+
+#### Response Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| message | string | Yes | UTF-8; use value domain described by endpoint purpose |
+
+### DELETE /api/v1/competitors/{code}
+
+ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
+
+#### Request
+
+```json
+{}
+```
+
+#### Request Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| - | none | No | No fields |
+
+#### Response
+
+```json
+{
+  "message": "deleted"
+}
+```
+
+#### Response Field Schema
+
+| Field | Type | Required | Constraint / Meaning |
+| --- | --- | --- | --- |
+| message | string | Yes | UTF-8; use value domain described by endpoint purpose |
+
 ### DELETE /api/v1/factors/{code}
 
 ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
@@ -562,8 +526,10 @@ Export Excel
 | compensation_documents | R | แหล่งข้อมูลรายงานและ filter status/year |
 | compensation_histories | R | ยอดเงินชดเชยและงวด statement |
 | consideration_logs | R | ผลพิจารณาล่าสุด APPROVE/REJECT |
-| operator_assignments | R/W | ผู้ปฏิบัติงาน |
+| auth-backend group + scope (business_user_group) / prepared approver ของ @srm/glb-workflow | R | ผู้ปฏิบัติงาน — ตาราง operator_assignments ถูกตัด 2026-08-05 |
 | external_factors | R/W | master ปัจจัยภายนอก |
+| competitors | R/W | master แบรนด์คู่แข่ง 11 รายการ (code 01-11 · name_th · name_en · remark) — feed dropdown ร้านคู่แข่งของหน้าเอกสาร |
+| document_competitors | R | ตรวจว่าแบรนด์ถูกอ้างในเอกสารก่อนลบ (409) |
 | mas_param (SBP) | R/W | ค่ากำหนดกลางในตารางของระบบ SBP เดิม |
 
 ## 9. Skeleton Code (store-backend + BFF)
@@ -574,7 +540,7 @@ Export Excel
 
 | Path | หน้าที่ |
 | --- | --- |
-| store-backend · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts | route ทั้งหมดของเอกสารนี้ (6 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
+| store-backend · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts | route ทั้งหมดของเอกสารนี้ (10 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
 | store-backend · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
 | store-backend · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
 | store-backend · src/modules/sbpgi-report-and-master-data/dto/sbpgi-report-and-master-data.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
@@ -588,19 +554,10 @@ Export Excel
 | BFF · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts | route ฝั่ง BFF prefix `/bff/sbpgi/…` + `@UseGuards(AuthGuard('jwt'))` |
 | BFF · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
 
-เส้นที่ไม่ต้อง implement ใหม่ในเอกสารนี้:
-
-| Endpoint | จุดประสงค์ | เหตุผล |
-| --- | --- | --- |
-| GET /api/v1/operators | อ่าน operator assignments | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend group + scope (จัดการที่หน้า /setting/manage-user-rights) |
-| POST /api/v1/operators | สร้าง operator assignment | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend group + scope (จัดการที่หน้า /setting/manage-user-rights) |
-| PUT /api/v1/operators/{id} | แก้ operator assignment | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend group + scope (จัดการที่หน้า /setting/manage-user-rights) |
-| DELETE /api/v1/operators/{id} | ยกเลิก operator assignment | **ตัดออกจากดีไซน์แล้ว** (มติ 2026-08-05/06) — ใช้ auth-backend group + scope (จัดการที่หน้า /setting/manage-user-rights) |
-
 #### 9.2 Controller (store-backend)
 
 ```ts
-// src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts  (ส่วนที่ 1/2 — คลาสเดียวกัน)
+// src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts  (ส่วนที่ 1/3 — คลาสเดียวกัน)
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { HttpHeaderGuard } from '../../guards/http-header.guard';
 import { UserId } from '../../common/decorators/user-id.decorator';
@@ -644,8 +601,8 @@ export class SbpgiReportAndMasterDataController {
 ```
 
 ```ts
-// src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts  (ส่วนที่ 2/2 — คลาสเดียวกัน)
-// import เพิ่ม: UpdateFactorsByCodeBodyDto, RemoveFactorsByCodeBodyDto
+// src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts  (ส่วนที่ 2/3 — คลาสเดียวกัน)
+// import เพิ่ม: UpdateFactorsByCodeBodyDto, CreateCompetitorsBodyDto
 // (method ต่อไปนี้อยู่ในคลาส SbpgiReportAndMasterDataController เดียวกับส่วนที่ 1)
 
   // PUT /api/v1/factors/{code} — แก้ปัจจัยภายนอก
@@ -659,11 +616,48 @@ export class SbpgiReportAndMasterDataController {
     return this.service.updateFactorsByCode(code, body, userId);
   }
 
+  // GET /api/v1/competitors — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร…
+  @Get('competitors')
+  getCompetitors(@Query() query: ReportAndMasterDataQueryDto, @UserId() userId: string) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.getCompetitors(query, userId);
+  }
+
+  // POST /api/v1/competitors — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
+  @Post('competitors')
+  createCompetitors(@Body() body: CreateCompetitorsBodyDto, @UserId() userId: string) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.createCompetitors(body, userId);
+  }
+
+  // PUT /api/v1/competitors/{code} — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก document_competitors
+  @Put('competitors/:code')
+  updateCompetitorsByCode(
+    @Param('code') code: string,
+    @Body() body: Record<string, unknown>,
+    @UserId() userId: string,
+  ) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.updateCompetitorsByCode(code, body, userId);
+  }
+```
+
+```ts
+// src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts  (ส่วนที่ 3/3 — คลาสเดียวกัน)
+// (method ต่อไปนี้อยู่ในคลาส SbpgiReportAndMasterDataController เดียวกับส่วนที่ 1)
+
+  // DELETE /api/v1/competitors/{code} — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
+  @Delete('competitors/:code')
+  removeCompetitorsByCode(@Param('code') code: string, @UserId() userId: string) {
+    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
+    return this.service.removeCompetitorsByCode(code, userId);
+  }
+
   // DELETE /api/v1/factors/{code} — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
   @Delete('factors/:code')
   removeFactorsByCode(
     @Param('code') code: string,
-    @Body() body: RemoveFactorsByCodeBodyDto,
+    @Body() body: Record<string, unknown>,
     @UserId() userId: string,
   ) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
@@ -687,23 +681,21 @@ import {
 
 // query ร่วมของ GET ทุกเส้นในโมดูลนี้ (path param ใช้ @Param แยก)
 export class ReportAndMasterDataQueryDto {
-  /** return 400 if missing · required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  /** return 400 if missing · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. · required เฉพาะบาง endpoint… */
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(2500)
-  @Max(2600)
   year?: number;
 
-  /** 6 สถานะเอกสาร; verbatim จาก document_statuses · required เฉพาะบาง endpoint — ตรวจซ้ำใน se… */
+  /** 6 สถานะเอกสาร; verbatim จาก sps_store.workflow_status ของ @srm/glb-workflow · required เฉ… */
   @IsOptional()
   @IsString()
   status?: string;
 
-  /** maps to consideration latest result · required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  /** maps to consideration_logs.result_category ล่าสุด · CANCELLED = ยกเลิกโดยระบบ (เพิ่ม 2026… */
   @IsOptional()
   @IsString()
-  @IsIn(['APPROVE', 'REJECT'])
+  @IsIn(['APPROVE', 'REJECT', 'CANCELLED', 'PENDING'])
   result?: string;
 
   /** 13 region codes; multi-select */
@@ -712,7 +704,7 @@ export class ReportAndMasterDataQueryDto {
   @IsString({ each: true })
   region?: string[];
 
-  /** A/B/C/E; multi-select */
+  /** **7 ค่า** `A B C D E PTT บริษัท` (ยืนยันจาก master `BranchTypeProfile` ของ `CPA_FRN_FGI` … */
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -781,14 +773,26 @@ export class UpdateFactorsByCodeBodyDto {
 ```
 
 ```ts
-// body ของ DELETE /api/v1/factors/{code}
-export class RemoveFactorsByCodeBodyDto {
-  /** audit reason */
+// body ของ POST /api/v1/competitors
+export class CreateCompetitorsBodyDto {
   @IsNotEmpty()
   @IsString()
-  @MaxLength(500)
-  reason: string;
+  code: string;
+
+  @IsNotEmpty()
+  @IsString()
+  nameTh: string;
+
+  @IsNotEmpty()
+  @IsString()
+  nameEn: string;
+
+  @IsNotEmpty()
+  @IsString()
+  remark: string;
 }
+
+// TODO: สร้าง BodyDto ของ endpoint ที่เหลือด้วยรูปแบบเดียวกัน: PUT /api/v1/competitors/{code}, DELETE /api/v1/factors/{code}
 ```
 
 #### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
@@ -870,8 +874,36 @@ export class SbpgiReportAndMasterDataService {
     throw new NotImplementedException('updateFactorsByCode ยังไม่ implement');
   }
 
+  // GET /api/v1/competitors — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร…
+  async getCompetitors(query: ReportAndMasterDataQueryDto, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/competitors
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/competitors')
+    throw new NotImplementedException('getCompetitors ยังไม่ implement');
+  }
+
+  // POST /api/v1/competitors — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
+  async createCompetitors(body: CreateCompetitorsBodyDto, userId: string) {
+    // TODO: implement ตาม business rule ของ POST /api/v1/competitors
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'POST /api/v1/competitors')
+    throw new NotImplementedException('createCompetitors ยังไม่ implement');
+  }
+
+  // PUT /api/v1/competitors/{code} — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก document_competitors
+  async updateCompetitorsByCode(code: string, body: Record<string, unknown>, userId: string) {
+    // TODO: implement ตาม business rule ของ PUT /api/v1/competitors/{code}
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'PUT /api/v1/competitors/{code}')
+    throw new NotImplementedException('updateCompetitorsByCode ยังไม่ implement');
+  }
+
+  // DELETE /api/v1/competitors/{code} — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
+  async removeCompetitorsByCode(code: string, userId: string) {
+    // TODO: implement ตาม business rule ของ DELETE /api/v1/competitors/{code}
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'DELETE /api/v1/competitors/{code}')
+    throw new NotImplementedException('removeCompetitorsByCode ยังไม่ implement');
+  }
+
   // DELETE /api/v1/factors/{code} — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
-  async removeFactorsByCode(code: string, body: RemoveFactorsByCodeBodyDto, userId: string) {
+  async removeFactorsByCode(code: string, body: Record<string, unknown>, userId: string) {
     // TODO: implement ตาม business rule ของ DELETE /api/v1/factors/{code}
     //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'DELETE /api/v1/factors/{code}')
     throw new NotImplementedException('removeFactorsByCode ยังไม่ implement');
@@ -975,13 +1007,12 @@ export class CompensationHistory {
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`consideration_logs`, `external_factors`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`consideration_logs`, `glb-workflow`, `external_factors`, `competitors`, `document_competitors`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
 | Object | R/W | ใช้ของระบบเดิมตัวไหน |
 | --- | --- | --- |
-| operator_assignments | R/W | auth-backend group + scope (business_user_group) |
 | mas_param | R/W | mas_param (store-backend) |
 
 #### 9.6 Repository Providers + Module wiring
@@ -1131,8 +1162,10 @@ export class SbpgiReportAndMasterDataBffController {
 | compensation_documents | R | แหล่งข้อมูลรายงานและ filter status/year |
 | compensation_histories | R | ยอดเงินชดเชยและงวด statement |
 | consideration_logs | R | ผลพิจารณาล่าสุด APPROVE/REJECT |
+| glb-workflow | R | ผู้ปฏิบัติงาน — ตาราง operator_assignments ถูกตัด 2026-08-05 |
 | external_factors | R/W | master ปัจจัยภายนอก |
-| operator_assignments | R/W | ใช้ของระบบเดิม: auth-backend group + scope (business_user_group) |
+| competitors | R/W | master แบรนด์คู่แข่ง 11 รายการ (code 01-11 · name_th · name_en · remark) — feed dropdown ร้านคู่แข่งของหน้าเอกสาร |
+| document_competitors | R | ตรวจว่าแบรนด์ถูกอ้างในเอกสารก่อนลบ (409) |
 | mas_param | R/W | ใช้ของระบบเดิม: mas_param (store-backend) |
 
 #### 10.2 SQL จริงต่อ Endpoint
@@ -1140,26 +1173,24 @@ export class SbpgiReportAndMasterDataBffController {
 **GET /api/v1/reports/status-summary** — รายงานตรวจสอบประกันรายได้
 
 ```sql
--- ⚠️ SQL ตัวอย่างนี้ยังอ้างตารางที่ถูกตัดจาก target design 21 ตารางแล้ว
---    ห้าม implement ตามตัวอักษร ให้แทนที่ก่อนใช้งาน:
---      stores  ->  store / mas_store / sevenshop (store-backend) หรือ impacted_stores ของ SBPGI
 -- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:
 --      d.year  ->  d.account_year
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- 14 คอลัมน์ตาม SDD สไลด์ 60 ; ต้องระบุ :year และ :status เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว
-SELECT si.store_code   AS impacted_store_code, si.store_name   AS impacted_store_name,
-       si.region_code  AS impacted_region,     si.store_type   AS impacted_store_type,
+-- ⚠️ ตาราง stores ของ SBPGI ถูกตัด 2026-08-06 — ใช้ store ของระบบ SBP เดิม (sps_store 19,402 แถว): คีย์ store_id · ภาค zone_cd
+SELECT si.store_id   AS impacted_store_code, si.store_name   AS impacted_store_name,
+       si.zone_cd  AS impacted_region,     si.store_type   AS impacted_store_type,
        pr.impact_month, pr.impact_year, d.statement_date,   -- statement_date = ค.ศ. (คอลัมน์ใหม่คู่กับ statement_id)
-       ns.store_code   AS new_store_code,      ns.store_name  AS new_store_name,
-       ns.region_code  AS new_region,          ns.store_type  AS new_store_type,
+       ns.store_id   AS new_store_code,      ns.store_name  AS new_store_name,
+       ns.zone_cd  AS new_region,          ns.store_type  AS new_store_type,
        h.compensate_amount, d.loop_no AS round_no, d.created_at AS created_date, d.doc_no
 FROM compensation_documents d
 JOIN fgi_impact_processes pr ON pr.id = d.impact_process_id
-JOIN stores si               ON si.store_code = d.impacted_store_code
+JOIN store si                ON si.store_id = d.impacted_store_code
 LEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no
 LEFT JOIN document_new_stores dns  ON dns.doc_no = d.doc_no
-LEFT JOIN stores ns                ON ns.store_code = dns.new_store_code
+LEFT JOIN store ns                 ON ns.store_id = dns.new_store_code
 LEFT JOIN LATERAL (
   SELECT result_category FROM consideration_logs
   WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1
@@ -1169,8 +1200,8 @@ WHERE d.year = :year
   AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)
   AND (:newStoreCode      IS NULL OR dns.new_store_code    = :newStoreCode)
   AND (:psFrom IS NULL OR d.statement_date BETWEEN :psFrom AND :psTo)  -- ค.ศ. ; บังคับเมื่อ status = เสร็จสิ้นดำเนินการ
-  AND (:storeTypes IS NULL OR si.store_type  = ANY(:storeTypes))       -- A/B/C/E
-  AND (:regions    IS NULL OR si.region_code = ANY(:regions))          -- 13 ภาค + ภาคใหม่อัตโนมัติ
+  AND (:storeTypes IS NULL OR si.store_type  = ANY(:storeTypes))       -- 7 ค่า `A B C D E PTT บริษัท` (BranchTypeProfile.BranchTypeFGIName · ห้าม hardcode)
+  AND (:regions    IS NULL OR si.zone_cd = ANY(:regions))          -- 13 ภาค + ภาคใหม่อัตโนมัติ
   AND (:result     IS NULL OR cl.result_category = :result)            -- APPROVE / REJECT (ไม่บังคับ)
 ORDER BY d.doc_no
 LIMIT :size OFFSET :offset;
@@ -1213,6 +1244,51 @@ VALUES (:factorCode, :factorName, :factorRemark);
 -- ไม่มี audit/เหตุผลแล้ว (ยกเลิก audit_logs 2026-08-07)
 UPDATE external_factors SET factor_name = :factorName, factor_remark = :factorRemark
 WHERE factor_code = :code;
+```
+
+**GET /api/v1/competitors** — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร้านคู่แข่งในหน้าเอกสารด้วย
+
+```sql
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) · ระบบเดิมเก็บชื่อไทยและอังกฤษ
+SELECT competitor_code, name_th, name_en, remark, is_active
+FROM competitors
+WHERE (:q IS NULL OR name_th LIKE :q OR name_en LIKE :q)
+ORDER BY competitor_code;
+```
+
+**POST /api/v1/competitors** — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
+
+```sql
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- competitor_code ห้ามซ้ำ (ไม่งั้น 409) · ชื่อไทยและอังกฤษบังคับทั้งคู่
+INSERT INTO competitors (competitor_code, name_th, name_en, remark, is_active)
+VALUES (:code, :nameTh, :nameEn, :remark, TRUE);
+```
+
+**PUT /api/v1/competitors/{code}** — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก document_competitors
+
+```sql
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- ห้ามแก้ competitor_code (เป็น PK และถูกอ้างจาก document_competitors)
+UPDATE competitors
+   SET name_th = :nameTh, name_en = :nameEn, remark = :remark, is_active = :isActive,
+       updated_at = CURRENT_TIMESTAMP
+ WHERE competitor_code = :code;
+```
+
+**DELETE /api/v1/competitors/{code}** — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
+
+```sql
+-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
+--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- ตรวจไม่ถูกอ้างในเอกสารก่อนลบ (ไม่งั้น 409)
+SELECT 1 FROM document_competitors WHERE competitor_code = :code;
+
+DELETE FROM competitors WHERE competitor_code = :code;
 ```
 
 **DELETE /api/v1/factors/{code}** — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน

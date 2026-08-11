@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 15 ชั่วโมง |
+| Estimate | 18 ชั่วโมง |
 | Owner | Aphiwit <Bank> Khammoon |
 | Objective | สร้างเอกสารประกันรายได้อัตโนมัติ: สร้าง compensation_documents จาก impact profile และข้อมูลชดเชยในฐานข้อมูลเดียวกัน แทนการเขียนไฟล์ BPM06001O และ SFTP ไป compensateflow; ไม่เรียก workflow โดยตรง |
 
@@ -18,7 +18,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Main class/script: document.service.createFromImpact / (internal scheduler / service)
 - Phase: B
 - Output: compensation_documents (DB)
-- Estimate: 15 ชั่วโมง
+- Estimate: 18 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
 
@@ -148,7 +148,7 @@ export async function runLlddBeJob8Createcompensationdocument(ctx, services) {
 
 ### 5.95 Job 8 Document Number Gap and Rerun Policy
 
-Job 8 ใช้ running number แบบ monotonic ต่อปี พ.ศ. ช่องว่างของเลขเอกสารจาก concurrent rerun หรือ ON CONFLICT เป็นพฤติกรรมที่ยอมรับได้ เพราะเลขที่มีหน้าที่รับประกัน uniqueness ไม่ได้รับประกันความต่อเนื่อง
+Job 8 ใช้ running number แบบ monotonic ต่อปี ค.ศ. ช่องว่างของเลขเอกสารจาก concurrent rerun หรือ ON CONFLICT เป็นพฤติกรรมที่ยอมรับได้ เพราะเลขที่มีหน้าที่รับประกัน uniqueness ไม่ได้รับประกันความต่อเนื่อง
 
 | Case | Required behavior | Evidence / metric |
 | --- | --- | --- |
@@ -376,7 +376,7 @@ export class CreateCompensationDocumentJob {
         // ขั้นที่ 3 (decision): ข้อมูลผู้อนุมัติ/ร้าน/ยอดชดเชยครบ?
         const ok03 = await this.service.check03Condition(state);
         if (!ok03) throw new JobFailedError('JOB8_STEP03', 'บันทึก reject reason / ไม่สร้างเอกสาร');
-        // ขั้นที่ 4: generate doc_no YYYY/xxxxx · TODO: running ต่อปี พ.ศ.
+        // ขั้นที่ 4: generate doc_no YYYY/xxxxx · TODO: running ต่อปี ค.ศ. (มติ 2026-08-06)
         await this.service.step04Document(state, manager);
         // ขั้นที่ 5: insert compensation_documents · TODO: ผูก impact_process_id และสถานะเริ่มต้น
         await this.service.step05Insert(state, manager);
@@ -489,21 +489,22 @@ SELECT /* TODO: columns */
  LIMIT $3 OFFSET $4;  -- TODO: อ่านเป็น chunk กัน memory บวม
 
 -- [W] compensation_documents : สร้างหัวเอกสารแทนไฟล์ BPM06001O
--- TODO: เติมคอลัมน์จริงจาก database.md และยืนยัน unique key ที่กันข้อมูลซ้ำตอน rerun
+-- TODO: เติมคอลัมน์ payload จริงจาก database.md
 INSERT INTO compensation_documents
   (/* TODO: business key + payload + created_by, created_at */)
 VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
-ON CONFLICT (/* TODO: unique key ที่ใช้กันซ้ำ */)
+ON CONFLICT (source, impacted_store_code, impact_month, new_store_code, round_no)   -- unique key จริงตาม DDL ของ compensation_documents (ห้ามเดา)
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
        updated_at = NOW(), updated_by = 'JOB8';
 
 -- [W] interface_transactions : tracking ภายใน type=INTERNAL_DB_WRITE
 -- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
 INSERT INTO interface_transactions
-  (job_no, data_name, direction, status, business_key, period_key,
+  (run_id, data_name, direction, status, business_key, period_key,
    file_name, file_checksum, created_at)
-VALUES ('8', $1 /* TODO: data_name ของ Job 8 */, $2 /* IN|OUT|INTERNAL */, 'READY',
-        $3 /* business key ของแถว */, $4 /* YYYYMM */, $5, $6, NOW())
+VALUES ($1 /* run_id = correlation id ของรอบรัน Job 8 จาก application log */,
+        $2 /* TODO: data_name ของ Job 8 */, $3 /* IN|OUT|INTERNAL */, 'READY',
+        $4 /* business key ของแถว */, $5 /* YYYYMM */, $6, $7, NOW())
 ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;
 ```
 
@@ -576,7 +577,7 @@ export class JobFailureNotifier {
 | 1 | เริ่ม |
 | 2 | query impact profile สถานะ I + forecast + ยังไม่สร้างเอกสาร (ใช้ impact_process_id เป็น idempotency key) |
 | 3 | ข้อมูลผู้อนุมัติ/ร้าน/ยอดชดเชยครบ? \| No: บันทึก reject reason / ไม่สร้างเอกสาร |
-| 4 | generate doc_no YYYY/xxxxx (running ต่อปี พ.ศ.) |
+| 4 | generate doc_no YYYY/xxxxx (running ต่อปี ค.ศ. (มติ 2026-08-06)) |
 | 5 | insert compensation_documents (ผูก impact_process_id และสถานะเริ่มต้น) |
 | 6 | บันทึก interface_transactions เป็น INTERNAL_DB_WRITE (ไม่สร้างไฟล์ BPM06001O) |
 | 7 | จบ - workflow เปิดโดย Job 8b / POST /workflows/instances |

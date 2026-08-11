@@ -7,8 +7,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 27 ชั่วโมง |
-| Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Estimate | 24 ชั่วโมง |
+| Owner | Butsaba <But> Podamrong |
 | Objective | ออกแบบ APIs สำหรับสร้างเอกสารใหม่และบันทึกส่วนย่อยของเอกสาร |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -31,11 +31,11 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี พ.ศ. และ running 5 หลัก |
+| docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี **ค.ศ.** และ running 5 หลัก (มติ 2026-08-06) |
 | storeCode | string 5 digits | numeric length = 5 | แสดง leading zero |
 | amount | number, 2 decimals | >= 0 | format `#,##0.00` บาท |
 | percent | number, 2 decimals | 0-100 | ใช้ `%` และรวม allocation ต้องเท่ากับ 100 |
-| date | DD/MM/YYYY | valid date | FE แสดง พ.ศ. หาก source เป็น ISO ค.ศ. |
+| date | DD/MM/YYYY | valid date | payload เป็น ISO ค.ศ. · FE แสดง ค.ศ. เป็นค่าเริ่มต้น (DatePicker buddhistEra=false) แสดง พ.ศ. เฉพาะจุดที่เปิด flag |
 | attachment | file | <= 5 MB | รองรับ vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv |
 | requestId | string | optional | ใช้ trace request; duplicate guard หลักเป็น business key |
 | source | MANUAL\|FS | required | แยกแหล่งสร้างเอกสาร |
@@ -46,8 +46,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 
 | Rule | Required behavior | Implementation note |
 | --- | --- | --- |
-| Format | YYYY/xxxxx โดย YYYY เป็นปี พ.ศ. และ running 5 หลัก | ตัวอย่าง 2026/00124; เก็บ doc_no เป็น string และเก็บ year/running_no แยกเพื่อ index |
-| Sequence scope | running reset ตามปี พ.ศ. | unique key `(year, running_no)` และ unique `doc_no` |
+| Format | YYYY/xxxxx โดย YYYY เป็นปี **ค.ศ.** และ running 5 หลัก (มติ 2026-08-06 · หน้าจอ K2 จริงใช้ ค.ศ. เช่น 2026/01870) | ตัวอย่าง 2026/00124; เก็บ doc_no เป็น string และเก็บ year/running_no แยกเพื่อ index |
+| Sequence scope | running reset ตามปี ค.ศ. | unique key `(year, running_no)` และ unique `doc_no` |
 | Lock strategy | lock row sequence ด้วย `SELECT ... FOR UPDATE` หรือ database sequence ต่อปี | ห้ามอ่าน max(running_no)+1 แบบไม่มี lock |
 | Transaction boundary | generate docNo, insert compensation_documents, insert first workflow task และ audit ใน transaction เดียว | ถ้าสร้าง task ไม่สำเร็จต้อง rollback ทั้งชุด |
 | Gap policy | เลขที่ถูก commit แล้วห้าม reuse; rollback ก่อน commit ไม่ควรเผยแพร่ docNo ให้ client | ถ้าใช้ native sequence ที่เกิด gap ได้ต้องบันทึก policy นี้ใน runbook |
@@ -60,7 +60,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 | --- | --- | --- |
 | 1. Validate input | ตรวจ required, format, store exists, period, source, roundNo | invalid คืน 400/422 ก่อน lock sequence |
 | 2. Check duplicate | query business key บน compensation_documents | พบเอกสารเดิมคืน 409 DUPLICATE_DOCUMENT พร้อม docNo เดิมถ้าอนุญาตให้แสดง |
-| 3. Start transaction | เปิด transaction และ lock sequence row ของปี พ.ศ. | lock timeout คืน 409/503 ตามมาตรฐาน platform |
+| 3. Start transaction | เปิด transaction และ lock sequence row ของปี ค.ศ. | lock timeout คืน 409/503 ตามมาตรฐาน platform |
 | 4. Generate docNo | เพิ่ม running_no และประกอบ doc_no | ยังไม่ส่ง response จนกว่า commit สำเร็จ |
 | 5. Insert document | insert compensation_documents และ child rows เริ่มต้น | fail ต้อง rollback sequence/document |
 | 6. Open first task | เรียก initialize + add-prepared-approver (state 06) ของ @srm/glb-workflow ภายใน transaction boundary ที่กำหนด — ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน · ดู LLDD-BE-Workflow-Engine-Definition 5.3) | fail ต้อง rollback document |
@@ -73,7 +73,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 | ยิง POST /documents พร้อมกัน 20 request ในปีเดียวกัน | ได้ docNo ไม่ซ้ำ running เรียงตาม commit และไม่มี duplicate key error ที่หลุดเป็น 500 |
 | สร้าง duplicate business key | คืน 409 DUPLICATE_DOCUMENT และไม่ consume docNo ใหม่ถ้า duplicate ถูกพบก่อน lock sequence |
 | จำลอง error หลัง insert document ก่อนเปิด workflow | rollback แล้วไม่เหลือ compensation_documents/workflow_transaction/audit partial |
-| เปลี่ยนปี พ.ศ. | running เริ่มที่ 00001 ของปีใหม่ |
+| เปลี่ยนปี ค.ศ. | running เริ่มที่ 00001 ของปีใหม่ |
 
 ### 5.4 docNo Generator SQL Reference
 
@@ -185,7 +185,7 @@ Create document API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | statusCode | string | Yes | canonical code; do not replace with display label |
 
 ### PUT /api/v1/documents/{docNo}
@@ -237,6 +237,8 @@ Update document partial sections
 | workflow_transaction / workflow_approver (@srm/glb-workflow) | W | เปิด workflow งานแรกตอนสร้างเอกสาร |
 | document_new_stores | R/W | ร้านเปิดใหม่และ % ชดเชย |
 | document_competitors | R/W | ร้านคู่แข่งในเอกสาร |
+| document_running_numbers | R/W | ตัวนับเลขเอกสารต่อปี ค.ศ. — ออกเลข YYYY/xxxxx แบบ atomic (INSERT … ON CONFLICT DO UPDATE … RETURNING) |
+| document_cost_details | R/W | ยอดชดเชยแยกรายเดือน/รายร้านเปิดใหม่ (cost_year/cost_month · cost_target · cost_amount · _n / _nc) |
 | document_external_factors | R/W | ปัจจัยภายนอกในเอกสาร |
 | compensation_documents unique guard | R | กัน duplicate ด้วย business key: impact_process_id หรือ source + impacted_store_code + impact_month + new_store_code + round_no |
 
@@ -529,7 +531,7 @@ export class DocumentNewStore {
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`document_competitors`, `document_external_factors`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`document_competitors`, `document_running_numbers`, `document_cost_details`, `document_external_factors`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
@@ -682,6 +684,8 @@ export class SbpgiDocumentCreateUpdateBffController {
 | compensation_documents | R/W | สร้างหัวเอกสารและแก้ไข section หลัก |
 | document_new_stores | R/W | ร้านเปิดใหม่และ % ชดเชย |
 | document_competitors | R/W | ร้านคู่แข่งในเอกสาร |
+| document_running_numbers | R/W | ตัวนับเลขเอกสารต่อปี ค.ศ. — ออกเลข YYYY/xxxxx แบบ atomic (INSERT … ON CONFLICT DO UPDATE … RETURNING) |
+| document_cost_details | R/W | ยอดชดเชยแยกรายเดือน/รายร้านเปิดใหม่ (cost_year/cost_month · cost_target · cost_amount · _n / _nc) |
 | document_external_factors | R/W | ปัจจัยภายนอกในเอกสาร |
 | workflow_transaction | W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_approver | W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |

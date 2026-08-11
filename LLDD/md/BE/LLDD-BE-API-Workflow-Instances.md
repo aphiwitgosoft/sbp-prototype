@@ -7,8 +7,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 21 ชั่วโมง |
-| Owner | Butsaba <But> Podamrong |
+| Estimate | 24 ชั่วโมง |
+| Owner | Tunyatorn <Vava> Kiatkongphongsa |
 | Objective | ออกแบบ Workflow Engine ภายในและ POST /api/v1/workflows/instances สำหรับเปิด workflow จาก Job 8b แทน K2 REST StartInstance โดยเป็นเจ้าของ Gen Flow Gate W/Y/N |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -33,7 +33,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | impactProcessId | integer/string | required | อ้าง fgi_impact_processes และ compensation_documents ที่ Job 8 สร้างแล้ว |
-| sourceJobNo | string | required fixed 8b | ใช้ trace job_run_histories และ audit |
+| sourceJobNo | string | required fixed 8b | ใช้ trace รอบรันใน application log (structured) — ไม่มีตาราง job_run_histories แล้ว |
 | requestId | uuid | required | idempotency key ต่อ impactProcessId + sourceJobNo |
 | workflow_generation_status | W\|Y\|N | computed | W=ข้อมูลยังไม่พร้อมเพื่อ rerun, Y=เปิด workflow สำเร็จ, N=ไม่เข้าเกณฑ์ถาวร |
 | branchType/distanceKm | enum/number\|null | required by gate | branch นอกเซ็ตหรือระยะเกินตั้ง N; ระยะยังไม่มีค่าคง W |
@@ -107,7 +107,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 ```json
 {
   "docNo": "2026/00123",
-  "instanceId": "WF-2569-00123",
+  "instanceId": "WF-2026-00123",
   "workflowGenerationStatus": "Y",
   "firstSection": "06",
   "statusCode": "06",
@@ -119,7 +119,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | instanceId | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | workflowGenerationStatus | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | firstSection | string | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -134,7 +134,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 
 ```json
 {
-  "id": "WF-2569-00123"
+  "id": "WF-2026-00123"
 }
 ```
 
@@ -148,7 +148,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 
 ```json
 {
-  "instanceId": "WF-2569-00123",
+  "instanceId": "WF-2026-00123",
   "docNo": "2026/00123",
   "status": "ACTIVE",
   "currentSection": "06"
@@ -160,7 +160,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | instanceId | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| docNo | string | Yes | พ.ศ. YYYY/xxxxx |
+| docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | status | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | currentSection | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
@@ -172,7 +172,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 
 ```json
 {
-  "period": "2569-07"
+  "period": "2026-07"
 }
 ```
 
@@ -222,8 +222,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | compensation_documents | R/W | create-if-missing จาก impact process และผูก docNo |
 | workflow_transaction (@srm/glb-workflow) | R/W | initializeWorkflow แทน K2 StartInstance |
 | workflow_approver (@srm/glb-workflow) | W | addPreparedApprover state 06 |
-| document_statuses / workflow_sections | R | lookup statusCode/status และ section แรก |
-| job_run_histories | W | บันทึกผลเรียกจาก Job 8b |
+| workflow_status / workflow_state (@srm/glb-workflow · sps_store) | R | lookup statusCode/status และ state แรก — ตาราง document_statuses/workflow_sections ของ SBPGI ถูกตัดแล้ว |
+| interface_transactions | W | บันทึกผลเรียกจาก Job 8b · ตาราง job_run_histories ถูกตัด 2026-08-06 — ผลการรันไปที่ application log |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -321,7 +321,7 @@ export class CreateWorkflowsInstancesBodyDto {
   @IsInt()
   impactProcessId: number;
 
-  /** ใช้ trace job_run_histories และ audit */
+  /** ใช้ trace รอบรันใน application log (structured) — ไม่มีตาราง job_run_histories แล้ว */
   @IsNotEmpty()
   @IsString()
   sourceJobNo: string;
@@ -525,7 +525,7 @@ export class FgiImpactStore {
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`compensation_documents`, `job_run_histories`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`compensation_documents`, `interface_transactions`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
@@ -533,8 +533,8 @@ export class FgiImpactStore {
 | --- | --- | --- |
 | workflow_transaction | R/W | workflow engine @srm/glb-workflow |
 | workflow_approver | W | workflow engine @srm/glb-workflow |
-| document_statuses | R | workflow_status (@srm/glb-workflow) |
-| workflow_sections | R | workflow_state (@srm/glb-workflow) |
+| workflow_status | R | workflow engine @srm/glb-workflow |
+| workflow_state | R | workflow engine @srm/glb-workflow |
 
 #### 9.7 Repository Providers + Module wiring
 
@@ -684,31 +684,35 @@ export class SbpgiWorkflowInstancesBffController {
 | fgi_impact_processes | R/W | อ่านข้อมูล impact และอัปเดต workflow_generation_status W/Y/N |
 | fgi_impact_stores | R/W | อ่านข้อมูล impact และอัปเดต workflow_generation_status W/Y/N |
 | compensation_documents | R/W | create-if-missing จาก impact process และผูก docNo |
-| job_run_histories | W | บันทึกผลเรียกจาก Job 8b |
+| interface_transactions | W | บันทึกผลเรียกจาก Job 8b · ตาราง job_run_histories ถูกตัด 2026-08-06 — ผลการรันไปที่ application log |
 | workflow_transaction | R/W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_approver | W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
-| document_statuses | R | ใช้ของระบบเดิม: workflow_status (@srm/glb-workflow) |
-| workflow_sections | R | ใช้ของระบบเดิม: workflow_state (@srm/glb-workflow) |
+| workflow_status | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| workflow_state | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 
 #### 10.2 SQL จริงต่อ Endpoint
 
 **POST /api/v1/workflows/instances** — เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service token ไม่ใช่ FE
 
 ```sql
--- ⚠️ SQL ตัวอย่างนี้ยังอ้างตารางที่ถูกตัดจาก target design 21 ตารางแล้ว
---    ห้าม implement ตามตัวอักษร ให้แทนที่ก่อนใช้งาน:
---      stores  ->  store / mas_store / sevenshop (store-backend) หรือ impacted_stores ของ SBPGI
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- Gen Flow Gate: workflow_generation_status มี source of truth ที่ fgi_impact_processes
 SELECT p.id AS impact_process_id, p.workflow_generation_status, ist.opt_dv_user_id,
-       impacted.juristic_name AS impacted_store_juristic_name, ns.juristic_name AS new_store_juristic_name,
-       ss.growth_rate_diff, ss.sales_status, ns.branch_type, pair.distance_km, impacted.region_code
+       -- ⚠️ store ของระบบเดิมไม่มี juristic_name — นิติบุคคลอยู่คนละตาราง (fr_store / franchisee / juristic)
+       --    ชื่อตาราง/คีย์ยังไม่ยืนยัน ต้องถามทีมเจ้าของก่อนเขียนโค้ด
+       ij.juristic_name AS impacted_store_juristic_name, nj.juristic_name AS new_store_juristic_name,
+       ss.growth_rate_diff, ss.sales_status, ns.store_type, pair.distance_km, impacted.zone_cd
 FROM fgi_impact_processes p
 JOIN impacted_stores ist ON ist.store_code = p.impacted_store_code
-JOIN stores impacted ON impacted.store_code = p.impacted_store_code
+JOIN store impacted ON impacted.store_id = p.impacted_store_code
 JOIN fgi_impact_stores pair ON pair.impact_process_id = p.id
-JOIN stores ns ON ns.store_code = pair.new_store_code
+JOIN store ns ON ns.store_id = pair.new_store_code
+-- นิติบุคคลต้องผ่าน fr_store: store.store_id -> fr_store.juristic_id -> juristic.juristic_name
+LEFT JOIN fr_store ifs ON ifs.store_id = impacted.store_id
+LEFT JOIN juristic ij  ON ij.juristic_id = ifs.juristic_id
+LEFT JOIN fr_store nfs ON nfs.store_id = ns.store_id
+LEFT JOIN juristic nj  ON nj.juristic_id = nfs.juristic_id
 LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = p.id
 WHERE p.id = :impactProcessId FOR UPDATE OF p;
 
@@ -717,7 +721,7 @@ UPDATE fgi_impact_processes SET workflow_generation_status = :flagN
 WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagN;
 
 -- ผ่าน gate → ใช้เอกสารที่ Job 8 สร้างแล้ว เปิด instance + งานแรกผ่าน @srm/glb-workflow แล้วตั้ง Y ใน transaction เดียว
--- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 21 ตารางแล้ว)
+-- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 20 ตารางแล้ว)
 --    initialize(versionId=:sbpgiVersionId, referenceId=:referenceId, userId=:serviceActor)
 --    addPreparedApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
 -- ⚠️ ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน) · referenceId ยังไม่ตัดสิน (DP-1) · ไม่มี UNIQUE กันซ้ำจริงบน
@@ -737,7 +741,7 @@ WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDec
 -- ⚠️ DP-1 referenceId (doc_no หรือ surrogate id) และ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ยังไม่ตัดสิน
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4 · ชื่อ function ของ engine ยังไม่ยืนยัน (3 ชุดขัดกัน)
 SELECT w.transaction_id, w.reference_id, w.current_state_id, w.current_status_id, w.current_approver,
-       a.state_id AS pending_state_id, a.approver, a.seq
+       a.state_id AS pending_state_id, a.approver_id, a.approve_seq
 FROM sps_store.workflow_transaction w
 LEFT JOIN sps_store.workflow_approver a ON a.transaction_id = w.transaction_id AND a.state_id = w.current_state_id
 WHERE w.transaction_id = :id AND w.version_id = :sbpgiVersionId;

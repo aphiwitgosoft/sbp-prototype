@@ -249,7 +249,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
             "params": [
                 ["กำหนดการรัน (Cron)", "Monthly", "text", 1, "ตั้งเวลาใน scheduler ผ่าน deployment config"],
                 ["งวดข้อมูล (เดือนที่รัน)", "07/2026", "text", 1, "ชื่อไฟล์ใช้เดือนปัจจุบัน แต่งวดใน DB คือเดือนก่อนหน้า"],
-                ["SFTP endpoint alias", "qssi-monthly", "text", 0, "resolve host/port จาก environment; ไม่รับค่า host/port จาก request หรือ job_configs"],
+                ["SFTP endpoint alias", "qssi-monthly", "text", 0, "resolve host/port จาก environment; ไม่รับค่า host/port จาก request — resolve จาก environment เท่านั้น"],
                 ["Secret reference", "secret/sbpgi/interfaces/qssi", "text", 0, "credential/private key อ่านจาก Secret Manager และบังคับ strict known_hosts"],
                 ["Remote Directory", "/export/qssishare/onl/qssi/textfile/SBP/QSSI_Monthly/", "text", 1, "path เท่านั้น ไม่รวม credential"],
                 ["Local Directory", "/appshare/SPS/FCS/interface_data/in/", "text", 1, "staging/quarantine path"],
@@ -274,7 +274,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
             "script": "/appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh",
             "params": [
                 ["กำหนดการรัน (Cron)", "0 07 7 * *", "text", 1, "ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh; Operations ตรวจ deployment path และ owner permission ก่อนขึ้น production"],
-                ["Argument (งวด)", "2569|06", "text", 1, "รูปแบบ YYYY|MM"],
+                ["Argument (งวด)", "2569|06", "text", 1, "รูปแบบ YYYY|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ขัดกับกติกา ค.ศ. ทั้งระบบ ต้องยืนยันกับเจ้าของ ALLMAP"],
                 ["Chunk Size", "10000", "number", 1, "จำนวนแถวต่อรอบ insert"],
                 ["Source View", "COMPETITOR_IMPACT_VIEW", "text", 0, "SELECT DISTINCT / map คอลัมน์ NAMT -> NAME_TH, BRANCHT -> BRANCH_TH"],
             ],
@@ -300,7 +300,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
                 ["fgi_impact_stores", "R/W", "lock candidate W และเปลี่ยนเป็น P หลัง durable file สำเร็จเท่านั้น"],
                 ["fgi_impact_sales_summaries", "R/W", "สร้าง/ผูกหัวสรุปยอดขายใน transaction"],
                 ["interface_transactions", "W", "transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key"],
-                ["job_run_histories", "W", "run status และ reconcile count"],
+                ["(application log แบบ structured)", "W", "run status และ reconcile count — ตาราง job_run_histories ถูกตัด 2026-08-06"],
             ],
             "meta": {
                 "trans": "durable file ก่อน; transaction เดียว update W→P + insert outbox READY; dispatcher ส่งภายหลัง",
@@ -380,7 +380,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
                 {"k": "start", "t": "เริ่ม"},
                 {"k": "p", "t": "query impact profile สถานะ I + forecast + ยังไม่สร้างเอกสาร", "d": "ใช้ impact_process_id เป็น idempotency key"},
                 {"k": "d", "t": "ข้อมูลผู้อนุมัติ/ร้าน/ยอดชดเชยครบ?", "no": "บันทึก reject reason / ไม่สร้างเอกสาร", "noKind": "err", "d": ""},
-                {"k": "p", "t": "generate doc_no YYYY/xxxxx", "d": "running ต่อปี พ.ศ."},
+                {"k": "p", "t": "generate doc_no YYYY/xxxxx", "d": "running ต่อปี ค.ศ. (มติ 2026-08-06)"},
                 {"k": "p", "t": "insert compensation_documents", "d": "ผูก impact_process_id และสถานะเริ่มต้น"},
                 {"k": "p", "t": "บันทึก interface_transactions เป็น INTERNAL_DB_WRITE", "d": "ไม่สร้างไฟล์ BPM06001O"},
                 {"k": "end", "t": "จบ - workflow เปิดโดย Job 8b / POST /workflows/instances"},
@@ -412,7 +412,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
             "script": "(internal scheduler / service token)",
             "cron": "after-job-8",
             "cronTh": "trigger หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ได้ตาม period",
-            "out": "workflow_instances / workflow_tasks (DB)",
+            "out": "sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SBPGI)",
             "desc": "คัดรายการที่ผ่าน Gen Flow Gate แล้วเรียก Workflow Engine ภายในผ่าน POST /api/v1/workflows/instances แทน K2 REST StartInstance; เกณฑ์ W/Y/N เดิมยังคงใช้สำหรับ reconcile",
             "params": [
                 ["Scheduler", "หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ตาม period", "text", 1, "แยกเพื่อ rerun ได้อิสระ; Operations ตรวจ deployment schedule/queue เท่านั้น"],
@@ -427,7 +427,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
                 {"k": "d", "t": "พบเงื่อนไขไม่ผ่านถาวร?", "no": "ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ", "d": "branch type, distance, missing DV, same juristic หรือ growth > -10 -> N"},
                 {"k": "d", "t": "ข้อมูล Gate พร้อมครบ?", "no": "distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W", "d": "คง W เฉพาะข้อมูลต้นทางที่ยังรอเติมเพื่อให้ rerun ได้"},
                 {"k": "io", "t": "POST /api/v1/workflows/instances", "d": "service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST"},
-                {"k": "p", "t": "insert workflow_instances + workflow_tasks แรก Section 06", "d": ""},
+                {"k": "p", "t": "เรียก initialize + add-prepared-approver ของ @srm/glb-workflow (state 06)", "d": "engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · ชื่อ function ยังไม่ยืนยัน ดู LLDD-BE-Workflow-Engine-Definition 5.3"},
                 {"k": "p", "t": "workflow_generation_status = Y", "d": "เปิด workflow สำเร็จ"},
                 {"k": "io", "t": "ส่งอีเมลสรุปราย DV ผ่าน Notification Service", "d": ""},
                 {"k": "end", "t": "จบ"},
@@ -435,9 +435,9 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
             "tables": [
                 ["fgi_impact_stores", "R/W", "อ่าน candidate + เขียน W/Y/N"],
                 ["compensation_documents", "R/W", "ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency"],
-                ["workflow_instances", "W", "เปิด instance ภายใน"],
-                ["workflow_tasks", "W", "สร้าง task แรก Section 06"],
-                ["status_email_rules", "R", "ผู้รับอีเมลตามสถานะ"],
+                ["workflow_transaction (@srm/glb-workflow · sps_store)", "W", "เปิด instance ผ่าน engine — ห้าม insert ตรง"],
+                ["workflow_approver (@srm/glb-workflow · sps_store)", "W", "prepared approver ขั้นแรก state 06 — ผ่าน engine"],
+                ["(backend config)", "R", "ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · workflow ใช้ engine ส่งเอง"],
             ],
             "rels": [
                 "แทน K2 REST StartInstance ด้วย Workflow Engine ภายใน",
@@ -445,7 +445,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
             ],
             "meta": {
                 "trans": "DB transaction ครอบ create instance/task + update W/Y/N",
-                "rerun": "idempotent ด้วย doc_no/impact_process_id; ตรวจ workflow_instances เดิมก่อนสร้างใหม่",
+                "rerun": "idempotent ด้วย doc_no/impact_process_id; ตรวจ workflow_transaction เดิมของ engine ก่อนสร้างใหม่",
                 "mail": "อีเมลราย DV ผ่าน Notification Service",
                 "risk": "ห้ามเรียก K2 REST endpoint legacy; เก็บไว้เป็น reference migration เท่านั้น",
             },
@@ -506,14 +506,14 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
                 {"k": "start", "t": "เริ่ม"},
                 {"k": "p", "t": "อ่าน interface_transactions ฝั่ง STA ที่ยังไม่มี ACK และอายุ >= threshold", "d": ""},
                 {"k": "d", "t": "พบรายการค้าง?", "no": "จบการทำงาน", "noKind": "end", "d": ""},
-                {"k": "io", "t": "ส่งอีเมล UTF-8 ผ่าน Notification Service", "d": "ผู้รับตาม config/status_email_rules"},
+                {"k": "io", "t": "ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม", "d": "ผู้รับตาม backend config"},
                 {"k": "p", "t": "แสดงรายการใน /interfaces/pending-ack", "d": "POST /interfaces/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ"},
                 {"k": "end", "t": "จบ"},
             ],
             "tables": [
                 ["interface_transactions", "R", "pending ACK จาก STA และสถานะล่าสุด"],
-                ["email_templates", "R", "template EM-08 watchdog ACK"],
-                ["status_email_rules", "R", "ผู้รับอีเมล"],
+                ["email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib)", "R/W", "template EM-08 watchdog ACK — SBPGI ไม่มีตาราง email_templates"],
+                ["(backend config)", "R", "ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env"],
             ],
             "meta": {
                 "trans": "read-only; callback /interfaces/sta/ack เป็นผู้เขียน ACK หลัก",
@@ -1115,7 +1115,7 @@ def build_model() -> Model:
     )
     model.heading("3.3.1 รายการงาน Batch", 3)
     model.note(
-        "ตัดสินใจ 6 สิงหาคม 2569: หน้าจอ Batch Job ย้ายไปอยู่กลุ่มเมนู Flow และเหลือเฉพาะ "
+        "ตัดสินใจ 6 สิงหาคม 2026: หน้าจอ Batch Job ย้ายไปอยู่กลุ่มเมนู Flow และเหลือเฉพาะ "
         "ลำดับการทำงาน (Flowchart) กับ ตารางฐานข้อมูลที่ใช้ เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม "
         "งาน Batch ทั้ง 11 รายการยังทำงานตามปกติ แต่กำหนดตารางเวลาและพารามิเตอร์ที่ backend config "
         "(config file/env ของฝั่ง Backend) และบันทึกผลการรันไว้ที่ application log แทนตารางในฐานข้อมูล"
@@ -1164,7 +1164,7 @@ def build_model() -> Model:
     model.pagebreak()
     model.heading("3.4 K2 Screen Requirements", 2)
     model.note(
-        "Committed implementation scope ของหน้าจอ SBP Mall คือ 7 หน้าในตารางนี้ (หน้า Global Config และ Email Template ยกเลิกทั้งฟีเจอร์ · หน้า Batch Job ย้ายไปกลุ่มเมนู Flow เหลือเฉพาะ Flowchart และตารางฐานข้อมูลที่ใช้ · ตัดสินใจ 6 สิงหาคม 2569) — "
+        "Committed implementation scope ของหน้าจอ SBP Mall คือ 7 หน้าในตารางนี้ (หน้า Global Config และ Email Template ยกเลิกทั้งฟีเจอร์ · หน้า Batch Job ย้ายไปกลุ่มเมนู Flow เหลือเฉพาะ Flowchart และตารางฐานข้อมูลที่ใช้ · ตัดสินใจ 6 สิงหาคม 2026) — "
         "ปรับตามการตัดสินใจ 2026-08-06: ตัดหน้า Overview/Dashboard ออก โดยหน้าแรกของระบบเปลี่ยนเป็นหน้าเอกสารรอดำเนินการ (SCR-02) "
         "และลบหน้าข้อมูลผิดปกติ/แจกงานถาวร (ข้อมูลผิดปกติเหลือเป็นธงสีแดงในแถวตาราง) · "
         "หน้ากำหนดผู้ปฏิบัติงานและสิทธิ์การเข้าถึงเมนูไม่อยู่ใน scope SBPGI — ใช้ระบบผู้ใช้/สิทธิ์ของระบบ SBP เดิม (ตัดสินใจ 2026-08-05)"
@@ -1302,7 +1302,7 @@ def build_model() -> Model:
             model.bullet(rule)
     model.heading("3.4.13 Notification template requirements", 3)
     model.note(
-        "ตัดสินใจ 6 สิงหาคม 2569: หน้าจอจัดการ Email Template ของระบบประกันรายได้ถูกยกเลิกทั้งฟีเจอร์ "
+        "ตัดสินใจ 6 สิงหาคม 2026: หน้าจอจัดการ Email Template ของระบบประกันรายได้ถูกยกเลิกทั้งฟีเจอร์ "
         "เนื้อหาอีเมลทั้ง 8 template เก็บอยู่ในตาราง email_template ของระบบ SBP เดิม ซึ่งมีหน้าจอบริหารจัดการอยู่แล้ว "
         "ระบบประกันรายได้เพียงอ่าน template ไปประกอบอีเมลแล้วส่งผ่านไลบรารีกลางของระบบเดิม และบันทึกการส่งลงตาราง email_sent"
     )
@@ -1317,7 +1317,7 @@ def build_model() -> Model:
     for rule in [
         "รองรับ template EM-01 ถึง EM-08 ครอบคลุม workflow transition, reminder, escalation, batch error และ STA ACK watchdog",
         "ตัวแปร merge ที่ใช้ต้องตรงกับที่ template รองรับ และต้องไม่มีตัวแปรที่แทนค่าไม่ได้หลงเหลือในอีเมลที่ส่งออก",
-        "From/To/Cc กำหนดตาม status_email_rules หรือ config ต่อ job ไม่ได้มาจากผู้ใช้",
+        "From/To/Cc ของ batch job กำหนดใน backend config ไม่ได้มาจากผู้ใช้ · อีเมล workflow เป็นหน้าที่ของ engine",
         "การส่งอีเมลต้องอยู่นอก transaction ของ workflow และการส่งล้มเหลวต้องไม่ทำให้ workflow ล้มเหลว",
         "การส่งทุกฉบับต้องบันทึกไว้ที่ตาราง email_sent เพื่อการตรวจสอบย้อนหลัง",
         "การแก้ไขเนื้อหา template เป็นงานของระบบ SBP เดิม และบันทึก audit ที่ระบบเดิม",

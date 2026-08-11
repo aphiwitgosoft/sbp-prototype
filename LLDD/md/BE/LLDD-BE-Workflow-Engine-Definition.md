@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 12 ชั่วโมง |
+| Estimate | 24 ชั่วโมง |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
 | Objective | กำหนด version/state/status/route/group/part ของ @srm/glb-workflow ที่ SBPGI ต้อง register และระบุความเสี่ยง/ข้อค้างของ engine — เป็น blocker ที่ต้องปิดในสัปดาห์แรก |
 
@@ -35,11 +35,22 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | versionId | integer | 1 ระบบ = 1 version | SBPGI ขอ version ใหม่จากทีมเจ้าของ library |
 | referenceId | string unique | required ตอน initializeWorkflow | ยังไม่ตัดสินว่าใช้ doc_no หรือ surrogate id (DP-1) |
 | state_id | integer running ตาม version | 1 state มีได้หลาย status | map 5 ขั้นของ SBPGI: 06/08/01/02/03 + state จบ |
-| event | save\|submit\|approve\|reject\|cancel\|sendback | ค่าเริ่มต้นของ engine | ปุ่มไทยของ SBPGI map ลง event เหล่านี้ผ่านตาราง decisions |
+| event | save\|submit\|approve\|reject\|cancel\|sendback | ค่าเริ่มต้นของ engine | ปุ่มไทยของ SBPGI map ลง event เหล่านี้ผ่าน common_code (code_type=SBPGI_DECISION) — ตาราง decisions ถูกตัดตามมติ DP-9 (2026-08-10) |
 | condition_json | {"field","operator","value"} | operator: == != > < >= <= | ใช้ {"field":"amount","operator":"<=","value":50000} แยก route GM/AVP |
 | eventParam | object | ส่งมาพร้อม event | SBPGI ส่ง {"amount": ยอดชดเชยรวม} ให้ engine เลือก route เอง |
 | part_display_type | READ \| WRITE | ต้องยืนยันค่าจริงกับทีม library | ไฟล์ต้นฉบับสะกดว่า WRTIE ทุกแถวของชีต sample data |
 | url_main / url_param_mapping | string | required ตอน register version | ทำให้ inbox กลาง (GET /api/workflow/pending) ลิงก์กลับหน้าเอกสารของ SBPGI ได้ |
+
+### 5.0 ทำไมเอกสารฉบับนี้ต้องปิดเป็นฉบับแรก
+
+เอกสารฉบับนี้ **ไม่มี endpoint ของตัวเอง** — ผลลัพธ์คือชุดนิยาม state/status/route/part ที่เอกสารอื่น เอาไปใช้ต่อ จึงต้องจบก่อนผู้บริโภคทั้งหมดเริ่ม (ปรับลำดับ 2026-08-10: เดิมถูกจัดไว้ท้ายกลุ่ม API ทำให้ `BE-API-Document-Workflow-Actions` และ `BE-API-Workflow-Instances` เริ่มก่อนเอกสารที่นิยาม สิ่งที่มันต้องใช้)
+
+| เอกสารที่รอ | รออะไรจากฉบับนี้ |
+| --- | --- |
+| BE-API-Document-Workflow-Actions | รหัส event ต่อปุ่ม · route ของแต่ละ state · เงื่อนไขแตกสายตามวงเงิน |
+| BE-API-Workflow-Instances | โครง version/state/status ที่จะ query และรูปแบบ payload ของ engine |
+| BE-Job-8b-StartInternalWorkflow | ลำดับเรียก initialize -> add-prepared-approver และค่า `referenceId` |
+| FE-Document-Detail (5 ฉบับ role) | `workflow_part_display` READ/WRITE ต่อ state ที่คุมการแสดงผลรายส่วน |
 
 ### 5.1 Engine คือของกลาง 13 ตาราง ใน schema `sps_store`
 
@@ -81,13 +92,13 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | 06 | รอฝ่าย SBP DSA ดำเนินการ | submit (ส่งเจ้าหน้าที่ SBP DSA) · reject (เห็นควรไม่ชดเชย) · cancel (หยุดชดเชย) · submit (ส่งหน่วยงานส่งเสริมธุรกิจ SBP) | 08 หรือ 01 หรือจบ flow |
 | 08 | รอเจ้าหน้าที่ SBP DSA ดำเนินการ | submit (คำนวณเงินชดเชยเรียบร้อย) | 01 |
 | 01 | รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ | approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที) · sendback (ฝ่าย SBP DSA ดำเนินการ) | 02 · จบ flow · 06 |
-| 02 | รอ GM ส่งเสริมธุรกิจฯ ดำเนินการ | approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที) · sendback | จบ flow เมื่อยอด <= 50,000 · ไป 03 เมื่อ 50,001-300,000 · 01 |
-| 03 | รอ AVP สำนักบริหาร SBP ดำเนินการ | approve (เห็นควรชดเชย) · sendback | จบ flow · 02 |
+| 02 | รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ | approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที) · sendback | จบ flow เมื่อยอด <= 50,000 · ไป 03 เมื่อ 50,001-300,000 · 01 |
+| 03 | รอผู้บริหารสำนักบริหาร SBP ดำเนินการ | approve (เห็นควรชดเชย) · sendback | จบ flow · 02 |
 
 ```sql
 -- ⚠️ ตัวอย่างนี้คือ **ทางเลือก B ของข้อค้าง 5.6 (ยังไม่ตัดสิน) — ห้าม seed ลงจริงก่อนได้ข้อสรุป**
 -- มติเดิม (ทางเลือก A) คือเก็บวงเงินที่ `common_code` (code_type = SBPGI_APPROVE_LIMIT) แล้ว "อ่านทุกครั้ง ห้าม hardcode"
--- ตามที่ LLDD-BE-Integration-SBP-Platform / LLDD-Database / plan-be.md ระบุไว้ · กติกาที่แน่นอนคือ **ห้ามเก็บสองที่**
+-- ตามที่ LLDD-BE-Integration-SBP-Platform / LLDD-Database ระบุไว้ · กติกาที่แน่นอนคือ **ห้ามเก็บสองที่**
 -- ถ้าเลือกทางเลือก A: route ยังแตกสองเส้นเหมือนเดิม แต่ SBPGI เป็นผู้เทียบยอดกับ common_code
 --   แล้วส่งผลลัพธ์ (เช่น eventParam = {"limitTier":"GM"|"AVP"}) ให้ engine เลือก route โดยไม่ฝังตัวเลขใน condition_json
 --

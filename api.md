@@ -7,10 +7,10 @@
 
 ## ภาพรวม
 
-- **30 เส้น · 6 กลุ่มตามโดเมน** เป็น reference contract สำหรับ FE/BE alignment (กลุ่มข้อมูลผิดปกติ 2 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ · กลุ่ม System Config และ Email Template รวม 10 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ — ดูท้ายไฟล์)
+- **29 เส้น · 6 กลุ่มตามโดเมน** เป็น reference contract สำหรับ FE/BE alignment (กลุ่มข้อมูลผิดปกติ 2 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ · กลุ่ม System Config และ Email Template รวม 10 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ — ดูท้ายไฟล์)
 - Base URL `/api/v1` · การยืนยันตัวตน: ผ่าน BFF ของระบบ SBP เดิม — SBPGI รับ user context จาก header (`x-api-key` + `x-user-id`/`x-user-group-id`/`x-user-permissions`) · callback ภายนอกใช้ API key/service token
 - **ตัดสินใจ 2026-08-05:** กลุ่ม Auth & สิทธิ์ผู้ใช้ (เดิมกลุ่ม 1 · 4 เส้น) และ API ผู้ปฏิบัติงาน/roles/menus/สิทธิ์เมนู (เดิมอยู่กลุ่ม Master Data · 14 เส้น) **ตัดออก — ใช้ระบบ SBP เดิม** (Cognito + BFF + auth-backend/ABS) ดูหัวข้อ "เส้นที่ตัดออก" ท้ายไฟล์ · เดิมนับเป็น 62 เส้น 10 กลุ่ม
-- **ตัดสินใจ 2026-08-06 (รอบ 2) — ยึด API/DB ของระบบ SBP เดิมเป็นหลัก:** ตรวจ `SBP/README.md` + `srm-sps-spsap-store-backend` แล้วตัดอีก **3 เส้น** ที่มีของพร้อมใช้อยู่แล้ว (`/stores/search` → `GET /store/search` · `/zones` → `GET /store/all-regions` · `/branch-types` → `GET /common/common-code`) → เหลือ 47 เส้น (ต่อมาลดเหลือ 31 เส้น เมื่อลบกลุ่ม System Config + Email Template และกลุ่ม Batch Job Admin · แล้วเหลือ **30 เส้น** เมื่อยกเลิกระบบ `audit_logs` 2026-08-07) · และเปลี่ยนแหล่งข้อมูลของอีก 4 เส้นให้ไปอ่าน/เขียนของระบบเดิมแทนตารางของ SBPGI (ดูตาราง "เส้นที่เปลี่ยนไปใช้ของระบบ SBP เดิม" ท้ายไฟล์)
+- **ตัดสินใจ 2026-08-06 (รอบ 2) — ยึด API/DB ของระบบ SBP เดิมเป็นหลัก:** ตรวจ `SBP/README.md` + `srm-sps-spsap-store-backend` แล้วตัดอีก **3 เส้น** ที่มีของพร้อมใช้อยู่แล้ว (`/stores/search` → `GET /store/search` · `/zones` → `GET /store/all-regions` · `/branch-types` → `GET /common/common-code`) → เหลือ 47 เส้น (ต่อมาลดเหลือ 31 เส้น เมื่อลบกลุ่ม System Config + Email Template และกลุ่ม Batch Job Admin · แล้วเหลือ 30 เส้น เมื่อยกเลิกระบบ `audit_logs` 2026-08-07 · แล้วเหลือ **29 เส้น** เมื่อย้าย `decisions` ไป `common_code` ตามมติ DP-9 (2026-08-10)) · และเปลี่ยนแหล่งข้อมูลของอีก 4 เส้นให้ไปอ่าน/เขียนของระบบเดิมแทนตารางของ SBPGI (ดูตาราง "เส้นที่เปลี่ยนไปใช้ของระบบ SBP เดิม" ท้ายไฟล์)
 - แบ่งหน้า `?page=1&size=20` → ตอบ `{"page","size","total","items":[]}`
 - Error รูปแบบเดียวกันทุกเส้น `{"code":"DOC_409","message":"ข้อความไทยตรงตาม SRS"}` — **ข้อความ popup ต้องตรงตัวตาม SRS**
 - **วันที่และเลขเอกสารเป็น ค.ศ. ทั้งหมด** (payload = ISO-8601 ค.ศ. · `docNo` = `YYYY/xxxxx` ค.ศ.) — ยึดตามระบบ SBP ปัจจุบัน (FE `DatePicker` default `buddhistEra=false` · BE helper `toAD()`), แสดงผล พ.ศ. เฉพาะจุดที่เปิด flag ที่ component · JSON UTF-8 ทุกเส้น (เลิก TIS-620)
@@ -20,7 +20,7 @@
 
 ## สัญญากลาง API/FE ที่ทุก endpoint ต้องใช้
 
-> รายละเอียด LLDD กลาง: `LLDD/BE/LLDD-BE-API-Common-Contracts.md` และ `LLDD/FE/LLDD-FE-Integration-Contracts.md`
+> รายละเอียด LLDD กลาง: `LLDD/md/BE/LLDD-BE-API-Common-Contracts.md` และ `LLDD/md/FE/LLDD-FE-Integration-Contracts.md`
 
 | หมวด | Contract กลาง | ผู้รับผิดชอบ / ใช้โดย |
 |---|---|---|
@@ -49,7 +49,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 
 ## รายการ endpoint ทั้ง 6 กลุ่ม
 
-> **การนับ:** หัวข้อย่อยด้านล่างเลข 1–7 แต่ **หัวข้อ 1 (Auth) ถูกตัดออกทั้งกลุ่มและไม่มี endpoint** — กลุ่มที่นับจริงคือหัวข้อ 2–7 รวม **6 กลุ่ม / 30 เส้น** (11 + 3 + 8 + 2 + 3 + 3) ตรงกับ `GROUPS` ใน `plan-api.html` ที่เรนเดอร์เลขกลุ่ม 1–6 (คงเลขหัวข้อเดิมไว้เพื่อไม่ให้ลิงก์อ้างอิงเดิมเสีย)
+> **การนับ:** หัวข้อย่อยด้านล่างเลข 1–7 แต่ **หัวข้อ 1 (Auth) ถูกตัดออกทั้งกลุ่มและไม่มี endpoint** — กลุ่มที่นับจริงคือหัวข้อ 2–7 รวม **6 กลุ่ม / 29 เส้น** (11 + 3 + 8 + 2 + 3 + 3) ตรงกับ `GROUPS` ใน `plan-api.html` ที่เรนเดอร์เลขกลุ่ม 1–6 (คงเลขหัวข้อเดิมไว้เพื่อไม่ให้ลิงก์อ้างอิงเดิมเสีย)
 
 ### 1. Auth & สิทธิ์ผู้ใช้ — **ตัดออก · ใช้ระบบ SBP เดิม** (ตัดสินใจ 2026-08-05)
 
@@ -70,7 +70,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 | GET | `/documents/{docNo}/attachments/download-all` | **(เพิ่ม 2026-08-06)** ดาวน์โหลดไฟล์แนบทั้งหมดเป็น `.zip` — ปุ่ม “ดาวน์โหลดทั้งหมด” ระดับการ์ด (เทียบเท่าปุ่ม `Download` ของ K2 เดิม) · 404 เมื่อไม่มีไฟล์แนบ |
 | GET | `/documents/{docNo}/sales` | ยอดขาย 4 หน้าต่าง × 15 วัน — ใช้กับปุ่ม "ข้อมูลยอดขายเพิ่มเติม" · **กราฟแนวโน้มยอดขายรายวันในหน้าเอกสารถูกถอดออก 2026-08-06** เหลือเป็นข้อมูลประกอบการตรวจสอบและลิงก์ออก QlikView BI |
 
-### 3. ข้อมูลอ้างอิง (Lookup / Reference) · K2 + FGI/FCS **(3 เส้น · lookup อ่านอย่างเดียวที่ไม่มีหน้าจอดูแล master · ตัด `/stores/search` `/zones` `/branch-types` 2026-08-06 — ใช้ของระบบ SBP เดิม)**
+### 3. ข้อมูลอ้างอิง (Lookup / Reference) · K2 + FGI/FCS **(2 เส้น · lookup อ่านอย่างเดียวที่ไม่มีหน้าจอดูแล master · ตัด `/stores/search` `/zones` `/branch-types` 2026-08-06 — ใช้ของระบบ SBP เดิม)**
 
 > **ใช้ของระบบ SBP ปัจจุบันแทน:** ค้นหาร้าน → `GET /store/search` (+ `/store/list` `/store/detail` `/store/opt-name`) · ภาค/โซน → `GET /store/all-regions` (+ `/store/regions-by-email` `/store/province-by-region`) · ประเภทสาขา → `GET /common/common-code` (+ `/master/common`) — ทั้งหมดอยู่ใน `srm-sps-spsap-store-backend` และเรียกผ่าน BFF ตัวเดียวกับที่ FE ใช้อยู่แล้ว
 
@@ -78,9 +78,8 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 |---|---|---|
 | GET | `/document-statuses` | รายการสถานะเอกสาร — dropdown ตัวกรอง (ค้นหา/รายงาน) |
 | GET | `/workflow-sections` | รายการ Section 5 ขั้น (06/08/01/02/03) + `approveLimitAmount` ต่อขั้น — dropdown ตำแหน่ง/ตัวกรอง · FE ใช้แสดงวงเงิน ไม่ hardcode |
-| GET | `/decisions` | **(เพิ่ม 2026-08-06)** ผลพิจารณาจาก master `decisions` (`decisionName` = ข้อความปุ่มไทย verbatim) — FE เรนเดอร์ปุ่มพิจารณาจากเส้นนี้ ไม่ hardcode 6-enum |
 
-> **🔸 ข้อค้างตัดสินใจ DP-9 — ยังไม่ตัดสิน:** มี**ข้อเสนอ**ให้ย้าย master 3 ตัว (`decisions` · `external_factors` · `competitors`) ไปเก็บใน **`common_code` ของระบบ SBP เดิม** (`common_code` 2,609 แถว · `common_code_type` 376 แถว · มี API `GET /common/common-code` + `/master/common` พร้อมใช้) แทนการสร้างตารางใหม่ใน SBPGI · **ยังไม่ตัดสินและยังไม่เปลี่ยนดีไซน์** — เอกสารชุดนี้ (`api.md` / `plan-api.html` / `database.md`) ยังคง 3 ตารางและ 7 endpoint (`/decisions` · `/factors*` · `/competitors*`) ไว้ตามเดิม · รายละเอียดข้อเสนอและผลกระทบดู **`SBP/SBPGI-vs-existing-system.md` หัวข้อ 4 (Decision Points · DP-9)** · ถ้าตัดสินให้ย้าย จะกระทบ: กลุ่ม Lookup เหลือ 2 เส้น · กลุ่ม Master Data หายทั้งกลุ่ม (8 เส้น) · หน้า `k2-factors.html` / `k2-competitors.html` เปลี่ยนเป็นหน้าจอของระบบเดิม
+> **✅ มติ DP-9 (2026-08-10) — แยกตัดสิน:** `decisions` **ย้ายไปใช้ `common_code`** ของระบบเดิม (`code_type = SBPGI_DECISION`) จึง**ตัดเส้น `GET /decisions` ออก** — FE เรียก `GET /common/common-code?codeType=SBPGI_DECISION` ของระบบเดิมแทน · ส่วน `external_factors` และ `competitors` **ยังเป็นตารางของ SBPGI ตามเดิม** เพราะมีหน้าจอ CRUD ของตัวเอง และช่อง remark ของ `common_code` จำกัด 50 ตัวอักษร ไม่คุ้มที่จะไปแก้ตารางที่ทุกโมดูลใช้ร่วม · ⚠ `common_code` ไม่มี unique constraint → กันรหัสซ้ำที่ระดับแอป และลงทะเบียน `code_type` ที่ `common_code_type` ก่อน
 
 ### 4. Master Data · K2 3.1.9 (8 เส้น · master ที่มีหน้าจอดูแลของตัวเอง — ปัจจัยภายนอก + รายชื่อคู่แข่ง · CRUD คู่แข่งเพิ่ม 2026-08-06 · ตัด `/audit-logs` 2026-08-07)
 | Method | Path | ทำอะไร |
@@ -90,14 +89,14 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 
 > **กติกาการจัดกลุ่ม (ปรับให้ตรงกันทั้ง `api.md` และ `plan-api.html` · 2026-08-06):** master ที่**มีหน้าจอดูแลของตัวเอง** (ปัจจัยภายนอก → `k2-factors.html` · รายชื่อคู่แข่ง → `k2-competitors.html`) ให้เก็บ **CRUD ทั้งชุดไว้ในกลุ่ม Master Data** แม้ `GET` จะถูกใช้เป็น dropdown ในหน้าเอกสารด้วยก็ตาม — ส่วนกลุ่ม **Lookup** เหลือเฉพาะรายการอ้างอิงที่**อ่านอย่างเดียวและไม่มีหน้าจอดูแล** (`/document-statuses` · `/workflow-sections` · `/decisions`) เดิมทั้งสองไฟล์จัด `/competitors` คนละกลุ่มกัน ทำให้ตัวเลขต่อกลุ่มไม่ตรง
 
-> **🔸 ข้อค้างตัดสินใจ DP-9 (เดียวกับกลุ่ม Lookup) — ยังไม่ตัดสิน:** ทั้ง 8 เส้นของกลุ่มนี้ผูกกับตาราง `external_factors` และ `competitors` ของ SBPGI · มี**ข้อเสนอ**ให้ย้ายไปใช้ `common_code` ของระบบ SBP เดิมแทน (คนละ `code_type`) ซึ่งจะทำให้**กลุ่ม Master Data หายไปทั้งกลุ่ม** · **ยังไม่ตัดสิน — ดีไซน์ปัจจุบันยังคงไว้ตามเดิม** · ดู `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4 (DP-9)
+> **✅ มติ DP-9 (2026-08-10):** ทั้ง 8 เส้นของกลุ่มนี้ผูกกับ `external_factors` และ `competitors` ซึ่ง**ยังเป็นตารางของ SBPGI ตามเดิม** ไม่ย้ายไป `common_code` — เฉพาะ `decisions` เท่านั้นที่ย้าย
 
 > เส้นผู้ปฏิบัติงาน (`/operators*` · `/employees/search`) และสิทธิ์เมนู (`/roles*` · `/menus*` · `/menu-permissions*`) รวม 14 เส้น **ตัดออก — ใช้ระบบ SBP เดิม** (ดูท้ายไฟล์)
 
 ### 5. รายงาน · K2 3.1.7 + SDD v7.5 (2 เส้น)
 | Method | Path | ทำอะไร |
 |---|---|---|
-| GET | `/reports/status-summary` | **รายงานตรวจสอบประกันรายได้ (SBP Mall)** — ค้นหาข้อมูล · **บังคับระบุปี** · filter ตาม **SDD สไลด์ 60** 7 ตัว: `status`* (Drop-down 6 ค่า · บังคับ) · `impactedStoreCode` (numeric) · `newStoreCode` (numeric) · `periodStatementFrom`/`periodStatementTo` (ปฏิทิน **วัน/เดือน/ปี ค.ศ.** หรือกรอกเอง · **บังคับเมื่อ status = เสร็จสิ้นดำเนินการ**) · `storeType[]` (checkbox **A/B/C/E**) · `region[]` (checkbox 13 รหัส · ภาคใหม่แสดงอัตโนมัติ) · `result` (Radio ประกันรายได้/ไม่ประกันรายได้ · **ไม่บังคับ**) · กติกาคู่: ระบุ `impactedStoreCode` แล้วต้องระบุ `newStoreCode` ด้วย มิฉะนั้น 400 · ผลลัพธ์ **14 คอลัมน์ตาม SDD** |
+| GET | `/reports/status-summary` | **รายงานตรวจสอบประกันรายได้ (SBP Mall)** — ค้นหาข้อมูล · **บังคับระบุปี** · filter ตาม **SDD สไลด์ 60** 7 ตัว: `status`* (Drop-down 6 ค่า · บังคับ) · `impactedStoreCode` (numeric) · `newStoreCode` (numeric) · `periodStatementFrom`/`periodStatementTo` (ปฏิทิน **วัน/เดือน/ปี ค.ศ.** หรือกรอกเอง · **บังคับเมื่อ status = เสร็จสิ้นดำเนินการ**) · `storeType[]` (checkbox **7 ค่า `A B C D E PTT บริษัท` (BranchTypeProfile.BranchTypeFGIName · ห้าม hardcode)**) · `region[]` (checkbox 13 รหัส · ภาคใหม่แสดงอัตโนมัติ) · `result` (Radio ประกันรายได้/ไม่ประกันรายได้ · **ไม่บังคับ**) · กติกาคู่: ระบุ `impactedStoreCode` แล้วต้องระบุ `newStoreCode` ด้วย มิฉะนั้น 400 · ผลลัพธ์ **14 คอลัมน์ตาม SDD** |
 | GET | `/reports/status-summary/export` | **Export Excel** — ส่งออกผลการค้นหา 14 คอลัมน์เป็น Excel ให้ทีมบัญชีนำไปกระทบ SAP · เงื่อนไข filter เดียวกับ `/reports/status-summary` |
 
 ### 6. Workflow ภายใน · K2 3.1.4 + FGI/FCS Job 8b (3 เส้น)
@@ -120,11 +119,12 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 - **กฎวงเงินอนุมัติ (SDD GI 24/02/2026)** ใน `/documents/{docNo}/actions`: เห็นควรชดเชย ≤ 50,000 → **จบที่ GM (02)** · 50,001–300,000 → AVP (03) แล้วจบ (เกิน 300,000 รอ confirm) · เห็นควรไม่ชดเชยที่ 01/02 → **เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น)** · 06 ไม่ชดเชย/หยุด → เสร็จสิ้น · **ตัดขั้นบัญชี 04/05 ตาม SDD v7.5** (ดูตารางเต็มใน `workflow.md`) · เดิมใช้เกณฑ์เดียว 100,000
 - **เปิดเรื่องซ้ำได้ (SDD GI)** ใน `POST /documents`: 409 เฉพาะกรณีมีเอกสาร **active** ของร้าน+เดือนนั้น — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้ทั้งเดือนเดียวกันและเดือนถัดไป (ยกเลิกการเปิด SR) · กรณีเห็นควรไม่ชดเชย (06) เดือนถัดไประบบสร้างงานเข้า `GET /tasks` อัตโนมัติพร้อม assignee คนเดิม · ยอดชดเชย 0: เดือน 1–3 ส่งต่อ 01 · เดือนที่ 4 หยุดชดเชย
 - **งานค้าง (SDD GI)** ใน `GET /tasks`: รองรับ filter + เลือกหลายเอกสาร (bulk action) · เจ้าหน้าที่/ฝ่าย SBP DSA เห็นเอกสารได้ทุกสาขา (ไม่จำกัดงานตน) · ทีมส่งเสริม/บัญชีตามสิทธิ์เดิม
-- **filter `result`** ใน report = **ประกันรายได้ / ไม่ประกันรายได้** (SDD สไลด์ 60 · Radio เลือกอย่างใดอย่างหนึ่ง · **ไม่บังคับ** — บังคับเฉพาะ `status`) อิง **ผลพิจารณาล่าสุด** (`consideration_logs.result_category` = APPROVE/REJECT) — ขั้นบัญชี 05 ที่เคยอ้างถูกตัดออกแล้ว
+- **filter `result`** ใน report = **4 ค่า** (Radio เลือกอย่างใดอย่างหนึ่ง · **ไม่บังคับ** — บังคับเฉพาะ `status`) อิง **ผลพิจารณาล่าสุด** `consideration_logs.result_category`: `APPROVE` = ประกันรายได้ · `REJECT` = ไม่ประกันรายได้ · **`CANCELLED` = ยกเลิกโดยระบบ (เพิ่ม 2026-08-10)** · `PENDING`/ไม่มีค่า = ยังไม่มีผล — SDD สไลด์ 60 แสดงเพียง 2 ค่าแรก แต่ master จริง (`DecisionProfile.DecisionResultName` ของ `CPA_FRN_FGI`) มี **ยกเลิกโดยระบบ** จาก decision 14 `CancelBySystem` ด้วย จึงแยกเป็นตัวเลือกที่ 4 (ตัดสินใจ 2026-08-10) — ขั้นบัญชี 05 ที่เคยอ้างถูกตัดออกแล้ว
 - **%ชดเชยรวม = 100%** ใน `PUT /documents/{docNo}` · **เงินชดเชยต่อร้านเปิดใหม่ = ยอดชดเชยของร้านถูกกระทบ × %ชดเชย** คำนวณและปัดเศษที่ **BE** แล้วส่งกลับเป็น `compensateAmount` (FE ห้ามคูณเอง — กันยอดปัดเศษไม่ตรงกับที่บัญชีใช้) · ผลรวม `compensateAmount` ทุกร้านต้องเท่ากับยอดชดเชยของร้านถูกกระทบพอดี — แสดงในคอลัมน์ "เงินชดเชย (ร้านใหม่)" ของตารางร้านเปิดใหม่ (**กราฟสัดส่วนเงินชดเชยถูกถอดออก 2026-08-06**)
 - API payload ใช้ `newStoreCode` สำหรับรหัสร้านเปิดใหม่ 5 หลัก (เช่น `"00990"`) เพื่อคง leading zero **ทั้งใน response ของ `GET /documents/{docNo}` และ request ของ `PUT /documents/{docNo}`** (ห้ามใช้ `storeCode` ในสองเส้นนี้ — สงวนไว้ให้ร้านถูกกระทบ); internal table `document_new_stores.id` เป็น key ภายใน ไม่ expose เป็น field code
-- **require field ของแถวที่ผู้ใช้เพิ่มเองในส่วนร้านคู่แข่ง/ปัจจัยอื่นๆ ของ `PUT /documents/{docNo}`** (ตัดสินใจ 2026-08-06): คู่แข่ง = **รหัสแบรนด์คู่แข่ง** (เลือกจาก master `GET /competitors` รหัส `01`–`11` เท่านั้น ไม่ใช่ free text — แถว `source_system = ALLMAP` ที่ pipeline นำเข้ามีรหัสรายสาขาของตัวเองอยู่แล้ว) + **วันที่เปิดกระทบ** · ปัจจัย = **รหัสปัจจัยภายนอก** (เลือกจาก master `GET /factors`) + **วันที่เริ่มต้น** (วันที่สิ้นสุดไม่บังคับ แต่ถ้ามีต้อง ≥ วันที่เริ่มต้น — SRS ข้อ 11) · ไม่ผ่าน → 400 พร้อมข้อความ verbatim ตาม SRS: “กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ” / “กรุณาเลือกปัจจัยอื่นๆ ที่ท่านต้องการ” · UI: `k2-document.html` แสดง `*` แดงบน require field และไม่มีปุ่ม “บันทึก” ระดับการ์ดแล้ว (บันทึกผ่าน modal เพิ่ม/แก้ไขเท่านั้น)
+- **require field ของแถวที่ผู้ใช้เพิ่มเองในส่วนร้านคู่แข่ง/ปัจจัยอื่นๆ ของ `PUT /documents/{docNo}`** (ตัดสินใจ 2026-08-06): คู่แข่ง = **รหัสแบรนด์คู่แข่ง** (เลือกจาก master `GET /competitors` รหัส `01`–`11` เท่านั้น ไม่ใช่ free text — แถว `source_system = ALLMAP` ที่ pipeline นำเข้ามีรหัสรายสาขาของตัวเองอยู่แล้ว) + **วันที่เปิดกระทบ** · ปัจจัย = **รหัสปัจจัยภายนอก** (เลือกจาก master `GET /factors`) + **วันที่เริ่มต้น** (วันที่สิ้นสุดไม่บังคับ แต่ถ้ามีต้อง ≥ วันที่เริ่มต้น — SRS ข้อ 11) · ไม่ผ่าน → 400 พร้อมข้อความ **verbatim จาก SRS §10**: “กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ” · ส่วนฝั่งปัจจัย “กรุณาเลือกปัจจัยอื่นๆ ที่ท่านต้องการ” **ไม่ได้อยู่ใน SRS** — เราตั้งขึ้นให้ล้อกับข้อความคู่แข่ง (SRS §11 ระบุแต่กฎวันที่ ไม่ได้ให้ข้อความ) **ต้องให้ BA ยืนยันก่อน UAT** · UI: `k2-document.html` แสดง `*` แดงบน require field และไม่มีปุ่ม “บันทึก” ระดับการ์ดแล้ว (บันทึกผ่าน modal เพิ่ม/แก้ไขเท่านั้น)
 - **การบันทึกส่วนร้านคู่แข่ง/ปัจจัยอื่นๆ เป็นแบบ “บันทึกทันทีรายรายการ”** (ตัดสินใจ 2026-08-06 — ไม่มีปุ่มบันทึกระดับการ์ดแล้ว): กด **เพิ่ม/แก้ไข** ใน modal แล้วกดบันทึกใน modal = ยิง `PUT /documents/{docNo}` ทันที 1 ครั้ง · **ลบรายการที่เลือก (bulk remove)** ก็ยิง `PUT` ทันทีหลังผู้ใช้กดยืนยันใน popup (ไม่ค้างเป็น draft) — ไม่มี endpoint ลบแยก · ทุกครั้งส่ง**อาร์เรย์ชุดเต็มของส่วนนั้น** ให้ BE ลบรายการที่หายไป (`DELETE … NOT IN`) ในทรานแซกชันเดียวกัน · ปุ่มเพิ่ม/ลบ/checkbox แสดงเฉพาะ role ที่แก้ส่วนนั้นได้ (ปัจจุบันคือ section 01)
+- **⚠️ ข้อค้าง (2026-08-11): วิว ALLMAP** — `workflow.md` จัด ALLMAP อยู่กลุ่ม interface ที่ใช้ **พ.ศ.** และ argument ของ Job 2/3 ก็เป็น `2569|06` แต่หัวข้อนี้ระบุข้อยกเว้นไว้แค่ STA/IAS · **ยังไม่ยืนยันว่าวิว ALLMAP เก็บปีเป็น พ.ศ. จริงหรือไม่** — ต้องถามเจ้าของ ALLMAP แล้วปรับให้ตรงกันทั้งสองไฟล์
 - **ข้อยกเว้นเดียวของกติกา ค.ศ.:** ชื่อไฟล์และเนื้อไฟล์ interface ที่ส่งออกไป **STA** (`FRBC0001_YYYYMMDD.txt`) และไฟล์ที่รับจาก IAS (`AMS06001I_…`) ยังใช้ **พ.ศ. + windows-874** ตามสัญญาเดิมของระบบปลายทาง — แปลงเฉพาะตอนเขียน/อ่านไฟล์เท่านั้น ห้ามให้ปนเข้ามาใน DB/API
 - **เลขเอกสาร YYYY/xxxxx** (ปี **ค.ศ.** · running ต่อปี เริ่ม 00001) · **เลขเอกสารและวันที่ทั้งระบบเป็น ค.ศ.** (ตัดสินใจ 2026-08-06 — ยึดตามระบบ SBP ปัจจุบัน: DatePicker ของ FE ตั้งค่า `buddhistEra = false` เป็นค่าเริ่มต้น และ BE มี helper `toAD(y) = y >= 2500 ? y - 543 : y` บังคับแปลงค่าที่หลุดมาเป็น พ.ศ. ให้เป็น ค.ศ. · แสดงผลเป็น พ.ศ. ได้เฉพาะจุดที่เปิด `buddhistEra` ที่ระดับ component เท่านั้น · ภาพหน้าจอ K2 จริงก็ใช้ ค.ศ. เช่นกัน เช่น `2026/01870`)
 - **Gen Flow Gate** ใน `/workflows/instances` (เกณฑ์คงเดิมทุกข้อ — ดูขั้น 6 ใน `workflow.md`)
@@ -186,6 +186,16 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 **ผลที่ตามมาที่ต้องรับทราบ:** เดิมเก็บ `audit_logs` ไว้เพราะ**ระบบ SBP เดิมไม่มี audit กลางของ master** (มีเฉพาะ `general_upload_data_page_audit_log` ของงาน upload) — หลังยกเลิกจึง **ไม่มีร่องรอยว่าใครแก้ master ปัจจัยภายนอก/รายชื่อคู่แข่ง เมื่อไร จากค่าอะไรเป็นอะไร และด้วยเหตุผลใด** · ถ้าภายหลังต้องการ audit กลับมา ให้พิจารณาใช้กลไก audit ของระบบ SBP เดิมแทนการสร้างตารางใหม่
 
 **สิ่งที่ยังอยู่:** `consideration_logs` (ประวัติผลพิจารณารายเอกสาร — คนละเรื่องกับ audit ของ master) · `interface_transactions` (tracking รับ–ส่งไฟล์) · audit ของ RBAC/config/email template ที่อยู่ฝั่งระบบ SBP เดิม
+
+## มติจากการเทียบฐานข้อมูลจริง (2026-08-10 · DP-1 · DP-3 · DP-9)
+
+| มติ | ผลต่อ API |
+|---|---|
+| **DP-9 = แยกตัดสิน** | **ตัด `GET /decisions`** (30 → 29 เส้น · Lookup 3 → 2) — FE ใช้ `GET /common/common-code?codeType=SBPGI_DECISION` ของระบบเดิม · เส้น `/factors*` และ `/competitors*` **คงเดิมทั้ง 8 เส้น** |
+| **DP-1 = ทางเลือก B** | `POST /workflows/instances` ต้องส่ง **`referenceId` = `compensation_documents.id` (surrogate)** ไม่ใช่ `doc_no` · `GET /documents/{docNo}/timeline` และเส้นที่ต้องคุยกับ engine ต้อง **join ผ่าน `id`** ก่อนเรียก engine · `docNo` ยังเป็น path parameter ที่ผู้ใช้เห็นเหมือนเดิม |
+| **DP-3 = ทางเลือกที่ 3** | ไม่กระทบ endpoint — `impacted_stores` ยังเป็นตาราง (snapshot บางส่วน) เส้นที่อ่านข้อมูลร้านไม่เปลี่ยน |
+
+**ยังค้าง 9 ข้อ** (DP-2 · DP-4 ถึง DP-8 · DP-10 · DP-11 · DP-12) — ดู [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md)
 
 ## เส้นที่ตัดออก — ใช้ระบบ SBP เดิม (ตัดสินใจ 2026-08-05 · 18 เส้น)
 
@@ -253,7 +263,7 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 
 ## เอกสารที่เกี่ยวข้อง
 
-- ตารางที่แต่ละเส้นอ่าน/เขียน: [database.md](database.md) · `plan-database.html` (**21 ตาราง** หลังตัด `audit_logs` 2026-08-07)
+- ตารางที่แต่ละเส้นอ่าน/เขียน: [database.md](database.md) · `plan-database.html` (**20 ตาราง** หลังตัด `audit_logs` 2026-08-07)
 - เทียบ SBPGI กับระบบ SBP เดิม + **12 ข้อค้างตัดสินใจ (Decision Points)**: `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4
 - Schema จริงของระบบเดิม (ที่มาของตัวเลขทุกตัวในหัวข้อ workflow engine): `SBP/db-schema-sps_store.md` · `SBP/db-schema-sps_auth.md`
 - LLDD ของ workflow engine (ที่มาของชื่อ function ชุด A/B): `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md`
