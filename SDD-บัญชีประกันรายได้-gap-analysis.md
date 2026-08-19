@@ -71,7 +71,7 @@
 | 2.1 | เปลี่ยนคำเรียก **"ฝ่ายส่งเสริม" → "หน่วยงานส่งเสริมธุรกิจ" ทุกจุด** | ✅ | rename 61 จุดใน 16 ไฟล์ · **รวมชื่อสถานะเอกสาร** → `รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ` (ดูข้อ 6.4) |
 | 2.2 | เพิ่มบทบาท **เจ้าหน้าที่อาวุโส (Senior Officer)** ที่ขั้น 01 + ส่งต่อ GM ได้ | ✅ | `k2-flow.html` (การ์ด · stepper · BPMN · swimlane · 2 ตาราง) · `k2-document.html` · `workflow.md` · `domain.md` · LLDD Role-01 |
 | 2.3 | **เห็นควรไม่ชดเชยที่ 01/02 จบทันที** (ไม่ตีกลับเป็นทอด ๆ) | ✅ | `workflow.md` ตาราง transition · `workflow_status_document.md` · `k2-flow.html` · logic ใน `k2-document.html` |
-| 2.4 | **วงเงิน GM 50,000 / AVP 300,000** (แทนเกณฑ์เดียว 100,000) | ✅ | ทุก HTML + living docs · `system_configs` (`gm_amount_limit`/`avp_amount_limit`) · `workflow_sections.approve_limit_amount` |
+| 2.4 | **วงเงิน เกณฑ์เดียว 100,000** (แทนเกณฑ์เดียว 100,000) | ✅ | ทุก HTML + living docs · `system_configs` (`gm_amount_limit`/`avp_amount_limit`) · `workflow_sections.approve_limit_amount` |
 | 2.5 | **ผู้รักษาการเป็นผู้อนุมัติไม่ได้** (ยึดตำแหน่งจาก HR Connect) | ✅ | `workflow.md` · `CLAUDE.md` · เป็นเหตุผลของ `approver_snapshot` |
 
 ## 5. SDD GI ข้อ 3 + SDD v7.5 — ยกเลิก process บัญชี และหน้ารายงาน (สไลด์ 59–62, 66)
@@ -115,7 +115,7 @@
 |---|---|---|
 | 6.1 | **ขอบเขตรายละเอียดการคำนวณ** (ข้อ A–D, I) — อยู่ในหมวด As-Is ไม่ใช่ To-Be requirement โดยตรง แต่ prototype วางตัวเป็น spec ของระบบใหม่ทั้งระบบ ถ้าไม่มีรายละเอียดนี้ ทีม BE จะ implement การคำนวณไม่ได้ | **(ก)** ดึงเข้ามา — เพิ่มตาราง/คอลัมน์ใน `database.md` + แยกการ์ดคำนวณตาม type · **(ข)** ประกาศนอกขอบเขต — การคำนวณอยู่ที่ **FS/Statement** ระบบประกันรายได้แค่รับยอดมา (สอดคล้องกับหน้าสร้างเอกสารที่ชี้ไป FS แล้ว) |
 | 6.2 | **หน้าสร้างเอกสารไม่มีฟอร์ม** (ข้อ 1.1) | มติผู้ใช้ต่างจากสไลด์ 49 ที่ให้เจ้าหน้าที่คีย์ข้อมูลร้านเองเพื่อ Adjust ยอด — ต้อง sign-off กับ business |
-| 6.3 | **ยอดชดเชยเกิน 300,000 บาท** | SDD ให้ AVP สูงสุด 300,000 แต่ไม่บอกเส้นทางของยอดที่เกิน (ขึ้นระดับสูงกว่า AVP หรือปฏิเสธ) |
+| 6.3 | **ยอดชดเชยตั้งแต่ 100,000 บาทขึ้นไป** | SDD ให้ AVP รับทุกยอดตั้งแต่ 100,000 ขึ้นไป แต่ไม่บอกเส้นทางของยอดที่เกิน (ขึ้นระดับสูงกว่า AVP หรือปฏิเสธ) |
 | 6.4 | **AVP (03) เห็นควรไม่ชดเชย** | SDD GI ปรับให้ 01/02 จบทันที แต่ไม่พูดถึงขั้น 03 · ระบบยังใช้พฤติกรรมเดิม (ตีกลับ 06) |
 | 6.5 | **ชื่อสถานะเอกสาร** | เปลี่ยนตามคำเรียกใหม่ทั้งหมดตามมติผู้ใช้ ขณะที่ mock ในสไลด์ 62 ยังเป็น "รอ ฝ่ายส่งเสริมธุรกิจ SBP ดำเนินการ" |
 
@@ -145,7 +145,7 @@
 | J | **Workflow engine `@srm/glb-workflow` มี 13 ตาราง ไม่ใช่ 10** — `workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_transaction` · `workflow_history` · `workflow_approver` · `workflow_part` · `workflow_part_display` | ทุกจุดที่เขียน "10 ตารางของ engine" ต้องแก้เป็น 13 |
 | K | **engine ตัวจริงอยู่ schema `sps_store` ไม่ใช่ `sps_auth`** — สอง schema มีครบ 13 ตารางชื่อเดียวกันแต่คนละชุดคนละเวอร์ชัน (`workflow_state` 3 vs 4 คอลัมน์) · `sps_store`: transaction 19,283 · history 38,010 · approver 96,542 · `sps_auth`: transaction 55 · route 41 · state 10 | ต้องระบุ schema ให้ชัดทุกจุดที่อ้าง engine |
 | L | ⚠️ `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index เลย** ทั้งที่มี 19,283 แถว (ตัวเดียวกันใน `sps_auth` มี PK) | **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library** · ยังไม่ตัดสิน → **DP-2** |
-| M | ⚠️ **ชื่อ function ของ engine ยังขัดกัน 3 ชุด — ห้ามเลือกเอง:** ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow`/`addPreApprover`/`getPendingFlowByUser` · ชุด B ชีต Mermaid seq ไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase`/`AddPreparedApproverUseCase`/`GetPendingFlowUseCase` | ชื่อ function ในเอกสารทุกฉบับเป็น placeholder — **รอ confirm กับทีมเจ้าของ library** |
+| M | ✅ **ชื่อ function ของ engine — ปิดแล้ว 2026-08-14 (ยึด LLDD ของ lib):** API จริง 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` = `initializeWorkflow`/`eventWorkflow`/`getPermissionEvents`/`getHistory`/`getTransaction`/`getPendingFlowByUser`/`getWorkflowsByUser`/`addPreApprover` | *Trigger Event* = ชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` · `*UseCase` = wrapper ของ store-backend | 
 | N | `workflow_part` + `workflow_part_display` ของ engine คุม **READ/WRITE รายส่วนของหน้าจอต่อ state** ทับซ้อนกับ `data-editrole`/`.edit-only` ที่ prototype ทำเอง | **ข้อค้างตัดสินใจ ยังไม่เปลี่ยนดีไซน์** (บันทึกไว้ที่|
 | O | **`fcs_qssi_score` (เอกพจน์) มีอยู่จริงแล้ว 23,958,780 แถว** ใน `sps_store` พร้อม import pipeline ที่ทำงานอยู่ (`POST /performance/import-qssi` + staging `fcs_tmp_qssi_score`) · โครงเดิม `store_id`/`category`/`month`/`year` nullable ทั้ง 4 และไม่มี UK | **ห้ามสร้างตารางใหม่ ให้ reuse** · วิธีเพิ่ม constraint/index บน 23.9M แถว **ยังไม่ตัดสิน** → **DP-4** |
 | P | **แกนธุรกิจประกันรายได้ไม่มีในระบบเดิมเลย** — ค้น 276 ตาราง / 4,396 คอลัมน์ ด้วย impact · compensat · guarantee · income · competitor · growth · outlier · distance · radius · latitude · longitude · window_no → **0 hit ทุกคำ** | ยืนยันว่าโซน A และแกนเอกสารโซน B **ต้องสร้างเอง** |

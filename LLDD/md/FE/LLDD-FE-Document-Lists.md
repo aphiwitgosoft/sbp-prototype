@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 28 ชั่วโมง |
+| Estimate | **35 ชั่วโมง** = implementation 28 + unit test 7 (25%) |
 | Owner | Chidchanok <lin> Saengamnat |
+| Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Objective | สร้างหน้ารายการเอกสารรอดำเนินการและเอกสารที่เกี่ยวข้อง |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -59,7 +60,7 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | table.daysPending | integer | column 9; >=0 | รอ (วัน) |
 | table.salesDataDays | integer | internal (ไม่ใช่คอลัมน์แสดง) | <60 = แถวผิดปกติสีแดง (red-flag) |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
@@ -539,3 +540,29 @@ export default function DocumentListsForm({ defaultValues, onSubmit }: {
 | 3 | เปิด detail |
 | 4 | empty result |
 | 5 | abnormal row |
+
+## 12. Unit Test Scope
+
+**7 ชั่วโมง** (25% ของ implementation 28 ชั่วโมง) · เครื่องมือ: Jest + React Testing Library + msw (mock API layer)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required สำหรับ /documents · รูปแบบ: ค.ศ. YYYY |
+| `table.totalCompensationAmount` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: column 7; >=0 · รูปแบบ: decimal |
+| `table.daysPending` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: column 9; >=0 · รูปแบบ: integer |
+| `table.salesDataDays` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: internal (ไม่ใช่คอลัมน์แสดง) · รูปแบบ: integer |
+| business rule | logic | ตาราง 9 คอลัมน์หลักครบ |
+| business rule | logic | ปีเป็น required เมื่อใช้ /documents |
+| business rule | logic | ยอดขายไม่ครบ 60 วันแสดงแดง |
+| business rule | logic | pagination คง filter เดิม |
+| `GET /api/v1/tasks` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/documents` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
+| hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
+| error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

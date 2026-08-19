@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 18 ชั่วโมง |
+| Estimate | 18 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
 | Owner | Butsaba <But> Podamrong |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | กำหนดสัญญากลางของ REST API ทุกเส้นเพื่อไม่ให้ endpoint รายตัวตีความต่างกัน: transport/auth/error/format/pagination/action/RBAC/audit/idempotency |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -23,6 +24,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Document action input/output contract
 - RBAC/menu permission and editable section guard
 - Audit/reason and idempotency rules
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -92,7 +97,7 @@ Matrix นี้เป็น baseline สำหรับ BE authorization guard;
 | Reports | /reports/status-summary* | admin/HQ/report roles and accounting service user |
 | Internal workflow/interface | /workflows/instances, /interfaces/* callback | service token or API key only |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |

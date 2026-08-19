@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 16 ชั่วโมง |
+| Estimate | **21 ชั่วโมง** = implementation 16 + unit test 5 (30%) |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
 | Objective | เปิด Workflow ภายใน: คัดรายการที่ผ่าน Gen Flow Gate แล้วเรียก Workflow Engine ภายในผ่าน POST /api/v1/workflows/instances แทน K2 REST StartInstance; เกณฑ์ W/Y/N เดิมยังคงใช้สำหรับ reconcile |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -22,6 +23,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
 - Depends on LLDD-BE-API-Workflow-Instances; Job 8b เรียก Workflow Engine ภายในและไม่ duplicate Gen Flow Gate logic
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -41,15 +46,15 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 8b StartInte
 
 ## 4b. ข้อค้างที่ต้องยืนยันก่อนเขียนโค้ด (workflow engine)
 
-⚠️ **ชื่อ function ของ engine ยังไม่ยืนยัน (บันทึก 2026-08-07)** — แหล่งอ้างอิง 3 แหล่งให้ชื่อไม่ตรงกัน ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow` · `addPreApprover` · `getPendingFlowByUser` · ชุด B ชีต `Mermaid seq` ของไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` · `AddPreparedApproverUseCase` · `GetPendingFlowUseCase` · ชื่อที่ปรากฏในเอกสารฉบับนี้ทั้งหมดเป็น **ชื่อชั่วคราว** ต้องยืนยันกับทีมเจ้าของ library ก่อนเขียนโค้ดจริง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
+✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
 | ข้อค้าง | ข้อเท็จจริงที่ตรวจแล้ว | ผลต่อ Job 8b | สถานะ |
 | --- | --- | --- | --- |
-| DP-1 · `referenceId` ของ workflow | ระบบเดิม (cooperation-request · inform-evaluate) ใช้ surrogate id ทุกจุด | ค่าที่ส่งเข้า initialize และคีย์ที่ใช้เช็คซ้ำเปลี่ยนตามข้อนี้ | ยังไม่ตัดสิน — `SBP/SBPGI-vs-existing-system.md` §4 |
+| DP-1 · `referenceId` ของ workflow ✅ ปิดแล้ว 2026-08-17 | ระบบเดิม (cooperation-request · inform-evaluate) ใช้ surrogate id ทุกจุด | ค่าที่ส่งเข้า initialize และคีย์ที่ใช้เช็คซ้ำเปลี่ยนตามข้อนี้ | ยังไม่ตัดสิน — `SBP/SBPGI-vs-existing-system.md` §4 |
 | DP-2 · `sps_store.workflow_transaction` ไม่มี PK/index | 19,283 แถว · ไม่มีทั้ง PK และ index (`SBP/db-schema-sps_store.md`) ต่างจาก `sps_auth` ที่มี PK ปกติ | กันซ้ำด้วย DB constraint ไม่ได้ ต้องกันที่ application · query ตาม reference_id เป็น seq-scan | ยังไม่ตัดสิน — ขอ sign-off เพิ่ม index กับทีมเจ้าของ library หรือยอมรับสภาพ |
 | schema ของ engine | engine ตัวจริงมี **13 ตาราง** อยู่ใน schema **`sps_store`** — `sps_auth` มีชื่อตารางชุดเดียวกันแต่เป็นสำเนาของ auth-backend คนละเวอร์ชัน | ทุก SQL ในเอกสารนี้ต้อง prefix `sps_store.` | ข้อเท็จจริง ไม่ใช่ข้อค้าง |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
@@ -75,7 +80,7 @@ select waiting rows, start workflow instance, update generated-flow flag per tra
 | Input identity | Impact-store rows waiting to start workflow plus generated workflow/document identifiers. | snapshot input file/business key/period in run record |
 | Output identity | Workflow instances started and source rows marked generated; failed rows remain rerunnable with error detail. | reconcile input, success, reject and skipped counts |
 | Dedup proof | กันซ้ำระดับ application — ตรวจว่ามี transaction เดิมของ reference นี้อยู่แล้วหรือไม่ ก่อนเรียก initialize แล้ว skip · ⚠️ **ไม่มี UNIQUE(version_id, reference_id) จริงใน `sps_store.workflow_transaction`** (ตารางนี้ไม่มีทั้ง PK และ index ทั้งที่มี 19,283 แถว — ตรวจแล้วที่ `SBP/db-schema-sps_store.md`) จึงพึ่ง constraint ฝั่ง DB ไม่ได้ และ query ตาม reference_id เป็น seq-scan · จะขอ sign-off เพิ่ม PK/index กับทีมเจ้าของ library หรือยอมรับสภาพ **ยังไม่ตัดสิน (DP-2)** | rerun fixture produces no duplicate target business key |
-| Transaction proof | lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึงเรียก initialize + add-prepared-approver ของ @srm/glb-workflow (ชื่อ function ยังไม่ยืนยัน) และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun | injected failure leaves no partial committed state outside documented boundary |
+| Transaction proof | lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึงเรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (ชื่อ function ตามชีต Detail ของ LLDD lib) และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun | injected failure leaves no partial committed state outside documented boundary |
 | Security proof | internal service token จาก workload identity/secretRef; ห้าม Basic Auth หรือ K2 REST credential เดิม | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
@@ -93,7 +98,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | --- | --- |
 | Repository | workflowRepository |
 | Idempotency / dedup | กันซ้ำระดับ application — ตรวจว่ามี transaction เดิมของ reference นี้อยู่แล้วหรือไม่ ก่อนเรียก initialize แล้ว skip · ⚠️ **ไม่มี UNIQUE(version_id, reference_id) จริงใน `sps_store.workflow_transaction`** (ตารางนี้ไม่มีทั้ง PK และ index ทั้งที่มี 19,283 แถว — ตรวจแล้วที่ `SBP/db-schema-sps_store.md`) จึงพึ่ง constraint ฝั่ง DB ไม่ได้ และ query ตาม reference_id เป็น seq-scan · จะขอ sign-off เพิ่ม PK/index กับทีมเจ้าของ library หรือยอมรับสภาพ **ยังไม่ตัดสิน (DP-2)** |
-| Transaction boundary | lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึงเรียก initialize + add-prepared-approver ของ @srm/glb-workflow (ชื่อ function ยังไม่ยืนยัน) และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun |
+| Transaction boundary | lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึงเรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (ชื่อ function ตามชีต Detail ของ LLDD lib) และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun |
 | Security | internal service token จาก workload identity/secretRef; ห้าม Basic Auth หรือ K2 REST credential เดิม |
 
 #### Input / candidate query
@@ -105,8 +110,8 @@ WITH locked_process AS (
     JOIN compensation_documents d ON d.impact_process_id = p.id
     WHERE p.workflow_generation_status = 'W'
       -- ⚠️ sps_store.workflow_transaction ไม่มี PK/index (19,283 แถว) → เงื่อนไขนี้เป็น seq-scan · DP-2 ยังไม่ตัดสิน
-      -- ⚠️ reference_id จะเป็น doc_no หรือ surrogate id ยังไม่ตัดสิน (DP-1)
-      AND NOT EXISTS (SELECT 1 FROM sps_store.workflow_transaction w WHERE w.reference_id = d.doc_no AND w.version_id = :sbpgi_version_id)   -- @srm/glb-workflow
+      -- ✅ DP-1 ปิดแล้ว: reference_id = compensation_documents.id (surrogate) แปลงเป็น text
+      AND NOT EXISTS (SELECT 1 FROM sps_store.workflow_transaction w WHERE w.reference_id = d.id::text   -- DP-1 = surrogate id (reference_id เป็น varchar(255)) AND w.version_id = :sbpgi_version_id)   -- @srm/glb-workflow
     ORDER BY p.id
     FOR UPDATE OF p SKIP LOCKED
 ), gate AS (
@@ -155,12 +160,12 @@ WHERE id = :impact_process_id
   AND :gate_decision = 'N';
 
 -- gate_decision='Y': เปิด workflow ผ่าน @srm/glb-workflow ของระบบ SBP เดิม (ไม่ INSERT ตารางเอง)
--- ⚠️ ชื่อ function ยังไม่ยืนยัน — 3 ชุดขัดกัน (A eventWorkflow/addPreApprover/getPendingFlowByUser ·
---    B triggerEvent · C TriggerEventUseCase/AddPreparedApproverUseCase/GetPendingFlowUseCase)
---    ชื่อด้านล่างเป็นชื่อชั่วคราว ดู LLDD-BE-Workflow-Engine-Definition หัวข้อ 5.3
+-- ✅ ชื่อ function ยึดชีต Detail ของ LLDD lib (ปิด 2026-08-14) — API 8 ตัว:
+--    initializeWorkflow / eventWorkflow / getPermissionEvents / getHistory /
+--    getTransaction / getPendingFlowByUser / getWorkflowsByUser / addPreApprover
 --   initializeWorkflow({ versionId: :sbpgi_version_id, referenceId: :reference_id, userId: 'JOB-8B' })
---   addPreparedApprover({ versionId, referenceId: :reference_id, stateId: '06', approver, seq: 1 })
--- ⚠️ referenceId จะเป็น doc_no หรือ surrogate id ยังไม่ตัดสิน (DP-1 · SBP/SBPGI-vs-existing-system.md §4)
+--   addPreApprover({ versionId, referenceId: :reference_id, stateId: '06', approver, seq: 1 })
+-- ✅ DP-1 ปิดแล้ว 2026-08-17: referenceId = compensation_documents.id (surrogate · ส่งเป็น string)
 -- library จะเขียน sps_store.workflow_transaction / workflow_approver / workflow_history ให้เอง
 UPDATE fgi_impact_processes
 SET workflow_generation_status = 'Y', updated_at = CURRENT_TIMESTAMP
@@ -221,7 +226,7 @@ export async function runLlddBeJob8BStartinternalworkflow(ctx, services) {
 | compensation_documents | R/W | ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency |
 | workflow_transaction (@srm/glb-workflow · sps_store) | W | เปิด instance ผ่าน engine — ห้าม insert ตรง |
 | workflow_approver (@srm/glb-workflow · sps_store) | W | prepared approver ขั้นแรก state 06 — ผ่าน engine |
-| (backend config) | R | ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · workflow ใช้ engine ส่งเอง |
+| (backend config) | R | ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · เลข template ของ workflow มาจาก workflow_route.email_id |
 
 ## 9. Skeleton Code (Batch Job 8b)
 
@@ -369,7 +374,7 @@ export class StartInternalWorkflowService {
     // TODO: implement
   }
 
-  // เรียก initialize + add-prepared-approver ของ @srm/glb-workflow (state 06)
+  // เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state 06)
   async step06Insert(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -398,7 +403,7 @@ export class StartInternalWorkflowService {
 | 3 | decision | พบเงื่อนไขไม่ผ่านถาวร? | check03Condition() | [branch] ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ |
 | 4 | decision | ข้อมูล Gate พร้อมครบ? | check04Condition() | [branch] distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W |
 | 5 | io | POST /api/v1/workflows/instances | step05Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 6 | process | เรียก initialize + add-prepared-approver ของ @srm/glb-workflow (state 06) | step06Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 6 | process | เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state 06) | step06Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 7 | process | workflow_generation_status = Y | step07Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 8 | io | ส่งอีเมลสรุปราย DV ผ่าน Notification Service | step08Notify() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 9 | end | จบ | summarize() | - |
@@ -449,7 +454,7 @@ export class StartInternalWorkflowJob {
       await this.dataSource.transaction(async (manager: EntityManager) => {
         // ขั้นที่ 5: POST /api/v1/workflows/instances · TODO: service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST
         await this.service.step05Workflow(state, manager);
-        // ขั้นที่ 6: เรียก initialize + add-prepared-approver ของ @srm/glb-workflow (state 06) · TODO: engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · ชื่อ function ยังไม่ยืนยัน ดู LLDD-BE-Workflow-Engine-Definition 5.3
+        // ขั้นที่ 6: เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state 06) · TODO: engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3
         await this.service.step06Insert(state, manager);
       });
       // ขั้นที่ 7: workflow_generation_status = Y · TODO: เปิด workflow สำเร็จ
@@ -535,7 +540,7 @@ repository ของ Job 8b ประกาศเป็น factory provider (`{p
 | compensation_documents | R/W | ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | workflow_transaction (@srm/glb-workflow · sps_store) | W | เปิด instance ผ่าน engine — ห้าม insert ตรง | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | workflow_approver (@srm/glb-workflow · sps_store) | W | prepared approver ขั้นแรก state 06 — ผ่าน engine | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| (backend config) | R | ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · workflow ใช้ engine ส่งเอง | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| (backend config) | R | ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · เลข template ของ workflow มาจาก workflow_route.email_id | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 8b StartInternalWorkflow — query หลักที่ต้อง implement
@@ -660,7 +665,7 @@ export class JobFailureNotifier {
 | 3 | พบเงื่อนไขไม่ผ่านถาวร? \| No: ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ (branch type, distance, missing DV, same juristic หรือ growth > -10 -> N) |
 | 4 | ข้อมูล Gate พร้อมครบ? \| No: distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W (คง W เฉพาะข้อมูลต้นทางที่ยังรอเติมเพื่อให้ rerun ได้) |
 | 5 | POST /api/v1/workflows/instances (service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST) |
-| 6 | เรียก initialize + add-prepared-approver ของ @srm/glb-workflow (state 06) (engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · ชื่อ function ยังไม่ยืนยัน ดู LLDD-BE-Workflow-Engine-Definition 5.3) |
+| 6 | เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state 06) (engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3) |
 | 7 | workflow_generation_status = Y (เปิด workflow สำเร็จ) |
 | 8 | ส่งอีเมลสรุปราย DV ผ่าน Notification Service |
 | 9 | จบ |
@@ -683,3 +688,26 @@ export class JobFailureNotifier {
 | 4 | แก้ config แล้ว deploy → รอบถัดไปใช้ค่าใหม่ |
 | 5 | job throw error → EM-07 ออก และ log มีบรรทัด error |
 | 6 | ตรวจผลกระทบตารางตาม R/W mapping reference |
+
+## 13. Unit Test Scope
+
+**5 ชั่วโมง** (30% ของ implementation 16 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `เกณฑ์ Growth Rate` | rule | ใช้กฎกับข้อมูลตัวอย่างแล้วได้ผลตามที่ระบุ — growth_rate_diff <= -10 |
+| `เงื่อนไข Gate อื่น` | rule | ใช้กฎกับข้อมูลตัวอย่างแล้วได้ผลตามที่ระบุ — workflow_generation_status=W · DV ไม่ว่าง · juristic ต่างกัน · sales_status in {Y,N} |
+| business rule | logic | พารามิเตอร์และ cron อ่านจาก backend config เท่านั้น — เปลี่ยนค่าโดย deploy config ไม่ใช่ผ่าน API/หน้าจอ |
+| business rule | logic | การรันต้องตรวจ enabled flag ใน config และกันรันซ้อนด้วย distributed/advisory lock |
+| business rule | logic | ทุกรอบต้องเขียน application log แบบ structured (เวลา/แถว/ไฟล์/ผล) และ error ต้องส่ง EM-07 |
+| business rule | logic | DB/table mapping ใช้เป็น reference สำหรับ implement Job เท่านั้น ไม่ใช่งานสร้างหน้า Database |
+| business rule | logic | รองรับ rerun rule และ risk note ตาม runbook |
+| `fgi_impact_stores`, `compensation_documents`, `workflow_transaction (@srm/glb-workflow · sps_store)` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| runner | idempotency | รันซ้ำด้วย fixture เดิมต้องไม่เกิดแถวซ้ำ (ON CONFLICT / business unique key ทำงาน) |
+| runner | lock | เรียกซ้อนขณะกำลังรัน ต้องถูกปฏิเสธด้วย advisory lock |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

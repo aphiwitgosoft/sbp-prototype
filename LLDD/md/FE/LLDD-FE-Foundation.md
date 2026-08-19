@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 28 ชั่วโมง |
+| Estimate | **35 ชั่วโมง** = implementation 28 + unit test 7 (25%) |
 | Owner | Chidchanok <lin> Saengamnat |
+| Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Objective | เตรียม foundation ฝั่ง Frontend สำหรับ SBP Mall: routing, API client, constants, shared state, formatters, mock mapping และ shared UI primitives; เอกสารนี้ไม่ใช่หน้าจอ Dashboard |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -21,6 +22,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Shared constants/menu/status mapping
 - Mock data mapping
 - CSS/tokens สำหรับ table/form/modal/responsive
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -37,7 +42,7 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Application Foun
 | statusCode | string | must map to status dictionary | ใช้ร่วมกับ StatusBadge |
 | mockData | JSON | schema compatible with API response | ใช้ก่อน BE พร้อม |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
@@ -267,3 +272,29 @@ export function useDocumentStatusesQuery() {
 | 3 | status unknown |
 | 4 | mock response compatible |
 | 5 | shared formatter output |
+
+## 12. Unit Test Scope
+
+**7 ชั่วโมง** (25% ของ implementation 28 ชั่วโมง) · เครื่องมือ: Jest + React Testing Library + msw (mock API layer)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `routePath` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: string |
+| `apiBaseUrl` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required by env · รูปแบบ: URL |
+| `statusCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: must map to status dictionary · รูปแบบ: string |
+| `mockData` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: schema compatible with API response · รูปแบบ: JSON |
+| business rule | logic | ไม่มี screenshot หรือ dashboard behavior ในเอกสารนี้ |
+| business rule | logic | ทุก route ถูก register ผ่าน module registry |
+| business rule | logic | API error shape ใช้ร่วมกัน |
+| business rule | logic | ไม่มี dependency กับ Login/Auth ใหม่ |
+| business rule | logic | CSS responsive base พร้อม |
+| `GET /api/v1/document-statuses` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
+| hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
+| error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

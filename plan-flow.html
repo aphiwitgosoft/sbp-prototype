@@ -97,7 +97,7 @@
         <div class="rule-grid">
           <div class="rule"><b>ตัดการส่งไฟล์ภายใน</b>FGI/FCS → Document/Workflow ใช้ DB และ service call โดยตรง</div>
           <div class="rule"><b>คง interface ภายนอก</b>ไฟล์/SFTP กับ QSSI, IAS และ STA ยังคงอยู่ เพราะเป็นขอบเขตระบบอื่น</div>
-          <div class="rule"><b>กติกาธุรกิจหลักคงเดิม</b>60 วัน, growth ≤ −10, %ชดเชย 100% · วงเงินอนุมัติปรับใหม่เป็น GM 50,000 / AVP 300,000 (SDD GI 24/02/2026)</div>
+          <div class="rule"><b>กติกาธุรกิจหลักคงเดิม</b>60 วัน, growth ≤ −10, %ชดเชย 100% · วงเงินอนุมัติปรับใหม่เป็น เกณฑ์เดียว 100,000 (SDD GI 24/02/2026)</div>
         </div>
       </div>
 
@@ -144,7 +144,7 @@
           <text x="666" y="262" font-size="12.5" font-weight="600" fill="#2b3440">Workflow Engine (@srm/glb-workflow)</text>
           <rect x="666" y="270" width="88" height="17" rx="8" fill="#f1ecfe"/><text x="710" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#6d28d9">K2 · SRS 3.1.4</text>
           <rect x="760" y="270" width="130" height="17" rx="8" fill="#e8f0fe"/><text x="825" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">แทน K2 REST (Job 8b)</text>
-          <text x="666" y="302" font-size="10.5" fill="#5d6b7a">5 ขั้น 06→08→01→02→03 · วงเงิน GM 50,000/AVP 300,000 · บัญชีนอก flow</text>
+          <text x="666" y="302" font-size="10.5" fill="#5d6b7a">5 ขั้น 06→08→01→02→03 · วงเงิน เกณฑ์เดียว 100,000 · บัญชีนอก flow</text>
           <text x="666" y="317" font-size="10" fill="#8493a5">engine จริง = 13 ตาราง · schema sps_store · ชื่อ function รอยืนยัน</text>
 
           <!-- row 2 -->
@@ -203,8 +203,8 @@
             <li><b>engine มี 13 ตาราง ไม่ใช่ 10</b> — <code>workflow</code> · <code>workflow_version</code> · <code>workflow_state</code> · <code>workflow_status</code> · <code>workflow_event</code> · <code>workflow_route</code> · <code>workflow_group</code> · <code>workflow_group_map</code> · <code>workflow_transaction</code> · <code>workflow_history</code> · <code>workflow_approver</code> · <code>workflow_part</code> · <code>workflow_part_display</code></li>
             <li><b>engine ตัวจริงอยู่ schema <code>sps_store</code> ไม่ใช่ <code>sps_auth</code></b> — สอง schema มีครบ 13 ตารางชื่อเดียวกันแต่คนละชุด/คนละเวอร์ชัน (<code>workflow_state</code> ของ <code>sps_auth</code> 3 คอลัมน์ / <code>sps_store</code> 4 คอลัมน์) · ปริมาณจริง <code>sps_store</code>: <code>workflow_transaction</code> 19,283 แถว · <code>workflow_history</code> 38,010 · <code>workflow_approver</code> 96,542 · ส่วน <code>sps_auth</code> เป็นชุดของ auth-backend (transaction 55 · route 41 · state 10)</li>
             <li><b>ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:</b> <code>sps_store.workflow_transaction</code> <b>ไม่มี PK และไม่มี index เลย</b> ทั้งที่มี 19,283 แถว (ตัวเดียวกันใน <code>sps_auth</code> มี PK ปกติ) → seq-scan ทุก action · <b>ยังไม่ตัดสิน</b>ว่าจะขอ sign-off เพิ่ม index หรือกันซ้ำฝั่ง SBPGI — ดู <b>DP-2</b></li>
-            <li><b>ชื่อ function ของ engine ยังไม่ยืนยัน — เอกสาร 3 ชุดขัดกัน ห้ามเลือกเอง:</b> ชุด A <code>SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md</code> (ชีต Detail) = <code>eventWorkflow</code>/<code>addPreApprover</code>/<code>getPendingFlowByUser</code> · ชุด B ชีต Mermaid seq ของไฟล์เดียวกัน = <code>triggerEvent</code> · ชุด C <code>SBP/srm-sps-spsap-store-backend.md</code> §1.5 = <code>TriggerEventUseCase</code>/<code>AddPreparedApproverUseCase</code>/<code>GetPendingFlowUseCase</code> — ชื่อที่ปรากฏในหน้านี้เป็น placeholder</li>
-            <li><b><code>referenceId = doc_no</code> ยังไม่ตัดสิน</b> — ระบบเดิม (cooperation-request · inform-evaluate) ส่ง surrogate id จริง ดู <b>DP-1</b> ใน <code>SBP/SBPGI-vs-existing-system.md</code></li>
+            <li><b>✅ API ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14):</b> 8 function ตามชีต <b>Detail</b> ของ <code>SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx</code> — <code>initializeWorkflow</code> · <code>eventWorkflow</code> · <code>getPermissionEvents</code> · <code>getHistory</code> · <code>getTransaction</code> · <code>getPendingFlowByUser</code> · <code>getWorkflowsByUser</code> · <code>addPreApprover</code> · <i>Trigger Event</i> เป็นชื่อหัวข้อขั้นตอนภายใน <code>eventWorkflow</code> และ <code>*UseCase</code> เป็น wrapper ของ store-backend ไม่ใช่ API ของ lib</li>
+            <li><b>✅ <code>referenceId</code> ปิดแล้ว 2026-08-17 — ใช้ <code>compensation_documents.id</code> (surrogate)</b> ตามที่ระบบเดิม (cooperation-request · inform-evaluate) ทำจริงทุกจุด · ส่งเป็น string เพราะ <code>sps_store.workflow_transaction.reference_id</code> เป็น <code>varchar(255)</code> · ผลที่ตามมา: แก้ <code>doc_no</code> ภายหลังได้โดย workflow ไม่หลุด link · ⚠️ <b>แต่ยังต้องออกเลขพร้อมตอน INSERT เสมอ</b> — ตารางลูก 6 ตัว (<code>document_new_stores</code> · <code>document_external_factors</code> · <code>document_competitors</code> · <code>document_cost_details</code> · <code>document_attachments</code> · <code>consideration_logs</code>) FK ไป <code>doc_no</code> แบบ <code>NOT NULL</code> จึงบันทึกรายละเอียดเอกสารไม่ได้เลยถ้า <code>doc_no</code> ยังว่าง (Job 8 ออกเลขใน INSERT เดียวกันอยู่แล้ว)</li>
             <li><b><code>workflow_part</code> / <code>workflow_part_display</code></b> ของ engine คุม READ/WRITE รายส่วนของหน้าจอต่อ state ซึ่ง<b>ทับซ้อน</b>กับกลไก <code>data-editrole</code>/<code>.edit-only</code> ที่ prototype ทำเอง — <b>เป็นข้อค้างตัดสินใจ ยังไม่เปลี่ยนดีไซน์</b></li>
           </ul>
         </div>
@@ -248,7 +248,7 @@
           <div class="flow-stage"><span>C</span> ผู้ใช้ตรวจสอบและอนุมัติ · Section 06–03</div>
           <div class="tl-item active"><span class="tl-dot"></span>
             <div class="tl-t">7. ขั้น 1–2: ฝ่าย SBP DSA ตรวจสอบ + คำนวณเงินชดเชย <span class="ref k2">K2 · Section 06 → 08</span></div>
-            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · ส่งพิจารณาด้วย POST /documents/{docNo}/actions payload เดียว {result, comment}; result เป็น 6-enum verbatim · บันทึก consideration_logs + อีเมลตาม status_email_rules [ยังไม่ตัดสิน — DP-5: engine อาจส่งอีเมลเองผ่าน sps_store.workflow_route.email_id ทำให้ status_email_rules ไม่ต้องมี · ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4] · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
+            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · ส่งพิจารณาด้วย POST /documents/{docNo}/actions payload เดียว {result, comment}; result เป็น 6-enum verbatim · บันทึก consideration_logs + SBPGI เรียก sendEmail() ของ email-lib เอง โดยใช้เลข template จาก sps_store.workflow_route.email_id (ปิด DP-5 · 2026-08-14 · ไม่มีตาราง status_email_rules) · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">8. ขั้น 3: หน่วยงานส่งเสริมธุรกิจฯ ปรับข้อมูล <span class="ref k2">K2 · Section 01</span></div>
@@ -256,7 +256,7 @@
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">9. ขั้น 4–5: GM → AVP ตามวงเงิน <span class="ref k2">K2 · Section 02 → 03</span></div>
-            <div class="tl-meta">กฎวงเงิน (SDD GI 24/02/2026): ยอดชดเชย ≤ 50,000 บาท จบที่ GM · 50,001–300,000 ต้องผ่านผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) แล้วจบงาน (เกิน 300,000 รอ confirm) · เห็นควรไม่ชดเชยที่ขั้น 01/02 จบทันที · ไม่มีขั้นบัญชี (ตัด 04/05 ตาม SDD v7.5)</div></div>
+            <div class="tl-meta">กฎวงเงิน (SDD GI 24/02/2026): ยอดชดเชย < 100,000 บาท จบที่ GM · ≥ 100,000 ต้องผ่านผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) แล้วจบงาน  · เห็นควรไม่ชดเชยที่ขั้น 01/02 จบทันที · ไม่มีขั้นบัญชี (ตัด 04/05 ตาม SDD v7.5)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">10. บัญชี: ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี <span class="ref new">SDD v7.5</span></div>
@@ -287,7 +287,7 @@
                 <td><span class="ref mix">FGI/FCS → K2</span></td></tr>
               <tr><td>เปิด Workflow</td>
                 <td class="int-old">Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded — ความเสี่ยง P0)</td>
-                <td class="int-new"><b>@srm/glb-workflow</b> ของระบบ SBP เดิม (13 ตาราง · schema <code>sps_store</code>) เรียกผ่าน POST /workflows/instances · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ · <b>ชื่อ function (initializeWorkflow → addPreparedApprover) ยังไม่ยืนยัน — เอกสาร 3 ชุดขัดกัน</b> · <code>referenceId</code> ยังไม่ตัดสิน (DP-1)</td>
+                <td class="int-new"><b>@srm/glb-workflow</b> ของระบบ SBP เดิม (13 ตาราง · schema <code>sps_store</code>) เรียกผ่าน POST /workflows/instances · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ · <b>ชื่อ function (initializeWorkflow → addPreApprover) ยังไม่ยืนยัน — เอกสาร 3 ชุดขัดกัน</b> · <code>referenceId</code> ยังไม่ตัดสิน (DP-1)</td>
                 <td><span class="ref mix">FGI/FCS → K2</span></td></tr>
               <tr><td>รับ ACK ผลประมวลจาก STA</td>
                 <td class="int-old">รอ STA อัปเดต return_code ใน tracking · Job 10 ตรวจทุกเช้า</td>
@@ -330,11 +330,11 @@
             <tbody>
               <tr><td>อีเมลเตือนงานค้างรายสัปดาห์</td>
                 <td class="int-old">ส่งอีเมลแจ้งเตือนผู้ดำเนินการ ทุกวันจันทร์ 10:00 แทบทุกขั้น (จุด 10.1, 20.2, 30.1, 70.1, 80.1, 110.2)</td>
-                <td class="int-new">Notification Service เพิ่ม reminder job รายสัปดาห์ อ่านงานค้างจาก <code>sps_store.workflow_transaction</code>/<code>workflow_approver</code> ของ @srm/glb-workflow (ตาราง <code>workflow_tasks</code> ถูกตัดไปแล้ว) · ผู้รับตาม status_email_rules <b>[ยังไม่ตัดสิน — DP-5]</b> · รอบเวลาแก้ได้ใน config</td>
+                <td class="int-new">Notification Service เพิ่ม reminder job รายสัปดาห์ อ่านงานค้างจาก <code>sps_store.workflow_transaction</code>/<code>workflow_approver</code> ของ @srm/glb-workflow (ตาราง <code>workflow_tasks</code> ถูกตัดไปแล้ว) · ผู้รับ = เจ้าของงานค้าง (<code>business_user.email</code>) · เมลกลุ่มนี้ไม่ใช่ transition จึงไม่มี route ให้แขวน <code>email_id</code> — เก็บเลข template ที่ <code>mas_param</code> แล้ว SBPGI เรียก <code>sendEmail()</code> เอง (ปิด DP-5 · 2026-08-14) · รอบเวลาแก้ได้ใน config</td>
                 <td>โซน B/C · ไม่แตะ FGI/FCS</td></tr>
               <tr><td>Escalation งานค้าง 30/45/60 วัน</td>
                 <td class="int-old">ส่งต่อไปยัง GM OPT เมื่องานค้างครบ 30, 45, 60 วัน (จุด 20.3)</td>
-                <td class="int-new">Workflow Engine ตรวจอายุงานค้าง (waitingDate จาก getPendingFlow() ของ @srm/glb-workflow — <b>ชื่อ function ยังไม่ยืนยัน</b>) แล้วแจ้ง/ส่งต่อหัวหน้า Section ตามเกณฑ์ 30/45/60 วัน (ค่ากำหนดแก้ได้)</td>
+                <td class="int-new">Workflow Engine ตรวจอายุงานค้าง (waitingDate จาก getPendingFlowByUser() ของ @srm/glb-workflow — ) แล้วแจ้ง/ส่งต่อหัวหน้า Section ตามเกณฑ์ 30/45/60 วัน (ค่ากำหนดแก้ได้)</td>
                 <td>โซน B · ไม่แตะ FGI/FCS</td></tr>
               <tr><td>สร้างเอกสารแบบ manual</td>
                 <td class="int-old">ขั้น 15 (lane admin): กรอกข้อมูลร้านเปิดใหม่/ร้านถูกกระทบเอง เมื่อระบบคำนวณให้ไม่ได้</td>
@@ -351,7 +351,7 @@
 
       <div class="card" style="border-left:5px solid var(--primary);">
         <p style="margin:0; font-size:13px; color:#5d6b7a;">
-          กติกาธุรกิจทั้งหมด<b>คงเดิมตามเอกสารอ้างอิง</b> — เกณฑ์ Gen Flow Gate, กฎวงเงิน GM 50,000/AVP 300,000 (SDD GI 24/02/2026), หน้าต่างคำนวณ 4×15 วัน, เกณฑ์ outlier ≥ 50, QSSI 6 หมวด, %ชดเชยรวม 100% ฯลฯ
+          กติกาธุรกิจทั้งหมด<b>คงเดิมตามเอกสารอ้างอิง</b> — เกณฑ์ Gen Flow Gate, กฎวงเงิน เกณฑ์เดียว 100,000 (SDD GI 24/02/2026), หน้าต่างคำนวณ 4×15 วัน, เกณฑ์ outlier ≥ 50, QSSI 6 หมวด, %ชดเชยรวม 100% ฯลฯ
           การเปลี่ยนแปลงจำกัดอยู่ที่<b>กลไกทางเทคนิค</b> (ไฟล์ภายใน → DB/API, K2 engine → Workflow ภายใน) และการแก้ความเสี่ยง P0/P1 ที่เอกสาร v4.0 ระบุ
           — การเปลี่ยนพฤติกรรมเชิงธุรกิจใด ๆ ต้องขออนุมัติแยกตามข้อ 8.2 ของเอกสาร
         </p>

@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 28 ชั่วโมง |
+| Estimate | **37 ชั่วโมง** = implementation 28 + unit test 9 (30%) |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ APIs สำหรับรับผลพิจารณา ตรวจสิทธิ์ action และบันทึก audit/consideration log |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -20,6 +21,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Amount threshold reference
 - Send back result
 - Audit and email rule
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -44,8 +49,8 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 | 06 | ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ | 08 | 08 | close 06; open 08 |
 | 08 | คำนวณเงินชดเชยเรียบร้อย | 01 | 01 | close 08; open 01 |
 | 01 | เห็นควรชดเชย | 02 | 02 | close 01; open 02 |
-| 02 | เห็นควรชดเชย และ 50,000 < totalCompensationAmount <= 300,000 (SDD GI) | 03 | 03 | close 02; open 03 |
-| 02 | เห็นควรชดเชย และ totalCompensationAmount <= 50,000 (SDD GI) | 99 | null | close 02; complete instance |
+| 02 | เห็นควรชดเชย และ totalCompensationAmount >= 100,000 (มติ 2026-08-18) | 03 | 03 | close 02; open 03 |
+| 02 | เห็นควรชดเชย และ totalCompensationAmount < 100,000 (มติ 2026-08-18) | 99 | null | close 02; complete instance |
 | 03 | เห็นควรชดเชย | 99 | null | close 03; complete instance |
 | ทุก section ที่รองรับ | ส่งกลับ | รหัส section ปลายทางตาม action option | section ปลายทาง | close current; reopen target with new task id |
 | 06 | เห็นควรไม่ชดเชย หรือ หยุดชดเชยประกันรายได้ | 99 | null | close 06; complete instance |
@@ -65,17 +70,17 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 | ข้อค้าง | ทางเลือก A | ทางเลือก B | สถานะ |
 | --- | --- | --- | --- |
 | DP-7 · แหล่งข้อมูลของ `GET /documents/{docNo}/timeline` | อ่าน `consideration_logs` ของ SBPGI เป็น timeline เต็ม (สถานะปัจจุบันของแบบ) | อ่าน `getHistory()` / `sps_store.workflow_history` ของ engine แล้ว join `consideration_logs` เป็นตารางส่วนขยาย (decision code · ไฟล์แนบ · ความเห็น ซึ่ง engine ไม่มี) | ยังไม่ตัดสิน · กระทบทั้ง DDL ของ `consideration_logs` และรูปแบบ response |
-| DP-1 · `referenceId` ที่ส่งเข้า engine | `doc_no` | surrogate id (แบบที่ cooperation-request / inform-evaluate ทำจริงทุกจุด) | ยังไม่ตัดสิน 🔴 |
+| DP-1 · `referenceId` ที่ส่งเข้า engine | `doc_no` — ตกไป | **เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255)) แบบที่ cooperation-request / inform-evaluate ทำจริงทุกจุด | ✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม |
 | DP-2 · `sps_store.workflow_transaction` ไม่มี PK/index | ขอ sign-off ให้ทีมเจ้าของ library เพิ่ม PK + UNIQUE + index | กันซ้ำและทำ index ที่ฝั่ง SBPGI | ยังไม่ตัดสิน 🔴 · ทุก action ต้อง seq-scan 19,283 แถว |
-| DP-5 ✅ ปิดแล้ว 2026-08-11 — **engine ส่งเอง** ผ่าน `workflow_route.email_id` | LLDD ของ engine ชีต 2 ระบุว่าเรียก function ส่งเมลจาก lib · ระบบเดิมมี email_template 85 แถว + email_sent 5,214 แถวครบวงจร | SBPGI ไม่ส่งเอง · ไม่มี Notification Service · ตัดตาราง status_email_rules | ปิดแล้ว |
+| DP-5 ✅ ปิดแล้ว (แก้มติ 2026-08-14) — **workflow ให้เลข template · SBPGI เรียก lib ส่งเอง** | `SBP/TSM-SRM-LLDD SBP EMAIL1.0.xlsx` — lib เสร็จแล้ว รับ `{emailId, mailTo, mailCc, param, fileAttach, userId}` · input ของ `triggerEvent` ไม่มี `mailTo`/`param` engine จึงเรียกแทนไม่ได้ · บรรทัด 'เรียก function ส่งเมล์จาก lib .....' ยังเป็น placeholder | SBPGI อ่าน `workflow_route.email_id` → เรียก `sendEmail()` **นอก transaction** · ไม่มีตาราง `status_email_rules` | ปิดแล้ว |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
 | Input | POST /api/v1/documents/{docNo}/actions; GET /api/v1/documents/{docNo}/timeline |
 | Progress | Lock current action task; Validate owner and selected result against actionOptions; Apply server-side business rule; Update document/task |
-| Output | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow); compensation_documents; consideration_logs |
+| Output | compensation_documents; consideration_logs |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -188,10 +193,10 @@ Document action API ตัวอย่างเมื่อ currentSection=01 �
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow) | R/W | triggerEvent() เดิน state + บันทึก history |
+| workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow) | R (เขียนผ่าน lib) | eventWorkflow() เดิน state + บันทึก history |
 | compensation_documents | W | อัปเดต status/current_section/result |
 | consideration_logs | W | บันทึกผลพิจารณาและ comment |
-| workflow_transaction (@srm/glb-workflow) | R/W | กัน action ซ้ำด้วย getTransaction/getPermissionEvents ก่อน triggerEvent |
+| workflow_transaction (@srm/glb-workflow) | R (เขียนผ่าน lib) | กัน action ซ้ำด้วย getTransaction/getPermissionEvents ก่อน eventWorkflow — ห้าม UPDATE ตรง |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -317,9 +322,9 @@ export class SbpgiDocumentWorkflowActionsService {
       await runner.commitTransaction();
       // ⚠️ workflow engine อยู่คนละ DataSource ('workflow-connection' ของ @srm/glb-workflow)
       //    จึง **atomic ร่วมกับ transaction ข้างบนไม่ได้** — ต้อง commit ฝั่ง SBPGI ให้เสร็จก่อน
-      //    แล้วค่อย triggerEvent (idempotency key = referenceId = docNo)
+      //    แล้วค่อย eventWorkflow (idempotency key = referenceId = docNo)
       // TODO: เรียก workflow use case ตามตารางหัวข้อ Workflow ด้านล่าง + retry
-      // TODO: ถ้า triggerEvent ล้มเหลว ต้องมี compensating action และบันทึกผลลง
+      // TODO: ถ้า eventWorkflow ล้มเหลว ต้องมี compensating action และบันทึกผลลง
       //       consideration_logs เพื่อให้ job reconcile ตามเก็บได้
       return { message: 'saved' };
     } catch (error) {
@@ -350,11 +355,11 @@ export class SbpgiDocumentWorkflowActionsService {
 
 #### 9.5 Workflow (`@srm/glb-workflow`)
 
-⚠️ **ชื่อ function ของ engine ยังไม่ยืนยัน (บันทึก 2026-08-07)** — แหล่งอ้างอิง 3 แหล่งให้ชื่อไม่ตรงกัน ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow` · `addPreApprover` · `getPendingFlowByUser` · ชุด B ชีต `Mermaid seq` ของไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` · `AddPreparedApproverUseCase` · `GetPendingFlowUseCase` · ชื่อที่ใช้ใน skeleton ด้านล่างเป็น **ชื่อชั่วคราว** ต้องยืนยันกับทีมเจ้าของ library ก่อนเขียนโค้ดจริง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3) · engine มี **13 ตาราง** อยู่ใน schema **`sps_store`** (ไม่ใช่ 10 ตาราง และไม่ใช่ `sps_auth`)
+✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
 | Endpoint | Use case ที่ต้องเรียก | เหตุผล |
 | --- | --- | --- |
-| POST /api/v1/documents/{docNo}/actions | getPermissionEvents() → triggerEvent() | ตรวจสิทธิ์ event ของผู้ใช้ก่อนเดิน state และบันทึก history |
+| POST /api/v1/documents/{docNo}/actions | getPermissionEvents() → eventWorkflow() | ตรวจสิทธิ์ event ของผู้ใช้ก่อนเดิน state และบันทึก history |
 | GET /api/v1/documents/{docNo}/timeline | getHistory() | timeline การเปลี่ยน state (fromState/toState/event/remark) |
 
 ```ts
@@ -368,8 +373,8 @@ export class SbpgiDocumentWorkflowActionsService {
     referenceId: docNo,
     userData: { userId, userGroup: groupId },
   });
-  // TODO: ตรวจว่า body.result map เป็น event ที่อยู่ใน permitted ก่อนเรียก triggerEvent
-  await this.workflow.triggerEvent({
+  // TODO: ตรวจว่า body.result map เป็น event ที่อยู่ใน permitted ก่อนเรียก eventWorkflow
+  await this.workflow.eventWorkflow({
     versionId: this.versionId,
     referenceId: docNo,
     event, // TODO: map decision_code -> event ของ workflow definition
@@ -486,9 +491,9 @@ export class ConsiderationLog {
 
 | Object | R/W | ใช้ของระบบเดิมตัวไหน |
 | --- | --- | --- |
-| workflow_transaction | R/W | workflow engine @srm/glb-workflow |
-| workflow_history | R/W | workflow engine @srm/glb-workflow |
-| workflow_approver | R/W | workflow engine @srm/glb-workflow |
+| workflow_transaction | R (เขียนผ่าน lib) | workflow engine @srm/glb-workflow |
+| workflow_history | R (เขียนผ่าน lib) | workflow engine @srm/glb-workflow |
+| workflow_approver | R (เขียนผ่าน lib) | workflow engine @srm/glb-workflow |
 
 #### 9.7 Repository Providers + Module wiring
 
@@ -627,9 +632,9 @@ export class SbpgiDocumentWorkflowActionsBffController {
 | --- | --- | --- |
 | compensation_documents | W | อัปเดต status/current_section/result |
 | consideration_logs | W | บันทึกผลพิจารณาและ comment |
-| workflow_transaction | R/W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
-| workflow_history | R/W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
-| workflow_approver | R/W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| workflow_transaction | R (เขียนผ่าน lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| workflow_history | R (เขียนผ่าน lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| workflow_approver | R (เขียนผ่าน lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 
 #### 10.2 SQL จริงต่อ Endpoint
 
@@ -641,25 +646,50 @@ export class SbpgiDocumentWorkflowActionsBffController {
 -- ตรวจเป็นเจ้าของงานขั้นปัจจุบัน + ต้องเลือก result แล้ว (ไม่งั้น 422)
 -- result รับ 6-enum verbatim เท่านั้น: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI) / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ
 -- ⚠️ ไม่ UPDATE ตาราง workflow เอง — เดิน state ผ่าน @srm/glb-workflow (schema sps_store)
---    triggerEvent({versionId, referenceId, event, eventParam:{amount}, remark, userId})
+--    eventWorkflow({versionId, referenceId, event, eventParam:{amount}, remark, userId})
 --    library ปิดงานขั้นเดิม เขียน sps_store.workflow_history และเปิด approver ขั้นถัดไปให้เอง
--- ⚠️ ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน) · referenceId ยังไม่ตัดสิน (DP-1) — SBP/SBPGI-vs-existing-system.md หัวข้อ 4
+-- referenceId = compensation_documents.id (surrogate · DP-1 ปิดแล้ว 2026-08-17)
 
 INSERT INTO consideration_logs (doc_no, section_code, consider_by, result, detail, action_datetime)
 VALUES (:docNo, :curSection, :empId, :result, :comment, :now);
 
--- คำนวณขั้นถัดไป (วงเงิน GM 50,000 / AVP 300,000 · SDD GI) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock
+-- คำนวณขั้นถัดไป (วงเงิน เกณฑ์เดียว 100,000 · SDD GI) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock
 UPDATE compensation_documents SET status_code = :nextStatus, current_section_code = :nextSection, version_no = version_no + 1, updated_at = :now, updated_by = :empId
 WHERE doc_no = :docNo AND version_no = :versionNo;
--- งานขั้นถัดไปเปิดโดย engine (addPreparedApprover) ไม่ใช่ INSERT ของ SBPGI
+-- งานขั้นถัดไปเปิดโดย engine (addPreApprover) ไม่ใช่ INSERT ของ SBPGI
 
--- ✅ ปิด DP-5 (2026-08-11): engine ส่งอีเมลเอง — SBPGI ไม่ query ผู้รับและไม่มีตาราง status_email_rules
---    ผูก email_id ที่ workflow_route ตอนลงทะเบียน version · template อยู่ที่ email_template · log ที่ email_sent
--- ตรวจว่าส่งสำเร็จ (อ่านอย่างเดียว ไม่ใช่หน้าที่ SBPGI ส่ง):
-SELECT email_sent_id, mail_to, mail_cc, is_sent, error, sent_date
+-- ✅ ปิด DP-5 (แก้มติ 2026-08-14): workflow ให้ "เลข template" · SBPGI เรียก lib ส่งเอง (ไม่มีตาราง status_email_rules)
+-- 1) เอาเลข template ของ route ที่เพิ่งเดิน (ถ้า NULL = ไม่ต้องส่งเมล)
+-- ⚠️ ต้องระบุ to_state_id ด้วย! state 02 มี 2 route ตามวงเงิน (< 100,000 จบ · ≥ 100,000 ไป 03)
+--    ถ้าใช้แค่ (from_state_id, event) แล้ว ORDER BY seq LIMIT 1 จะได้ template ผิดเสมอเมื่อเข้าเงื่อนไขที่สอง
+--    :prevStateId เก็บจาก getTransaction() "ก่อน" เรียก eventWorkflow · :nextStateId อ่านจาก getTransaction() "หลัง" สำเร็จ
+SELECT r.email_id
+FROM sps_store.workflow_route r
+WHERE r.version_id = :versionId
+  AND r.from_state_id = :prevStateId
+  AND r.event = :event
+  AND r.to_state_id = :nextStateId;
+
+-- 2) หาอีเมลผู้อนุมัติลำดับถัดไปที่ engine resolve ให้แล้ว
+SELECT string_agg(DISTINCT u.email, ',') AS mail_to
+FROM sps_store.workflow_approver a
+JOIN sps_store.business_user u ON u.user_id = a.current_approver
+WHERE a.transaction_id = :transactionId AND a.state_id = :nextStateId AND u.email IS NOT NULL;
+
+-- 2b) ผู้รับ CC — ระบบเดิมมีกลไกอยู่แล้ว (fml_email_account.template_id)
+SELECT string_agg(email, ',') AS mail_cc
+FROM fml_email_account
+WHERE template_id = :emailId;
+
+-- 3) เรียก lib "นอก transaction" (อีเมลล้มต้องไม่ rollback การอนุมัติ · lib ไม่ retry ให้)
+--    emailService.sendEmail({ emailId, mailTo, mailCc, param:{docNo, storeName, amount}, userId })
+--    lib อ่าน email_template แล้ว INSERT email_sent (is_sent 'Y'/'N' + error) ให้เอง — return แค่ Success/Fail
+
+-- 4) รายงานตามเก็บเมลที่ส่งไม่สำเร็จ (⚠️ คอลัมน์จริงคือ send_by ไม่ใช่ sent_by)
+SELECT email_sent_id, email_id, mail_to, mail_cc, is_sent, error, sent_date, send_by
 FROM email_sent
-WHERE email_id = :routeEmailId
-ORDER BY sent_date DESC LIMIT 5;
+WHERE is_sent = 'N' AND sent_date >= :since
+ORDER BY sent_date DESC;
 ```
 
 **GET /api/v1/documents/{docNo}/timeline** — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline (Peerakorn)** · เอกสารนี้อ้…
@@ -713,3 +743,28 @@ ORDER BY action_datetime;
 | 3 | send back |
 | 4 | invalid result |
 | 5 | duplicate action |
+
+## 14. Unit Test Scope
+
+**9 ชั่วโมง** (30% ของ implementation 28 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `docNo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: YYYY/xxxxx |
+| `result` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: verbatim from actionOptions |
+| `comment` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for return/reject · รูปแบบ: text |
+| business rule | logic | non-owner returns 403 |
+| business rule | logic | missing result returns exact SRS message |
+| business rule | logic | invalid result for this role profile returns 422 |
+| business rule | logic | duplicate submit blocked by current open task lock |
+| business rule | logic | audit written in same transaction |
+| `POST /api/v1/documents/{docNo}/actions` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/documents/{docNo}/timeline` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `compensation_documents`, `consideration_logs` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

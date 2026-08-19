@@ -79,6 +79,7 @@
     "LLDD/md/LLDD-API.md",
     "LLDD/md/LLDD-Database.md",
     "LLDD/md/LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management.md",
+    "LLDD/md/LLDD-To-Be.md",
     "LLDD/md/README.md",
     "LLDD/pdf/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.pdf",
     "LLDD/pdf/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.pdf",
@@ -121,6 +122,7 @@
     "LLDD/pdf/LLDD-API.pdf",
     "LLDD/pdf/LLDD-Database.pdf",
     "LLDD/pdf/LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management.pdf",
+    "LLDD/pdf/LLDD-To-Be.pdf",
     "LLDD/word/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.docx",
     "LLDD/word/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.docx",
     "LLDD/word/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.docx",
@@ -161,6 +163,7 @@
     "LLDD/word/FE/LLDD-FE-Testing-Delivery.docx",
     "LLDD/word/LLDD-API.docx",
     "LLDD/word/LLDD-Database.docx",
-    "LLDD/word/LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management.docx"
+    "LLDD/word/LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management.docx",
+    "LLDD/word/LLDD-To-Be.docx"
   ]
 }

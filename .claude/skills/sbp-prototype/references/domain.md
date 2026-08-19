@@ -11,7 +11,7 @@
 ## ค่าคงที่ธุรกิจ (ห้ามเปลี่ยนโดยไม่มี business sign-off)
 
 - เลขที่เอกสาร `YYYY/xxxxx` — **ปี พ.ศ.** เช่น `2026/00123` (running เริ่ม 00001)
-- วงเงินอนุมัติ (SDD GI 24/02/2026 — แทนเกณฑ์เดียว 100,000): ชดเชย **≤ 50,000 บาท จบที่ GM (02)** · **50,001–300,000 ต้องผ่าน AVP สำนัก SBPM (03) แล้วจบ** · เกิน 300,000 รอ confirm · เปิดเรื่องซ้ำได้เองหลังหยุด/ไม่เห็นควรชดเชย (ไม่ต้องเปิด SR) · ยอด 0: เดือน 1–3 ส่งต่อ 01, เดือนที่ 4 หยุดชดเชย
+- วงเงินอนุมัติ (**มติประชุม 2026-08-18 — กลับมาใช้เกณฑ์เดียว 100,000** ยกเลิกแนวคิด 50,000/300,000 ของ SDD GI): ชดเชย **< 100,000 บาท จบที่ GM (02)** · **≥ 100,000 ต้องผ่าน AVP สำนัก SBPM (03) แล้วจบ** · เกิน 300,000 รอ confirm · เปิดเรื่องซ้ำได้เองหลังหยุด/ไม่เห็นควรชดเชย (ไม่ต้องเปิด SR) · ยอด 0: เดือน 1–3 ส่งต่อ 01, เดือนที่ 4 หยุดชดเชย
 - **คำเรียกหน่วยงาน (SDD GI · ตัดสินใจ 2026-08-06):** ใช้ **"หน่วยงานส่งเสริมธุรกิจ"** แทน "ฝ่ายส่งเสริม" **ทุกจุด** — ทั้งปุ่ม/ค่า enum และ**ชื่อสถานะเอกสาร** ("รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ") · ขั้น 01 เพิ่มบทบาท **เจ้าหน้าที่อาวุโส (Senior Officer)** ใช้งานร่วมกับผู้จัดการฝ่าย/ผู้เชี่ยวชาญ
 - **%ชดเชยของร้านเปิดใหม่ทุกร้านในเอกสารรวมกันต้อง = 100%**
 - ข้อมูลยอดขาย **< 60 วัน = "ผิดปกติ"** → แถวแดง `tr.flag-red` (เป็น flag ของข้อมูล **ไม่ใช่สถานะ workflow**)
@@ -31,8 +31,8 @@
 | 06 | ฝ่าย SBP DSA (Manager Franchise) | จุดเริ่ม · ไม่ชดเชย/หยุดชดเชย = จบ · ส่งต่อได้หลายทาง |
 | 08 | เจ้าหน้าที่ SBP DSA (Officer Franchise) | มี view **คำนวณเงินชดเชย** (เฉพาะขั้นนี้) |
 | 01 | หน่วยงานส่งเสริมธุรกิจฯ (SDD GI: เดิม "ฝ่ายส่งเสริม" · ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ + **เจ้าหน้าที่อาวุโส** + เจ้าหน้าที่ · ยกเว้น GM) | แก้ร้านเปิดใหม่/คู่แข่ง/ปัจจัยภายนอกได้ (%รวม = 100%) · เห็นควรไม่ชดเชย = จบทันที |
-| 02 | GM ส่งเสริมธุรกิจฯ (GM OPT) | แยกเส้นตามวงเงิน SDD GI · **≤ 50,000 อนุมัติ = จบ workflow** · เห็นควรไม่ชดเชย = จบทันที |
-| 03 | ผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) | เฉพาะยอด 50,001–300,000 · อนุมัติ = **จบ workflow** (เกิน 300,000 รอ confirm) |
+| 02 | GM ส่งเสริมธุรกิจฯ (GM OPT) | แยกเส้นตามวงเงินเกณฑ์เดียว · **< 100,000 อนุมัติ = จบ workflow** · เห็นควรไม่ชดเชย = จบทันที |
+| 03 | ผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) | เฉพาะยอด ≥ 100,000 · อนุมัติ = **จบ workflow** (รอ confirm) |
 
 ขั้นบัญชี 04 (ฝ่ายบัญชี SBP) / 05 (บัญชีปฏิบัติการภาค) **ถูกตัดตาม SDD v7.5** — บัญชีตรวจสอบผ่านรายงาน SBP Mall (Preview + Export CSV to Batch) แล้วกระทบยอด SAP นอกระบบ
 
@@ -67,14 +67,14 @@ inbox ของแต่ละ role = เอกสารสถานะ "รอ\
 
 ## Email Templates (8 ฉบับ — **ไม่มีหน้าจอใน SBPGI แล้ว 2026-08-06**)
 
-TO/CC ของ EM-01–03 ยึด `status_email_rules` (SRS 3.1.5) · **เนื้อหา/ถ้อยคำเป็นข้อเสนอระบบใหม่ beyond SRS** · ส่งด้วย `@gosoft-sbp/email-lib` ของระบบ SBP เดิม UTF-8 (แทน TIS-620) และ log ลง `email_sent`
+**ไม่มีตาราง `status_email_rules`** (ปิด DP-5 · 2026-08-14) — **workflow ให้เลข template** ผ่าน `sps_store.workflow_route.email_id` แล้ว **SBPGI เรียก `sendEmail()` ของ email-lib เอง** พร้อม `mailTo`/`mailCc`/`param` · `mailTo` = ผู้อนุมัติถัดไปที่ engine resolve แล้ว → `business_user.email` · `mailCc` = `fml_email_account` (มี `template_id`) · เมลที่ไม่ใช่ transition (reminder/escalation/batch) เก็บเลข template ที่ `mas_param` · **เนื้อหา/ถ้อยคำเป็นข้อเสนอระบบใหม่ beyond SRS** · UTF-8 (แทน TIS-620) และ lib เขียน log ลง `email_sent` ให้เอง · ⚠️ คอลัมน์จริงคือ `email_sent.send_by` ไม่ใช่ `sent_by` · สัญญาเต็มดู `api.md` §อีเมล
 
 > หน้าจอ `email-template.html` ถูกลบทั้งฟีเจอร์ — template ทั้ง 8 ฉบับเก็บอยู่ในตาราง `email_template` ของระบบ SBP เดิม (`subject_format`/`body_format`) การแก้ถ้อยคำทำที่ระบบเดิม · SBPGI อ่านอย่างเดียว
 
 | Code | ส่งเมื่อ | ผู้รับ |
 |---|---|---|
 | EM-01 | เอกสารเปลี่ยนสถานะ (ส่งดำเนินการ) | ผู้ดำเนินการ step ถัดไป |
-| EM-02 | จบ workflow (ไม่ชดเชย/หยุดชดเชย · GM อนุมัติ ≤50,000 · AVP อนุมัติ 50,001–300,000) | ผู้เกี่ยวข้องทั้งหมด |
+| EM-02 | จบ workflow (ไม่ชดเชย/หยุดชดเชย · GM อนุมัติ < 100,000 · AVP อนุมัติ ≥ 100,000) | ผู้เกี่ยวข้องทั้งหมด |
 | EM-03 | ถูกส่งกลับ (back-flow) | ผู้ถูกส่งกลับหา + CC ผู้ส่งกลับ |
 | EM-04 | เตือนงานค้างรายสัปดาห์ (จันทร์ 10:00 แก้ได้) | ผู้มีงานค้าง (จาก `sps_store.workflow_approver` / `workflow_transaction` ของ `@srm/glb-workflow`) |
 | EM-05 | Escalation งานค้าง 30/45/60 วัน | หัวหน้า Section / GM OPT |
@@ -88,6 +88,7 @@ EM-04/05 รับพฤติกรรมมาจาก Approve Flow เดิ
 
 - **รวม EAI + K2 เข้า SBPGI**: ตัดไฟล์ภายใน `BPM06001O_/2O_/3O_` (Jobs 7/8/9) และ K2 REST StartInstance (Job 8b) → Document Service เขียน DB ตรง + Workflow Engine ภายใน
 - Interface ภายนอก **คงเดิม** (ระบบของทีมอื่น): QSSI (SFTP) · ALLMAP (SQL Server) · IAS/MIS (ไฟล์ AMS06001O/I) · STA (FRBC0001 + ACK, เพิ่ม `POST /interfaces/sta/ack`) · SMTP
+- Workflow engine `@srm/glb-workflow` มี **API 8 ตัว** (ชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx`): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` (= หน้ารอดำเนินการ) · `getWorkflowsByUser` (= หน้าที่เกี่ยวข้อง) · `addPreApprover` — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` ไม่ใช่ชื่อ API
 - Flow 12 ขั้น 4 Stage (A รับข้อมูล Jobs 1–5 · B สร้างเอกสาร+เปิด workflow · C พิจารณา 5 ขั้น · D ส่งออก+watchdog Jobs 6/10) → `workflow.md`
-- Schema **20 ตาราง 3 โซน (A 7 · B 9 · C 4)** (A=FGI/FCS · B=K2 docs/workflow · C=shared master/config · RBAC/ผู้ปฏิบัติงาน + workflow engine + master/config ที่ระบบ SBP มีอยู่แล้ว ใช้ของเดิม) + Data Spine 4 ID (`impact_process_id` → `doc_no` → `transaction_id`/`approver_id` ของ `sps_store.workflow_transaction` / `workflow_approver` ใน `@srm/glb-workflow`) → `database.md`
+- Schema **19 ตาราง 3 โซน (A 7 · B 9 · C 3)** (A=FGI/FCS · B=K2 docs/workflow · C=shared master/config · RBAC/ผู้ปฏิบัติงาน + workflow engine + master/config ที่ระบบ SBP มีอยู่แล้ว ใช้ของเดิม) + Data Spine 4 ID (`impact_process_id` → `doc_no` → `transaction_id`/`approver_id` ของ `sps_store.workflow_transaction` / `workflow_approver` ใน `@srm/glb-workflow`) → `database.md`
 - P0 สำคัญ: ครอบ Job 4 ด้วย transaction · ย้าย credential ไป Secret Manager · ห้ามเก็บ secret ใน config ของระบบ (`mas_param`/backend config)

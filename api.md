@@ -2,7 +2,7 @@
 
 > **เอกสารมีชีวิต (living doc)** — สรุป REST API ทั้งหมดของระบบใหม่ สำหรับ Frontend SPA และงานภายใน
 > **แหล่งอ้างอิงหลัก:** `plan-api.html` (หน้า API · sidebar group `Plan`)
-> **อ้างอิงประกอบ:** `database.md` / `plan-database.html` (ตารางที่แต่ละเส้นอ่าน/เขียน) · `workflow.md` / `plan-flow.html` (flow) · SRS ประกันรายได้-K2 v3.1 · เอกสาร Batch v4.0 · **SDD GI 24/02/2026** (`SDD-GI-Compensation/…md` — วงเงิน GM 50,000/AVP 300,000 · เปิดเรื่องซ้ำ · งานค้าง)
+> **อ้างอิงประกอบ:** `database.md` / `plan-database.html` (ตารางที่แต่ละเส้นอ่าน/เขียน) · `workflow.md` / `plan-flow.html` (flow) · SRS ประกันรายได้-K2 v3.1 · เอกสาร Batch v4.0 · **SDD GI 24/02/2026** (`SDD-GI-Compensation/…md` — วงเงิน เกณฑ์เดียว 100,000 · เปิดเรื่องซ้ำ · งานค้าง)
 > **กติกา sync:** ทุกครั้งที่คุย/แก้ไขเรื่อง API ให้อ่านไฟล์นี้ก่อน และถ้ามีการตัดสินใจใหม่ ให้อัปเดตทั้งไฟล์นี้และ `plan-api.html` ให้ตรงกัน · ถ้ากระทบตาราง/flow ต้องอัปเดต `database.md`/`workflow.md` คู่กันด้วย
 
 ## ภาพรวม
@@ -30,7 +30,7 @@
 | HTTP status | 400 validation · 401 auth · 403 forbidden/RBAC · 404 not found · 409 duplicate/current-task conflict · 422 business rule · 413 file too large · 415 unsupported file | BE middleware/service · FE error state |
 | Pagination | GET list ทุกเส้นรับ `page,size` และคืน `{page,size,total,items}` | BE repository/query · FE DataTable/Pager |
 | Format | `docNo` = `YYYY/xxxxx` **ค.ศ.** (เช่น `2026/00123`) · `storeCode/newStoreCode` เป็น string 5 หลักคง leading zero · date/month ใน payload เป็น ค.ศ. ISO · amount/percent เป็น number 2 decimals | BE validate/serialize · FE format display |
-| Workflow transition | `/documents/{docNo}/actions` รับ `{result,comment}` โดย `result` เป็น 6-enum ไทย verbatim (ค่า "ส่งฝ่ายส่งเสริมธุรกิจ SBP" เปลี่ยนชื่อเป็น "ส่งหน่วยงานส่งเสริมธุรกิจ SBP" ตาม SDD GI 24/02/2026) และคืน `{nextSection,statusCode,message}`; positive path คือ `06→08→01→02→03→99` โดย `99` = เสร็จสิ้นและ `nextSection=null`; ที่ Section 02 ยอด ≤50,000 จบเป็น 99 โดยไม่ผ่าน 03 · 50,001–300,000 → 03 (SDD GI) | BE Workflow Action เป็น source of truth; FE ไม่คำนวณ route เอง |
+| Workflow transition | `/documents/{docNo}/actions` รับ `{result,comment}` โดย `result` เป็น 6-enum ไทย verbatim (ค่า "ส่งฝ่ายส่งเสริมธุรกิจ SBP" เปลี่ยนชื่อเป็น "ส่งหน่วยงานส่งเสริมธุรกิจ SBP" ตาม SDD GI 24/02/2026) และคืน `{nextSection,statusCode,message}`; positive path คือ `06→08→01→02→03→99` โดย `99` = เสร็จสิ้นและ `nextSection=null`; ที่ Section 02 ยอด < 100,000 จบเป็น 99 โดยไม่ผ่าน 03 · ≥ 100,000 → 03 (SDD GI) | BE Workflow Action เป็น source of truth; FE ไม่คำนวณ route เอง |
 | RBAC/Menu | sidebar/route guard ใช้ของระบบเดิม: BFF `GET /menus` + `GET /groups/current-user/permissions` (`canView/canManage/canExport/canOther` ต่อ URL) · `GET /documents/{docNo}` ยังคืน `permissions.canEditSections` และ `permissions.canAction` (ธงเชิง workflow ที่ SBPGI คำนวณเอง) | ระบบเดิมคุมเมนู/สิทธิ์เข้าหน้า · BE task-owner guard · FE เปิด/ปิด UI |
 | Audit | **ไม่มี audit กลางของ master แล้ว** (ยกเลิก `audit_logs` 2026-08-07 · mutation master ไม่ต้องส่ง `reason`); workflow action ลง `consideration_logs`; batch เขียน application log | BE ไม่ต้องมี audit service · FE ไม่มีช่องเหตุผล |
 | Idempotency | endpoint ที่สร้างจาก job/service ใช้ `requestId` หรือ business key; duplicate ต้องคืน existing result หรือ 409 ตามกฎ endpoint | BE service · Job rerun |
@@ -45,7 +45,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 4. **แท็บ 2 · Database + SQL** — ตารางที่เกี่ยวข้อง (R/W/RW) + **ตัวอย่าง SQL ต่อเส้น** (illustrative, bind params ขึ้นต้น `:`) เก็บใน `SQL_BY_PATH` keyed ด้วย `'METHOD path'`
 5. **แท็บ 3 · Flowchart** — โผล่**เฉพาะ 3 เส้นที่ซับซ้อน** (มี branching/หลายขั้น) · เป็น inline SVG เรนเดอร์จาก node spec ใน `FLOWCHART_BY_PATH` ผ่าน mini-renderer `renderFlow()`
 
-**3 เส้นที่มีแท็บ Flowchart:** `POST /documents/{docNo}/actions` (routing 5 ขั้น + วงเงิน GM 50,000 / AVP 300,000) · `POST /workflows/instances` (Gen Flow Gate) · `POST /documents` (สร้าง + กันซ้ำเฉพาะเอกสาร active)
+**3 เส้นที่มีแท็บ Flowchart:** `POST /documents/{docNo}/actions` (routing 5 ขั้น + วงเงิน เกณฑ์เดียว 100,000) · `POST /workflows/instances` (Gen Flow Gate) · `POST /documents` (สร้าง + กันซ้ำเฉพาะเอกสาร active)
 
 ## รายการ endpoint ทั้ง 6 กลุ่ม
 
@@ -63,7 +63,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 | GET | `/documents/{docNo}` | เอกสารฉบับเต็ม 12 ส่วน + ธงสิทธิ์แก้ต่อ role/section |
 | POST | `/documents` | สร้างเอกสาร — ออกเลข YYYY/xxxxx + เปิด workflow (มี Flowchart) · **ตัดสินใจ 2026-08-06: ไม่มีฟอร์มสร้างเอกสารใน FE แล้ว** — ต้นทางสร้างที่ระบบ **FS** แล้วรอ **SBP Statement** ส่งข้อมูลกลับ (~1 วัน) จึงเรียกเส้นนี้โดย pipeline/service token · หน้า `k2-create.html` เหลือเป็นหน้าอธิบายกระบวนการ · การคีย์/ปรับข้อมูลร้านตาม SDD GI ทำในหน้าเอกสาร (`PUT /documents/{docNo}`) |
 | PUT | `/documents/{docNo}` | บันทึกส่วนย่อย (ร้านใหม่/คู่แข่ง/ปัจจัย) · **%ชดเชยรวม = 100%** |
-| POST | `/documents/{docNo}/actions` | ส่งผลพิจารณา — หัวใจ workflow 5 ขั้น · วงเงิน GM 50,000 / AVP 300,000 · SDD GI (มี Flowchart) |
+| POST | `/documents/{docNo}/actions` | ส่งผลพิจารณา — หัวใจ workflow 5 ขั้น · วงเงิน เกณฑ์เดียว 100,000 · SDD GI (มี Flowchart) |
 | GET | `/documents/{docNo}/timeline` | ประวัติพิจารณาทุกขั้น |
 | POST | `/documents/{docNo}/attachments` | แนบไฟล์ ≤ 5MB |
 | GET | `/documents/{docNo}/attachments/{attachId}/download` | ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE authorization + AV clean guard · ไฟล์จริงใช้ service S3 ของระบบ SBP เดิม |
@@ -116,7 +116,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 
 - **บังคับระบุปี (ค.ศ.)** ใน `/documents` และ `/reports/status-summary` ไม่งั้นตอบ 400 (กติกา SRS · BE ต้องผ่าน `toAD()` ก่อน query เผื่อ client ส่ง พ.ศ. มา)
 - **เส้นทางข้ามขั้นที่ section 06** ใน `/documents/{docNo}/actions`: `result = "ส่งหน่วยงานส่งเสริมธุรกิจ SBP"` → `nextSection = "01"` (**ข้ามขั้น 08**) ใช้เมื่อยอดที่ระบบคำนวณถูกต้องแล้วไม่ต้องให้เจ้าหน้าที่คำนวณซ้ำ · `result = "ส่งเจ้าหน้าที่ SBP DSA"` → `nextSection = "08"` (เส้นทางปกติ ให้คำนวณยอดก่อน) · การส่งกลับจาก 01 กลับไปที่ 06 เสมอ ไม่ใช่ 08 (ดูตารางเทียบใน `workflow.md`)
-- **กฎวงเงินอนุมัติ (SDD GI 24/02/2026)** ใน `/documents/{docNo}/actions`: เห็นควรชดเชย ≤ 50,000 → **จบที่ GM (02)** · 50,001–300,000 → AVP (03) แล้วจบ (เกิน 300,000 รอ confirm) · เห็นควรไม่ชดเชยที่ 01/02 → **เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น)** · 06 ไม่ชดเชย/หยุด → เสร็จสิ้น · **ตัดขั้นบัญชี 04/05 ตาม SDD v7.5** (ดูตารางเต็มใน `workflow.md`) · เดิมใช้เกณฑ์เดียว 100,000
+- **กฎวงเงินอนุมัติ (SDD GI 24/02/2026)** ใน `/documents/{docNo}/actions`: เห็นควรชดเชย < 100,000 → **จบที่ GM (02)** · ≥ 100,000 → AVP (03) แล้วจบ  · เห็นควรไม่ชดเชยที่ 01/02 → **เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น)** · 06 ไม่ชดเชย/หยุด → เสร็จสิ้น · **ตัดขั้นบัญชี 04/05 ตาม SDD v7.5** (ดูตารางเต็มใน `workflow.md`) · เดิมใช้เกณฑ์เดียว 100,000
 - **เปิดเรื่องซ้ำได้ (SDD GI)** ใน `POST /documents`: 409 เฉพาะกรณีมีเอกสาร **active** ของร้าน+เดือนนั้น — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้ทั้งเดือนเดียวกันและเดือนถัดไป (ยกเลิกการเปิด SR) · กรณีเห็นควรไม่ชดเชย (06) เดือนถัดไประบบสร้างงานเข้า `GET /tasks` อัตโนมัติพร้อม assignee คนเดิม · ยอดชดเชย 0: เดือน 1–3 ส่งต่อ 01 · เดือนที่ 4 หยุดชดเชย
 - **งานค้าง (SDD GI)** ใน `GET /tasks`: รองรับ filter + เลือกหลายเอกสาร (bulk action) · เจ้าหน้าที่/ฝ่าย SBP DSA เห็นเอกสารได้ทุกสาขา (ไม่จำกัดงานตน) · ทีมส่งเสริม/บัญชีตามสิทธิ์เดิม
 - **filter `result`** ใน report = **4 ค่า** (Radio เลือกอย่างใดอย่างหนึ่ง · **ไม่บังคับ** — บังคับเฉพาะ `status`) อิง **ผลพิจารณาล่าสุด** `consideration_logs.result_category`: `APPROVE` = ประกันรายได้ · `REJECT` = ไม่ประกันรายได้ · **`CANCELLED` = ยกเลิกโดยระบบ (เพิ่ม 2026-08-10)** · `PENDING`/ไม่มีค่า = ยังไม่มีผล — SDD สไลด์ 60 แสดงเพียง 2 ค่าแรก แต่ master จริง (`DecisionProfile.DecisionResultName` ของ `CPA_FRN_FGI`) มี **ยกเลิกโดยระบบ** จาก decision 14 `CancelBySystem` ด้วย จึงแยกเป็นตัวเลือกที่ 4 (ตัดสินใจ 2026-08-10) — ขั้นบัญชี 05 ที่เคยอ้างถูกตัดออกแล้ว
@@ -159,7 +159,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 **เหตุผล:** ทั้งสองกลุ่มออกแบบไว้เพื่อรองรับหน้าจอ admin 2 หน้านี้โดยตรง และ**เขียนลงตารางของระบบ SBP เดิมอยู่แล้ว** (`mas_param` / `email_template`) ซึ่งระบบเดิมมีหน้าจอบริหารจัดการของตัวเองอยู่ — SBPGI จึงไม่ต้องทำหน้าจอและ endpoint ซ้ำ
 
 **สิ่งที่ยังอยู่ (ฝั่ง BE ภายใน ไม่ใช่ REST ของ SBPGI):**
-- **ส่งอีเมลตามสถานะ** ยังทำงานเหมือนเดิม — service ภายในอ่าน `email_template` (`subject_format`/`body_format`) แล้วส่งผ่าน `@gosoft-sbp/email-lib` และ log ลง `email_sent` · จุดส่งต่อสถานะดู `workflow_status_document.md`
+- **ส่งอีเมลตามสถานะ** ยังทำงานเหมือนเดิม — SBPGI เรียก `sendEmail()` ของ email-lib กลาง (lib อ่าน `email_template` แล้ว log `email_sent` ให้เอง) · จุดส่งต่อสถานะดู `workflow_status_document.md` · **สัญญาเต็มดูหัวข้อ "อีเมล" ท้ายไฟล์**
 - **ค่ากำหนดกลาง** ยังอ่านจาก `mas_param` ของระบบเดิม (รวมค่าที่หน้าจออื่นใช้ เช่น URL QlikView BI) · **วงเงินอนุมัติ GM/AVP** อ่านจาก `common_code` (`code_type = SBPGI_APPROVE_LIMIT`) ผ่าน `GET /workflow-sections` เหมือนเดิม
 - การแก้ template/config เป็นงานของ**ระบบ SBP เดิม** — audit อยู่ที่ระบบเดิมทั้งหมด
 
@@ -231,21 +231,30 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 > - ⚠️ **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:** `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index เลย** ทั้งที่มี 19,283 แถว (ตารางชื่อเดียวกันใน `sps_auth` มี PK ปกติ) — กระทบ performance ของ `GET /tasks` / `POST /documents/{docNo}/actions` ที่ต้อง query ตาราง**นี้ทุกครั้ง** · เป็นข้อเท็จจริงที่ตรวจพบ ไม่ใช่ข้อเสนอ · **ยังไม่ตัดสิน**ว่าจะแก้อย่างไร (เพิ่ม index / ขอ library เวอร์ชันใหม่ / อ่านผ่าน view)
 > - **ข้อสังเกต (ยังไม่ตัดสิน):** `workflow_part` + `workflow_part_display` ของ engine คุมการแสดงผล**รายส่วนของหน้าจอ** (READ/WRITE ต่อ state) ซึ่ง**ทับซ้อน**กับกลไก `data-editrole` / `.edit-only` ที่ prototype ทำเอง และกับธง `permissions.canEditSections` ที่ `GET /documents/{docNo}` คืน — ต้องเลือกว่าจะให้ engine เป็นเจ้าของสิทธิ์แก้รายส่วนหรือให้ SBPGI คำนวณเอง (ดู `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4)
 >
-> **⚠️ ชื่อ function ของ engine ยังไม่ยืนยัน — มี 3 ชุดขัดกัน (ห้ามยึดชุดใดชุดหนึ่งจนกว่าจะ confirm กับทีมเจ้าของ library):**
+> **✅ ชื่อ function ของ engine — ยึดตาม LLDD ของ lib (ปิดข้อค้าง 2026-08-14)**
 >
-> | ชุด | แหล่ง | ชื่อที่ใช้ |
-> |---|---|---|
-> | A | `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — ชีต **Detail** (LLDD ต้นฉบับ) | `eventWorkflow` · `addPreApprover` · `getPendingFlowByUser` |
-> | B | `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — ชีต **Mermaid seq** (ไฟล์เดียวกัน) | `triggerEvent` |
-> | C | `SBP/srm-sps-spsap-store-backend.md` §1.5 (โค้ดจริง) | `TriggerEventUseCase` · `AddPreparedApproverUseCase` · `GetPendingFlowUseCase` |
+> **API สาธารณะของ `@srm/glb-workflow` = 8 function ตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx`** ซึ่งเป็นเอกสารของ lib เอง จึงเป็นแหล่งความจริง · อีก 2 ชุดที่เคยขัดกันไม่ใช่ชื่อ API: ชีต **Mermaid seq / ชีต "2"** ใช้คำว่า *Trigger Event* เป็น **ชื่อหัวข้อของขั้นตอนภายใน** `eventWorkflow` · ส่วน `TriggerEventUseCase` / `AddPreparedApproverUseCase` / `GetPendingFlowUseCase` ใน `SBP/srm-sps-spsap-store-backend.md` §1.5 เป็น **UseCase class ที่ store-backend ห่อไว้ใช้เอง** ไม่ใช่ API ของ lib
 >
-> ชื่อ function ที่ปรากฏในตารางด้านล่างและใน `plan-api.html` เขียนตาม**ชุด B/C** ไว้ก่อนเป็น placeholder — **ยังไม่ตัดสิน** · ต้อง confirm กับ `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` และทีมเจ้าของ `@srm/glb-workflow` ก่อนเขียนโค้ดจริง
+> | # | function | พารามิเตอร์ (ตามชีต Detail) | SBPGI ใช้ที่ไหน |
+> |---|---|---|---|
+> | 1 | `initializeWorkflow` | `version, userId, referenceId` | เปิด flow ให้เอกสารใหม่ (Job 8b · `POST /workflows/instances`) |
+> | 2 | `eventWorkflow` | `version, referenceId, event, eventParam, remark, userId` | `POST /documents/{docNo}/actions` |
+> | 3 | `getPermissionEvents` | `version, referenceId, userData` | ปุ่ม/ผลพิจารณาที่ user กดได้ในหน้าเอกสาร |
+> | 4 | `getHistory` | `version, referenceId` | `GET /documents/{docNo}/timeline` |
+> | 5 | `getTransaction` | `version, referenceId` | สถานะ + ผู้ถืองานปัจจุบันของเอกสาร |
+> | 6 | `getPendingFlowByUser` | `userData` | **หน้า เอกสาร → รอดำเนินการ** (`k2-list-waiting.html`) + reminder รายสัปดาห์ |
+> | 7 | `getWorkflowsByUser` | `userData` | **หน้า เอกสาร → ที่เกี่ยวข้อง** (`k2-list-related.html`) — flow ที่ user อยู่ด้วย รวมที่ยังไม่ถึงคิวและที่อนุมัติไปแล้ว |
+> | 8 | `addPreApprover` | `version, userId, referenceId, state_id, approver, seq` | ตั้งผู้อนุมัติล่วงหน้าของขั้นถัดไป |
+>
+> **`eventWorkflow` รับพารามิเตอร์มากกว่าที่ชีต Detail เขียนไว้** — ชีต "2" (รายละเอียดของ function นี้) ระบุ input จริงเป็น `versionId · referenceId · event · eventParam · remark · userData · userFullname · nextApproverId` โดย 3 ตัวหลังมาจากส่วนขยายลงวันที่ 29/04/2026 · 20/05/2026 · 16/06/2026 (`nextApproverId` ใช้เมื่อ `approver_type = user` · `userFullname` ลง `workflow_history.create_by_name`) — **ยึดชุดนี้เวลาเขียนโค้ด**
+>
+> 🎯 **จุดที่ตรงกับหน้าจอเราพอดี:** function 6 และ 7 คือฝาแฝด `k2-list-waiting` / `k2-list-related` — ไม่ต้องเขียน query งานค้างเอง
 
 | เส้น | เดิมอ่าน/เขียนตาราง | เปลี่ยนเป็น |
 |---|---|---|
-| `GET /tasks` | `workflow_tasks` ของ SBPGI | **`@srm/glb-workflow`** (schema `sps_store`) — `getPendingFlow({userData:{userId, groupId}, versionId})` **[ชื่อยังไม่ยืนยัน — ดู 3 ชุดด้านบน]** · **[DP-1 · DP-2]** คีย์ที่ใช้ join กลับเอกสาร (`reference_id`) ยังไม่ตัดสิน และ `sps_store.workflow_transaction` ไม่มี PK/index (19,283 แถว) จึงเป็น seq-scan — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4 แล้ว join ข้อมูลเอกสารของ SBPGI · อ่าน `sps_store.workflow_transaction` + `workflow_approver` · inbox รวมทุกระบบที่มีอยู่แล้วคือ `GET /api/workflow/pending` (store-backend) |
-| `POST /documents/{docNo}/actions` | `workflow_instances` + `workflow_tasks` | `triggerEvent({versionId, referenceId, event, remark, userId, nextApproverId})` — **[referenceId ยังไม่ตัดสิน — DP-1 ดู [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4]** (หลักฐานจากระบบเดิม cooperation-request · inform-evaluate ใช้ surrogate id ทุกจุด) ของ engine · ผู้อนุมัติขั้นถัดไปใช้ `addPreparedApprover()` — **ทั้งสองชื่อยังไม่ยืนยัน มี 3 ชุดขัดกัน (ดูตารางด้านบน)** · เขียน `sps_store.workflow_transaction` / `workflow_history` / `workflow_approver` |
-| `GET /documents/{docNo}/timeline` | `consideration_logs` อย่างเดียว | `getHistory()` ของ engine (state transition · **ชื่อยังไม่ยืนยัน**) อ่าน `sps_store.workflow_history` **join** `consideration_logs` ของ SBPGI (decision · ไฟล์แนบ · ความเห็น) · **[ยังไม่ตัดสิน — DP-7]** `consideration_logs` จะเป็น timeline เต็ม หรือเป็นตารางส่วนขยายบน `workflow_history` ของ engine (กระทบรูปแบบ response ของเส้นนี้โดยตรง) · **[DP-1]** `referenceId` ที่ใช้เรียก `getHistory()` ยังไม่ตัดสิน — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4 |
+| `GET /tasks` | `workflow_tasks` ของ SBPGI | **`@srm/glb-workflow`** (schema `sps_store`) — `getPendingFlowByUser({userData})` · **[DP-1 · DP-2]** คีย์ที่ใช้ join กลับเอกสาร (`reference_id`) ยังไม่ตัดสิน และ `sps_store.workflow_transaction` ไม่มี PK/index (19,283 แถว) จึงเป็น seq-scan — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4 แล้ว join ข้อมูลเอกสารของ SBPGI · อ่าน `sps_store.workflow_transaction` + `workflow_approver` · inbox รวมทุกระบบที่มีอยู่แล้วคือ `GET /api/workflow/pending` (store-backend) |
+| `POST /documents/{docNo}/actions` | `workflow_instances` + `workflow_tasks` | `eventWorkflow({versionId, referenceId, event, remark, userId, nextApproverId})` — **[referenceId ยังไม่ตัดสิน — DP-1 ดู [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4]** (หลักฐานจากระบบเดิม cooperation-request · inform-evaluate ใช้ surrogate id ทุกจุด) ของ engine · ผู้อนุมัติขั้นถัดไปใช้ `addPreApprover()` · เขียน `sps_store.workflow_transaction` / `workflow_history` / `workflow_approver` |
+| `GET /documents/{docNo}/timeline` | `consideration_logs` อย่างเดียว | `getHistory()` ของ engine (state transition) อ่าน `sps_store.workflow_history` **join** `consideration_logs` ของ SBPGI (decision · ไฟล์แนบ · ความเห็น) · **[ยังไม่ตัดสิน — DP-7]** `consideration_logs` จะเป็น timeline เต็ม หรือเป็นตารางส่วนขยายบน `workflow_history` ของ engine (กระทบรูปแบบ response ของเส้นนี้โดยตรง) · **[DP-1]** `referenceId` ที่ใช้เรียก `getHistory()` ยังไม่ตัดสิน — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4 |
 | `GET /workflow-sections` · `GET /document-statuses` | `workflow_sections` / `document_statuses` | `sps_store.workflow_state` / `workflow_route` / `workflow_status` ของ engine + **วงเงินอนุมัติจาก `common_code`** (`code_type = SBPGI_APPROVE_LIMIT`) |
 | `POST /documents/{docNo}/attachments` · `GET .../download` | เขียน storage layer เอง | เก็บ metadata ใน `document_attachments` ของ SBPGI แต่ **ไฟล์ใช้ service S3 เดิม** `POST /statement/upload-file-aws` · `POST /statement/download-file-aws` · **[ยังไม่ตัดสิน — DP-8]** จะใช้ตาราง `document_attachments` ของเราเอง หรือต่อยอด `upload_general` ของระบบเดิม (`job_id`/`audit_log_id` เป็น nullable ไม่ติด FK — เหตุผลจริงคือขาด `file_size`/`content_type`/`section_code`/`upload_status`/`purge_flag`) — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4 |
 
@@ -261,11 +270,46 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 | **คำนวณเงินชดเชย (ขั้น 08)** | **iframe ของระบบ Finance & Account Unit (FS)** — ไม่ใช่หน้าจอของ SBPGI · ถ้าไม่ได้ล็อกอิน FS จะได้ `401 Unauthorized` → ต้องแสดงข้อความและปุ่มเปิดแท็บใหม่แทนกรอบเปล่า |
 | **Copy Doc Link** · **Quick Search** · **Selected Filter (preset)** · **sort หัวคอลัมน์** | ฟีเจอร์ฝั่ง FE ล้วน — ไม่มี endpoint (preset เก็บใน `localStorage` ของเครื่องผู้ใช้) |
 
+## อีเมล — SBPGI เป็นคนเรียก lib ส่งเอง (ปิด DP-5 · แก้มติ 2026-08-14)
+
+> แหล่งความจริง: **`SBP/TSM-SRM-LLDD SBP EMAIL1.0.xlsx`** (v1.0 · 15/09/2025 · Sukol K. · reviewed Sudtida J.) — lib กลางสำหรับส่งอีเมล **ทำเสร็จและใช้งานจริงแล้ว** ให้ module อื่น import
+> **ไม่ใช่ REST endpoint ของ SBPGI** — เป็นการเรียก library ภายใน จึงไม่นับรวมใน 29 เส้น
+
+### สัญญาของ `sendEmail()`
+
+| อาร์กิวเมนต์ | ความหมาย | SBPGI เติมค่าจากไหน |
+|---|---|---|
+| `emailId` | เลข template ใน `email_template` | **workflow ให้มา** — `sps_store.workflow_route.email_id` ของ route ที่เพิ่งเดิน (`"ถ้าไม่ระบุ จะไม่มีการส่งเมล์"`) · 🔴 **ต้องค้นด้วย `(version_id, from_state_id, event, to_state_id)` ครบทั้ง 4** — state 02 มี 2 route ตามวงเงิน (< 100,000 จบ · ≥ 100,000 ไป 03) ถ้าค้นแค่ `(from_state_id, event)` แล้ว `ORDER BY seq LIMIT 1` จะได้ template ผิดทุกครั้งที่เข้าเงื่อนไขที่สอง · เก็บ `from_state_id` จาก `getTransaction()` **ก่อน** เรียก `eventWorkflow()` และอ่าน `to_state_id` จาก `getTransaction()` **หลัง** สำเร็จ · เมลที่ไม่ใช่ transition (reminder/escalation/batch) เก็บเลขไว้ที่ `mas_param` |
+| `mailTo` | ผู้รับ · หลายเมลคั่นด้วย `,` | ผู้อนุมัติลำดับถัดไปที่ engine resolve แล้ว (`workflow_transaction.current_approver` / `workflow_approver.current_approver` → ขยายกลุ่มด้วย `workflow_group_map`) → อีเมลจาก **`business_user.email`** |
+| `mailCc` | สำเนา · รูปแบบเดียวกัน | **`fml_email_account`** (1,646 แถว) — ตารางนี้มี `template_id` อยู่แล้ว จึงเป็นกลไก "ใครรับ template ไหน" ของระบบเดิมโดยตรง: `SELECT string_agg(email, ',') FROM fml_email_account WHERE template_id = :emailId` · ไม่ต้องสร้างตารางกฎผู้รับใหม่ |
+| `param` | ค่าที่ lib เอาไปแทน `{{key}}` ใน subject/body | SBPGI สร้างจากเอกสาร เช่น `{docNo, storeName, amount, sectionName}` |
+| `fileAttach` | ไฟล์แนบ | ปกติไม่ใช้ในงาน workflow |
+| `userId` | ผู้ดำเนินการ | → ลง `email_sent.send_by` |
+
+ลำดับใน lib (ชีต MermaidSeq): `findById(emailId)` → แทนค่า `{{key}}` ใน subject/body → ส่งผ่าน SMTP/AWS SES → `INSERT email_sent` (`is_sent='Y'` หรือ `'N'` + `error`) → return `Success` / `Fail`
+
+ตัวอย่างการแทนค่าจากเอกสาร: subject ใน DB = `[AD] ExportUserToAD ({{status}})` · ส่ง `param = {"status":"Success"}` → ได้ `[AD] ExportUserToAD (Success)`
+
+### ทำไมไม่ให้ engine ส่งเอง
+
+input ของ `eventWorkflow` มีแค่ `versionId · referenceId · event · eventParam · remark · userData · userFullname · nextApproverId` — **ไม่มี `mailTo`/`mailCc`/`param`/`fileAttach`** engine จึงเติมอาร์กิวเมนต์ที่ `sendEmail` บังคับไม่ได้ · และบรรทัดในชีต 2 ของ LLDD workflow ยังเขียนว่า *"เรียก function ส่งเมล์จาก lib **.....**"* ซึ่งเป็น **placeholder ที่ยังไม่เติมชื่อ function**
+
+### 🔴 กับดักที่ dev ต้องรู้ก่อนเขียนโค้ด
+
+1. **ชื่อคอลัมน์จริงคือ `email_sent.send_by` ไม่ใช่ `sent_by`** — ชีต Detail ของเอกสาร lib เขียน `sent_by` แต่ production (`SBP/db-schema-sps_store.md`) เป็น `send_by` · เขียนตามเอกสารแล้ว query พังทันที
+2. **`email_template` จริงมี 12 คอลัมน์ ไม่ใช่ 8 และชื่อไม่ตรงเอกสาร** — เอกสาร lib เสนอ `email_id`/`email_name`/`subject_mail`/`body_mail`/`mail_from`/`mail_from_name` แต่ production คือ `email_template_id` · `email_template_name` · `email_template_desc` · `subject_format` · `body_format` · `sender` · `email_from` · `active_flag` · `create_by/date` · `update_by/date` · **seed template ของ SBPGI ต้องใช้ชื่อจริง** และอย่าลืม `active_flag='Y'`
+3. **`sendEmail` คืนแค่ `Success`/`Fail` ไม่คืน `email_sent_id` และ lib ไม่ retry ให้** — ต้องเรียก**นอก transaction** ของ action เสมอ (อีเมลล้มต้องไม่ rollback การอนุมัติ) แล้วตามเก็บด้วยรายงาน `SELECT … FROM email_sent WHERE is_sent = 'N'`
+4. **`fileAttach` ไม่ถูก log** — `email_sent` ไม่มีคอลัมน์ไฟล์แนบ ห้ามใช้เป็นหลักฐานว่าแนบไฟล์ไปแล้ว
+5. **ต้องยืนยันกับทีมเจ้าของ `@srm/glb-workflow`:** ถ้า engine ส่งเมลเองด้วยบน route ที่มี `email_id` ผู้อนุมัติจะได้ **เมลซ้ำ 2 ฉบับ** — ทางแก้คือใช้ `workflow_route.email_id` เป็นค่า *อ่านอย่างเดียว* แล้วให้ SBPGI เรียก lib เอง
+6. **ชื่อ package ยังไม่ยืนยัน** — เอกสาร lib ให้แค่โครงไฟล์ (`email.module.ts` · `email.service.ts` · `email-template.repository.ts` · `interfaces/`) ไม่ระบุชื่อ package · ชื่อ `@gosoft-sbp/email-lib` ที่อ้างในเอกสารชุดนี้มาจาก `SBP/srm-sps-spsap-store-backend.md` — confirm ก่อน import
+7. **ช่องทางส่งขัดกันในเอกสารเดียวกัน** — ชีต Detail เขียน *"ส่งเมล์ผ่าน AWS SES"* แต่ MermaidSeq วาด participant เป็น `SMTP Server` · น่าจะเป็น SES ผ่าน SMTP interface แต่มีผลกับการตั้ง credential/allowlist จึงควรถามให้ชัด
+
 ## เอกสารที่เกี่ยวข้อง
 
-- ตารางที่แต่ละเส้นอ่าน/เขียน: [database.md](database.md) · `plan-database.html` (**20 ตาราง** หลังตัด `audit_logs` 2026-08-07)
+- ตารางที่แต่ละเส้นอ่าน/เขียน: [database.md](database.md) · `plan-database.html` (**19 ตาราง** หลังตัด `audit_logs` 2026-08-07 และ `status_email_rules` 2026-08-11 · DP-5)
 - เทียบ SBPGI กับระบบ SBP เดิม + **12 ข้อค้างตัดสินใจ (Decision Points)**: `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4
 - Schema จริงของระบบเดิม (ที่มาของตัวเลขทุกตัวในหัวข้อ workflow engine): `SBP/db-schema-sps_store.md` · `SBP/db-schema-sps_auth.md`
-- LLDD ของ workflow engine (ที่มาของชื่อ function ชุด A/B): `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md`
+- LLDD ของ workflow engine (ที่มาของ API 8 function): `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` ชีต `Detail` · ฉบับแปลง `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md`
+- LLDD ของ email lib (ที่มาของสัญญา `sendEmail`): `SBP/TSM-SRM-LLDD SBP EMAIL1.0.xlsx`
 - Flow ที่ API ขับเคลื่อน: [workflow.md](workflow.md) · `plan-flow.html`
 - Email จุดส่งในแต่ละสถานะ: `workflow_status_document.md` (ตารางสถานะ × action × ผู้รับ × อีเมล) — หน้าจอ Email Template ถูกลบ 2026-08-06 · template อยู่ในตาราง `email_template` ของระบบ SBP เดิม

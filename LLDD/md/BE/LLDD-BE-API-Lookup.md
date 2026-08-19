@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 10 ชั่วโมง |
+| Estimate | **13 ชั่วโมง** = implementation 10 + unit test 3 (30%) |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ APIs กลุ่ม lookup ที่ใช้ร่วมทุกหน้าจอของ SBP Mall |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -17,6 +18,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 - Lookup APIs
 - Auth endpoints are platform reference only
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -35,7 +40,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | templateCode | EM-01..EM-08 | required | email template key |
 | reason | text | ไม่บังคับแล้ว | ไม่มีปลายทางเก็บ (ยกเลิกระบบ audit ของ master 2026-08-07) |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
@@ -49,7 +54,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | --- | --- | --- | --- |
 | GET /store/search (ระบบ SBP เดิม) | ค้นหาร้านสำหรับ popup | Validate query | status label ต้องเป็น verbatim |
 | GET /api/v1/document-statuses | รายการสถานะเอกสาร verbatim | Read/write table by domain | permission mutation ต้อง audit |
-| GET /api/v1/workflow-sections | รายการ section 5 ขั้น | Return standard envelope for list endpoints | อีเมลทั้งหมดส่งโดย engine — SBPGI ไม่กำหนดผู้รับเอง (DP-5) |
+| GET /api/v1/workflow-sections | รายการ section 5 ขั้น | Return standard envelope for list endpoints | SBPGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14) |
 
 ### 5.91 Backend Execution Sequence
 
@@ -195,7 +200,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | workflow_status / workflow_state (@srm/glb-workflow · sps_store) | R | lookup สถานะ verbatim และ 5 ขั้น 06/08/01/02/03 — ไม่สร้างตารางของ SBPGI เอง |
 | business_user (SBP เดิม) | R | popup ค้นหาพนักงาน — SBPGI ไม่มีตาราง employees |
 | auth-backend groups / menus / permissions (ระบบเดิม) | R | RBAC/menu matrix — จัดการที่หน้า /setting/manage-user-rights เดิม · SBPGI อ่านผ่าน header x-user-permissions เท่านั้น ไม่มีตารางของตัวเอง |
-| email_template + email_sent (SBP เดิม) | R | template และ log การส่ง — engine เป็นผู้ส่ง SBPGI แค่ผูก email_id ที่ workflow_route (DP-5) |
+| email_template (SBP เดิม) | R | template — SBPGI อ่านผ่าน lib เท่านั้น ไม่แก้ของระบบเดิม |
+| email_sent (SBP เดิม) | W (โดย email-lib) | log การส่ง — SBPGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง (DP-5 · 2026-08-14) · ⚠️ คอลัมน์ผู้ส่งคือ send_by ไม่ใช่ sent_by |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -325,7 +331,7 @@ export class SbpgiLookupService {
 
 #### 9.5 Workflow (`@srm/glb-workflow`)
 
-⚠️ **ชื่อ function ของ engine ยังไม่ยืนยัน (บันทึก 2026-08-07)** — แหล่งอ้างอิง 3 แหล่งให้ชื่อไม่ตรงกัน ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow` · `addPreApprover` · `getPendingFlowByUser` · ชุด B ชีต `Mermaid seq` ของไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` · `AddPreparedApproverUseCase` · `GetPendingFlowUseCase` · ชื่อที่ใช้ใน skeleton ด้านล่างเป็น **ชื่อชั่วคราว** ต้องยืนยันกับทีมเจ้าของ library ก่อนเขียนโค้ดจริง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3) · engine มี **13 ตาราง** อยู่ใน schema **`sps_store`** (ไม่ใช่ 10 ตาราง และไม่ใช่ `sps_auth`)
+✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
 | Endpoint | Use case ที่ต้องเรียก | เหตุผล |
 | --- | --- | --- |
@@ -389,7 +395,7 @@ export class BusinessUser {
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`permissions`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`permissions`, `email_sent`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
@@ -398,6 +404,7 @@ export class BusinessUser {
 | workflow_status | R | workflow engine @srm/glb-workflow |
 | workflow_state | R | workflow engine @srm/glb-workflow |
 | menus | R | auth-backend menus |
+| email_template | R | email_template + email_sent + @gosoft-sbp/email-lib |
 
 #### 9.7 Repository Providers + Module wiring
 
@@ -543,9 +550,11 @@ export class SbpgiLookupBffController {
 | impacted_stores | R | store picker — SBPGI ไม่มีตาราง stores ของตัวเอง |
 | business_user | R | popup ค้นหาพนักงาน — SBPGI ไม่มีตาราง employees |
 | permissions | R | RBAC/menu matrix — จัดการที่หน้า /setting/manage-user-rights เดิม · SBPGI อ่านผ่าน header x-user-permissions เท่านั้น ไม่มีตารางของตัวเอง |
+| email_sent | W (โดย email-lib) | log การส่ง — SBPGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง (DP-5 · 2026-08-14) · ⚠️ คอลัมน์ผู้ส่งคือ send_by ไม่ใช่ sent_by |
 | workflow_status | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_state | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | menus | R | ใช้ของระบบเดิม: auth-backend menus |
+| email_template | R | ใช้ของระบบเดิม: email_template + email_sent + @gosoft-sbp/email-lib |
 
 #### 10.2 SQL จริงต่อ Endpoint
 
@@ -567,7 +576,7 @@ ORDER BY seq;
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- ตาราง workflow_sections ของ SBPGI ถูกตัดแล้ว — อ่าน state จาก engine กลาง และวงเงินจาก common_code ของระบบเดิม
--- (approve_limit_amount = SectionLimitCost ของ K2 เดิม · GM 50,000 / AVP 300,000 ตาม SDD GI — เป็น data ไม่ hardcode)
+-- (approve_limit_amount = SectionLimitCost ของ K2 เดิม · เกณฑ์เดียว 100,000 ตามมติ 2026-08-18 — เป็น data ไม่ hardcode · ขั้น 03 เป็น null = ไม่มีเพดาน)
 -- ⚠️ sps_store.workflow_state ไม่มีคอลัมน์ลำดับ (มีแค่ version_id · state_id · state_name · create_date)
 --    ลำดับขั้นต้องเอาจาก workflow_route.seq · วงเงินจับคู่ด้วย common_code.code_value (ไม่มี code_id)
 SELECT s.state_id AS section_code, s.state_name AS section_name,
@@ -597,7 +606,7 @@ ORDER BY sort_order;
 
 - status label ต้องเป็น verbatim
 - permission mutation ต้อง audit
-- อีเมลทั้งหมดส่งโดย engine — SBPGI ไม่กำหนดผู้รับเอง (DP-5)
+- SBPGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14)
 - Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้
 
 ## 13. Developer Test Checklist
@@ -609,3 +618,30 @@ ORDER BY sort_order;
 | 3 | permission save without reason |
 | 4 | email template reset |
 | 5 | (ตัดออก) audit log search |
+
+## 14. Unit Test Scope
+
+**3 ชั่วโมง** (30% ของ implementation 10 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `type` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for /store/search (ระบบ SBP เดิม) · รูปแบบ: impacted\|new |
+| `roleCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for permission · รูปแบบ: 00-10 |
+| `menuCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for permission · รูปแบบ: string |
+| `templateCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: EM-01..EM-08 |
+| `reason` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: ไม่บังคับแล้ว · รูปแบบ: text |
+| business rule | logic | status label ต้องเป็น verbatim |
+| business rule | logic | permission mutation ต้อง audit |
+| business rule | logic | SBPGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14) |
+| business rule | logic | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
+| `GET /store/search (ระบบ SBP เดิม)` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/document-statuses` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/workflow-sections` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `email_sent (SBP เดิม)` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

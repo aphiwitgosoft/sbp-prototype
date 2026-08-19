@@ -31,6 +31,10 @@
 | ลำดับ | Zone | Key | ความหมาย |
 |---|---|---|---|
 | 1 | A | `impact_process_id` | หนึ่งร้านถูกกระทบ + หนึ่งงวด — hub ของยอดขาย ร้านใหม่ และคู่แข่ง |
+> **⚠️ Invariant ของ `doc_no` (บันทึก 2026-08-17):** `compensation_documents.doc_no` เป็น **nullable UNIQUE** (มติ DP-1 ให้ PK เป็น `id`) แต่ **ตารางลูก 6 ตัว FK ไป `doc_no` แบบ `NOT NULL`** (`document_new_stores` · `document_external_factors` · `document_competitors` · `document_cost_details` · `document_attachments` · `consideration_logs`)
+>
+> ⇒ **ต้องออกเลขเอกสารใน INSERT เดียวกับที่สร้างแถวเสมอ** — Job 8 ทำแบบนี้อยู่แล้ว (`INSERT … (doc_no, year, running_no, impact_process_id, …)`) · ถ้าปล่อย `doc_no` ว่างไว้ เอกสารจะเปิด workflow ได้แต่**บันทึกรายละเอียดอะไรไม่ได้เลย** · ถ้าภายหลังธุรกิจต้องการ "เปิดเรื่องก่อนออกเลข" จริง ต้องเปลี่ยน FK ของลูกทั้ง 6 ไปที่ `compensation_documents(id)` ก่อน
+
 | 2 | B | `compensation_documents.id` | **surrogate PK ของเอกสาร (มติ DP-1 = B)** — ค่าที่ส่งเป็น `reference_id` ให้ workflow engine · `doc_no` (`YYYY/xxxxx` ค.ศ.) เป็น **business key แบบ UNIQUE** ที่ผู้ใช้เห็น ไม่ใช่คีย์ที่ engine ยึด |
 | 3 | B | `transaction_id` | Workflow instance หนึ่งชุดต่อเอกสาร — **อยู่ที่ `sps_store.workflow_transaction` ของ engine กลาง ไม่ใช่ตารางของ SBPGI** (เดิมเรียก `instance_id`) |
 | 4 | B | `approver_id` | งานของแต่ละ Section และผู้รับผิดชอบ — มาจาก `sps_store.workflow_approver` + `GET /api/workflow/pending` (เดิมเรียก `task_id`) |
@@ -83,13 +87,55 @@
 
 > **Batch Job — ตัด 2 tab ควบคุมออก (2026-08-06):** ตาราง `job_configs` และ `job_run_histories` **ถูกลบจาก target schema** พร้อมกับลบ API กลุ่ม Batch Job Admin 6 เส้น · หน้า `job-batch.html` **ย้ายไปกลุ่มเมนู `Flow` ชื่อ "Flow Batch Job" และเหลือเฉพาะ 2 แท็บ `Flowchart การทำงาน` + `Database ที่ใช้`** (ตัดแบบฟอร์มพารามิเตอร์ · ประวัติการรัน · ปุ่มสั่งรัน/เปิด-ปิด job · stat cards · กราฟ · การ์ด audit ออกทั้งหมด) — เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม · **batch job ทั้ง 11 entry point ยังทำงานตามปกติ** แต่พารามิเตอร์/ตารางเวลากำหนดใน **backend config** (config file/env ฝั่ง BE) และผลการรันเก็บที่ application log + `interface_transactions` แทน · ถ้าทำ 2 tab ควบคุมใน phase ถัดไป ให้กลับมาเพิ่ม 2 ตารางนี้พร้อม endpoint กลุ่มเดิม
 
-> **✅ ปิด DP-5 (2026-08-11) — SBPGI ไม่ส่งอีเมลเอง** · ตัด `status_email_rules` ออก (20 → 19 ตาราง)
+> **✅ ปิด DP-5 (แก้มติ 2026-08-14) — workflow ให้ "เลข template" · SBPGI เป็นคนเรียก lib ส่งเอง**
 >
-> หลักฐาน: LLDD ของ engine (ชีต 2) เขียนไว้ตรง ๆ ว่า *"ถ้าบันทึกสำเร็จ เรียก function ส่งเมล์จาก lib"* และชีต sample data ระบุว่า `workflow_route.email_id` คือ *"เมล์ที่จะทำการส่งหลังจากดำเนินการใน event — ถ้าไม่ระบุ จะไม่มีการส่งเมล์"* · ระบบเดิมมีครบวงจรแล้ว: `email_template` (85 แถว · `subject_format`/`body_format`/`sender`/`email_from`) + `email_sent` (5,214 แถว · `mail_to`/`mail_cc`/`is_sent`/`error`)
+> **ไม่มีตารางใหม่** — `status_email_rules` ยังถูกตัดตามเดิม (19 ตารางไม่เปลี่ยน) เปลี่ยนเฉพาะ **ใครเป็นคนเรียก**
 >
-> **สิ่งที่ SBPGI ต้องทำเหลือแค่ config**: ผูก `email_id` ที่ `workflow_route` แต่ละเส้น และเพิ่ม template เข้า `email_template` ของระบบเดิม — **ไม่สร้าง Notification Service · ไม่ใช้ nodemailer · ไม่มีตารางกฎอีเมลของตัวเอง**
+> **แหล่งความจริง:** `SBP/TSM-SRM-LLDD SBP EMAIL1.0.xlsx` (v1.0 · 15/09/2025 · Sukol K.) — lib ส่งอีเมลกลาง **ทำเสร็จและใช้งานจริงแล้ว** ให้ module อื่น import
 >
-> ⚠️ ข้อจำกัดที่ตามมา: `workflow_route` ผูก template ได้เส้นละ 1 ตัว และส่งถึงผู้อนุมัติถัดไปเท่านั้น — `workflow_status_document.md` กำหนดเฉพาะ **TO** (ไม่มี CC) จึงพอดีกับที่ engine ทำได้ · ถ้าภายหลังธุรกิจขอ CC รายหน่วยงาน ต้องขอให้ทีมเจ้าของ engine เพิ่ม ไม่ใช่ SBPGI ทำเอง
+> **สัญญาที่ต้อง code ตาม** (ชีต Detail + MermaidSeq):
+>
+> ```ts
+> emailService.sendEmail({
+>   emailId,     // เลข template — SBPGI อ่านจาก sps_store.workflow_route.email_id ของ route ที่เพิ่งเดิน
+>   mailTo,      // 'a@x.co.th,b@y.co.th'  หลายเมลคั่นด้วย ,
+>   mailCc,      // เดียวกัน (ว่างได้)
+>   param,       // { docNo:'2026/00123', storeName:'...', amount:'12,500' } → lib แทนค่า {{key}} ใน subject/body
+>   fileAttach,  // ไฟล์แนบ (ไม่ถูก log — ดูข้อจำกัด)
+>   userId,      // ผู้ดำเนินการ → ลง email_sent.send_by
+> })
+> ```
+>
+> ลำดับใน lib: `findById(emailId)` → แทนค่า `{{key}}` ใน subject/body → ส่งผ่าน SMTP/AWS SES → `INSERT email_sent` (`is_sent='Y'` หรือ `'N'` + `error`) → return `Success` / `Fail`
+>
+> **ทำไมไม่ใช่ engine ส่ง:** input ของ `eventWorkflow` มีแค่ `versionId · referenceId · event · eventParam · remark · userData · userFullname · nextApproverId` — **ไม่มี `mailTo`/`mailCc`/`param`/`fileAttach`** engine จึงเติมอาร์กิวเมนต์ที่ `sendEmail` บังคับไม่ได้ · และบรรทัด *"เรียก function ส่งเมล์จาก lib ....."* ในชีต 2 ของ LLDD workflow ยังเป็น **placeholder `.....` ที่ยังไม่เติมชื่อ function**
+>
+> **ผู้รับมาจากไหน (ไม่ต้องมีตารางกฎ):** `mailTo` = ผู้อนุมัติลำดับถัดไปที่ engine resolve แล้ว (`workflow_transaction.current_approver` / `workflow_approver.current_approver` → ขยายกลุ่มด้วย `workflow_group_map`) → อีเมลจาก **`business_user.email`** · `mailCc` = **`fml_email_account`** (1,646 แถว · มีคอลัมน์ `template_id` → เป็นกลไก "ใครรับ template ไหน" ของระบบเดิมอยู่แล้ว ไม่ต้องสร้างตารางกฎใหม่)
+>
+> **สิ่งที่ปลดล็อกได้จากมติใหม่:** อีเมลเตือนงานค้างรายสัปดาห์ + escalation 30/45/60 วัน **ไม่ใช่ transition** จึงไม่มี route ให้แขวน `email_id` — เดิมเป็นรูโหว่ของ DP-5 · ตอนนี้ SBPGI ส่งเองได้ โดยเก็บเลข template ของเมลกลุ่มนี้ไว้ที่ **`mas_param`** (ไม่ hardcode)
+>
+> ⚠️ **ข้อจำกัด/กับดักที่ dev ต้องรู้** (รายละเอียดเต็มใน [`api.md`](api.md) §อีเมล):
+> 1. ชื่อคอลัมน์จริงคือ **`email_sent.send_by`** ไม่ใช่ `sent_by` ตามที่เขียนในชีต Detail — เขียนตามเอกสารแล้ว query พัง
+> 2. `email_template` จริงใน `sps_store` มี **12 คอลัมน์** (`email_template_id` · `email_template_name` · `email_template_desc` · `subject_format` · `body_format` · `sender` · `email_from` · `active_flag` · `create_by/date` · `update_by/date`) — **ชื่อในชีต Database ของเอกสาร lib (`email_id`/`email_name`/`subject_mail`/`body_mail`/`mail_from`/`mail_from_name`) เป็นชื่อที่เสนอไว้ ไม่ตรง production** · seed template ของ SBPGI ต้องใช้ชื่อจริง
+> 3. `sendEmail` คืนแค่ `Success`/`Fail` **ไม่คืน `email_sent_id`** และ **lib ไม่ retry ให้** — ส่งอีเมล**นอก transaction** ของ action เสมอ (อีเมลล้มต้องไม่ rollback การอนุมัติ) แล้วตามเก็บด้วยรายงาน `email_sent WHERE is_sent='N'`
+> 4. `fileAttach` เป็น input แต่ `email_sent` **ไม่มีคอลัมน์เก็บไฟล์แนบ** — ห้ามใช้ `email_sent` เป็นหลักฐานว่าแนบไฟล์ไปแล้ว
+> 5. 🔴 **ต้องยืนยันกับทีมเจ้าของ `@srm/glb-workflow`:** ถ้า engine ส่งเมลเองด้วยบน route ที่มี `email_id` ผู้อนุมัติจะได้ **เมลซ้ำ 2 ฉบับ** — ทางแก้คือใช้ `workflow_route.email_id` เป็น *ค่าอ่านอย่างเดียว* ให้ SBPGI ไปเรียก lib เอง และให้ฝั่ง engine ปิดการส่ง
+
+### Seed data ที่ต้องใส่ลงตารางของระบบ SBP เดิม (มติ 2026-08-17)
+
+SBPGI **ไม่สร้างตารางใหม่** สำหรับ 3 ชุดนี้ แต่ต้อง **INSERT แถวของตัวเอง** ลงตารางของระบบเดิม — **ทีม SBPGI เป็นผู้ทำเอง**
+
+| ชุด | ตารางปลายทาง (`sps_store`) | ผู้รับผิดชอบ | ขอบเขตที่อนุญาต |
+|---|---|---|---|
+| **Email template 8 ฉบับ** (EM-01…EM-08) | `email_template` (เดิม 85 แถว) | **Butsaba \<But\> Podamrong** | `INSERT` แถวใหม่ + `active_flag='Y'` เท่านั้น · ห้าม `UPDATE`/`DELETE` 85 แถวเดิม · ต้องใช้ชื่อคอลัมน์จริง (`email_template_name` · `subject_format` · `body_format` · `sender` · `email_from`) |
+| **Workflow version เริ่มต้น 1 ชุด** | **10 ตารางนิยาม** ของ engine (จาก 13 ตาราง — อีก 3 ตัว `workflow_transaction`/`workflow_history`/`workflow_approver` เป็น runtime ที่ lib เขียนเอง ห้ามแตะ): (`workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_part` · `workflow_part_display`) | **Aphiwit \<Bank\> Khammoon** | `INSERT` **version ใหม่หมายเลขเดียว** ของ SBPGI · 🔴 ห้ามแตะ version ของระบบอื่นเด็ดขาด (`workflow_transaction` 19,283 แถวใช้ร่วมกันทั้งองค์กร) · `workflow_route.email_id` ผูกเลข template จากชุดบน |
+| **`SBPGI_APPROVE_LIMIT` + `SBPGI_DECISION`** | `common_code` (+ `common_code_type`) | **Aphiwit \<Bank\> Khammoon** | `INSERT` เฉพาะ `code_type` ที่ขึ้นต้นด้วย `SBPGI_` · ห้ามแตะ code_type ของโมดูลอื่น |
+
+**กติกาที่ทั้ง 3 ชุดต้องทำตาม:**
+- ทำผ่าน **migration script ของ SBPGI** (versioned · rerun ได้ · มี rollback) ไม่ใช่คีย์มือบน production
+- ทุก statement เป็น `INSERT` เท่านั้น — ไม่มี `UPDATE`/`DELETE`/`ALTER` บนข้อมูลเดิม ตามกติกา **"ไม่แก้ระบบเดิม"**
+- แจ้งทีมเจ้าของ (`email-lib` · `@srm/glb-workflow` · store-backend) ให้ review script ก่อนรัน แม้จะรันเอง
+- ⚠️ ยังต้องได้คำยืนยันจากทีม `@srm/glb-workflow` ว่า **engine ไม่ส่งอีเมลเอง** บน route ที่มี `email_id` ไม่งั้นผู้อนุมัติได้เมลซ้ำ 2 ฉบับ (ดู [`api.md`](api.md) §อีเมล ข้อ 5)
 
 ### ตารางที่ตัดออก — ใช้ระบบ SBP เดิมแทน (ตัดสินใจ 2026-08-05)
 
@@ -116,7 +162,7 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 | `DecisionProfile` | **`common_code`** (`code_type = SBPGI_DECISION` · มติ DP-9) | ผลพิจารณามีชื่อ 3 ชุด (ปุ่ม/flow/ผลลัพธ์) → `code_name` / `code_mapping` / `other_value` · เปลี่ยนชื่อปุ่มตาม SDD GI ได้โดยไม่ deploy |
 | `RunningNumber` | `document_running_numbers` | ออกเลข `YYYY/xxxxx` แบบ atomic ต่อปี — กันเลขชนเมื่อ batch + ผู้ใช้สร้างพร้อมกัน |
 | `ImpactCostDetail` | `document_cost_details` | ยอดชดเชยแยกรายเดือน/รายร้านใหม่ — จำเป็นต่อการทวนยอดกับ Statement/SAP |
-| `SectionProfile.SectionLimitCost` | `common_code` (`code_type = SBPGI_APPROVE_LIMIT`) — ตาราง `workflow_sections` ถูกตัดแล้ว | ทำให้วงเงิน GM 50,000 / AVP 300,000 (SDD GI) เป็น data |
+| `SectionProfile.SectionLimitCost` | `common_code` (`code_type = SBPGI_APPROVE_LIMIT`) — ตาราง `workflow_sections` ถูกตัดแล้ว | ทำให้วงเงิน เกณฑ์เดียว 100,000 (SDD GI) เป็น data |
 | `CompensateFlow` (84 คอลัมน์) | คอลัมน์เติมใน `compensation_documents` | `round_no`/`loop_no` · `allmap_url` · `statement_id` · งวดบัญชี · `approver_snapshot` |
 | `AttachFileProfile` | คอลัมน์เติมใน `document_attachments` | สถานะอัปโหลด + lifecycle ลบไฟล์บน object storage |
 | `CompTransferSBPDate` | `impacted_stores.transfer_sbp_date` | เงื่อนไขร้านก่อน/หลัง 1/10/2014 |
@@ -160,7 +206,7 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 | `FGI_CONFIRM_RECEIVE_DATA` | `interface_transactions` (typed FK แทน polymorphic — แก้ E20) |
 | `FCS_QSSI_SCORE` | `fcs_qssi_score` |
 
-### ต้องพิจารณาเพิ่ม — **ยังไม่รับเข้าโครง 20 ตาราง รอตัดสินใจ**
+### ต้องพิจารณาเพิ่ม — **ยังไม่รับเข้าโครง 19 ตาราง รอตัดสินใจ**
 
 | # | ตารางเดิม (FGI) | ช่องว่างที่พบ | ข้อเสนอ |
 |---|---|---|---|
@@ -198,7 +244,7 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 | ตารางที่ตัด (10) | ของระบบ SBP ที่ใช้แทน | หมายเหตุการต่อยอด |
 |---|---|---|
 | `workflow_instances` · `workflow_tasks` | **`@srm/glb-workflow`** ใน schema **`sps_store`** — `workflow_transaction` (instance · 19,283 แถว) · `workflow_approver` (prepared approvers · 96,542 แถว) · `workflow_history` (timeline · 38,010 แถว) | SBPGI ขอ **workflow version ใหม่** 1 ตัว แล้วเรียก initialize → เพิ่ม prepared approver → ยิง event · **ชื่อ method ยังไม่ยืนยัน** (ดูข้อค้างในหัวข้อผลการเทียบ DB จริง) · `referenceId` จะใช้ `doc_no` หรือ surrogate id **ยังไม่ตัดสิน (DP-1)** |
-| `workflow_sections` · `document_statuses` | **`workflow_state` / `workflow_route` / `workflow_status`** ของ engine ใน **`sps_store`** (definition เก็บใน DB ไม่ใช่โค้ด · ของจริงมี state 18 · route 43 · status 22 แถว) | 5 ขั้น 06/08/01/02/03 = state · การส่งต่อ/ตีกลับ = route · สถานะ 6 ค่า = status · **วงเงินอนุมัติ (GM 50,000 / AVP 300,000) เก็บใน `common_code`** (`code_type = SBPGI_APPROVE_LIMIT`) หรือ `workflow_route.condition_json` — ยังคงเป็น data ตาม SDD GI |
+| `workflow_sections` · `document_statuses` | **`workflow_state` / `workflow_route` / `workflow_status`** ของ engine ใน **`sps_store`** (definition เก็บใน DB ไม่ใช่โค้ด · ของจริงมี state 18 · route 43 · status 22 แถว) | 5 ขั้น 06/08/01/02/03 = state · การส่งต่อ/ตีกลับ = route · สถานะ 6 ค่า = status · **วงเงินอนุมัติ (เกณฑ์เดียว 100,000) เก็บใน `common_code`** (`code_type = SBPGI_APPROVE_LIMIT`) หรือ `workflow_route.condition_json` — ยังคงเป็น data ตาม SDD GI |
 | `stores` | **`store` / `mas_store` / `sevenshop`** + `fr_store` · `franchisee` · `juristic` | มี API พร้อมใช้: `GET /store/search`, `/store/list`, `/store/detail`, `/store/opt-name` |
 | `zones` | **`mas_zone`** (`zone_id` · `zone_cd` · `zone_name` · `sub_area_flag/name`) | มี API พร้อมใช้: `GET /store/all-regions`, `/store/regions-by-email`, `/store/province-by-region` — ตอบโจทย์ SDD GI ที่ให้ภาคเพิ่มเองโดยไม่แก้หน้าจอ |
 | `branch_types` | **`common_code`** (`code_type` + `seq_no` → `code_value`/`code_name`) | มี API พร้อมใช้: `GET /common/common-code`, `/master/common` · ชื่อ FMS/FGI ที่ต่างกันเก็บเป็นคนละ `code_type` |
@@ -210,7 +256,7 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 
 | มติ | ผลต่อ schema |
 |---|---|
-| **DP-9 = แยกตัดสิน** | `decisions` **ตัดออก** → ใช้ `common_code` ของระบบเดิม (`code_type = 'SBPGI_DECISION'`) · `external_factors` + `competitors` **ยังเป็นตารางของ SBPGI** เพราะมีหน้าจอ CRUD ของตัวเอง และการเขียนลง lookup กลางไม่คุ้มความเสี่ยง (20 ตาราง) |
+| **DP-9 = แยกตัดสิน** | `decisions` **ตัดออก** → ใช้ `common_code` ของระบบเดิม (`code_type = 'SBPGI_DECISION'`) · `external_factors` + `competitors` **ยังเป็นตารางของ SBPGI** เพราะมีหน้าจอ CRUD ของตัวเอง และการเขียนลง lookup กลางไม่คุ้มความเสี่ยง (ตอนนั้น 20 ตาราง · ปัจจุบัน 19) |
 | **DP-3 = ทางเลือกที่ 3 (ผสม)** | `impacted_stores` **ยังเป็นตาราง** แต่เป็น **snapshot บางส่วน** — เก็บเฉพาะร้านที่เคยเข้ารอบชดเชย เติมแบบ upsert ตอนสร้าง `fgi_impact_processes` ไม่ sync ทั้ง master |
 | **DP-1 = ทางเลือก B** | `compensation_documents` เปลี่ยนเป็น **surrogate PK `id`** · `doc_no` เป็น **UNIQUE NOT NULL** (business key) · `reference_id` ที่ส่งให้ engine = `id` |
 
@@ -238,7 +284,7 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 
 ## ผลการเทียบกับฐานข้อมูลจริง (07/08/2026)
 
-ดึง schema สดจาก DB dev (PostgreSQL 17.7) แล้วเทียบกับโครง 20 ตารางนี้ทีละรายการ · หลักฐานอยู่ที่ **[`SBP/db-schema-sps_store.md`](SBP/db-schema-sps_store.md)** (schema `sps_store` · 198 ตาราง · 3,061 คอลัมน์) และ **[`SBP/db-schema-sps_auth.md`](SBP/db-schema-sps_auth.md)** (schema `sps_auth` · 78 ตาราง · 1,335 คอลัมน์) · บทวิเคราะห์เต็มและ **ข้อค้างตัดสินใจ 12 ข้อ** อยู่ที่ **[`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md)**
+ดึง schema สดจาก DB dev (PostgreSQL 17.7) แล้วเทียบกับโครงตารางนี้ทีละรายการ · หลักฐานอยู่ที่ **[`SBP/db-schema-sps_store.md`](SBP/db-schema-sps_store.md)** (schema `sps_store` · 198 ตาราง · 3,061 คอลัมน์) และ **[`SBP/db-schema-sps_auth.md`](SBP/db-schema-sps_auth.md)** (schema `sps_auth` · 78 ตาราง · 1,335 คอลัมน์) · บทวิเคราะห์เต็มและ **ข้อค้างตัดสินใจ 12 ข้อ** อยู่ที่ **[`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md)**
 
 ### 1. โซน A + แกนเอกสารโซน B — ยืนยันว่าไม่มีของเดิม ต้องสร้างเองทั้งหมด
 
@@ -318,7 +364,7 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 | # | เรื่อง | สถานะ |
 |---|---|---|
 | DP-1 … DP-12 | **12 ข้อ · ตัดสินแล้ว 3 (DP-1 · DP-3 · DP-9 เมื่อ 2026-08-10) เหลือค้าง 9** — ที่ยังค้างเช่น DP-2 (index บน `workflow_transaction`) · DP-4 (`fcs_qssi_score`) · DP-11 (ตัวเลขเงิน) · SBPGI อยู่ใน store-backend เดิมหรือแยก backend ใหม่ · audit ของ master เอากลับมาหรือไม่ | **ยังไม่ตัดสิน** — รายละเอียดครบทุกข้อพร้อมข้อดี/ข้อเสียอยู่ที่ [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) §4 · **เอกสารนี้บันทึกไว้เฉย ๆ ไม่เปลี่ยนดีไซน์ตามข้อเสนอ** |
-| — | **ชื่อ function ของ workflow engine ขัดกัน 3 ชุด** — ชุด A (`SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail): `eventWorkflow` · `addPreApprover` · `getPendingFlowByUser` / ชุด B (ชีต Mermaid seq ของไฟล์เดียวกัน): `triggerEvent` / ชุด C (`SBP/srm-sps-spsap-store-backend.md` §1.5): `TriggerEventUseCase` · `AddPreparedApproverUseCase` · `GetPendingFlowUseCase` | **ยังไม่ยืนยัน** — ต้องถามทีมเจ้าของ library ว่าชื่อไหนคือ API จริง ห้ามเลือกเอง |
+| ✅ ปิด 2026-08-14 | **ชื่อ function ของ workflow engine** — ยึดชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง) เป็น API จริง 8 ตัว: `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` | **ปิดแล้ว** — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` ไม่ใช่ชื่อ API · `*UseCase` เป็น class ที่ store-backend ห่อไว้เอง |
 | — | `workflow_part` + `workflow_part_display` ของ engine คุมการแสดงผล **รายส่วนของหน้าจอ (READ/WRITE ต่อ state)** ซึ่ง**ทับซ้อน**กับกลไก `data-editrole` / `.edit-only` ที่ prototype ทำเอง | **ข้อสังเกต ยังไม่ตัดสิน** ว่าจะย้ายไปใช้ของ engine หรือคงกลไกฝั่ง FE |
 
 ## ไฟล์ interface ของ K2 เดิม — ใช้ตรวจ field coverage (2026-08-06)
@@ -371,7 +417,7 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 
 | เรื่อง | ข้อเท็จจริงจากไฟล์ | สิ่งที่ต้องทำ |
 |---|---|---|
-| วงเงินอนุมัติ | `SectionProfile.SectionLimitCost` มีค่าเดียวคือ section 2 (GM) = **100,000** · AVP เป็น NULL | เป็นเกณฑ์**เก่า** — SDD GI เปลี่ยนเป็น GM 50,000 / AVP 300,000 · ห้าม migrate ค่าเดิมมาตรง ๆ ให้ seed ใหม่ที่ `common_code` (`SBPGI_APPROVE_LIMIT`) |
+| วงเงินอนุมัติ | `SectionProfile.SectionLimitCost` มีค่าเดียวคือ section 2 (GM) = **100,000** · AVP เป็น NULL | เป็นเกณฑ์**เก่า** — SDD GI เปลี่ยนเป็น เกณฑ์เดียว 100,000 · ห้าม migrate ค่าเดิมมาตรง ๆ ให้ seed ใหม่ที่ `common_code` (`SBPGI_APPROVE_LIMIT`) |
 | `DecisionProfile.DecisionCode` | Excel แปลงรหัส **3, 6, 9, 11, 13** เป็นวันที่ (`1900-01-03` ฯลฯ) | เป็น artifact ของไฟล์ Excel ไม่ใช่ข้อมูลจริง — อ่านรหัสจาก DB ต้นทางโดยตรง ห้าม import จากไฟล์นี้ |
 | ผลการพิจารณา | `DecisionResultName` มี **4 แบบ**: ประกันรายได้ · ไม่ประกันรายได้ · **ยกเลิกโดยระบบ** · NULL | ✅ **ตัดสินแล้ว 2026-08-10 — แยกเป็นตัวเลือกที่ 4**: `result_category` = APPROVE / REJECT / **CANCELLED** / PENDING · ตัวกรองรายงานเป็น 4 ปุ่ม (ประกันรายได้ · ไม่ประกันรายได้ · ยกเลิกโดยระบบ · ยังไม่มีผล) |
 | สถานะเอกสาร | `StatusProfile` เดิมมี **10 สถานะ** (รวมบัญชี 4/5 · GM Promotion 7 · บัญชีภาค 9 · **ยกเลิกเอกสาร 10**) | ระบบใหม่เหลือ 6 หลัง SDD v7.5 ตัดขั้นบัญชี — ต้อง map สถานะเก่าที่ถูกตัดตอน migrate ให้ครบ |
@@ -392,7 +438,7 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 | `zones` / `branch_types` / **`decisions` (อยู่ที่ `common_code`)** | `zone_code` · `branch_type_code` · `decision_code` | ห้าม hardcode รายการภาค / ประเภทสาขา / ปุ่มผลพิจารณาใน FE |
 | `document_running_numbers` | `year`, `last_running_no` | ห้ามใช้ `MAX(running_no)+1` — ต้อง lock แถวปีนั้น |
 
-> **หมายเหตุ (07/08/2026):** แถว `workflow_instances` และ `workflow_sections` ข้างบนเป็น **สัญญาที่ตกค้างจากก่อนตัดตาราง** — ทั้งสองไม่อยู่ในโครง 20 ตารางแล้ว ของจริงคือ `sps_store.workflow_transaction` / `workflow_state` ของ engine กลาง และวงเงินอนุมัติย้ายไป `common_code` (`SBPGI_APPROVE_LIMIT`) · **ชื่อคอลัมน์ฝั่ง engine เป็นของ library กลาง แก้เองไม่ได้**
+> **หมายเหตุ (07/08/2026):** แถว `workflow_instances` และ `workflow_sections` ข้างบนเป็น **สัญญาที่ตกค้างจากก่อนตัดตาราง** — ทั้งสองไม่อยู่ในโครง 19 ตารางแล้ว ของจริงคือ `sps_store.workflow_transaction` / `workflow_state` ของ engine กลาง และวงเงินอนุมัติย้ายไป `common_code` (`SBPGI_APPROVE_LIMIT`) · **ชื่อคอลัมน์ฝั่ง engine เป็นของ library กลาง แก้เองไม่ได้**
 
 ## กุญแจเชื่อมข้ามระบบ (Cross-System Keys)
 

@@ -7,20 +7,25 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 40 ชั่วโมง |
+| Estimate | 40 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
 | Owner | Aphiwit <Bank> Khammoon |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบการย้ายข้อมูลจากระบบเดิม (Oracle FCS_FRN ฝั่ง FGI/FCS + SQL Server CPA_FRN_FGI ฝั่ง K2) เข้าสู่ target schema ของ SBPGI พร้อมแผน cutover, reconcile และ rollback |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
 ## 2. Screen / Functional Scope
 
-- Source-to-target mapping ระดับตาราง/คอลัมน์ (ORA FCS_FRN · MSSQL CPA_FRN_FGI -> 20 ตาราง)
+- Source-to-target mapping ระดับตาราง/คอลัมน์ (ORA FCS_FRN · MSSQL CPA_FRN_FGI -> 19 ตาราง)
 - การแปลงคีย์: polymorphic TRANSACTION_PK -> typed FK · CompDocumentID -> doc_no · IMPACT_PROCESS_ID -> impact_process_id
 - แผน cutover เป็นรอบ (dry-run -> delta -> freeze -> final) และ rollback
 - Reconcile: นับแถว ยอดเงิน และ checksum ต่อโซน
 - การย้าย workflow ที่ยังวิ่งอยู่เข้าสู่ @srm/glb-workflow
 - บันทึกข้อค้างตัดสินใจด้าน migration — ยังไม่ตัดสิน
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -90,11 +95,11 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Data Migration a
 | --- | --- | --- | --- |
 | DP-4 · `fcs_qssi_score` | reuse ตารางเดิม (ต้อง dedup + backfill 23.9M แถว ก่อนเพิ่ม constraint) | สร้างตารางของ SBPGI แล้วโหลดใหม่ | ยังไม่ตัดสิน |
 | DP-3 ✅ ตัดสินแล้ว = ทางเลือกที่ 3 | view (ไม่มีอะไรให้ migrate) | ตาราง snapshot (ต้อง migrate + sync job) | ยังไม่ตัดสิน · กระทบขอบเขต migration โดยตรง |
-| DP-1 · `reference_id` | `doc_no` (migrate ตรงไปตรงมา) | surrogate id (ต้องออก id แล้วเก็บ mapping) | ยังไม่ตัดสิน |
+| DP-1 · `reference_id` | `doc_no` — ตกไป | **เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255)) | ✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม |
 | DP-11 · ตัวเลขเงินประกันรายได้ | SBPGI เป็นต้นทาง | `fr_store_insure` ยังคีย์มือ | ยังไม่ตัดสิน (เป็นคำถามเชิงธุรกิจ) |
 | retention/purge ของเอกสารเก่า | ย้ายทั้งหมด | ย้ายเฉพาะช่วงปีที่ตกลง แล้ว archive ที่เหลือ | ยังไม่ตัดสิน · ระบบเดิมมี ListDocumentsPendingRemoval แต่โครงใหม่ยังไม่มี data retention plan |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |

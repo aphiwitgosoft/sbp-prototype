@@ -30,9 +30,9 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 | 2 | `RDM-SRS-ประกันรายได้-K2-รายการหน้าจอ.md` (455 บรรทัด) | รายละเอียดต่อหน้าจอ: ฟิลด์ validation ข้อความ popup ตาราง role |
 | 3 | `ประกันรายได้-K2-รายการหน้าจอ.md` (160 บรรทัด) | ฉบับย่อ keyed ตามเลข section SRS + section_code + 8 role — **ไม่ใช่ไฟล์ซ้ำ** กับข้อ 2 |
 | 4 | `FGI_FCS_Batch_Job_Technical_Document_Improved_v4.0.pdf` | แหล่งความจริงเดียวของ batch Jobs 1–10 + 8b (หน้า `job-batch.html` = **“Flow Batch Job” ในกลุ่มเมนู Flow ตั้งแต่ 2026-08-06** เหลือแค่ Flowchart + Database ที่ใช้ — เอกสารนี้ยังเป็นแหล่งความจริงของทั้งหน้าและงาน BE ของ job) |
-| 5 | `database.md` / `workflow.md` / `api.md` | **living docs** — การออกแบบระบบใหม่ (schema **20 ตาราง** / flow 12 ขั้น / API **29 เส้น 6 กลุ่ม** — RBAC/ผู้ปฏิบัติงาน + workflow engine + store/zone/employee master + email template + config **ใช้ของระบบ SBP เดิม** · ตัดสินใจ 2026-08-05 และ 2026-08-06) canonical กว่า HTML เมื่อขัดแย้ง |
+| 5 | `database.md` / `workflow.md` / `api.md` | **living docs** — การออกแบบระบบใหม่ (schema **19 ตาราง** / flow 12 ขั้น / API **29 เส้น 6 กลุ่ม** — RBAC/ผู้ปฏิบัติงาน + workflow engine + store/zone/employee master + email template + config **ใช้ของระบบ SBP เดิม** · ตัดสินใจ 2026-08-05 และ 2026-08-06) canonical กว่า HTML เมื่อขัดแย้ง |
 | 6 | `PLAN-checklist-prototype.md` | checklist สถานะ implement — **ภายในขัดแย้งกันเอง** เช็ค HTML จริงก่อนเชื่อ |
-| 7 | **`SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI(2402026).pptx`** (แปลงไว้ที่ `SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md`) | **"SDD GI" — SDD ฉบับเดียวที่เหลือใน repo · ใหม่สุด 24/02/2026 · ชนะเมื่อขัดแย้งกับเอกสารเก่า** (วงเงิน GM 50,000/AVP 300,000 · เจ้าหน้าที่อาวุโส · เปิดเรื่องซ้ำ · auto-assign งานค้าง) · SDD v7.5 (08102025) **ถูกลบออกจาก repo 2026-08-06** ข้อกำหนดรวมเข้าการออกแบบแล้ว |
+| 7 | **`SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI(2402026).pptx`** (แปลงไว้ที่ `SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md`) | **"SDD GI" — SDD ฉบับเดียวที่เหลือใน repo · ใหม่สุด 24/02/2026 · ชนะเมื่อขัดแย้งกับเอกสารเก่า** (วงเงินเกณฑ์เดียว 100,000/AVP 300,000 · เจ้าหน้าที่อาวุโส · เปิดเรื่องซ้ำ · auto-assign งานค้าง) · SDD v7.5 (08102025) **ถูกลบออกจาก repo 2026-08-06** ข้อกำหนดรวมเข้าการออกแบบแล้ว |
 
 `SRS_Income_Compensation_v3.1.md` เป็น markdown แปลงจาก SRS pdf · `workflow_status_document.md` = ตารางสถานะ/อีเมล
 

@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 8 ชั่วโมง |
+| Estimate | **11 ชั่วโมง** = implementation 8 + unit test 3 (30%) |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
 | Objective | Watchdog เฝ้าระวัง ACK ค้าง: งาน safety net ตรวจ interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/interfaces/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน Notification Service กลาง |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -21,6 +22,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Estimate: 8 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -37,7 +42,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 10 NotifyNoR
 | data_name ที่เฝ้าดู | COMPENSATE_INIT_I, COMPENSATE_APPROVE_I | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | เฉพาะฝั่ง STA - ไม่เฝ้า dataset ของ BPM |
 | Encoding | UTF-8 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | แทน TIS-620 เดิมตาม Notification Service กลาง |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
@@ -64,7 +69,7 @@ query missing receive data, group by data_name/interface_type, build notificatio
 | Output identity | Notification sent for overdue receive confirmations; run status records grouped counts or no-data success. | reconcile input, success, reject and skipped counts |
 | Dedup proof | คอลัมน์ last_ack_notified_on บน interface_transactions เป็น marker ต่อรายการต่อวัน; rerun วันเดียวกันไม่ส่งอีเมลซ้ำ (ย้ายมาจาก audit_logs ที่ถูกยกเลิก 2026-08-07) | rerun fixture produces no duplicate target business key |
 | Transaction proof | อ่าน pending แบบ read-only; reserve notification marker ก่อนส่ง; ส่งล้มเหลว mark FAILED และ retry ด้วย marker เดิม | injected failure leaves no partial committed state outside documented boundary |
-| Security proof | SBPGI ไม่ส่งอีเมลเอง (ปิด DP-5 · 2026-08-11) — engine ส่งผ่าน workflow_route.email_id · credential/ผู้รับเป็นของระบบ SBP เดิม | config/log/error contains no plaintext secret |
+| Security proof | SBPGI เรียก sendEmail() ของ email-lib เอง (ปิด DP-5 · 2026-08-14) — เลข template มาจาก workflow_route.email_id · credential SMTP/SES และตาราง email_template/email_sent เป็นของระบบ SBP เดิม | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
 
@@ -83,7 +88,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | Repository | pendingAckRepository |
 | Idempotency / dedup | คอลัมน์ last_ack_notified_on บน interface_transactions เป็น marker ต่อรายการต่อวัน; rerun วันเดียวกันไม่ส่งอีเมลซ้ำ (ย้ายมาจาก audit_logs ที่ถูกยกเลิก 2026-08-07) |
 | Transaction boundary | อ่าน pending แบบ read-only; reserve notification marker ก่อนส่ง; ส่งล้มเหลว mark FAILED และ retry ด้วย marker เดิม |
-| Security | SBPGI ไม่ส่งอีเมลเอง (ปิด DP-5 · 2026-08-11) — engine ส่งผ่าน workflow_route.email_id · credential/ผู้รับเป็นของระบบ SBP เดิม |
+| Security | SBPGI เรียก sendEmail() ของ email-lib เอง (ปิด DP-5 · 2026-08-14) — เลข template มาจาก workflow_route.email_id · credential SMTP/SES และตาราง email_template/email_sent เป็นของระบบ SBP เดิม |
 
 #### Input / candidate query
 
@@ -157,7 +162,8 @@ export async function runLlddBeJob10Notifynoreceivedata(ctx, services) {
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
 | interface_transactions | R | pending ACK จาก STA และสถานะล่าสุด |
-| email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib) | R/W | template EM-08 watchdog ACK — SBPGI ไม่มีตาราง email_templates |
+| email_template (ระบบ SBP เดิม) | R | template EM-08 watchdog ACK — อ่านอย่างเดียว |
+| email_sent (ระบบ SBP เดิม) | W (โดย @gosoft-sbp/email-lib) | lib เขียน log ให้เอง · SBPGI ไม่ INSERT เอง |
 | (backend config) | R | ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env |
 
 ## 9. Skeleton Code (Batch Job 10)
@@ -430,7 +436,8 @@ repository ของ Job 10 ประกาศเป็น factory provider (`{p
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
 | interface_transactions | R | pending ACK จาก STA และสถานะล่าสุด | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib) | R/W | template EM-08 watchdog ACK — SBPGI ไม่มีตาราง email_templates | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| email_template (ระบบ SBP เดิม) | R | template EM-08 watchdog ACK — อ่านอย่างเดียว | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| email_sent (ระบบ SBP เดิม) | W (โดย @gosoft-sbp/email-lib) | lib เขียน log ให้เอง · SBPGI ไม่ INSERT เอง | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | (backend config) | R | ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
@@ -447,17 +454,25 @@ SELECT id, data_name, direction, status, business_key, period_key, file_name, cr
    AND created_at < NOW() - ($2 || ' hours')::interval  -- TODO: threshold จาก config
  ORDER BY created_at;
 
--- [R/W] email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib) : template EM-08 watchdog ACK — SBPGI ไม่มีตาราง email_templates
--- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
-SELECT /* TODO: PK + คอลัมน์ที่ต้องใช้ */
-  FROM email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib)
+-- [R] email_template (ระบบ SBP เดิม) : template EM-08 watchdog ACK — อ่านอย่างเดียว
+-- TODO: เติมเฉพาะคอลัมน์ที่ job ใช้จริง (ห้าม SELECT *) และตรวจว่ามี index รองรับ WHERE นี้
+SELECT /* TODO: columns */
+  FROM email_template (ระบบ SBP เดิม)
  WHERE /* TODO: เงื่อนไขงวด/สถานะที่ job นี้คัดแถว */ 1 = 1
-   FOR UPDATE SKIP LOCKED;
+ ORDER BY /* TODO: คีย์ที่ทำให้ลำดับคงที่ */
+ LIMIT $1 OFFSET $2;  -- TODO: อ่านเป็น chunk กัน memory บวม
 
-UPDATE email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib)
-   SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
-       updated_at = NOW(), updated_by = 'JOB10'
- WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
+-- [W (โดย @GOSOFT-SBP/EMAIL-LIB)] email_sent (ระบบ SBP เดิม) : lib เขียน log ให้เอง · SBPGI ไม่ INSERT เอง
+-- TODO: เติมคอลัมน์ payload จริงจาก database.md
+INSERT INTO email_sent (ระบบ SBP เดิม)
+  (/* TODO: business key + payload + created_by, created_at */)
+VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
+-- ⚠️ ตารางนี้ไม่มี business unique key ใน DDL จริง — ON CONFLICT ใช้ไม่ได้
+--    fcs_qssi_score: ข้อค้าง DP-4 (การเพิ่ม unique index ต้อง sign-off เจ้าของ performance.service.ts)
+--    ระหว่างยังไม่ปิด: ลบงวดเดิมก่อนแล้ว INSERT ใหม่ใน transaction เดียว
+ON CONFLICT (/* ยังใช้ไม่ได้ — ดูหมายเหตุด้านบน */)
+DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
+       updated_at = NOW(), updated_by = 'JOB10';
 
 -- [R] (backend config) : ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env
 -- TODO: เติมเฉพาะคอลัมน์ที่ job ใช้จริง (ห้าม SELECT *) และตรวจว่ามี index รองรับ WHERE นี้
@@ -559,3 +574,24 @@ export class JobFailureNotifier {
 | 4 | แก้ config แล้ว deploy → รอบถัดไปใช้ค่าใหม่ |
 | 5 | job throw error → EM-07 ออก และ log มีบรรทัด error |
 | 6 | ตรวจผลกระทบตารางตาม R/W mapping reference |
+
+## 13. Unit Test Scope
+
+**3 ชั่วโมง** (30% ของ implementation 8 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| business rule | logic | พารามิเตอร์และ cron อ่านจาก backend config เท่านั้น — เปลี่ยนค่าโดย deploy config ไม่ใช่ผ่าน API/หน้าจอ |
+| business rule | logic | การรันต้องตรวจ enabled flag ใน config และกันรันซ้อนด้วย distributed/advisory lock |
+| business rule | logic | ทุกรอบต้องเขียน application log แบบ structured (เวลา/แถว/ไฟล์/ผล) และ error ต้องส่ง EM-07 |
+| business rule | logic | DB/table mapping ใช้เป็น reference สำหรับ implement Job เท่านั้น ไม่ใช่งานสร้างหน้า Database |
+| business rule | logic | รองรับ rerun rule และ risk note ตาม runbook |
+| `email_sent (ระบบ SBP เดิม)` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| runner | idempotency | รันซ้ำด้วย fixture เดิมต้องไม่เกิดแถวซ้ำ (ON CONFLICT / business unique key ทำงาน) |
+| runner | lock | เรียกซ้อนขณะกำลังรัน ต้องถูกปฏิเสธด้วย advisory lock |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 24 ชั่วโมง |
+| Estimate | **32 ชั่วโมง** = implementation 24 + unit test 8 (30%) |
 | Owner | Butsaba <But> Podamrong |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ APIs สำหรับสร้างเอกสารใหม่และบันทึกส่วนย่อยของเอกสาร |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -20,6 +21,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Running doc number
 - Partial update
 - Business validation
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -63,7 +68,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 | 3. Start transaction | เปิด transaction และ lock sequence row ของปี ค.ศ. | lock timeout คืน 409/503 ตามมาตรฐาน platform |
 | 4. Generate docNo | เพิ่ม running_no และประกอบ doc_no | ยังไม่ส่ง response จนกว่า commit สำเร็จ |
 | 5. Insert document | insert compensation_documents และ child rows เริ่มต้น | fail ต้อง rollback sequence/document |
-| 6. Open first task | เรียก initialize + add-prepared-approver (state 06) ของ @srm/glb-workflow ภายใน transaction boundary ที่กำหนด — ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน · ดู LLDD-BE-Workflow-Engine-Definition 5.3) | fail ต้อง rollback document |
+| 6. Open first task | เรียก initializeWorkflow + addPreApprover (state 06) ของ @srm/glb-workflow ภายใน transaction boundary ที่กำหนด — ชื่อ function ตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3 | fail ต้อง rollback document |
 | 7. Commit | commit transaction (ไม่มีการเขียน audit ของ master แล้ว · ยกเลิกระบบ audit ของ master 2026-08-07) | หลัง commit จึง return docNo/statusCode |
 
 ### 5.3 Required Developer Tests for docNo
@@ -78,36 +83,37 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 ### 5.4 docNo Generator SQL Reference
 
 ```sql
--- Lock sequence row for the Buddhist year before generating docNo.
-SELECT year, next_running_no
-FROM document_number_sequences
-WHERE year = :year
-FOR UPDATE;
+-- ออกเลขเอกสาร YYYY/xxxxx แบบ atomic ต่อ "ปี ค.ศ." (ห้ามใช้ พ.ศ. — ดู api.md มติ 2026-08-06)
+-- ตารางจริงคือ document_running_numbers (year · last_running_no · updated_at) ไม่มีคอลัมน์ created_at
 
--- Create sequence row when the year is first used.
-INSERT INTO document_number_sequences (year, next_running_no, created_at, updated_at)
-SELECT :year, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-WHERE NOT EXISTS (
-    SELECT 1 FROM document_number_sequences WHERE year = :year
-);
+-- 1) สร้างแถวของปีนี้ถ้ายังไม่มี (idempotent)
+INSERT INTO document_running_numbers (year, last_running_no)
+VALUES (:year, 0)
+ON CONFLICT (year) DO NOTHING;
 
--- Consume the next number inside the same transaction as document creation.
-UPDATE document_number_sequences
-SET next_running_no = next_running_no + 1,
+-- 2) กินเลขถัดไปในทรานแซกชันเดียวกับการสร้างเอกสาร — UPDATE ... RETURNING ล็อกแถวให้เอง
+--    กัน batch (Job 8) กับผู้ใช้สร้างพร้อมกันแล้วได้เลขชนกัน
+UPDATE document_running_numbers
+SET last_running_no = last_running_no + 1,
     updated_at = CURRENT_TIMESTAMP
 WHERE year = :year
-RETURNING year, next_running_no;
+RETURNING last_running_no;          -- → :runningNo
 
+-- 3) docNo = :year || '/' || lpad(:runningNo::text, 5, '0')   เช่น 2026/00123
+--    ⚠️ ต้องใส่ impact_process_id ทุกครั้ง — เป็น NOT NULL UNIQUE (หนึ่ง impact process = หนึ่งเอกสาร)
 INSERT INTO compensation_documents (
-    doc_no, year, running_no, impacted_store_code, impact_month,
-    new_store_code, round_no, source, status_code, created_by, created_at
+    doc_no, year, running_no,
+    impact_process_id, impacted_store_code, impact_month, new_store_code,
+    round_no, source, status_code, current_section_code, created_by
 ) VALUES (
-    :docNo, :year, :runningNo, :impactedStoreCode, :impactMonth,
-    :newStoreCode, :roundNo, :source, '06', :userId, CURRENT_TIMESTAMP
+    :docNo, :year, :runningNo,
+    :impactProcessId, :impactedStoreCode, :impactMonth, :newStoreCode,
+    :roundNo, :source, :statusInit, '06', :userId
 );
+-- created_at / total_compensation_amount / version_no มี DEFAULT อยู่แล้ว ไม่ต้องส่ง
 ```
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
@@ -397,9 +403,9 @@ export class SbpgiDocumentCreateUpdateService {
       await runner.commitTransaction();
       // ⚠️ workflow engine อยู่คนละ DataSource ('workflow-connection' ของ @srm/glb-workflow)
       //    จึง **atomic ร่วมกับ transaction ข้างบนไม่ได้** — ต้อง commit ฝั่ง SBPGI ให้เสร็จก่อน
-      //    แล้วค่อย triggerEvent (idempotency key = referenceId = docNo)
+      //    แล้วค่อย eventWorkflow (idempotency key = referenceId = docNo)
       // TODO: เรียก workflow use case ตามตารางหัวข้อ Workflow ด้านล่าง + retry
-      // TODO: ถ้า triggerEvent ล้มเหลว ต้องมี compensating action และบันทึกผลลง
+      // TODO: ถ้า eventWorkflow ล้มเหลว ต้องมี compensating action และบันทึกผลลง
       //       consideration_logs เพื่อให้ job reconcile ตามเก็บได้
       return { message: 'saved' };
     } catch (error) {
@@ -422,7 +428,7 @@ export class SbpgiDocumentCreateUpdateService {
 
 #### 9.5 Workflow (`@srm/glb-workflow`)
 
-⚠️ **ชื่อ function ของ engine ยังไม่ยืนยัน (บันทึก 2026-08-07)** — แหล่งอ้างอิง 3 แหล่งให้ชื่อไม่ตรงกัน ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow` · `addPreApprover` · `getPendingFlowByUser` · ชุด B ชีต `Mermaid seq` ของไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` · `AddPreparedApproverUseCase` · `GetPendingFlowUseCase` · ชื่อที่ใช้ใน skeleton ด้านล่างเป็น **ชื่อชั่วคราว** ต้องยืนยันกับทีมเจ้าของ library ก่อนเขียนโค้ดจริง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3) · engine มี **13 ตาราง** อยู่ใน schema **`sps_store`** (ไม่ใช่ 10 ตาราง และไม่ใช่ `sps_auth`)
+✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
 | Endpoint | Use case ที่ต้องเรียก | เหตุผล |
 | --- | --- | --- |
@@ -706,9 +712,9 @@ INSERT INTO compensation_documents (doc_no, year, running_no, impact_process_id,
 VALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :statusInit, :section06, :empId);
 -- ⚠️ ไม่ INSERT ตาราง workflow เอง — เรียก @srm/glb-workflow (schema sps_store) ให้ library เขียนให้
 --    initialize(versionId=:sbpgiVersionId, referenceId=:referenceId, userId=:empId)
---    addPreparedApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
+--    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
 --    library เขียน sps_store.workflow_transaction / workflow_approver / workflow_history ให้เอง
--- ⚠️ ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน) · referenceId = doc_no หรือ surrogate id ยังไม่ตัดสิน (DP-1)
+-- referenceId = compensation_documents.id (surrogate · DP-1 ปิดแล้ว 2026-08-17)
 -- ⚠️ sps_store.workflow_transaction ไม่มี PK/index → กันซ้ำต้องทำที่ application (DP-2)
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 ```
@@ -769,3 +775,31 @@ DELETE FROM document_external_factors WHERE doc_no = :docNo AND id NOT IN (:keep
 | 2 | create duplicate |
 | 3 | update allocation invalid |
 | 4 | permission denied section |
+
+## 14. Unit Test Scope
+
+**8 ชั่วโมง** (30% ของ implementation 24 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `docNo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required when opening existing document · รูปแบบ: YYYY/xxxxx |
+| `storeCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: numeric length = 5 · รูปแบบ: string 5 digits |
+| `amount` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: >= 0 · รูปแบบ: number, 2 decimals |
+| `percent` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: 0-100 · รูปแบบ: number, 2 decimals |
+| `date` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: valid date · รูปแบบ: DD/MM/YYYY |
+| `attachment` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: <= 5 MB · รูปแบบ: file |
+| `source` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: MANUAL\|FS |
+| business rule | logic | duplicate business key returns 409 |
+| business rule | logic | docNo format YYYY/xxxxx |
+| business rule | logic | compensatePercent sum=100 |
+| business rule | logic | requestId trace does not replace business duplicate guard |
+| `POST /api/v1/documents` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `PUT /api/v1/documents/{docNo}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `compensation_documents`, `workflow_transaction / workflow_approver (@srm/glb-workflow)`, `document_new_stores` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

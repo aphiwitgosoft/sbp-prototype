@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 20 ชั่วโมง |
+| Estimate | **25 ชั่วโมง** = implementation 20 + unit test 5 (25%) |
 | Owner | Kittisak <New> Kaeowika |
+| Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Objective | สร้างรายงานตรวจสอบประกันรายได้ตาม SDD สไลด์ 60 (7 ตัวกรอง / 14 คอลัมน์) พร้อมค้นหาข้อมูลและ Export Excel |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -69,7 +70,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 | resultTable.createdDate | DD/MM/YYYY ค.ศ. | required | คอลัมน์ 13 วันที่สร้าง |
 | resultTable.docNo | YYYY/xxxxx | required | คอลัมน์ 14 เลขที่เอกสาร; ใช้เปิด detail/preview |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
@@ -637,3 +638,45 @@ export default function ReportForm({ defaultValues, onSubmit }: {
 | 7 | render table 14 columns |
 | 8 | export xlsx |
 | 9 | empty result แสดง summary เป็น 0 |
+
+## 12. Unit Test Scope
+
+**5 ชั่วโมง** (25% ของ implementation 20 ชั่วโมง) · เครื่องมือ: Jest + React Testing Library + msw (mock API layer)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `impactedStoreCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: optional; numeric only when input · รูปแบบ: string 5 digits |
+| `impactedStoreName` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: readonly · รูปแบบ: string |
+| `newStoreCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: optional; numeric only when input · รูปแบบ: string 5 digits |
+| `impactMonthFrom` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: optional; month picker · รูปแบบ: YYYY-MM |
+| `impactMonthTo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: optional; month picker; must be >= from · รูปแบบ: YYYY-MM |
+| `status` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required single select · รูปแบบ: statusCode string |
+| `resultCategory` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: optional radio (status เท่านั้นที่บังคับ) · รูปแบบ: APPROVE\|REJECT\|CANCELLED\|PENDING |
+| `statementPeriodTo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: optional month picker; must be >= from · รูปแบบ: YYYY-MM |
+| `page` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: default 1; >=1 · รูปแบบ: integer |
+| `size` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: default 20; max 100 · รูปแบบ: integer |
+| `resultTable.statementPeriod` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: nullable · รูปแบบ: MM/YYYY ค.ศ. |
+| `resultTable.compensationAmount` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: >=0 · รูปแบบ: number #,##0.00 |
+| `derived.salesDataDays` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: <60 = abnormal · รูปแบบ: integer |
+| `resultTable.roundNo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: >=1 · รูปแบบ: integer |
+| `resultTable.createdDate` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: DD/MM/YYYY ค.ศ. |
+| `resultTable.docNo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: YYYY/xxxxx |
+| business rule | logic | status เป็น required ตัวเดียวก่อนค้นหา/export (resultCategory เป็นตัวเลือก · SDD สไลด์ 60) |
+| business rule | logic | ระบุ impactedStoreCode แล้วต้องระบุ newStoreCode ด้วย |
+| business rule | logic | Period Statement เป็นช่วงวันที่ ค.ศ. และ from <= to |
+| business rule | logic | ตารางแสดง 14 คอลัมน์ครบและ export ออกครบ 14 คอลัมน์ |
+| business rule | logic | ยอดเงิน format #,##0.00 และ total summary ตรงกับผลรวม API |
+| business rule | logic | แถวข้อมูลยอดขายไม่ครบ 60 วันใช้ class flag-red โดยอิง derived.salesDataDays < 60 |
+| business rule | logic | export ใช้ filter เดียวกับการค้นหาล่าสุด |
+| `GET /store/search (ระบบ SBP เดิม)` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/reports/status-summary` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/reports/status-summary/export` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
+| hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
+| error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

@@ -339,7 +339,7 @@
       { label: 'รอเจ้าหน้าที่ SBP DSA ดำเนินการ', pill: 'violet' },     // 08
       { label: 'รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'info' },    // 01
       { label: 'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'orange' },  // 02
-      { label: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill: 'navy' },  // 03 (เฉพาะ 50,001–300,000 · SDD GI)
+      { label: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill: 'navy' },  // 03 (เฉพาะยอด ≥ 100,000 · SDD GI)
       { label: 'เสร็จสิ้นดำเนินการ', pill: 'ok' }                       // End
     ];
     var DONE = 'เสร็จสิ้นดำเนินการ';
@@ -440,9 +440,9 @@
         var st = STATUSES[PATTERN[j % PATTERN.length]];
         var done = st.label === DONE;
         var drop = 5 + ((j * 53) % 1200) / 100;
-        // เอกสารที่รอ AVP ต้องมียอดในช่วง 50,001–300,000 ตามวงเงิน SDD GI 24/02/2026
+        // เอกสารที่รอ AVP ต้องมียอด ≥ 100,000 ตามวงเงิน SDD GI 24/02/2026
         var comp = st.pill === 'navy'
-          ? 50000.01 + ((j * 977) % 250000)
+          ? 100000 + ((j * 977) % 250000)
           : drop * (3000 + (j % 8) * 1000);
         // "ยอดขายไม่ครบ 60 วัน" เป็น flag ของข้อมูล (แถวแดง) ไม่ใช่สถานะ workflow
         var flag60 = !done && (j % 13 === 0);
@@ -770,7 +770,7 @@
     var SPECIALS = {
       flag60: function (tr) { return tr.getAttribute('data-flag60') === '1'; },
       over3: function (tr) { return parseFloat(tr.cells[8].textContent) > 3; },
-      over100k: function (tr) { return parseFloat(tr.getAttribute('data-comp')) > 50000; }  // เข้าเส้น AVP ตาม SDD GI
+      over100k: function (tr) { return parseFloat(tr.getAttribute('data-comp')) >= 100000; }  // เข้าเส้น AVP · เกณฑ์เดียว 100,000 (มติ 2026-08-18)
     };
     /* renderWaitingStats — ถอด stat card ออกจากหน้า (2026-08-06) */
     function renderWaitingStats() { /* no-op */ }

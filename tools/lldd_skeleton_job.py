@@ -225,8 +225,8 @@ def _table_note(text: str) -> str:
     out = str(text or "")
     swap = {
         "workflow_instances + workflow_tasks": "workflow transaction + prepared approver ผ่าน @srm/glb-workflow",
-        "workflow_instances": "workflow transaction (`sps_store.workflow_transaction` ผ่าน initializeWorkflow — ชื่อ function ยังไม่ยืนยัน · 3 ชุดขัดกัน)",
-        "workflow_tasks": "prepared approver (`sps_store.workflow_approver` ผ่าน addPreparedApprover — ชื่อ function ยังไม่ยืนยัน · 3 ชุดขัดกัน)",
+        "workflow_instances": "workflow transaction (`sps_store.workflow_transaction` ผ่าน initializeWorkflow ของ @srm/glb-workflow)",
+        "workflow_tasks": "prepared approver (`sps_store.workflow_approver` ผ่าน addPreApprover ของ @srm/glb-workflow)",
         "workflow_sections": "`sps_store.workflow_state` (@srm/glb-workflow)",
         "document_statuses": "`sps_store.workflow_status` (@srm/glb-workflow)",
     }
@@ -342,8 +342,8 @@ def _tables(topic: Any, job: dict[str, Any]) -> list[list[Any]]:
 _REPLACED_TABLES: dict[str, str] = {
     "job_configs": "ยกเลิกแล้ว — cron/พารามิเตอร์อยู่ใน backend config (env/config file)",
     "job_run_histories": "ยกเลิกแล้ว — ผลการรันเขียน application log แบบ structured + interface_transactions",
-    "workflow_instances": "ใช้ @srm/glb-workflow (`sps_store.workflow_transaction`) ผ่าน initialize use case แทน SQL ตรง — ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน)",
-    "workflow_tasks": "ใช้ @srm/glb-workflow (`sps_store.workflow_approver` / `workflow_history`) ผ่าน add-prepared-approver + trigger-event use case — ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน)",
+    "workflow_instances": "ใช้ @srm/glb-workflow (`sps_store.workflow_transaction`) ผ่าน initializeWorkflow แทน SQL ตรง",
+    "workflow_tasks": "ใช้ @srm/glb-workflow (`sps_store.workflow_approver` / `workflow_history`) ผ่าน addPreApprover + eventWorkflow",
     "workflow_sections": "ใช้ @srm/glb-workflow (`sps_store.workflow_state` / `workflow_route`) แทน",
     "document_statuses": "ใช้ @srm/glb-workflow (`sps_store.workflow_status`) แทน",
     "email_templates": "ใช้ตาราง email_template + email_sent ของระบบเดิม ผ่าน @gosoft-sbp/email-lib",

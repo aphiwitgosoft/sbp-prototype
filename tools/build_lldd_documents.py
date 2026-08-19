@@ -535,8 +535,8 @@ ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;""",
     JOIN compensation_documents d ON d.impact_process_id = p.id
     WHERE p.workflow_generation_status = 'W'
       -- ⚠️ sps_store.workflow_transaction ไม่มี PK/index (19,283 แถว) → เงื่อนไขนี้เป็น seq-scan · DP-2 ยังไม่ตัดสิน
-      -- ⚠️ reference_id จะเป็น doc_no หรือ surrogate id ยังไม่ตัดสิน (DP-1)
-      AND NOT EXISTS (SELECT 1 FROM sps_store.workflow_transaction w WHERE w.reference_id = d.doc_no AND w.version_id = :sbpgi_version_id)   -- @srm/glb-workflow
+      -- ✅ DP-1 ปิดแล้ว: reference_id = compensation_documents.id (surrogate) แปลงเป็น text
+      AND NOT EXISTS (SELECT 1 FROM sps_store.workflow_transaction w WHERE w.reference_id = d.id::text   -- DP-1 = surrogate id (reference_id เป็น varchar(255)) AND w.version_id = :sbpgi_version_id)   -- @srm/glb-workflow
     ORDER BY p.id
     FOR UPDATE OF p SKIP LOCKED
 ), gate AS (
@@ -580,12 +580,12 @@ WHERE id = :impact_process_id
   AND :gate_decision = 'N';
 
 -- gate_decision='Y': เปิด workflow ผ่าน @srm/glb-workflow ของระบบ SBP เดิม (ไม่ INSERT ตารางเอง)
--- ⚠️ ชื่อ function ยังไม่ยืนยัน — 3 ชุดขัดกัน (A eventWorkflow/addPreApprover/getPendingFlowByUser ·
---    B triggerEvent · C TriggerEventUseCase/AddPreparedApproverUseCase/GetPendingFlowUseCase)
---    ชื่อด้านล่างเป็นชื่อชั่วคราว ดู LLDD-BE-Workflow-Engine-Definition หัวข้อ 5.3
+-- ✅ ชื่อ function ยึดชีต Detail ของ LLDD lib (ปิด 2026-08-14) — API 8 ตัว:
+--    initializeWorkflow / eventWorkflow / getPermissionEvents / getHistory /
+--    getTransaction / getPendingFlowByUser / getWorkflowsByUser / addPreApprover
 --   initializeWorkflow({ versionId: :sbpgi_version_id, referenceId: :reference_id, userId: 'JOB-8B' })
---   addPreparedApprover({ versionId, referenceId: :reference_id, stateId: '06', approver, seq: 1 })
--- ⚠️ referenceId จะเป็น doc_no หรือ surrogate id ยังไม่ตัดสิน (DP-1 · SBP/SBPGI-vs-existing-system.md §4)
+--   addPreApprover({ versionId, referenceId: :reference_id, stateId: '06', approver, seq: 1 })
+-- ✅ DP-1 ปิดแล้ว 2026-08-17: referenceId = compensation_documents.id (surrogate · ส่งเป็น string)
 -- library จะเขียน sps_store.workflow_transaction / workflow_approver / workflow_history ให้เอง
 UPDATE fgi_impact_processes
 SET workflow_generation_status = 'Y', updated_at = CURRENT_TIMESTAMP
@@ -598,7 +598,7 @@ WHERE id = :impact_process_id
                         "· ⚠️ **ไม่มี UNIQUE(version_id, reference_id) จริงใน `sps_store.workflow_transaction`** (ตารางนี้ไม่มีทั้ง PK และ index "
                         "ทั้งที่มี 19,283 แถว — ตรวจแล้วที่ `SBP/db-schema-sps_store.md`) จึงพึ่ง constraint ฝั่ง DB ไม่ได้ และ query ตาม reference_id เป็น seq-scan "
                         "· จะขอ sign-off เพิ่ม PK/index กับทีมเจ้าของ library หรือยอมรับสภาพ **ยังไม่ตัดสิน (DP-2)**"),
-        "transaction": "lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึงเรียก initialize + add-prepared-approver ของ @srm/glb-workflow (ชื่อ function ยังไม่ยืนยัน) และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun",
+        "transaction": "lock process + evaluate gate + branch N/W/Y; เฉพาะ Y จึงเรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (ชื่อ function ตามชีต Detail ของ LLDD lib) และ W→Y ใน transaction เดียว, N ต้อง persist ถาวร, W คงเดิมเพื่อ rerun",
         "security": "internal service token จาก workload identity/secretRef; ห้าม Basic Auth หรือ K2 REST credential เดิม",
         "steps": "lockWorkflowCandidates|evaluateGenerationGate|startInternalWorkflows|notifyWorkflowOwners",
     },
@@ -666,7 +666,7 @@ UPDATE interface_transactions
 RETURNING id;""",
         "idempotency": "คอลัมน์ last_ack_notified_on บน interface_transactions เป็น marker ต่อรายการต่อวัน; rerun วันเดียวกันไม่ส่งอีเมลซ้ำ (ย้ายมาจาก audit_logs ที่ถูกยกเลิก 2026-08-07)",
         "transaction": "อ่าน pending แบบ read-only; reserve notification marker ก่อนส่ง; ส่งล้มเหลว mark FAILED และ retry ด้วย marker เดิม",
-        "security": "SBPGI ไม่ส่งอีเมลเอง (ปิด DP-5 · 2026-08-11) — engine ส่งผ่าน workflow_route.email_id · credential/ผู้รับเป็นของระบบ SBP เดิม",
+        "security": "SBPGI เรียก sendEmail() ของ email-lib เอง (ปิด DP-5 · 2026-08-14) — เลข template มาจาก workflow_route.email_id · credential SMTP/SES และตาราง email_template/email_sent เป็นของระบบ SBP เดิม",
         "steps": "loadOverdueAcknowledgements|reserveNotificationMarkers|sendPendingAckDigest|closeNotificationMarkers",
     },
 }
@@ -836,6 +836,13 @@ DOC_DEPENDENCIES: dict[str, list[str]] = {
     "FE/LLDD-FE-Document-Detail": ["FE/LLDD-FE-Foundation", "BE/LLDD-BE-Workflow-Engine-Definition"],
     "FE/LLDD-FE-Report": ["FE/LLDD-FE-Foundation"],
     "FE/LLDD-FE-Master-Data": ["FE/LLDD-FE-Foundation"],
+    # role pack 5 ฉบับเป็นมุมมองต่อบทบาทของหน้าเดียวกัน — ต้องรอโครงหน้า Document Detail นิ่งก่อน
+    # (เดิมไม่ได้ประกาศไว้ ทำให้กระดาน Kanban แสดงว่าเริ่มได้ทันทีทั้งที่เริ่มไม่ได้จริง)
+    "FE/LLDD-FE-Document-Detail-Role-06-SBP-DSA": ["FE/LLDD-FE-Document-Detail"],
+    "FE/LLDD-FE-Document-Detail-Role-08-SBP-DSA-Officer": ["FE/LLDD-FE-Document-Detail"],
+    "FE/LLDD-FE-Document-Detail-Role-01-Business-Promotion": ["FE/LLDD-FE-Document-Detail"],
+    "FE/LLDD-FE-Document-Detail-Role-02-GM-Business-Promotion": ["FE/LLDD-FE-Document-Detail"],
+    "FE/LLDD-FE-Document-Detail-Role-03-AVP-SBP": ["FE/LLDD-FE-Document-Detail"],
 }
 
 
@@ -908,8 +915,10 @@ def build_topic_schedule(topics_list: list[Topic], start_date: date = LLDD_START
         start_offset = earliest_start(file_key)
         used_hours = max(used_hours, start_offset * HOURS_PER_DAY)
         start_day[file_key] = start_offset
-        end_day[file_key] = (used_hours + topic.hours - 1) // HOURS_PER_DAY
-        used_hours_by_owner[topic.owner] = used_hours + topic.hours
+        # ใช้ชั่วโมงรวม (implementation + unit test) — unit test เป็นงานที่ต้องทำจริง
+        # ถ้าคิดแค่ implementation แผนจะสั้นกว่าความจริง 154 ชั่วโมงทั้งโครงการ
+        end_day[file_key] = (used_hours + total_hours(topic) - 1) // HOURS_PER_DAY
+        used_hours_by_owner[topic.owner] = used_hours + total_hours(topic)
         pending.discard(file_key)
     schedule: dict[str, tuple[date, date]] = {}
     for file_key in by_file:
@@ -989,9 +998,7 @@ def set_cell_text(cell, text: Any, bold: bool = False) -> None:
         add_md_runs(para, text)
         runs = list(para.runs) or [para.add_run("")]
     for run in runs:
-        if run.font.name != "Courier New":
-            run.font.name = "Arial"
-        run._element.rPr.rFonts.set(qn("w:eastAsia"), "Arial")
+        set_run_fonts(run, "Courier New" if run.font.name == "Courier New" else "Arial")
         run.font.size = Pt(9)
     para.paragraph_format.space_after = Pt(0)
     para.paragraph_format.keep_together = True
@@ -1033,8 +1040,7 @@ def add_docx_payload(doc: Document, title: str, text: str) -> None:
     para = body.paragraphs[0]
     para.paragraph_format.keep_together = True
     run = para.add_run(text)
-    run.font.name = "Courier New"
-    run._element.rPr.rFonts.set(qn("w:eastAsia"), "Courier New")
+    set_run_fonts(run, "Courier New")
     run.font.size = Pt(8)
     para.paragraph_format.space_after = Pt(0)
     set_cell_shading(body, "F7FAFE")
@@ -1075,8 +1081,14 @@ def add_md_runs(paragraph, text: Any) -> None:
         if m.group(1) is not None:
             paragraph.add_run(m.group(1)).bold = True
         else:
-            run = paragraph.add_run(m.group(2))
-            run.font.name = "Courier New"
+            body = m.group(2)
+            run = paragraph.add_run(body)
+            # Courier New ไม่การันตี glyph ไทย — ใช้เฉพาะ ASCII ล้วน (เหตุผลเดียวกับฝั่ง PDF)
+            try:
+                body.encode("ascii")
+                set_run_fonts(run, "Courier New")
+            except UnicodeEncodeError:
+                run.font.color.rgb = RGBColor.from_string("8A3324")
         pos = m.end()
     if pos < len(raw):
         paragraph.add_run(raw[pos:])
@@ -1093,7 +1105,7 @@ def build_docx(title: str, blocks: list[dict[str, Any]], out_path: Path) -> None
 
     styles = doc.styles
     styles["Normal"].font.name = "Arial"
-    styles["Normal"]._element.rPr.rFonts.set(qn("w:eastAsia"), "Arial")
+    set_style_fonts(styles["Normal"], "Arial")
     styles["Normal"].font.size = Pt(10)
     for style_name, size, color in [
         ("Heading 1", 16, "1F4D78"),
@@ -1103,7 +1115,7 @@ def build_docx(title: str, blocks: list[dict[str, Any]], out_path: Path) -> None
     ]:
         st = styles[style_name]
         st.font.name = "Arial"
-        st._element.rPr.rFonts.set(qn("w:eastAsia"), "Arial")
+        set_style_fonts(st, "Arial")
         st.font.size = Pt(size)
         st.font.color.rgb = RGBColor.from_string(color)
         st.paragraph_format.keep_with_next = True
@@ -1111,8 +1123,7 @@ def build_docx(title: str, blocks: list[dict[str, Any]], out_path: Path) -> None
 
     title_p = doc.add_paragraph()
     title_run = title_p.add_run(title)
-    title_run.font.name = "Arial"
-    title_run._element.rPr.rFonts.set(qn("w:eastAsia"), "Arial")
+    set_run_fonts(title_run, "Arial")
     title_run.font.size = Pt(20)
     title_run.bold = True
     title_run.font.color.rgb = RGBColor.from_string("0B2545")
@@ -1122,15 +1133,14 @@ def build_docx(title: str, blocks: list[dict[str, Any]], out_path: Path) -> None
     header.text = title
     header.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     for run in header.runs:
-        run.font.name = "Arial"
-        run._element.rPr.rFonts.set(qn("w:eastAsia"), "Arial")
+        set_run_fonts(run, "Arial")
         run.font.size = Pt(8)
         run.font.color.rgb = RGBColor.from_string("66717F")
 
     footer = section.footer.paragraphs[0]
     footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
     footer_run = footer.add_run("หน้า ")
-    footer_run.font.name = "Arial"
+    set_run_fonts(footer_run, "Arial")
     footer_run.font.size = Pt(8)
     page_field = OxmlElement("w:fldSimple")
     page_field.set(qn("w:instr"), "PAGE")
@@ -1184,7 +1194,7 @@ def build_docx(title: str, blocks: list[dict[str, Any]], out_path: Path) -> None
         elif btype == "code":
             para = doc.add_paragraph()
             run = para.add_run(block["text"])
-            run.font.name = "Courier New"
+            set_run_fonts(run, "Courier New")
             run.font.size = Pt(7 if block.get("lang") == "java" else 8)
             para.paragraph_format.left_indent = Inches(0.2)
             para.paragraph_format.keep_together = False
@@ -1232,7 +1242,17 @@ def para(text: Any, style: ParagraphStyle) -> Paragraph:
     esc = esc.replace("\n", "<br/>")
     # แปลง markdown inline ที่ generator ใช้อยู่ (ไม่งั้น PDF จะโชว์ดอกจันดิบ)
     esc = _MD_BOLD_RE.sub(r"<b>\1</b>", esc)
-    esc = _MD_CODE_RE.sub(r"<font face='Courier'>\1</font>", esc)
+    # inline code: Courier ไม่มี glyph ภาษาไทย ถ้าสลับ face จะได้ ■■■ ทั้งก้อน
+    # จึงใช้ Courier เฉพาะเนื้อหาที่เป็น ASCII ล้วน · ที่เหลือคงฟอนต์ไทยไว้แล้วใช้สีแทนเพื่อยังเห็นว่าเป็น code
+    def _inline_code(m: "re.Match[str]") -> str:
+        body = m.group(1)
+        try:
+            body.encode("ascii")
+        except UnicodeEncodeError:
+            return f"<font color='#8A3324'>{body}</font>"
+        return f"<font face='Courier'>{body}</font>"
+
+    esc = _MD_CODE_RE.sub(_inline_code, esc)
     return Paragraph(esc, style)
 
 
@@ -1680,6 +1700,189 @@ def count_top_sections(blocks: list[dict[str, Any]]) -> int:
     return sum(1 for block in blocks if block.get("type") == "h1")
 
 
+# ---------------------------------------------------------------------------
+# ชั่วโมง Unit Test (เพิ่ม 2026-08-18 ตามข้อกำหนด: LLDD ต้องประเมิน unit test ของงานนั้นด้วย)
+# ---------------------------------------------------------------------------
+# อัตราคิดจากลักษณะงาน ไม่ใช่ตัวเลขลอย:
+#   BE / Job  30%  — business rule + SQL + transaction/rollback ต้องมี test คลุม
+#                    (jest + repository mock; job ต้องมี fixture ของไฟล์ interface)
+#   FE        25%  — component/hook test ด้วย React Testing Library + mock API layer
+#   เอกสารสัญญา/ออกแบบ  0%  — ไม่มีโค้ดของตัวเอง หรือเป็นเอกสารที่กำกับการทดสอบอยู่แล้ว
+NO_UNIT_TEST_DOCS = {
+    "BE/LLDD-BE-API-Common-Contracts",      # สัญญากลาง — ทดสอบผ่าน endpoint ที่ใช้สัญญานี้
+    "BE/LLDD-BE-Database-Structure",        # DDL/index — ตรวจด้วย migration verification ไม่ใช่ unit test
+    "BE/LLDD-BE-Data-Migration-Cutover",    # reconcile script — มีเกณฑ์ตรวจรับของตัวเอง
+    "BE/LLDD-BE-Workflow-Engine-Definition",# config ของ engine ระบบเดิม — ไม่ได้เขียนโค้ดเอง
+    "BE/LLDD-BE-Integration-SBP-Platform",  # สัญญาต่อระบบเดิม — ทดสอบผ่าน integration ของเส้นที่ใช้
+    "FE/LLDD-FE-Integration-Contracts",     # สัญญากลางฝั่ง FE
+    "FE/LLDD-FE-Testing-Delivery",          # เอกสารกำกับการทดสอบเอง
+}
+
+
+def unit_test_hours(topic: "Topic") -> int:
+    """ชั่วโมงเขียน unit test ของเอกสารนั้น (ปัดขึ้นเป็นจำนวนเต็มชั่วโมง)"""
+    if topic.file in NO_UNIT_TEST_DOCS:
+        return 0
+    ratio = 0.25 if topic.track == "FE" else 0.30
+    return math.ceil(topic.hours * ratio)
+
+
+def total_hours(topic: "Topic") -> int:
+    return topic.hours + unit_test_hours(topic)
+
+
+def estimate_cell(topic: "Topic") -> str:
+    ut = unit_test_hours(topic)
+    if not ut:
+        return f"{topic.hours} ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS)"
+    return (f"**{total_hours(topic)} ชั่วโมง** = implementation {topic.hours} + "
+            f"unit test {ut} ({int((0.25 if topic.track == 'FE' else 0.30) * 100)}%)")
+
+
+def unit_test_scope_blocks(topic: "Topic", section_no: int) -> list[dict[str, Any]]:
+    """ขอบเขต unit test ของเอกสารนั้น — ผูกกับชั่วโมงที่ประเมินไว้ใน Overview
+
+    รายการทดสอบ derive จากข้อมูลของเอกสารเอง (field/validation · acceptance ·
+    endpoint · ตารางที่เขียน) ไม่ใช่ checklist สำเร็จรูป จึงต่างกันจริงทุกฉบับ
+    ต่างจาก "Developer Test Checklist" ที่เป็น scenario ระดับ end-to-end/manual
+    """
+    ut = unit_test_hours(topic)
+    if not ut:
+        return []
+    is_fe = topic.track == "FE"
+    is_job = "/Jobs/" in topic.file
+
+    rows: list[list[str]] = []
+
+    # 1) validation ของแต่ละ field ที่มี "กฎ" จริง
+    #    ตาราง field ของเอกสาร Job ใช้คอลัมน์นี้เป็นธง แก้ไขได้/แก้ไม่ได้ ไม่ใช่กฎ validation
+    #    จึงต้องคัดออก ไม่งั้นจะได้เคสไร้สาระแบบ "ผ่านเมื่อถูกกฎ — กฎ: แก้ไขได้"
+    EDITABILITY = {"แก้ไขได้", "ค่าคงที่/แก้ผ่านหน้าจอไม่ได้", "-", "response only",
+                   "optional", "read-only", "response only"}
+    RULE_HINT = ("กฎ", "เงื่อนไข", "เกณฑ์", "rule", "format", "pattern")
+    import re as _re
+    # ค่าที่ไม่ใช่กฎ: ตำแหน่งคอลัมน์ (column 3) · ธงไม่บังคับล้วน (optional …) ที่ไม่มีเงื่อนไขต่อท้าย
+    NOT_A_RULE = _re.compile(r"^(column\s*\d+|row\s*key|display\s*only|optional(\s+\w+){0,3})$", _re.I)
+    for name, fmt, validation, behavior in topic.fields:
+        v = (validation or "").strip()
+        if NOT_A_RULE.match(v):
+            continue
+        if v in EDITABILITY or "แก้ผ่านหน้าจอไม่ได้" in v or not v:
+            # ไม่มีกฎ validation — แต่ถ้าชื่อ field บอกว่าเป็นกฎ/เงื่อนไข ให้ทดสอบตัวกฎจาก format แทน
+            if any(k in name.lower() or k in name for k in RULE_HINT) and fmt:
+                rows.append([f"`{name}`", "rule", f"ใช้กฎกับข้อมูลตัวอย่างแล้วได้ผลตามที่ระบุ — {fmt}"])
+            continue
+        rows.append([
+            f"`{name}`",
+            "validation",
+            f"ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: {v}" + (f" · รูปแบบ: {fmt}" if fmt else ""),
+        ])
+
+    # 2) กฎธุรกิจจาก Acceptance Criteria
+    for rule in topic.acceptance:
+        rows.append(["business rule", "logic", rule])
+
+    # 3) endpoint: success + error envelope
+    for spec in topic.apis:
+        if is_fe:
+            rows.append([
+                f"`{spec.method} {spec.path}`",
+                "api client",
+                "hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ "
+                "· เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw)",
+            ])
+        else:
+            rows.append([
+                f"`{spec.method} {spec.path}`",
+                "handler",
+                "คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} "
+                "เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง",
+            ])
+
+    # 4) เฉพาะฝั่งที่เขียนข้อมูล: transaction / rollback
+    writes = [r[0] for r in topic.db_tables if str(r[1]).upper().startswith(("W", "R/W"))]
+    if writes:
+        rows.append([
+            ", ".join(f"`{w}`" for w in writes[:3]),
+            "transaction",
+            "จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner)",
+        ])
+
+    # 5) รายการเฉพาะ track
+    if is_job:
+        rows.append(["runner", "idempotency", "รันซ้ำด้วย fixture เดิมต้องไม่เกิดแถวซ้ำ (ON CONFLICT / business unique key ทำงาน)"])
+        rows.append(["runner", "lock", "เรียกซ้อนขณะกำลังรัน ต้องถูกปฏิเสธด้วย advisory lock"])
+    elif is_fe:
+        rows.append(["component", "render", "render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้"])
+        rows.append(["hook/state", "interaction", "ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง"])
+        rows.append(["error path", "ui", "API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash"])
+    else:
+        rows.append(["service", "error mapping", "แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts)"])
+
+    ratio = 25 if is_fe else 30
+    tool = ("Jest + React Testing Library + msw (mock API layer)" if is_fe
+            else "Jest + mock repository/DataSource (ไม่ต่อ DB จริง)")
+
+    return [
+        h(1, f"{section_no}. Unit Test Scope"),
+        p(f"**{ut} ชั่วโมง** ({ratio}% ของ implementation {topic.hours} ชั่วโมง) · เครื่องมือ: {tool}"),
+        p("หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* "
+          "ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · "
+          "รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน"),
+        table(["สิ่งที่ทดสอบ", "ประเภท", "เกณฑ์ผ่าน"], rows),
+        bullets([
+            "ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ",
+            "ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่",
+            "เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด",
+        ]),
+    ]
+
+
+# DOCX: ภาษาไทยเป็น "complex script" ใน Word — ถ้าไม่ตั้ง w:cs Word จะใช้ฟอนต์ default
+# ของ theme ซึ่งมักไม่มี glyph ไทย แล้วแสดงเป็น ■■■ · Arial เองก็ไม่มีอักษรไทย
+# Tahoma มีทั้งบน Windows และ macOS และครอบคลุมไทย จึงใช้เป็นฟอนต์ complex script
+DOCX_THAI_FONT = "Tahoma"
+
+
+def set_run_fonts(run: Any, latin: str = "Arial") -> None:
+    """ตั้งฟอนต์ให้ครบทั้ง latin / eastAsia / complex-script (ไทย)"""
+    run.font.name = latin
+    rpr = run._element.get_or_add_rPr()
+    rfonts = rpr.get_or_add_rFonts()
+    rfonts.set(qn("w:ascii"), latin)
+    rfonts.set(qn("w:hAnsi"), latin)
+    rfonts.set(qn("w:eastAsia"), latin)
+    rfonts.set(qn("w:cs"), DOCX_THAI_FONT)
+
+
+def set_style_fonts(style: Any, latin: str = "Arial") -> None:
+    style.font.name = latin
+    rpr = style._element.get_or_add_rPr()
+    rfonts = rpr.get_or_add_rFonts()
+    rfonts.set(qn("w:ascii"), latin)
+    rfonts.set(qn("w:hAnsi"), latin)
+    rfonts.set(qn("w:eastAsia"), latin)
+    rfonts.set(qn("w:cs"), DOCX_THAI_FONT)
+
+
+def target_repo_row(topic: "Topic") -> list[str]:
+    """repo ปลายทางของโค้ดตามเอกสารฉบับนั้น — ทุกฉบับต้องบอกให้ชัดว่าโค้ดไปวางที่ไหน
+
+    FE  -> SBP/srm-sps-spsap-web-frontend (sbp-portal · Next.js · portal target sbpm)
+    BE  -> SBP/srm-sps-spsap-store-backend (NestJS + TypeORM · schema sps_store)
+           + SBP/srm-sps-spsap-sbp-bff (proxy/forward · ไม่มี DB) สำหรับเส้นที่ FE เรียก
+    Job -> SBP/srm-sps-spsap-store-backend (runner/cron ฝั่ง backend · ไม่ผ่าน BFF)
+    """
+    if topic.track == "FE":
+        return ["Target repository", "`SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — "
+                "เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง"]
+    if "/Jobs/" in topic.file:
+        return ["Target repository", "`SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — "
+                "batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file)"]
+    return ["Target repository", "`SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) "
+            "+ `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก"]
+
+
 def topic_blocks(topic: Topic) -> list[dict[str, Any]]:
     if topic.file == "FE/LLDD-FE-Testing-Delivery":
         return testing_delivery_blocks(topic)
@@ -1688,8 +1891,9 @@ def topic_blocks(topic: Topic) -> list[dict[str, Any]]:
         h(1, "1. Overview"),
         table(["รายการ", "รายละเอียด"], [
             ["Track", topic.track],
-            ["Estimate", f"{topic.hours} ชั่วโมง"],
+            ["Estimate", estimate_cell(topic)],
             ["Owner", topic.owner],
+            target_repo_row(topic),
             ["Objective", topic.objective],
         ]),
         h(1, "2. Screen / Functional Scope"),
@@ -1697,10 +1901,14 @@ def topic_blocks(topic: Topic) -> list[dict[str, Any]]:
     ]
     if not is_batch_monitor:
         blocks.insert(2, p("Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint"))
+    # หัวข้อ 3 ต้องปรากฏทุกฉบับ ไม่งั้นเลขหัวข้อกระโดด 2 → 4 (ผู้ตรวจรับจะถามหา)
+    blocks.append(h(1, "3. Screenshot Reference"))
     if topic.screenshots:
-        blocks.append(h(1, "3. Screenshot Reference"))
         for shot in topic.screenshots:
             blocks.append(image(str(image_path(shot).relative_to(ROOT)), f"Screenshot: {shot}"))
+    else:
+        blocks.append(p("ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI "
+                        "(ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)"))
     if topic.flow_diagram and not is_batch_monitor:
         draw_flow_diagram(topic.title, topic.flow, topic.flow_diagram)
         blocks.extend([
@@ -1748,6 +1956,7 @@ def topic_blocks(topic: Topic) -> list[dict[str, Any]]:
             h(1, f"{next_no + 2}. Developer Test Checklist"),
             table(["No", "Test"], [[i + 1, t] for i, t in enumerate(topic.tests)]),
         ])
+        blocks.extend(unit_test_scope_blocks(topic, next_no + 3))
         return blocks
     next_no = 8
     if topic.db_tables:
@@ -1768,6 +1977,7 @@ def topic_blocks(topic: Topic) -> list[dict[str, Any]]:
         h(1, f"{next_no + 2}. Developer Test Checklist"),
         table(["No", "Test"], [[i + 1, t] for i, t in enumerate(topic.tests)]),
     ])
+    blocks.extend(unit_test_scope_blocks(topic, next_no + 3))
     return blocks
 
 
@@ -1824,18 +2034,13 @@ def workflow_engine_unconfirmed_warning_blocks() -> list[dict[str, Any]]:
     return [
         h(1, "4b. ข้อค้างที่ต้องยืนยันก่อนเขียนโค้ด (workflow engine)"),
         p(
-            "⚠️ **ชื่อ function ของ engine ยังไม่ยืนยัน (บันทึก 2026-08-07)** — แหล่งอ้างอิง 3 แหล่งให้ชื่อไม่ตรงกัน "
-            "ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow` · `addPreApprover` · "
-            "`getPendingFlowByUser` · ชุด B ชีต `Mermaid seq` ของไฟล์เดียวกัน = `triggerEvent` · "
-            "ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` · `AddPreparedApproverUseCase` · "
-            "`GetPendingFlowUseCase` · ชื่อที่ปรากฏในเอกสารฉบับนี้ทั้งหมดเป็น **ชื่อชั่วคราว** ต้องยืนยันกับทีมเจ้าของ "
-            "library ก่อนเขียนโค้ดจริง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)"
+            "✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)"
         ),
         table(
             ["ข้อค้าง", "ข้อเท็จจริงที่ตรวจแล้ว", "ผลต่อ Job 8b", "สถานะ"],
             [
                 [
-                    "DP-1 · `referenceId` ของ workflow",
+                    "DP-1 · `referenceId` ของ workflow ✅ ปิดแล้ว 2026-08-17",
                     "ระบบเดิม (cooperation-request · inform-evaluate) ใช้ surrogate id ทุกจุด",
                     "ค่าที่ส่งเข้า initialize และคีย์ที่ใช้เช็คซ้ำเปลี่ยนตามข้อนี้",
                     "ยังไม่ตัดสิน — `SBP/SBPGI-vs-existing-system.md` §4",
@@ -1883,7 +2088,7 @@ def pending_decision_blocks(heading: str, rows: list[list[str]]) -> list[dict[st
 
 def database_structure_extra_blocks() -> list[dict[str, Any]]:
     return [
-        h(2, "5.1 ขอบเขตตารางในโครง SBPGI (20 ตาราง — CREATE จริง 19 + reuse 1)"),
+        h(2, "5.1 ขอบเขตตารางในโครง SBPGI (19 ตาราง — CREATE จริง 18 + reuse 1)"),
         p(
             "DDL เต็มอยู่ที่เอกสาร `LLDD-Database` หัวข้อ Executable DDL · เอกสารฉบับนี้เป็นเจ้าของ "
             "**สคริปต์ deploy จริง** และกติกาว่าอะไรสร้างได้/สร้างไม่ได้"
@@ -1891,7 +2096,7 @@ def database_structure_extra_blocks() -> list[dict[str, Any]]:
         p(
             "⚠️ **21 = จำนวนตารางในโครง ไม่ใช่จำนวนที่ต้อง CREATE** — `fcs_qssi_score` นับอยู่ในโครงโซน A "
             "แต่ใช้ตารางเดิมของ `sps_store` (23,958,780 แถว) จึง **ห้าม CREATE TABLE** ดูหัวข้อ 5.1.1 · "
-            "จำนวนที่ต้อง CREATE จริงคือ **20 ตาราง** · สถานะ reuse ของ `fcs_qssi_score` ยังผูกกับข้อค้าง "
+            "จำนวนที่ต้อง CREATE จริงคือ **18 ตาราง** (19 ตารางในโครง ลบ fcs_qssi_score ที่ reuse) · สถานะ reuse ของ `fcs_qssi_score` ยังผูกกับข้อค้าง "
             f"**DP-4** (จะแก้ตารางเดิมอย่างไร หรือจะสร้างตารางของ SBPGI เอง — ยังไม่ตัดสิน · `{DECISION_DOC}`)"
         ),
         table(
@@ -1899,7 +2104,7 @@ def database_structure_extra_blocks() -> list[dict[str, Any]]:
             [
                 ["A — FGI/FCS pipeline", "7 (CREATE 6 + reuse 1)", "fgi_impact_processes, fgi_impact_stores, fgi_impact_sales_summaries, sales_transactions, fgi_impact_competitors, interface_transactions · **+ fcs_qssi_score = reuse ห้าม CREATE (ดู 5.1.1 · DP-4)**"],
                 ["B — เอกสาร/ประวัติ", "9", "compensation_documents, document_new_stores, document_competitors, document_external_factors, consideration_logs, document_attachments, compensation_histories, document_cost_details, document_running_numbers"],
-                ["C — master ที่ SBPGI เป็นเจ้าของ", "3", "impacted_stores, external_factors, competitors (decisions ย้ายไป common_code · DP-9 · status_email_rules ตัดตาม DP-5)"],
+                ["C — master ที่ SBPGI เป็นเจ้าของ", "3", "impacted_stores, external_factors, competitors (decisions ย้ายไป common_code · DP-9 · status_email_rules ตัดตาม DP-5 — SBPGI เรียก email-lib เองโดยใช้เลข template จาก workflow_route.email_id)"],
                 ["รวม", "21 (CREATE 20 + reuse 1)", "ตรงกับ database.md (34 -> 24 เมื่อ 2026-08-06 -> 22 เมื่อตัดกลุ่ม batch -> 21 เมื่อยกเลิก audit_logs 2026-08-07)"],
             ],
         ),
@@ -1931,7 +2136,7 @@ def database_structure_extra_blocks() -> list[dict[str, Any]]:
         table(
             ["ไฟล์", "เนื้อหา", "รันเมื่อไร"],
             [
-                ["01_schema.sql", "CREATE TABLE 20 ตาราง เรียงตาม dependency (C master -> A pipeline -> B document) — ไม่รวม fcs_qssi_score ที่ reuse ของเดิม", "ครั้งเดียวต่อ environment"],
+                ["01_schema.sql", "CREATE TABLE 18 ตาราง เรียงตาม dependency (C master -> A pipeline -> B document) — ไม่รวม fcs_qssi_score ที่ reuse ของเดิม", "ครั้งเดียวต่อ environment"],
                 ["02_index.sql", "index, unique/partial index, check constraint", "หลัง 01 · rerun ได้เมื่อเพิ่ม index"],
                 ["03_seed.sql", "external_factors, competitors (01-11) — ไม่มี decisions แล้ว (DP-9 ย้ายไป common_code · seed ที่ระบบเดิม)", "หลัง 02"],
                 ["04_grant.sql", "GRANT ให้ role ของ application (แยก read/write)", "หลัง 03"],
@@ -1951,9 +2156,11 @@ SET search_path TO sps_store;
 CREATE TABLE external_factors (...);
 CREATE TABLE competitors (...);
 CREATE TABLE impacted_stores (...);
--- ❌ ไม่สร้างตาราง status_email_rules ใน SBPGI (ปิด DP-5 · 2026-08-11)
---    engine ส่งอีเมลเองผ่าน workflow_route.email_id · template อยู่ที่ email_template ของระบบ SBP เดิม (85 แถว)
---    log การส่งอยู่ที่ email_sent (5,214 แถว · mail_to/mail_cc/is_sent/error) — SBPGI ไม่มี Notification Service
+-- ❌ ไม่สร้างตาราง status_email_rules ใน SBPGI (ปิด DP-5 · แก้มติ 2026-08-14)
+--    workflow ให้ 'เลข template' ผ่าน workflow_route.email_id → SBPGI เรียก sendEmail() ของ email-lib เอง
+--    ผู้รับ resolve จาก workflow_approver → business_user.email · ⚠️ คอลัมน์จริงคือ email_sent.send_by ไม่ใช่ sent_by
+--    SBPGI อ่าน workflow_route.email_id แล้วเรียก sendEmail() ของ email-lib · template อยู่ที่ email_template ของระบบ SBP เดิม (85 แถว)
+--    lib เขียน log ให้เองที่ email_sent (5,214 แถว · mail_to/mail_cc/is_sent/error · ⚠️ คอลัมน์ผู้ส่งคือ send_by)
 
 
 -- โซน A: pipeline
@@ -1974,7 +2181,7 @@ COMMIT;""",
                 ["competitors", "แบรนด์คู่แข่ง 11 รายการ รหัส 01-11 (ไทย+อังกฤษ)", "หน้าจอ K2 เดิม (k2-competitors.html)"],
                 ["external_factors", "ปัจจัยภายนอกที่ใช้อยู่", "MSSQL FactorProfile"],
                 
-                ["common_code (ระบบเดิม)", "SBPGI_APPROVE_LIMIT: GM=50000 · AVP=300000", "SDD GI 24/02/2026 — เขียนที่ common_code ของระบบเดิม ไม่ใช่ตารางของ SBPGI"],
+                ["common_code (ระบบเดิม)", "SBPGI_APPROVE_LIMIT: THRESHOLD=100000 (เกณฑ์เดียว)", "มติประชุม 2026-08-18 — เขียนที่ common_code ของระบบเดิม ไม่ใช่ตารางของ SBPGI"],
             ],
         ),
         *pending_decision_blocks(
@@ -1983,7 +2190,7 @@ COMMIT;""",
                 ["DP-3 ✅ ตัดสินแล้ว 2026-08-10 = ทางเลือกที่ 3 (snapshot เฉพาะร้านที่เคยเข้ารอบชดเชย · เติมตอนสร้าง fgi_impact_processes)", "view จากระบบเดิม (`v_sbpgi_sp_store`) — ไม่ต้อง sync แต่ร้านที่ยกเลิกเกิน 1 เดือนหายจาก view ทำให้เอกสารย้อนหลังหาร้านไม่เจอ", "ตาราง snapshot ของ SBPGI — เอกสารย้อนหลังหาร้านเจอเสมอ แต่ต้อง sync (มีทางเลือกที่ 3: snapshot เฉพาะร้านที่เคยเข้ารอบชดเชย)", "ยังไม่ตัดสิน"],
                 ["DP-4 · `fcs_qssi_score` reuse หรือสร้างใหม่", "reuse ตารางเดิม 23,958,780 แถว — ต้อง backfill + SET NOT NULL บนตารางที่ `performance.service.ts` เขียนอยู่", "สร้างตารางของ SBPGI เอง — ไม่แตะของทีมอื่น แต่มีข้อมูล QSSI สองชุด", "ยังไม่ตัดสิน · มติที่แน่นอนแล้วคือ **ห้ามสร้างตารางชื่อ `fcs_qssi_scores` (พหูพจน์)**"],
                 ["DP-9 ✅ ตัดสินแล้ว 2026-08-10 = แยกตัดสิน (decisions → common_code · external_factors/competitors ยังเป็นตารางของ SBPGI)", "ยัดลง `common_code` ของระบบเดิม", "ตารางเล็กของ SBPGI ตามที่ DDL ปัจจุบันเขียนไว้", "ยังไม่ตัดสิน"],
-                ["DP-1 · `reference_id` ของ workflow", "`doc_no`", "surrogate id (แบบที่ cooperation-request/inform-evaluate ทำจริง)", "ยังไม่ตัดสิน · กระทบว่า `compensation_documents` ต้องมี surrogate PK หรือไม่"],
+                ["DP-1 · `reference_id` ของ workflow", "`doc_no` — ตกไป", "**เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255)) แบบที่ cooperation-request/inform-evaluate ทำจริง", "✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม"],
                 ["DP-7 · `consideration_logs`", "ตาราง timeline เต็มของ SBPGI ตามที่ DDL ปัจจุบันเขียนไว้", "ตารางส่วนขยายบน `sps_store.workflow_history` ของ engine (engine เก็บ state transition แต่ไม่มี decision code / ไฟล์แนบ / ความเห็น)", "ยังไม่ตัดสิน · กระทบ DDL ของตารางนี้และ response ของ `GET /documents/{docNo}/timeline`"],
                 ["DP-12 · audit ของ master", "เอากลับมาโดยใช้กลไกของระบบเดิม", "ไม่มีเลยตามมติ 2026-08-07 (สถานะปัจจุบันของ DDL)", "ยังไม่ตัดสิน"],
             ],
@@ -2048,7 +2255,7 @@ def data_migration_extra_blocks() -> list[dict[str, Any]]:
             [
                 ["DP-4 · `fcs_qssi_score`", "reuse ตารางเดิม (ต้อง dedup + backfill 23.9M แถว ก่อนเพิ่ม constraint)", "สร้างตารางของ SBPGI แล้วโหลดใหม่", "ยังไม่ตัดสิน"],
                 ["DP-3 ✅ ตัดสินแล้ว = ทางเลือกที่ 3", "view (ไม่มีอะไรให้ migrate)", "ตาราง snapshot (ต้อง migrate + sync job)", "ยังไม่ตัดสิน · กระทบขอบเขต migration โดยตรง"],
-                ["DP-1 · `reference_id`", "`doc_no` (migrate ตรงไปตรงมา)", "surrogate id (ต้องออก id แล้วเก็บ mapping)", "ยังไม่ตัดสิน"],
+                ["DP-1 · `reference_id`", "`doc_no` — ตกไป", "**เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255))", "✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม"],
                 ["DP-11 · ตัวเลขเงินประกันรายได้", "SBPGI เป็นต้นทาง", "`fr_store_insure` ยังคีย์มือ", "ยังไม่ตัดสิน (เป็นคำถามเชิงธุรกิจ)"],
                 ["retention/purge ของเอกสารเก่า", "ย้ายทั้งหมด", "ย้ายเฉพาะช่วงปีที่ตกลง แล้ว archive ที่เหลือ", "ยังไม่ตัดสิน · ระบบเดิมมี ListDocumentsPendingRemoval แต่โครงใหม่ยังไม่มี data retention plan"],
             ],
@@ -2120,7 +2327,7 @@ export class BffUserGuard implements CanActivate {
         table(
             ["ค่า", "อยู่ที่", "กติกา"],
             [
-                ["วงเงินอนุมัติ GM 50,000 / AVP 300,000", "common_code · code_type = SBPGI_APPROVE_LIMIT", "อ่านทุกครั้ง ห้าม hardcode · ถ้าเลือกเก็บที่ workflow_route.condition_json แทน ต้องเก็บที่เดียว (ดูข้อค้าง)"],
+                ["วงเงินอนุมัติ เกณฑ์เดียว 100,000", "common_code · code_type = SBPGI_APPROVE_LIMIT", "อ่านทุกครั้ง ห้าม hardcode · ถ้าเลือกเก็บที่ workflow_route.condition_json แทน ต้องเก็บที่เดียว (ดูข้อค้าง)"],
                 ["รัศมีผลกระทบ 1 กม. (กทม./ปริมณฑล) / 2 กม. (ต่างจังหวัด)", "mas_param", "อ่านตอนคำนวณ ไม่ hardcode"],
                 ["เกณฑ์ยอดขัง 60 วัน · growth rate -10%", "mas_param", "ใช้กับธงข้อมูลผิดปกติและ Gen Flow Gate"],
             ],
@@ -2128,7 +2335,7 @@ export class BffUserGuard implements CanActivate {
         *pending_decision_blocks(
             "5.6 ข้อค้างตัดสินใจที่กระทบ integration (ยังไม่ตัดสิน)",
             [
-                ["DP-5 · อีเมล", "ผูก `email_id` ที่ `workflow_route` แล้วให้ engine ส่งเอง (แขวนได้ 1 เมลต่อ 1 transition · reminder รายสัปดาห์แขวนไม่ได้)", "SBPGI เรียก email-lib เองหลัง action สำเร็จ (เสี่ยงเมลซ้ำถ้า engine ส่งด้วย)", "ยังไม่ตัดสิน · ยังไม่มีใครพิสูจน์ว่า engine ส่งเมลจริงหรือไม่"],
+                ["DP-5 · อีเมล ✅ ปิดแล้ว 2026-08-14", "ให้ engine ส่งเอง — **ตกไป** เพราะ `triggerEvent` ไม่มี `mailTo`/`mailCc`/`param` ที่ `sendEmail` บังคับ", "**เลือกทางนี้:** workflow ให้เลข template ผ่าน `workflow_route.email_id` แล้ว **SBPGI เรียก `sendEmail()` ของ email-lib เอง** · reminder/escalation ที่ไม่ใช่ transition เก็บเลข template ที่ `mas_param`", "ปิดแล้ว · เหลือยืนยันกับทีม engine ว่าไม่ส่งซ้ำ"],
                 ["DP-8 · `document_attachments`", "ตารางของ SBPGI เอง (สถานะปัจจุบันของแบบ)", "ต่อยอด `upload_general` ของระบบเดิม", "ยังไม่ตัดสิน"],
                 ["DP-10 · ที่อยู่ของ SBPGI", "โมดูลใน store-backend เดิม", "backend ใหม่แยกต่างหาก", "ยังไม่ตัดสิน · กระทบว่า guard/interceptor ใช้ของเดิมได้เลยหรือต้องเขียนใหม่"],
                 ["DP-6 · `interface_transactions`", "ออกแบบใหม่ตาม DDL ปัจจุบัน", "ลอกแพตเทิร์น `statement_summary` ของระบบเดิม", "ยังไม่ตัดสิน"],
@@ -2151,7 +2358,7 @@ def workflow_engine_definition_extra_blocks() -> list[dict[str, Any]]:
             [
                 ["BE-API-Document-Workflow-Actions", "รหัส event ต่อปุ่ม · route ของแต่ละ state · เงื่อนไขแตกสายตามวงเงิน"],
                 ["BE-API-Workflow-Instances", "โครง version/state/status ที่จะ query และรูปแบบ payload ของ engine"],
-                ["BE-Job-8b-StartInternalWorkflow", "ลำดับเรียก initialize -> add-prepared-approver และค่า `referenceId`"],
+                ["BE-Job-8b-StartInternalWorkflow", "ลำดับเรียก initialize -> addPreApprover และค่า `referenceId`"],
                 ["FE-Document-Detail (5 ฉบับ role)", "`workflow_part_display` READ/WRITE ต่อ state ที่คุมการแสดงผลรายส่วน"],
             ],
         ),
@@ -2207,19 +2414,33 @@ def workflow_engine_definition_extra_blocks() -> list[dict[str, Any]]:
                 ],
             ],
         ),
-        h(2, "5.3 ชื่อ function ของ engine ยังขัดกัน 3 ชุด — ห้ามเลือกเอง"),
+        h(2, "5.3 API ของ engine — 8 function (ยึด LLDD ของ lib · ปิดข้อค้าง 2026-08-14)"),
         p(
-            "แหล่งอ้างอิง 3 แหล่งให้ชื่อ function ไม่ตรงกัน · **ยังไม่ตัดสิน** ว่าจะใช้ชุดไหน "
-            "ต้องยืนยันกับทีมเจ้าของ `@srm/glb-workflow` ก่อนเขียนโค้ดจริง — "
-            "เอกสาร LLDD ฉบับอื่นที่อ้างชื่อ function ต้องถือว่าเป็นชื่อชั่วคราวจนกว่าจะยืนยัน"
+            "แหล่งความจริงคือชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` "
+            "ซึ่งเป็น **เอกสารของ lib เอง** · ชื่อที่เคยนับว่าขัดกันไม่ใช่ชื่อ API: "
+            "*Trigger Event* เป็น**ชื่อหัวข้อของขั้นตอนภายใน** `eventWorkflow` ในชีต 2 "
+            "ส่วน `TriggerEventUseCase` / `AddPreparedApproverUseCase` / `GetPendingFlowUseCase` "
+            "เป็น **UseCase class ที่ store-backend ห่อไว้ใช้เอง** ไม่ใช่ API ของ lib"
         ),
         table(
-            ["หน้าที่", "ชุด A — `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail (สเปกจริง)", "ชุด B — ชีต `Mermaid seq` ของไฟล์เดียวกัน", "ชุด C — `SBP/srm-sps-spsap-store-backend.md` §1.5"],
+            ["#", "function", "พารามิเตอร์ (ชีต Detail)", "SBPGI ใช้ที่ไหน"],
             [
-                ["ดำเนินการ action", "`eventWorkflow`", "`triggerEvent`", "`TriggerEventUseCase`"],
-                ["ระบุผู้อนุมัติล่วงหน้า", "`addPreApprover`", "—", "`AddPreparedApproverUseCase`"],
-                ["อ่านงานที่รอ user", "`getPendingFlowByUser`", "—", "`GetPendingFlowUseCase`"],
-                ["สร้าง workflow ตั้งต้น", "`initializeWorkflow`", "`initializeWorkflow`", "`initializeWorkflow`"],
+                ["1", "`initializeWorkflow`", "version, userId, referenceId",
+                 "เปิด flow ให้เอกสารใหม่ (Job 8b · `POST /workflows/instances`)"],
+                ["2", "`eventWorkflow`",
+                 "version, referenceId, event, eventParam, remark, userId **+ userData · userFullname · nextApproverId** "
+                 "(ส่วนขยาย 29/04 · 20/05 · 16/06/2026 — ยึดชุดนี้เวลาเขียนโค้ด)",
+                 "`POST /documents/{docNo}/actions`"],
+                ["3", "`getPermissionEvents`", "version, referenceId, userData",
+                 "ปุ่ม/ผลพิจารณาที่ user กดได้ในหน้าเอกสาร"],
+                ["4", "`getHistory`", "version, referenceId", "`GET /documents/{docNo}/timeline`"],
+                ["5", "`getTransaction`", "version, referenceId", "สถานะ + ผู้ถืองานปัจจุบันของเอกสาร"],
+                ["6", "`getPendingFlowByUser`", "userData",
+                 "**หน้า เอกสาร → รอดำเนินการ** + reminder รายสัปดาห์"],
+                ["7", "`getWorkflowsByUser`", "userData",
+                 "**หน้า เอกสาร → ที่เกี่ยวข้อง** (รวมที่ยังไม่ถึงคิวและที่อนุมัติไปแล้ว)"],
+                ["8", "`addPreApprover`", "version, userId, referenceId, state_id, approver, seq",
+                 "ตั้งผู้อนุมัติล่วงหน้าของขั้นถัดไป"],
             ],
         ),
         h(2, "5.4 นิยาม flow ของ SBPGI ที่ต้อง register"),
@@ -2229,7 +2450,7 @@ def workflow_engine_definition_extra_blocks() -> list[dict[str, Any]]:
                 ["06", "รอฝ่าย SBP DSA ดำเนินการ", "submit (ส่งเจ้าหน้าที่ SBP DSA) · reject (เห็นควรไม่ชดเชย) · cancel (หยุดชดเชย) · submit (ส่งหน่วยงานส่งเสริมธุรกิจ SBP)", "08 หรือ 01 หรือจบ flow"],
                 ["08", "รอเจ้าหน้าที่ SBP DSA ดำเนินการ", "submit (คำนวณเงินชดเชยเรียบร้อย)", "01"],
                 ["01", "รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ", "approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที) · sendback (ฝ่าย SBP DSA ดำเนินการ)", "02 · จบ flow · 06"],
-                ["02", "รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ", "approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที) · sendback", "จบ flow เมื่อยอด <= 50,000 · ไป 03 เมื่อ 50,001-300,000 · 01"],
+                ["02", "รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ", "approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที) · sendback", "จบ flow เมื่อยอด < 100,000 · ไป 03 เมื่อ ≥ 100,000 · 01"],
                 ["03", "รอผู้บริหารสำนักบริหาร SBP ดำเนินการ", "approve (เห็นควรชดเชย) · sendback", "จบ flow · 02"],
             ],
         ),
@@ -2243,15 +2464,15 @@ def workflow_engine_definition_extra_blocks() -> list[dict[str, Any]]:
 -- ตัวอย่างทางเลือก B (ฝังวงเงินใน condition_json ตามความสามารถของ engine):
 -- SBPGI ส่ง eventParam = {"amount": <ยอดชดเชยรวมของเอกสาร>} แล้วให้ engine เลือก route เอง
 -- seq = ลำดับที่ engine ใช้ไล่ตรวจ condition_json (ตัวแรกที่ตรงชนะ)
--- ตัวเลข 50000 / 300000 ด้านล่างเป็นค่า **ตัวอย่าง** จาก SDD GI ไม่ใช่ค่าที่ตกลงให้ hardcode
+-- ตัวเลข 100000 ด้านล่างเป็นค่า **ตัวอย่าง** ของเกณฑ์เดียว (มติ 2026-08-18) ไม่ใช่ค่าที่ตกลงให้ hardcode
 INSERT INTO sps_store.workflow_route
   (version_id, from_state_id, event, to_state_id, to_status_id, seq, condition_json, approver_type, group_id)
 VALUES
   (:v, :state_02, 'approve', :state_end, :status_done, 1,
-   '{"field":"amount","operator":"<=","value":50000}', 'group', :group_none),
+   '{"field":"amount","operator":"<","value":100000}', 'group', :group_none),
   (:v, :state_02, 'approve', :state_03,  :status_wait_avp, 2,
-   '{"field":"amount","operator":"<=","value":300000}', 'group', :group_avp);
--- ⚠️ ยอดเกิน 300,000 ยังไม่มีกติกาใน SDD GI — ยังไม่ตัดสินว่าจะให้ route ไปไหน""",
+   '{"field":"amount","operator":">=","value":100000}', 'group', :group_avp);
+-- ✅ เกณฑ์เดียวจึงไม่มีช่องโหว่ปลายบน: ทุกยอดตั้งแต่ 100,000 ขึ้นไปวิ่งเข้า AVP เส้นเดียว""",
             "sql",
         ),
         h(2, "5.5 `workflow_part_display` ทับซ้อนกับกลไกของ prototype"),
@@ -2270,10 +2491,10 @@ VALUES
         *pending_decision_blocks(
             "5.6 ข้อค้างตัดสินใจที่กระทบ engine (ยังไม่ตัดสิน)",
             [
-                ["DP-1 · `reference_id`", "`doc_no` — join ตรง อ่านง่าย แต่บังคับออกเลขตั้งแต่ initialize และแก้เลขภายหลังไม่ได้", "surrogate id — ตรงกับที่ cooperation-request/inform-evaluate ทำจริงทุกจุด", "ยังไม่ตัดสิน 🔴"],
+                ["DP-1 · `reference_id`", "`doc_no` — ตกไป (บังคับออกเลขตั้งแต่ initialize และแก้ภายหลังไม่ได้)", "**เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255)) — ตรงกับที่ cooperation-request/inform-evaluate ทำจริงทุกจุด", "✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม"],
                 ["DP-2 · `workflow_transaction` ไม่มี PK/index", "ขอ sign-off จากทีม library ให้เพิ่ม PK + UNIQUE + index", "ไม่แตะตารางของ library · กันซ้ำและทำ index ที่ฝั่ง SBPGI", "ยังไม่ตัดสิน 🔴"],
                 ["วงเงินอนุมัติเก็บที่ไหน", "`common_code` (SBPGI_APPROVE_LIMIT) ตามมติเดิม", "`workflow_route.condition_json` ตามความสามารถของ engine", "ยังไม่ตัดสิน · กติกาที่แน่นอนคือ **ห้ามเก็บสองที่**"],
-                ["DP-5 · engine ส่งอีเมลเองหรือไม่", "ผูก `email_id` ที่ route", "SBPGI ส่งเอง", "ยังไม่ตัดสิน · ยังไม่มีใครพิสูจน์ว่า engine ส่งจริง"],
+                ["DP-5 · ใครเรียก email-lib ✅ ปิดแล้ว 2026-08-14", "engine ส่งเอง — ตกไป (ไม่มี `mailTo`/`param` ใน `triggerEvent`)", "**SBPGI ส่งเอง** โดยใช้เลข template จาก `workflow_route.email_id`", "ปิดแล้ว"],
                 ["ผู้อนุมัติของ SBPGI", "`workflow_group_map` ผ่าน view (ต้องยืนยันว่า view where ด้วย user_id/group_id ได้)", "`addPreApprover` ระบุรายคน", "ยังไม่ตัดสิน"],
                 ["`workflow_part_display` แทน `data-editrole`", "ลงทะเบียน part แล้วให้ FE อ่าน `display[]`", "คงกลไกของ SBPGI เอง (`visibleSections`/`editableSections`)", "ยังไม่ตัดสิน · กระทบ role pack 5 ฉบับ"],
             ],
@@ -2289,8 +2510,8 @@ def workflow_action_transition_blocks() -> list[dict[str, Any]]:
             ["06", "ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ", "08", "08", "close 06; open 08"],
             ["08", "คำนวณเงินชดเชยเรียบร้อย", "01", "01", "close 08; open 01"],
             ["01", "เห็นควรชดเชย", "02", "02", "close 01; open 02"],
-            ["02", "เห็นควรชดเชย และ 50,000 < totalCompensationAmount <= 300,000 (SDD GI)", "03", "03", "close 02; open 03"],
-            ["02", "เห็นควรชดเชย และ totalCompensationAmount <= 50,000 (SDD GI)", "99", "null", "close 02; complete instance"],
+            ["02", "เห็นควรชดเชย และ totalCompensationAmount >= 100,000 (มติ 2026-08-18)", "03", "03", "close 02; open 03"],
+            ["02", "เห็นควรชดเชย และ totalCompensationAmount < 100,000 (มติ 2026-08-18)", "99", "null", "close 02; complete instance"],
             ["03", "เห็นควรชดเชย", "99", "null", "close 03; complete instance"],
             ["ทุก section ที่รองรับ", "ส่งกลับ", "รหัส section ปลายทางตาม action option", "section ปลายทาง", "close current; reopen target with new task id"],
             ["06", "เห็นควรไม่ชดเชย หรือ หยุดชดเชยประกันรายได้", "99", "null", "close 06; complete instance"],
@@ -2305,9 +2526,9 @@ def workflow_action_transition_blocks() -> list[dict[str, Any]]:
             "5.3 ข้อค้างตัดสินใจที่กระทบ endpoint ของเอกสารนี้ (ยังไม่ตัดสิน)",
             [
                 ["DP-7 · แหล่งข้อมูลของ `GET /documents/{docNo}/timeline`", "อ่าน `consideration_logs` ของ SBPGI เป็น timeline เต็ม (สถานะปัจจุบันของแบบ)", "อ่าน `getHistory()` / `sps_store.workflow_history` ของ engine แล้ว join `consideration_logs` เป็นตารางส่วนขยาย (decision code · ไฟล์แนบ · ความเห็น ซึ่ง engine ไม่มี)", "ยังไม่ตัดสิน · กระทบทั้ง DDL ของ `consideration_logs` และรูปแบบ response"],
-                ["DP-1 · `referenceId` ที่ส่งเข้า engine", "`doc_no`", "surrogate id (แบบที่ cooperation-request / inform-evaluate ทำจริงทุกจุด)", "ยังไม่ตัดสิน 🔴"],
+                ["DP-1 · `referenceId` ที่ส่งเข้า engine", "`doc_no` — ตกไป", "**เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255)) แบบที่ cooperation-request / inform-evaluate ทำจริงทุกจุด", "✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม"],
                 ["DP-2 · `sps_store.workflow_transaction` ไม่มี PK/index", "ขอ sign-off ให้ทีมเจ้าของ library เพิ่ม PK + UNIQUE + index", "กันซ้ำและทำ index ที่ฝั่ง SBPGI", "ยังไม่ตัดสิน 🔴 · ทุก action ต้อง seq-scan 19,283 แถว"],
-                ["DP-5 ✅ ปิดแล้ว 2026-08-11 — **engine ส่งเอง** ผ่าน `workflow_route.email_id`", "LLDD ของ engine ชีต 2 ระบุว่าเรียก function ส่งเมลจาก lib · ระบบเดิมมี email_template 85 แถว + email_sent 5,214 แถวครบวงจร", "SBPGI ไม่ส่งเอง · ไม่มี Notification Service · ตัดตาราง status_email_rules", "ปิดแล้ว"],
+                ["DP-5 ✅ ปิดแล้ว (แก้มติ 2026-08-14) — **workflow ให้เลข template · SBPGI เรียก lib ส่งเอง**", "`SBP/TSM-SRM-LLDD SBP EMAIL1.0.xlsx` — lib เสร็จแล้ว รับ `{emailId, mailTo, mailCc, param, fileAttach, userId}` · input ของ `triggerEvent` ไม่มี `mailTo`/`param` engine จึงเรียกแทนไม่ได้ · บรรทัด 'เรียก function ส่งเมล์จาก lib .....' ยังเป็น placeholder", "SBPGI อ่าน `workflow_route.email_id` → เรียก `sendEmail()` **นอก transaction** · ไม่มีตาราง `status_email_rules`", "ปิดแล้ว"],
             ],
         ),
     ]
@@ -2316,47 +2537,48 @@ def workflow_action_transition_blocks() -> list[dict[str, Any]]:
 def master_config_screen_blocks() -> list[dict[str, Any]]:
     return [
         h(2, "5.1 Screen Boundary and Route Matrix"),
-        p("หัวข้อนี้ประกอบด้วย 4 หน้าจออิสระ แต่ละหน้ามี route, state, validation และ endpoint ของตนเอง ห้าม implement เป็น form/table เดียวที่สลับชนิดข้อมูลด้วยเงื่อนไขใน component เดียว"),
+        p("หัวข้อนี้ประกอบด้วย **2 หน้าจออิสระ** แต่ละหน้ามี route, state, validation และ endpoint ของตนเอง "
+          "ห้าม implement เป็น form/table เดียวที่สลับชนิดข้อมูลด้วยเงื่อนไขใน component · "
+          "SCR-08 ผู้ปฏิบัติงาน และ SCR-10 สิทธิ์เมนู **ถูกตัดออก 2026-08-05** (ใช้ของระบบ SBP เดิม)"),
         table(["Screen", "Route / Component", "Primary model", "Main operations"], [
-            ["~~SCR-08 ผู้ปฏิบัติงาน~~ **ตัด 2026-08-05**", "ไม่มีหน้าจอใน SBPGI", "-", "ใช้ group + scope ของ auth-backend และ prepared approver ของ @srm/glb-workflow · จัดการที่หน้า /setting/manage-user-rights ของระบบเดิม"],
-            ["SCR-09 ปัจจัยภายนอก", "/admin/external-factors / ExternalFactorPage", "ExternalFactor", "list, add, edit, delete, duplicate-code guard"],
-            ["~~SCR-10 สิทธิ์เมนู~~ **ตัด 2026-08-05**", "ไม่มีหน้าจอใน SBPGI", "-", "สิทธิ์เมนูจัดการที่หน้า /setting/manage-user-rights ของระบบเดิม · SBPGI อ่านผ่าน header x-user-permissions"],
+            ["SCR-09 ปัจจัยภายนอก", "/admin/external-factors / ExternalFactorPage", "ExternalFactor",
+             "list, add, edit, delete, duplicate-code guard"],
+            ["รายชื่อร้านคู่แข่ง (master แบรนด์)", "/admin/competitors / CompetitorPage", "Competitor",
+             "list, add, edit, delete, duplicate-code guard, active toggle"],
+            ["~~SCR-08 ผู้ปฏิบัติงาน~~ **ตัด 2026-08-05**", "ไม่มีหน้าจอใน SBPGI", "-",
+             "ใช้ group + scope ของ auth-backend และ prepared approver ของ @srm/glb-workflow · "
+             "จัดการที่หน้า /setting/manage-user-rights ของระบบเดิม — **ไม่มี field/endpoint ให้ implement**"],
+            ["~~SCR-10 สิทธิ์เมนู~~ **ตัด 2026-08-05**", "ไม่มีหน้าจอใน SBPGI", "-",
+             "สิทธิ์เมนูจัดการที่หน้า /setting/manage-user-rights ของระบบเดิม · "
+             "SBPGI อ่านผ่าน header x-user-permissions จาก BFF — **ไม่มี field/endpoint ให้ implement**"],
         ]),
-        h(2, "5.2 ~~SCR-08 Operator Assignment~~ — ตัดออก 2026-08-05"),
-        p("ไม่มีหน้าจอนี้ใน SBPGI — ผู้ปฏิบัติงาน/ผู้อนุมัติใช้ group + scope ของ auth-backend และ prepared approver ของ `@srm/glb-workflow` · จัดการที่หน้า `/setting/manage-user-rights` ของระบบ SBP เดิม"),
-        table(["Field", "Type", "Required / Rule", "UI behavior"], [
-            ["id", "integer", "response only", "row key"],
-            ["employeeId", "string", "required; selected from employee search", "store employee id, not display name"],
-            ["employeeName", "string", "read-only", "filled from selected employee"],
-            ["positionCode", "enum 06|08|01|02|03", "required", "workflow position selector"],
-            ["zoneCode", "string | null", "optional by position", "preserve leading zero if numeric-looking"],
-            ["active", "boolean", "required", "deactivation requires reason"],
-            ["reason", "string", "required for create/update/deactivate", "audit dialog before submit"],
-        ]),
-        h(2, "5.3 SCR-09 External Factor"),
+        h(2, "5.2 SCR-09 External Factor"),
         table(["Field", "Type", "Required / Rule", "UI behavior"], [
             ["factorCode", "string", "required; unique; immutable after create", "uppercase and trim before submit"],
             ["factorName", "string", "required; 1..200 chars", "Thai UTF-8 supported"],
             ["description", "string | null", "optional; max 1000 chars", "multiline editor"],
-            ["active", "boolean", "required", "inactive rows remain visible under filter"],
-            ["reason", "string", "required for mutation", "include in request and audit"],
+            ["active", "boolean", "required", "inactive rows remain visible under filter แต่ไม่ขึ้นใน dropdown ของหน้าเอกสาร"],
         ]),
-        h(2, "5.4 ~~SCR-10 Menu Permission Matrix~~ — ตัดออก 2026-08-05"),
-        p("ไม่มีหน้าจอนี้ใน SBPGI — สิทธิ์เมนูจัดการที่หน้า `/setting/manage-user-rights` ของระบบเดิม · SBPGI รับสิทธิ์มากับ header `x-user-permissions` จาก BFF"),
+        p("⚠️ **ไม่มีฟิลด์ `reason`** — ยกเลิกระบบ audit ของ master ทั้งหมด 2026-08-07 · "
+          "mutation ไม่ต้องส่ง `reason` และไม่มี audit dialog ก่อน submit"),
+        h(2, "5.3 Competitor Brand Master"),
         table(["Field", "Type", "Required / Rule", "UI behavior"], [
-            ["menuCode", "string", "required; row key", "one menu per row"],
-            ["menuName", "string", "response only", "Thai display label"],
-            ["permissions[].roleCode", "string", "required", "one column per role"],
-            ["permissions[].canView", "boolean", "required", "toggle; dirty state tracked per menu"],
-            ["reason", "string", "required on save", "save one menu row atomically"],
+            ["competitorCode", "string(30)", "required; unique; immutable after create", "รหัส 01-11 ของ master เดิม · trim ก่อน submit"],
+            ["nameTh", "string(200)", "required", "ชื่อแบรนด์ภาษาไทย — แสดงใน dropdown ร้านคู่แข่งของหน้าเอกสาร"],
+            ["nameEn", "string(200)", "required", "ชื่อแบรนด์ภาษาอังกฤษ (ระบบเดิมเก็บทั้งสองภาษา)"],
+            ["remark", "string(500) | null", "optional", "คอลัมน์ รายละเอียดเพิ่มเติม ของหน้า k2-competitors.html"],
+            ["active", "boolean", "required", "ปิด active แทนการลบเมื่อถูกอ้างใน document_competitors แล้ว"],
         ]),
+        p("**คนละระดับกับ `document_competitors`** ซึ่งเก็บคู่แข่ง *รายสาขา* ที่ import จาก ALLMAP "
+          "พร้อมรหัสของตัวเอง (เช่น `4832`, `TD58_08`) — หน้านี้ดูแลเฉพาะ **แบรนด์**"),
         h(2, "5.6 Screen-level Acceptance"),
         bullets([
-            "แต่ละ SCR มี route/component/state แยกและสามารถ test/release แยกกันได้",
-            "mutation ทุกหน้าส่ง reason และ refresh เฉพาะ resource ที่เปลี่ยน",
-            "(SCR-08 ตัดออก 2026-08-05 — ไม่มีเกณฑ์ตรวจรับสำหรับหน้าจอนี้)",
-            "SCR-09 กัน factorCode ซ้ำทั้ง client response handling และ BE error",
-            "(SCR-10 ตัดออก 2026-08-05 — ไม่มีเกณฑ์ตรวจรับสำหรับหน้าจอนี้)",
+            "แต่ละหน้ามี route/component/state แยกและสามารถ test/release แยกกันได้",
+            "mutation refresh เฉพาะ resource ที่เปลี่ยน — **ไม่ส่ง reason และไม่มี audit dialog** (ยกเลิก audit ของ master 2026-08-07)",
+            "SCR-09 กัน factorCode ซ้ำทั้ง client response handling และ BE error (409 CODE_DUPLICATE)",
+            "หน้าคู่แข่งกัน competitorCode ซ้ำ และบังคับ nameTh + nameEn ครบทั้งคู่",
+            "ลบรายการที่ถูกอ้างในเอกสารแล้วต้องได้ 409 และ UI ต้องเสนอให้ปิด active แทน",
+            "(SCR-08 และ SCR-10 ตัดออก 2026-08-05 — ไม่มีเกณฑ์ตรวจรับสำหรับสองหน้านี้)",
         ]),
     ]
 
@@ -2365,7 +2587,8 @@ def testing_delivery_blocks(topic: Topic) -> list[dict[str, Any]]:
     return [
         h(1, "1. Overview"),
         table(["รายการ", "รายละเอียด"], [
-            ["Track", topic.track], ["Estimate", f"{topic.hours} ชั่วโมง"], ["Owner", topic.owner],
+            ["Track", topic.track], ["Estimate", estimate_cell(topic)], ["Owner", topic.owner],
+            target_repo_row(topic),
             ["Document type", "FE verification and release handover specification; not an application screen"],
             ["Objective", topic.objective],
         ]),
@@ -2391,7 +2614,7 @@ def testing_delivery_blocks(topic: Topic) -> list[dict[str, Any]]:
             ["Build identity", "commit SHA, build number, deploy timestamp", "freeze before regression"],
             ["API identity", "base URL and contract version", "no production credentials in evidence"],
             ["Role users", "one account per tested RBAC role/profile", "masked identifiers in shared evidence"],
-            ["Document fixtures", "docNo per current section plus <=50,000 (GM) and 50,001-300,000 (AVP) cases per SDD GI", "resettable or uniquely generated"],
+            ["Document fixtures", "docNo per current section plus <100,000 (GM) and >=100,000 (AVP) cases per มติ 2026-08-18", "resettable or uniquely generated"],
             ["File fixtures", "valid type, >5MB, unsupported type, AV-blocked stub", "checksum recorded"],
             ["Job fixtures", "SUCCESS/FAILED/RUNNING/QUEUED histories", "read-only unless manual-run case"],
         ]),
@@ -2571,7 +2794,7 @@ def topic_io_contract_blocks(topic: Topic) -> list[dict[str, Any]]:
             ["Output", legacy.get("output", "Target rows/files/interfaces updated according to DB mapping; run history stores status, counts, output reference, and error detail.")],
         ]
         return [
-            h(1, "5.1 Input / Progress / Output Contract"),
+            h(2, "5.9 Input / Progress / Output Contract"),
             table(["Stage", "Contract for implementation"], rows),
         ]
 
@@ -2584,7 +2807,7 @@ def topic_io_contract_blocks(topic: Topic) -> list[dict[str, Any]]:
         ["Output", "; ".join(db_outputs) if db_outputs else "Rendered UI state or normalized API response with status/message and audit-ready trace reference."],
     ]
     return [
-        h(1, "5.1 Input / Progress / Output Contract"),
+        h(2, "5.9 Input / Progress / Output Contract"),
         table(["Stage", "Contract for implementation"], rows),
     ]
 
@@ -2727,11 +2950,14 @@ FE_COMPONENT_DETAILS: dict[str, list[tuple[str, str]]] = {
         ("รองรับ fixture สำหรับ 0 แถว, หลาย region/type, เกิน threshold และยอดขายไม่ครบ 60 วัน", "sample verification ครอบคลุม table/export parity 14 คอลัมน์ โดยไม่ฝังข้อมูลทดสอบใน production"),
     ],
     "FE/LLDD-FE-Master-Data": [
-        ("โหลด/ค้นหา/เพิ่ม/แก้/ปิด operator โดยเลือก employee จาก employee search", "duplicate/invalid employee ถูก block และ mutation สำเร็จ refresh row/audit"),
-        ("จัดการ factor CRUD รวม DELETE เฉพาะรายการที่ไม่ถูกใช้งานและต้องมี reason", "factorCode ซ้ำไม่ได้, conflict แสดงข้อความ และ deleted row หายหลัง refresh"),
-        ("render role x menu matrix จาก canAccess และบันทึก permission ราย menu", "toggle optimistic ได้เฉพาะเมื่อ rollback on error และค่าหลัง reload ตรงฐานข้อมูล"),
-        ("ใช้ modal mode ADD/EDIT/DELETE แยก initial values, validation และ confirm copy", "เปลี่ยน mode ไม่ทิ้ง stale field และปุ่ม submit กัน double request"),
-        ("แสดง updatedBy/updatedAt หลังบันทึก (ไม่มี audit log ของ master แล้ว · ยกเลิกระบบ audit ของ master 2026-08-07)", "mutation สำเร็จแล้ว row ในตารางอัปเดตจริงและ refresh เห็นค่าใหม่"),
+        ("จัดการปัจจัยภายนอก (SCR-09) CRUD ครบ — DELETE เฉพาะรายการที่ยังไม่ถูกอ้างในเอกสาร",
+         "factorCode ซ้ำไม่ได้ (409 CODE_DUPLICATE) · ลบรายการที่ถูกอ้างแล้วต้องได้ 409 · deleted row หายหลัง refresh"),
+        ("จัดการ master แบรนด์คู่แข่ง (รหัส 01-11) พร้อม nameTh/nameEn/remark",
+         "nameTh และ nameEn บังคับทั้งคู่ · competitorCode ซ้ำไม่ได้ · แถวใหม่ขึ้นใน dropdown ร้านคู่แข่งของหน้าเอกสาร"),
+        ("ใช้ modal mode ADD/EDIT/DELETE แยก initial values, validation และ confirm copy",
+         "เปลี่ยน mode ไม่ทิ้ง stale field และปุ่ม submit กัน double request"),
+        ("toggle active แทนการลบเมื่อรายการถูกอ้างในเอกสารแล้ว",
+         "แถวที่ปิด active ต้องไม่ขึ้นใน dropdown ของหน้าเอกสาร แต่เอกสารเก่ายังแสดงชื่อเดิมได้"),
     ],
 }
 
@@ -2997,7 +3223,7 @@ def document_detail_role_profiles() -> list[dict[str, Any]]:
                 "เพิ่มเอกสารแนบและส่ง action ได้",
             ],
             "fields": [
-                ["คำนวณเงินชดเชย", "baseCompensationAmount, totalCompensatePercent, totalCompensationAmount, approvalLimitIndicator", "read-only; แสดงช่วงวงเงินอนุมัติจาก API (<=50,000 จบที่ GM · 50,001-300,000 ผ่าน AVP ตาม SDD GI)"],
+                ["คำนวณเงินชดเชย", "baseCompensationAmount, totalCompensatePercent, totalCompensationAmount, approvalLimitIndicator", "read-only; แสดงเกณฑ์วงเงินอนุมัติจาก API (< 100,000 จบที่ GM · ≥ 100,000 ส่ง AVP · มติ 2026-08-18)"],
                 ["เอกสารแนบ", "file, fileName, attachmentType, remark", "เพิ่มไฟล์ได้; ขนาด <= 5 MB; extension ต้องอยู่ใน allowlist"],
                 ["แผงพิจารณา", "result, comment", "result required; comment ตาม actionOptions.requireComment"],
             ],
@@ -3066,7 +3292,7 @@ def document_detail_role_profiles() -> list[dict[str, Any]]:
                 "FE แสดงข้อความช่วยตัดสินจากยอดชดเชยรวม แต่ไม่คำนวณปลายทาง action เอง",
             ],
             "fields": [
-                ["ข้อมูลประกอบอนุมัติ", "totalCompensationAmount, approvalLimitIndicator", "read-only จาก API; ใช้แสดงช่วงวงเงินอนุมัติ (<=50,000 จบที่ GM · 50,001-300,000 ผ่าน AVP ตาม SDD GI)"],
+                ["ข้อมูลประกอบอนุมัติ", "totalCompensationAmount, approvalLimitIndicator", "read-only จาก API; ใช้แสดงเกณฑ์วงเงินอนุมัติ (< 100,000 จบที่ GM · ≥ 100,000 ส่ง AVP ตาม SDD GI)"],
                 ["เอกสารแนบ", "file, fileName, attachmentType, remark", "เพิ่มไฟล์ได้; ขนาด <= 5 MB; extension ต้องอยู่ใน allowlist"],
                 ["แผงพิจารณา", "result, comment", "result required; comment ตาม actionOptions.requireComment"],
             ],
@@ -3322,7 +3548,7 @@ def document_detail_role_topic(profile: dict[str, Any]) -> Topic:
         ],
         [
             ApiSpec("GET", "/api/v1/documents/{docNo}", f"โหลด role profile {role_profile_code(profile)} สำหรับหน้า detail", {"docNo": "2026/00123"}, {"docNo": "2026/00123", "statusCode": profile["code"], "viewerRbacRoleCode": "R-XX", "roleProfileCode": role_profile_code(profile), "visibleSections": profile["visible"], "editableSections": profile["editable"], "actionOptions": [{"value": row[0], "label": row[0], "requireComment": "ต้องกรอก" in row[1]} for row in profile["actions"]]}),
-            ApiSpec("POST", "/api/v1/documents/{docNo}/actions", f"ตัวอย่าง positive-path จาก section {profile['code']}; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม 50,001-300,000 บาท และจบที่ GM เมื่อ <= 50,000 บาท (SDD GI)", {"result": forward_action[0], "comment": "ส่งดำเนินการตามลำดับ"}, {"statusCode": forward_action[2], "nextSection": forward_action[1], "message": "submitted"}),
+            ApiSpec("POST", "/api/v1/documents/{docNo}/actions", f"ตัวอย่าง positive-path จาก section {profile['code']}; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม ≥ 100,000 บาท และจบที่ GM เมื่อ < 100,000 บาท (มติ 2026-08-18)", {"result": forward_action[0], "comment": "ส่งดำเนินการตามลำดับ"}, {"statusCode": forward_action[2], "nextSection": forward_action[1], "message": "submitted"}),
         ],
         [
             "Load document detail",
@@ -3456,7 +3682,7 @@ def document_create_update_extra_blocks() -> list[dict[str, Any]]:
                 ["3. Start transaction", "เปิด transaction และ lock sequence row ของปี ค.ศ.", "lock timeout คืน 409/503 ตามมาตรฐาน platform"],
                 ["4. Generate docNo", "เพิ่ม running_no และประกอบ doc_no", "ยังไม่ส่ง response จนกว่า commit สำเร็จ"],
                 ["5. Insert document", "insert compensation_documents และ child rows เริ่มต้น", "fail ต้อง rollback sequence/document"],
-                ["6. Open first task", "เรียก initialize + add-prepared-approver (state 06) ของ @srm/glb-workflow ภายใน transaction boundary ที่กำหนด — ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน · ดู LLDD-BE-Workflow-Engine-Definition 5.3)", "fail ต้อง rollback document"],
+                ["6. Open first task", "เรียก initializeWorkflow + addPreApprover (state 06) ของ @srm/glb-workflow ภายใน transaction boundary ที่กำหนด — ชื่อ function ตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3", "fail ต้อง rollback document"],
                 ["7. Commit", "commit transaction (ไม่มีการเขียน audit ของ master แล้ว · ยกเลิกระบบ audit ของ master 2026-08-07)", "หลัง commit จึง return docNo/statusCode"],
             ],
         ),
@@ -3471,33 +3697,34 @@ def document_create_update_extra_blocks() -> list[dict[str, Any]]:
             ],
         ),
         h(2, "5.4 docNo Generator SQL Reference"),
-        code("""-- Lock sequence row for the Buddhist year before generating docNo.
-SELECT year, next_running_no
-FROM document_number_sequences
-WHERE year = :year
-FOR UPDATE;
+        code("""-- ออกเลขเอกสาร YYYY/xxxxx แบบ atomic ต่อ "ปี ค.ศ." (ห้ามใช้ พ.ศ. — ดู api.md มติ 2026-08-06)
+-- ตารางจริงคือ document_running_numbers (year · last_running_no · updated_at) ไม่มีคอลัมน์ created_at
 
--- Create sequence row when the year is first used.
-INSERT INTO document_number_sequences (year, next_running_no, created_at, updated_at)
-SELECT :year, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-WHERE NOT EXISTS (
-    SELECT 1 FROM document_number_sequences WHERE year = :year
-);
+-- 1) สร้างแถวของปีนี้ถ้ายังไม่มี (idempotent)
+INSERT INTO document_running_numbers (year, last_running_no)
+VALUES (:year, 0)
+ON CONFLICT (year) DO NOTHING;
 
--- Consume the next number inside the same transaction as document creation.
-UPDATE document_number_sequences
-SET next_running_no = next_running_no + 1,
+-- 2) กินเลขถัดไปในทรานแซกชันเดียวกับการสร้างเอกสาร — UPDATE ... RETURNING ล็อกแถวให้เอง
+--    กัน batch (Job 8) กับผู้ใช้สร้างพร้อมกันแล้วได้เลขชนกัน
+UPDATE document_running_numbers
+SET last_running_no = last_running_no + 1,
     updated_at = CURRENT_TIMESTAMP
 WHERE year = :year
-RETURNING year, next_running_no;
+RETURNING last_running_no;          -- → :runningNo
 
+-- 3) docNo = :year || \'/\' || lpad(:runningNo::text, 5, \'0\')   เช่น 2026/00123
+--    ⚠️ ต้องใส่ impact_process_id ทุกครั้ง — เป็น NOT NULL UNIQUE (หนึ่ง impact process = หนึ่งเอกสาร)
 INSERT INTO compensation_documents (
-    doc_no, year, running_no, impacted_store_code, impact_month,
-    new_store_code, round_no, source, status_code, created_by, created_at
+    doc_no, year, running_no,
+    impact_process_id, impacted_store_code, impact_month, new_store_code,
+    round_no, source, status_code, current_section_code, created_by
 ) VALUES (
-    :docNo, :year, :runningNo, :impactedStoreCode, :impactMonth,
-    :newStoreCode, :roundNo, :source, '06', :userId, CURRENT_TIMESTAMP
-);""", "sql"),
+    :docNo, :year, :runningNo,
+    :impactProcessId, :impactedStoreCode, :impactMonth, :newStoreCode,
+    :roundNo, :source, :statusInit, \'06\', :userId
+);
+-- created_at / total_compensation_amount / version_no มี DEFAULT อยู่แล้ว ไม่ต้องส่ง""", "sql"),
     ]
 
 
@@ -3811,7 +4038,7 @@ def new_be_design_topics() -> list[Topic]:
             4.0,
             24,
             BANK_BE_OWNER,
-            "กำหนด DDL ของ target schema 20 ตาราง พร้อม index/constraint/seed และสคริปต์ deploy ให้ทุกเอกสาร BE อ้างอิงโครงเดียวกัน — เป็น blocker ที่ต้องปิดในสัปดาห์แรก",
+            "กำหนด DDL ของ target schema 19 ตาราง พร้อม index/constraint/seed และสคริปต์ deploy ให้ทุกเอกสาร BE อ้างอิงโครงเดียวกัน — เป็น blocker ที่ต้องปิดในสัปดาห์แรก",
             [],
             [
                 "DDL ครบ 19 ตารางของ target schema (โซน A 7 · โซน B 9 · โซน C 3)",
@@ -3830,14 +4057,14 @@ def new_be_design_topics() -> list[Topic]:
                 ("fcs_qssi_score", "ตารางเดิมของ sps_store", "ห้าม CREATE TABLE ใหม่", "มีอยู่จริง 23,958,780 แถว + import pipeline ใช้งานอยู่ (POST /performance/import-qssi · staging fcs_tmp_qssi_score)"),
             ],
             [
-                ("รัน DDL baseline", "deploy script", "psql -f 01_schema.sql", "สร้าง 20 ตารางตามลำดับ dependency"),
+                ("รัน DDL baseline", "deploy script", "psql -f 01_schema.sql", "สร้าง 18 ตารางตามลำดับ dependency"),
                 ("รัน index/constraint", "deploy script", "psql -f 02_index.sql", "index/unique/check ครบก่อนเปิด SIT"),
                 ("รัน seed", "deploy script", "psql -f 03_seed.sql", "master ที่ระบบต้องมีตั้งแต่วันแรก"),
                 ("Rollback", "deploy script", "psql -f 99_rollback.sql", "DROP ย้อนลำดับ · ห้ามแตะตารางของระบบ SBP เดิม"),
             ],
             [],
             [
-                "ยืนยันรายการ 20 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL",
+                "ยืนยันรายการ 19 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL",
                 "เขียน 01_schema.sql เรียงตาม dependency: โซน C master -> โซน A pipeline -> โซน B document",
                 "เขียน 02_index.sql แยกไฟล์ เพื่อให้ rerun/เพิ่ม index ภายหลังได้โดยไม่แตะ schema",
                 "เขียน 03_seed.sql เฉพาะ master ที่ระบบต้องมีตั้งแต่วันแรก",
@@ -3847,7 +4074,7 @@ def new_be_design_topics() -> list[Topic]:
             ],
             [
                 "DDL รันบนฐานว่างได้ครบในครั้งเดียวโดยไม่มี error ลำดับ FK",
-                "จำนวนตารางที่สร้างจริง = 20 ตาราง ตรงกับ database.md",
+                "จำนวนตารางที่สร้างจริง = 18 ตาราง (19 ในโครง ลบ fcs_qssi_score ที่ reuse) ตรงกับ database.md",
                 "ไม่มี CREATE TABLE ของ workflow engine, store master, common_code, mas_param, business_user, email_template หรือ fcs_qssi_score",
                 "ทุกตารางมี PK และทุก FK ชี้ไปตารางที่มีอยู่จริงในสคริปต์เดียวกัน",
                 "rollback script ลบเฉพาะตารางของ SBPGI",
@@ -3878,7 +4105,7 @@ def new_be_design_topics() -> list[Topic]:
             "ออกแบบการย้ายข้อมูลจากระบบเดิม (Oracle FCS_FRN ฝั่ง FGI/FCS + SQL Server CPA_FRN_FGI ฝั่ง K2) เข้าสู่ target schema ของ SBPGI พร้อมแผน cutover, reconcile และ rollback",
             [],
             [
-                "Source-to-target mapping ระดับตาราง/คอลัมน์ (ORA FCS_FRN · MSSQL CPA_FRN_FGI -> 20 ตาราง)",
+                "Source-to-target mapping ระดับตาราง/คอลัมน์ (ORA FCS_FRN · MSSQL CPA_FRN_FGI -> 19 ตาราง)",
                 "การแปลงคีย์: polymorphic TRANSACTION_PK -> typed FK · CompDocumentID -> doc_no · IMPACT_PROCESS_ID -> impact_process_id",
                 "แผน cutover เป็นรอบ (dry-run -> delta -> freeze -> final) และ rollback",
                 "Reconcile: นับแถว ยอดเงิน และ checksum ต่อโซน",
@@ -3983,7 +4210,7 @@ def new_be_design_topics() -> list[Topic]:
                 "ไม่มี endpoint ใดของ SBPGI ออก/ตรวจ JWT เอง",
                 "ทุก response ผ่าน envelope เดียวกับ store-backend",
                 "ไม่มี credential ของ S3/SMTP อยู่ในโค้ดหรือ config ของ SBPGI",
-                "วงเงินอนุมัติ GM 50,000 / AVP 300,000 อ่านจาก common_code (SBPGI_APPROVE_LIMIT) ไม่ hardcode",
+                "วงเงินอนุมัติ เกณฑ์เดียว 100,000 อ่านจาก common_code (SBPGI_APPROVE_LIMIT) ไม่ hardcode",
                 "objectKey ไม่ถูกส่งออกไปที่ FE",
                 "ข้อค้างตัดสินใจเรื่อง email และ attachment ถูกบันทึกเป็นข้อค้าง ไม่ถูกตัดสินในเอกสารนี้",
             ],
@@ -3998,7 +4225,8 @@ def new_be_design_topics() -> list[Topic]:
             db_tables=[
                 ("mas_param (sps_store)", "R", "ค่ากำหนดกลาง 93,752 แถว"),
                 ("common_code / common_code_type (sps_store)", "R", "2,609 / 376 แถว · วงเงินอนุมัติ SBPGI_APPROVE_LIMIT"),
-                ("email_template / email_sent (sps_store)", "R/W", "85 / 5,214 แถว · เทมเพลตและ log การส่ง"),
+                ("email_template (sps_store)", "R", "85 แถว · SBPGI/lib อ่านอย่างเดียว — seed 8 แถวของ SBPGI ทำครั้งเดียวตอน migration ไม่ใช่ runtime"),
+                ("email_sent (sps_store)", "W (โดย email-lib)", "5,214 แถว · lib เขียน log ให้เอง SBPGI ไม่ INSERT เอง (⚠️ คอลัมน์ผู้ส่งคือ send_by)"),
                 ("business_user (sps_store)", "R", "12,752 แถว · ข้อมูลผู้ใช้/ผู้อนุมัติ"),
                 ("store / mas_store (sps_store)", "R", "19,402 / 19,647 แถว · master ร้าน"),
                 ("document_attachments (SBPGI)", "R/W", "metadata ไฟล์แนบ · ไฟล์จริงอยู่บน S3 ของระบบเดิม"),
@@ -4016,17 +4244,17 @@ def new_be_design_topics() -> list[Topic]:
             [
                 "ลงทะเบียน workflow version ของ SBPGI 1 version (url_main + url_param_mapping)",
                 "นิยาม state/status 5 ขั้น 06 -> 08 -> 01 -> 02 -> 03 และปลายทางจบ flow",
-                "นิยาม route ของทุกปุ่ม · การแตก route ตามวงเงินอนุมัติ GM 50,000 / AVP 300,000 เขียนเป็น**ตัวอย่างทางเลือก B เท่านั้น** — แหล่งเก็บวงเงินยังไม่ตัดสิน (มติเดิมคือ common_code · ดูข้อค้าง 5.6)",
-                "สำรวจทางเลือกผู้อนุมัติ: workflow_group / workflow_group_map เทียบกับ add-prepared-approver รายคน — **ยังไม่ตัดสิน** (ดูข้อค้าง 5.6)",
+                "นิยาม route ของทุกปุ่ม · การแตก route ตามวงเงินอนุมัติ เกณฑ์เดียว 100,000 เขียนเป็น**ตัวอย่างทางเลือก B เท่านั้น** — แหล่งเก็บวงเงินยังไม่ตัดสิน (มติเดิมคือ common_code · ดูข้อค้าง 5.6)",
+                "สำรวจทางเลือกผู้อนุมัติ: workflow_group / workflow_group_map เทียบกับ addPreApprover รายคน — **ยังไม่ตัดสิน** (ดูข้อค้าง 5.6)",
                 "สำรวจทางเลือก workflow_part / workflow_part_display สำหรับคุมการแสดงผลรายส่วน — **ยังไม่ตัดสิน** ว่าจะใช้แทน data-editrole ของ SBPGI หรือไม่ (ดูข้อค้าง 5.5/5.6)",
                 "ความเสี่ยงและข้อค้างของ engine (ไม่มี PK/index · ชื่อ function ขัดกัน 3 ชุด) — ยังไม่ตัดสิน",
             ],
             [
                 ("versionId", "integer", "1 ระบบ = 1 version", "SBPGI ขอ version ใหม่จากทีมเจ้าของ library"),
-                ("referenceId", "string unique", "required ตอน initializeWorkflow", "ยังไม่ตัดสินว่าใช้ doc_no หรือ surrogate id (DP-1)"),
+                ("referenceId", "string unique", "required ตอน initializeWorkflow", "✅ DP-1 ปิดแล้ว 2026-08-17 = `compensation_documents.id` (surrogate) แปลงเป็น string — `reference_id` ของ engine เป็น varchar(255)"),
                 ("state_id", "integer running ตาม version", "1 state มีได้หลาย status", "map 5 ขั้นของ SBPGI: 06/08/01/02/03 + state จบ"),
                 ("event", "save|submit|approve|reject|cancel|sendback", "ค่าเริ่มต้นของ engine", "ปุ่มไทยของ SBPGI map ลง event เหล่านี้ผ่าน common_code (code_type=SBPGI_DECISION) — ตาราง decisions ถูกตัดตามมติ DP-9 (2026-08-10)"),
-                ("condition_json", '{"field","operator","value"}', "operator: == != > < >= <=", 'ใช้ {"field":"amount","operator":"<=","value":50000} แยก route GM/AVP'),
+                ("condition_json", '{"field","operator","value"}', "operator: == != > < >= <=", 'ใช้ {"field":"amount","operator":"<","value":100000} แยก route GM/AVP'),
                 ("eventParam", "object", "ส่งมาพร้อม event", "SBPGI ส่ง {\"amount\": ยอดชดเชยรวม} ให้ engine เลือก route เอง"),
                 ("part_display_type", "READ | WRITE", "ต้องยืนยันค่าจริงกับทีม library", "ไฟล์ต้นฉบับสะกดว่า WRTIE ทุกแถวของชีต sample data"),
                 ("url_main / url_param_mapping", "string", "required ตอน register version", "ทำให้ inbox กลาง (GET /api/workflow/pending) ลิงก์กลับหน้าเอกสารของ SBPGI ได้"),
@@ -4044,7 +4272,7 @@ def new_be_design_topics() -> list[Topic]:
                 "ขอ workflow version ใหม่จากทีมเจ้าของ @srm/glb-workflow (1 ระบบ = 1 version)",
                 "ลงทะเบียน state/status 5 ขั้นของ SBPGI + state จบ flow",
                 "ลงทะเบียน route ทุกเส้น พร้อม seq · ส่วน condition_json ของวงเงินอนุมัติให้ใส่ **ก็ต่อเมื่อเจ้าของโครงการเลือกทางเลือก B ของข้อค้าง 5.6** (ทางเลือก A = อ่านวงเงินจาก common_code SBPGI_APPROVE_LIMIT ตามมติเดิม แล้วให้ route แยกด้วยค่าที่ SBPGI ส่งมาแทน)",
-                "**[conditional — ทำเมื่อเลือกทางเลือก A ของข้อค้าง \"ผู้อนุมัติของ SBPGI\" ใน 5.6]** ลงทะเบียน workflow_group / workflow_group_map สำหรับผู้อนุมัติแบบกลุ่ม · ถ้าเลือกทางเลือก B ให้ใช้ add-prepared-approver ระบุรายคนแทน",
+                "**[conditional — ทำเมื่อเลือกทางเลือก A ของข้อค้าง \"ผู้อนุมัติของ SBPGI\" ใน 5.6]** ลงทะเบียน workflow_group / workflow_group_map สำหรับผู้อนุมัติแบบกลุ่ม · ถ้าเลือกทางเลือก B ให้ใช้ addPreApprover ระบุรายคนแทน",
                 "**[conditional — ทำเมื่อเลือกทางเลือก A ของข้อค้าง `workflow_part_display` ใน 5.6]** ลงทะเบียน workflow_part + workflow_part_display ของส่วนต่าง ๆ ในหน้าเอกสาร · ถ้าเลือกทางเลือก B ให้คงกลไก visibleSections/editableSections ของ SBPGI",
                 "กรอก url_main / url_param_mapping ให้ inbox กลางลิงก์กลับหน้าเอกสารได้",
                 "ทดสอบเดิน flow ครบทุก route บน environment ทดสอบ",
@@ -4060,17 +4288,17 @@ def new_be_design_topics() -> list[Topic]:
             ],
             [
                 "initializeWorkflow ซ้ำด้วย referenceId เดิมต้องไม่เกิด transaction ที่สอง",
-                "ยอดชดเชย 50,000 ต้องจบที่ GM · 50,001 ต้องวิ่งต่อ AVP",
+                "ยอดชดเชย 99,999 ต้องจบที่ GM · 100,000 ต้องวิ่งต่อ AVP (เกณฑ์เดียว · มติ 2026-08-18)",
                 "ผู้ใช้ที่ไม่ใช่ current_approver ต้องไม่ได้ปุ่มใด ๆ จาก getPermissionEvents",
                 "[conditional · เฉพาะทางเลือก A ของ workflow_part_display] display[] ของ state 01 ต้องเปิด WRITE เฉพาะส่วนที่ section 01 แก้ได้",
                 "getPendingFlowByUser ต้องคืน url_main ที่เปิดกลับหน้าเอกสารได้จริง",
                 "เดิน flow จนจบแล้ว workflow_history มีครบทุกขั้น",
             ],
             db_tables=[
-                ("workflow / workflow_version / workflow_state / workflow_status / workflow_event / workflow_route (sps_store)", "R/W", "ตารางนิยาม flow — ลงทะเบียนครั้งเดียวตอน setup"),
-                ("workflow_group / workflow_group_map (sps_store)", "R/W", "กลุ่มผู้อนุมัติ · map ผ่าน view ที่ where ด้วย user_id/group_id ได้"),
-                ("workflow_transaction / workflow_history / workflow_approver (sps_store)", "R/W", "ข้อมูลรันไทม์ 19,283 / 38,010 / 96,542 แถว (ตรวจ 2026-08-07)"),
-                ("workflow_part / workflow_part_display (sps_store)", "R/W", "คุมการแสดงผลรายส่วนต่อ state (READ/WRITE)"),
+                ("workflow / workflow_version / workflow_state / workflow_status / workflow_event / workflow_route (sps_store)", "R + W ครั้งเดียวตอน setup", "ตารางนิยาม flow — SBPGI ขอ **version ใหม่ 1 ชุด** ห้ามแก้ version ของระบบอื่น · `workflow_route.email_id` คือเลข template ที่ SBPGI อ่านไปเรียก email-lib"),
+                ("workflow_group / workflow_group_map (sps_store)", "R + W ครั้งเดียวตอน setup", "กลุ่มผู้อนุมัติ · map ผ่าน view ที่ where ด้วย user_id/group_id ได้"),
+                ("workflow_transaction / workflow_history / workflow_approver (sps_store)", "R (เขียนผ่าน lib เท่านั้น)", "ข้อมูลรันไทม์ 19,283 / 38,010 / 96,542 แถว (ตรวจ 2026-08-07) — 🔴 **ห้าม INSERT/UPDATE ตรง** ต้องผ่าน `eventWorkflow()` / `addPreApprover()` (`workflow_transaction` ไม่มี PK/index · DP-2 การเขียนตรงเสี่ยงทำ state พัง)"),
+                ("workflow_part / workflow_part_display (sps_store)", "R + W ครั้งเดียวตอน setup", "คุมการแสดงผลรายส่วนต่อ state (READ/WRITE)"),
             ],
         ),
     ]
@@ -4370,30 +4598,65 @@ def topics() -> list[Topic]:
             6.5,
             55,
             FE_OWNER_KITTISAK,
-            "สร้างหน้าจอ master ที่ SBPGI ดูแลเอง: ปัจจัยภายนอก (SCR-09) และรายชื่อร้านคู่แข่ง (master แบรนด์ 01-11)",
-            ["k2-operators-01.png", "k2-factors-01.png", "k2-permissions-01.png", "k2-permissions-02.png"],
-            ["Operator master", "External factor master", "Menu permission", "CRUD modal", "Audit/reason"],
+            "สร้างหน้าจอ master ที่ SBPGI ดูแลเอง 2 หน้า: ปัจจัยภายนอก (SCR-09 · k2-factors.html) "
+            "และรายชื่อแบรนด์ร้านคู่แข่ง (k2-competitors.html · รหัส 01-11 ไทย+อังกฤษ) — "
+            "หน้าผู้ปฏิบัติงาน/สิทธิ์เมนู/ตั้งค่าระบบ ไม่อยู่ในขอบเขตแล้ว (ใช้ของระบบ SBP เดิม)",
+            ["k2-factors-01.png", "k2-competitors-01.png"],
+            ["External factor master (SCR-09)", "Competitor brand master", "CRUD modal", "Active/inactive toggle"],
             [
-                ("employeeName", "string", "required", "เลือกจาก popup/search"),
-                ("position", "dropdown", "required", "เลือกตำแหน่ง"),
-                ("factorCode", "string", "required unique", "ห้ามซ้ำ"),
-                ("reason", "text", "required on edit/delete", "บันทึก audit"),
-                ("configValue", "string/number/boolean", "validate by type", "ห้ามแก้ is_editable=false"),
+                ("factorCode", "string", "required · unique · ห้ามซ้ำ", "คีย์ของปัจจัยภายนอก — แก้ไม่ได้หลังสร้าง"),
+                ("factorName", "string", "required", "ชื่อปัจจัยภายนอกที่แสดงในหน้าเอกสาร"),
+                ("description", "text", "optional", "คำอธิบายเพิ่มเติม"),
+                ("competitorCode", "string(30)", "required · unique · รหัส 01-11", "คีย์ของแบรนด์คู่แข่ง — feed dropdown ร้านคู่แข่งในหน้าเอกสาร"),
+                ("nameTh", "string(200)", "required", "ชื่อแบรนด์ภาษาไทย"),
+                ("nameEn", "string(200)", "required", "ชื่อแบรนด์ภาษาอังกฤษ (ระบบเดิมเก็บทั้งสองภาษา)"),
+                ("remark", "string(500)", "optional", "คอลัมน์ รายละเอียดเพิ่มเติม ของหน้า k2-competitors.html"),
+                ("active", "boolean", "default true", "ปิดใช้งานแทนการลบเมื่อถูกอ้างในเอกสารแล้ว"),
             ],
             [
-                ("Add/Edit/Delete", "modal action", "POST/PUT/DELETE master API", "update table + audit"),
-                ("Search employee", "แว่นขยาย", "employee backend เดิมของระบบ SBP (ไม่ใช่ /api/v1 ของ SBPGI)", "select employee"),
-                ("Save permission", "toggle permission", "จัดการที่หน้า /setting/manage-user-rights ของระบบเดิม — SBPGI ไม่มี endpoint นี้", "save matrix"),
+                ("Add/Edit", "modal action", "POST/PUT ของ master ที่กำลังเปิดอยู่", "ปิด modal + reload table"),
+                ("Delete", "ปุ่มถังขยะ + confirm", "DELETE master API", "409 ถ้าถูกอ้างในเอกสารแล้ว → ให้ปิด active แทน"),
+                ("Toggle active", "switch ในตาราง", "PUT พร้อม active", "แถวที่ปิดใช้งานไม่ขึ้นใน dropdown ของหน้าเอกสาร"),
             ],
             [
-                ApiSpec("GET", "/api/v1/factors", "SCR-09 list/filter ปัจจัยภายนอก", {"q": "ถนน", "active": True, "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 1, "items": [{"factorCode": "F001", "factorName": "ก่อสร้างถนน", "description": "ผลกระทบจากการก่อสร้าง", "active": True, "updatedAt": "2026-07-22T10:00:00+07:00"}]}),
-                ApiSpec("POST", "/api/v1/factors", "SCR-09 เพิ่มปัจจัยภายนอก", {"factorCode": "F001", "factorName": "ก่อสร้างถนน", "description": "ผลกระทบจากการก่อสร้าง", "active": True, "reason": "เพิ่ม master"}, {"factorCode": "F001", "message": "saved", "auditId": 903}),
-                ApiSpec("PUT", "/api/v1/factors/{code}", "SCR-09 แก้ไขปัจจัยภายนอก", {"factorName": "ก่อสร้างถนนระยะยาว", "description": "กระทบการเข้าร้าน", "active": True, "reason": "ปรับคำอธิบาย"}, {"factorCode": "F001", "message": "saved", "auditId": 904}),
-                ApiSpec("DELETE", "/api/v1/factors/{code}", "SCR-09 ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน", {"reason": "ยกเลิกค่า master"}, {"factorCode": "F001", "deleted": True, "auditId": 907}),
+                ApiSpec("GET", "/api/v1/factors", "SCR-09 list/filter ปัจจัยภายนอก",
+                        {"q": "ถนน", "active": True, "page": 1, "size": 20},
+                        {"page": 1, "size": 20, "total": 1,
+                         "items": [{"factorCode": "F001", "factorName": "ก่อสร้างถนน", "description": "ผลกระทบจากการก่อสร้าง", "active": True}]}),
+                ApiSpec("POST", "/api/v1/factors", "SCR-09 เพิ่มปัจจัยภายนอก",
+                        {"factorCode": "F001", "factorName": "ก่อสร้างถนน", "description": "ผลกระทบจากการก่อสร้าง", "active": True},
+                        {"factorCode": "F001", "created": True}),
+                ApiSpec("PUT", "/api/v1/factors/{code}", "SCR-09 แก้ไขปัจจัยภายนอก",
+                        {"factorName": "ก่อสร้างถนนระยะยาว", "description": "กระทบการเข้าร้าน", "active": True},
+                        {"factorCode": "F001", "updated": True}),
+                ApiSpec("DELETE", "/api/v1/factors/{code}", "SCR-09 ลบปัจจัยภายนอกที่ยังไม่ถูกอ้างในเอกสาร",
+                        {}, {"factorCode": "F001", "deleted": True}),
+                ApiSpec("GET", "/api/v1/competitors", "list แบรนด์คู่แข่ง (master 11 รายการ)",
+                        {"active": True},
+                        {"total": 11, "items": [{"competitorCode": "01", "nameTh": "แฟมิลี่มาร์ท", "nameEn": "FamilyMart", "remark": "", "active": True}]}),
+                ApiSpec("POST", "/api/v1/competitors", "เพิ่มแบรนด์คู่แข่ง",
+                        {"competitorCode": "12", "nameTh": "ร้านตัวอย่าง", "nameEn": "Sample Shop", "remark": "", "active": True},
+                        {"competitorCode": "12", "created": True}),
+                ApiSpec("PUT", "/api/v1/competitors/{code}", "แก้ไขแบรนด์คู่แข่ง",
+                        {"nameTh": "แฟมิลี่มาร์ท", "nameEn": "FamilyMart", "remark": "ปรับชื่อ", "active": True},
+                        {"competitorCode": "01", "updated": True}),
+                ApiSpec("DELETE", "/api/v1/competitors/{code}", "ลบแบรนด์คู่แข่งที่ยังไม่ถูกอ้างใน document_competitors",
+                        {}, {"competitorCode": "12", "deleted": True}),
             ],
-            ["Open master page", "Load table", "Open modal", "Validate required/reason", "Call API", "Reload table/audit"],
-            ["แก้ master ต้องมี reason", "factorCode ซ้ำไม่ได้", "permission toggle save ได้", "config type validate"],
-            ["add operator", "edit factor without reason", "duplicate factor", "save permission", "edit locked config"],
+            ["Open master page", "Load table", "Open modal", "Validate required/unique", "Call API", "Reload table"],
+            [
+                "factorCode และ competitorCode ห้ามซ้ำ (409 CODE_DUPLICATE)",
+                "nameTh และ nameEn ของคู่แข่งบังคับทั้งคู่",
+                "ลบไม่ได้ถ้าถูกอ้างใน document_external_factors / document_competitors → 409 ให้ปิด active แทน",
+                "ไม่มี reason และไม่มี audit log (ยกเลิกระบบ audit ของ master 2026-08-07)",
+            ],
+            [
+                "duplicate factorCode",
+                "duplicate competitorCode",
+                "competitor ไม่ใส่ nameEn ต้อง block",
+                "ลบ factor ที่ถูกอ้างในเอกสารแล้ว ต้องได้ 409",
+                "toggle active แล้ว dropdown ในหน้าเอกสารต้องไม่แสดงแถวนั้น",
+            ],
         ),
         Topic(
             "BE/LLDD-BE-API-Common-Contracts",
@@ -4617,7 +4880,7 @@ def topics() -> list[Topic]:
                 "Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N",
                 "If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason",
                 "If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun",
-                "If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initialize + add-prepared-approver at state 06 — function names UNCONFIRMED, 3 conflicting sets), then update fgi_impact_processes.workflow_generation_status=Y in one transaction",
+                "If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initialize + addPreApprover at state 06 — function names UNCONFIRMED, 3 conflicting sets), then update fgi_impact_processes.workflow_generation_status=Y in one transaction",
                 "Enqueue notification summary outside transaction after commit",
             ],
             [
@@ -4690,7 +4953,7 @@ def topics() -> list[Topic]:
                 ApiSpec("GET", "/api/v1/workflow-sections", "รายการ section 5 ขั้น", {}, {"items": [{"sectionCode": "06", "sectionName": "ฝ่าย SBP DSA"}]}),
             ],
             ["Validate query", "Read/write table by domain", "Return standard envelope for list endpoints"],
-            ["status label ต้องเป็น verbatim", "permission mutation ต้อง audit", "อีเมลทั้งหมดส่งโดย engine — SBPGI ไม่กำหนดผู้รับเอง (DP-5)", "Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้"],
+            ["status label ต้องเป็น verbatim", "permission mutation ต้อง audit", "SBPGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14)", "Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้"],
             ["store lookup", "status lookup", "permission save without reason", "email template reset", "(ตัดออก) audit log search"],
         ),
         Topic(
@@ -4774,7 +5037,7 @@ def topics() -> list[Topic]:
     base.extend(document_detail_role_topics())
     db_map = {
         "BE/LLDD-BE-API-Document-List-Search": [
-            ("workflow_transaction / workflow_approver (@srm/glb-workflow)", "R", "อ่าน inbox ผ่าน getPendingFlow()"),
+            ("workflow_transaction / workflow_approver (@srm/glb-workflow)", "R", "อ่าน inbox ผ่าน getPendingFlowByUser()"),
             ("compensation_documents", "R", "ค้นเอกสารตาม year/status/store"),
             ("impacted_stores", "R", "ชื่อร้าน ภาค และข้อมูลร้าน"),
             ("fgi_impact_sales_summaries", "R", "flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน"),
@@ -4799,16 +5062,16 @@ def topics() -> list[Topic]:
             ("consideration_logs", "R", "timeline/history"),
         ],
         "BE/LLDD-BE-API-Document-Workflow-Actions": [
-            ("workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow)", "R/W", "triggerEvent() เดิน state + บันทึก history"),
+            ("workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow)", "R (เขียนผ่าน lib)", "eventWorkflow() เดิน state + บันทึก history"),
             ("compensation_documents", "W", "อัปเดต status/current_section/result"),
             ("consideration_logs", "W", "บันทึกผลพิจารณาและ comment"),
-            ("workflow_transaction (@srm/glb-workflow)", "R/W", "กัน action ซ้ำด้วย getTransaction/getPermissionEvents ก่อน triggerEvent"),
+            ("workflow_transaction (@srm/glb-workflow)", "R (เขียนผ่าน lib)", "กัน action ซ้ำด้วย getTransaction/getPermissionEvents ก่อน eventWorkflow — ห้าม UPDATE ตรง"),
         ],
         "BE/LLDD-BE-API-Workflow-Instances": [
             ("fgi_impact_processes / fgi_impact_stores", "R/W", "อ่านข้อมูล impact และอัปเดต workflow_generation_status W/Y/N"),
             ("compensation_documents", "R/W", "create-if-missing จาก impact process และผูก docNo"),
-            ("workflow_transaction (@srm/glb-workflow)", "R/W", "initializeWorkflow แทน K2 StartInstance"),
-            ("workflow_approver (@srm/glb-workflow)", "W", "addPreparedApprover state 06"),
+            ("workflow_transaction (@srm/glb-workflow)", "W (โดย lib)", "initializeWorkflow() แทน K2 StartInstance — ห้าม INSERT ตรง"),
+            ("workflow_approver (@srm/glb-workflow)", "W", "addPreApprover state 06"),
             ("workflow_status / workflow_state (@srm/glb-workflow · sps_store)", "R", "lookup statusCode/status และ state แรก — ตาราง document_statuses/workflow_sections ของ SBPGI ถูกตัดแล้ว"),
             ("interface_transactions", "W", "บันทึกผลเรียกจาก Job 8b · ตาราง job_run_histories ถูกตัด 2026-08-06 — ผลการรันไปที่ application log"),
         ],
@@ -4824,7 +5087,8 @@ def topics() -> list[Topic]:
             ("workflow_status / workflow_state (@srm/glb-workflow · sps_store)", "R", "lookup สถานะ verbatim และ 5 ขั้น 06/08/01/02/03 — ไม่สร้างตารางของ SBPGI เอง"),
             ("business_user (SBP เดิม)", "R", "popup ค้นหาพนักงาน — SBPGI ไม่มีตาราง employees"),
             ("auth-backend groups / menus / permissions (ระบบเดิม)", "R", "RBAC/menu matrix — จัดการที่หน้า /setting/manage-user-rights เดิม · SBPGI อ่านผ่าน header x-user-permissions เท่านั้น ไม่มีตารางของตัวเอง"),
-            ("email_template + email_sent (SBP เดิม)", "R", "template และ log การส่ง — engine เป็นผู้ส่ง SBPGI แค่ผูก email_id ที่ workflow_route (DP-5)"),
+            ("email_template (SBP เดิม)", "R", "template — SBPGI อ่านผ่าน lib เท่านั้น ไม่แก้ของระบบเดิม"),
+            ("email_sent (SBP เดิม)", "W (โดย email-lib)", "log การส่ง — SBPGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง (DP-5 · 2026-08-14) · ⚠️ คอลัมน์ผู้ส่งคือ send_by ไม่ใช่ sent_by"),
         ],
         "BE/LLDD-BE-API-Report-and-Master-Data": [
             ("compensation_documents", "R", "แหล่งข้อมูลรายงานและ filter status/year"),
@@ -4834,13 +5098,14 @@ def topics() -> list[Topic]:
             ("external_factors", "R/W", "master ปัจจัยภายนอก"),
             ("competitors", "R/W", "master แบรนด์คู่แข่ง 11 รายการ (code 01-11 · name_th · name_en · remark) — feed dropdown ร้านคู่แข่งของหน้าเอกสาร"),
             ("document_competitors", "R", "ตรวจว่าแบรนด์ถูกอ้างในเอกสารก่อนลบ (409)"),
-            ("mas_param (SBP)", "R/W", "ค่ากำหนดกลางในตารางของระบบ SBP เดิม"),
+            ("mas_param (SBP)", "R", "ค่ากำหนดกลางของระบบ SBP เดิม — **อ่านอย่างเดียว** (หน้า Global Config ของ SBPGI ถูกลบ 2026-08-06 · ระบบเดิมเป็นผู้แก้)"),
         ],
         "BE/LLDD-BE-Job-Batch-Email-SRM": [
             ("(backend config: config file/env)", "R", "enabled, cron, params ของ batch — ตาราง job_configs ถูกตัด 2026-08-06 ไม่มีหน้าจอควบคุม"),
             ("(application log แบบ structured)", "W", "ประวัติการรันและสถานะล่าสุด — ตาราง job_run_histories ถูกตัด 2026-08-06"),
             ("interface_transactions", "R/W", "tracking file/API interface และ ACK"),
-            ("email_template (SBP)", "R/W", "subject_format/body_format ของระบบ SBP เดิม"),
+            ("email_template (SBP)", "R", "subject_format/body_format ของระบบ SBP เดิม — อ่านอย่างเดียว"),
+            ("email_sent (SBP)", "W (โดย email-lib)", "log การส่งของ batch — lib เขียนให้เอง"),
         ],
     }
     for topic in base:
@@ -4917,7 +5182,8 @@ def main_doc_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
         [
             t.track,
             t.title.replace("LLDD ", ""),
-            f"{t.hours}",
+            (f"{total_hours(t)}" if not unit_test_hours(t)
+             else f"**{total_hours(t)}** (impl {t.hours} + test {unit_test_hours(t)})"),
             f"{steps[t.file]}",
             t.owner,
             Path(t.file).name,
@@ -4929,6 +5195,7 @@ def main_doc_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
         key = topic.owner
         owner_stats.setdefault(key, {"hours": 0, "base": 0, "tracks": set(), "topics": []})
         owner_stats[key]["hours"] += topic.hours
+        owner_stats[key]["test"] = owner_stats[key].get("test", 0) + unit_test_hours(topic)
         owner_stats[key]["base"] += topic.base_hours
         owner_stats[key]["tracks"].add(topic.track)
         owner_stats[key]["topics"].append(topic.title.replace("LLDD FE - ", "").replace("LLDD BE - ", ""))
@@ -4953,13 +5220,14 @@ def main_doc_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
         if key not in owner_stats:
             continue
         hours = owner_stats[key]["hours"]
+        tests = owner_stats[key].get("test", 0)
         role = "FE & BE" if len(owner_stats[key]["tracks"]) > 1 else next(iter(owner_stats[key]["tracks"]))
-        owner_rows.append([role, key, hours, continuity[key]])
+        owner_rows.append([role, key, f"**{hours + tests}** (impl {hours} + test {tests})", continuity[key]])
 
     if set(owner_stats) != set(owner_order):
         raise ValueError("LLDD schedule must include all six developers")
     for owner, stats in owner_stats.items():
-        work_weeks = stats["hours"] / HOURS_PER_WEEK
+        work_weeks = (stats["hours"] + stats.get("test", 0)) / HOURS_PER_WEEK
 
     def summary_scope(topic: Topic, count: int) -> str:
         items = topic.scope[:count]
@@ -4977,17 +5245,17 @@ def main_doc_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
             "รูปหน้าจอในหัวข้อ FE ใช้อธิบายองค์ประกอบและพฤติกรรมที่ต้องพัฒนา",
             "ไม่รวมการพัฒนา Login/Auth ของ platform และกระบวนการภายนอกขอบเขต SBP Mall",
         ]),
-        h(1, "2.1 Input / Progress / Output Contract"),
+        h(2, "2.1 Input / Progress / Output Contract"),
         table(["Stage", "Contract for implementation"], [
             ["Input", "Topic inventory, owner assignment, estimates, screenshots, API/job/database scope, and schedule assumptions for the SBP Mall income-guarantee work package."],
             ["Progress", "Use this index to sequence FE/BE work, confirm owner workload, locate detailed topic documents, and track dependency readiness before development starts."],
             ["Output", "A single implementation index with activity plan, owner workload, FE/BE summaries, job breakdown, dependencies, and deliverable checklist."],
         ]),
         h(1, "3. High Level Activity Plan"),
-        table(["Track", "หัวข้อ", "ชั่วโมง", "ลำดับขั้น", "Owner", "เอกสารรายละเอียด"], rows),
+        table(["Track", "หัวข้อ", "ชั่วโมง (impl + unit test)", "ลำดับขั้น", "Owner", "เอกสารรายละเอียด"], rows),
         h(1, "4. Workload Balance and Continuity"),
         p("แผนนี้รวม owner ตามบุคคล (ปรับ 2026-08-07): ทีม 6 คนเหลือ FE 2 คนและ BE 4 คน โดย Peerakorn ย้ายจากสาย FE ไปสาย BE · Aphiwit เป็นเจ้าของ Database Structure + Data Migration/Cutover และ Job 1, 2, 3, 4, 6, 8 · Peerakorn รับ Job 5, 7, 9, 10 · Tunyatorn รับ Job 8b เพราะเป็น job เดียวที่เรียก workflow engine และถือ Workflow Engine Definition อยู่แล้ว ชั่วโมงคิดที่ 5 วันต่อสัปดาห์และ 6 ชั่วโมงต่อวัน (30 ชั่วโมงต่อสัปดาห์) · ตัวเลขในตารางเป็นค่าประเมินตรง ๆ **ไม่มีส่วนเผื่อ (buffer)**"),
-        table(["Role", "Owner", "ชั่วโมง", "Work Focus"], owner_rows),
+        table(["Role", "Owner", "ชั่วโมง (impl + unit test)", "Work Focus"], owner_rows),
         h(1, "5. FE Summary"),
         table(["FE Topic", "ชั่วโมง", "ลำดับขั้น", "Deliverable"], [[t.title.replace("LLDD FE - ", ""), t.hours, steps[t.file], summary_scope(t, 3)] for t in fe]),
         h(1, "6. Document Detail Role Pack"),
@@ -5152,7 +5420,7 @@ def lldd_api_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
                 ["Out of scope", "Login/Auth implementation ของ platform, SAP/SR process ภายนอก, abnormal-stores endpoints ที่ยัง comment รอตัดสินใจ"],
             ],
         ),
-        h(1, "2.1 Input / Progress / Output Contract"),
+        h(2, "2.1 Input / Progress / Output Contract"),
         table(["Stage", "Contract for implementation"], [
             ["Input", "Endpoint catalog, auth mode, role/access rules, request/response payloads, error conditions, and SQL references from the API plan data."],
             ["Progress", "For each endpoint, apply middleware, bind DTO, validate, authorize, execute service transaction, map response, and pass errors through the centralized handler."],
@@ -5195,7 +5463,7 @@ def lldd_api_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
             ["Test group", "Required cases"],
             [
                 ["Common contract", "401, 403, 404, 409, 422, pagination envelope, error `{code,message}`"],
-                ["Document workflow", "create duplicate, submit no result, invalid result for role profile, current task conflict, threshold 50,001-300,000 -> AVP route (SDD GI)"],
+                ["Document workflow", "create duplicate, submit no result, invalid result for role profile, current task conflict, threshold ≥ 100,000 -> AVP route (SDD GI)"],
                 ["Attachment", "file >5MB, unsupported type, AV blocked, download not owner, download clean file"],
                 ["Report", "year required, result required, CSV export with same filter as preview"],
                 ["Job admin", "manual run when disabled, manual run while RUNNING, editable params only, run histories"],
@@ -5211,7 +5479,7 @@ def database_table_catalog() -> list[list[Any]]:
     """19 target tables: 34 -> 24 (ตัด 10 ตารางที่ระบบ SBP เดิมมีอยู่แล้ว 2026-08-06)
     -> 22 (ตัด job_configs/job_run_histories พร้อม 2 tab ควบคุมของหน้า Batch Job)
     -> 21 (ตัด audit_logs 2026-08-07) -> 20 (ตัด decisions ไป common_code · มติ DP-9 2026-08-10).
-    แถวที่ zone = "REF" เป็น schema reference สำหรับ dev เท่านั้น ไม่นับใน 20 ตาราง.
+    แถวที่ zone = "REF" เป็น schema reference สำหรับ dev เท่านั้น ไม่นับใน 19 ตาราง.
     """
     return [
         ["A", "fgi_impact_stores", "id", "impact_process_id, impacted_store_code", "impact pair; sales request and allocation data"],
@@ -5230,7 +5498,7 @@ def database_table_catalog() -> list[list[Any]]:
         ["B", "compensation_histories", "id", "store_code, ref_doc_no", "compensation history/accounting export"],
         ["B", "document_cost_details", "id", "doc_no, new_store_code", "monthly cost detail per new store (ImpactCostDetail)"],
         ["B", "document_running_numbers", "year", "-", "atomic YYYY/xxxxx running number"],
-        ["C", "impacted_stores", "store_code", "store.store_code (SBP)", "SP impacted store subset"],
+        ["C", "impacted_stores", "store_code", "store.store_id (SBP · varchar(10))", "SP impacted store subset"],
         
         ["C", "external_factors", "factor_code", "-", "external factor master"],
         ["C", "competitors", "competitor_code", "-", "competitor master"],
@@ -5297,7 +5565,7 @@ CREATE TABLE competitors (
 
 -- ❌ ไม่สร้างตาราง email_templates ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ตาราง email_template ของระบบ SBP เดิม (email_template_id · subject_format · body_format) + email_sent
 
--- ❌ ไม่สร้างตาราง status_email_rules (ปิด DP-5 · 2026-08-11) — engine ส่งอีเมล workflow เองผ่าน workflow_route.email_id
+-- ❌ ไม่สร้างตาราง status_email_rules (ปิด DP-5 · แก้มติ 2026-08-14) — workflow ให้เลข template ผ่าน workflow_route.email_id แล้ว SBPGI เรียก email-lib ส่งเอง
 --    อีเมลของ batch job (EM-07 error · EM-08 watchdog) ไม่ใช่ workflow event → ส่งผ่าน @gosoft-sbp/email-lib ของระบบเดิม
 --    ผู้รับของ batch job อยู่ใน backend config (config file/env) ไม่ใช่ตารางของ SBPGI
 
@@ -5620,7 +5888,7 @@ def validate_schema_sql_contract() -> None:
             raise ValueError(f"API/DDL contract is missing canonical token: {token}")
     forbidden_api = [
         "u.password_hash",
-        # ตารางที่ถูกตัดออกจากโครง 20 ตาราง — ห้ามกลับมาเป็น SQL/DDL ที่ execute ได้ใน plan-api.html
+        # ตารางที่ถูกตัดออกจากโครง 19 ตาราง — ห้ามกลับมาเป็น SQL/DDL ที่ execute ได้ใน plan-api.html
         "FROM workflow_tasks",
         "INTO workflow_tasks",
         "FROM workflow_instances",
@@ -5650,7 +5918,7 @@ def lldd_database_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
             "มาตรฐานชื่อ table/column เป็น English lower_snake_case",
             "ตาราง job_configs / job_run_histories ถูกตัดออกจาก target schema เมื่อ 2026-08-06 พร้อม 2 แท็บควบคุมของหน้า Batch Job — cron/พารามิเตอร์อยู่ใน backend config · ผลการรันเขียน application log + interface_transactions",
         ]),
-        h(1, "2.1 Input / Progress / Output Contract"),
+        h(2, "2.1 Input / Progress / Output Contract"),
         table(["Stage", "Contract for implementation"], [
             ["Input", "Target table catalog, data zones, primary keys, foreign-key relationships, migration assumptions, index needs, and transaction boundaries."],
             ["Progress", "Use the data spine impact_process_id -> doc_no -> transaction_id -> approver_id (the last two live in sps_store.workflow_transaction / workflow_approver of @srm/glb-workflow, not in SBPGI tables) to implement APIs/jobs, then validate referential integrity and idempotency keys."],
@@ -5670,7 +5938,7 @@ def lldd_database_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
             [
                 [1, "impact_process_id", "หนึ่งร้านถูกกระทบ + หนึ่งงวด", "FGI/FCS pipeline, Job 8/8b"],
                 [2, "doc_no", "เอกสาร YYYY/xxxxx ปี ค.ศ.", "Document APIs, reports, attachments"],
-                [3, "transaction_id (@srm/glb-workflow)", "workflow transaction ต่อเอกสาร — reference_id ยังไม่ตัดสินว่าเป็น doc_no หรือ surrogate id (DP-1)", "Workflow engine ใน schema sps_store"],
+                [3, "transaction_id (@srm/glb-workflow)", "workflow transaction ต่อเอกสาร — `reference_id` = `compensation_documents.id` (surrogate · DP-1 ปิดแล้ว 2026-08-17)", "Workflow engine ใน schema sps_store"],
                 [4, "approver_id (@srm/glb-workflow)", "ผู้อนุมัติต่อ state — แทน task_id เดิม", "Inbox/current approver guard"],
                 [5, "employee_id / user_id", "identity — มาจาก BFF header ไม่ใช่ตารางของ SBPGI", "lookup, assignment"],
             ],
@@ -5690,7 +5958,7 @@ def lldd_database_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
                 ["fgi_impact_processes", "workflow_generation_status", "duplicate workflow flag on fgi_impact_stores"],
             ],
         ),
-        h(1, "5. Executable DDL — 21 Tables (+ schema reference)"),
+        h(1, "5. Executable DDL — 18 Tables (+ fcs_qssi_score ที่ reuse = 19 ในโครง · + schema reference)"),
         p("หัวข้อ 5.1-5.4 เป็น PostgreSQL DDL ของ **19 ตารางในโครง SBPGI** เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น ใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม"),
         *[
             block
@@ -5730,7 +5998,7 @@ def lldd_database_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
                 ["competitors", "แบรนด์คู่แข่ง 11 รายการ รหัส 01-11 (ไทย + อังกฤษ)"],
                 ["external_factors", "ปัจจัยภายนอกที่ใช้อยู่"],
                 ["email_template (ระบบ SBP เดิม)", "EM-01..EM-08"],
-                ["common_code / mas_param (ระบบ SBP เดิม)", "SBPGI_APPROVE_LIMIT: GM=50000 / AVP=300000 (SDD GI), impact radius 1/2 km, sales data threshold=60, growth rate threshold=-10"],
+                ["common_code / mas_param (ระบบ SBP เดิม)", "SBPGI_APPROVE_LIMIT: THRESHOLD=100000 (เกณฑ์เดียว · มติ 2026-08-18), impact radius 1/2 km, sales data threshold=60, growth rate threshold=-10"],
             ],
         ),
         h(1, "9. Migration and Verification Checklist"),
@@ -5766,8 +6034,15 @@ def reference_doc_links() -> list[dict[str, str]]:
             "id": "LLDD-Database",
             "title": "LLDD Database - Target Schema and Data Dictionary",
             "owner": "BE/DB",
-            "scope": "20-table target schema, data zones/spine, DDL reference, indexes, transaction rules, seed data",
+            "scope": "19-table target schema, data zones/spine, DDL reference, indexes, transaction rules, seed data",
             "base": "LLDD-Database",
+        },
+        {
+            "id": "LLDD-To-Be",
+            "title": "LLDD To-Be - SDD Traceability and Effort Allocation",
+            "owner": "PM/BA",
+            "scope": "สอบทานย้อนกลับ SDD GI หัวข้อ 1.9 To-Be -> เอกสาร FE/BE ที่ใช้ + ชั่วโมงต่อข้อ (implementation + unit test)",
+            "base": "LLDD-To-Be",
         },
     ]
 
@@ -5837,13 +6112,19 @@ def render_doc_rows(topics_list: list[Topic]) -> str:
 def estimate_html(topic: Topic) -> str:
     if is_document_detail_role_doc(topic.file):
         return "included<br><small>in Document Detail</small>"
-    return f"{topic.hours}h"
+    ut = unit_test_hours(topic)
+    if not ut:
+        return f"{topic.hours}h"
+    return f"{total_hours(topic)}h<br><small>impl {topic.hours} + test {ut}</small>"
 
 
 def estimate_md(topic: Topic) -> str:
     if is_document_detail_role_doc(topic.file):
         return "included in Document Detail"
-    return f"{topic.hours}h"
+    ut = unit_test_hours(topic)
+    if not ut:
+        return f"{topic.hours}h"
+    return f"{total_hours(topic)}h (impl {topic.hours} + test {ut})"
 
 
 def build_main_index_csv(all_topics: list[Topic]) -> None:
@@ -5859,16 +6140,22 @@ def build_main_index_csv(all_topics: list[Topic]) -> None:
     high_level = [t for t in counted if "/Jobs/" not in t.file]
     be_jobs = [t for t in counted if "/Jobs/" in t.file]
     steps = dependency_steps(counted)
-    lines = ["หัวข้อ,owner,ชั่วโมง,ลำดับขั้น"]
+    lines = ["หัวข้อ,owner,ชั่วโมงรวม,implementation,unit test,ลำดับขั้น"]
     for topic in high_level + be_jobs:
         title = topic.title.replace("LLDD ", "")
-        lines.append(f"{title},{topic.owner},{topic.hours},{steps[topic.file]}")
+        ut = unit_test_hours(topic)
+        lines.append(
+            f"{title},{topic.owner},{total_hours(topic)},{topic.hours},{ut},{steps[topic.file]}"
+        )
     (OUT / "Main-Index-FE-BE-Job.csv").write_text("﻿" + "\n".join(lines) + "\n", encoding="utf-8")
 
 
 def build_document_portal(all_topics: list[Topic]) -> None:
     groups = grouped_topics(all_topics)
-    total_hours = sum(t.hours for t in all_topics if not is_document_detail_role_doc(t.file))
+    _billable = [t for t in all_topics if not is_document_detail_role_doc(t.file)]
+    impl_hours = sum(t.hours for t in _billable)
+    ut_hours = sum(unit_test_hours(t) for t in _billable)
+    grand_hours = impl_hours + ut_hours
     main_pdf = "pdf/LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management.pdf"
     html = f"""<!doctype html>
 <html lang="th">
@@ -5909,7 +6196,7 @@ def build_document_portal(all_topics: list[Topic]) -> None:
       <div class="metric"><b>{len(all_topics) + len(reference_doc_links())}</b><small>LLDD documents</small></div>
       <div class="metric"><b>{len(groups['fe_core']) + len(groups['fe_roles'])}</b><small>FE documents</small></div>
       <div class="metric"><b>{len(groups['be_api']) + len(groups['be_ops']) + len(groups['be_jobs'])}</b><small>BE/API/Job documents</small></div>
-      <div class="metric"><b>{total_hours}</b><small>estimated hours</small></div>
+      <div class="metric"><b>{grand_hours}</b><small>estimated hours</small></div>
     </div>
     <div class="quick">
       <a href="{main_pdf}"><strong>Start here</strong>Main LLDD index PDF</a>
@@ -5974,7 +6261,8 @@ def build_document_portal(all_topics: list[Topic]) -> None:
         "",
         f"- Main index: [PDF](../{main_pdf})",
         f"- Documents: {len(all_topics) + len(reference_doc_links())}",
-        f"- Total estimate: {total_hours} hours",
+        f"- Total estimate: {grand_hours} hours  (implementation {impl_hours} + unit test {ut_hours})",
+        "- Unit test: BE/Job 30% · FE 25% ของชั่วโมง implementation · เอกสารสัญญา/ออกแบบไม่คิดแยก (ดู NO_UNIT_TEST_DOCS)",
         "- ขอบเขต 2026-08-07: ตัด `LLDD-FE-Overview` และ `LLDD-BE-API-Dashboard-Summary` · เพิ่ม `LLDD-BE-Database-Structure`, `LLDD-BE-Data-Migration-Cutover`, `LLDD-BE-Integration-SBP-Platform`, `LLDD-BE-Workflow-Engine-Definition` · เปลี่ยนชื่อ `FE-Master-Config` -> `FE-Master-Data`, `BE-API-Lookup-RBAC-Email` -> `BE-API-Lookup`, `BE-API-Report-Master-Config` -> `BE-API-Report-and-Master-Data`",
         "- ขอบเขต 2026-08-06: ตัด `LLDD-FE-Batch-Monitor` และ `LLDD-FE-Email-Template` ออกจากชุดส่งมอบ — หน้า Global Config/Email Template ลบทั้งฟีเจอร์ (ใช้ `mas_param`/`email_template` ของระบบ SBP เดิม) และหน้า Batch Job ย้ายไปกลุ่มเมนู Flow เหลือเฉพาะ Flowchart + Database ที่ใช้ (พารามิเตอร์อยู่ใน backend config)",
         f"- Plan: hours + dependency step only (no calendar dates) with 6-person team `{FE_OWNER_KITTISAK}`, `{FE_OWNER}` (FE) and `{BE_OWNER_BUTSABA}`, `{BE_OWNER}`, `{BE_OWNER_PEERAKORN}`, `{BANK_BE_OWNER}` (BE) — Peerakorn moved FE -> BE on 2026-08-07",
@@ -6036,6 +6324,222 @@ def write_manifest() -> dict[str, list[str]]:
     return manifest
 
 
+
+# ---------------------------------------------------------------------------
+# LLDD To-Be — สอบทานย้อนกลับจาก SDD GI หัวข้อ 1.9 To-Be Business Process
+# ที่มา: SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI (24/02/2026) สไลด์ 43-62
+# ---------------------------------------------------------------------------
+TOBE_ITEMS: list[tuple[str, str, str, list[str]]] = [
+    ("TB-1", "แก้ไขระบบการสร้างเอกสารชดเชยรายได้", "สไลด์ 43 · 46-51", [
+        "Step 1.0 — เพิ่ม**หน้าจองานค้าง** แสดงร้านที่เข้าเงื่อนไขการเปิดกระทบ · เลือกงานของตนเอง · filter · checkbox เลือกหลายเอกสาร · popup ยืนยัน",
+        "Step 1.0 — เจ้าหน้าที่ SBP DSA **คีย์ข้อมูลร้านเปิดกระทบเอง** เพื่อให้ระบบคำนวณและ Adjust ยอดชดเชย",
+        "Step 1.1 — ฝ่าย SBP DSA ตรวจสอบตัวเลข + ปุ่มพิจารณา 4 ปุ่ม (เห็นควรไม่ชดเชย · หยุดชดเชย · หน่วยงานส่งเสริมฯ SBP · เจ้าหน้าที่ SBP DSA)",
+        "**เปิดเรื่องซ้ำได้เองโดยไม่ต้องเปิด SR** — สาขาที่เคยถูกปฏิเสธ/หยุดชดเชย เปิดใหม่ได้ในเดือนเดียวกันหรือเดือนถัดไป",
+        "**auto-assign เจ้าของงานคนเดิม** เมื่อเป็นเคสต่อเนื่อง และเมื่อฝ่าย SBP DSA คลิก เห็นควรไม่ชดเชย",
+        "ยอดชดเชย 0: เดือน 1-3 คลิก หน่วยงานส่งเสริมธุรกิจ SBP · เดือน 4 คลิก หยุดชดเชยรายได้",
+        "สิทธิ์การมองเห็น — เจ้าหน้าที่/ฝ่าย SBP DSA ดูรายละเอียดได้ทุกสาขา ไม่จำกัดเฉพาะงานที่รับผิดชอบ",
+    ]),
+    ("TB-2", "ปรับสิทธิ์การตรวจสอบยอดชดเชยรายได้และกระบวนการทำงานของทีมส่งเสริม", "สไลด์ 52-58", [
+        "Step 2.1 — ลำดับตรวจสอบใหม่: หน่วยงานส่งเสริม (ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ, เจ้าหน้าที่อาวุโส) → GM ส่งเสริม",
+        "เปลี่ยนชื่อปุ่ม **ฝ่ายส่งเสริมธุรกิจ SBP → หน่วยงานส่งเสริมธุรกิจ SBP** (มีผลถึงชื่อสถานะเอกสารด้วย)",
+        "เพิ่มสิทธิ์ **เจ้าหน้าที่อาวุโส** ให้ส่งต่อ Flow ให้ GM ส่งเสริมได้ (ระดับตำแหน่งอ้างจาก HR Connect)",
+        "map ตำแหน่ง HR → กล่องอนุมัติ: AVP = ผู้ช่วยกรรมการผู้จัดการ · GM = ผู้จัดการทั่วไป/รอง/ผู้ช่วย · หน่วยงานส่งเสริม = ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ, เจ้าหน้าที่อาวุโส",
+        "**วงเงินอนุมัติ เกณฑ์เดียว 100,000 ต่อรายการ** — < 100,000 จบที่ GM · ≥ 100,000 ผ่าน GM แล้ว AVP อนุมัติ",
+        "**เห็นควรไม่ชดเชยจบทันที** ทั้งระดับหน่วยงานส่งเสริมและ GM (เลิกตีกลับให้ SBP DSA รับทราบก่อน)",
+    ]),
+    ("TB-3", "ยกเลิก Process บัญชี SBP ในการ Approve ค่าใช้จ่าย + เมนูรายงานใน SBP Mall", "สไลด์ 59-62", [
+        "ยกเลิกขั้นบัญชี Approve ยอดชดเชยรายได้ออกจาก workflow",
+        "Step 3 — สร้าง **เมนูใหม่ใน SBP Mall: รายงานตรวจสอบประกันรายได้** ให้ทีมบัญชีดึงข้อมูลไปใช้ต่อเอง",
+        "ตัวกรอง 7 ตัว — สถานะ (บังคับ) · รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ · Period Statement (ค.ศ.) · ประเภทร้าน (checkbox) · ภาค (checkbox เพิ่มอัตโนมัติเมื่อมีภาคใหม่) · ผลการพิจารณา (radio)",
+        "ปุ่ม ค้นหาข้อมูล · Export Excel · เคลียร์ค่าเริ่มต้น · Preview Report · Export CSV to Batch",
+    ]),
+    ("TB-0", "งานฐานรากที่ To-Be ทุกข้อใช้ร่วมกัน (ไม่ได้ระบุเป็นข้อใน SDD)", "—", [
+        "โครงฐานข้อมูลเป้าหมาย 19 ตาราง + migration/cutover จากระบบเดิม",
+        "pipeline FGI/FCS ที่ป้อนข้อมูลให้ทุก To-Be (Job 1-6, Job 10 และงาน interface/อีเมล)",
+        "สัญญากลาง API/FE (envelope · error · auth · pagination) และ shell ของ portal",
+        "master ที่ SBPGI ดูแลเอง (ปัจจัยภายนอก · แบรนด์คู่แข่ง) และงานทดสอบ/ส่งมอบ",
+    ]),
+]
+
+# เอกสาร -> {รหัส To-Be: สัดส่วน %}  (แต่ละเอกสารต้องรวมได้ 100)
+TOBE_ALLOCATION: dict[str, dict[str, int]] = {
+    # ---- FE ----
+    "FE/LLDD-FE-Foundation": {"TB-0": 100},
+    "FE/LLDD-FE-Integration-Contracts": {"TB-0": 100},
+    "FE/LLDD-FE-Testing-Delivery": {"TB-0": 100},
+    "FE/LLDD-FE-Master-Data": {"TB-0": 100},
+    "FE/LLDD-FE-Document-Lists": {"TB-1": 100},
+    "FE/LLDD-FE-Create-Document": {"TB-1": 100},
+    "FE/LLDD-FE-Document-Detail": {"TB-1": 60, "TB-2": 40},
+    "FE/LLDD-FE-Document-Detail-Role-06-SBP-DSA": {"TB-1": 100},
+    "FE/LLDD-FE-Document-Detail-Role-08-SBP-DSA-Officer": {"TB-1": 100},
+    "FE/LLDD-FE-Document-Detail-Role-01-Business-Promotion": {"TB-2": 100},
+    "FE/LLDD-FE-Document-Detail-Role-02-GM-Business-Promotion": {"TB-2": 100},
+    "FE/LLDD-FE-Document-Detail-Role-03-AVP-SBP": {"TB-2": 100},
+    "FE/LLDD-FE-Report": {"TB-3": 100},
+    # ---- BE ----
+    "BE/LLDD-BE-Database-Structure": {"TB-0": 100},
+    "BE/LLDD-BE-Data-Migration-Cutover": {"TB-0": 100},
+    "BE/LLDD-BE-API-Common-Contracts": {"TB-0": 100},
+    "BE/LLDD-BE-Job-Batch-Email-SRM": {"TB-0": 100},
+    "BE/Jobs/LLDD-BE-Job-1-ImportQSSI": {"TB-0": 100},
+    "BE/Jobs/LLDD-BE-Job-2-ImportImpactStore": {"TB-0": 100},
+    "BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor": {"TB-0": 100},
+    "BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS": {"TB-0": 100},
+    "BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS": {"TB-0": 100},
+    "BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS": {"TB-0": 100},
+    "BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData": {"TB-0": 100},
+    "BE/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument": {"TB-1": 100},
+    "BE/Jobs/LLDD-BE-Job-8-CreateCompensationDocument": {"TB-1": 100},
+    "BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow": {"TB-1": 100},
+    "BE/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument": {"TB-1": 100},
+    "BE/LLDD-BE-API-Document-List-Search": {"TB-1": 100},
+    "BE/LLDD-BE-API-Document-Create-Update": {"TB-1": 100},
+    "BE/LLDD-BE-API-Document-Detail-Aggregate": {"TB-1": 100},
+    "BE/LLDD-BE-API-Attachment-Sales-Timeline": {"TB-1": 100},
+    "BE/LLDD-BE-API-Document-Workflow-Actions": {"TB-1": 40, "TB-2": 60},
+    "BE/LLDD-BE-API-Workflow-Instances": {"TB-1": 50, "TB-2": 50},
+    "BE/LLDD-BE-Workflow-Engine-Definition": {"TB-2": 100},
+    "BE/LLDD-BE-API-Lookup": {"TB-2": 100},
+    "BE/LLDD-BE-Integration-SBP-Platform": {"TB-2": 100},
+    "BE/LLDD-BE-API-Report-and-Master-Data": {"TB-3": 70, "TB-0": 30},
+}
+
+
+def tobe_split(topic: "Topic") -> dict[str, tuple[int, int]]:
+    """คืน {รหัส To-Be: (ชม. implementation, ชม. unit test)} ของเอกสารนั้น
+
+    ปัดให้ผลรวมของทุกข้อเท่ากับชั่วโมงจริงของเอกสารเสมอ (ข้อสุดท้ายรับเศษ)
+    """
+    alloc = TOBE_ALLOCATION.get(topic.file)
+    if not alloc:
+        raise SystemExit(f"TOBE_ALLOCATION ขาดเอกสาร {topic.file}")
+    if sum(alloc.values()) != 100:
+        raise SystemExit(f"TOBE_ALLOCATION ของ {topic.file} รวมได้ {sum(alloc.values())}% ไม่ใช่ 100%")
+    ut = unit_test_hours(topic)
+    keys = list(alloc)
+    out: dict[str, tuple[int, int]] = {}
+    imp_left, ut_left = topic.hours, ut
+    for i, k in enumerate(keys):
+        if i == len(keys) - 1:
+            out[k] = (imp_left, ut_left)
+        else:
+            hi = round(topic.hours * alloc[k] / 100)
+            hu = round(ut * alloc[k] / 100)
+            out[k] = (hi, hu)
+            imp_left -= hi
+            ut_left -= hu
+    return out
+
+
+def tobe_blocks(all_topics: list["Topic"]) -> list[dict[str, Any]]:
+    by_file = {t.file: t for t in all_topics}
+    for t in all_topics:
+        tobe_split(t)  # validate ทุกฉบับตั้งแต่ต้น
+    billable = [t for t in all_topics if not is_document_detail_role_doc(t.file)]
+
+    totals: dict[str, list[int]] = {code: [0, 0] for code, *_ in TOBE_ITEMS}
+    for t in billable:
+        for code, (hi, hu) in tobe_split(t).items():
+            totals[code][0] += hi
+            totals[code][1] += hu
+
+    blocks: list[dict[str, Any]] = [
+        h(1, "1. Purpose"),
+        p("สอบทานย้อนกลับ (traceability) ระหว่าง **SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI (24/02/2026) "
+          "หัวข้อ 1.9 To-Be Business Process** กับ**เอกสาร LLDD 38 ฉบับที่มีชั่วโมงทำงาน** (ไม่รวมเอกสารอ้างอิง LLDD-API · LLDD-Database และฉบับนี้) — ตอบว่า To-Be แต่ละข้อ "
+          "**ใช้เอกสาร FE ฉบับไหน BE ฉบับไหน และกินเวลากี่ชั่วโมง**"),
+        p("ชั่วโมงในเอกสารนี้ = ชั่วโมงเดียวกับที่ประกาศในแต่ละฉบับ (implementation + unit test) "
+          "แต่**แบ่งตามสัดส่วนงาน**เมื่อเอกสารหนึ่งรับใช้ To-Be มากกว่าหนึ่งข้อ · "
+          "ผลรวมทุกข้อจึงเท่ากับยอดรวมของชุดส่งมอบพอดี ไม่มีการนับซ้ำ"),
+        h(1, "2. Scope"),
+        bullets([
+            "ครอบคลุม To-Be 3 ข้อของ SDD (สไลด์ 43-62) + กลุ่มงานฐานรากที่ทุกข้อใช้ร่วมกัน",
+            "ไม่ใช่เอกสารออกแบบ — รายละเอียดการทำงานอยู่ในเอกสาร LLDD ที่อ้างถึงในแต่ละตาราง",
+            "สัดส่วนการแบ่งชั่วโมงเป็นค่าที่กำหนดไว้ใน TOBE_ALLOCATION ของ tools/build_lldd_documents.py (แก้ที่เดียว)",
+        ]),
+        h(1, "3. สรุปชั่วโมงต่อข้อ To-Be"),
+        table(
+            ["รหัส", "หัวข้อ To-Be (SDD)", "ที่มา", "FE (ชม.)", "BE (ชม.)", "รวม (ชม.)"],
+            [
+                [
+                    code, name, src,
+                    str(sum(sum(tobe_split(t)[code]) for t in billable
+                            if t.track == "FE" and code in tobe_split(t))),
+                    str(sum(sum(tobe_split(t)[code]) for t in billable
+                            if t.track == "BE" and code in tobe_split(t))),
+                    f"**{totals[code][0] + totals[code][1]}**",
+                ]
+                for code, name, src, _ in TOBE_ITEMS
+            ] + [[
+                "", "**รวมทั้งชุดส่งมอบ**", "",
+                str(sum(sum(v) for t in billable if t.track == "FE" for v in tobe_split(t).values())),
+                str(sum(sum(v) for t in billable if t.track == "BE" for v in tobe_split(t).values())),
+                f"**{sum(v[0] + v[1] for v in totals.values())}**",
+            ]],
+        ),
+    ]
+
+    section = 4
+    for code, name, src, details in TOBE_ITEMS:
+        blocks.append(h(1, f"{section}. {code} — {name}"))
+        blocks.append(p(f"**ที่มาใน SDD:** {src} · "
+                        f"**รวม {totals[code][0] + totals[code][1]} ชั่วโมง** "
+                        f"(implementation {totals[code][0]} + unit test {totals[code][1]})"))
+        blocks.append(h(2, f"{section}.1 สิ่งที่ SDD ระบุไว้"))
+        blocks.append(bullets(details))
+        for track, label in (("FE", "Frontend"), ("BE", "Backend / Batch Job")):
+            rows = []
+            for t in sorted(billable, key=lambda x: x.file):
+                if t.track != track:
+                    continue
+                sp = tobe_split(t)
+                if code not in sp:
+                    continue
+                hi, hu = sp[code]
+                pct = TOBE_ALLOCATION[t.file][code]
+                rows.append([
+                    f"`{t.file.split('/')[-1]}`",
+                    t.owner.split("<")[1].split(">")[0] if "<" in t.owner else t.owner,
+                    "เต็มฉบับ" if pct == 100 else f"{pct}% ของฉบับ",
+                    str(hi), str(hu), f"**{hi + hu}**",
+                ])
+            blocks.append(h(2, f"{section}.{2 if track == 'FE' else 3} {label}"))
+            if rows:
+                rows.append(["**รวม**", "", "",
+                             f"**{sum(int(r[3]) for r in rows)}**",
+                             f"**{sum(int(r[4]) for r in rows)}**",
+                             f"**{sum(int(r[5].strip('*')) for r in rows)}**"])
+                blocks.append(table(["เอกสาร LLDD", "ผู้รับผิดชอบ", "สัดส่วน", "impl", "unit test", "รวม"], rows))
+            else:
+                blocks.append(p(f"ไม่มีงานฝั่ง {label} สำหรับข้อนี้"))
+        section += 1
+
+    blocks.extend([
+        h(1, f"{section}. เอกสารที่รับใช้ To-Be มากกว่าหนึ่งข้อ"),
+        p("เอกสารเหล่านี้ถูกแบ่งชั่วโมง จึงต้องอ่านคู่กันเมื่อวางแผนคน — "
+          "ถ้าเลื่อนข้อใดข้อหนึ่ง เอกสารที่แชร์กันจะกระทบทั้งสองข้อ"),
+        table(["เอกสาร LLDD", "แบ่งให้ข้อไหนบ้าง", "เหตุผลที่ต้องแบ่ง"], [
+            ["`LLDD-FE-Document-Detail`", "TB-1 60% · TB-2 40%",
+             "หน้าเดียวกันแต่คนละบทบาท — ฝั่ง DSA (คีย์งาน/ปรับยอด) เป็น TB-1 · ฝั่งส่งเสริม/GM/AVP (ปุ่มพิจารณา วงเงิน) เป็น TB-2"],
+            ["`LLDD-BE-API-Document-Workflow-Actions`", "TB-1 40% · TB-2 60%",
+             "endpoint เดียวรับ 6-enum — เส้นทางของ DSA เป็น TB-1 · กติกาวงเงิน/ลำดับใหม่/เห็นควรไม่ชดเชยจบทันที เป็น TB-2"],
+            ["`LLDD-BE-API-Workflow-Instances`", "TB-1 50% · TB-2 50%",
+             "เปิด instance ให้เอกสารใหม่ (TB-1) และลงทะเบียน version ที่ฝัง state/วงเงินใหม่ (TB-2)"],
+            ["`LLDD-BE-API-Report-and-Master-Data`", "TB-3 70% · TB-0 30%",
+             "เส้นรายงาน (TB-3) กับเส้น master ปัจจัยภายนอก/คู่แข่ง (TB-0) อยู่เอกสารเดียวกัน"],
+        ]),
+        h(1, f"{section + 1}. Related LLDD"),
+        bullets([
+            "รายละเอียดต่อหัวข้อ: เอกสาร LLDD ที่อ้างในตารางข้างต้น (`LLDD/md/FE`, `LLDD/md/BE`, `LLDD/md/BE/Jobs`)",
+            "ลำดับงานและ dependency: `LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management` หัวข้อ Dependency",
+            "flow ปลายทางที่ To-Be ทั้ง 3 ข้อรวมกันแล้ว: `workflow.md` · `plan-flow.html`",
+            "SDD ต้นทาง: `SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI(2402026).pptx` · ฉบับแปลง `SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md`",
+        ]),
+    ])
+    return blocks
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build LLDD deliverables")
     parser.add_argument("--formats", type=parse_formats, default={"md", "docx", "pdf"}, help="comma-separated: md,docx,pdf")
@@ -6057,6 +6561,7 @@ def main() -> None:
     render_all("LLDD Main Index - Phase 4.3 SBP Operating Management ประกันรายได้", main_doc_blocks(all_topics), OUT / "LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management", formats)
     render_all("LLDD API - REST API and Integration Contract", lldd_api_blocks(all_topics), OUT / "LLDD-API", formats)
     render_all("LLDD Database - Target Schema and Data Dictionary", lldd_database_blocks(all_topics), OUT / "LLDD-Database", formats)
+    render_all("LLDD To-Be - SDD Traceability and Effort Allocation", tobe_blocks(all_topics), OUT / "LLDD-To-Be", formats)
     for topic in all_topics:
         render_all(topic.title, topic_blocks(topic), OUT / topic.file, formats)
     if formats == {"md", "docx", "pdf"}:

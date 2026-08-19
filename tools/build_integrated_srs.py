@@ -284,7 +284,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
             "params": [
                 ["กำหนดการรัน (Cron)", "0 16 7-16 * *", "text", 1, "รันวันที่ 7-16 เวลา 16:00"],
                 ["IAS SFTP endpoint alias", "ias-sales-request", "text", 0, "host/port resolve จาก environment; credential ใช้ secretRef และ strict known_hosts"],
-                ["Secret reference", "secret/sbpgi/interfaces/ias", "text", 0, "ห้ามเก็บ password/private key ใน job_configs"],
+                ["Secret reference", "secret/sbpgi/interfaces/ias", "text", 0, "ห้ามเก็บ password/private key ใน config/env ของ job"],
                 ["Output staging path", "/data/sbpgi/outbox/ias", "text", 1, "ต้องรองรับ temp file, fsync และ atomic rename"],
             ],
             "flow": [
@@ -427,7 +427,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
                 {"k": "d", "t": "พบเงื่อนไขไม่ผ่านถาวร?", "no": "ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ", "d": "branch type, distance, missing DV, same juristic หรือ growth > -10 -> N"},
                 {"k": "d", "t": "ข้อมูล Gate พร้อมครบ?", "no": "distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W", "d": "คง W เฉพาะข้อมูลต้นทางที่ยังรอเติมเพื่อให้ rerun ได้"},
                 {"k": "io", "t": "POST /api/v1/workflows/instances", "d": "service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST"},
-                {"k": "p", "t": "เรียก initialize + add-prepared-approver ของ @srm/glb-workflow (state 06)", "d": "engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · ชื่อ function ยังไม่ยืนยัน ดู LLDD-BE-Workflow-Engine-Definition 5.3"},
+                {"k": "p", "t": "เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state 06)", "d": "engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3"},
                 {"k": "p", "t": "workflow_generation_status = Y", "d": "เปิด workflow สำเร็จ"},
                 {"k": "io", "t": "ส่งอีเมลสรุปราย DV ผ่าน Notification Service", "d": ""},
                 {"k": "end", "t": "จบ"},
@@ -437,7 +437,7 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
                 ["compensation_documents", "R/W", "ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency"],
                 ["workflow_transaction (@srm/glb-workflow · sps_store)", "W", "เปิด instance ผ่าน engine — ห้าม insert ตรง"],
                 ["workflow_approver (@srm/glb-workflow · sps_store)", "W", "prepared approver ขั้นแรก state 06 — ผ่าน engine"],
-                ["(backend config)", "R", "ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · workflow ใช้ engine ส่งเอง"],
+                ["(backend config)", "R", "ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · เลข template ของ workflow มาจาก workflow_route.email_id"],
             ],
             "rels": [
                 "แทน K2 REST StartInstance ด้วย Workflow Engine ภายใน",
@@ -512,7 +512,8 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
             ],
             "tables": [
                 ["interface_transactions", "R", "pending ACK จาก STA และสถานะล่าสุด"],
-                ["email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib)", "R/W", "template EM-08 watchdog ACK — SBPGI ไม่มีตาราง email_templates"],
+                ["email_template (ระบบ SBP เดิม)", "R", "template EM-08 watchdog ACK — อ่านอย่างเดียว"],
+                ["email_sent (ระบบ SBP เดิม)", "W (โดย @gosoft-sbp/email-lib)", "lib เขียน log ให้เอง · SBPGI ไม่ INSERT เอง"],
                 ["(backend config)", "R", "ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env"],
             ],
             "meta": {
@@ -1482,7 +1483,7 @@ def build_model() -> Model:
     model.heading("6.2 Open decisions required", 2)
     model.para("รายการต่อไปนี้ยังไม่ถือเป็น requirement ที่อนุมัติ เมื่อได้ข้อยุติต้องบันทึกผล วันที่มีผล และปรับ baseline ก่อนพัฒนาส่วนที่เกี่ยวข้อง")
     open_items = [
-        ["OPEN-02", "วงเงินอนุมัติเกิน 300,000", "SDD GI กำหนดวงเงิน GM 50,000 / AVP 300,000 แต่ยังไม่ระบุเส้นทางกรณีเกิน 300,000 ต่อรายการ", "routing ขั้น 03 และ UAT"],
+        ["OPEN-02 ✅ ปิดแล้ว 2026-08-18", "วงเงินอนุมัติเกิน 300,000", "มติประชุม 2026-08-18 กลับไปใช้เกณฑ์เดียว 100,000 — ข้อค้างเรื่องเกิน 300,000 หมดไปเอง เพราะทุกยอด >= 100,000 ส่ง AVP อยู่แล้ว", "routing ขั้น 03 และ UAT"],
         ["OPEN-09", "ผลพิจารณา \"เห็นควรไม่ชดเชย\" ที่ขั้น AVP (03)", "SDD GI ระบุเฉพาะขั้น 01/02 ว่าจบทันที — ขั้น 03 ยังคงพฤติกรรมเดิม (ตีกลับ 06) รอยืนยัน", "routing และ UAT"],
         ["OPEN-04", "NULL growth_rate", "อนุมัติรอตรวจสอบแทน auto-accept หรือกำหนดกฎใหม่", "การคัดรายการและ workflow generation"],
         ["OPEN-05", "Legacy date routing", "ยืนยันเงื่อนไข routing สำหรับร้านก่อน/หลัง 1/10/2014", "routing และผลพิจารณา"],

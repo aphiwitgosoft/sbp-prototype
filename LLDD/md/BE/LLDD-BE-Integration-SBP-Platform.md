@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 20 ชั่วโมง |
+| Estimate | 20 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | กำหนดวิธีที่ SBPGI ต่อกับแพลตฟอร์ม SBP เดิม: BFF header/ตัวตน, response envelope, ไฟล์บน S3, อีเมลผ่าน @gosoft-sbp/email-lib และค่ากำหนดกลางใน mas_param/common_code — เป็น blocker ที่ต้องปิดในสัปดาห์แรก |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -21,6 +22,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - อีเมลผ่าน @gosoft-sbp/email-lib + ตาราง email_template / email_sent
 - ค่ากำหนดกลางที่ mas_param และ common_code (รวม SBPGI_APPROVE_LIMIT)
 - การใช้ตาราง master ของระบบเดิม (store/mas_store · business_user · common_code) และปริมาณข้อมูลจริง
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -94,7 +99,7 @@ export class BffUserGuard implements CanActivate {
 
 | ค่า | อยู่ที่ | กติกา |
 | --- | --- | --- |
-| วงเงินอนุมัติ GM 50,000 / AVP 300,000 | common_code · code_type = SBPGI_APPROVE_LIMIT | อ่านทุกครั้ง ห้าม hardcode · ถ้าเลือกเก็บที่ workflow_route.condition_json แทน ต้องเก็บที่เดียว (ดูข้อค้าง) |
+| วงเงินอนุมัติ เกณฑ์เดียว 100,000 | common_code · code_type = SBPGI_APPROVE_LIMIT | อ่านทุกครั้ง ห้าม hardcode · ถ้าเลือกเก็บที่ workflow_route.condition_json แทน ต้องเก็บที่เดียว (ดูข้อค้าง) |
 | รัศมีผลกระทบ 1 กม. (กทม./ปริมณฑล) / 2 กม. (ต่างจังหวัด) | mas_param | อ่านตอนคำนวณ ไม่ hardcode |
 | เกณฑ์ยอดขัง 60 วัน · growth rate -10% | mas_param | ใช้กับธงข้อมูลผิดปกติและ Gen Flow Gate |
 
@@ -104,18 +109,18 @@ export class BffUserGuard implements CanActivate {
 
 | ข้อค้าง | ทางเลือก A | ทางเลือก B | สถานะ |
 | --- | --- | --- | --- |
-| DP-5 · อีเมล | ผูก `email_id` ที่ `workflow_route` แล้วให้ engine ส่งเอง (แขวนได้ 1 เมลต่อ 1 transition · reminder รายสัปดาห์แขวนไม่ได้) | SBPGI เรียก email-lib เองหลัง action สำเร็จ (เสี่ยงเมลซ้ำถ้า engine ส่งด้วย) | ยังไม่ตัดสิน · ยังไม่มีใครพิสูจน์ว่า engine ส่งเมลจริงหรือไม่ |
+| DP-5 · อีเมล ✅ ปิดแล้ว 2026-08-14 | ให้ engine ส่งเอง — **ตกไป** เพราะ `triggerEvent` ไม่มี `mailTo`/`mailCc`/`param` ที่ `sendEmail` บังคับ | **เลือกทางนี้:** workflow ให้เลข template ผ่าน `workflow_route.email_id` แล้ว **SBPGI เรียก `sendEmail()` ของ email-lib เอง** · reminder/escalation ที่ไม่ใช่ transition เก็บเลข template ที่ `mas_param` | ปิดแล้ว · เหลือยืนยันกับทีม engine ว่าไม่ส่งซ้ำ |
 | DP-8 · `document_attachments` | ตารางของ SBPGI เอง (สถานะปัจจุบันของแบบ) | ต่อยอด `upload_general` ของระบบเดิม | ยังไม่ตัดสิน |
 | DP-10 · ที่อยู่ของ SBPGI | โมดูลใน store-backend เดิม | backend ใหม่แยกต่างหาก | ยังไม่ตัดสิน · กระทบว่า guard/interceptor ใช้ของเดิมได้เลยหรือต้องเขียนใหม่ |
 | DP-6 · `interface_transactions` | ออกแบบใหม่ตาม DDL ปัจจุบัน | ลอกแพตเทิร์น `statement_summary` ของระบบเดิม | ยังไม่ตัดสิน |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
 | Input | User action, route/query state, form values, and permission context for this feature. |
 | Progress | BFF forward request พร้อม header ตัวตนมาที่ store-backend; Guard ตรวจ x-api-key แล้ว map header เป็น user context; Controller/Service ทำงานโดยใช้ user context (ไม่มี JWT ของ SBPGI เอง); ผลลัพธ์ถูกห่อด้วย ResponseInterceptor เป็น {success, data} |
-| Output | email_template / email_sent (sps_store); document_attachments (SBPGI) |
+| Output | document_attachments (SBPGI) |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -155,7 +160,8 @@ export class BffUserGuard implements CanActivate {
 | --- | --- | --- |
 | mas_param (sps_store) | R | ค่ากำหนดกลาง 93,752 แถว |
 | common_code / common_code_type (sps_store) | R | 2,609 / 376 แถว · วงเงินอนุมัติ SBPGI_APPROVE_LIMIT |
-| email_template / email_sent (sps_store) | R/W | 85 / 5,214 แถว · เทมเพลตและ log การส่ง |
+| email_template (sps_store) | R | 85 แถว · SBPGI/lib อ่านอย่างเดียว — seed 8 แถวของ SBPGI ทำครั้งเดียวตอน migration ไม่ใช่ runtime |
+| email_sent (sps_store) | W (โดย email-lib) | 5,214 แถว · lib เขียน log ให้เอง SBPGI ไม่ INSERT เอง (⚠️ คอลัมน์ผู้ส่งคือ send_by) |
 | business_user (sps_store) | R | 12,752 แถว · ข้อมูลผู้ใช้/ผู้อนุมัติ |
 | store / mas_store (sps_store) | R | 19,402 / 19,647 แถว · master ร้าน |
 | document_attachments (SBPGI) | R/W | metadata ไฟล์แนบ · ไฟล์จริงอยู่บน S3 ของระบบเดิม |
@@ -177,7 +183,7 @@ export class BffUserGuard implements CanActivate {
 - ไม่มี endpoint ใดของ SBPGI ออก/ตรวจ JWT เอง
 - ทุก response ผ่าน envelope เดียวกับ store-backend
 - ไม่มี credential ของ S3/SMTP อยู่ในโค้ดหรือ config ของ SBPGI
-- วงเงินอนุมัติ GM 50,000 / AVP 300,000 อ่านจาก common_code (SBPGI_APPROVE_LIMIT) ไม่ hardcode
+- วงเงินอนุมัติ เกณฑ์เดียว 100,000 อ่านจาก common_code (SBPGI_APPROVE_LIMIT) ไม่ hardcode
 - objectKey ไม่ถูกส่งออกไปที่ FE
 - ข้อค้างตัดสินใจเรื่อง email และ attachment ถูกบันทึกเป็นข้อค้าง ไม่ถูกตัดสินในเอกสารนี้
 

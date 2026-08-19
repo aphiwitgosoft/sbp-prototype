@@ -213,7 +213,7 @@
           <div class="field"><label>เงินชดเชยร้านถูกกระทบ (ตั้งต้น)</label><input class="num" value="48,200.00" readonly></div>
           <div class="field"><label>รวม %ชดเชยร้านเปิดใหม่</label><input class="num" value="100.00%" readonly></div>
           <div class="field"><label>เงินชดเชยรวม (ร้านเปิดใหม่ 1+2)</label><input class="num" value="48,200.00" readonly></div>
-          <div class="field"><label>อำนาจอนุมัติ</label><input value="≤ 50,000 = GM ส่งเสริม · 50,001–300,000 = AVP สำนัก SBPM (SDD GI 24/02/2026)" readonly></div>
+          <div class="field"><label>อำนาจอนุมัติ</label><input value="&lt; 100,000 = GM ส่งเสริม · ≥ 100,000 = AVP สำนัก SBPM (มติ 2026-08-18)" readonly></div>
         </div>
       </div>
 
@@ -430,8 +430,8 @@
       { name:'Chantaporn Banchuen',   position:'หน่วยงานส่งเสริมธุรกิจ SBP',    result:'เห็นควรชดเชย → GM ส่งเสริมธุรกิจฯ',
         detail:'เห็นควรชดเชยตามเกณฑ์ · ตรวจสอบร้านเปิดใหม่และปัจจัยภายนอกแล้ว',
         datetime:'15/06/2026 11.45.09 น.', files:['promotion_memo.pdf'] },
-      { name:'Wirat Chaiyaporn',      position:'GM ส่งเสริมธุรกิจ SBP',        result:'เห็นควรชดเชย (วงเงิน 50,001–300,000 → AVP)',
-        detail:'อนุมัติในวงเงิน GM ไม่ได้เพราะเกิน 50,000 ส่งต่อผู้บริหารสำนักบริหาร SBP',
+      { name:'Wirat Chaiyaporn',      position:'GM ส่งเสริมธุรกิจ SBP',        result:'เห็นควรชดเชย (วงเงิน ≥ 100,000 → AVP)',
+        detail:'อนุมัติในวงเงิน GM ไม่ได้เพราะยอดตั้งแต่ 100,000 ขึ้นไป ส่งต่อผู้บริหารสำนักบริหาร SBP',
         datetime:'17/06/2026 10.02.47 น.', files:[] },
       { name:'Kanyarat Siratana',     position:'ผู้บริหารสำนักบริหาร SBP (AVP)', result:'เห็นควรชดเชย → เสร็จสิ้นดำเนินการ',
         detail:'อนุมัติวงเงินชดเชยตามที่เสนอ · จบกระบวนการ',
@@ -534,8 +534,9 @@
       var zeroPick = LOOP_NO >= 4 ? 'stop' : 'forward';
       r.opts.forEach(function(o, idx){
         var note = o.note ? o.note : '';
-        // วงเงินตาม SDD GI 24/02/2026: GM ≤ 50,000 · AVP 50,001–300,000 · เห็นควรไม่ชดเชยจบทันที
-        if (o.money === 'approve') note = (total > 50000 ? 'ส่ง ผู้บริหารสำนักบริหาร SBP (วงเงิน 50,001–300,000)' : 'เสร็จสิ้นดำเนินการ (จบที่ GM · วงเงิน ≤ 50,000)');
+        // วงเงิน: เกณฑ์เดียว 100,000 ตามมติประชุม 2026-08-18 (override SDD GI สไลด์ 55 ที่เคยเป็น 50,000/300,000)
+        //   < 100,000 จบที่ GM · >= 100,000 ส่ง AVP · เห็นควรไม่ชดเชยจบทันที
+        if (o.money === 'approve') note = (total >= 100000 ? 'ส่ง ผู้บริหารสำนักบริหาร SBP (วงเงิน ≥ 100,000)' : 'เสร็จสิ้นดำเนินการ (จบที่ GM · วงเงิน < 100,000)');
         if (o.money === 'reject')  note = 'เสร็จสิ้นดำเนินการ (ไม่อนุมัติในเดือนนั้น · SDD GI)';
         if (o.req) note = (note ? note + ' · ' : '') + 'บังคับกรอกความคิดเห็น';
         if (o.end) note = (note ? note + ' · ' : '') + 'จบกระบวนการ';

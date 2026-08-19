@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 12 ชั่วโมง |
+| Estimate | 12 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
 | Owner | Chidchanok <lin> Saengamnat |
+| Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Document type | FE verification and release handover specification; not an application screen |
 | Objective | กำหนด regression, responsive pass, API payload adjustment และ delivery note สำหรับ FE |
 
@@ -38,7 +39,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Build identity | commit SHA, build number, deploy timestamp | freeze before regression |
 | API identity | base URL and contract version | no production credentials in evidence |
 | Role users | one account per tested RBAC role/profile | masked identifiers in shared evidence |
-| Document fixtures | docNo per current section plus <=50,000 (GM) and 50,001-300,000 (AVP) cases per SDD GI | resettable or uniquely generated |
+| Document fixtures | docNo per current section plus <100,000 (GM) and >=100,000 (AVP) cases per มติ 2026-08-18 | resettable or uniquely generated |
 | File fixtures | valid type, >5MB, unsupported type, AV-blocked stub | checksum recorded |
 | Job fixtures | SUCCESS/FAILED/RUNNING/QUEUED histories | read-only unless manual-run case |
 

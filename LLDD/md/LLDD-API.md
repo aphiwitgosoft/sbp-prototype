@@ -15,7 +15,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Detailed implementation docs | LLDD-BE-API-Common-Contracts, LLDD-BE-API-Document-List-Search, LLDD-BE-API-Document-Create-Update, LLDD-BE-API-Document-Detail-Aggregate, LLDD-BE-API-Document-Workflow-Actions, LLDD-BE-API-Workflow-Instances, LLDD-BE-API-Attachment-Sales-Timeline, LLDD-BE-API-Lookup, LLDD-BE-API-Report-and-Master-Data |
 | Out of scope | Login/Auth implementation ของ platform, SAP/SR process ภายนอก, abnormal-stores endpoints ที่ยัง comment รอตัดสินใจ |
 
-## 2.1 Input / Progress / Output Contract
+### 2.1 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
@@ -69,7 +69,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | 3 | GET | /api/v1/documents/{docNo} | เอกสารฉบับเต็ม 12 ส่วนย่อย (k2-document.html) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน |
 | 4 | POST | /api/v1/documents | สร้างเอกสารจากข้อมูลที่ FS/SBP Statement ส่งกลับ — ตัดสินใจ 2026-08-06: ไม่มีฟอร์มสร้างเอกสารใน FE แล้ว (k2-create.html เหลือเป็นหน้าอธิบายกระบวนการ) เส้นนี้เรียกโดย pipeline/service token |
 | 5 | PUT | /api/v1/documents/{docNo} | บันทึกแก้ไขส่วนย่อยของเอกสาร (ร้านใหม่ / คู่แข่ง / ปัจจัย) ตามสิทธิ์ของขั้นที่ถืออยู่ |
-| 6 | POST | /api/v1/documents/{docNo}/actions | ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · วงเงิน GM 50,000 / AVP 300,000 (SDD GI 24/02/2026) |
+| 6 | POST | /api/v1/documents/{docNo}/actions | ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · วงเงิน เกณฑ์เดียว 100,000 (SDD GI 24/02/2026) |
 | 7 | GET | /api/v1/documents/{docNo}/timeline | ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร) |
 | 8 | POST | /api/v1/documents/{docNo}/attachments | แนบไฟล์เข้าเอกสาร — จำกัด 5MB ต่อไฟล์ตาม SRS |
 | 9 | GET | /api/v1/documents/{docNo}/attachments/{attachId}/download | ดาวน์โหลดไฟล์แนบผ่าน BE stream โดยตรวจสิทธิ์เอกสารและ scanStatus=CLEAN ก่อนส่ง binary |
@@ -92,7 +92,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Step | Flow |
 | --- | --- |
 | 1 | อ่าน sectionCode ของผู้ใช้จาก JWT |
-| 2 | อ่านงานค้างจาก engine เดิม (schema sps_store): getPendingFlow({userData:{userId,groupId}, versionId}) ของ @srm/glb-workflow [ชื่อ function ยังไม่ยืนยัน — มี 3 ชุดขัดกัน ดูการ์ด "ชื่อ function ของ workflow engine" ด้านบน] — ไม่มีตาราง workflow_tasks ของ SBPGI แล้ว |
+| 2 | อ่านงานค้างจาก engine เดิม (schema sps_store): getPendingFlowByUser({userData}) ของ @srm/glb-workflow  — ไม่มีตาราง workflow_tasks ของ SBPGI แล้ว |
 | 3 | join compensation_documents + stores + fgi_impact_sales_summaries คืน 9 คอลัมน์ตามหน้าจอและ salesDataDays สำหรับ red flag |
 
 | DB Object | R/W | Usage |
@@ -138,8 +138,8 @@ SQL Reference
 
 ```sql
 -- ⚠️ ไม่มีตาราง workflow_tasks ของ SBPGI แล้ว — กล่องงานอ่านจาก engine กลาง (schema sps_store)
---    getPendingFlow({userData:{userId,groupId}, versionId}) [ชื่อ function ยังไม่ยืนยัน · 3 ชุดขัดกัน]
--- ⚠️ DP-1 (reference_id = doc_no หรือ surrogate id) · DP-2 (workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan)
+--    getPendingFlowByUser({userData}) 
+-- ✅ DP-1 ปิดแล้ว: reference_id = compensation_documents.id (surrogate · varchar(255)) · ⚠️ DP-2 workflow_transaction ไม่มี PK/index (19,283 แถว → seq-scan) ยังไม่ตัดสิน
 --    ยังไม่ตัดสิน — ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 WITH wh AS (
   -- workflow_transaction ไม่มี created_date — ใช้เวลา event แรกจาก workflow_history แทน
@@ -159,7 +159,7 @@ SELECT d.round_no AS "roundNo",
        ss.total_working_days AS "salesDataDays"
 FROM sps_store.workflow_approver a
 JOIN sps_store.workflow_transaction w ON w.transaction_id = a.transaction_id
-JOIN compensation_documents d ON d.doc_no = w.reference_id   -- DP-1
+JOIN compensation_documents d ON d.id::text = w.reference_id   -- DP-1 = surrogate id   -- DP-1
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
 WHERE a.state_id = :sectionFromJwt AND a.state_id = w.current_state_id AND w.version_id = :sbpgiVersionId
@@ -234,7 +234,7 @@ SELECT d.round_no AS "roundNo",
 FROM compensation_documents d
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
-LEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.doc_no AND w.version_id = :sbpgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)
+LEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.id::text   -- DP-1 = surrogate id (reference_id เป็น varchar(255)) AND w.version_id = :sbpgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)
 WHERE d.year = :year
   AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)
   AND (:status            IS NULL OR d.status_code = :status)
@@ -331,14 +331,15 @@ SELECT * FROM consideration_logs           WHERE doc_no = :docNo ORDER BY action
 | --- | --- |
 | 1 | ตรวจซ้ำ: ร้าน + เดือนที่ถูกกระทบ ต้องยังไม่มีเอกสาร |
 | 2 | ออกเลขที่ YYYY/xxxxx (running ต่อปี เริ่ม 00001 — กติกา SRS) |
-| 3 | insert compensation_documents สถานะเริ่มต้น + เรียก initializeWorkflow({versionId, referenceId, userId}) [ชื่อ function ยังไม่ยืนยัน — มี 3 ชุดขัดกัน ดูการ์ด "ชื่อ function ของ workflow engine" ด้านบน · referenceId ยังไม่ตัดสินว่าใช้ docNo หรือ surrogate id — DP-1 ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4] ของ @srm/glb-workflow แล้ว addPreparedApprover ขั้น 06 |
-| 4 | engine ส่งอีเมลเปิดเรื่องเอง (workflow_route.email_id) — SBPGI ไม่ส่ง |
+| 3 | insert compensation_documents สถานะเริ่มต้น + เรียก initializeWorkflow({versionId, referenceId, userId}) [referenceId ยังไม่ตัดสินว่าใช้ docNo หรือ surrogate id — DP-1 ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4] ของ @srm/glb-workflow แล้ว addPreApprover ขั้น 06 |
+| 4 | SBPGI เรียก sendEmail() แจ้งเปิดเรื่อง ด้วยเลข template จาก workflow_route.email_id (นอก transaction) |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
 | compensation_documents | W | เอกสารใหม่ |
-| sps_store.workflow_transaction / workflow_approver | W | เปิด instance + ผู้รับผิดชอบขั้นแรกผ่าน @srm/glb-workflow (schema sps_store) |
-| (engine ส่งอีเมลเอง) | - | workflow_route.email_id · template ที่ email_template ของระบบเดิม · log ที่ email_sent |
+| sps_store.workflow_transaction / workflow_approver | W (โดย lib) | เปิด instance + ผู้รับผิดชอบขั้นแรกผ่าน initializeWorkflow() + addPreApprover() ของ @srm/glb-workflow (schema sps_store) — ห้ามเขียนตรง |
+| email_template (SBP เดิม) | R | template — อ่านอย่างเดียว |
+| email_sent (SBP เดิม) | W (โดย email-lib) | SBPGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง |
 
 #### Request / Query / Header
 
@@ -376,9 +377,9 @@ INSERT INTO compensation_documents (doc_no, year, running_no, impact_process_id,
 VALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :statusInit, :section06, :empId);
 -- ⚠️ ไม่ INSERT ตาราง workflow เอง — เรียก @srm/glb-workflow (schema sps_store) ให้ library เขียนให้
 --    initialize(versionId=:sbpgiVersionId, referenceId=:referenceId, userId=:empId)
---    addPreparedApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
+--    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
 --    library เขียน sps_store.workflow_transaction / workflow_approver / workflow_history ให้เอง
--- ⚠️ ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน) · referenceId = doc_no หรือ surrogate id ยังไม่ตัดสิน (DP-1)
+-- referenceId = compensation_documents.id (surrogate · DP-1 ปิดแล้ว 2026-08-17)
 -- ⚠️ sps_store.workflow_transaction ไม่มี PK/index → กันซ้ำต้องทำที่ application (DP-2)
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 ```
@@ -454,7 +455,7 @@ DELETE FROM document_external_factors WHERE doc_no = :docNo AND id NOT IN (:keep
 
 #### 6.1.6 POST /api/v1/documents/{docNo}/actions
 
-ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · วงเงิน GM 50,000 / AVP 300,000 (SDD GI 24/02/2026)
+ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · วงเงิน เกณฑ์เดียว 100,000 (SDD GI 24/02/2026)
 
 | Item | Detail |
 | --- | --- |
@@ -467,18 +468,19 @@ DELETE FROM document_external_factors WHERE doc_no = :docNo AND id NOT IN (:keep
 
 | Step | Flow |
 | --- | --- |
-| 1 | ตรวจว่าผู้ใช้เป็น approver ของ state ปัจจุบันใน @srm/glb-workflow schema sps_store (getTransaction / getPermissionEvents [ชื่อ function ยังไม่ยืนยัน — มี 3 ชุดขัดกัน ดูการ์ด "ชื่อ function ของ workflow engine" ด้านบน]) |
+| 1 | ตรวจว่าผู้ใช้เป็น approver ของ state ปัจจุบันใน @srm/glb-workflow schema sps_store (getTransaction / getPermissionEvents ) |
 | 2 | validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว |
-| 3 | คำนวณขั้นถัดไปตามตารางเส้นทาง (ตารางเส้นทาง workflow · SDD GI): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 01/02 เห็นควรไม่ชดเชย → เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น) · 02 ชดเชย ≤ 50,000 → เสร็จสิ้น (จบที่ GM) · 50,001–300,000 → 03 → จบ (เกิน 300,000 รอ confirm) · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ |
+| 3 | คำนวณขั้นถัดไปตามตารางเส้นทาง (ตารางเส้นทาง workflow · SDD GI): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 01/02 เห็นควรไม่ชดเชย → เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น) · 02 ชดเชย < 100,000 → เสร็จสิ้น (จบที่ GM) · ≥ 100,000 → 03 → จบ  · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ |
 | 4 | insert consideration_logs + ปิด task เดิม เปิด task ใหม่ · กรณี 06 เห็นควรไม่ชดเชย ระบบตั้งงานเดือนถัดไปให้เจ้าของงานคนเดิม (SDD GI) |
-| 5 | engine ส่งอีเมลแจ้งผู้อนุมัติถัดไปเอง (workflow_route.email_id) — SBPGI ไม่ส่ง |
+| 5 | SBPGI เรียก sendEmail() แจ้งผู้อนุมัติถัดไป ด้วยเลข template จาก workflow_route.email_id (นอก transaction) |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
-| sps_store.workflow_transaction / workflow_history / workflow_approver | R/W | triggerEvent() + addPreparedApprover() ของ engine เดิม (schema sps_store) — เดิน state + บันทึก history + ตั้ง approver ขั้นถัดไป · ชื่อ function ยังไม่ยืนยัน มี 3 ชุดขัดกัน |
+| sps_store.workflow_transaction / workflow_history / workflow_approver | R (เขียนผ่าน lib) | 🔴 ห้าม INSERT/UPDATE ตรง — eventWorkflow() + addPreApprover() ของ engine เดิม (schema sps_store) — เดิน state + บันทึก history + ตั้ง approver ขั้นถัดไป · API 8 ตัวตามชีต Detail ของ LLDD lib (ปิด 2026-08-14) |
 | compensation_documents | W | อัปเดต Status + CurSection |
 | consideration_logs | W | บันทึกผลพิจารณา |
-| (engine ส่งอีเมลเอง) | - | ปิด DP-5 · 2026-08-11 — SBPGI ไม่มี Notification Service |
+| email_template (SBP เดิม) | R | template — อ่านอย่างเดียว ไม่แก้ของระบบเดิม |
+| email_sent (SBP เดิม) | W (โดย email-lib) | ปิด DP-5 · 2026-08-14 — SBPGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง (คอลัมน์ผู้ส่ง = send_by) |
 
 #### Request / Query / Header
 
@@ -513,25 +515,50 @@ SQL Reference
 -- ตรวจเป็นเจ้าของงานขั้นปัจจุบัน + ต้องเลือก result แล้ว (ไม่งั้น 422)
 -- result รับ 6-enum verbatim เท่านั้น: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI) / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ
 -- ⚠️ ไม่ UPDATE ตาราง workflow เอง — เดิน state ผ่าน @srm/glb-workflow (schema sps_store)
---    triggerEvent({versionId, referenceId, event, eventParam:{amount}, remark, userId})
+--    eventWorkflow({versionId, referenceId, event, eventParam:{amount}, remark, userId})
 --    library ปิดงานขั้นเดิม เขียน sps_store.workflow_history และเปิด approver ขั้นถัดไปให้เอง
--- ⚠️ ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน) · referenceId ยังไม่ตัดสิน (DP-1) — SBP/SBPGI-vs-existing-system.md หัวข้อ 4
+-- referenceId = compensation_documents.id (surrogate · DP-1 ปิดแล้ว 2026-08-17)
 
 INSERT INTO consideration_logs (doc_no, section_code, consider_by, result, detail, action_datetime)
 VALUES (:docNo, :curSection, :empId, :result, :comment, :now);
 
--- คำนวณขั้นถัดไป (วงเงิน GM 50,000 / AVP 300,000 · SDD GI) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock
+-- คำนวณขั้นถัดไป (วงเงิน เกณฑ์เดียว 100,000 · SDD GI) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock
 UPDATE compensation_documents SET status_code = :nextStatus, current_section_code = :nextSection, version_no = version_no + 1, updated_at = :now, updated_by = :empId
 WHERE doc_no = :docNo AND version_no = :versionNo;
--- งานขั้นถัดไปเปิดโดย engine (addPreparedApprover) ไม่ใช่ INSERT ของ SBPGI
+-- งานขั้นถัดไปเปิดโดย engine (addPreApprover) ไม่ใช่ INSERT ของ SBPGI
 
--- ✅ ปิด DP-5 (2026-08-11): engine ส่งอีเมลเอง — SBPGI ไม่ query ผู้รับและไม่มีตาราง status_email_rules
---    ผูก email_id ที่ workflow_route ตอนลงทะเบียน version · template อยู่ที่ email_template · log ที่ email_sent
--- ตรวจว่าส่งสำเร็จ (อ่านอย่างเดียว ไม่ใช่หน้าที่ SBPGI ส่ง):
-SELECT email_sent_id, mail_to, mail_cc, is_sent, error, sent_date
+-- ✅ ปิด DP-5 (แก้มติ 2026-08-14): workflow ให้ "เลข template" · SBPGI เรียก lib ส่งเอง (ไม่มีตาราง status_email_rules)
+-- 1) เอาเลข template ของ route ที่เพิ่งเดิน (ถ้า NULL = ไม่ต้องส่งเมล)
+-- ⚠️ ต้องระบุ to_state_id ด้วย! state 02 มี 2 route ตามวงเงิน (< 100,000 จบ · ≥ 100,000 ไป 03)
+--    ถ้าใช้แค่ (from_state_id, event) แล้ว ORDER BY seq LIMIT 1 จะได้ template ผิดเสมอเมื่อเข้าเงื่อนไขที่สอง
+--    :prevStateId เก็บจาก getTransaction() "ก่อน" เรียก eventWorkflow · :nextStateId อ่านจาก getTransaction() "หลัง" สำเร็จ
+SELECT r.email_id
+FROM sps_store.workflow_route r
+WHERE r.version_id = :versionId
+  AND r.from_state_id = :prevStateId
+  AND r.event = :event
+  AND r.to_state_id = :nextStateId;
+
+-- 2) หาอีเมลผู้อนุมัติลำดับถัดไปที่ engine resolve ให้แล้ว
+SELECT string_agg(DISTINCT u.email, ',') AS mail_to
+FROM sps_store.workflow_approver a
+JOIN sps_store.business_user u ON u.user_id = a.current_approver
+WHERE a.transaction_id = :transactionId AND a.state_id = :nextStateId AND u.email IS NOT NULL;
+
+-- 2b) ผู้รับ CC — ระบบเดิมมีกลไกอยู่แล้ว (fml_email_account.template_id)
+SELECT string_agg(email, ',') AS mail_cc
+FROM fml_email_account
+WHERE template_id = :emailId;
+
+-- 3) เรียก lib "นอก transaction" (อีเมลล้มต้องไม่ rollback การอนุมัติ · lib ไม่ retry ให้)
+--    emailService.sendEmail({ emailId, mailTo, mailCc, param:{docNo, storeName, amount}, userId })
+--    lib อ่าน email_template แล้ว INSERT email_sent (is_sent 'Y'/'N' + error) ให้เอง — return แค่ Success/Fail
+
+-- 4) รายงานตามเก็บเมลที่ส่งไม่สำเร็จ (⚠️ คอลัมน์จริงคือ send_by ไม่ใช่ sent_by)
+SELECT email_sent_id, email_id, mail_to, mail_cc, is_sent, error, sent_date, send_by
 FROM email_sent
-WHERE email_id = :routeEmailId
-ORDER BY sent_date DESC LIMIT 5;
+WHERE is_sent = 'N' AND sent_date >= :since
+ORDER BY sent_date DESC;
 ```
 
 #### 6.1.7 GET /api/v1/documents/{docNo}/timeline
@@ -555,7 +582,7 @@ ORDER BY sent_date DESC LIMIT 5;
 | DB Object | R/W | Usage |
 | --- | --- | --- |
 | consideration_logs | R | ประวัติครบทุกขั้น — [DP-7 ยังไม่ตัดสิน] |
-| sps_store.workflow_history | R | timeline การเดิน state ของ engine (ทางเลือก B ของ DP-7) — DP-1 คีย์ที่ใช้ค้นยังไม่ตัดสิน |
+| sps_store.workflow_history | R | timeline การเดิน state ของ engine (ทางเลือก B ของ DP-7) — คีย์ที่ใช้ค้น = compensation_documents.id (DP-1 ปิดแล้ว) |
 
 #### Request / Query / Header
 
@@ -888,7 +915,7 @@ ORDER BY seq;
 | Step | Flow |
 | --- | --- |
 | 1 | อ่าน sps_store.workflow_state ของ engine เรียงตามลำดับ 06→08→01→02→03 (ตาราง workflow_sections ของ SBPGI ถูกตัดแล้ว) |
-| 2 | คืน approve_limit_amount ต่อขั้น (= SectionLimitCost ของ K2 เดิม · GM 50,000 / AVP 300,000 ตาม SDD GI) |
+| 2 | คืน approve_limit_amount ต่อขั้น (= SectionLimitCost ของ K2 เดิม · ขั้น 02 = 100,000 · ขั้น 03 = null ไม่มีเพดาน · มติ 2026-08-18) |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
@@ -908,8 +935,8 @@ ORDER BY seq;
 {
   "items": [
     { "sectionCode": "06", "sectionName": "ฝ่าย SBP DSA", "approveLimitAmount": null },
-    { "sectionCode": "02", "sectionName": "GM ส่งเสริมธุรกิจ SBP", "approveLimitAmount": 50000.00 },
-    { "sectionCode": "03", "sectionName": "ผู้บริหารสำนักบริหาร SBP", "approveLimitAmount": 300000.00 }
+    { "sectionCode": "02", "sectionName": "GM ส่งเสริมธุรกิจ SBP", "approveLimitAmount": 100000.00 },
+    { "sectionCode": "03", "sectionName": "ผู้บริหารสำนักบริหาร SBP", "approveLimitAmount": null }
   ]
 }
 ```
@@ -922,7 +949,7 @@ SQL Reference
 
 ```sql
 -- ตาราง workflow_sections ของ SBPGI ถูกตัดแล้ว — อ่าน state จาก engine กลาง และวงเงินจาก common_code ของระบบเดิม
--- (approve_limit_amount = SectionLimitCost ของ K2 เดิม · GM 50,000 / AVP 300,000 ตาม SDD GI — เป็น data ไม่ hardcode)
+-- (approve_limit_amount = SectionLimitCost ของ K2 เดิม · เกณฑ์เดียว 100,000 ตามมติ 2026-08-18 — เป็น data ไม่ hardcode · ขั้น 03 เป็น null = ไม่มีเพดาน)
 -- ⚠️ sps_store.workflow_state ไม่มีคอลัมน์ลำดับ (มีแค่ version_id · state_id · state_name · create_date)
 --    ลำดับขั้นต้องเอาจาก workflow_route.seq · วงเงินจับคู่ด้วย common_code.code_value (ไม่มี code_id)
 SELECT s.state_id AS section_code, s.state_name AS section_name,
@@ -1514,7 +1541,7 @@ ORDER BY d.doc_no;
 | 2 | lock fgi_impact_processes แล้วตรวจ Gen Flow Gate ทุกข้อ: workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · ระยะทางตามเกณฑ์ · opt_dv_user_id ไม่ว่าง · juristic ร้านใหม่ต่างจากร้านถูกกระทบ · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} |
 | 3 | fail ถาวร: branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10 → workflow_generation_status=N |
 | 4 | ข้อมูลต้นทางยังไม่พร้อม: distance/juristic/growth เป็น NULL หรือ sales_status ไม่ใช่ Y/N → คง W (ตอบ 422 พร้อมเหตุผล) |
-| 5 | ผ่าน: ใช้ compensation_documents ที่ Job 8 สร้างแล้ว + initializeWorkflow/addPreparedApprover ขั้น 06 ผ่าน @srm/glb-workflow แล้วตั้ง workflow_generation_status=Y |
+| 5 | ผ่าน: ใช้ compensation_documents ที่ Job 8 สร้างแล้ว + initializeWorkflow/addPreApprover ขั้น 06 ผ่าน @srm/glb-workflow แล้วตั้ง workflow_generation_status=Y |
 | 6 | ส่งอีเมลสรุปราย DV หลัง commit |
 
 | DB Object | R/W | Usage |
@@ -1579,10 +1606,10 @@ UPDATE fgi_impact_processes SET workflow_generation_status = :flagN
 WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagN;
 
 -- ผ่าน gate → ใช้เอกสารที่ Job 8 สร้างแล้ว เปิด instance + งานแรกผ่าน @srm/glb-workflow แล้วตั้ง Y ใน transaction เดียว
--- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 20 ตารางแล้ว)
+-- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 19 ตารางแล้ว)
 --    initialize(versionId=:sbpgiVersionId, referenceId=:referenceId, userId=:serviceActor)
---    addPreparedApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
--- ⚠️ ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน) · referenceId ยังไม่ตัดสิน (DP-1) · ไม่มี UNIQUE กันซ้ำจริงบน
+--    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
+-- referenceId = compensation_documents.id (DP-1 ปิดแล้ว) · ไม่มี UNIQUE กันซ้ำจริงบน
 --    sps_store.workflow_transaction (ไม่มี PK/index · 19,283 แถว) → กันซ้ำที่ application (DP-2)
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT d.doc_no FROM compensation_documents d
@@ -1607,7 +1634,7 @@ WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDec
 | Step | Flow |
 | --- | --- |
 | 1 | อ่าน sps_store.workflow_transaction (instance ปัจจุบัน) + workflow_approver (ผู้รับผิดชอบขั้นปัจจุบัน) ของ @srm/glb-workflow แล้ว join เอกสารของ SBPGI |
-| 2 | [ยังไม่ตัดสิน] DP-1 คีย์ที่ใช้ค้น (reference_id = doc_no หรือ surrogate id) · DP-2 ตารางนี้ไม่มี PK/index (19,283 แถว) จึงเป็น seq-scan — ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4 |
+| 2 | คีย์ที่ใช้ค้น = compensation_documents.id (DP-1 ปิดแล้ว) · [ยังไม่ตัดสิน] DP-2 ตารางนี้ไม่มี PK/index (19,283 แถว) จึงเป็น seq-scan — ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4 |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
@@ -1640,15 +1667,15 @@ WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDec
 SQL Reference
 
 ```sql
--- ⚠️ DP-1 referenceId (doc_no หรือ surrogate id) และ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ยังไม่ตัดสิน
---    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4 · ชื่อ function ของ engine ยังไม่ยืนยัน (3 ชุดขัดกัน)
+-- ✅ DP-1 ปิดแล้ว: referenceId = compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ยังไม่ตัดสิน
+--    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.transaction_id, w.reference_id, w.current_state_id, w.current_status_id, w.current_approver,
        a.state_id AS pending_state_id, a.approver_id, a.approve_seq
 FROM sps_store.workflow_transaction w
 LEFT JOIN sps_store.workflow_approver a ON a.transaction_id = w.transaction_id AND a.state_id = w.current_state_id
 WHERE w.transaction_id = :id AND w.version_id = :sbpgiVersionId;
 
--- เอกสารที่ผูกกับ instance (join ด้วยค่าที่ DP-1 จะตัดสิน)
+-- เอกสารที่ผูกกับ instance (join ด้วยcompensation_documents.id (DP-1 ปิดแล้ว))
 SELECT doc_no, status_code, current_section_code FROM compensation_documents WHERE doc_no = :referenceId;
 ```
 
@@ -1703,8 +1730,8 @@ SELECT workflow_generation_status, COUNT(*) AS cnt
 FROM fgi_impact_processes
 GROUP BY workflow_generation_status;
 
--- ⚠️ DP-1 referenceId (doc_no หรือ surrogate id) และ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ยังไม่ตัดสิน
---    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4 · ชื่อ function ของ engine ยังไม่ยืนยัน (3 ชุดขัดกัน)
+-- ✅ DP-1 ปิดแล้ว: referenceId = compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ยังไม่ตัดสิน
+--    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.current_state_id AS section_code, COUNT(*) AS open_tasks
 FROM sps_store.workflow_transaction w
 WHERE w.version_id = :sbpgiVersionId AND w.current_status_id <> :statusDone
@@ -1886,7 +1913,7 @@ ORDER BY sent_at;
 | Test group | Required cases |
 | --- | --- |
 | Common contract | 401, 403, 404, 409, 422, pagination envelope, error `{code,message}` |
-| Document workflow | create duplicate, submit no result, invalid result for role profile, current task conflict, threshold 50,001-300,000 -> AVP route (SDD GI) |
+| Document workflow | create duplicate, submit no result, invalid result for role profile, current task conflict, threshold ≥ 100,000 -> AVP route (SDD GI) |
 | Attachment | file >5MB, unsupported type, AV blocked, download not owner, download clean file |
 | Report | year required, result required, CSV export with same filter as preview |
 | Job admin | manual run when disabled, manual run while RUNNING, editable params only, run histories |

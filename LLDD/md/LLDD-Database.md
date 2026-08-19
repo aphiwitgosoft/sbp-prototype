@@ -15,7 +15,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 - มาตรฐานชื่อ table/column เป็น English lower_snake_case
 - ตาราง job_configs / job_run_histories ถูกตัดออกจาก target schema เมื่อ 2026-08-06 พร้อม 2 แท็บควบคุมของหน้า Batch Job — cron/พารามิเตอร์อยู่ใน backend config · ผลการรันเขียน application log + interface_transactions
 
-## 2.1 Input / Progress / Output Contract
+### 2.1 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
@@ -35,7 +35,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- | --- | --- |
 | 1 | impact_process_id | หนึ่งร้านถูกกระทบ + หนึ่งงวด | FGI/FCS pipeline, Job 8/8b |
 | 2 | doc_no | เอกสาร YYYY/xxxxx ปี ค.ศ. | Document APIs, reports, attachments |
-| 3 | transaction_id (@srm/glb-workflow) | workflow transaction ต่อเอกสาร — reference_id ยังไม่ตัดสินว่าเป็น doc_no หรือ surrogate id (DP-1) | Workflow engine ใน schema sps_store |
+| 3 | transaction_id (@srm/glb-workflow) | workflow transaction ต่อเอกสาร — `reference_id` = `compensation_documents.id` (surrogate · DP-1 ปิดแล้ว 2026-08-17) | Workflow engine ใน schema sps_store |
 | 4 | approver_id (@srm/glb-workflow) | ผู้อนุมัติต่อ state — แทน task_id เดิม | Inbox/current approver guard |
 | 5 | employee_id / user_id | identity — มาจาก BFF header ไม่ใช่ตารางของ SBPGI | lookup, assignment |
 
@@ -59,7 +59,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | B | compensation_histories | id | store_code, ref_doc_no | compensation history/accounting export |
 | B | document_cost_details | id | doc_no, new_store_code | monthly cost detail per new store (ImpactCostDetail) |
 | B | document_running_numbers | year | - | atomic YYYY/xxxxx running number |
-| C | impacted_stores | store_code | store.store_code (SBP) | SP impacted store subset |
+| C | impacted_stores | store_code | store.store_id (SBP · varchar(10)) | SP impacted store subset |
 | C | external_factors | factor_code | - | external factor master |
 | C | competitors | competitor_code | - | competitor master |
 | - | USE EXISTING SBP TABLES | - | - | workflow engine 13 ตาราง ใน schema sps_store (workflow · workflow_version · workflow_state · workflow_status · workflow_event · workflow_route · workflow_group · workflow_group_map · workflow_transaction · workflow_history · workflow_approver · workflow_part · workflow_part_display) · store/mas_store/sevenshop · mas_zone · common_code · business_user · email_template + email_sent · mas_param · fcs_qssi_score — decided 2026-08-05/2026-08-06: do NOT recreate these in SBPGI |
@@ -76,7 +76,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | interface_transactions | id, acked_at | tracking_id/receive_date (API aliases only) |
 | fgi_impact_processes | workflow_generation_status | duplicate workflow flag on fgi_impact_stores |
 
-## 5. Executable DDL — 21 Tables (+ schema reference)
+## 5. Executable DDL — 18 Tables (+ fcs_qssi_score ที่ reuse = 19 ในโครง · + schema reference)
 
 หัวข้อ 5.1-5.4 เป็น PostgreSQL DDL ของ **19 ตารางในโครง SBPGI** เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น ใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม
 
@@ -136,7 +136,7 @@ CREATE TABLE competitors (
 
 -- ❌ ไม่สร้างตาราง email_templates ใน SBPGI (ตัดสินใจ 2026-08-06) — ใช้ตาราง email_template ของระบบ SBP เดิม (email_template_id · subject_format · body_format) + email_sent
 
--- ❌ ไม่สร้างตาราง status_email_rules (ปิด DP-5 · 2026-08-11) — engine ส่งอีเมล workflow เองผ่าน workflow_route.email_id
+-- ❌ ไม่สร้างตาราง status_email_rules (ปิด DP-5 · แก้มติ 2026-08-14) — workflow ให้เลข template ผ่าน workflow_route.email_id แล้ว SBPGI เรียก email-lib ส่งเอง
 --    อีเมลของ batch job (EM-07 error · EM-08 watchdog) ไม่ใช่ workflow event → ส่งผ่าน @gosoft-sbp/email-lib ของระบบเดิม
 --    ผู้รับของ batch job อยู่ใน backend config (config file/env) ไม่ใช่ตารางของ SBPGI
 
@@ -435,7 +435,7 @@ RETURNING i.id, i.data_name, i.business_key;
 | competitors | แบรนด์คู่แข่ง 11 รายการ รหัส 01-11 (ไทย + อังกฤษ) |
 | external_factors | ปัจจัยภายนอกที่ใช้อยู่ |
 | email_template (ระบบ SBP เดิม) | EM-01..EM-08 |
-| common_code / mas_param (ระบบ SBP เดิม) | SBPGI_APPROVE_LIMIT: GM=50000 / AVP=300000 (SDD GI), impact radius 1/2 km, sales data threshold=60, growth rate threshold=-10 |
+| common_code / mas_param (ระบบ SBP เดิม) | SBPGI_APPROVE_LIMIT: THRESHOLD=100000 (เกณฑ์เดียว · มติ 2026-08-18), impact radius 1/2 km, sales data threshold=60, growth rate threshold=-10 |
 
 ## 9. Migration and Verification Checklist
 
@@ -458,16 +458,16 @@ RETURNING i.id, i.data_name, i.business_key;
 | LLDD-BE-API-Document-List-Search | workflow_transaction / workflow_approver (@srm/glb-workflow)(R), compensation_documents(R), impacted_stores(R), fgi_impact_sales_summaries(R) |
 | LLDD-BE-API-Document-Create-Update | compensation_documents(R/W), workflow_transaction / workflow_approver (@srm/glb-workflow)(W), document_new_stores(R/W), document_competitors(R/W) |
 | LLDD-BE-API-Document-Detail-Aggregate | compensation_documents(R), impacted_stores(R), document_new_stores(R), document_competitors(R) |
-| LLDD-BE-API-Document-Workflow-Actions | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow)(R/W), compensation_documents(W), consideration_logs(W), workflow_transaction (@srm/glb-workflow)(R/W) |
-| LLDD-BE-API-Workflow-Instances | fgi_impact_processes / fgi_impact_stores(R/W), compensation_documents(R/W), workflow_transaction (@srm/glb-workflow)(R/W), workflow_approver (@srm/glb-workflow)(W) |
+| LLDD-BE-API-Document-Workflow-Actions | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow)(R (เขียนผ่าน lib)), compensation_documents(W), consideration_logs(W), workflow_transaction (@srm/glb-workflow)(R (เขียนผ่าน lib)) |
+| LLDD-BE-API-Workflow-Instances | fgi_impact_processes / fgi_impact_stores(R/W), compensation_documents(R/W), workflow_transaction (@srm/glb-workflow)(W (โดย lib)), workflow_approver (@srm/glb-workflow)(W) |
 | LLDD-BE-API-Attachment-Sales-Timeline | document_attachments(R/W), compensation_documents(R), fgi_impact_sales_summaries(R), sales_transactions(R) |
 | LLDD-BE-API-Lookup | impacted_stores (SBPGI) / store · mas_store · sevenshop (SBP เดิม)(R), workflow_status / workflow_state (@srm/glb-workflow · sps_store)(R), business_user (SBP เดิม)(R), auth-backend groups / menus / permissions (ระบบเดิม)(R) |
 | LLDD-BE-API-Report-and-Master-Data | compensation_documents(R), compensation_histories(R), consideration_logs(R), auth-backend group + scope (business_user_group) / prepared approver ของ @srm/glb-workflow(R) |
-| LLDD-BE-Job-Batch-Email-SRM | (backend config: config file/env)(R), (application log แบบ structured)(W), interface_transactions(R/W), email_template (SBP)(R/W) |
+| LLDD-BE-Job-Batch-Email-SRM | (backend config: config file/env)(R), (application log แบบ structured)(W), interface_transactions(R/W), email_template (SBP)(R) |
 | LLDD-BE-Database-Structure | 19 target tables (โซน A/B/C)(W), workflow engine 13 ตาราง (sps_store)(R), fcs_qssi_score (sps_store)(R), mas_param / common_code / business_user / email_template (sps_store)(R) |
 | LLDD-BE-Data-Migration-Cutover | ORA FCS_FRN (FGI_IMPACT_* · FCS_QSSI_SCORE · FGI_CONFIRM_RECEIVE_DATA)(R), MSSQL CPA_FRN_FGI (CompensateFlow · CompensateHistory · ImpactProfile · ImpactCostDetail · RunningNumber)(R), 19 target tables (โซน A/B/C)(W), workflow_transaction / workflow_approver / workflow_history (sps_store)(W) |
-| LLDD-BE-Integration-SBP-Platform | mas_param (sps_store)(R), common_code / common_code_type (sps_store)(R), email_template / email_sent (sps_store)(R/W), business_user (sps_store)(R) |
-| LLDD-BE-Workflow-Engine-Definition | workflow / workflow_version / workflow_state / workflow_status / workflow_event / workflow_route (sps_store)(R/W), workflow_group / workflow_group_map (sps_store)(R/W), workflow_transaction / workflow_history / workflow_approver (sps_store)(R/W), workflow_part / workflow_part_display (sps_store)(R/W) |
+| LLDD-BE-Integration-SBP-Platform | mas_param (sps_store)(R), common_code / common_code_type (sps_store)(R), email_template (sps_store)(R), email_sent (sps_store)(W (โดย email-lib)) |
+| LLDD-BE-Workflow-Engine-Definition | workflow / workflow_version / workflow_state / workflow_status / workflow_event / workflow_route (sps_store)(R + W ครั้งเดียวตอน setup), workflow_group / workflow_group_map (sps_store)(R + W ครั้งเดียวตอน setup), workflow_transaction / workflow_history / workflow_approver (sps_store)(R (เขียนผ่าน lib เท่านั้น)), workflow_part / workflow_part_display (sps_store)(R + W ครั้งเดียวตอน setup) |
 | LLDD-BE-Job-1-ImportQSSI | fcs_qssi_score(W) |
 | LLDD-BE-Job-2-ImportImpactStore | fgi_impact_stores(W) |
 | LLDD-BE-Job-3-ImportImpactCompetitor | fgi_impact_competitors(W) |
@@ -478,4 +478,4 @@ RETURNING i.id, i.data_name, i.business_key;
 | LLDD-BE-Job-8-CreateCompensationDocument | fgi_impact_stores(R/W), fgi_impact_processes(R), compensation_documents(W), interface_transactions(W) |
 | LLDD-BE-Job-8b-StartInternalWorkflow | fgi_impact_stores(R/W), compensation_documents(R/W), workflow_transaction (@srm/glb-workflow · sps_store)(W), workflow_approver (@srm/glb-workflow · sps_store)(W) |
 | LLDD-BE-Job-9-SyncNewStoreToDocument | fgi_impact_stores(R), compensation_documents(R), document_new_stores(W), interface_transactions(W) |
-| LLDD-BE-Job-10-NotifyNoReceiveData | interface_transactions(R), email_template + email_sent (ระบบ SBP เดิม · @gosoft-sbp/email-lib)(R/W), (backend config)(R) |
+| LLDD-BE-Job-10-NotifyNoReceiveData | interface_transactions(R), email_template (ระบบ SBP เดิม)(R), email_sent (ระบบ SBP เดิม)(W (โดย @gosoft-sbp/email-lib)), (backend config)(R) |

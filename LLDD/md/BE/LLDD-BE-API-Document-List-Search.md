@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 20 ชั่วโมง |
+| Estimate | **26 ชั่วโมง** = implementation 20 + unit test 6 (30%) |
 | Owner | Butsaba <But> Podamrong |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ APIs สำหรับงานรอดำเนินการและค้นหาเอกสารที่เกี่ยวข้อง |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -20,6 +21,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Pagination
 - Status/year filter
 - Abnormal row support
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -40,7 +45,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 | year | ค.ศ. YYYY | required for /documents | ไม่ระบุคืน 400 ตาม SRS · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. |
 | page/size | integer | page>=1 size<=100 | pagination |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
@@ -168,7 +173,7 @@ Document search API
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| workflow_transaction / workflow_approver (@srm/glb-workflow) | R | อ่าน inbox ผ่าน getPendingFlow() |
+| workflow_transaction / workflow_approver (@srm/glb-workflow) | R | อ่าน inbox ผ่าน getPendingFlowByUser() |
 | compensation_documents | R | ค้นเอกสารตาม year/status/store |
 | impacted_stores | R | ชื่อร้าน ภาค และข้อมูลร้าน |
 | fgi_impact_sales_summaries | R | flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน |
@@ -331,11 +336,11 @@ export class SbpgiDocumentListSearchService {
 
 #### 9.5 Workflow (`@srm/glb-workflow`)
 
-⚠️ **ชื่อ function ของ engine ยังไม่ยืนยัน (บันทึก 2026-08-07)** — แหล่งอ้างอิง 3 แหล่งให้ชื่อไม่ตรงกัน ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow` · `addPreApprover` · `getPendingFlowByUser` · ชุด B ชีต `Mermaid seq` ของไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` · `AddPreparedApproverUseCase` · `GetPendingFlowUseCase` · ชื่อที่ใช้ใน skeleton ด้านล่างเป็น **ชื่อชั่วคราว** ต้องยืนยันกับทีมเจ้าของ library ก่อนเขียนโค้ดจริง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3) · engine มี **13 ตาราง** อยู่ใน schema **`sps_store`** (ไม่ใช่ 10 ตาราง และไม่ใช่ `sps_auth`)
+✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
 | Endpoint | Use case ที่ต้องเรียก | เหตุผล |
 | --- | --- | --- |
-| GET /api/v1/tasks | getPendingFlow() | inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header |
+| GET /api/v1/tasks | getPendingFlowByUser() | inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header |
 
 ```ts
 // src/modules/sbpgi-document-list-search/sbpgi-document-list-search.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
@@ -343,7 +348,7 @@ export class SbpgiDocumentListSearchService {
 // (DataSource แยกชื่อ 'workflow-connection', ทุก use case ห่อด้วย TypeOrmUnitOfWork)
 
   // inbox งานค้าง — ใช้ร่วมกับ /api/workflow/pending ของ backlog เดิมได้
-  const pending = await this.workflow.getPendingFlow({
+  const pending = await this.workflow.getPendingFlowByUser({
     userData: { userId: Number(userId), groupId: Number(groupId) },
     versionId: this.versionId,
   });
@@ -609,8 +614,8 @@ export class SbpgiDocumentListSearchBffController {
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- ⚠️ ไม่มีตาราง workflow_tasks ของ SBPGI แล้ว — กล่องงานอ่านจาก engine กลาง (schema sps_store)
---    getPendingFlow({userData:{userId,groupId}, versionId}) [ชื่อ function ยังไม่ยืนยัน · 3 ชุดขัดกัน]
--- ⚠️ DP-1 (reference_id = doc_no หรือ surrogate id) · DP-2 (workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan)
+--    getPendingFlowByUser({userData}) 
+-- ✅ DP-1 ปิดแล้ว: reference_id = compensation_documents.id (surrogate · varchar(255)) · ⚠️ DP-2 workflow_transaction ไม่มี PK/index (19,283 แถว → seq-scan) ยังไม่ตัดสิน
 --    ยังไม่ตัดสิน — ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 WITH wh AS (
   -- workflow_transaction ไม่มี created_date — ใช้เวลา event แรกจาก workflow_history แทน
@@ -630,7 +635,7 @@ SELECT d.round_no AS "roundNo",
        ss.total_working_days AS "salesDataDays"
 FROM sps_store.workflow_approver a
 JOIN sps_store.workflow_transaction w ON w.transaction_id = a.transaction_id
-JOIN compensation_documents d ON d.doc_no = w.reference_id   -- DP-1
+JOIN compensation_documents d ON d.id::text = w.reference_id   -- DP-1 = surrogate id   -- DP-1
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
 WHERE a.state_id = :sectionFromJwt AND a.state_id = w.current_state_id AND w.version_id = :sbpgiVersionId
@@ -662,7 +667,7 @@ SELECT d.round_no AS "roundNo",
 FROM compensation_documents d
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
-LEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.doc_no AND w.version_id = :sbpgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)
+LEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.id::text   -- DP-1 = surrogate id (reference_id เป็น varchar(255)) AND w.version_id = :sbpgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)
 WHERE d.year = :year
   AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)
   AND (:status            IS NULL OR d.status_code = :status)
@@ -674,8 +679,8 @@ LIMIT :size OFFSET :offset;
 
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |
-| compensation_documents | CREATE INDEX idx_compensation_documents_year_impacted_store_code_status_code ON compensation_documents (year, impacted_store_code, status_code); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
 | fgi_impact_sales_summaries | CREATE INDEX idx_fgi_impact_sales_summaries_impact_process_id ON fgi_impact_sales_summaries (impact_process_id); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
+| compensation_documents | CREATE INDEX idx_compensation_documents_year_impacted_store_code_status_code ON compensation_documents (year, impacted_store_code, status_code); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
 
 ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sbpgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่
 
@@ -704,3 +709,31 @@ LIMIT :size OFFSET :offset;
 | 2 | documents missing year |
 | 3 | store search |
 | 4 | empty result |
+
+## 14. Unit Test Scope
+
+**6 ชั่วโมง** (30% ของ implementation 20 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `docNo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required when opening existing document · รูปแบบ: YYYY/xxxxx |
+| `storeCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: numeric length = 5 · รูปแบบ: string 5 digits |
+| `amount` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: >= 0 · รูปแบบ: number, 2 decimals |
+| `percent` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: 0-100 · รูปแบบ: number, 2 decimals |
+| `date` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: valid date · รูปแบบ: DD/MM/YYYY |
+| `attachment` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: <= 5 MB · รูปแบบ: file |
+| `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for /documents · รูปแบบ: ค.ศ. YYYY |
+| `page/size` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: page>=1 size<=100 · รูปแบบ: integer |
+| business rule | logic | year missing fails for /documents |
+| business rule | logic | leading zero storeCode preserved |
+| business rule | logic | pagination returns total |
+| business rule | logic | status filter works |
+| `GET /api/v1/tasks` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/documents` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

@@ -66,7 +66,7 @@
       <div class="card" style="border-left:5px solid #d68a10;background:#fff8ec;">
         <div style="font-size:13px;color:#7a5b12;line-height:1.8;">
           <b>ปรับตาม SDD v7.5 (ปรับกระบวนการบัญชีประกันรายได้):</b> ยกเลิกขั้นอนุมัติของบัญชีออกจาก workflow — <b>ไม่มี Section บัญชีและไม่มีสถานะบัญชีในเอกสารอีกต่อไป</b> (สถานะเอกสารเหลือ 6 ค่า) ·
-          เอกสารจบที่ GM (≤50,000) หรือ AVP (50,001–300,000) — <b>วงเงินใหม่ตาม SDD GI 24/02/2026 (เดิมเกณฑ์เดียว 100,000)</b> ·
+          เอกสารจบที่ GM (&lt; 100,000) หรือ AVP (≥ 100,000) — <b>เกณฑ์เดียว 100,000 ตามมติประชุม 2026-08-18 (ยกเลิกแนวคิด 50,000/300,000 ของ SDD GI)</b> ·
           To-Be: ทีมบัญชี <b>ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี</b> ผ่าน <b>หน้ารายงานตรวจสอบประกันรายได้ (SBP Mall)</b> → ค้นหาข้อมูล (14 คอลัมน์ · SDD สไลด์ 60) → Export Excel → กระทบยอด SAP เอง (นอก workflow) · แผนผังด้านล่างใช้ baseline 5 ขั้น 06→08→01→02→03
         </div>
       </div>
@@ -85,9 +85,9 @@
           <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
           <div class="stp"><div class="node"><div class="circ blue">02</div><div class="lbl">GM ส่งเสริมธุรกิจฯ</div></div></div>
           <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
-          <div class="stp"><div class="node"><div class="circ blue">03</div><div class="lbl">ผู้บริหารสำนักฯ (AVP)<br><small style="color:#8a97a5;">เฉพาะวงเงิน 50,001–300,000</small></div></div></div>
+          <div class="stp"><div class="node"><div class="circ blue">03</div><div class="lbl">ผู้บริหารสำนักฯ (AVP)<br><small style="color:#8a97a5;">เฉพาะวงเงิน ≥ 100,000</small></div></div></div>
           <div class="stp"><svg class="arrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></div>
-          <div class="stp end"><div class="node"><div class="circ">✓</div><div class="lbl">อนุมัติ · จบกระบวนการ<br><small style="color:#8a97a5;">≤50,000 จบที่ GM</small></div></div></div>
+          <div class="stp end"><div class="node"><div class="circ">✓</div><div class="lbl">อนุมัติ · จบกระบวนการ<br><small style="color:#8a97a5;">< 100,000 จบที่ GM</small></div></div></div>
         </div>
         <p style="font-size:12.5px;color:var(--muted);margin:4px 0 0;">ระบบรับข้อมูลจากทีม Store Chain Unit เป็น text file รอบ <b>17:00 ของทุกวัน</b> ผ่าน Batch job · กรณีนอกเงื่อนไขสร้างเอกสารเองผ่านระบบ FS (รอ SBP Statement ~1 วัน)</p>
       </div>
@@ -118,7 +118,7 @@
             <!-- ราง "ส่งข้ามขั้น" จาก 06 — เดินช่องขวาสุด ไม่ตัดผ่านกล่องใด -->
             <path d="M456,303 L964,303 L964,1006 L564,1006" marker-end="url(#ah)"/>
             <path d="M964,512 L568,512" marker-end="url(#ah)"/>
-            <!-- วงเงิน 50,001–300,000 → AVP (SDD GI) -->
+            <!-- วงเงิน ≥ 100,000 → AVP (SDD GI) -->
             <line x1="535" y1="864" x2="672" y2="864" marker-end="url(#ah)"/>
             <!-- AVP เห็นควรชดเชย -> จบ -->
             <path d="M780,898 L780,962 L430,962 L430,976" marker-end="url(#ah)"/>
@@ -156,9 +156,9 @@
             <text x="440" y="342">ส่งเจ้าหน้าที่ SBP DSA (08)</text>
             <text x="440" y="456">คำนวณเงินชดเชยเรียบร้อย</text>
             <text x="440" y="696">เห็นควรชดเชย</text>
-            <text x="440" y="944">เห็นควรชดเชย · ≤ 50,000</text>
+            <text x="440" y="944">เห็นควรชดเชย · &lt; 100,000</text>
             <text x="544" y="252">เห็นควรไม่ชดเชย / หยุดชดเชย</text>
-            <text x="544" y="852">ชดเชย 50,001–300,000</text>
+            <text x="544" y="852">ชดเชย ≥ 100,000</text>
             <text x="628" y="322">ทางเลือก “ส่งหน่วยงานส่งเสริมธุรกิจ SBP” จากขั้น 06</text>
             <text x="628" y="337">ข้ามขั้น 08 (ไม่ให้เจ้าหน้าที่คำนวณยอดใหม่) → ไป 01 โดยตรง</text>
             <text x="700" y="506">← เข้าขั้น หน่วยงานส่งเสริมธุรกิจฯ (01)</text>
@@ -228,7 +228,7 @@
           <circle cx="326" cy="746" r="14" fill="#2f6fed"/><text x="326" y="750" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">02</text>
           <text x="350" y="736" fill="#2b3440" font-size="12.5" font-weight="600">GM ส่งเสริมธุรกิจฯ</text>
           <text x="350" y="752" fill="#67707c" font-size="10.5">พิจารณาตามวงเงิน</text>
-          <text x="350" y="768" fill="#8a97a5" font-size="9.5">วงเงิน GM 50,000 / AVP 300,000 (SDD GI)</text>
+          <text x="350" y="768" fill="#8a97a5" font-size="9.5">วงเงิน เกณฑ์เดียว 100,000 (SDD GI)</text>
 
           <!-- D3 -->
           <polygon points="430,812 535,864 430,916 325,864" fill="#fff7e6" stroke="#f59e0b" stroke-width="1.6"/>
@@ -240,7 +240,7 @@
           <circle cx="702" cy="864" r="14" fill="#2f6fed"/><text x="702" y="868" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">03</text>
           <text x="726" y="854" fill="#2b3440" font-size="12" font-weight="600">ผู้บริหารสำนักบริหาร SBP (AVP)</text>
           <text x="726" y="870" fill="#67707c" font-size="10.5">อนุมัติวงเงินสูง</text>
-          <text x="726" y="886" fill="#8a97a5" font-size="9.5">เฉพาะเอกสารวงเงิน 50,001–300,000</text>
+          <text x="726" y="886" fill="#8a97a5" font-size="9.5">เฉพาะเอกสารวงเงิน ≥ 100,000</text>
 
           <!-- ขั้นบัญชี 04/05 ถูกตัดออกจาก workflow (SDD v7.5) — ไม่มีกล่องในผังอีกต่อไป
                บัญชีทำงานนอก workflow ผ่านหน้ารายงาน ดูกล่องประด้านล่าง -->
@@ -348,8 +348,8 @@
           <div class="lane-h"><b>GM ส่งเสริมธุรกิจฯ</b><span class="sc">GM OPT · section_code 02</span></div>
           <div class="lane-b">
             <span class="task">พิจารณาตามวงเงิน</span>
-            <span class="branch b-go">เห็นควรชดเชย · 50,001–300,000 → ผู้บริหารสำนักฯ (AVP)</span>
-            <span class="branch b-end">เห็นควรชดเชย · ≤ 50,000 → เสร็จสิ้น (จบที่ GM)</span>
+            <span class="branch b-go">เห็นควรชดเชย · ≥ 100,000 → ผู้บริหารสำนักฯ (AVP)</span>
+            <span class="branch b-end">เห็นควรชดเชย · &lt; 100,000 → เสร็จสิ้น (จบที่ GM)</span>
             <span class="branch b-end">เห็นควรไม่ชดเชย → เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น · SDD GI)</span>
             <span class="branch b-back">ส่งกลับ หน่วยงานส่งเสริมธุรกิจฯ</span>
           </div>
@@ -358,7 +358,7 @@
         <div class="lane">
           <div class="lane-h"><b>ผู้บริหารสำนักบริหาร SBP</b><span class="sc">AVP OPT · section_code 03</span></div>
           <div class="lane-b">
-            <span class="task">พิจารณาวงเงินสูง (50,001–300,000)</span>
+            <span class="task">พิจารณาวงเงินสูง (≥ 100,000)</span>
             <span class="branch b-end">เห็นควรชดเชย → เสร็จสิ้น (End)</span>
             <span class="branch b-back">เห็นควรไม่ชดเชย → ฝ่าย SBP DSA</span>
             <span class="branch b-back">ส่งกลับ GM</span>
@@ -390,7 +390,7 @@
             <tr><td class="num">1</td><td>ฝ่าย SBP DSA (Manager Franchise)</td><td class="num">06</td><td>ไม่ชดเชย · หยุดชดเชย · ส่งเสริมธุรกิจ SBP · เจ้าหน้าที่ SBP DSA</td></tr>
             <tr><td class="num">2</td><td>เจ้าหน้าที่ SBP DSA (Officer Franchise)</td><td class="num">08</td><td>มี view คำนวณเงินชดเชย → ส่งหน่วยงานส่งเสริมธุรกิจฯ / ส่งกลับ DSA</td></tr>
             <tr><td class="num">3</td><td>หน่วยงานส่งเสริมธุรกิจฯ <small style="color:#8a97a5;">(ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ + <b>เจ้าหน้าที่อาวุโส</b> + เจ้าหน้าที่ · SDD GI)</small></td><td class="num">01</td><td>แก้ไขร้านเปิดใหม่ + คู่แข่ง + ปัจจัยได้ · เห็นควรชดเชย(→GM) / <b>เห็นควรไม่ชดเชย = จบทันที</b> / ส่งกลับ DSA</td></tr>
-            <tr><td class="num">4</td><td>GM ส่งเสริมธุรกิจฯ (GM OPT)</td><td class="num">02</td><td>เห็นควรชดเชย: ≤50,000 → <b>เสร็จสิ้น</b> · 50,001–300,000 → AVP &nbsp;|&nbsp; เห็นควรไม่ชดเชย → <b>เสร็จสิ้นทันที</b> (SDD GI) &nbsp;|&nbsp; ส่งกลับส่งเสริมฯ</td></tr>
+            <tr><td class="num">4</td><td>GM ส่งเสริมธุรกิจฯ (GM OPT)</td><td class="num">02</td><td>เห็นควรชดเชย: &lt; 100,000 → <b>เสร็จสิ้น</b> · ≥ 100,000 → AVP &nbsp;|&nbsp; เห็นควรไม่ชดเชย → <b>เสร็จสิ้นทันที</b> (SDD GI) &nbsp;|&nbsp; ส่งกลับส่งเสริมฯ</td></tr>
             <tr><td class="num">5</td><td>ผู้บริหารสำนักบริหาร SBP (AVP OPT)</td><td class="num">03</td><td>เห็นควรชดเชย → <b>เสร็จสิ้น</b> / ไม่ชดเชย / ส่งกลับ GM</td></tr>
             <tr><td class="num">—</td><td>บัญชี <small style="color:#8a97a5;">(นอก workflow)</small></td><td class="num">—</td><td><b>ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี</b> ผ่านหน้ารายงานตรวจสอบประกันรายได้ (SBP Mall) → Export Excel → กระทบยอด SAP · <b>ไม่มีขั้นอนุมัติและไม่มีสถานะบัญชีในเอกสาร</b> (SDD v7.5)</td></tr>
           </tbody>
@@ -419,7 +419,7 @@
         <div style="display:flex;gap:12px;align-items:flex-start;">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
           <div style="font-size:13.5px;color:#45525f;line-height:1.7;">
-            <b style="color:#2b3440;">เงื่อนไขวงเงิน (SDD GI 24/02/2026):</b> เงินชดเชย ≤ <b>50,000</b> บาท เห็นควรชดเชย <b>จบที่ GM (เสร็จสิ้น)</b> · <b>50,001–300,000</b> บาท ส่งไปผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) แล้ว<b>จบงาน</b> (เกิน 300,000 SDD ยังไม่ระบุ — รอ confirm) · เห็นควรไม่ชดเชยที่ขั้น 01/02 <b>จบทันที ไม่ตีกลับ</b> · <b>ตัดขั้นบัญชี 04/05 ตาม SDD v7.5</b> — บัญชีตรวจผ่านรายงาน SBP Mall · เดิมใช้เกณฑ์เดียว 100,000 · ดูมุมมองรายบทบาทได้ที่หน้า <a href="k2-document.html">เอกสารร้านถูกกระทบ</a>
+            <b style="color:#2b3440;">เงื่อนไขวงเงิน (มติประชุม 2026-08-18 · เกณฑ์เดียว):</b> เงินชดเชย &lt; <b>100,000</b> บาท เห็นควรชดเชย <b>จบที่ GM (เสร็จสิ้น)</b> · <b>≥ 100,000</b> บาท ส่งไปผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) แล้ว<b>จบงาน</b> (ไม่มีเพดานบน — ทุกยอดตั้งแต่ 100,000 วิ่งเข้า AVP เส้นเดียว) · เห็นควรไม่ชดเชยที่ขั้น 01/02 <b>จบทันที ไม่ตีกลับ</b> · <b>ตัดขั้นบัญชี 04/05 ตาม SDD v7.5</b> — บัญชีตรวจผ่านรายงาน SBP Mall · กลับมาใช้เกณฑ์เดียว 100,000 ตามมติประชุม 2026-08-18 (ช่วงสั้น ๆ เคยเป็น 50,000/300,000 ตาม SDD GI) · ดูมุมมองรายบทบาทได้ที่หน้า <a href="k2-document.html">เอกสารร้านถูกกระทบ</a>
           </div>
         </div>
       </div>

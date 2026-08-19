@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 30 ชั่วโมง |
+| Estimate | **39 ชั่วโมง** = implementation 30 + unit test 9 (30%) |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ APIs สำหรับรายงานตรวจสอบประกันรายได้ และ Master Data ที่ SBPGI ดูแลเอง (ปัจจัยภายนอก + รายชื่อคู่แข่ง) |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -19,6 +20,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Excel export (14 columns, SDD slide 60)
 - Operator/factor CRUD
 - Report filters
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -40,13 +45,13 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report and M
 | reason | text | required mutation | audit reason |
 | page/size | integer | page>=1 size<=100 | pagination |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
 | Input | GET /api/v1/reports/status-summary; GET /api/v1/reports/status-summary/export; GET /api/v1/factors |
 | Progress | Validate filter; Build query; Apply pagination/export mode; Return rows or CSV |
-| Output | external_factors; competitors; mas_param (SBP) |
+| Output | external_factors; competitors |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -530,7 +535,7 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 | external_factors | R/W | master ปัจจัยภายนอก |
 | competitors | R/W | master แบรนด์คู่แข่ง 11 รายการ (code 01-11 · name_th · name_en · remark) — feed dropdown ร้านคู่แข่งของหน้าเอกสาร |
 | document_competitors | R | ตรวจว่าแบรนด์ถูกอ้างในเอกสารก่อนลบ (409) |
-| mas_param (SBP) | R/W | ค่ากำหนดกลางในตารางของระบบ SBP เดิม |
+| mas_param (SBP) | R | ค่ากำหนดกลางของระบบ SBP เดิม — **อ่านอย่างเดียว** (หน้า Global Config ของ SBPGI ถูกลบ 2026-08-06 · ระบบเดิมเป็นผู้แก้) |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -1013,7 +1018,7 @@ export class CompensationHistory {
 
 | Object | R/W | ใช้ของระบบเดิมตัวไหน |
 | --- | --- | --- |
-| mas_param | R/W | mas_param (store-backend) |
+| mas_param | R | mas_param (store-backend) |
 
 #### 9.6 Repository Providers + Module wiring
 
@@ -1166,7 +1171,7 @@ export class SbpgiReportAndMasterDataBffController {
 | external_factors | R/W | master ปัจจัยภายนอก |
 | competitors | R/W | master แบรนด์คู่แข่ง 11 รายการ (code 01-11 · name_th · name_en · remark) — feed dropdown ร้านคู่แข่งของหน้าเอกสาร |
 | document_competitors | R | ตรวจว่าแบรนด์ถูกอ้างในเอกสารก่อนลบ (409) |
-| mas_param | R/W | ใช้ของระบบเดิม: mas_param (store-backend) |
+| mas_param | R | ใช้ของระบบเดิม: mas_param (store-backend) |
 
 #### 10.2 SQL จริงต่อ Endpoint
 
@@ -1337,3 +1342,37 @@ DELETE FROM external_factors WHERE factor_code = :code;
 | 3 | factor duplicate |
 | 4 | operator audit |
 | 5 | config locked |
+
+## 14. Unit Test Scope
+
+**9 ชั่วโมง** (30% ของ implementation 30 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for report · รูปแบบ: ค.ศ. YYYY |
+| `status` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: statusCode string |
+| `result` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: optional for report (บังคับเฉพาะ status) · รูปแบบ: APPROVE\|REJECT\|CANCELLED\|PENDING |
+| `reason` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required mutation · รูปแบบ: text |
+| `page/size` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: page>=1 size<=100 · รูปแบบ: integer |
+| business rule | logic | missing year/status/result fails |
+| business rule | logic | export uses same filters as preview |
+| business rule | logic | master edit requires reason |
+| business rule | logic | config locked value cannot edit |
+| `GET /api/v1/reports/status-summary` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/reports/status-summary/export` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/factors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `POST /api/v1/factors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `PUT /api/v1/factors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/competitors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `POST /api/v1/competitors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `PUT /api/v1/competitors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `DELETE /api/v1/competitors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `DELETE /api/v1/factors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `external_factors`, `competitors` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

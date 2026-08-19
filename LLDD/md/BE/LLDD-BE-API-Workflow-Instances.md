@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 24 ชั่วโมง |
+| Estimate | **32 ชั่วโมง** = implementation 24 + unit test 8 (30%) |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ Workflow Engine ภายในและ POST /api/v1/workflows/instances สำหรับเปิด workflow จาก Job 8b แทน K2 REST StartInstance โดยเป็นเจ้าของ Gen Flow Gate W/Y/N |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -21,6 +22,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Require compensation document created by Job 8
 - Create workflow instance and first task section 06
 - Idempotency and rerun behavior for Job 8b
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -41,13 +46,13 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | dvUserId/juristic | string\|null | DV required; juristic must differ | DV ว่างหรือ juristic เดียวกันตั้ง N; juristic ยังไม่พร้อมคง W |
 | salesStatus | Y\|N | required by gate | ค่าอื่นคง W และคืน 422 |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
 | Input | POST /api/v1/workflows/instances; GET /api/v1/workflows/instances/{id}; GET /api/v1/workflows/summary |
 | Progress | Validate service token and idempotency key; Load impact process and current workflow_generation_status; Reject if status is already Y and return existing doc/instance idempotently; Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N |
-| Output | fgi_impact_processes / fgi_impact_stores; compensation_documents; workflow_transaction (@srm/glb-workflow) |
+| Output | fgi_impact_processes / fgi_impact_stores; compensation_documents; workflow_approver (@srm/glb-workflow) |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -67,7 +72,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | 4 | Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N | missing DV sets N |
 | 5 | If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason | same juristic sets N |
 | 6 | If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun | growth NULL keeps W but growth > -10 sets N |
-| 7 | If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initialize + add-prepared-approver at state 06 — function names UNCONFIRMED, 3 conflicting sets), then update fgi_impact_processes.workflow_generation_status=Y in one transaction | sales status NULL keeps W |
+| 7 | If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initialize + addPreApprover at state 06 — function names UNCONFIRMED, 3 conflicting sets), then update fgi_impact_processes.workflow_generation_status=Y in one transaction | sales status NULL keeps W |
 | 8 | Enqueue notification summary outside transaction after commit | duplicate request returns existing instance |
 
 ## 6. Button / User Action Mapping
@@ -220,8 +225,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | --- | --- | --- |
 | fgi_impact_processes / fgi_impact_stores | R/W | อ่านข้อมูล impact และอัปเดต workflow_generation_status W/Y/N |
 | compensation_documents | R/W | create-if-missing จาก impact process และผูก docNo |
-| workflow_transaction (@srm/glb-workflow) | R/W | initializeWorkflow แทน K2 StartInstance |
-| workflow_approver (@srm/glb-workflow) | W | addPreparedApprover state 06 |
+| workflow_transaction (@srm/glb-workflow) | W (โดย lib) | initializeWorkflow() แทน K2 StartInstance — ห้าม INSERT ตรง |
+| workflow_approver (@srm/glb-workflow) | W | addPreApprover state 06 |
 | workflow_status / workflow_state (@srm/glb-workflow · sps_store) | R | lookup statusCode/status และ state แรก — ตาราง document_statuses/workflow_sections ของ SBPGI ถูกตัดแล้ว |
 | interface_transactions | W | บันทึกผลเรียกจาก Job 8b · ตาราง job_run_histories ถูกตัด 2026-08-06 — ผลการรันไปที่ application log |
 
@@ -372,9 +377,9 @@ export class SbpgiWorkflowInstancesService {
       await runner.commitTransaction();
       // ⚠️ workflow engine อยู่คนละ DataSource ('workflow-connection' ของ @srm/glb-workflow)
       //    จึง **atomic ร่วมกับ transaction ข้างบนไม่ได้** — ต้อง commit ฝั่ง SBPGI ให้เสร็จก่อน
-      //    แล้วค่อย triggerEvent (idempotency key = referenceId = docNo)
+      //    แล้วค่อย eventWorkflow (idempotency key = referenceId = docNo)
       // TODO: เรียก workflow use case ตามตารางหัวข้อ Workflow ด้านล่าง + retry
-      // TODO: ถ้า triggerEvent ล้มเหลว ต้องมี compensating action และบันทึกผลลง
+      // TODO: ถ้า eventWorkflow ล้มเหลว ต้องมี compensating action และบันทึกผลลง
       //       consideration_logs เพื่อให้ job reconcile ตามเก็บได้
       return { message: 'saved' };
     } catch (error) {
@@ -412,13 +417,13 @@ export class SbpgiWorkflowInstancesService {
 
 #### 9.5 Workflow (`@srm/glb-workflow`)
 
-⚠️ **ชื่อ function ของ engine ยังไม่ยืนยัน (บันทึก 2026-08-07)** — แหล่งอ้างอิง 3 แหล่งให้ชื่อไม่ตรงกัน ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow` · `addPreApprover` · `getPendingFlowByUser` · ชุด B ชีต `Mermaid seq` ของไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` · `AddPreparedApproverUseCase` · `GetPendingFlowUseCase` · ชื่อที่ใช้ใน skeleton ด้านล่างเป็น **ชื่อชั่วคราว** ต้องยืนยันกับทีมเจ้าของ library ก่อนเขียนโค้ดจริง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3) · engine มี **13 ตาราง** อยู่ใน schema **`sps_store`** (ไม่ใช่ 10 ตาราง และไม่ใช่ `sps_auth`)
+✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
 | Endpoint | Use case ที่ต้องเรียก | เหตุผล |
 | --- | --- | --- |
-| POST /api/v1/workflows/instances | initializeWorkflow() → addPreparedApprover() | เปิด transaction ใหม่ (referenceId = docNo) แล้วผูกผู้อนุมัติ state 06 |
+| POST /api/v1/workflows/instances | initializeWorkflow() → addPreApprover() | เปิด transaction ใหม่ (referenceId = docNo) แล้วผูกผู้อนุมัติ state 06 |
 | GET /api/v1/workflows/instances/{id} | getTransaction() | อ่าน currentState ของ instance ตาม referenceId |
-| GET /api/v1/workflows/summary | getPendingFlow() (aggregate) | นับงานค้างต่อ state แล้วรวมกับ workflow_generation_status W/Y/N |
+| GET /api/v1/workflows/summary | getPendingFlowByUser() (aggregate) | นับงานค้างต่อ state แล้วรวมกับ workflow_generation_status W/Y/N |
 
 ```ts
 // src/modules/sbpgi-workflow-instances/sbpgi-workflow-instances.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
@@ -432,7 +437,7 @@ export class SbpgiWorkflowInstancesService {
     userId: Number(userId),
   });
   // ผูกผู้อนุมัติล่วงหน้าของ section 06 (prepared approver)
-  await this.workflow.addPreparedApprover({
+  await this.workflow.addPreApprover({
     versionId: this.versionId,
     referenceId: docNo,
     stateId: SECTION_STATE_ID['06'], // TODO: map section 06/08/01/02/03 -> stateId ของ workflow version
@@ -442,7 +447,7 @@ export class SbpgiWorkflowInstancesService {
   });
 
   // inbox งานค้าง — ใช้ร่วมกับ /api/workflow/pending ของ backlog เดิมได้
-  const pending = await this.workflow.getPendingFlow({
+  const pending = await this.workflow.getPendingFlowByUser({
     userData: { userId: Number(userId), groupId: Number(groupId) },
     versionId: this.versionId,
   });
@@ -531,7 +536,7 @@ export class FgiImpactStore {
 
 | Object | R/W | ใช้ของระบบเดิมตัวไหน |
 | --- | --- | --- |
-| workflow_transaction | R/W | workflow engine @srm/glb-workflow |
+| workflow_transaction | W (โดย lib) | workflow engine @srm/glb-workflow |
 | workflow_approver | W | workflow engine @srm/glb-workflow |
 | workflow_status | R | workflow engine @srm/glb-workflow |
 | workflow_state | R | workflow engine @srm/glb-workflow |
@@ -685,7 +690,7 @@ export class SbpgiWorkflowInstancesBffController {
 | fgi_impact_stores | R/W | อ่านข้อมูล impact และอัปเดต workflow_generation_status W/Y/N |
 | compensation_documents | R/W | create-if-missing จาก impact process และผูก docNo |
 | interface_transactions | W | บันทึกผลเรียกจาก Job 8b · ตาราง job_run_histories ถูกตัด 2026-08-06 — ผลการรันไปที่ application log |
-| workflow_transaction | R/W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| workflow_transaction | W (โดย lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_approver | W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_status | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_state | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
@@ -721,10 +726,10 @@ UPDATE fgi_impact_processes SET workflow_generation_status = :flagN
 WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagN;
 
 -- ผ่าน gate → ใช้เอกสารที่ Job 8 สร้างแล้ว เปิด instance + งานแรกผ่าน @srm/glb-workflow แล้วตั้ง Y ใน transaction เดียว
--- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 20 ตารางแล้ว)
+-- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 19 ตารางแล้ว)
 --    initialize(versionId=:sbpgiVersionId, referenceId=:referenceId, userId=:serviceActor)
---    addPreparedApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
--- ⚠️ ชื่อ function ยังไม่ยืนยัน (3 ชุดขัดกัน) · referenceId ยังไม่ตัดสิน (DP-1) · ไม่มี UNIQUE กันซ้ำจริงบน
+--    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
+-- referenceId = compensation_documents.id (DP-1 ปิดแล้ว) · ไม่มี UNIQUE กันซ้ำจริงบน
 --    sps_store.workflow_transaction (ไม่มี PK/index · 19,283 แถว) → กันซ้ำที่ application (DP-2)
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT d.doc_no FROM compensation_documents d
@@ -738,15 +743,15 @@ WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDec
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
--- ⚠️ DP-1 referenceId (doc_no หรือ surrogate id) และ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ยังไม่ตัดสิน
---    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4 · ชื่อ function ของ engine ยังไม่ยืนยัน (3 ชุดขัดกัน)
+-- ✅ DP-1 ปิดแล้ว: referenceId = compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ยังไม่ตัดสิน
+--    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.transaction_id, w.reference_id, w.current_state_id, w.current_status_id, w.current_approver,
        a.state_id AS pending_state_id, a.approver_id, a.approve_seq
 FROM sps_store.workflow_transaction w
 LEFT JOIN sps_store.workflow_approver a ON a.transaction_id = w.transaction_id AND a.state_id = w.current_state_id
 WHERE w.transaction_id = :id AND w.version_id = :sbpgiVersionId;
 
--- เอกสารที่ผูกกับ instance (join ด้วยค่าที่ DP-1 จะตัดสิน)
+-- เอกสารที่ผูกกับ instance (join ด้วยcompensation_documents.id (DP-1 ปิดแล้ว))
 SELECT doc_no, status_code, current_section_code FROM compensation_documents WHERE doc_no = :referenceId;
 ```
 
@@ -759,8 +764,8 @@ SELECT workflow_generation_status, COUNT(*) AS cnt
 FROM fgi_impact_processes
 GROUP BY workflow_generation_status;
 
--- ⚠️ DP-1 referenceId (doc_no หรือ surrogate id) และ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ยังไม่ตัดสิน
---    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4 · ชื่อ function ของ engine ยังไม่ยืนยัน (3 ชุดขัดกัน)
+-- ✅ DP-1 ปิดแล้ว: referenceId = compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ยังไม่ตัดสิน
+--    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.current_state_id AS section_code, COUNT(*) AS open_tasks
 FROM sps_store.workflow_transaction w
 WHERE w.version_id = :sbpgiVersionId AND w.current_status_id <> :statusDone
@@ -786,7 +791,7 @@ GROUP BY w.current_state_id;
 | 4 | Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N |
 | 5 | If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason |
 | 6 | If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun |
-| 7 | If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initialize + add-prepared-approver at state 06 — function names UNCONFIRMED, 3 conflicting sets), then update fgi_impact_processes.workflow_generation_status=Y in one transaction |
+| 7 | If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initialize + addPreApprover at state 06 — function names UNCONFIRMED, 3 conflicting sets), then update fgi_impact_processes.workflow_generation_status=Y in one transaction |
 | 8 | Enqueue notification summary outside transaction after commit |
 
 ## 12. Acceptance Criteria
@@ -812,3 +817,35 @@ GROUP BY w.current_state_id;
 | 8 | duplicate request returns existing instance |
 | 9 | transaction rollback on task insert failure |
 | 10 | service token missing returns 401 |
+
+## 14. Unit Test Scope
+
+**8 ชั่วโมง** (30% ของ implementation 24 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `impactProcessId` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: integer/string |
+| `sourceJobNo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required fixed 8b · รูปแบบ: string |
+| `requestId` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: uuid |
+| `workflow_generation_status` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: computed · รูปแบบ: W\|Y\|N |
+| `branchType/distanceKm` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required by gate · รูปแบบ: enum/number\|null |
+| `growthRateDiff` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: <= -10 required by gate · รูปแบบ: number\|null |
+| `dvUserId/juristic` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: DV required; juristic must differ · รูปแบบ: string\|null |
+| `salesStatus` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required by gate · รูปแบบ: Y\|N |
+| business rule | logic | ไม่มี FE screen หรือ Flow page deliverable เพิ่มจาก LLDD นี้ |
+| business rule | logic | Job 8b ต้องเรียก API/service นี้และไม่ duplicate Gen Flow Gate |
+| business rule | logic | ไม่เรียก K2 REST StartInstance และไม่สร้างไฟล์ BPM06001O/2O/3O |
+| business rule | logic | ผ่าน gate แล้ว transaction ต้องมี document + instance + first task + Y ครบ หรือ rollback ทั้งหมด |
+| business rule | logic | fail ถาวร (branch type, distance over threshold, missing DV, same juristic, growth not met) ต้องตั้ง N; เฉพาะข้อมูล distance/juristic/growth/sales status ยังไม่พร้อมจึงคง W |
+| business rule | logic | idempotent rerun ไม่สร้าง docNo/instance/task ซ้ำ |
+| `POST /api/v1/workflows/instances` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/workflows/instances/{id}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/workflows/summary` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `fgi_impact_processes / fgi_impact_stores`, `compensation_documents`, `workflow_transaction (@srm/glb-workflow)` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

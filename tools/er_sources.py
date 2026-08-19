@@ -3,7 +3,7 @@
 
 แหล่งที่อ่าน
   1. SBP/db-schema-sps_store.md · SBP/db-schema-sps_auth.md   (dump ฐานข้อมูลจริง 07/08/2026)
-  2. LLDD/md/LLDD-Database.md หัวข้อ 5 (Executable DDL)        (โครง SBPGI 20 ตาราง)
+  2. LLDD/md/LLDD-Database.md หัวข้อ 5 (Executable DDL)        (โครง SBPGI 19 ตาราง)
 
 ใช้โดย tools/build_er_diagram.py — ไม่แก้ไฟล์ต้นทาง อ่านอย่างเดียว
 """

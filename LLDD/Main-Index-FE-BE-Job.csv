@@ -1,34 +1,34 @@
-﻿หัวข้อ,owner,ชั่วโมง,ลำดับขั้น
-FE - Integration Contracts,Chidchanok <lin> Saengamnat,16,2
-FE - Application Foundation and Shared UI,Chidchanok <lin> Saengamnat,28,3
-FE - Document Lists,Chidchanok <lin> Saengamnat,28,4
-FE - Create Document,Kittisak <New> Kaeowika,6,4
-FE - Document Detail and Action,Kittisak <New> Kaeowika,60,4
-FE - Status Summary Report,Kittisak <New> Kaeowika,20,4
-FE - Master Data,Kittisak <New> Kaeowika,16,4
-FE - Testing and Delivery,Chidchanok <lin> Saengamnat,12,5
-BE - Database Structure and Deployment,Aphiwit <Bank> Khammoon,28,1
-BE - Data Migration and Cutover,Aphiwit <Bank> Khammoon,40,2
-BE - Integration with SBP Platform,Tunyatorn <Vava> Kiatkongphongsa,20,1
-BE - Workflow Engine Definition,Tunyatorn <Vava> Kiatkongphongsa,24,1
-BE - API Common Contracts,Butsaba <But> Podamrong,18,2
-BE - API Document List and Search,Butsaba <But> Podamrong,20,3
-BE - API Document Create and Update,Butsaba <But> Podamrong,24,3
-BE - API Document Detail Aggregate,Butsaba <But> Podamrong,24,3
-BE - API Document Workflow Actions,Tunyatorn <Vava> Kiatkongphongsa,28,3
-BE - Workflow Engine and API Workflow Instances,Tunyatorn <Vava> Kiatkongphongsa,24,3
-BE - API Attachment Sales and Timeline,Peerakorn <Pete> Sakunkaewphithak,26,3
-BE - API Lookup,Tunyatorn <Vava> Kiatkongphongsa,10,3
-BE - API Report and Master Data,Peerakorn <Pete> Sakunkaewphithak,30,3
-BE - Job Batch and Email Integration,Peerakorn <Pete> Sakunkaewphithak,14,2
-BE - Job 1 ImportQSSI,Aphiwit <Bank> Khammoon,16,3
-BE - Job 2 ImportImpactStore,Aphiwit <Bank> Khammoon,14,3
-BE - Job 3 ImportImpactCompetitor,Aphiwit <Bank> Khammoon,10,4
-BE - Job 4 PrepareImpactStoreToIAS,Aphiwit <Bank> Khammoon,14,4
-BE - Job 5 ImportImpactSaleFromIAS,Peerakorn <Pete> Sakunkaewphithak,16,5
-BE - Job 6 ExportImpactStoreToFS,Aphiwit <Bank> Khammoon,20,4
-BE - Job 7 SyncCompetitorToDocument,Peerakorn <Pete> Sakunkaewphithak,10,6
-BE - Job 8 CreateCompensationDocument,Aphiwit <Bank> Khammoon,18,5
-BE - Job 8b StartInternalWorkflow,Tunyatorn <Vava> Kiatkongphongsa,16,6
-BE - Job 9 SyncNewStoreToDocument,Peerakorn <Pete> Sakunkaewphithak,11,6
-BE - Job 10 NotifyNoReceiveData,Peerakorn <Pete> Sakunkaewphithak,8,5
+﻿หัวข้อ,owner,ชั่วโมงรวม,implementation,unit test,ลำดับขั้น
+FE - Integration Contracts,Chidchanok <lin> Saengamnat,16,16,0,2
+FE - Application Foundation and Shared UI,Chidchanok <lin> Saengamnat,35,28,7,3
+FE - Document Lists,Chidchanok <lin> Saengamnat,35,28,7,4
+FE - Create Document,Kittisak <New> Kaeowika,8,6,2,4
+FE - Document Detail and Action,Kittisak <New> Kaeowika,75,60,15,4
+FE - Status Summary Report,Kittisak <New> Kaeowika,25,20,5,4
+FE - Master Data,Kittisak <New> Kaeowika,20,16,4,4
+FE - Testing and Delivery,Chidchanok <lin> Saengamnat,12,12,0,5
+BE - Database Structure and Deployment,Aphiwit <Bank> Khammoon,28,28,0,1
+BE - Data Migration and Cutover,Aphiwit <Bank> Khammoon,40,40,0,2
+BE - Integration with SBP Platform,Tunyatorn <Vava> Kiatkongphongsa,20,20,0,1
+BE - Workflow Engine Definition,Tunyatorn <Vava> Kiatkongphongsa,24,24,0,1
+BE - API Common Contracts,Butsaba <But> Podamrong,18,18,0,2
+BE - API Document List and Search,Butsaba <But> Podamrong,26,20,6,3
+BE - API Document Create and Update,Butsaba <But> Podamrong,32,24,8,3
+BE - API Document Detail Aggregate,Butsaba <But> Podamrong,32,24,8,3
+BE - API Document Workflow Actions,Tunyatorn <Vava> Kiatkongphongsa,37,28,9,3
+BE - Workflow Engine and API Workflow Instances,Tunyatorn <Vava> Kiatkongphongsa,32,24,8,3
+BE - API Attachment Sales and Timeline,Peerakorn <Pete> Sakunkaewphithak,34,26,8,3
+BE - API Lookup,Tunyatorn <Vava> Kiatkongphongsa,13,10,3,3
+BE - API Report and Master Data,Peerakorn <Pete> Sakunkaewphithak,39,30,9,3
+BE - Job Batch and Email Integration,Peerakorn <Pete> Sakunkaewphithak,19,14,5,2
+BE - Job 1 ImportQSSI,Aphiwit <Bank> Khammoon,21,16,5,3
+BE - Job 2 ImportImpactStore,Aphiwit <Bank> Khammoon,19,14,5,3
+BE - Job 3 ImportImpactCompetitor,Aphiwit <Bank> Khammoon,13,10,3,4
+BE - Job 4 PrepareImpactStoreToIAS,Aphiwit <Bank> Khammoon,19,14,5,4
+BE - Job 5 ImportImpactSaleFromIAS,Peerakorn <Pete> Sakunkaewphithak,21,16,5,5
+BE - Job 6 ExportImpactStoreToFS,Aphiwit <Bank> Khammoon,26,20,6,4
+BE - Job 7 SyncCompetitorToDocument,Peerakorn <Pete> Sakunkaewphithak,13,10,3,6
+BE - Job 8 CreateCompensationDocument,Aphiwit <Bank> Khammoon,24,18,6,5
+BE - Job 8b StartInternalWorkflow,Tunyatorn <Vava> Kiatkongphongsa,21,16,5,6
+BE - Job 9 SyncNewStoreToDocument,Peerakorn <Pete> Sakunkaewphithak,15,11,4,6
+BE - Job 10 NotifyNoReceiveData,Peerakorn <Pete> Sakunkaewphithak,11,8,3,5

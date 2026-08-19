@@ -171,7 +171,7 @@ Version 1.0
 | REQ-OPS-001 | Jobs 1-10 และ 8b ต้องรองรับ rerun โดยไม่สร้างข้อมูลซ้ำและต้องรายงาน input/success/reject/skipped | rerun/reconcile evidence |
 | REQ-SCR-001 | ระบบต้องมีหน้าจอ committed SCR-01 ถึง SCR-08 ตาม requirement รายหน้าจอ | screen/UAT traceability |
 | SYS-API-001 | ระบบต้องมี API capability 30 endpoints ใน 6 กลุ่มตาม catalog | OpenAPI/contract coverage |
-| SYS-DAT-001 | ระบบต้องมี logical data model 20 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ) | migration/schema test |
+| SYS-DAT-001 | ระบบต้องมี logical data model 19 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ) | migration/schema test |
 | SYS-NFR-001 | ระบบต้องมี correlation log, metrics, alert และ audit ที่เชื่อม request/job/interface กับผลธุรกิจได้ | observability trace |
 
 
@@ -252,7 +252,7 @@ Version 1.0
 | Connection | Legacy | Target |
 | --- | --- | --- |
 | ส่งข้อมูลชดเชย/ร้านใหม่/คู่แข่ง เข้าระบบเอกสาร | ไฟล์ BPM06001O (48 ฟิลด์) / BPM06002O / BPM06003O ผ่าน SFTP ไป BPM (Jobs 7, 8, 9) | Document Service เขียน DB ตรง (compensation_documents / document_new_stores / document_competitors) - ตัดไฟล์และ SFTP ภายในทิ้ง |
-| เปิด Workflow | Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded - ความเสี่ยง P0) | @srm/glb-workflow ของระบบ SBP เดิม (13 ตาราง · schema sps_store ) เรียกผ่าน POST /workflows/instances · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ · ชื่อ function (initializeWorkflow -> addPreparedApprover) ยังไม่ยืนยัน - เอกสาร 3 ชุดขัดกัน · referenceId ยังไม่ตัดสิน (DP-1) |
+| เปิด Workflow | Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded - ความเสี่ยง P0) | @srm/glb-workflow ของระบบ SBP เดิม (13 ตาราง · schema sps_store ) เรียกผ่าน POST /workflows/instances · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ · ชื่อ function (initializeWorkflow -> addPreApprover) ยังไม่ยืนยัน - เอกสาร 3 ชุดขัดกัน · referenceId ยังไม่ตัดสิน (DP-1) |
 | รับ ACK ผลประมวลจาก STA | รอ STA อัปเดต return_code ใน tracking · Job 10 ตรวจทุกเช้า | เพิ่ม POST /interfaces/sta/ack (API key) · Job 10 คงไว้เป็น safety net |
 | ตาราง tracking interface | FGI_CONFIRM_RECEIVE_DATA - transaction_key เป็น polymorphic FK + บั๊ก purge (E20) | interface_transactions - typed FK ต่อประเภทข้อมูล + งาน purge ทำงานจริง |
 | อีเมลแจ้งเตือน | แต่ละ job ต่อ SMTP เอง · encoding TIS-620 · ผู้รับ hardcoded บางจุด (template 34) | Notification Service กลาง · UTF-8 · ผู้รับตาม status_email_rules + config ต่อ job |
@@ -744,7 +744,7 @@ Version 1.0
 
 - รองรับ template EM-01 ถึง EM-08 ครอบคลุม workflow transition, reminder, escalation, batch error และ STA ACK watchdog
 - ตัวแปร merge ที่ใช้ต้องตรงกับที่ template รองรับ และต้องไม่มีตัวแปรที่แทนค่าไม่ได้หลงเหลือในอีเมลที่ส่งออก
-- From/To/Cc กำหนดตาม status_email_rules หรือ config ต่อ job ไม่ได้มาจากผู้ใช้
+- From/To/Cc ของ batch job กำหนดใน backend config ไม่ได้มาจากผู้ใช้ · อีเมล workflow เป็นหน้าที่ของ engine
 - การส่งอีเมลต้องอยู่นอก transaction ของ workflow และการส่งล้มเหลวต้องไม่ทำให้ workflow ล้มเหลว
 - การส่งทุกฉบับต้องบันทึกไว้ที่ตาราง email_sent เพื่อการตรวจสอบย้อนหลัง
 - การแก้ไขเนื้อหา template เป็นงานของระบบ SBP เดิม และบันทึก audit ที่ระบบเดิม
@@ -891,7 +891,7 @@ Version 1.0
 | REQ-OPS-001 | Batch rerun | idempotency และ run reconciliation | 3.0, 3.3 |
 | REQ-SCR-001 | Committed screens | SCR-01..04 และ SCR-06..11 | 3.4 |
 | SYS-API-001 | API capability | 30 endpoints / 6 groups | 3.5 |
-| SYS-DAT-001 | Data model | 20 tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม) | 3.2 |
+| SYS-DAT-001 | Data model | 19 tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม) | 3.2 |
 | SYS-NFR-001 | Observability | correlation/metrics/alert/audit evidence | 4 |
 | FLOW-01 | Batch pipeline | ขั้นตอนนำเข้า คำนวณ สร้างเอกสาร ส่ง Statement และติดตาม ACK | 3.1, 3.3 |
 | FLOW-02 | Approval workflow | Section 06 -> 08 -> 01 -> 02 และ Section 03 ตามวงเงิน | 3.1.1, 3.1.3 |
@@ -931,7 +931,7 @@ Version 1.0
 
 | ID | Topic | Decision required | Impact if unresolved |
 | --- | --- | --- | --- |
-| OPEN-02 | วงเงินอนุมัติเกิน 300,000 | SDD GI กำหนดวงเงิน GM 50,000 / AVP 300,000 แต่ยังไม่ระบุเส้นทางกรณีเกิน 300,000 ต่อรายการ | routing ขั้น 03 และ UAT |
+| OPEN-02 ✅ ปิดแล้ว 2026-08-18 | วงเงินอนุมัติเกิน 300,000 | มติประชุม 2026-08-18 กลับไปใช้เกณฑ์เดียว 100,000 - ข้อค้างเรื่องเกิน 300,000 หมดไปเอง เพราะทุกยอด >= 100,000 ส่ง AVP อยู่แล้ว | routing ขั้น 03 และ UAT |
 | OPEN-09 | ผลพิจารณา "เห็นควรไม่ชดเชย" ที่ขั้น AVP (03) | SDD GI ระบุเฉพาะขั้น 01/02 ว่าจบทันที - ขั้น 03 ยังคงพฤติกรรมเดิม (ตีกลับ 06) รอยืนยัน | routing และ UAT |
 | OPEN-04 | NULL growth_rate | อนุมัติรอตรวจสอบแทน auto-accept หรือกำหนดกฎใหม่ | การคัดรายการและ workflow generation |
 | OPEN-05 | Legacy date routing | ยืนยันเงื่อนไข routing สำหรับร้านก่อน/หลัง 1/10/2014 | routing และผลพิจารณา |

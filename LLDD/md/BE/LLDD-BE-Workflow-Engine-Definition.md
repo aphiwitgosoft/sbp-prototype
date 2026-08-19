@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 24 ชั่วโมง |
+| Estimate | 24 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | กำหนด version/state/status/route/group/part ของ @srm/glb-workflow ที่ SBPGI ต้อง register และระบุความเสี่ยง/ข้อค้างของ engine — เป็น blocker ที่ต้องปิดในสัปดาห์แรก |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -17,10 +18,14 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 - ลงทะเบียน workflow version ของ SBPGI 1 version (url_main + url_param_mapping)
 - นิยาม state/status 5 ขั้น 06 -> 08 -> 01 -> 02 -> 03 และปลายทางจบ flow
-- นิยาม route ของทุกปุ่ม · การแตก route ตามวงเงินอนุมัติ GM 50,000 / AVP 300,000 เขียนเป็น**ตัวอย่างทางเลือก B เท่านั้น** — แหล่งเก็บวงเงินยังไม่ตัดสิน (มติเดิมคือ common_code · ดูข้อค้าง 5.6)
-- สำรวจทางเลือกผู้อนุมัติ: workflow_group / workflow_group_map เทียบกับ add-prepared-approver รายคน — **ยังไม่ตัดสิน** (ดูข้อค้าง 5.6)
+- นิยาม route ของทุกปุ่ม · การแตก route ตามวงเงินอนุมัติ เกณฑ์เดียว 100,000 เขียนเป็น**ตัวอย่างทางเลือก B เท่านั้น** — แหล่งเก็บวงเงินยังไม่ตัดสิน (มติเดิมคือ common_code · ดูข้อค้าง 5.6)
+- สำรวจทางเลือกผู้อนุมัติ: workflow_group / workflow_group_map เทียบกับ addPreApprover รายคน — **ยังไม่ตัดสิน** (ดูข้อค้าง 5.6)
 - สำรวจทางเลือก workflow_part / workflow_part_display สำหรับคุมการแสดงผลรายส่วน — **ยังไม่ตัดสิน** ว่าจะใช้แทน data-editrole ของ SBPGI หรือไม่ (ดูข้อค้าง 5.5/5.6)
 - ความเสี่ยงและข้อค้างของ engine (ไม่มี PK/index · ชื่อ function ขัดกัน 3 ชุด) — ยังไม่ตัดสิน
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -33,10 +38,10 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | versionId | integer | 1 ระบบ = 1 version | SBPGI ขอ version ใหม่จากทีมเจ้าของ library |
-| referenceId | string unique | required ตอน initializeWorkflow | ยังไม่ตัดสินว่าใช้ doc_no หรือ surrogate id (DP-1) |
+| referenceId | string unique | required ตอน initializeWorkflow | ✅ DP-1 ปิดแล้ว 2026-08-17 = `compensation_documents.id` (surrogate) แปลงเป็น string — `reference_id` ของ engine เป็น varchar(255) |
 | state_id | integer running ตาม version | 1 state มีได้หลาย status | map 5 ขั้นของ SBPGI: 06/08/01/02/03 + state จบ |
 | event | save\|submit\|approve\|reject\|cancel\|sendback | ค่าเริ่มต้นของ engine | ปุ่มไทยของ SBPGI map ลง event เหล่านี้ผ่าน common_code (code_type=SBPGI_DECISION) — ตาราง decisions ถูกตัดตามมติ DP-9 (2026-08-10) |
-| condition_json | {"field","operator","value"} | operator: == != > < >= <= | ใช้ {"field":"amount","operator":"<=","value":50000} แยก route GM/AVP |
+| condition_json | {"field","operator","value"} | operator: == != > < >= <= | ใช้ {"field":"amount","operator":"<","value":100000} แยก route GM/AVP |
 | eventParam | object | ส่งมาพร้อม event | SBPGI ส่ง {"amount": ยอดชดเชยรวม} ให้ engine เลือก route เอง |
 | part_display_type | READ \| WRITE | ต้องยืนยันค่าจริงกับทีม library | ไฟล์ต้นฉบับสะกดว่า WRTIE ทุกแถวของชีต sample data |
 | url_main / url_param_mapping | string | required ตอน register version | ทำให้ inbox กลาง (GET /api/workflow/pending) ลิงก์กลับหน้าเอกสารของ SBPGI ได้ |
@@ -49,7 +54,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | --- | --- |
 | BE-API-Document-Workflow-Actions | รหัส event ต่อปุ่ม · route ของแต่ละ state · เงื่อนไขแตกสายตามวงเงิน |
 | BE-API-Workflow-Instances | โครง version/state/status ที่จะ query และรูปแบบ payload ของ engine |
-| BE-Job-8b-StartInternalWorkflow | ลำดับเรียก initialize -> add-prepared-approver และค่า `referenceId` |
+| BE-Job-8b-StartInternalWorkflow | ลำดับเรียก initialize -> addPreApprover และค่า `referenceId` |
 | FE-Document-Detail (5 ฉบับ role) | `workflow_part_display` READ/WRITE ต่อ state ที่คุมการแสดงผลรายส่วน |
 
 ### 5.1 Engine คือของกลาง 13 ตาราง ใน schema `sps_store`
@@ -74,16 +79,20 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | `workflow_route` มี 2 นิยามในไฟล์เดียวกัน | ชีต `sample data` มีคอลัมน์ `group_id` แต่ entity ที่แนบมาใช้ `approver` และตั้งชื่อ property ว่า `approverRoleId` | เขียนโค้ดผูกผู้อนุมัติผิดคอลัมน์ | ยืนยัน schema จริงของ route กับทีม library |
 | ไม่มี API ถอน/แก้ผู้อนุมัติล่วงหน้า | มีแต่ `addPreApprover` | เคสเปลี่ยนตัวผู้อนุมัติ (ลาออก/รักษาการ) ทำไม่ได้ผ่าน library | ถามทีม library ว่าจะเพิ่มให้หรือให้ SBPGI แก้ตารางตรง |
 
-### 5.3 ชื่อ function ของ engine ยังขัดกัน 3 ชุด — ห้ามเลือกเอง
+### 5.3 API ของ engine — 8 function (ยึด LLDD ของ lib · ปิดข้อค้าง 2026-08-14)
 
-แหล่งอ้างอิง 3 แหล่งให้ชื่อ function ไม่ตรงกัน · **ยังไม่ตัดสิน** ว่าจะใช้ชุดไหน ต้องยืนยันกับทีมเจ้าของ `@srm/glb-workflow` ก่อนเขียนโค้ดจริง — เอกสาร LLDD ฉบับอื่นที่อ้างชื่อ function ต้องถือว่าเป็นชื่อชั่วคราวจนกว่าจะยืนยัน
+แหล่งความจริงคือชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` ซึ่งเป็น **เอกสารของ lib เอง** · ชื่อที่เคยนับว่าขัดกันไม่ใช่ชื่อ API: *Trigger Event* เป็น**ชื่อหัวข้อของขั้นตอนภายใน** `eventWorkflow` ในชีต 2 ส่วน `TriggerEventUseCase` / `AddPreparedApproverUseCase` / `GetPendingFlowUseCase` เป็น **UseCase class ที่ store-backend ห่อไว้ใช้เอง** ไม่ใช่ API ของ lib
 
-| หน้าที่ | ชุด A — `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail (สเปกจริง) | ชุด B — ชีต `Mermaid seq` ของไฟล์เดียวกัน | ชุด C — `SBP/srm-sps-spsap-store-backend.md` §1.5 |
+| # | function | พารามิเตอร์ (ชีต Detail) | SBPGI ใช้ที่ไหน |
 | --- | --- | --- | --- |
-| ดำเนินการ action | `eventWorkflow` | `triggerEvent` | `TriggerEventUseCase` |
-| ระบุผู้อนุมัติล่วงหน้า | `addPreApprover` | — | `AddPreparedApproverUseCase` |
-| อ่านงานที่รอ user | `getPendingFlowByUser` | — | `GetPendingFlowUseCase` |
-| สร้าง workflow ตั้งต้น | `initializeWorkflow` | `initializeWorkflow` | `initializeWorkflow` |
+| 1 | `initializeWorkflow` | version, userId, referenceId | เปิด flow ให้เอกสารใหม่ (Job 8b · `POST /workflows/instances`) |
+| 2 | `eventWorkflow` | version, referenceId, event, eventParam, remark, userId **+ userData · userFullname · nextApproverId** (ส่วนขยาย 29/04 · 20/05 · 16/06/2026 — ยึดชุดนี้เวลาเขียนโค้ด) | `POST /documents/{docNo}/actions` |
+| 3 | `getPermissionEvents` | version, referenceId, userData | ปุ่ม/ผลพิจารณาที่ user กดได้ในหน้าเอกสาร |
+| 4 | `getHistory` | version, referenceId | `GET /documents/{docNo}/timeline` |
+| 5 | `getTransaction` | version, referenceId | สถานะ + ผู้ถืองานปัจจุบันของเอกสาร |
+| 6 | `getPendingFlowByUser` | userData | **หน้า เอกสาร → รอดำเนินการ** + reminder รายสัปดาห์ |
+| 7 | `getWorkflowsByUser` | userData | **หน้า เอกสาร → ที่เกี่ยวข้อง** (รวมที่ยังไม่ถึงคิวและที่อนุมัติไปแล้ว) |
+| 8 | `addPreApprover` | version, userId, referenceId, state_id, approver, seq | ตั้งผู้อนุมัติล่วงหน้าของขั้นถัดไป |
 
 ### 5.4 นิยาม flow ของ SBPGI ที่ต้อง register
 
@@ -92,7 +101,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | 06 | รอฝ่าย SBP DSA ดำเนินการ | submit (ส่งเจ้าหน้าที่ SBP DSA) · reject (เห็นควรไม่ชดเชย) · cancel (หยุดชดเชย) · submit (ส่งหน่วยงานส่งเสริมธุรกิจ SBP) | 08 หรือ 01 หรือจบ flow |
 | 08 | รอเจ้าหน้าที่ SBP DSA ดำเนินการ | submit (คำนวณเงินชดเชยเรียบร้อย) | 01 |
 | 01 | รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ | approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที) · sendback (ฝ่าย SBP DSA ดำเนินการ) | 02 · จบ flow · 06 |
-| 02 | รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ | approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที) · sendback | จบ flow เมื่อยอด <= 50,000 · ไป 03 เมื่อ 50,001-300,000 · 01 |
+| 02 | รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ | approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที) · sendback | จบ flow เมื่อยอด < 100,000 · ไป 03 เมื่อ ≥ 100,000 · 01 |
 | 03 | รอผู้บริหารสำนักบริหาร SBP ดำเนินการ | approve (เห็นควรชดเชย) · sendback | จบ flow · 02 |
 
 ```sql
@@ -105,15 +114,15 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 -- ตัวอย่างทางเลือก B (ฝังวงเงินใน condition_json ตามความสามารถของ engine):
 -- SBPGI ส่ง eventParam = {"amount": <ยอดชดเชยรวมของเอกสาร>} แล้วให้ engine เลือก route เอง
 -- seq = ลำดับที่ engine ใช้ไล่ตรวจ condition_json (ตัวแรกที่ตรงชนะ)
--- ตัวเลข 50000 / 300000 ด้านล่างเป็นค่า **ตัวอย่าง** จาก SDD GI ไม่ใช่ค่าที่ตกลงให้ hardcode
+-- ตัวเลข 100000 ด้านล่างเป็นค่า **ตัวอย่าง** ของเกณฑ์เดียว (มติ 2026-08-18) ไม่ใช่ค่าที่ตกลงให้ hardcode
 INSERT INTO sps_store.workflow_route
   (version_id, from_state_id, event, to_state_id, to_status_id, seq, condition_json, approver_type, group_id)
 VALUES
   (:v, :state_02, 'approve', :state_end, :status_done, 1,
-   '{"field":"amount","operator":"<=","value":50000}', 'group', :group_none),
+   '{"field":"amount","operator":"<","value":100000}', 'group', :group_none),
   (:v, :state_02, 'approve', :state_03,  :status_wait_avp, 2,
-   '{"field":"amount","operator":"<=","value":300000}', 'group', :group_avp);
--- ⚠️ ยอดเกิน 300,000 ยังไม่มีกติกาใน SDD GI — ยังไม่ตัดสินว่าจะให้ route ไปไหน
+   '{"field":"amount","operator":">=","value":100000}', 'group', :group_avp);
+-- ✅ เกณฑ์เดียวจึงไม่มีช่องโหว่ปลายบน: ทุกยอดตั้งแต่ 100,000 ขึ้นไปวิ่งเข้า AVP เส้นเดียว
 ```
 
 ### 5.5 `workflow_part_display` ทับซ้อนกับกลไกของ prototype
@@ -128,20 +137,20 @@ VALUES
 
 | ข้อค้าง | ทางเลือก A | ทางเลือก B | สถานะ |
 | --- | --- | --- | --- |
-| DP-1 · `reference_id` | `doc_no` — join ตรง อ่านง่าย แต่บังคับออกเลขตั้งแต่ initialize และแก้เลขภายหลังไม่ได้ | surrogate id — ตรงกับที่ cooperation-request/inform-evaluate ทำจริงทุกจุด | ยังไม่ตัดสิน 🔴 |
+| DP-1 · `reference_id` | `doc_no` — ตกไป (บังคับออกเลขตั้งแต่ initialize และแก้ภายหลังไม่ได้) | **เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255)) — ตรงกับที่ cooperation-request/inform-evaluate ทำจริงทุกจุด | ✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม |
 | DP-2 · `workflow_transaction` ไม่มี PK/index | ขอ sign-off จากทีม library ให้เพิ่ม PK + UNIQUE + index | ไม่แตะตารางของ library · กันซ้ำและทำ index ที่ฝั่ง SBPGI | ยังไม่ตัดสิน 🔴 |
 | วงเงินอนุมัติเก็บที่ไหน | `common_code` (SBPGI_APPROVE_LIMIT) ตามมติเดิม | `workflow_route.condition_json` ตามความสามารถของ engine | ยังไม่ตัดสิน · กติกาที่แน่นอนคือ **ห้ามเก็บสองที่** |
-| DP-5 · engine ส่งอีเมลเองหรือไม่ | ผูก `email_id` ที่ route | SBPGI ส่งเอง | ยังไม่ตัดสิน · ยังไม่มีใครพิสูจน์ว่า engine ส่งจริง |
+| DP-5 · ใครเรียก email-lib ✅ ปิดแล้ว 2026-08-14 | engine ส่งเอง — ตกไป (ไม่มี `mailTo`/`param` ใน `triggerEvent`) | **SBPGI ส่งเอง** โดยใช้เลข template จาก `workflow_route.email_id` | ปิดแล้ว |
 | ผู้อนุมัติของ SBPGI | `workflow_group_map` ผ่าน view (ต้องยืนยันว่า view where ด้วย user_id/group_id ได้) | `addPreApprover` ระบุรายคน | ยังไม่ตัดสิน |
 | `workflow_part_display` แทน `data-editrole` | ลงทะเบียน part แล้วให้ FE อ่าน `display[]` | คงกลไกของ SBPGI เอง (`visibleSections`/`editableSections`) | ยังไม่ตัดสิน · กระทบ role pack 5 ฉบับ |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
 | Input | User action, route/query state, form values, and permission context for this feature. |
-| Progress | ขอ workflow version ใหม่จากทีมเจ้าของ @srm/glb-workflow (1 ระบบ = 1 version); ลงทะเบียน state/status 5 ขั้นของ SBPGI + state จบ flow; ลงทะเบียน route ทุกเส้น พร้อม seq · ส่วน condition_json ของวงเงินอนุมัติให้ใส่ **ก็ต่อเมื่อเจ้าของโครงการเลือกทางเลือก B ของข้อค้าง 5.6** (ทางเลือก A = อ่านวงเงินจาก common_code SBPGI_APPROVE_LIMIT ตามมติเดิม แล้วให้ route แยกด้วยค่าที่ SBPGI ส่งมาแทน); **[conditional — ทำเมื่อเลือกทางเลือก A ของข้อค้าง "ผู้อนุมัติของ SBPGI" ใน 5.6]** ลงทะเบียน workflow_group / workflow_group_map สำหรับผู้อนุมัติแบบกลุ่ม · ถ้าเลือกทางเลือก B ให้ใช้ add-prepared-approver ระบุรายคนแทน |
-| Output | workflow / workflow_version / workflow_state / workflow_status / workflow_event / workflow_route (sps_store); workflow_group / workflow_group_map (sps_store); workflow_transaction / workflow_history / workflow_approver (sps_store) |
+| Progress | ขอ workflow version ใหม่จากทีมเจ้าของ @srm/glb-workflow (1 ระบบ = 1 version); ลงทะเบียน state/status 5 ขั้นของ SBPGI + state จบ flow; ลงทะเบียน route ทุกเส้น พร้อม seq · ส่วน condition_json ของวงเงินอนุมัติให้ใส่ **ก็ต่อเมื่อเจ้าของโครงการเลือกทางเลือก B ของข้อค้าง 5.6** (ทางเลือก A = อ่านวงเงินจาก common_code SBPGI_APPROVE_LIMIT ตามมติเดิม แล้วให้ route แยกด้วยค่าที่ SBPGI ส่งมาแทน); **[conditional — ทำเมื่อเลือกทางเลือก A ของข้อค้าง "ผู้อนุมัติของ SBPGI" ใน 5.6]** ลงทะเบียน workflow_group / workflow_group_map สำหรับผู้อนุมัติแบบกลุ่ม · ถ้าเลือกทางเลือก B ให้ใช้ addPreApprover ระบุรายคนแทน |
+| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -154,13 +163,13 @@ VALUES
 | Step | Behavior specific to this LLDD | Failure/test evidence |
 | --- | --- | --- |
 | 1 | ขอ workflow version ใหม่จากทีมเจ้าของ @srm/glb-workflow (1 ระบบ = 1 version) | initializeWorkflow ซ้ำด้วย referenceId เดิมต้องไม่เกิด transaction ที่สอง |
-| 2 | ลงทะเบียน state/status 5 ขั้นของ SBPGI + state จบ flow | ยอดชดเชย 50,000 ต้องจบที่ GM · 50,001 ต้องวิ่งต่อ AVP |
+| 2 | ลงทะเบียน state/status 5 ขั้นของ SBPGI + state จบ flow | ยอดชดเชย 99,999 ต้องจบที่ GM · 100,000 ต้องวิ่งต่อ AVP (เกณฑ์เดียว · มติ 2026-08-18) |
 | 3 | ลงทะเบียน route ทุกเส้น พร้อม seq · ส่วน condition_json ของวงเงินอนุมัติให้ใส่ **ก็ต่อเมื่อเจ้าของโครงการเลือกทางเลือก B ของข้อค้าง 5.6** (ทางเลือก A = อ่านวงเงินจาก common_code SBPGI_APPROVE_LIMIT ตามมติเดิม แล้วให้ route แยกด้วยค่าที่ SBPGI ส่งมาแทน) | ผู้ใช้ที่ไม่ใช่ current_approver ต้องไม่ได้ปุ่มใด ๆ จาก getPermissionEvents |
-| 4 | **[conditional — ทำเมื่อเลือกทางเลือก A ของข้อค้าง "ผู้อนุมัติของ SBPGI" ใน 5.6]** ลงทะเบียน workflow_group / workflow_group_map สำหรับผู้อนุมัติแบบกลุ่ม · ถ้าเลือกทางเลือก B ให้ใช้ add-prepared-approver ระบุรายคนแทน | [conditional · เฉพาะทางเลือก A ของ workflow_part_display] display[] ของ state 01 ต้องเปิด WRITE เฉพาะส่วนที่ section 01 แก้ได้ |
+| 4 | **[conditional — ทำเมื่อเลือกทางเลือก A ของข้อค้าง "ผู้อนุมัติของ SBPGI" ใน 5.6]** ลงทะเบียน workflow_group / workflow_group_map สำหรับผู้อนุมัติแบบกลุ่ม · ถ้าเลือกทางเลือก B ให้ใช้ addPreApprover ระบุรายคนแทน | [conditional · เฉพาะทางเลือก A ของ workflow_part_display] display[] ของ state 01 ต้องเปิด WRITE เฉพาะส่วนที่ section 01 แก้ได้ |
 | 5 | **[conditional — ทำเมื่อเลือกทางเลือก A ของข้อค้าง `workflow_part_display` ใน 5.6]** ลงทะเบียน workflow_part + workflow_part_display ของส่วนต่าง ๆ ในหน้าเอกสาร · ถ้าเลือกทางเลือก B ให้คงกลไก visibleSections/editableSections ของ SBPGI | getPendingFlowByUser ต้องคืน url_main ที่เปิดกลับหน้าเอกสารได้จริง |
 | 6 | กรอก url_main / url_param_mapping ให้ inbox กลางลิงก์กลับหน้าเอกสารได้ | เดิน flow จนจบแล้ว workflow_history มีครบทุกขั้น |
 | 7 | ทดสอบเดิน flow ครบทุก route บน environment ทดสอบ | initializeWorkflow ซ้ำด้วย referenceId เดิมต้องไม่เกิด transaction ที่สอง |
-| 8 | ส่งความเสี่ยง/ข้อค้างให้ทีมเจ้าของ library และเจ้าของโครงการตัดสิน | ยอดชดเชย 50,000 ต้องจบที่ GM · 50,001 ต้องวิ่งต่อ AVP |
+| 8 | ส่งความเสี่ยง/ข้อค้างให้ทีมเจ้าของ library และเจ้าของโครงการตัดสิน | ยอดชดเชย 99,999 ต้องจบที่ GM · 100,000 ต้องวิ่งต่อ AVP (เกณฑ์เดียว · มติ 2026-08-18) |
 
 ## 6. Button / User Action Mapping
 
@@ -181,10 +190,10 @@ VALUES
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| workflow / workflow_version / workflow_state / workflow_status / workflow_event / workflow_route (sps_store) | R/W | ตารางนิยาม flow — ลงทะเบียนครั้งเดียวตอน setup |
-| workflow_group / workflow_group_map (sps_store) | R/W | กลุ่มผู้อนุมัติ · map ผ่าน view ที่ where ด้วย user_id/group_id ได้ |
-| workflow_transaction / workflow_history / workflow_approver (sps_store) | R/W | ข้อมูลรันไทม์ 19,283 / 38,010 / 96,542 แถว (ตรวจ 2026-08-07) |
-| workflow_part / workflow_part_display (sps_store) | R/W | คุมการแสดงผลรายส่วนต่อ state (READ/WRITE) |
+| workflow / workflow_version / workflow_state / workflow_status / workflow_event / workflow_route (sps_store) | R + W ครั้งเดียวตอน setup | ตารางนิยาม flow — SBPGI ขอ **version ใหม่ 1 ชุด** ห้ามแก้ version ของระบบอื่น · `workflow_route.email_id` คือเลข template ที่ SBPGI อ่านไปเรียก email-lib |
+| workflow_group / workflow_group_map (sps_store) | R + W ครั้งเดียวตอน setup | กลุ่มผู้อนุมัติ · map ผ่าน view ที่ where ด้วย user_id/group_id ได้ |
+| workflow_transaction / workflow_history / workflow_approver (sps_store) | R (เขียนผ่าน lib เท่านั้น) | ข้อมูลรันไทม์ 19,283 / 38,010 / 96,542 แถว (ตรวจ 2026-08-07) — 🔴 **ห้าม INSERT/UPDATE ตรง** ต้องผ่าน `eventWorkflow()` / `addPreApprover()` (`workflow_transaction` ไม่มี PK/index · DP-2 การเขียนตรงเสี่ยงทำ state พัง) |
+| workflow_part / workflow_part_display (sps_store) | R + W ครั้งเดียวตอน setup | คุมการแสดงผลรายส่วนต่อ state (READ/WRITE) |
 
 ## 9. Processing Flow
 
@@ -193,7 +202,7 @@ VALUES
 | 1 | ขอ workflow version ใหม่จากทีมเจ้าของ @srm/glb-workflow (1 ระบบ = 1 version) |
 | 2 | ลงทะเบียน state/status 5 ขั้นของ SBPGI + state จบ flow |
 | 3 | ลงทะเบียน route ทุกเส้น พร้อม seq · ส่วน condition_json ของวงเงินอนุมัติให้ใส่ **ก็ต่อเมื่อเจ้าของโครงการเลือกทางเลือก B ของข้อค้าง 5.6** (ทางเลือก A = อ่านวงเงินจาก common_code SBPGI_APPROVE_LIMIT ตามมติเดิม แล้วให้ route แยกด้วยค่าที่ SBPGI ส่งมาแทน) |
-| 4 | **[conditional — ทำเมื่อเลือกทางเลือก A ของข้อค้าง "ผู้อนุมัติของ SBPGI" ใน 5.6]** ลงทะเบียน workflow_group / workflow_group_map สำหรับผู้อนุมัติแบบกลุ่ม · ถ้าเลือกทางเลือก B ให้ใช้ add-prepared-approver ระบุรายคนแทน |
+| 4 | **[conditional — ทำเมื่อเลือกทางเลือก A ของข้อค้าง "ผู้อนุมัติของ SBPGI" ใน 5.6]** ลงทะเบียน workflow_group / workflow_group_map สำหรับผู้อนุมัติแบบกลุ่ม · ถ้าเลือกทางเลือก B ให้ใช้ addPreApprover ระบุรายคนแทน |
 | 5 | **[conditional — ทำเมื่อเลือกทางเลือก A ของข้อค้าง `workflow_part_display` ใน 5.6]** ลงทะเบียน workflow_part + workflow_part_display ของส่วนต่าง ๆ ในหน้าเอกสาร · ถ้าเลือกทางเลือก B ให้คงกลไก visibleSections/editableSections ของ SBPGI |
 | 6 | กรอก url_main / url_param_mapping ให้ inbox กลางลิงก์กลับหน้าเอกสารได้ |
 | 7 | ทดสอบเดิน flow ครบทุก route บน environment ทดสอบ |
@@ -213,7 +222,7 @@ VALUES
 | No | Test |
 | --- | --- |
 | 1 | initializeWorkflow ซ้ำด้วย referenceId เดิมต้องไม่เกิด transaction ที่สอง |
-| 2 | ยอดชดเชย 50,000 ต้องจบที่ GM · 50,001 ต้องวิ่งต่อ AVP |
+| 2 | ยอดชดเชย 99,999 ต้องจบที่ GM · 100,000 ต้องวิ่งต่อ AVP (เกณฑ์เดียว · มติ 2026-08-18) |
 | 3 | ผู้ใช้ที่ไม่ใช่ current_approver ต้องไม่ได้ปุ่มใด ๆ จาก getPermissionEvents |
 | 4 | [conditional · เฉพาะทางเลือก A ของ workflow_part_display] display[] ของ state 01 ต้องเปิด WRITE เฉพาะส่วนที่ section 01 แก้ได้ |
 | 5 | getPendingFlowByUser ต้องคืน url_main ที่เปิดกลับหน้าเอกสารได้จริง |

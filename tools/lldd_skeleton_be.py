@@ -108,11 +108,11 @@ ENDPOINT_OWNER: dict[str, str] = {
 }
 
 # --------------------------------------------------------------------------------------
-# ตารางที่ถูกตัดจาก target design 20 ตาราง — SQL ที่ยังอ้างถึงต้องมีคำเตือนกำกับเสมอ
+# ตารางที่ถูกตัดจาก target design 19 ตาราง — SQL ที่ยังอ้างถึงต้องมีคำเตือนกำกับเสมอ
 # --------------------------------------------------------------------------------------
 CUT_TABLE_REPLACEMENT: dict[str, str] = {
     "workflow_instances": "workflow_transaction (@srm/glb-workflow) ผ่าน getTransaction()/initializeWorkflow()",
-    "workflow_tasks": "workflow_approver / workflow_history (@srm/glb-workflow) ผ่าน getPendingFlow()/triggerEvent()",
+    "workflow_tasks": "workflow_approver / workflow_history (@srm/glb-workflow) ผ่าน getPendingFlowByUser()/eventWorkflow()",
     "workflow_sections": "workflow_state / route (@srm/glb-workflow)",
     "document_statuses": "workflow_status (@srm/glb-workflow)",
     "stores": "store / mas_store / sevenshop (store-backend) หรือ impacted_stores ของ SBPGI",
@@ -645,17 +645,17 @@ def _workflow_plan(topic: Any, endpoints: list[_Endpoint], reused: list[tuple[st
         path = ep.path.lower()
         label = f"{ep.method} {ep.path}"
         if path.endswith("/actions") and ep.method == "POST":
-            plan.append([label, "getPermissionEvents() → triggerEvent()", "ตรวจสิทธิ์ event ของผู้ใช้ก่อนเดิน state และบันทึก history"])
+            plan.append([label, "getPermissionEvents() → eventWorkflow()", "ตรวจสิทธิ์ event ของผู้ใช้ก่อนเดิน state และบันทึก history"])
         elif "/workflows/instances" in path and ep.method == "POST":
-            plan.append([label, "initializeWorkflow() → addPreparedApprover()", "เปิด transaction ใหม่ (referenceId = docNo) แล้วผูกผู้อนุมัติ state 06"])
+            plan.append([label, "initializeWorkflow() → addPreApprover()", "เปิด transaction ใหม่ (referenceId = docNo) แล้วผูกผู้อนุมัติ state 06"])
         elif "/workflows/instances" in path:
             plan.append([label, "getTransaction()", "อ่าน currentState ของ instance ตาม referenceId"])
         elif path.endswith("/timeline"):
             plan.append([label, "getHistory()", "timeline การเปลี่ยน state (fromState/toState/event/remark)"])
         elif path.rstrip("/").endswith("/tasks") or "pending" in path:
-            plan.append([label, "getPendingFlow()", "inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header"])
+            plan.append([label, "getPendingFlowByUser()", "inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header"])
         elif "/workflows/summary" in path:
-            plan.append([label, "getPendingFlow() (aggregate)", "นับงานค้างต่อ state แล้วรวมกับ workflow_generation_status W/Y/N"])
+            plan.append([label, "getPendingFlowByUser() (aggregate)", "นับงานค้างต่อ state แล้วรวมกับ workflow_generation_status W/Y/N"])
     if not plan and any(t[0].lower().startswith(_WORKFLOW_PREFIX) for t in reused):
         plan.append(["(อ่านสถานะประกอบ)", "getTransaction()", "อ่านสถานะปัจจุบันของเอกสารเพื่อประกอบ response"])
     return plan
@@ -1059,9 +1059,9 @@ def _service_code(topic: Any, endpoints: list[_Endpoint], own: list[tuple[str, s
                 lines += [
                     "      // ⚠️ workflow engine อยู่คนละ DataSource ('workflow-connection' ของ @srm/glb-workflow)",
                     "      //    จึง **atomic ร่วมกับ transaction ข้างบนไม่ได้** — ต้อง commit ฝั่ง SBPGI ให้เสร็จก่อน",
-                    "      //    แล้วค่อย triggerEvent (idempotency key = referenceId = docNo)",
+                    "      //    แล้วค่อย eventWorkflow (idempotency key = referenceId = docNo)",
                     "      // TODO: เรียก workflow use case ตามตารางหัวข้อ Workflow ด้านล่าง + retry",
-                    "      // TODO: ถ้า triggerEvent ล้มเหลว ต้องมี compensating action และบันทึกผลลง",
+                    "      // TODO: ถ้า eventWorkflow ล้มเหลว ต้องมี compensating action และบันทึกผลลง",
                     "      //       consideration_logs เพื่อให้ job reconcile ตามเก็บได้",
                 ]
             lines += [
@@ -1109,7 +1109,7 @@ def _workflow_code(slug: str, pascal: str, wf_plan: list[list[str]]) -> str:
             "    userId: Number(userId),",
             "  });",
             "  // ผูกผู้อนุมัติล่วงหน้าของ section 06 (prepared approver)",
-            "  await this.workflow.addPreparedApprover({",
+            "  await this.workflow.addPreApprover({",
             "    versionId: this.versionId,",
             "    referenceId: docNo,",
             "    stateId: SECTION_STATE_ID['06'], // TODO: map section 06/08/01/02/03 -> stateId ของ workflow version",
@@ -1119,7 +1119,7 @@ def _workflow_code(slug: str, pascal: str, wf_plan: list[list[str]]) -> str:
             "  });",
             "",
         ]
-    if "triggerEvent" in kinds:
+    if "eventWorkflow" in kinds:
         lines += [
             "  // ตรวจก่อนว่า user มีสิทธิ์ยิง event นี้จริง (กันกดซ้ำ/กดข้ามคน)",
             "  const permitted = await this.workflow.getPermissionEvents({",
@@ -1127,8 +1127,8 @@ def _workflow_code(slug: str, pascal: str, wf_plan: list[list[str]]) -> str:
             "    referenceId: docNo,",
             "    userData: { userId, userGroup: groupId },",
             "  });",
-            "  // TODO: ตรวจว่า body.result map เป็น event ที่อยู่ใน permitted ก่อนเรียก triggerEvent",
-            "  await this.workflow.triggerEvent({",
+            "  // TODO: ตรวจว่า body.result map เป็น event ที่อยู่ใน permitted ก่อนเรียก eventWorkflow",
+            "  await this.workflow.eventWorkflow({",
             "    versionId: this.versionId,",
             "    referenceId: docNo,",
             "    event, // TODO: map decision_code -> event ของ workflow definition",
@@ -1141,7 +1141,7 @@ def _workflow_code(slug: str, pascal: str, wf_plan: list[list[str]]) -> str:
     if "getPendingFlow" in kinds:
         lines += [
             "  // inbox งานค้าง — ใช้ร่วมกับ /api/workflow/pending ของ backlog เดิมได้",
-            "  const pending = await this.workflow.getPendingFlow({",
+            "  const pending = await this.workflow.getPendingFlowByUser({",
             "    userData: { userId: Number(userId), groupId: Number(groupId) },",
             "    versionId: this.versionId,",
             "  });",
@@ -1399,7 +1399,7 @@ def _sql_warnings(sql: str) -> list[str]:
         if tname in CUT_TABLE_REPLACEMENT and tname not in hit_tables:
             hit_tables.append(tname)
     if hit_tables:
-        lines.append("-- ⚠️ SQL ตัวอย่างนี้ยังอ้างตารางที่ถูกตัดจาก target design 20 ตารางแล้ว")
+        lines.append("-- ⚠️ SQL ตัวอย่างนี้ยังอ้างตารางที่ถูกตัดจาก target design 19 ตารางแล้ว")
         lines.append("--    ห้าม implement ตามตัวอักษร ให้แทนที่ก่อนใช้งาน:")
         for tname in hit_tables:
             lines.append(f"--      {tname}  ->  {CUT_TABLE_REPLACEMENT[tname]}")
@@ -1620,13 +1620,7 @@ def be_skeleton_blocks(topic: Any, ctx: Any = None) -> list[dict[str, Any]]:
         blocks.append(h(3, f"{sec_code}.{idx} Workflow (`@srm/glb-workflow`)"))
         idx += 1
         blocks.append(p(
-            "⚠️ **ชื่อ function ของ engine ยังไม่ยืนยัน (บันทึก 2026-08-07)** — แหล่งอ้างอิง 3 แหล่งให้ชื่อไม่ตรงกัน "
-            "ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow` · `addPreApprover` · "
-            "`getPendingFlowByUser` · ชุด B ชีต `Mermaid seq` ของไฟล์เดียวกัน = `triggerEvent` · "
-            "ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` · `AddPreparedApproverUseCase` · "
-            "`GetPendingFlowUseCase` · ชื่อที่ใช้ใน skeleton ด้านล่างเป็น **ชื่อชั่วคราว** ต้องยืนยันกับทีมเจ้าของ "
-            "library ก่อนเขียนโค้ดจริง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3) · "
-            "engine มี **13 ตาราง** อยู่ใน schema **`sps_store`** (ไม่ใช่ 10 ตาราง และไม่ใช่ `sps_auth`)"
+            "✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)"
         ))
         blocks.append(table(["Endpoint", "Use case ที่ต้องเรียก", "เหตุผล"], wf_plan))
         blocks.append(code(_workflow_code(slug, pascal, wf_plan), "ts"))

@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 14 ชั่วโมง |
+| Estimate | **19 ชั่วโมง** = implementation 14 + unit test 5 (30%) |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
+| Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ Backend contracts สำหรับ batch runner (อ่าน config จาก backend), interface tracking/pending ACK และ Notification Service (ส่งผ่าน @gosoft-sbp/email-lib) — ไม่มี Job Admin API, Email Template API (2026-08-06) และไม่มี SRM inbound adapter แล้ว (2026-08-07) |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -20,6 +21,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Notification adapter ผ่าน @gosoft-sbp/email-lib
 - STA ACK callback
 - ไม่มี Batch Job Admin API และไม่มี inbound endpoint ของ SRM
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -36,13 +41,13 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch and Em
 | templateCode | EM-xx | required | email template key |
 | transactionId | uuid | generated | integration log key |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
 | Input | GET /api/v1/interfaces/tracking; GET /api/v1/interfaces/pending-ack; POST /api/v1/interfaces/sta/ack |
 | Progress | Receive request; Validate schema; Check idempotency; Process records |
-| Output | (application log แบบ structured); interface_transactions; email_template (SBP) |
+| Output | (application log แบบ structured); interface_transactions |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -258,7 +263,8 @@ STA ACK callback ให้ Job 10 เป็น safety net
 | (backend config: config file/env) | R | enabled, cron, params ของ batch — ตาราง job_configs ถูกตัด 2026-08-06 ไม่มีหน้าจอควบคุม |
 | (application log แบบ structured) | W | ประวัติการรันและสถานะล่าสุด — ตาราง job_run_histories ถูกตัด 2026-08-06 |
 | interface_transactions | R/W | tracking file/API interface และ ACK |
-| email_template (SBP) | R/W | subject_format/body_format ของระบบ SBP เดิม |
+| email_template (SBP) | R | subject_format/body_format ของระบบ SBP เดิม — อ่านอย่างเดียว |
+| email_sent (SBP) | W (โดย email-lib) | log การส่งของ batch — lib เขียนให้เอง |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -274,6 +280,7 @@ STA ACK callback ให้ Job 10 เป็น safety net
 | store-backend · src/modules/sbpgi-job-batch-email-srm/dto/sbpgi-job-batch-email-srm.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/interface-transactions.entity.ts | entity ของ `interface_transactions` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/entitys/email-sent.entity.ts | entity ของ `email_sent` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/providers/sbpgi/sbpgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
 | store-backend · sql/deploy-sbpgi-job-batch-email-srm.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
 | BFF · src/common/client-services/sbpgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
@@ -449,9 +456,9 @@ export class SbpgiJobBatchEmailSRMService {
       await runner.commitTransaction();
       // ⚠️ workflow engine อยู่คนละ DataSource ('workflow-connection' ของ @srm/glb-workflow)
       //    จึง **atomic ร่วมกับ transaction ข้างบนไม่ได้** — ต้อง commit ฝั่ง SBPGI ให้เสร็จก่อน
-      //    แล้วค่อย triggerEvent (idempotency key = referenceId = docNo)
+      //    แล้วค่อย eventWorkflow (idempotency key = referenceId = docNo)
       // TODO: เรียก workflow use case ตามตารางหัวข้อ Workflow ด้านล่าง + retry
-      // TODO: ถ้า triggerEvent ล้มเหลว ต้องมี compensating action และบันทึกผลลง
+      // TODO: ถ้า eventWorkflow ล้มเหลว ต้องมี compensating action และบันทึกผลลง
       //       consideration_logs เพื่อให้ job reconcile ตามเก็บได้
       return { message: 'saved' };
     } catch (error) {
@@ -467,11 +474,11 @@ export class SbpgiJobBatchEmailSRMService {
 
 #### 9.5 Workflow (`@srm/glb-workflow`)
 
-⚠️ **ชื่อ function ของ engine ยังไม่ยืนยัน (บันทึก 2026-08-07)** — แหล่งอ้างอิง 3 แหล่งให้ชื่อไม่ตรงกัน ชุด A `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` ชีต Detail = `eventWorkflow` · `addPreApprover` · `getPendingFlowByUser` · ชุด B ชีต `Mermaid seq` ของไฟล์เดียวกัน = `triggerEvent` · ชุด C `SBP/srm-sps-spsap-store-backend.md` §1.5 = `TriggerEventUseCase` · `AddPreparedApproverUseCase` · `GetPendingFlowUseCase` · ชื่อที่ใช้ใน skeleton ด้านล่างเป็น **ชื่อชั่วคราว** ต้องยืนยันกับทีมเจ้าของ library ก่อนเขียนโค้ดจริง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3) · engine มี **13 ตาราง** อยู่ใน schema **`sps_store`** (ไม่ใช่ 10 ตาราง และไม่ใช่ `sps_auth`)
+✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
 | Endpoint | Use case ที่ต้องเรียก | เหตุผล |
 | --- | --- | --- |
-| GET /api/v1/interfaces/pending-ack | getPendingFlow() | inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header |
+| GET /api/v1/interfaces/pending-ack | getPendingFlowByUser() | inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header |
 
 ```ts
 // src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
@@ -479,7 +486,7 @@ export class SbpgiJobBatchEmailSRMService {
 // (DataSource แยกชื่อ 'workflow-connection', ทุก use case ห่อด้วย TypeOrmUnitOfWork)
 
   // inbox งานค้าง — ใช้ร่วมกับ /api/workflow/pending ของ backlog เดิมได้
-  const pending = await this.workflow.getPendingFlow({
+  const pending = await this.workflow.getPendingFlowByUser({
     userData: { userId: Number(userId), groupId: Number(groupId) },
     versionId: this.versionId,
   });
@@ -535,11 +542,25 @@ export class InterfaceTransaction {
 }
 ```
 
+```ts
+// src/entitys/email-sent.entity.ts
+import { Column, Entity, PrimaryColumn } from 'typeorm';
+
+@Entity({ name: 'email_sent', schema: process.env.DB_SCHEMA })
+export class EmailSent {
+  @PrimaryColumn({ name: 'id', type: 'bigint' })
+  id: number;
+
+  // TODO: เติมคอลัมน์ที่เหลือของ email_sent ตาม database.md (Canonical Column Contract)
+  //       และห้ามประกาศ relation — โมดูลนี้ join ด้วย raw SQL ตาม convention ของทีม
+}
+```
+
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
 | Object | R/W | ใช้ของระบบเดิมตัวไหน |
 | --- | --- | --- |
-| email_template | R/W | email_template + email_sent + @gosoft-sbp/email-lib |
+| email_template | R | email_template + email_sent + @gosoft-sbp/email-lib |
 
 #### 9.7 Repository Providers + Module wiring
 
@@ -552,11 +573,17 @@ export class InterfaceTransaction {
 //    (ชื่อ const แยกต่อเอกสารไว้แล้วเพื่อไม่ให้ชนกัน)
 import { DataSource } from 'typeorm';
 import { InterfaceTransaction } from '../../entitys/interface-transactions.entity';
+import { EmailSent } from '../../entitys/email-sent.entity';
 
 export const sbpgiJobBatchEmailSRMProviders = [
   {
     provide: 'INTERFACE_TRANSACTION_REPOSITORY',
     useFactory: (dataSource: DataSource) => dataSource.getRepository(InterfaceTransaction),
+    inject: ['DATA_SOURCE'],
+  },
+  {
+    provide: 'EMAIL_SENT_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(EmailSent),
     inject: ['DATA_SOURCE'],
   },
 ];
@@ -675,7 +702,8 @@ export class SbpgiJobBatchEmailSRMBffController {
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
 | interface_transactions | R/W | tracking file/API interface และ ACK |
-| email_template | R/W | ใช้ของระบบเดิม: email_template + email_sent + @gosoft-sbp/email-lib |
+| email_sent | W (โดย email-lib) | log การส่งของ batch — lib เขียนให้เอง |
+| email_template | R | ใช้ของระบบเดิม: email_template + email_sent + @gosoft-sbp/email-lib |
 
 #### 10.2 SQL จริงต่อ Endpoint
 
@@ -753,3 +781,29 @@ WHERE id = :trackingId;
 | 4 | pending ACK watchdog |
 | 5 | STA ACK callback |
 | 6 | email preview |
+
+## 14. Unit Test Scope
+
+**5 ชั่วโมง** (30% ของ implementation 14 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `jobNo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: string |
+| `sourceRefNo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for SRM · รูปแบบ: string |
+| `templateCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: EM-xx |
+| `transactionId` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: generated · รูปแบบ: uuid |
+| business rule | logic | job run guard prevents duplicate running job |
+| business rule | logic | email preview renders variables |
+| business rule | logic | failed records include detail |
+| business rule | logic | ไม่มี inbound endpoint ของ SRM แล้ว (ตัด 2026-08-07) — เอกสารต้องไม่อ้างถึงอีก |
+| `GET /api/v1/interfaces/tracking` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/interfaces/pending-ack` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `POST /api/v1/interfaces/sta/ack` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `(application log แบบ structured)`, `interface_transactions`, `email_sent (SBP)` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

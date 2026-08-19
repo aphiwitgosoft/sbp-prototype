@@ -86,7 +86,10 @@
     { key:'fgi-database', label:'DB FGI/FCS',               href:'fgi-database.html', icon:I.db,        group:'Database' },
     { key:'k2-database', label:'DB K2',                     href:'k2-database.html',  icon:I.schema,    group:'Database' },
     { key:'plan-database', label:'DB FGI/FCS + K2',         href:'plan-database.html', icon:I.db,       group:'Database' },
-    { key:'plan-api',    label:'API',                       href:'plan-api.html',     icon:I.braces,    group:'Plan' }
+    { key:'plan-api',    label:'API',                       href:'plan-api.html',     icon:I.braces,    group:'Plan' },
+    // Worklist = หน้าจัดการงาน (งาน -> API -> DB) สร้างจากข้อมูลชุดเดียวกับ LLDD ด้วย tools/build_worklist.py
+    // เป็นหน้า standalone (มี sidebar ของตัวเองแบบ Notion) จึงไม่ใช้ page contract ของ sbp.js
+    { key:'worklist',    label:'Worklist (งาน/API/DB)',     href:'worklist.html',     icon:I.poll,      group:'Plan' }
   ];
   function moduleByKey(k){
     for (var i=0;i<MODULES.length;i++){
@@ -507,6 +510,11 @@
   function clean(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
 
   // grounded entity schemas (key, label, optional col = table header it maps to, type, options, wide)
+  // ⚠️ SCHEMAS 8 ตัวต่อไปนี้เป็น "ซาก" จากหน้าจอที่ถูกลบไปแล้ว — ไม่มีหน้าไหนใช้ data-entity นี้อีก:
+  //    abnormal (k2-list-abnormal ลบ 2026-08-06) · applicant/contract/employee/grade/store/survey
+  //    (application*.html / recruitment.html ลบก่อนหน้านั้น) · aduser
+  //    เก็บไว้เพื่อไม่ให้กระทบของเดิม แต่ **ห้ามใช้เป็นต้นแบบของหน้าใหม่** — ให้ดู competitor/factor แทน
+  //    (COMPETITOR_MASTER / FACTOR_MASTER ยังใช้อยู่จริงผ่าน optionsFrom ไม่ใช่ซาก)
   var SCHEMAS = {
     applicant: [
       { key: 'code', label: 'รหัสผู้สมัคร', col: 'รหัสผู้สมัคร' },
@@ -782,6 +790,7 @@
     if (table.getAttribute('data-entity') === 'k2doc') return openK2Doc(table, row, tableMeta(table));
     var meta = tableMeta(table), fields = resolveFields(table, meta);
     var foot = [footBtn('ปิด', 'btn-ghost', closeModal)];
+    // ⚠️ dead path — data-entity="applicant" ไม่มีหน้าไหนใช้แล้ว (application*.html ถูกลบ)
     if (table.getAttribute('data-entity') === 'applicant')
       foot.unshift(footBtn(svg(I.recruit, '', 17) + ' เปิดใบสมัครเต็ม', 'btn-primary', function () { location.href = 'application.html'; }));
     openModal({ title: 'รายละเอียดข้อมูล', sub: subtitleOf(fields, row), icon: I.eye, body: renderView(fields, row, table), footer: foot });

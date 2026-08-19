@@ -7,8 +7,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | FE |
-| Estimate | 10 ชั่วโมง |
+| Estimate | **13 ชั่วโมง** = implementation 10 + unit test 3 (25%) |
 | Owner | Kittisak <New> Kaeowika |
+| Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Objective | อธิบายหน้าจอ Document Detail สำหรับ role 02 - GM ส่งเสริมธุรกิจฯ |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
@@ -20,6 +21,10 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Editable field and validation behavior
 - Attachment upload behavior
 - Action panel options and API response sample
+
+## 3. Screenshot Reference
+
+ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
 ## 4. Implementation Flow Diagram (Reference)
 
@@ -75,7 +80,7 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Document Detail 
 
 | Area | Fields | Validation / Behavior |
 | --- | --- | --- |
-| ข้อมูลประกอบอนุมัติ | totalCompensationAmount, approvalLimitIndicator | read-only จาก API; ใช้แสดงช่วงวงเงินอนุมัติ (<=50,000 จบที่ GM · 50,001-300,000 ผ่าน AVP ตาม SDD GI) |
+| ข้อมูลประกอบอนุมัติ | totalCompensationAmount, approvalLimitIndicator | read-only จาก API; ใช้แสดงเกณฑ์วงเงินอนุมัติ (< 100,000 จบที่ GM · ≥ 100,000 ส่ง AVP ตาม SDD GI) |
 | เอกสารแนบ | file, fileName, attachmentType, remark | เพิ่มไฟล์ได้; ขนาด <= 5 MB; extension ต้องอยู่ใน allowlist |
 | แผงพิจารณา | result, comment | result required; comment ตาม actionOptions.requireComment |
 
@@ -152,7 +157,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | 4 | แสดง totalCompensationAmount/approvalLimitIndicator โดยไม่คำนวณ route ใน FE |
 | 5 | หลัง submit ต้อง reload detail/timeline/status |
 
-## 5.1 Input / Progress / Output Contract
+### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
@@ -258,7 +263,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ### POST /api/v1/documents/{docNo}/actions
 
-ตัวอย่าง positive-path จาก section 02; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม 50,001-300,000 บาท และจบที่ GM เมื่อ <= 50,000 บาท (SDD GI)
+ตัวอย่าง positive-path จาก section 02; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม ≥ 100,000 บาท และจบที่ GM เมื่อ < 100,000 บาท (มติ 2026-08-18)
 
 #### Request
 
@@ -379,7 +384,7 @@ export async function getDocumentsDetail(docNo: string): Promise<T.DocumentsDeta
   return data.data;
 }
 
-/** POST /api/v1/documents/{docNo}/actions — ตัวอย่าง positive-path จาก section 02; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม 50,001-300,000 บาท และจบที่ GM เมื่อ <= 50,000 บาท (SDD GI) */
+/** POST /api/v1/documents/{docNo}/actions — ตัวอย่าง positive-path จาก section 02; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม ≥ 100,000 บาท และจบที่ GM เมื่อ < 100,000 บาท (มติ 2026-08-18) */
 export async function createDocumentsActions(docNo: string, body: T.CreateDocumentsActionsRequest): Promise<T.CreateDocumentsActionsResponse> {
   const { data } = await apiClient.post<ApiResponse<T.CreateDocumentsActionsResponse>>(`/documents/${encodeURIComponent(docNo)}/actions`, body);
   return data.data;
@@ -585,3 +590,30 @@ export default function ActionForm02({ options, onSubmit, onCancel, submitting }
 | 3 | action radio แสดงเฉพาะ 3 รายการของ role 02 |
 | 4 | แสดง totalCompensationAmount/approvalLimitIndicator โดยไม่คำนวณ route ใน FE |
 | 5 | หลัง submit ต้อง reload detail/timeline/status |
+
+## 12. Unit Test Scope
+
+**3 ชั่วโมง** (25% ของ implementation 10 ชั่วโมง) · เครื่องมือ: Jest + React Testing Library + msw (mock API layer)
+
+หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
+
+| สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
+| --- | --- | --- |
+| `roleProfileCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: must match API response · รูปแบบ: P-02 |
+| `statusCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: from API · รูปแบบ: 02 |
+| `visibleSections` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: from API · รูปแบบ: string[] |
+| `editableSections` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: from API · รูปแบบ: string[] |
+| `actionOptions` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: from API · รูปแบบ: array |
+| business rule | logic | ไม่แสดง role switcher ใน production |
+| business rule | logic | section ที่ hidden ต้องไม่ render |
+| business rule | logic | section ที่ read-only ต้องไม่มี editable control |
+| business rule | logic | action panel ตรงกับ actionOptions จาก API |
+| `GET /api/v1/documents/{docNo}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `POST /api/v1/documents/{docNo}/actions` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
+| hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
+| error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |
+
+- ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ
+- ข้อความไทยที่ยืนยันในเทสต้องเป็น verbatim ตาม SRS ห้ามพิมพ์ใหม่
+- เกณฑ์ผ่านของ CI: ทุกเคสในตารางนี้มี test จริงและผ่านทั้งหมด

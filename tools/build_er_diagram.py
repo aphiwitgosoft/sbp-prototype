@@ -178,7 +178,7 @@ def build_edges(boxes: dict[str, Box]) -> list[dict]:
     seen: set[tuple] = set()
 
     def add(src, scol, dst, dcol, kind, card, label, ev, status):
-        if src not in boxes or dst not in boxes or src == dst:
+        if src not in boxes or dst not in boxes:
             return
         sig = (src, scol, dst, dcol)
         if sig in seen:
@@ -204,6 +204,28 @@ def build_edges(boxes: dict[str, Box]) -> list[dict]:
     return edges
 
 
+def validate(boxes: dict[str, Box], edges: list[dict], schemas: dict) -> list[str]:
+    """ตรวจว่าคอลัมน์ทุกเส้นมีอยู่จริงในแหล่งข้อมูล — คอลัมน์ในวงเล็บคือ pseudo-column ที่ตั้งใจ"""
+    problems: list[str] = []
+    declared = {(r[0], r[2]) for r in CROSS}
+    for e in edges:
+        for key, col in ((e["src"], e["scol"]), (e["dst"], e["dcol"])):
+            if col.startswith("(") or col == "FK":
+                continue
+            b = boxes.get(key)
+            if b is None:
+                problems.append(f"ไม่มีตาราง {key}")
+            elif not b.t.col(col):
+                problems.append(f"ไม่มีคอลัมน์ {key}.{col} (เส้น {e['src']}→{e['dst']})")
+    for key, b in boxes.items():
+        if not any(e["src"] == key or e["dst"] == key for e in edges):
+            problems.append(f"ตาราง {key} ไม่มีความสัมพันธ์เลย — ตรวจว่าตกหล่นหรือไม่")
+    for src, dst in declared:
+        if src not in boxes or dst not in boxes:
+            problems.append(f"CROSS อ้างตารางที่ไม่ได้อยู่บนรูป: {src} → {dst}")
+    return problems
+
+
 # ---------------------------------------------------------------------- SVG
 
 
@@ -213,6 +235,8 @@ def esc(s: str) -> str:
 
 def anchors(a: Box, b: Box, scol: str, dcol: str) -> tuple[float, float, float, float, str]:
     ay, by = a.row_y(scol), b.row_y(dcol)
+    if a is b:  # ความสัมพันธ์กับตัวเอง (เช่น parent_id) — วนออกทางขวาของกล่อง
+        return a.x + a.w, ay, a.x + a.w, by, "self"
     a_cx, b_cx = a.x + a.w / 2, b.x + b.w / 2
     overlap = not (b.x > a.x + a.w + 10 or a.x > b.x + b.w + 10)
     if overlap and abs(b_cx - a_cx) < max(a.w, b.w) * 0.75:
@@ -226,6 +250,8 @@ def anchors(a: Box, b: Box, scol: str, dcol: str) -> tuple[float, float, float, 
 
 
 def ctrl_points(x1, y1, x2, y2, mode):
+    if mode == "self":
+        return (x1 + 34, y1), (x2 + 34, y2)
     if mode == "v":
         dy = max(28.0, min(abs(y2 - y1) * 0.45, 150.0))
         s = 1 if y2 > y1 else -1
@@ -655,7 +681,7 @@ def render_md(boxes: dict[str, Box], edges: list[dict], schemas: dict) -> str:
     L: list[str] = []
     L.append("# ER Diagram ฉบับสมบูรณ์ — SBPGI + ฐานข้อมูลระบบ SBP เดิม\n")
     L.append("> สร้างอัตโนมัติด้วย `python3 tools/build_er_diagram.py` — **ห้ามแก้ไฟล์นี้ด้วยมือ**  ")
-    L.append("> แหล่งข้อมูล: `LLDD/md/LLDD-Database.md` (DDL 20 ตาราง) · `SBP/db-schema-sps_store.md` · "
+    L.append("> แหล่งข้อมูล: `LLDD/md/LLDD-Database.md` (DDL 19 ตาราง) · `SBP/db-schema-sps_store.md` · "
              "`SBP/db-schema-sps_auth.md` (ดึงฐานจริง 07/08/2026) · `database.md` (Cross-System Keys)  ")
     L.append("> รูป: `er-sbpgi-complete.svg` (เวกเตอร์) · `er-sbpgi-complete.png` · "
              "`er-sbpgi-complete.html` (โต้ตอบได้ · มีภาคผนวกตารางครบทุกตาราง)\n")
@@ -744,6 +770,9 @@ def main() -> None:
     boxes, groups = build_boxes(schemas)
     w, h = layout(boxes, groups)
     edges = build_edges(boxes)
+    problems = validate(boxes, edges, schemas)
+    for msg in problems:
+        print(f"  ⚠ {msg}")
     svg = render_svg(boxes, groups, edges, w, h, schemas)
 
     OUT.mkdir(parents=True, exist_ok=True)
