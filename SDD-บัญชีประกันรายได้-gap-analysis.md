@@ -71,7 +71,7 @@
 | 2.1 | เปลี่ยนคำเรียก **"ฝ่ายส่งเสริม" → "หน่วยงานส่งเสริมธุรกิจ" ทุกจุด** | ✅ | rename 61 จุดใน 16 ไฟล์ · **รวมชื่อสถานะเอกสาร** → `รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ` (ดูข้อ 6.4) |
 | 2.2 | เพิ่มบทบาท **เจ้าหน้าที่อาวุโส (Senior Officer)** ที่ขั้น 01 + ส่งต่อ GM ได้ | ✅ | `k2-flow.html` (การ์ด · stepper · BPMN · swimlane · 2 ตาราง) · `k2-document.html` · `workflow.md` · `domain.md` · LLDD Role-01 |
 | 2.3 | **เห็นควรไม่ชดเชยที่ 01/02 จบทันที** (ไม่ตีกลับเป็นทอด ๆ) | ✅ | `workflow.md` ตาราง transition · `workflow_status_document.md` · `k2-flow.html` · logic ใน `k2-document.html` |
-| 2.4 | **วงเงิน เกณฑ์เดียว 100,000** (แทนเกณฑ์เดียว 100,000) | ✅ | ทุก HTML + living docs · `system_configs` (`gm_amount_limit`/`avp_amount_limit`) · `workflow_sections.approve_limit_amount` |
+| 2.4 | **วงเงินเกณฑ์เดียว 100,000** (มติประชุม 2026-08-18 — แทนเกณฑ์ 50,000 / 300,000 ของ SDD GI) | ✅ | ทุก HTML + living docs · เก็บที่ **`common_code`** ของระบบเดิม (`code_type = SBPGI_APPROVE_LIMIT` · `THRESHOLD = 100000`) — **ไม่ใช่ `system_configs`** ซึ่งถูกตัดออกจากโครงไปแล้ว · `workflow_route.condition_json` แตกสองเส้น `< 100000` / `>= 100000` |
 | 2.5 | **ผู้รักษาการเป็นผู้อนุมัติไม่ได้** (ยึดตำแหน่งจาก HR Connect) | ✅ | `workflow.md` · `CLAUDE.md` · เป็นเหตุผลของ `approver_snapshot` |
 
 ## 5. SDD GI ข้อ 3 + SDD v7.5 — ยกเลิก process บัญชี และหน้ารายงาน (สไลด์ 59–62, 66)
@@ -84,7 +84,7 @@
 | 3.4 | ฟิลด์ **สถานะ — dropdown บังคับ** | ✅ | `<select required>` · 6 ค่า ไม่มีสถานะบัญชี |
 | 3.5 | ฟิลด์ รหัสร้านถูกกระทบ · **รหัสร้านเปิดกระทบ** | ✅ | มีทั้งคู่เป็นตัวกรอง |
 | 3.6 | **Period Statement** + **บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ** | ✅ | สไลด์ 42 · `*` ขึ้น + `required` + ข้อความเปลี่ยนตามเงื่อนไข (ทดสอบในเบราว์เซอร์แล้ว) |
-| 3.7 | ประเภทร้าน (checkbox) | ✅ | checkbox **7 ค่า `A B C D E PTT บริษัท`** — ยืนยันจาก master จริง `ข้อมูล Master K2.xlsx` ชีต `BranchTypeProfile` (คอลัมน์ `BranchTypeFGIName` ของ `CPA_FRN_FGI`) เมื่อ 2026-08-10 · **D และ E เป็นคนละประเภทและมีจริงทั้งคู่** (D=BGC · E=B(2)) — บันทึกเดิมที่ระบุ 4 ค่า (A/B/C/E หรือ A/B/C/D) ผิดทั้งคู่ |
+| 3.7 | ประเภทร้าน (checkbox) | ✅ | checkbox **7 ค่า `A B C D E PTT บริษัท`** — ยืนยันจาก master จริง `ข้อมูล Master K2.xlsx` ชีต `BranchTypeProfile` (คอลัมน์ `BranchTypeFGIName` ของ `CPA_FRN_FGI`) เมื่อ 2026-08-10 · **D และ E เป็นคนละประเภทและมีจริงทั้งคู่** (D = Type D — เดิมเรียก BGC · E = B(2)) — บันทึกเดิมที่ระบุ 4 ค่า (A/B/C/E หรือ A/B/C/D) ผิดทั้งคู่ |
 | 3.8 | **ภาค (checkbox + เพิ่มภาคใหม่อัตโนมัติ)** | ✅ | **13 รหัส** `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` ใช้ชุดเดียวทั้งระบบ · master `mas_zone` ของระบบ SBP เดิม + `GET /store/all-regions` |
 | 3.9 | ผลการพิจารณา (**radio** ประกัน/ไม่ประกันรายได้) | ✅ | radio บังคับ 2 ค่า |
 | 3.10 | ปุ่ม **ค้นหาข้อมูล** · **Export Excel** · เคลียร์ค่าเริ่มใหม่ | ✅ | 3 ปุ่มในฟอร์ม (ตัดปุ่ม Export ด้านบนออกตามมติผู้ใช้ · เปลี่ยนชื่อปุ่มตาม SDD สไลด์ 60 · 2026-08-06) |
@@ -121,7 +121,9 @@
 
 ## 8. ส่วนที่ไม่ต้องมีในหน้าจอ ✅
 
-- **§1.10 PDPA** — Normal Personal Data 3 ข้อ (ชื่อ-นามสกุล · ที่อยู่/อีเมล/โทรศัพท์) · ไม่มี Sensitive Data → ไม่มีงานหน้าจอ แต่ต้องทำ PDPA Requirement ตาม template แนบ
+- **§1.10 PDPA** — Normal Personal Data 3 ข้อ (ชื่อ-นามสกุล · ที่อยู่/อีเมล/โทรศัพท์) · ไม่มี Sensitive Data
+  · ⚠️ **SDD สั่งต่อว่า "กรณีมี Personal Data จะต้องเพิ่มเติมรายละเอียดตาม Template ของ PDPA Requirement ตามเอกสารแนบ" — เอกสารชิ้นนี้ยังไม่มีในชุดส่งมอบ** ดู [`DECISIONS-รอตัดสินใจ.md`](DECISIONS-รอตัดสินใจ.md) ข้อ 2.7
+- **เลขอ้างอิงของงานนี้ (SDD สไลด์ 56)** — เลขเอกสารบันทึก **`CPA-SBPM-IDSM-69-00020`** · **`BSR #2026-00136`** (ใช้อ้างอิงเวลาติดต่อ/ยื่นเรื่องกับหน่วยงานอื่น) → ไม่มีงานหน้าจอ แต่ต้องทำ PDPA Requirement ตาม template แนบ
 - **§1.12 ข้อมูลและรายงาน · §1.13/§1.15 Performance · §1.14 Non-Functional** — เป็นเอกสาร/NFR (ตาราง Performance ในต้นฉบับยังว่าง)
 - **§2 High Level Solution Design (สไลด์ 71–82)** — หัวข้อสำหรับ Gosoft กรอก ยังว่างทั้งหมดในต้นฉบับ
 

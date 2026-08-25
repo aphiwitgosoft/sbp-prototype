@@ -325,7 +325,7 @@ src/modules/incomeGuarantee/
 | BR-05 | ไฟล์แนบไม่เกิน 5 MB | Reject file |
 | BR-06 | ส่งดำเนินการต้องเลือกผลพิจารณา | แสดง popup ตาม SRS |
 | BR-07 | บาง action ต้องกรอก comment | Validate ก่อน submit |
-| BR-08 | เงินชดเชยมากกว่า 100,000 บาท | ส่งต่อ AVP OPT ตาม rule ปัจจุบัน |
+| BR-08 | เงินชดเชย **ตั้งแต่ 100,000 บาทขึ้นไป** | ส่งต่อ AVP OPT (มติ 2026-08-18 · ยอด 100,000 พอดีไป AVP) — **น้อยกว่า 100,000 จบที่ GM** |
 | BR-09 | แก้ Master/Config ต้องบันทึก reason | Create audit log |
 | BR-10 | SRM duplicate sourceRefNo | Skip duplicate และ log result |
 

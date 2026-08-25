@@ -28,6 +28,9 @@
   .pill.orange{background:#ffedd5; color:#c2410c;}
   .pill.teal{background:#dcf5f1; color:#0f766e;}
   .pill.navy{background:#e3e6fb; color:#3730a3;}
+  /* ผลจบแบบปฏิเสธ 2 แบบ — ใช้สีคนละโทนกับ .wait (อำพัน) ที่เป็นสถานะ "รอฝ่าย SBP DSA ดำเนินการ"
+     หยุดชดเชย = แดง (.fail จาก sbp.css) · ไม่ชดเชย = เทาสเลต */
+  .pill.reject{background:#eef1f5; color:#475569;}
   .bg-navy{background:linear-gradient(135deg,#818cf8,#4f46e5);}
   /* แถวคลิกได้ */
   #tblK2 tbody tr[data-href], #tblRelated tbody tr[data-href]{cursor:pointer;}
@@ -54,6 +57,19 @@
   .quickbar .qb-input:focus,.quickbar .qb-sel:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(47,111,237,.12);}
   .quickbar .qb-div{width:1px;height:22px;background:#dde5ef;margin:0 3px;}
   .quickbar .qb-hit{font-size:12px;color:var(--primary);font-weight:600;white-space:nowrap;}
+
+  /* ── ชิปที่มาของงาน: ต่อเนื่อง = ม่วง (ระบบทำให้อัตโนมัติ · โทนเดียวกับเส้น auto ในผัง flow)
+     ผลการพิจารณาที่จบแล้วย้ายไปเป็นสีของ .pill แทน (ดู .pill.fail / .pill.reject ด้านบน) */
+  .chip-cont{background:#f3eeff; color:#6d28d9; border:1px solid #ddd3fb;}
+
+  /* คอลัมน์เลือกหลายรายการ + แถบ bulk (SDD GI สไลด์ 48) */
+  table.data th.chk-col, table.data td.chk-col{width:38px; text-align:center; padding-left:10px; padding-right:4px;}
+  table.data .chk-col input{width:15px; height:15px; cursor:pointer; accent-color:var(--primary);}
+  .bulk-bar{display:none; align-items:center; gap:14px; flex-wrap:wrap; margin:0 0 12px;
+    background:#eef4ff; border:1px solid #c7dbff; border-radius:10px; padding:10px 14px; font-size:13px; color:#1e40af;}
+  .bulk-bar.on{display:flex;}
+  .bulk-bar .n{font-weight:700;}
+  .bulk-bar .sp{flex:1;}
 </style>
 </head>
 <body data-page="k2-list-waiting" data-nav="modules" data-module="k2-list-waiting" data-crumb="เอกสาร · รอดำเนินการ">
@@ -75,6 +91,15 @@
           <span class="rb-hint" style="color:var(--muted);font-size:12.5px;flex:1;min-width:220px;">งานรอดำเนินการและการ์ดสถานะด้านล่างจะแสดงเฉพาะที่อยู่ในสิทธิ์ของบทบาทนี้</span>
         </div>
         <div class="wf-steps" id="wfSteps"></div>
+        <p id="stoppedHint" hidden style="font-size:12.5px;line-height:1.75;color:#c0392b;background:#fdeaea;border:1px solid #f3bcbc;border-radius:8px;padding:9px 12px;margin:12px 0 0;">
+          <b>ฝ่าย SBP DSA (06) เห็น 3 สถานะในหน้าเดียว</b> — บทบาทอื่น (08/01/02/03) เห็นเฉพาะคิวของตัวเอง
+          <br>① <span class="pill wait">รอฝ่าย SBP DSA ดำเนินการ</span> คิวปกติ
+          &nbsp;·&nbsp; ② <span class="pill fail">เสร็จสิ้นดำเนินการ หยุดชดเชย</span> &nbsp; ③ <span class="pill reject">เสร็จสิ้นดำเนินการ ไม่ชดเชย</span>
+          <br>กลุ่ม ② เปิดเอกสารแล้วจะแสดง<b>ข้อมูลเอกสารเดิม</b> พร้อมแผง <b>พิจารณา (ส่งดำเนินการ)</b> ชุดเดียวกับสถานะ “รอฝ่าย SBP DSA ดำเนินการ”
+          เพื่อ<b>พิจารณาคำขอชดเชยรายได้อีกครั้งได้เอง</b> โดยไม่ต้องเปิด SR (SDD สไลด์ 46 ข้อ 1.9)
+          &nbsp;·&nbsp; กลุ่ม ③ เอกสารจบในเดือนที่กด แล้วระบบจะดึงร้านเข้ามาเป็น<b>งานใบใหม่ในรอบเดือนถัดไป</b>พร้อม<b>เจ้าของงานคนเดิม</b> (SDD สไลด์ 46 · 48 · 64)
+          <br><b>สถานะจริงของทั้ง ② และ ③ ยังเป็น “เสร็จสิ้นดำเนินการ” ค่าเดียว</b> ตามชุดสถานะ 6 ค่า — ส่วนที่ต่อท้ายคือ<b>ผลการพิจารณาสุดท้าย</b> ไม่ใช่สถานะที่ 7/8
+        </p>
       </div>
 
       <div class="page-head">
@@ -103,6 +128,9 @@
                   <option>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</option>
                   <option>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</option>
                   <option>เสร็จสิ้นดำเนินการ</option>
+                  <!-- SDD สไลด์ 46 ข้อ 1.9 — สถานะจริงยังเป็น "เสร็จสิ้นดำเนินการ" ค่าเดียว ส่วนที่ต่อท้ายคือผลการพิจารณาสุดท้าย -->
+                  <option>เสร็จสิ้นดำเนินการ หยุดชดเชย</option>
+                  <option>เสร็จสิ้นดำเนินการ ไม่ชดเชย</option>
                 </select>
               </div>
               <div class="ffield">
@@ -118,14 +146,20 @@
                 <select id="fType" aria-label="กรองตามประเภทร้าน">
                   <option value="">ทุกประเภท</option>
                   <!-- ค่าจาก BranchTypeProfile.BranchTypeFGIName ของ CPA_FRN_FGI (ข้อมูล Master K2.xlsx) — 7 ค่า
+                       คำเรียก 2026-08-20: D = Type D (เดิม BGC) · C ครอบ Type V(C) + Type V(B) (เดิม C r)
                        ห้าม hardcode ในระบบจริง: โหลดจาก GET /common/common-code ของระบบ SBP เดิม -->
-                  <option>A (A-Mo)</option>
-                  <option>B (B(1))</option>
-                  <option>C</option>
-                  <option>D (BGC)</option>
-                  <option>E (B(2))</option>
-                  <option>PTT</option>
-                  <option>บริษัท (Corporate)</option>
+                  <!-- value = ชื่อที่แสดงในคอลัมน์ "ประเภทร้าน" ของตาราง · label = รหัสจาก master
+                       เดิมไม่มี value ทำให้เทียบกับ data-type ไม่ตรงสักค่า → กรองแล้วได้ 0 แถวเสมอ (แก้ 2026-08-24) -->
+                  <option value="SBP Type A">A (A-Mo)</option>
+                  <option value="SBP Type B">B (B(1))</option>
+                  <option value="SBP Type C">C</option>
+                  <option value="SBP Type V(C)">V(C) — เดิมอยู่ใน C r</option>
+                  <option value="SBP Type V(B)">V(B) — เดิมอยู่ใน C r</option>
+                  <option value="SBP Type D">D (เดิม BGC)</option>
+                  <option value="SBP Type E">E (B(2))</option>
+                  <option value="SBP Type PTT">PTT</option>
+                  <option value="SBP Type พนักงาน">พนักงาน</option>
+                  <option value="บริษัท">บริษัท (Corporate)</option>
                 </select>
               </div>
               <div class="ffield">
@@ -178,8 +212,14 @@
             <button class="icon-btn" id="qsClear" title="ล้างคำค้น Quick Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
             <span class="qb-hit" id="qsHit"></span>
           </div>
+          <div class="bulk-bar" id="bulkBarW">
+            <span>เลือกไว้ <span class="n" id="bulkNW">0</span> รายการ</span>
+            <span class="sp"></span>
+            <button class="btn btn-muted btn-sm" id="bulkClearW">ยกเลิกการเลือก</button>
+            <button class="btn btn-primary btn-sm" id="bulkGoW">ดำเนินการที่เลือก</button>
+          </div>
           <div class="table-wrap"><table class="data" id="tblK2">
-            <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">ผู้ดำเนินการ (เจ้าของงาน)</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
+            <thead><tr><th class="chk-col" data-nosort="1"><input type="checkbox" class="bulk-all" aria-label="เลือกทุกรายการในหน้านี้"></th><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">ผู้ดำเนินการ (เจ้าของงาน)</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
             <tbody><!-- 200 แถว mock ถูก generate ด้วยสคริปต์ท้ายหน้า --></tbody>
           </table></div>
           <div class="pager" id="pgK2"></div>
@@ -203,6 +243,9 @@
                   <option>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</option>
                   <option>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</option>
                   <option>เสร็จสิ้นดำเนินการ</option>
+                  <!-- SDD สไลด์ 46 ข้อ 1.9 — สถานะจริงยังเป็น "เสร็จสิ้นดำเนินการ" ค่าเดียว ส่วนที่ต่อท้ายคือผลการพิจารณาสุดท้าย -->
+                  <option>เสร็จสิ้นดำเนินการ หยุดชดเชย</option>
+                  <option>เสร็จสิ้นดำเนินการ ไม่ชดเชย</option>
                 </select>
               </div>
               <div class="ffield">
@@ -218,14 +261,20 @@
                 <select id="fTypeR" aria-label="กรองตามประเภทร้าน">
                   <option value="">ทุกประเภท</option>
                   <!-- ค่าจาก BranchTypeProfile.BranchTypeFGIName ของ CPA_FRN_FGI (ข้อมูล Master K2.xlsx) — 7 ค่า
+                       คำเรียก 2026-08-20: D = Type D (เดิม BGC) · C ครอบ Type V(C) + Type V(B) (เดิม C r)
                        ห้าม hardcode ในระบบจริง: โหลดจาก GET /common/common-code ของระบบ SBP เดิม -->
-                  <option>A (A-Mo)</option>
-                  <option>B (B(1))</option>
-                  <option>C</option>
-                  <option>D (BGC)</option>
-                  <option>E (B(2))</option>
-                  <option>PTT</option>
-                  <option>บริษัท (Corporate)</option>
+                  <!-- value = ชื่อที่แสดงในคอลัมน์ "ประเภทร้าน" ของตาราง · label = รหัสจาก master
+                       เดิมไม่มี value ทำให้เทียบกับ data-type ไม่ตรงสักค่า → กรองแล้วได้ 0 แถวเสมอ (แก้ 2026-08-24) -->
+                  <option value="SBP Type A">A (A-Mo)</option>
+                  <option value="SBP Type B">B (B(1))</option>
+                  <option value="SBP Type C">C</option>
+                  <option value="SBP Type V(C)">V(C) — เดิมอยู่ใน C r</option>
+                  <option value="SBP Type V(B)">V(B) — เดิมอยู่ใน C r</option>
+                  <option value="SBP Type D">D (เดิม BGC)</option>
+                  <option value="SBP Type E">E (B(2))</option>
+                  <option value="SBP Type PTT">PTT</option>
+                  <option value="SBP Type พนักงาน">พนักงาน</option>
+                  <option value="บริษัท">บริษัท (Corporate)</option>
                 </select>
               </div>
               <div class="ffield">
@@ -287,8 +336,14 @@
             <button class="icon-btn" id="qsClearR" title="ล้างคำค้น Quick Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
             <span class="qb-hit" id="qsHitR"></span>
           </div>
+          <div class="bulk-bar" id="bulkBarR">
+            <span>เลือกไว้ <span class="n" id="bulkNR">0</span> รายการ</span>
+            <span class="sp"></span>
+            <button class="btn btn-muted btn-sm" id="bulkClearR">ยกเลิกการเลือก</button>
+            <button class="btn btn-primary btn-sm" id="bulkGoR">ดำเนินการที่เลือก</button>
+          </div>
           <div class="table-wrap"><table class="data" id="tblRelated">
-            <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">ผู้ดำเนินการ (เจ้าของงาน)</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
+            <thead><tr><th class="chk-col" data-nosort="1"><input type="checkbox" class="bulk-all" aria-label="เลือกทุกรายการในหน้านี้"></th><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">ผู้ดำเนินการ (เจ้าของงาน)</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
             <tbody><!-- 120 แถว mock ถูก generate ด้วยสคริปต์ท้ายหน้า --></tbody>
           </table></div>
           <div class="pager" id="pgRelated"></div>
@@ -306,7 +361,26 @@
 
     </main>
   </div>
-  <div id="toast-stack"></div>
+  <!-- popup ยืนยันดำเนินการหลายเอกสาร (SDD GI สไลด์ 48) -->
+<div class="modal-overlay" id="bulkModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="mh-ic" style="background:linear-gradient(135deg,#2f6fed,#5b8dfa);">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.1V12a10 10 0 1 1-5.93-9.14M22 4 12 14l-3-3"/></svg>
+      </div>
+      <div><h3>ยืนยันดำเนินการ</h3><div class="mh-sub" id="bulkSub"></div></div>
+      <button class="modal-close" id="bulkX" aria-label="ปิด">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body"><div id="bulkList" style="font-size:13px;line-height:2;color:#45525f;"></div></div>
+    <div class="modal-foot">
+      <button class="btn btn-muted btn-sm" id="bulkNo">ยกเลิก</button>
+      <button class="btn btn-primary btn-sm" id="bulkYes">ยืนยันดำเนินการ</button>
+    </div>
+  </div>
+</div>
+<div id="toast-stack"></div>
   <script src="assets/sbp.js"></script>
   <script>
   (function () {
@@ -317,7 +391,10 @@
     document.querySelector('[data-tabpane="waiting"]').hidden = MODE !== 'waiting';
     document.querySelector('[data-tabpane="related"]').hidden = MODE !== 'related';
     if (MODE === 'related') {
-      document.getElementById('roleBar').style.display = 'none';
+      /* เดิมซ่อนแถบบทบาททั้งแถบในโหมดนี้ ทำให้ currentRole ค้างที่ 06 และตารางไม่กรองบทบาทเลย
+         → ทุกบทบาทเห็นเอกสารที่จบด้วยผลปฏิเสธ ซึ่งขัด SDD สไลด์ 46 ข้อ 1.9 · คงแถบไว้แล้วปรับคำอธิบายแทน */
+      document.querySelector('#roleBar .rb-hint').textContent =
+        'หน้านี้แสดงเอกสารที่ท่านเคยเกี่ยวข้องทุกสถานะ · เอกสารที่จบด้วยผลปฏิเสธจะแสดงเฉพาะบทบาท ฝ่าย SBP DSA (06)';
       // เอา filter สถานะออกจากแผงกรอง — ใช้การ์ด stat ด้านบนกรองสถานะแทน (element ยังอยู่แบบซ่อนให้การ์ดใช้)
       /* เดิมซ่อนช่องสถานะเพราะกรองผ่านกราฟวงกลม — ถอด stat card/กราฟออกแล้ว (2026-08-06)
          จึงต้องเปิดช่องสถานะให้กรองได้ตามปกติ */
@@ -343,13 +420,19 @@
       { label: 'เสร็จสิ้นดำเนินการ', pill: 'ok' }                       // End
     ];
     var DONE = 'เสร็จสิ้นดำเนินการ';
+    var ROLE08_WAIT = 'รอเจ้าหน้าที่ SBP DSA ดำเนินการ';   // ปลายทางของเคสต่อเนื่อง (ข้ามขั้น 06)
     // ลำดับถ่วงน้ำหนัก 20 ตำแหน่ง (6 สถานะ · ตัดบัญชี 04/05 ตาม SDD v7.5) — 06:50 · 08:30 · 01:40 · 02:30 · 03:20 · เสร็จสิ้น:30 (ต่อ 200 แถว)
     var PATTERN = [0, 2, 5, 1, 3, 0, 2, 4, 0, 1, 5, 2, 3, 0, 1, 4, 2, 0, 3, 5];
     // ภาค 13 รหัส (SDD v7.5 — ชุดใหม่แทน 8 รหัสเดิมของ SRS 3.1.7) · ภาคใหม่เพิ่มอัตโนมัติจาก master `mas_zone` ของระบบ SBP เดิม (GET /store/all-regions · ตัดสินใจ 2026-08-06)
     // เจ้าของงาน (เจ้าหน้าที่ SBP DSA) — เคสต่อเนื่อง/เห็นควรไม่ชดเชย ระบบ auto-assign คนเดิม (SDD GI สไลด์ 48)
     var OWNERS = ['Somchai Jaidee', 'Nattapong Wongsa', 'Kanjana Preechan', 'Wichai Thongdee', 'Pimchanok Sae-lim'];
     var REGIONS = ['BE', 'BS', 'NEU', 'REU', 'RSU', 'BG', 'BW', 'RC', 'RN', 'BN', 'NEL', 'REL', 'RSL'];
-    var TYPES = ['FR Type A', 'FR Type B', 'FR Type C', 'FR Type พนักงาน']; // ตาม SRS 3.1.7
+    /* ประเภทร้าน — คำเรียก FR → SBP (2026-08-20) · C r แตกเป็น Type V(C) + Type V(B)
+       ครบทุกค่าที่ตัวกรองมี = 9 ชนิดตาม database.md + `SBP Type E`
+       ⚠️ `E` (= B(2)) มีจริงใน master BranchTypeFGIName (7 ค่า A B C D E PTT บริษัท) แต่ยัง*ไม่อยู่*ในรายการชื่อแสดงผล 9 ชนิดของ database.md
+       → ต้องเคาะว่ารายการชื่อแสดงผลเป็น 10 ชนิด หรือ E ใช้ชื่อแสดงผลอื่น (ดู DP-13) */
+    var TYPES = ['SBP Type A', 'SBP Type B', 'SBP Type C', 'SBP Type V(C)', 'SBP Type V(B)',
+      'SBP Type D', 'SBP Type E', 'SBP Type PTT', 'บริษัท', 'SBP Type พนักงาน'];
     var PLACES = ['รัตนอุทิศ', 'บางบัวทอง', 'ปากเกร็ด', 'แคราย', 'ติวานนท์', 'งามวงศ์วาน', 'ท่าอิฐ', 'สามัคคี', 'ประชาชื่น', 'ลาดปลาดุก',
       'พิบูลสงคราม', 'บางกรวย', 'สนามบินน้ำ', 'บางพลัด', 'เตาปูน', 'พระราม 5', 'ไทรม้า', 'บางศรีเมือง', 'คลองประปา', 'เลี่ยงเมืองนนท์'];
     var SUFFIX = ['ซ.13', 'ตลาดใหม่', 'สถานี', 'พลาซ่า', 'ก.ม.8', 'ริเวอร์ไซด์', 'ท่าน้ำ', 'ซ.58', 'วัดชลอ', 'อินเตอร์เชนจ์'];
@@ -387,7 +470,25 @@
     function money(n) { return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
     function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
     function pillText(tr) { var p = tr.querySelector('.pill'); return p ? p.textContent.trim() : ''; }
-    function roleMatch(tr) { return pillText(tr) === currentRole.wait; }
+    function roleMatch(tr) {
+      if (pillText(tr) === currentRole.wait) return true;
+      /* ฝ่าย SBP DSA (06) เห็น 3 สถานะ (มติผู้ใช้ 2026-08-24) — บทบาทอื่น (08/01/02/03) เห็นเฉพาะ inbox ของตัวเอง
+           1. รอฝ่าย SBP DSA ดำเนินการ                          — inbox ปกติ
+           2. เสร็จสิ้นดำเนินการ + ↺ หยุดชดเชยฯ                  — SDD สไลด์ 46 ข้อ 1.9 เปิดพิจารณาใหม่ได้เอง ไม่ต้องเปิด SR
+           3. เสร็จสิ้นดำเนินการ + ⊘ เห็นควรไม่ชดเชยฯ            — ให้ 06 ตามงานที่ตัวเองปฏิเสธไว้ได้ในหน้าเดียว
+         หมายเหตุที่มา: ข้อ 3 กว้างกว่าตัวอักษรของ SDD — สไลด์ 46/64 เขียนว่าเอกสารที่ "เห็นควรไม่ชดเชยรายได้"
+         จะไม่แสดงในเดือนที่กด และระบบจะดึงร้านเข้าหน้าจองานค้างของ เจ้าหน้าที่ SBP DSA ใน*เดือนถัดไป* (เป็นเอกสารใบใหม่ ไม่ใช่ใบเดิม)
+         มติให้คงแถวไว้ในลิสต์ของ 06 ด้วย เพื่อให้เห็นครบทั้ง 3 ปลายทางในหน้าเดียว */
+      if (currentRole.code !== '06') return false;
+      return tr.getAttribute('data-stopped') === '1' || tr.getAttribute('data-notcomp') === '1';
+    }
+    /* หน้า "ที่เกี่ยวข้อง" ไม่ใช่ inbox — ผู้ใช้เห็นเอกสารที่ตัวเองเคยเกี่ยวข้องได้ทุกสถานะ
+       ยกเว้นแถวที่จบด้วยผลปฏิเสธ (↺ หยุดชดเชยฯ / ⊘ เห็นควรไม่ชดเชยฯ) ที่ SDD สไลด์ 46 ข้อ 1.9
+       ให้เห็นเฉพาะ ฝ่าย SBP DSA (06) — บทบาทอื่นต้องไม่เห็น */
+    function relatedMatch(tr) {
+      var rejected = tr.getAttribute('data-stopped') === '1' || tr.getAttribute('data-notcomp') === '1';
+      return rejected ? currentRole.code === '06' : true;
+    }
 
     // เลขหน้าแบบสากล: หน้าแรก/สุดท้ายคงที่ + หน้าต่างรอบหน้าปัจจุบัน + … คั่นช่วงที่ข้าม
     function pageItems(cur, total) {
@@ -423,6 +524,34 @@
      *        extraMatch (กรองระดับสิทธิ์ เช่น role), onApply }
      * คืน setSpecial(fn) สำหรับ filter พิเศษจากการ์ด stat (flag 60 วัน / รอเกิน 3 วัน / วงเงิน)
      */
+    /* popup ยืนยัน bulk — ใช้ .modal-overlay ของ sbp.css (ต้องมีทั้ง display:flex และ .show จึงจะขึ้น)
+       ไม่ใช้ window.confirm เพราะบล็อก event loop และคนละสไตล์กับหน้าอื่นในระบบ */
+    var bulkOk = null;
+    function openBulkModal(items, onOk) {
+      var ov = document.getElementById('bulkModal');
+      document.getElementById('bulkSub').textContent = 'เลือกไว้ ' + items.length + ' เอกสาร';
+      document.getElementById('bulkList').innerHTML = items.slice(0, 12).map(function (it) {
+        return '<div><b>' + esc(it.doc) + '</b> · ' + esc(it.store) + '</div>';
+      }).join('') + (items.length > 12 ? '<div style="color:#8493a5;">… และอีก ' + (items.length - 12) + ' รายการ</div>' : '');
+      bulkOk = onOk;
+      ov.style.display = 'flex';
+      requestAnimationFrame(function () { ov.classList.add('show'); });
+    }
+    function closeBulkModal() {
+      var ov = document.getElementById('bulkModal');
+      ov.classList.remove('show');
+      setTimeout(function () { ov.style.display = 'none'; }, 180);
+    }
+    ['bulkX', 'bulkNo'].forEach(function (id) {
+      document.getElementById(id).addEventListener('click', closeBulkModal);
+    });
+    document.getElementById('bulkYes').addEventListener('click', function () {
+      closeBulkModal(); if (bulkOk) bulkOk();
+    });
+    document.getElementById('bulkModal').addEventListener('click', function (e) {
+      if (e.target === this) closeBulkModal();
+    });
+
     function initTable(cfg) {
       var tbody = document.getElementById(cfg.tableId).querySelector('tbody');
 
@@ -448,18 +577,36 @@
         var flag60 = !done && (j % 13 === 0);
         var roundNo = (j % 3) + 1;                      // ครั้งที่ของรอบชดเชย
         var storeCode = pad(((j * 37) % 1450) + 120, 5); // รหัสร้าน — ใช้ผูกเจ้าของงานให้คงที่ต่อร้าน
-        // เคสต่อเนื่อง = ครั้งที่ 2 ขึ้นไป (เดือนก่อนหน้าฝ่าย SBP DSA เห็นควรไม่ชดเชย)
-        // → SDD GI สไลด์ 46/48/64: ระบบดึงเข้าหน้างานค้างเดือนถัดไป พร้อม "เจ้าของงานคนเดิม"
-        var carryOver = !done && roundNo > 1;
-        // ผลการพิจารณา (SDD v7.5) — มีค่าเฉพาะเอกสารที่เสร็จสิ้นแล้ว: ประกันรายได้ = อนุมัติชดเชย
-        var result = done ? ((i % 3 === 0) ? 'ไม่ประกันรายได้' : 'ประกันรายได้') : '';
+        /* แถวรอบที่ 2 ขึ้นไป มาจาก 2 ต้นเหตุที่ต่างกัน แต่ได้ "เจ้าของงานคนเดิม" เหมือนกัน (SDD GI สไลด์ 46 · 48 · 64)
+             · เคสชดเชยต่อเนื่อง        — ระบบ Auto Approve แล้วส่งเข้า เจ้าหน้าที่ SBP DSA (08) โดยข้ามขั้น 06
+             · กลับจากเห็นควรไม่ชดเชย  — รอบก่อนหน้า 06 กด "เห็นควรไม่ชดเชยรายได้" ระบบดึงร้านกลับเข้ามารอบเดือนถัดไป */
+        /* เคสต่อเนื่อง = ระบบ Auto Approve แล้วส่งเข้า เจ้าหน้าที่ SBP DSA (08) โดย*ข้ามขั้น 06*
+           ชิปนี้จึงติดได้เฉพาะแถวที่รอ 08 เท่านั้น — ถ้าไปโผล่ในคิวของ 06 แปลว่าผิดกติกาจุดเข้า flow */
+        var carryOver = !done && roundNo > 1 && st.label === ROLE08_WAIT;
+        /* ฝ่าย SBP DSA (06) มีปุ่มปฏิเสธ 2 ปุ่ม ที่ "จบเอกสาร" เหมือนกัน แต่ผลต่อหน้ารายการ*ตรงข้ามกัน*
+           (SDD GI สไลด์ 46 ข้อ 1.9 · สไลด์ 50 รายการปุ่ม · สไลด์ 64 สรุป)
+             · หยุดชดเชยประกันรายได้ → จบ + กลับเข้าคิวของ 06 ทันทีในเดือนเดียวกัน (เปิดพิจารณาใหม่ได้เอง ไม่ต้องเปิด SR)
+             · เห็นควรไม่ชดเชยรายได้ → จบ + ไม่แสดงในเดือนที่กด ระบบดึงร้านเข้ามาใหม่รอบเดือนถัดไป พร้อมเจ้าของงานคนเดิม
+           ทั้งคู่สถานะเอกสารยังเป็น "เสร็จสิ้นดำเนินการ" ตามชุดสถานะ 6 ค่า — ที่ต่างคือผลการพิจารณาสุดท้าย */
+        var stopped = done && (i % 3 === 0);   // จบด้วย "หยุดชดเชยประกันรายได้"  → 06 เห็น
+        var notComp = done && (i % 3 === 1);   // จบด้วย "เห็นควรไม่ชดเชยรายได้"  → 06 ไม่เห็นในเดือนนี้
+        // ผลการพิจารณาระดับรายงาน (SDD v7.5 · สไลด์ 60) — ปุ่มปฏิเสธทั้งสองรวบเป็น "ไม่ประกันรายได้"
+        var result = done ? ((stopped || notComp) ? 'ไม่ประกันรายได้' : 'ประกันรายได้') : '';
+        /* ป้ายสถานะที่แสดงจริง — เอกสารที่จบแยกเป็น 3 ปลายทาง คนละสี ให้กวาดตาแยกออกได้ในตารางเดียว
+           สถานะจริงในฐานข้อมูลยังเป็น "เสร็จสิ้นดำเนินการ" ค่าเดียวตามชุดสถานะ 6 ค่า
+           ส่วนที่ต่อท้าย (หยุดชดเชย / ไม่ชดเชย) คือ *ผลการพิจารณาสุดท้าย* จาก consideration_logs */
+        var pillLabel = stopped ? DONE + ' หยุดชดเชย' : notComp ? DONE + ' ไม่ชดเชย' : st.label;
+        var pillClass = stopped ? 'fail' : notComp ? 'reject' : st.pill;
         // เจ้าของงานผูกกับรหัสร้าน → ร้านเดิมได้เจ้าหน้าที่คนเดิมทุกครั้งที่ (จำลอง auto-assign)
         var owner = OWNERS[parseInt(storeCode, 10) % OWNERS.length];
         var dt = docDate(i);
-        html += '<tr' + (flag60 ? ' class="flag-red"' : '') + ' data-href="k2-document.html"'
+        html += '<tr' + (flag60 ? ' class="flag-red"' : '') + ' data-href="k2-document.html' + (stopped ? '?stopped=1' : '') + '"'
           + ' data-date="' + dt.iso + '" data-type="' + TYPES[(j * 7) % TYPES.length] + '"'
-          + ' data-flag60="' + (flag60 ? 1 : 0) + '"'
+          + ' data-flag60="' + (flag60 ? 1 : 0) + '" data-stopped="' + (stopped ? 1 : 0) + '"'
+          + ' data-notcomp="' + (notComp ? 1 : 0) + '"'
+          + ' data-end="' + (stopped ? 'stop' : notComp ? 'notcomp' : done ? 'approve' : '') + '"'
           + ' data-drop="' + drop.toFixed(2) + '" data-comp="' + comp.toFixed(2) + '" data-result="' + result + '">'
+          + '<td class="chk-col"><input type="checkbox" class="bulk-row" aria-label="เลือกเอกสารนี้"></td>'
           + '<td class="num">' + roundNo + '</td>'
           + '<td class="num">' + cfg.docPrefix + pad(cfg.docStart + i, 5) + '</td>'
           + '<td class="num">' + storeCode + '</td>'
@@ -467,15 +614,19 @@
           + '<td>' + REGIONS[(j * 3) % REGIONS.length] + '</td>'
           + '<td class="num">' + drop.toFixed(2) + '%</td>'
           + '<td class="num">' + money(comp) + '</td>'
-          + '<td>' + owner + (carryOver ? ' <span class="chip" title="เคสต่อเนื่อง (ครั้งที่ ' + roundNo + ') — ระบบส่งงานให้เจ้าของงานคนเดิมอัตโนมัติ · SDD GI สไลด์ 48">ต่อเนื่อง</span>' : '') + '</td>'
-          + '<td><span class="pill ' + st.pill + '">' + esc(st.label) + '</span></td>'
+          + '<td>' + owner
+          + (carryOver ? ' <span class="chip chip-cont" title="เคสชดเชยต่อเนื่อง (ครั้งที่ ' + roundNo + ') — ระบบ Auto Approve การเปิดเรื่องแล้วส่งเข้าเจ้าหน้าที่ SBP DSA (08) โดยข้ามขั้น 06 · ส่งให้คนเดิมอัตโนมัติ ไม่ต้องแจกงานด้วยมือ (resolve จาก consideration_logs ของเอกสารรอบก่อน แล้วผูกด้วย addPreApprover()) · SDD GI สไลด์ 48">⇢ ต่อเนื่อง</span>' : '') + '</td>'
+          + '<td><span class="pill ' + pillClass + '"'
+          + (stopped ? ' title="จบด้วยผลการพิจารณา &quot;หยุดชดเชยประกันรายได้&quot; — ฝ่าย SBP DSA (06) เปิดพิจารณาใหม่ได้เอง ไม่ต้องเปิด SR (SDD สไลด์ 46 ข้อ 1.9)"' : '')
+          + (notComp ? ' title="จบด้วยผลการพิจารณา &quot;เห็นควรไม่ชดเชยรายได้&quot; — เอกสารจบในเดือนที่กด ระบบจะดึงร้านเข้ามาเป็นงานใบใหม่ในรอบเดือนถัดไป พร้อมเจ้าของงานคนเดิม (SDD สไลด์ 46 ข้อ 1.9 · สไลด์ 64)"' : '')
+          + '>' + esc(pillLabel) + '</span></td>'
           + '<td class="num">' + (done ? 0 : (j % 9) + 1) + '</td></tr>';
       }
       tbody.innerHTML = html;
       var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
 
       var emptyRow = document.createElement('tr');
-      emptyRow.innerHTML = '<td colspan="10" style="text-align:center;color:#8493a5;padding:28px 12px;">ไม่พบรายการตามเงื่อนไขที่กรอง</td>';
+      emptyRow.innerHTML = '<td colspan="11" style="text-align:center;color:#8493a5;padding:28px 12px;">ไม่พบรายการตามเงื่อนไขที่กรอง</td>';
       emptyRow.hidden = true;
       tbody.appendChild(emptyRow);
 
@@ -487,12 +638,13 @@
       var fDayMin = el('fDayMin'), fDayMax = el('fDayMax');
       var fResult = el('fResult');   /* มีเฉพาะหน้า "ที่เกี่ยวข้อง" */
       var pager = document.getElementById(cfg.pagerId);
-      var page = 1, perPage = 10, special = null;
+      var page = 1, perPage = 10, special = null, bulkSync = null;
 
       function rowType(tr) { return tr.getAttribute('data-type') || ''; }
-      function rowRegion(tr) { return tr.cells[4] ? tr.cells[4].textContent.trim() : ''; }
+      /* index +1 ทุกตัวหลังเพิ่มคอลัมน์ checkbox เป็นคอลัมน์แรก (SDD สไลด์ 48) */
+      function rowRegion(tr) { return tr.cells[5] ? tr.cells[5].textContent.trim() : ''; }
       function rowText(tr) {
-        return (tr.cells[1].textContent + ' ' + tr.cells[2].textContent + ' ' + tr.cells[3].textContent).toLowerCase();
+        return (tr.cells[2].textContent + ' ' + tr.cells[3].textContent + ' ' + tr.cells[4].textContent).toLowerCase();
       }
       function numVal(elm) { var v = parseFloat(elm.value); return isNaN(v) ? null : v; }
       function baseRows() { return cfg.extraMatch ? rows.filter(cfg.extraMatch) : rows; }
@@ -524,7 +676,7 @@
           var comp = parseFloat(tr.getAttribute('data-comp'));
           if (cmin !== null && comp < cmin) return false;
           if (cmax !== null && comp > cmax) return false;
-          var days = parseFloat(tr.cells[8].textContent);
+          var days = parseFloat(tr.cells[9].textContent);
           if (ymin !== null && days < ymin) return false;
           if (ymax !== null && days > ymax) return false;
           return true;
@@ -578,6 +730,7 @@
         var from = (page - 1) * perPage, to = from + perPage;
         rows.forEach(function (tr) { tr.hidden = true; });
         list.slice(from, to).forEach(function (tr) { tr.hidden = false; });
+        if (bulkSync) bulkSync();
         emptyRow.hidden = list.length > 0;
 
         pager.innerHTML = '';
@@ -638,6 +791,7 @@
 
       /* เติมรายชื่อคอลัมน์ให้ dropdown Quick Search จากหัวตารางจริง */
       Array.prototype.slice.call(document.querySelectorAll('#' + cfg.tableId + ' thead th')).forEach(function (th, i) {
+        if (th.classList.contains('chk-col')) return;   // คอลัมน์ checkbox ไม่มีข้อความ ค้นไม่ได้
         var o = document.createElement('option'); o.value = String(i); o.textContent = th.textContent.trim();
         qsField.appendChild(o);
       });
@@ -722,6 +876,51 @@
         page = 1; apply();
       });
 
+      /* ── เลือกหลายเอกสารพร้อมกัน (SDD GI สไลด์ 48) ─────────────────────────────
+         checkbox อยู่ในแถวที่มี data-href ต้อง stopPropagation ไม่งั้นคลิกแล้วเด้งเข้าเอกสาร
+         "เลือกทั้งหมด" = เฉพาะแถวที่*มองเห็นในหน้านี้* ไม่ใช่ทั้ง 200 แถว */
+      var bulkBar = document.getElementById('bulkBar' + (cfg.suffix || 'W'));
+      var bulkN = document.getElementById('bulkN' + (cfg.suffix || 'W'));
+      var allBox = document.querySelector('#' + cfg.tableId + ' thead .bulk-all');
+      function pageBoxes() {
+        return Array.prototype.slice.call(tbody.querySelectorAll('tr:not([hidden]) .bulk-row'));
+      }
+      function checkedRows() {
+        return rows.filter(function (tr) { var c = tr.querySelector('.bulk-row'); return c && c.checked; });
+      }
+      function syncBulk() {
+        var n = checkedRows().length, boxes = pageBoxes();
+        bulkN.textContent = n;
+        bulkBar.classList.toggle('on', n > 0);
+        var onPage = boxes.filter(function (b) { return b.checked; }).length;
+        allBox.checked = boxes.length > 0 && onPage === boxes.length;
+        allBox.indeterminate = onPage > 0 && onPage < boxes.length;
+      }
+      tbody.addEventListener('click', function (e) {
+        if (e.target.classList.contains('bulk-row')) { e.stopPropagation(); syncBulk(); }
+      });
+      allBox.addEventListener('click', function (e) {
+        e.stopPropagation();
+        pageBoxes().forEach(function (b) { b.checked = allBox.checked; });
+        syncBulk();
+      });
+      document.getElementById('bulkClear' + (cfg.suffix || 'W')).addEventListener('click', function () {
+        rows.forEach(function (tr) { var c = tr.querySelector('.bulk-row'); if (c) c.checked = false; });
+        syncBulk();
+      });
+      document.getElementById('bulkGo' + (cfg.suffix || 'W')).addEventListener('click', function () {
+        var sel = checkedRows();
+        if (!sel.length) return;
+        openBulkModal(sel.map(function (tr) {
+          return { doc: tr.cells[2].textContent.trim(), store: tr.cells[4].textContent.trim() };
+        }), function () {
+          window.SBP.toast('ส่งดำเนินการ ' + sel.length + ' เอกสารเรียบร้อย', 'ok');
+          rows.forEach(function (tr) { var c = tr.querySelector('.bulk-row'); if (c) c.checked = false; });
+          syncBulk();
+        });
+      });
+      bulkSync = syncBulk;
+
       apply();
       return {
         rows: rows,
@@ -752,6 +951,7 @@
       tableId: 'tblRelated', pagerId: 'pgRelated', suffix: 'R',
       total: 120, docPrefix: '2025/', docStart: 450,
       dateYear: 2025, dateMonth: 6, dateSpan: 184, iOffset: 11,
+      extraMatch: relatedMatch,
       onApply: syncStatActive
     });
 
@@ -769,7 +969,7 @@
     // โหมดรอดำเนินการ: การ์ดต่อบทบาท = งานทั้งหมดของบทบาท + มุมมองย่อยที่มีผลจริงกับงาน (คลิกเพื่อกรอง)
     var SPECIALS = {
       flag60: function (tr) { return tr.getAttribute('data-flag60') === '1'; },
-      over3: function (tr) { return parseFloat(tr.cells[8].textContent) > 3; },
+      over3: function (tr) { return parseFloat(tr.cells[9].textContent) > 3; },
       over100k: function (tr) { return parseFloat(tr.getAttribute('data-comp')) >= 100000; }  // เข้าเส้น AVP · เกณฑ์เดียว 100,000 (มติ 2026-08-18)
     };
     /* renderWaitingStats — ถอด stat card ออกจากหน้า (2026-08-06) */
@@ -792,8 +992,9 @@
         '<text x="70" y="85" text-anchor="middle" class="donutSub">' + center + '</text></svg>';
     }
 
-    /* ---- ตัวสลับบทบาท + stepper 5 ขั้น (เฉพาะโหมดรอดำเนินการ) ---- */
-    if (MODE === 'waiting') {
+    /* ---- ตัวสลับบทบาท + stepper 5 ขั้น (ใช้ทั้งสองโหมด) ---- */
+    var activeTbl = MODE === 'waiting' ? waiting : related;
+    {
       var roleSel = document.getElementById('roleSwitch');
       ROLES.forEach(function (r, i) {
         var o = document.createElement('option');
@@ -817,15 +1018,17 @@
       var setRole = function (i) {
         currentRole = ROLES[i];
         roleSel.value = i;
-        specialKey = '';
-        waiting.clearFilters();
+        /* SDD สไลด์ 46 ข้อ 1.9 — คำอธิบายเอกสารหยุดชดเชยฯ แสดงเฉพาะบทบาท 06 ฝ่าย SBP DSA */
+        var sh = document.getElementById('stoppedHint');
+        if (sh) sh.hidden = currentRole.code !== '06';
+        specialKey = ''; relatedKey = '';
+        activeTbl.clearFilters();
         renderSteps();
-        waiting.setSpecial(null);
+        activeTbl.setSpecial(null);
       };
 
       roleSel.addEventListener('change', function () { setRole(+roleSel.value); });
       setRole(0);
-    } else {
     }
   })();
   </script>

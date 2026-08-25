@@ -37,6 +37,19 @@
         </div>
       </div>
 
+      <!-- เอกสารที่จบด้วย "หยุดชดเชยประกันรายได้" · เปิดจากหน้ารอดำเนินการของ ฝ่าย SBP DSA (?stopped=1) -->
+      <div class="card" id="stoppedBanner" hidden style="border-left:5px solid var(--danger);background:#fdeaea;">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+          <div style="font-size:13px;color:#8f2f24;line-height:1.85;">
+            <b style="color:#c0392b;">เอกสารนี้จบด้วยผลการพิจารณา “หยุดชดเชยประกันรายได้”</b> — สถานะจริงของเอกสารคือ <b>เสร็จสิ้นดำเนินการ</b>
+            แต่ <b>ฝ่าย SBP DSA (section_code 06)</b> สามารถ<b>พิจารณาคำขอชดเชยรายได้อีกครั้งได้เอง โดยไม่ต้องเปิด SR</b> (SDD สไลด์ 46 ข้อ 1.9)
+            <br>ด้านล่างแสดง<b>ข้อมูลเอกสารเดิม</b>ทั้งหมด และแผง <b>พิจารณา (ส่งดำเนินการ)</b> เป็นชุดเดียวกับเอกสารสถานะ <b>“รอฝ่าย SBP DSA ดำเนินการ”</b>
+            <br><small style="color:#a8574f;">เอกสารกลุ่มนี้แสดงเฉพาะในรายการของบทบาท 06 เท่านั้น · บทบาทอื่นไม่เห็นในหน้ารอดำเนินการ</small>
+          </div>
+        </div>
+      </div>
+
       <!-- ส่วน ข้อมูลร้านถูกกระทบ -->
       <div class="card">
         <div class="card-head"><h2>ข้อมูลร้านถูกกระทบ</h2><span class="pulse-dot" style="margin-left:auto;margin-top:6px;"></span><button class="btn btn-ghost btn-sm" id="btnCopyLink" style="margin-left:12px;" title="คัดลอกลิงก์เอกสารไปวางในแชต/อีเมล (ปุ่มเดียวกับ Copy Doc Link ของ K2 เดิม)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7L12 19"/></svg> Copy Doc Link</button></div>
@@ -47,8 +60,11 @@
           <div class="dm"><span class="k">วันที่สร้าง</span><span class="v num">12/06/2026</span></div>
           <div class="dm"><span class="k">รหัสร้านถูกกระทบ</span><span class="v num">00788</span></div>
           <div class="dm"><span class="k">ชื่อร้านถูกกระทบ</span><span class="v">รัตนอุทิศ ซ.13</span></div>
-          <div class="dm"><span class="k">ภาค</span><span class="v">RS</span></div>
-          <div class="dm"><span class="k">ประเภทร้าน</span><span class="v">FR Type B</span></div>
+          <div class="dm"><span class="k">ภาค</span><span class="v">BN</span></div>
+          <div class="dm"><span class="k">ประเภทร้าน</span><span class="v">SBP Type B</span></div>
+          <!-- ช่องทางต้นทางของเคส (SDD GI สไลด์ 17 · fgi_impact_processes.datasource)
+               ALM/STA = ระบบส่งงานมาให้เลือก · PRO/REA = เจ้าของงานคีย์เอง (สไลด์ 47 · 49) -->
+          <div class="dm"><span class="k">ช่องทางต้นทาง</span><span class="v" title="ALM = ระบบดึงจาก ALLMAP · STA = ระบบดึงจาก Franchise Statement · PRO = เชิงรุก (ประชุมพิจารณา) · REA = เชิงรับ (รับแจ้งจากหน่วยงานอื่น)">ALM · จากระบบ (ALLMAP)</span></div>
           <div class="dm"><span class="k">เจ้าของร้าน</span><span class="v">บ.เอกธานี เมโมเรียล จำกัด</span></div>
           <div class="dm"><span class="k">นิติบุคคล</span><span class="v">วิวัฒน์</span></div>
           <div class="dm"><span class="k">วันที่โอนร้าน</span><span class="v num">01/03/2023</span></div>
@@ -105,6 +121,7 @@
           <span class="edit-badge" style="margin-left:auto;"></span>
           <div class="edit-only" hidden style="display:flex;gap:8px;margin-left:12px;">
             <button class="btn btn-ghost btn-sm" id="btnNsRefresh" data-ack="รีเฟรชรายการร้านเปิดใหม่"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg> รีเฟรช</button>
+            <button class="btn btn-soft btn-sm" id="btnNsAdd" title="กรณีมีร้านอื่นเปิดกระทบเพิ่มจากร้านเดิม แล้วระบบยังไม่ได้ดึงมาให้อัตโนมัติ — เจ้าหน้าที่ SBP DSA คีย์เองได้ (ผัง To-Be · lane ทีมวิเคราะห์ข้อมูล)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> เพิ่มร้านกระทบเพิ่ม</button>
             <button class="btn btn-muted btn-sm" id="btnNsRestore">คืนค่าก่อนแก้ไข</button>
             <button class="btn btn-primary btn-sm" id="btnNsCalc"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7"/></svg> คำนวณเงินชดเชย</button>
           </div>
@@ -112,8 +129,8 @@
         <div class="table-wrap"><table class="data" id="tbldocument_new_stores" data-base="48200" style="min-width:1180px;">
           <thead><tr><th>ลำดับ</th><th>รหัสร้าน</th><th>ชื่อร้านเปิดใหม่</th><th>ภาค</th><th>ประเภทร้าน</th><th>เจ้าของร้าน</th><th>นิติบุคคล</th><th>วันที่เปิดร้าน</th><th>วันที่ปิดร้าน</th><th>ระยะห่าง (กม.)</th><th>%ชดเชย</th><th>เงินชดเชย (ร้านใหม่)</th></tr></thead>
           <tbody>
-            <tr><td class="num">1</td><td class="num">00990</td><td>สาขารัตนาธิเบศร์ 2</td><td>RS</td><td>FR Type A</td><td>นายอนันต์ ทวีสุข</td><td>บ.รัตนา รีเทล จำกัด</td><td class="num">16/11/2023</td><td class="num">-</td><td class="num">0.85</td><td class="num"><input class="pct-input num" value="60.00" disabled>%</td><td class="num comp-cell">28,920.00</td></tr>
-            <tr><td class="num">2</td><td class="num">01180</td><td>สาขาซอยวัดกู้</td><td>RS</td><td>บริษัท</td><td>บ.ซีพี ออลล์ จำกัด</td><td>ซีพี ออลล์</td><td class="num">02/02/2024</td><td class="num">-</td><td class="num">1.40</td><td class="num"><input class="pct-input num" value="40.00" disabled>%</td><td class="num comp-cell">19,280.00</td></tr>
+            <tr><td class="num">1</td><td class="num">00990</td><td>สาขารัตนาธิเบศร์ 2</td><td>BN</td><td>SBP Type A</td><td>นายอนันต์ ทวีสุข</td><td>บ.รัตนา รีเทล จำกัด</td><td class="num">16/11/2023</td><td class="num">-</td><td class="num">0.85</td><td class="num"><input class="pct-input num" value="60.00" disabled>%</td><td class="num comp-cell">28,920.00</td></tr>
+            <tr><td class="num">2</td><td class="num">01180</td><td>สาขาซอยวัดกู้</td><td>BN</td><td>บริษัท</td><td>บ.ซีพี ออลล์ จำกัด</td><td>ซีพี ออลล์</td><td class="num">02/02/2024</td><td class="num">-</td><td class="num">1.40</td><td class="num"><input class="pct-input num" value="40.00" disabled>%</td><td class="num comp-cell">19,280.00</td></tr>
           </tbody>
         </table></div>
         <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px 14px;margin:12px 0 2px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;">
@@ -122,8 +139,14 @@
           <span class="chip"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#2f6fed;vertical-align:middle;margin-right:5px;"></i>ร้าน 00990 · 60.0%</span>
           <span class="chip"><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#15b6a6;vertical-align:middle;margin-right:5px;"></i>ร้าน 01180 · 40.0%</span>
         </div>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">
+          <b>กรณีมีร้านอื่นเปิดกระทบเพิ่มจากร้านเดิม</b> (ผัง To-Be · lane ทีมวิเคราะห์ข้อมูล) มี 2 ทาง —
+          <b>(1)</b> ระบบ default ร้านที่กระทบเพิ่มมาให้อัตโนมัติจาก ALLMAP (แถวที่ <code>source_system = ALLMAP</code>) ·
+          <b>(2)</b> เจ้าหน้าที่ SBP DSA <b>คีย์เอง</b>ด้วยปุ่ม <b>เพิ่มร้านกระทบเพิ่ม</b> (แถวที่ <code>source_system = USER</code>)
+          <br>ทั้งสองทาง <b>ต้องกดคำนวณใหม่</b> เพราะการเพิ่มร้านทำให้ <b>%ชดเชยรวมไม่เท่ากับ 100%</b> ต้องเกลี่ยใหม่ทั้งเอกสาร
+        </p>
         <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">สูตรคำนวณ: เงินชดเชยร้านเปิดใหม่ = เงินชดเชยร้านถูกกระทบ × %ชดเชย &nbsp;·&nbsp; ผลรวม %ชดเชยทุกรายการต้องเท่ากับ 100%</p>
-        <p style="font-size:12px;color:var(--muted);margin:6px 0 0;">ประเภทร้านทั้งหมด 8 ชนิด: FR Type A · FR Type B · FR Type C · FR Type C r · บริษัท · FR Type พนักงาน · FR Type PTT · FR Type BGC</p>
+        <p style="font-size:12px;color:var(--muted);margin:6px 0 0;">ประเภทร้านทั้งหมด 9 ชนิด: SBP Type A · SBP Type B · SBP Type C · SBP Type V(C) · SBP Type V(B) · บริษัท · SBP Type พนักงาน · SBP Type PTT · SBP Type D <br>(เปลี่ยนคำเรียก 2026-08-20: FR → SBP · BGC → Type D · C r แตกเป็น Type V(C) + Type V(B) จึงเป็น 9 ชนิด)</p>
       </div>
 
       <!-- ส่วน ร้านคู่แข่งเปิดกระทบ -->
@@ -243,6 +266,18 @@
       <div class="card" id="sec-decision" style="border-left:5px solid var(--primary);">
         <div class="card-head"><h2>พิจารณา (ส่งดำเนินการ)</h2><span id="decHint" class="pill info" style="margin-left:auto;"></span></div>
         <div id="decisionOptions" style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px;"></div>
+        <p id="assignRuleHint" hidden style="font-size:12px;line-height:1.7;color:#4c3a86;background:#faf8ff;border:1px solid #e2d9fb;border-radius:8px;padding:9px 12px;margin:0 0 14px;">
+          <b>เลือกปุ่มปฏิเสธตัวไหน (ผัง To-Be — <code>เงื่อนไขการไม่อนุมัติ</code>)</b> — เกณฑ์คือ <b>“เคสนี้ยังมีโอกาสได้ชดเชยรอบหน้าไหม”</b>
+          <br>· <b>รอพิจารณารอบเดือนถัดไป</b> (ร้านยังอยู่ในเงื่อนไขกระทบ) → กด <b>“เห็นควรไม่ชดเชย”</b>
+          &nbsp;·&nbsp; <b>ไม่อนุมัติถาวร</b> (ร้านไม่เข้าเงื่อนไขอีกต่อไป เช่น <b>Location ที่ไม่เหมาะสม</b>) → กด <b>“หยุดชดเชยประกันรายได้”</b>
+          <br>ทั้งสองกรณี<b>ต้องระบุเหตุผลในช่องความเห็น</b> (บันทึกลง <code>consideration_logs.detail</code>)
+          <br><br><b>กติกาเจ้าของงานหลังกดปุ่ม (SDD สไลด์ 46 · 48)</b> — <b>“เห็นควรไม่ชดเชยรายได้”</b> เอกสารจบและ<b>ไม่แสดง</b>ในหน้ารอดำเนินการของฝ่าย SBP DSA ในเดือนนี้ แต่<b>เดือนถัดไป</b>ระบบจะดึงร้านเข้ามาใหม่พร้อม<b>เจ้าของงานคนเดิม</b> ·
+          <b>“หยุดชดเชยประกันรายได้”</b> เอกสาร<b>แสดงทันทีในเดือนนี้</b>ให้ฝ่าย SBP DSA เปิดพิจารณาใหม่ได้เอง · <b>เคสต่อเนื่อง</b> ระบบส่งงานให้เจ้าหน้าที่ SBP DSA คนเดิมอัตโนมัติ
+        </p>
+        <p id="stopReopenHint" hidden style="font-size:12px;line-height:1.7;color:#8f2f24;background:#fdeaea;border:1px solid #f3bcbc;border-radius:8px;padding:9px 12px;margin:0 0 14px;">
+          <b>เปิดพิจารณาใหม่จากเอกสารที่หยุดชดเชยฯ</b> — ตัวเลือกด้านล่างเป็นชุดเดียวกับสถานะ “รอฝ่าย SBP DSA ดำเนินการ” ทุกข้อ ·
+          เมื่อกดส่งดำเนินการ ระบบจะสร้างรอบพิจารณาใหม่ให้ร้าน+เดือนนี้ (SDD สไลด์ 46 ข้อ 1.9 · ไม่ต้องเปิด SR)
+        </p>
         <p id="zeroRuleHint" hidden style="font-size:12px;line-height:1.7;color:#7a5b12;background:#fff8ec;border:1px solid #f0dcb4;border-radius:8px;padding:9px 12px;margin:0 0 14px;"></p>
         <div class="form-grid">
           <div class="field col-2"><label>ความคิดเห็นเพิ่มเติม <span id="cmtStar" style="color:var(--danger);display:none;">*</span></label><textarea id="decComment" rows="3" placeholder="ระบุความคิดเห็น..."></textarea></div>
@@ -358,6 +393,8 @@
     .edit-badge{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;}
     .edit-badge.on{background:#e7f7ee;color:#16794a;}
     .edit-badge.off{background:#eef1f5;color:#8a97a5;}
+    .ns-input{width:100%;min-width:70px;border:1px solid #2f6fed;background:#fff;border-radius:6px;padding:3px 6px;font:inherit;color:inherit;}
+    .ns-new td{background:#f5faff;}
     .pct-input{width:74px;text-align:right;border:1px solid transparent;background:transparent;border-radius:6px;padding:3px 6px;font:inherit;color:inherit;}
     .pct-input:not([disabled]){border-color:#2f6fed;background:#fff;}
     .dec-opt{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:14px;color:#37414e;padding:8px 10px;border:1px solid var(--line,#e5e9f0);border-radius:9px;}
@@ -473,9 +510,21 @@
 
     var currentRoleKey = '';
 
+    /* SDD สไลด์ 46 ข้อ 1.9 — เปิดจากรายการของ ฝ่าย SBP DSA ด้วย ?stopped=1
+       เอกสารจบไปแล้วด้วย "หยุดชดเชยประกันรายได้" แต่ 06 เปิดพิจารณาใหม่ได้ */
+    var IS_STOPPED = /(^|[?&])stopped=1(&|$)/.test(location.search);
+    /* ประวัติของรอบก่อนหน้า — แสดงนำหน้าประวัติปกติเสมอเมื่อเป็นเอกสารหยุดชดเชยฯ */
+    var STOP_HISTORY = IS_STOPPED ? [
+      { name:'Somchai Jaidee', position:'ฝ่าย SBP DSA', result:'หยุดชดเชยประกันรายได้ (รอบก่อนหน้า)',
+        detail:'พิจารณาแล้วเห็นควรหยุดชดเชยประกันรายได้ในรอบนี้ · เอกสารจบกระบวนการ (เสร็จสิ้นดำเนินการ)',
+        datetime:'05/06/2026 15.12.40 น.', files:['stop_memo.pdf'] }
+    ] : [];
+    var HIST_VIEW = [];
+
     /* ประวัติเปลี่ยนตามบทบาทที่เลือก — แสดงเฉพาะขั้นก่อนหน้าที่ดำเนินการไปแล้ว */
     function renderHistory(stepIdx){
-      var tb = $('tbDecHistBody'), done = HISTORY.slice(0, stepIdx), html = '';
+      var tb = $('tbDecHistBody'), done = STOP_HISTORY.concat(HISTORY.slice(0, stepIdx)), html = '';
+      HIST_VIEW = done;
       done.forEach(function(h, i){
         var tags = h.files.length
           ? h.files.map(function(f){ return '<span class="chip file" style="margin:2px 4px 2px 0;">' + f + '</span>'; }).join('')
@@ -485,7 +534,9 @@
       });
       if (!done.length) html = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:22px 0;">— ยังไม่มีประวัติการพิจารณา (บทบาทนี้เป็นขั้นแรกของเอกสาร) —</td></tr>';
       tb.innerHTML = html;
-      $('decHistHint').textContent = done.length ? 'ดำเนินการมาแล้ว ' + done.length + ' ขั้น' : 'ขั้นแรก · ยังไม่มีประวัติ';
+      $('decHistHint').textContent = done.length
+        ? (IS_STOPPED ? 'รวมรอบก่อนหน้า · ' : '') + 'ดำเนินการมาแล้ว ' + done.length + ' ขั้น'
+        : 'ขั้นแรก · ยังไม่มีประวัติ';
       /* ผู้ดำเนินการ = รายชื่อสะสมทุกคนที่เคยดำเนินการ + ผู้ถือครองงานปัจจุบัน (แบบเดียวกับ K2 เดิม) */
       var hd = $('docHandlers');
       if (hd){
@@ -549,6 +600,11 @@
         lab.innerHTML = '<input type="radio" name="route" data-req="'+(o.req?1:0)+'" style="margin-top:3px;"> <span>'+o.label+(note?' <small>('+note+')</small>':'')+'</span>';
         box.appendChild(lab);
       });
+      var stopNote = $('stopReopenHint');
+      if (stopNote) stopNote.hidden = !(IS_STOPPED && r.key === 'sbpdsa-mgr');
+      /* กติกา auto-assign เจ้าของงาน — เกี่ยวกับปุ่มของขั้น 06 เท่านั้น (SDD สไลด์ 46 · 48) */
+      var asgNote = $('assignRuleHint');
+      if (asgNote) asgNote.hidden = (r.key !== 'sbpdsa-mgr');
       var zeroNote = $('zeroRuleHint');
       if (zeroNote) {
         zeroNote.hidden = (r.key !== 'sbpdsa-mgr');
@@ -585,6 +641,19 @@
         });
         steps.appendChild(c);
       });
+      /* SDD สไลด์ 46 ข้อ 1.9 — เอกสารหยุดชดเชยฯ: บังคับมุมมองเป็น ฝ่าย SBP DSA (06) และโชว์แบนเนอร์ */
+      if (IS_STOPPED) {
+        var sb = $('stoppedBanner'); if (sb) sb.hidden = false;
+        var pt = document.querySelector('.page-title');
+        if (pt && !pt.querySelector('.stop-tag')) {
+          var tag = document.createElement('span');
+          tag.className = 'pill fail stop-tag';
+          tag.style.marginLeft = '10px';
+          tag.textContent = '↺ หยุดชดเชยประกันรายได้ · เปิดพิจารณาใหม่';
+          pt.appendChild(tag);
+        }
+        sel.value = ROLES[0].key;
+      }
       render(ROLES[0].key);
 
       /* คืนปุ่มเป็นโหมดแจ้งเตือนปกติทุกครั้งที่ปิด — popup ตัวนี้ถูกเรียกจาก sbp.js (validation ของ modal เพิ่มข้อมูล) ด้วย */
@@ -645,7 +714,7 @@
       function dhClose(){ dhPop.classList.remove('show'); setTimeout(function(){ dhPop.style.display='none'; }, 200); }
       $('tbDecHistBody').addEventListener('click', function(e){
         var tr = e.target.closest('tr'); if (!tr || !tr.dataset.idx) return;
-        var h = HISTORY[parseInt(tr.dataset.idx, 10)];
+        var h = HIST_VIEW[parseInt(tr.dataset.idx, 10)];
         $('dhName').value = h.name;
         $('dhPosition').value = h.position;
         $('dhResult').value = h.result;
@@ -778,6 +847,28 @@
         render(document.getElementById('roleSwitch').value); /* refresh money-based options */
         toast('คำนวณเงินชดเชยร้านเปิดใหม่เรียบร้อย', 'ok');
       });
+      /* B5 · เพิ่มร้านที่กระทบเพิ่มด้วยมือ — แถวใหม่ต้องมี .pct-input และ .comp-cell
+         ไม่งั้นปุ่มคำนวณจะนับแถวนี้เป็น 0% แล้ว validate 100% เพี้ยน */
+      var nsAdd = $('btnNsAdd');
+      if (nsAdd) nsAdd.addEventListener('click', function () {
+        var tb = document.querySelector('#tbldocument_new_stores tbody');
+        var tr = document.createElement('tr');
+        tr.className = 'ns-new';
+        tr.setAttribute('data-source-system', 'USER');
+        var n = tb.querySelectorAll('tr').length + 1;
+        function cell(ph, cls) { return '<td class="num"><input class="ns-input' + (cls ? ' ' + cls : '') + '" placeholder="' + ph + '"></td>'; }
+        tr.innerHTML = '<td class="num">' + n + '</td>'
+          + cell('00000') + '<td><input class="ns-input" placeholder="ชื่อร้านเปิดใหม่"></td>'
+          + '<td><input class="ns-input" placeholder="ภาค"></td><td><input class="ns-input" placeholder="ประเภทร้าน"></td>'
+          + '<td><input class="ns-input" placeholder="เจ้าของร้าน"></td><td><input class="ns-input" placeholder="นิติบุคคล"></td>'
+          + cell('dd/mm/yyyy') + '<td class="num">-</td>' + cell('0.00')
+          + '<td class="num"><input class="pct-input num" value="0.00">%</td>'
+          + '<td class="num comp-cell">0.00</td>';
+        tb.appendChild(tr);
+        tr.querySelector('.ns-input').focus();
+        toast('เพิ่มแถวร้านกระทบเพิ่มแล้ว — กรอกข้อมูลและเกลี่ย %ชดเชย ให้รวมเป็น 100% ก่อนกดคำนวณ', 'ok');
+      });
+
       var restore = $('btnNsRestore');
       if (restore) restore.addEventListener('click', function(){
         var d = [['60.00','28,920.00'],['40.00','19,280.00']];

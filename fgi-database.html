@@ -80,36 +80,36 @@
               <line x1="88" y1="128" x2="330" y2="128" stroke="#e6ebf2"/>
               <text x="102" y="148" fill="#56606c" font-size="10.5">impact_process_id ◄ FK</text>
               <text x="102" y="167" fill="#56606c" font-size="10.5">impacted_store_code · new_store_code</text>
-              <text x="102" y="186" fill="#56606c" font-size="10.5">verify_status · workflow_generation_status</text>
+              <text x="102" y="186" fill="#56606c" font-size="10.5">sales_request_status · distance_km</text>
 
               <rect x="88" y="318" width="242" height="104" rx="10" fill="#fff" stroke="#16a34a" stroke-width="1.6"/>
               <text x="102" y="339" fill="#15803d" font-size="12.5" font-weight="700">fcs_qssi_score</text>
               <line x1="88" y1="348" x2="330" y2="348" stroke="#dcefe3"/>
-              <text x="102" y="368" fill="#56606c" font-size="10.5">store_id + category_code + period ◄ UK</text>
-              <text x="102" y="387" fill="#56606c" font-size="10.5">score_value · source_file</text>
-              <text x="102" y="406" fill="#56606c" font-size="10.5">Job 1 → Job 6 (QSSI 6 หมวด)</text>
+              <text x="102" y="368" fill="#56606c" font-size="10.5">store_id + category + month + year</text>
+              <text x="102" y="387" fill="#56606c" font-size="10.5">score · create_date</text>
+              <text x="102" y="406" fill="#56606c" font-size="10.5">ระบบ SBP เดิม → Job 6 อ่าน</text>
 
               <rect x="710" y="88" width="212" height="118" rx="10" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
               <text x="724" y="109" fill="#2f6fed" font-size="12.5" font-weight="700">fgi_impact_sales_summaries</text>
               <line x1="710" y1="118" x2="922" y2="118" stroke="#e6ebf2"/>
               <text x="724" y="138" fill="#56606c" font-size="10.5">id ◄ PK · impact_process_id ◄ FK</text>
               <text x="724" y="157" fill="#56606c" font-size="10.5">total_working_days · growth_rate_diff</text>
-              <text x="724" y="176" fill="#56606c" font-size="10.5">sales_status · verify_status</text>
+              <text x="724" y="176" fill="#56606c" font-size="10.5">growth_rate_before · growth_rate_after</text>
               <text x="724" y="195" fill="#56606c" font-size="10.5">Job 4 seed → Job 5 calculate</text>
 
               <rect x="710" y="246" width="212" height="96" rx="10" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
               <text x="724" y="267" fill="#2f6fed" font-size="12.5" font-weight="700">sales_transactions</text>
               <line x1="710" y1="276" x2="922" y2="276" stroke="#e6ebf2"/>
               <text x="724" y="296" fill="#56606c" font-size="10.5">id ◄ PK · sales_summary_id ◄ FK</text>
-              <text x="724" y="315" fill="#56606c" font-size="10.5">sales_date · sales_amount · sales_diff</text>
+              <text x="724" y="315" fill="#56606c" font-size="10.5">txn_date · sales_amount · sales_diff</text>
               <text x="724" y="334" fill="#56606c" font-size="10.5">is_outlier (|sales_diff| ≥ 50)</text>
 
               <rect x="710" y="398" width="212" height="96" rx="10" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
               <text x="724" y="419" fill="#2f6fed" font-size="12.5" font-weight="700">fgi_impact_competitors</text>
               <line x1="710" y1="428" x2="922" y2="428" stroke="#e6ebf2"/>
               <text x="724" y="448" fill="#56606c" font-size="10.5">id ◄ PK · impact_process_id ◄ FK</text>
-              <text x="724" y="467" fill="#56606c" font-size="10.5">competitor_code · open_date</text>
-              <text x="724" y="486" fill="#56606c" font-size="10.5">data_source = ALM</text>
+              <text x="724" y="467" fill="#56606c" font-size="10.5">competitor_code · name_th · branch_th</text>
+              <text x="724" y="486" fill="#56606c" font-size="10.5">opened_date · closed_date · period_key</text>
 
               <rect x="400" y="460" width="240" height="92" rx="10" fill="#f2fbf5" stroke="#15803d" stroke-width="1.6" stroke-dasharray="5 4"/>
               <text x="414" y="481" fill="#15803d" font-size="12.5" font-weight="700">interface_transactions</text>
@@ -148,10 +148,12 @@
               <tr><td>id</td><td>bigint</td><td><span class="db-key">PK</span></td></tr>
               <tr><td>impact_process_id</td><td>bigint</td><td><span class="db-key fk">FK</span></td></tr>
               <tr><td>impacted_store_code · new_store_code</td><td>varchar(5)</td><td>Business key</td></tr>
-              <tr><td>branch_type</td><td>varchar(3)</td><td>FAM / FB1 / FC1 / FB2 / FVB / FVC</td></tr>
-              <tr><td>verify_status</td><td>char(1)</td><td>W / P / Y / N</td></tr>
-              <tr><td>workflow_generation_status</td><td>char(1)</td><td>W / Y / N</td></tr>
-              <tr><td>opt_dv_user_id</td><td>varchar(30)</td><td>Gen Flow Gate</td></tr>
+              <tr><td>impact_month</td><td>char(7)</td><td>งวดกระทบ (ปีอยู่บน hub)</td></tr>
+              <tr><td>distance_km</td><td>decimal(8,3)</td><td>ระยะห่างร้านกระทบ–ร้านใหม่</td></tr>
+              <tr><td>sales_request_status</td><td>char(1)</td><td>W / P / Y / N <b>(เดิมเรียก verify_status)</b></td></tr>
+              <tr><td>forecast_compensate_percent · adjust_compensate_percent</td><td>decimal(7,4)</td><td>%ชดเชยฝั่งร้านใหม่</td></tr>
+              <tr><td>forecast_compensation_amount · adjust_compensation_amount</td><td>decimal(14,2)</td><td>ยอดชดเชย</td></tr>
+              <tr><td>updated_at</td><td>timestamp</td><td>UTC ใน DB</td></tr>
             </tbody></table></div>
           </div>
 
@@ -161,9 +163,10 @@
               <tr><td>id</td><td>bigint</td><td><span class="db-key">PK</span></td></tr>
               <tr><td>impact_process_id</td><td>bigint</td><td><span class="db-key fk">FK</span></td></tr>
               <tr><td>total_working_days</td><td>smallint</td><td>ผิดปกติเมื่อ &lt; 60 วัน</td></tr>
+              <tr><td>growth_rate_before · growth_rate_after</td><td>decimal(9,4)</td><td>ก่อน/หลังร้านใหม่เปิด</td></tr>
               <tr><td>growth_rate_diff</td><td>decimal(9,4)</td><td>Gen Flow Gate ≤ -10</td></tr>
               <tr><td>sales_status</td><td>char(1)</td><td>Y / N</td></tr>
-              <tr><td>calculated_at</td><td>timestamp</td><td>ผลคำนวณ Job 5</td></tr>
+              <tr><td>updated_at</td><td>timestamp</td><td>ผลคำนวณล่าสุดของ Job 5</td></tr>
             </tbody></table></div>
           </div>
 
@@ -172,10 +175,12 @@
             <div class="table-wrap"><table class="db-spec"><thead><tr><th>Column</th><th>Type</th><th>Key / Rule</th></tr></thead><tbody>
               <tr><td>id</td><td>bigint</td><td><span class="db-key">PK</span></td></tr>
               <tr><td>sales_summary_id</td><td>bigint</td><td><span class="db-key fk">FK</span></td></tr>
-              <tr><td>sales_date</td><td>date</td><td><span class="db-key">UK</span> ต่อ summary</td></tr>
+              <tr><td>txn_date</td><td>date</td><td><span class="db-key">UK</span> ต่อ summary <b>(เดิมเรียก sales_date)</b></td></tr>
+              <tr><td>window_no</td><td>smallint</td><td>หน้าต่างที่ 1–4</td></tr>
               <tr><td>sales_amount</td><td>decimal(14,2)</td><td>ยอดขายรายวัน</td></tr>
               <tr><td>sales_diff</td><td>decimal(9,4)</td><td>จับคู่ 4 × 15 วัน</td></tr>
               <tr><td>is_outlier</td><td>boolean</td><td>|sales_diff| ≥ 50</td></tr>
+              <tr><td>source_checksum · created_at</td><td>varchar · timestamp</td><td>ที่มาไฟล์ + เวลานำเข้า</td></tr>
             </tbody></table></div>
           </div>
 
@@ -184,35 +189,41 @@
             <div class="table-wrap"><table class="db-spec"><thead><tr><th>Column</th><th>Type</th><th>Key / Rule</th></tr></thead><tbody>
               <tr><td>id</td><td>bigint</td><td><span class="db-key">PK</span></td></tr>
               <tr><td>impact_process_id</td><td>bigint</td><td><span class="db-key fk">FK</span></td></tr>
-              <tr><td>competitor_code · competitor_name</td><td>varchar</td><td>ข้อมูลจาก ALLMAP</td></tr>
-              <tr><td>open_date</td><td>date</td><td>วันที่เปิดกระทบ</td></tr>
-              <tr><td>distance_meters</td><td>decimal(10,2)</td><td>หน่วยมาตรฐานเป็นเมตร</td></tr>
-              <tr><td>data_source</td><td>varchar(10)</td><td>ALM</td></tr>
+              <tr><td>competitor_code</td><td>varchar</td><td>รหัสแบรนด์คู่แข่ง → competitors</td></tr>
+              <tr><td>name_th · branch_th</td><td>varchar(200)</td><td>ชื่อ/สาขา จาก ALLMAP (คอลัมน์ NAMT · BRANCHT)</td></tr>
+              <tr><td>opened_date · closed_date</td><td>date</td><td>วันเปิด/ปิดสาขาคู่แข่ง</td></tr>
+              <tr><td>period_key</td><td>varchar</td><td>งวดข้อมูล — ช่องทางต้นทางอยู่ที่ fgi_impact_processes.datasource</td></tr>
+              <tr><td>updated_at</td><td>timestamp</td><td>UTC ใน DB</td></tr>
             </tbody></table></div>
           </div>
 
           <div class="db-entity">
-            <h3><code>fcs_qssi_score</code><span class="db-tag source">QSSI / Job 1</span></h3>
+            <h3><code>fcs_qssi_score</code><span class="db-tag source">ระบบ SBP เดิม · อ่านอย่างเดียว</span></h3>
             <div class="table-wrap"><table class="db-spec"><thead><tr><th>Column</th><th>Type</th><th>Key / Rule</th></tr></thead><tbody>
               <tr><td>id</td><td>bigint</td><td><span class="db-key">PK</span></td></tr>
-              <tr><td>store_id · category_code</td><td>varchar</td><td><span class="db-key">UK</span> ต่องวด</td></tr>
-              <tr><td>impact_month · impact_year</td><td>smallint</td><td>งวดเดือนก่อนหน้า</td></tr>
-              <tr><td>score_value</td><td>decimal(9,4)</td><td>หมวด 8, 9, 12, 1, 10, 16</td></tr>
-              <tr><td>source_file_name</td><td>varchar(255)</td><td>Traceability</td></tr>
-              <tr><td>imported_at</td><td>timestamp</td><td>เวลานำเข้า</td></tr>
+              <tr><td>store_id</td><td>varchar</td><td>รหัสร้าน</td></tr>
+              <tr><td>category</td><td>varchar</td><td>หมวดคะแนน — Job 6 ตรวจ 8, 9, 12, 1, 10, 16</td></tr>
+              <tr><td>month · year</td><td>number</td><td>งวดคะแนน</td></tr>
+              <tr><td>score</td><td>number</td><td>คะแนน</td></tr>
+              <tr><td>create_date</td><td>date</td><td>เวลานำเข้า</td></tr>
             </tbody></table></div>
+            <p style="font-size:12px;color:#5d6b7a;margin:8px 0 0;line-height:1.8;">
+              <b>ไม่ใช่ตารางของ SBPGI</b> — อยู่ใน <code>sps_store</code> ของระบบ SBP เดิม (23,958,780 แถว) ซึ่งนำเข้าเองผ่าน <code>POST /performance/import-qssi</code> ·
+              <b>SBPGI แค่ <code>SELECT</code> อ่าน</b> โดย Job 6 เพื่อตรวจความครบ 6 หมวดก่อนปล่อยสถานะ INIT — <b>ตัด Job 1 ImportQSSI ออกแล้ว (2026-08-24)</b> ·
+              ตารางจริง<b>มี 7 คอลัมน์เท่านั้น</b> ไม่มี <code>category_code</code> · <code>score_value</code> · <code>source_file_name</code> · <code>imported_at</code>
+            </p>
           </div>
 
           <div class="db-entity">
             <h3><code>interface_transactions</code><span class="db-tag new">ใหม่</span></h3>
             <div class="table-wrap"><table class="db-spec"><thead><tr><th>Column</th><th>Type</th><th>Key / Rule</th></tr></thead><tbody>
               <tr><td>id</td><td>bigint</td><td><span class="db-key">PK</span></td></tr>
-              <tr><td>data_name · direction</td><td>varchar</td><td>Enum / INBOUND-OUTBOUND</td></tr>
+              <tr><td>data_name · direction</td><td>varchar</td><td>direction: IN · OUT · INTERNAL</td></tr>
               <tr><td>impact_process_id</td><td>bigint</td><td><span class="db-key fk">FK</span> nullable</td></tr>
               <tr><td>sales_summary_id</td><td>bigint</td><td><span class="db-key fk">FK</span> nullable</td></tr>
               <tr><td>doc_no</td><td>varchar(10)</td><td><span class="db-key fk">FK</span> เมื่อเชื่อม K2</td></tr>
               <tr><td>return_code</td><td>varchar(20)</td><td>ACK จากปลายทาง</td></tr>
-              <tr><td>sent_at · received_at</td><td>timestamp</td><td>Monitoring / watchdog</td></tr>
+              <tr><td>sent_at · acked_at</td><td>timestamp</td><td>Monitoring / watchdog (Job 10)</td></tr>
             </tbody></table></div>
             <p class="db-note">ใช้ typed FK แทน <code>FGI_CONFIRM_RECEIVE_DATA.transaction_key</code> แบบ polymorphic เพื่อรักษา leading zero และ enforce referential integrity</p>
           </div>
@@ -222,7 +233,7 @@
       <div class="card">
         <div class="card-head"><h2>Status Domains และ Constraints</h2></div>
         <div class="domain-grid">
-          <div class="domain"><code>verify_status</code><p><b>W</b> รอตรวจ · <b>P</b> กำลังประมวลผล · <b>Y</b> ผ่าน · <b>N</b> ไม่ผ่าน</p></div>
+          <div class="domain"><code>sales_request_status</code><p><b>W</b> รอตรวจ · <b>P</b> กำลังประมวลผล · <b>Y</b> ผ่าน · <b>N</b> ไม่ผ่าน <small>(เดิมเรียก verify_status)</small></p></div>
           <div class="domain"><code>workflow_generation_status</code><p><b>W</b> รอเปิด workflow · <b>Y</b> เปิดแล้ว · <b>N</b> ไม่เข้าเกณฑ์</p></div>
           <div class="domain"><code>action_status</code><p><b>W</b> รอดำเนินการ · <b>Y</b> สำเร็จ · <b>N</b> ยกเลิก/ไม่ดำเนินการ</p></div>
         </div>
@@ -234,10 +245,10 @@
           <table class="data">
             <thead><tr><th>ระบบ</th><th>Interface</th><th>Landing / Domain Table</th><th>กติกาสำคัญ</th></tr></thead>
             <tbody>
-              <tr><td>QSSI</td><td>SFTP · mrs* 4 ไฟล์</td><td><code>fcs_qssi_score</code></td><td>ครบ 6 หมวดจากงวดเดียวในกรอบ 3 เดือน</td></tr>
-              <tr><td>ALLMAP</td><td>SQL Server Views</td><td><code>fgi_impact_stores</code> · <code>fgi_impact_competitors</code></td><td>Dedup ต่อร้านและงวด · data_source=ALM</td></tr>
+              <tr><td>QSSI</td><td>— (ระบบ SBP เดิมนำเข้าให้)</td><td><code>fcs_qssi_score</code> <b>อ่านอย่างเดียว</b></td><td>Job 6 ตรวจครบ 6 หมวดจากงวดเดียวในกรอบ 3 เดือน</td></tr>
+              <tr><td>ALLMAP</td><td>SQL Server Views</td><td><code>fgi_impact_stores</code> · <code>fgi_impact_competitors</code></td><td>Dedup ต่อร้านและงวด · ช่องทางต้นทาง <code>fgi_impact_processes.datasource</code> = ALM</td></tr>
               <tr><td>IAS</td><td>AMS06001O / AMS06001I</td><td><code>fgi_impact_sales_summaries</code> · <code>sales_transactions</code></td><td>4 หน้าต่าง × 15 วัน · outlier ≥ 50</td></tr>
-              <tr><td>STA</td><td>FRBC0001 + ACK</td><td><code>interface_transactions</code></td><td>callback ก่อน · Job 10 เป็น safety net เมื่อค้าง ≥ 1 วัน</td></tr>
+              <tr><td>STA</td><td>RabbitMQ <code>sta.compensation.result</code> + ACK</td><td><code>interface_transactions</code> (outbox READY → SENT → ACKED)</td><td>callback ก่อน · Job 10 เป็น safety net เมื่อค้าง ≥ 1 วัน</td></tr>
             </tbody>
           </table>
         </div>

@@ -10,7 +10,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **19 ชั่วโมง** = implementation 14 + unit test 5 (30%) |
 | Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | นำเข้าคู่ร้านถูกกระทบจาก ALLMAP: นำคู่ร้านถูกกระทบ–ร้านเปิดใหม่จากวิว ALLMAP เข้า fgi_impact_stores เติมข้อมูลจากตาราง master แล้วใช้กฎ DENY และ ON_PROCESS ตั้งค่า verify_status เป็น W / N / P |
+| Objective | นำเข้าคู่ร้านถูกกระทบจาก ALLMAP: นำคู่ร้านถูกกระทบ–ร้านเปิดใหม่จากวิว ALLMAP เข้า fgi_impact_stores เติมข้อมูลจากตาราง master แล้วใช้กฎ DENY และ ON_PROCESS ตั้งค่า sales_request_status เป็น W / N / P |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -42,7 +42,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 2 ImportImpa
 | Source View | allmapssa.SEVEN_IMPACT_VIEW (SQL Server GSMALLMAP) | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | dedup ด้วย ROW_NUMBER |
 | Branch Type ที่เข้าเกณฑ์ | B, FAM, FB1, FB2, FC1, FVB, FVC, FPT1 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | FPT1 เข้าเกณฑ์เฉพาะเมื่อ SBP_CANCEL_TYPE_I = 06 |
 | กฎ DENY (ตรวจก่อน ON_PROCESS) | สาขา N=F / juristic เดียวกัน / สัญญาไม่คลุมงวด / เก่ากว่า 12 เดือน | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ |  |
-| PK Sequence | SEQ_fgi_impact_stores | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ |  |
+| PK Sequence | BIGSERIAL ของ fgi_impact_stores (PostgreSQL — ไม่ใช้ named sequence แบบ Oracle) | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ |  |
 
 ### 5.9 Input / Progress / Output Contract
 
@@ -162,7 +162,7 @@ export async function runLlddBeJob2Importimpactstore(ctx, services) {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| fgi_impact_stores | W | insert คู่ใหม่ / ตั้ง verify_status W-N-P / created_by=ALM รวมทั้งข้อมูล external |
+| fgi_impact_stores | W | insert คู่ร้านกระทบ–ร้านใหม่ / ตั้ง sales_request_status = W · N · P (ตารางนี้ไม่มี created_by — ช่องทางต้นทางอยู่ที่ fgi_impact_processes.datasource) |
 
 ## 9. Skeleton Code (Batch Job 2)
 
@@ -227,7 +227,7 @@ export class SbpgiJob2Config implements Job2Config {
   sourceView = process.env.SBPGI_JOB2_SOURCE_VIEW ?? 'allmapssa.SEVEN_IMPACT_VIEW (SQL Server GSMALLMAP)'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   branchType = process.env.SBPGI_JOB2_BRANCH_TYPE ?? 'B, FAM, FB1, FB2, FC1, FVB, FVC, FPT1'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   denyOnProcess = process.env.SBPGI_JOB2_DENY_ON_PROCESS ?? 'สาขา N=F / juristic เดียวกัน / สัญญาไม่คลุมงวด / เก่ากว่า 12 เดือน'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  pkSequence = process.env.SBPGI_JOB2_PK_SEQUENCE ?? 'SEQ_fgi_impact_stores'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  pkSequence = process.env.SBPGI_JOB2_PK_SEQUENCE ?? 'BIGSERIAL ของ fgi_impact_stores (PostgreSQL — ไม่ใช้ named sequence แบบ Oracle)'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   mailTo = process.env.SBPGI_JOB2_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: go-sbp (hardcoded, template 34))
 }
 
@@ -308,7 +308,7 @@ export class ImportImpactStoreService {
     return true; // TODO: เงื่อนไขจริงตามผัง
   }
 
-  // insert คู่ใหม่ verify_status = W, created_by = ALM
+  // insert คู่ใหม่ sales_request_status = W
   async step05Insert(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -323,12 +323,12 @@ export class ImportImpactStoreService {
     return true; // TODO: เงื่อนไขจริงตามผัง
   }
 
-  // เข้าเงื่อนไข ON_PROCESS หรือ created_by = STA?
+  // เข้าเงื่อนไข ON_PROCESS หรือ fgi_impact_processes.datasource = STA?
   async check08Condition(state: JobState): Promise<boolean> {
     return true; // TODO: เงื่อนไขจริงตามผัง
   }
 
-  // verify_status = P (On Process) แล้ววนจนครบทุกแถว
+  // sales_request_status = P (On Process) แล้ววนจนครบทุกแถว
   async step09Process(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -346,11 +346,11 @@ export class ImportImpactStoreService {
 | 2 | io | อ่าน SEVEN_IMPACT_VIEW จาก ALLMAP (ROW_NUMBER dedup) | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 3 | decision | มีข้อมูลต้นทาง? | check03Condition() | [end] จบการทำงาน |
 | 4 | decision | เป็นคู่ร้านใหม่ (ยังไม่มีใน Oracle)? | check04Update() | [branch] ข้ามรายการ — ของเดิมไม่ถูกอัปเดต (updateList เป็น dead code) |
-| 5 | process | insert คู่ใหม่ verify_status = W, created_by = ALM | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 5 | process | insert คู่ใหม่ sales_request_status = W | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | process | เติมข้อมูล master และ enrichment data | step06Enrich() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 7 | decision | ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS) | check07Validate() | [err] verify_status = N (Deny) |
-| 8 | decision | เข้าเงื่อนไข ON_PROCESS หรือ created_by = STA? | check08Condition() | [branch] คงค่า W (รอตรวจสอบ) |
-| 9 | process | verify_status = P (On Process) แล้ววนจนครบทุกแถว | step09Process() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 7 | decision | ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS) | check07Validate() | [err] sales_request_status = N (Deny) |
+| 8 | decision | เข้าเงื่อนไข ON_PROCESS หรือ fgi_impact_processes.datasource = STA? | check08Condition() | [branch] คงค่า W (รอตรวจสอบ) |
+| 9 | process | sales_request_status = P (On Process) แล้ววนจนครบทุกแถว | step09Process() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 10 | end | จบ | summarize() | - |
 
 ```ts
@@ -394,15 +394,15 @@ export class ImportImpactStoreJob {
       }
       // === transaction boundary === TODO: หนึ่ง transaction + savepoint
       await this.dataSource.transaction(async (manager: EntityManager) => {
-        // ขั้นที่ 5: insert คู่ใหม่ verify_status = W, created_by = ALM · TODO: PK จาก SEQ_fgi_impact_stores
+        // ขั้นที่ 5: insert คู่ใหม่ sales_request_status = W · TODO: ช่องทางต้นทางเก็บที่ fgi_impact_processes.datasource = ALM (fgi_impact_stores ไม่มีคอลัมน์ created_by/datasource)
         await this.service.step05Insert(state, manager);
       });
       // ขั้นที่ 6: เติมข้อมูล master และ enrichment data · TODO: INNER JOIN — ถ้า master ไม่ครบ แถวจะหลุดหายเงียบ ๆ
       await this.service.step06Enrich(state);
       // ขั้นที่ 7 (decision): ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS) · TODO: DENY: สาขา N=F / juristic เดียวกัน / สัญญา SBP ไม่คลุมงวด / เก่ากว่า 12 เดือน
       const ok07 = await this.service.check07Validate(state);
-      if (!ok07) throw new JobFailedError('JOB2_STEP07', 'verify_status = N (Deny)');
-      // ขั้นที่ 8 (decision): เข้าเงื่อนไข ON_PROCESS หรือ created_by = STA? · TODO: แหล่ง STA เข้าสถานะ P ได้อัตโนมัติ
+      if (!ok07) throw new JobFailedError('JOB2_STEP07', 'sales_request_status = N (Deny)');
+      // ขั้นที่ 8 (decision): เข้าเงื่อนไข ON_PROCESS หรือ fgi_impact_processes.datasource = STA? · TODO: แหล่ง STA เข้าสถานะ P ได้อัตโนมัติ
       const ok08 = await this.service.check08Condition(state);
       if (!ok08) { // NO → คงค่า W (รอตรวจสอบ)
         // TODO: เส้น NO ของขั้นนี้เป็น branch ระดับ record — ผังไม่ได้ระบุว่าหยุดหรือไปต่อ
@@ -410,7 +410,7 @@ export class ImportImpactStoreJob {
         //   ถ้าเป็น 'ตั้งค่าแล้วไปต่อ' -> เรียก service ตั้งค่าสถานะ แล้วเดินขั้นถัดไป (ห้าม return)
         //   ถ้าเป็น 'คงสถานะเดิม/ไม่เปิดงาน' -> หยุดเฉพาะ record นี้ ห้ามไหลไปขั้นถัดไป
       }
-      // ขั้นที่ 9: verify_status = P (On Process) แล้ววนจนครบทุกแถว
+      // ขั้นที่ 9: sales_request_status = P (On Process) แล้ววนจนครบทุกแถว
       await this.service.step09Process(state);
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
@@ -487,14 +487,14 @@ repository ของ Job 2 ประกาศเป็น factory provider (`{pr
 
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
-| fgi_impact_stores | W | insert คู่ใหม่ / ตั้ง verify_status W-N-P / created_by=ALM รวมทั้งข้อมูล external | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| fgi_impact_stores | W | insert คู่ร้านกระทบ–ร้านใหม่ / ตั้ง sales_request_status = W · N · P (ตารางนี้ไม่มี created_by — ช่องทางต้นทางอยู่ที่ fgi_impact_processes.datasource) | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 2 ImportImpactStore — query หลักที่ต้อง implement
 -- TODO: ทุก statement รันผ่าน DATA_SOURCE (SELECT ไป slave, write ไป master) และ
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
--- [W] fgi_impact_stores : insert คู่ใหม่ / ตั้ง verify_status W-N-P / created_by=ALM รวมทั้งข้อมูล external
+-- [W] fgi_impact_stores : insert คู่ร้านกระทบ–ร้านใหม่ / ตั้ง sales_request_status = W · N · P (ตารางนี้ไม่มี created_by — ช่องทางต้นทางอยู่ที่ fgi_impact_processes.datasource)
 -- TODO: เติมคอลัมน์ payload จริงจาก database.md
 INSERT INTO fgi_impact_stores
   (/* TODO: business key + payload + created_by, created_at */)
@@ -574,11 +574,11 @@ export class JobFailureNotifier {
 | 2 | อ่าน SEVEN_IMPACT_VIEW จาก ALLMAP (ROW_NUMBER dedup) (เชื่อม SQL Server GSMALLMAP ด้วย user allmapssa) |
 | 3 | มีข้อมูลต้นทาง? \| No: จบการทำงาน |
 | 4 | เป็นคู่ร้านใหม่ (ยังไม่มีใน Oracle)? \| No: ข้ามรายการ — ของเดิมไม่ถูกอัปเดต (updateList เป็น dead code) (Errata E4: รันซ้ำจะไม่อัปเดตคู่เดิม) |
-| 5 | insert คู่ใหม่ verify_status = W, created_by = ALM (PK จาก SEQ_fgi_impact_stores) |
+| 5 | insert คู่ใหม่ sales_request_status = W (ช่องทางต้นทางเก็บที่ fgi_impact_processes.datasource = ALM (fgi_impact_stores ไม่มีคอลัมน์ created_by/datasource)) |
 | 6 | เติมข้อมูล master และ enrichment data (INNER JOIN — ถ้า master ไม่ครบ แถวจะหลุดหายเงียบ ๆ) |
-| 7 | ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS) \| No: verify_status = N (Deny) (DENY: สาขา N=F / juristic เดียวกัน / สัญญา SBP ไม่คลุมงวด / เก่ากว่า 12 เดือน) |
-| 8 | เข้าเงื่อนไข ON_PROCESS หรือ created_by = STA? \| No: คงค่า W (รอตรวจสอบ) (แหล่ง STA เข้าสถานะ P ได้อัตโนมัติ) |
-| 9 | verify_status = P (On Process) แล้ววนจนครบทุกแถว |
+| 7 | ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS) \| No: sales_request_status = N (Deny) (DENY: สาขา N=F / juristic เดียวกัน / สัญญา SBP ไม่คลุมงวด / เก่ากว่า 12 เดือน) |
+| 8 | เข้าเงื่อนไข ON_PROCESS หรือ fgi_impact_processes.datasource = STA? \| No: คงค่า W (รอตรวจสอบ) (แหล่ง STA เข้าสถานะ P ได้อัตโนมัติ) |
+| 9 | sales_request_status = P (On Process) แล้ววนจนครบทุกแถว |
 | 10 | จบ |
 
 ## 11. Acceptance Criteria

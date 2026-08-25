@@ -19,8 +19,8 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Waiting list
 - Related document list
 - Search/filter/status filter
-- Pagination/row action
-- Red flag for sales data < 60 days
+- Pagination/row action + เลือกหลายเอกสาร (bulk)
+- Red flag (sales < 60 days) + rejected-ending rows ที่บทบาท 06 ต้องเห็น
 
 ## 3. Screenshot Reference
 
@@ -75,8 +75,8 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | C01 | Waiting list | โหลดงานของผู้ใช้จาก /tasks และ map 9 คอลัมน์หลักพร้อม task owner/status | waiting list แสดง 9 คอลัมน์ตรง type และรักษา leading zero ของรหัสร้าน |
 | C02 | Related document list | ค้นหาเอกสารจาก /documents โดยบังคับปีและแสดงเอกสารที่เกี่ยวข้องตาม permission | ไม่ call API เมื่อไม่มีปี และ empty result ไม่แสดงข้อมูลจาก query ก่อนหน้า |
 | C03 | Search/filter/status filter | serialize docNo/year/status/store filters ลง query state และ restore เมื่อย้อนกลับจาก detail | Search/Clear/refresh ให้ผลซ้ำได้และ pagination ใช้ filter ชุดเดียวกัน |
-| C04 | Pagination/row action | ควบคุม page/size/sort และ row navigation โดยใช้ docNo เป็น stable key | เปลี่ยนหน้าไม่ reset filter และเปิด detail ของ row ที่เลือกถูกเลขเอกสาร |
-| C05 | Red flag for sales data < 60 days | คำนวณ presentation flag จาก salesDataDays < 60 โดยไม่ใช้ waitingDays แทน | แถวผิดปกติเป็นสีแดงพร้อม accessible label เฉพาะเมื่อยอดขายไม่ครบ 60 วัน |
+| C04 | Pagination/row action + เลือกหลายเอกสาร (bulk) | ควบคุม page/size/sort และ row navigation โดยใช้ docNo เป็น stable key · เพิ่มคอลัมน์ checkbox แรกสุดสำหรับเลือกหลายเอกสาร (SDD GI สไลด์ 48) — checkbox ต้อง stopPropagation ไม่ให้ทริกเกอร์ row navigation และ "เลือกทั้งหมด" ครอบเฉพาะแถวที่แสดงในหน้านั้น ไม่ใช่ทั้งชุดผลลัพธ์ | เปลี่ยนหน้าไม่ reset filter และเปิด detail ของ row ที่เลือกถูกเลขเอกสาร · เลือกหลายรายการแล้วกด "ดำเนินการที่เลือก" ต้องเปิด popup ยืนยันพร้อมรายการเลขที่เอกสารก่อนส่ง และเคลียร์การเลือกหลังส่งสำเร็จ |
+| C05 | Red flag (sales < 60 days) + rejected-ending rows ที่บทบาท 06 ต้องเห็น | คำนวณ presentation flag จาก salesDataDays < 60 โดยไม่ใช้ waitingDays แทน และ render เอกสารที่จบด้วยผลปฏิเสธทั้ง 2 แบบ — หยุดชดเชยประกันรายได้ (stoppedReopenable=true) และ เห็นควรไม่ชดเชยรายได้ (notCompensated=true) — เฉพาะบทบาท section 06 | แถวผิดปกติเป็นสีแดงพร้อม accessible label เฉพาะเมื่อยอดขายไม่ครบ 60 วัน · บทบาท 06 เห็น 3 กลุ่มในหน้าเดียว (มติ 2026-08-24): (1) รอฝ่าย SBP DSA ดำเนินการ (2) เสร็จสิ้นดำเนินการ + ชิป หยุดชดเชยฯ (3) เสร็จสิ้นดำเนินการ + ชิป เห็นควรไม่ชดเชยฯ · บทบาท 08/01/02/03 ต้องไม่เห็นกลุ่ม (2) และ (3) · ชิปทั้งสองเป็นผลการพิจารณาสุดท้าย ไม่ใช่สถานะที่ 7/8 — สถานะจริงยังเป็น เสร็จสิ้นดำเนินการ ตามชุด 6 ค่า และมีตัวกรองแยก 2 ตัวจาก dropdown สถานะ · กลุ่ม (2) คลิกแล้วเปิดเอกสารในโหมดเปิดพิจารณาใหม่ · หมายเหตุที่มา: กลุ่ม (3) กว้างกว่าตัวอักษรของ SDD สไลด์ 46/64 ที่ให้แสดงเฉพาะรอบเดือนถัดไปในหน้างานค้างของ เจ้าหน้าที่ SBP DSA |
 
 ### 5.91 Document Lists API Adapter Map
 

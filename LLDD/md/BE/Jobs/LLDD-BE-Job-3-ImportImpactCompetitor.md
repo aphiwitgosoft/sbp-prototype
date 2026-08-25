@@ -10,7 +10,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **13 ชั่วโมง** = implementation 10 + unit test 3 (30%) |
 | Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | นำเข้าร้านคู่แข่งจาก ALLMAP: นำข้อมูลร้านคู่แข่งรายงวดจากวิว COMPETITOR_IMPACT_VIEW เข้า fgi_impact_competitors ทีละ 10,000 แถว กันซ้ำระดับงวด (ถ้างวดมีข้อมูลแล้วจะข้ามทั้งงวด ไม่มี upsert) |
+| Objective | นำเข้าร้านคู่แข่งจาก ALLMAP: นำข้อมูลร้านคู่แข่งรายงวดจากวิว COMPETITOR_IMPACT_VIEW **ของ ALLMAP (SQL Server GSMALLMAP — ระบบภายนอก คงกลไกเดิม)** เข้า fgi_impact_competitors ทีละ 10,000 แถว กันซ้ำระดับงวด (ถ้างวดมีข้อมูลแล้วจะข้ามทั้งงวด ไม่มี upsert) |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -158,7 +158,7 @@ export async function runLlddBeJob3Importimpactcompetitor(ctx, services) {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| fgi_impact_competitors | W | insert รายงวด data_source=ALM (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP |
+| fgi_impact_competitors | W | insert รายงวด (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP · ช่องทางต้นทาง ALM เก็บที่ fgi_impact_processes.datasource |
 
 ## 9. Skeleton Code (Batch Job 3)
 
@@ -298,7 +298,7 @@ export class ImportImpactCompetitorService {
     return true; // TODO: เงื่อนไขจริงตามผัง
   }
 
-  // insert ทีละ 10,000 แถว พร้อม data_source = ALM
+  // insert ทีละ 10,000 แถว (ผูก impact_process_id)
   async step05Insert(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -321,7 +321,7 @@ export class ImportImpactCompetitorService {
 | 2 | decision | เป็นงวดใหม่ (ยังไม่เคยนำเข้า)? | check02ResolvePeriod() | [branch] ข้ามทั้งงวด — ไม่มี upsert ต้องลบงวดก่อนจึงนำเข้าใหม่ได้ |
 | 3 | io | SELECT DISTINCT จาก COMPETITOR_IMPACT_VIEW | step03Query() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 4 | decision | พบข้อมูลต้นทาง? | check04Condition() | [end] จบการทำงาน |
-| 5 | process | insert ทีละ 10,000 แถว พร้อม data_source = ALM | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 5 | process | insert ทีละ 10,000 แถว (ผูก impact_process_id) | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | decision | จำนวนที่ insert = จำนวนต้นทาง? | check06Insert() | [err] Rollback + ส่งเมลแจ้งล้มเหลว |
 | 7 | end | Commit / จบ | summarize() | - |
 
@@ -366,7 +366,7 @@ export class ImportImpactCompetitorJob {
       }
       // === transaction boundary === TODO: หนึ่ง transaction + savepoint (insert เป็น chunk ละ 10,000)
       await this.dataSource.transaction(async (manager: EntityManager) => {
-        // ขั้นที่ 5: insert ทีละ 10,000 แถว พร้อม data_source = ALM · TODO: map คอลัมน์ NAMT → NAME_TH และ BRANCHT → BRANCH_TH
+        // ขั้นที่ 5: insert ทีละ 10,000 แถว (ผูก impact_process_id) · TODO: ช่องทางต้นทาง ALM เก็บที่ fgi_impact_processes.datasource — fgi_impact_competitors ไม่มีคอลัมน์นี้ · map คอลัมน์ NAMT → name_th และ BRANCHT → branch_th (NAMT/BRANCHT เป็นคอลัมน์ของวิวฝั่ง ALLMAP)
         await this.service.step05Insert(state, manager);
       });
       // ขั้นที่ 6 (decision): จำนวนที่ insert = จำนวนต้นทาง? · TODO: ตรวจ reconcile จำนวนแถวก่อน commit
@@ -447,14 +447,14 @@ repository ของ Job 3 ประกาศเป็น factory provider (`{pr
 
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
-| fgi_impact_competitors | W | insert รายงวด data_source=ALM (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| fgi_impact_competitors | W | insert รายงวด (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP · ช่องทางต้นทาง ALM เก็บที่ fgi_impact_processes.datasource | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 3 ImportImpactCompetitor — query หลักที่ต้อง implement
 -- TODO: ทุก statement รันผ่าน DATA_SOURCE (SELECT ไป slave, write ไป master) และ
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
--- [W] fgi_impact_competitors : insert รายงวด data_source=ALM (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP
+-- [W] fgi_impact_competitors : insert รายงวด (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP · ช่องทางต้นทาง ALM เก็บที่ fgi_impact_processes.datasource
 -- TODO: เติมคอลัมน์ payload จริงจาก database.md
 INSERT INTO fgi_impact_competitors
   (/* TODO: business key + payload + created_by, created_at */)
@@ -534,7 +534,7 @@ export class JobFailureNotifier {
 | 2 | เป็นงวดใหม่ (ยังไม่เคยนำเข้า)? \| No: ข้ามทั้งงวด — ไม่มี upsert ต้องลบงวดก่อนจึงนำเข้าใหม่ได้ (กันซ้ำระดับงวด (Errata E15)) |
 | 3 | SELECT DISTINCT จาก COMPETITOR_IMPACT_VIEW |
 | 4 | พบข้อมูลต้นทาง? \| No: จบการทำงาน |
-| 5 | insert ทีละ 10,000 แถว พร้อม data_source = ALM (map คอลัมน์ NAMT → NAME_TH และ BRANCHT → BRANCH_TH) |
+| 5 | insert ทีละ 10,000 แถว (ผูก impact_process_id) (ช่องทางต้นทาง ALM เก็บที่ fgi_impact_processes.datasource — fgi_impact_competitors ไม่มีคอลัมน์นี้ · map คอลัมน์ NAMT → name_th และ BRANCHT → branch_th (NAMT/BRANCHT เป็นคอลัมน์ของวิวฝั่ง ALLMAP)) |
 | 6 | จำนวนที่ insert = จำนวนต้นทาง? \| No: Rollback + ส่งเมลแจ้งล้มเหลว (ตรวจ reconcile จำนวนแถวก่อน commit) |
 | 7 | Commit / จบ |
 

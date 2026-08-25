@@ -18,7 +18,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 - Report filters (SDD slide 60 · 2026-08-06: สถานะ*|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ|ประเภทร้าน (รหัสจาก common_code · รหัสที่ 4 รอยืนยัน) · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว)
 - Summary table (sortable 14 columns)
-- Export Excel action
+- ปุ่มออกผล 3 ตัว (Preview Report · Export Excel · Export CSV to Batch)
 - Sample data verification
 
 ## 3. Screenshot Reference
@@ -46,7 +46,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 | newStoreCode | string 5 digits | optional; numeric only when input | รหัสร้านเปิดกระทบ/ร้านเปิดใหม่; คง leading zero |
 | impactMonthFrom | YYYY-MM | optional; month picker | ส่งและแสดงเป็น ค.ศ. เช่น 2026-05 |
 | impactMonthTo | YYYY-MM | optional; month picker; must be >= from | ถ้า from > to ให้แสดง validation ก่อน call API |
-| storeTypes | array ของ BranchTypeFGIName | optional multi select | **ยืนยันจาก master จริงแล้ว (`ข้อมูล Master K2.xlsx` · ชีต `BranchTypeProfile` จาก `CPA_FRN_FGI`)**: ค่าที่ใช้คือคอลัมน์ `BranchTypeFGIName` มี **7 ค่าไม่ซ้ำ** — `A` (A-Mo) · `B` (B(1)) · `C` (C และ C(Retire CPALL)) · `D` (BGC) · `E` (B(2)) · `PTT` · `บริษัท` (Corporate) · ⚠️ **D กับ E เป็นคนละประเภทและมีจริงทั้งคู่** — เอกสารรุ่นก่อนที่แสดงเพียง 4 ตัวเลือก (A/B/C/E หรือ A/B/C/D) **ผิด** ทั้ง SDD สไลด์ 60 (แสดงบางส่วน) และ SRS (เขียน “พนักงาน” ซึ่ง**ไม่มีใน master**) · ยังคง**ห้าม hardcode** — โหลดจาก `GET /common/common-code` ของระบบ SBP เดิม แล้วใช้ 7 ค่านี้เป็น expected set ตอนทดสอบ |
+| storeTypes | array ของ BranchTypeFGIName | optional multi select | **ยืนยันจาก master จริงแล้ว (`ข้อมูล Master K2.xlsx` · ชีต `BranchTypeProfile` จาก `CPA_FRN_FGI`)**: ค่าที่ใช้คือคอลัมน์ `BranchTypeFGIName` มี **7 ค่าไม่ซ้ำ** — `A` (A-Mo) · `B` (B(1)) · `C` (C และ C(Retire CPALL)) · `D` (Type D — เดิมเรียก BGC) · `E` (B(2)) · `PTT` · `บริษัท` (Corporate) · ⚠️ **D กับ E เป็นคนละประเภทและมีจริงทั้งคู่** — เอกสารรุ่นก่อนที่แสดงเพียง 4 ตัวเลือก (A/B/C/E หรือ A/B/C/D) **ผิด** ทั้ง SDD สไลด์ 60 (แสดงบางส่วน) และ SRS (เขียน “พนักงาน” ซึ่ง**ไม่มีใน master**) · ยังคง**ห้าม hardcode** — โหลดจาก `GET /common/common-code` ของระบบ SBP เดิม แล้วใช้ 7 ค่านี้เป็น expected set ตอนทดสอบ |
 | status | statusCode string | required single select | บังคับเลือก 1 สถานะก่อน Preview/Export; options มาจาก sps_store.workflow_status ของ @srm/glb-workflow (ตาราง document_statuses ของ SBPGI ถูกตัดแล้ว) |
 | resultCategory | APPROVE\|REJECT\|CANCELLED\|PENDING | optional radio (status เท่านั้นที่บังคับ) | **4 ค่า** — APPROVE=ประกันรายได้ · REJECT=ไม่ประกันรายได้ · **CANCELLED=ยกเลิกโดยระบบ (เพิ่ม 2026-08-10)** · PENDING/ไม่มีค่า=ยังไม่มีผล · CANCELLED มาจาก master จริง `DecisionProfile` decision 14 `CancelBySystem` (`DecisionResultName` = ยกเลิกโดยระบบ) ซึ่ง SDD สไลด์ 60 ไม่ได้แสดงไว้ |
 | regions | array ของ ZoneName | optional multi select | **ยืนยันจาก master จริงแล้ว (`ข้อมูล Master K2.xlsx` · ชีต `ZoneProfile`)**: **13 ภาค** — BN(10) · BW(20) · BE(30) · BG(40) · BS(70) · REU(81) · NEU(82) · RSU(83) · RSL(84) · RN(85) · RC(86) · REL(90) · NEL(92) (ตัวเลขในวงเล็บคือ `ZoneCode`) — ตรงกับรายการที่ prototype ใช้ **ครบทั้ง 13 ค่า** · รายการ 8 ค่าใน SRS (BE/BN/BS/BW/RC/RE/RN/RS) เป็นของเก่า **ไม่ต้องใช้** · ยังคง**ห้าม hardcode** — โหลดจาก `GET /store/all-regions` ของระบบ SBP เดิม |
@@ -84,7 +84,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 | --- | --- | --- | --- |
 | C01 | Report filters (SDD slide 60 · 2026-08-06: สถานะ*\|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ\|ประเภทร้าน (รหัสจาก common_code · รหัสที่ 4 รอยืนยัน) · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว) | จัดการ filter 7 ตัวตาม SDD สไลด์ 60 (status, impacted/new store code, store type, period statement, region, result) พร้อม dependency validation | status required, คู่รหัสร้านต้องมาด้วยกัน, period statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ และช่วง from-to ตรวจผ่านก่อนค้นหา/Export |
 | C02 | Summary table (sortable 14 columns) | map response เป็น summary line และตาราง 14 คอลัมน์ (SDD สไลด์ 60) ด้วย formatter กลาง | คอลัมน์/ยอดรวม/วันที่ (ค.ศ.)/leading zero ตรง response และข้อมูลยอดขายผิดปกติใช้ salesDataDays |
-| C03 | Export Excel action | ส่ง filter snapshot ล่าสุดไป export endpoint และจัดการ download/error state | Export Excel ใช้เงื่อนไขเดียวกับการค้นหา และชื่อไฟล์/content type (.xlsx) ตรง response |
+| C03 | ปุ่มออกผล 3 ตัว (Preview Report · Export Excel · Export CSV to Batch) | ส่ง filter snapshot ล่าสุดไป export endpoint และจัดการ download/error state · SDD GI สไลด์ 62 กำหนดปุ่มออกผล 3 ตัว — Preview Report (ดูตัวอย่างก่อนออกไฟล์) · Export Excel (ทีมบัญชีเทียบ SAP) · Export CSV to Batch (ส่งเข้าคิว batch ประมวลผลต่อ) | ทั้งสามปุ่มใช้เงื่อนไขค้นหาชุดเดียวกับตารางผลลัพธ์ และชื่อไฟล์/content type ตรง response (.xlsx สำหรับ Excel · .csv สำหรับ CSV to Batch) |
 | C04 | Sample data verification | รองรับ fixture สำหรับ 0 แถว, หลาย region/type, เกิน threshold และยอดขายไม่ครบ 60 วัน | sample verification ครอบคลุม table/export parity 14 คอลัมน์ โดยไม่ฝังข้อมูลทดสอบใน production |
 
 ### 5.91 Status Summary Report API Adapter Map
@@ -158,8 +158,8 @@ Popup เลือกร้านที่ถูกกระทบ
     {
       "storeCode": "00788",
       "storeName": "รัตนอุทิศ ซ.13",
-      "region": "RS",
-      "storeType": "FR Type B"
+      "region": "BN",
+      "storeType": "SBP Type B"
     }
   ]
 }

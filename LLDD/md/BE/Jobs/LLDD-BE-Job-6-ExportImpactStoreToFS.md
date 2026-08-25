@@ -7,10 +7,10 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | **26 ชั่วโมง** = implementation 20 + unit test 6 (30%) |
+| Estimate | **34 ชั่วโมง** = implementation 26 + unit test 8 (30%) |
 | Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | ซิงก์สถานะ + ส่งค่าชดเชยไป STA: รัน 10 mutation ตามลำดับบนตารางสถานะ ตรวจความครบของคะแนน QSSI 6 หมวด สร้างชุดสถานะที่ส่งออกได้ แล้วเขียนไฟล์ FRBC0001 (14 ฟิลด์ ปี พ.ศ.) ส่งให้ระบบ Statement (STA) ภายใน transaction เดียว |
+| Objective | ซิงก์สถานะ + ส่งค่าชดเชยไป STA: รัน 10 mutation ตามลำดับบนตารางสถานะ ตรวจความครบของคะแนน QSSI 6 หมวด สร้างชุดสถานะที่ส่งออกได้ แล้ว **publish message ไป RabbitMQ** ให้ระบบ Statement (STA) รับต่อ (มติ 2026-08-24 — เลิกเขียนไฟล์ FRBC0001 + SFTP) · เนื้อข้อมูลยังเป็นสัญญาเดิม 14 ฟิลด์ แต่เป็น JSON UTF-8 ไม่ใช่ text windows-874 · ใช้ **transactional outbox** แบบเดียวกับ Job 4 — DB transaction ครอบ sync + outbox แล้วค่อย publish นอก transaction |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -18,8 +18,8 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 - Main class/script: fgi.main.ExportImpactStoreToFS / FGI_ExportImpactStoreToSTA.sh
 - Phase: D
-- Output: FRBC0001 (windows-874)
-- Estimate: 20 ชั่วโมง
+- Output: RabbitMQ message (sbpgi.interface / sta.compensation.result)
+- Estimate: 26 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
 
@@ -41,9 +41,11 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 6 ExportImpa
 | dateStartInitToSTA | 7 | แก้ไขได้ | วันของเดือนที่เริ่มปล่อยสถานะ I, C |
 | numWaitPay | 3 | แก้ไขได้ | จำนวนงวดรอจ่าย |
 | หมวด QSSI ที่ตรวจ | 8, 9, 12, 1, 10, 16 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ต้องครบทั้ง 6 หมวดจากงวด max เดียว ในกรอบ 3 เดือน |
-| Output File | FRBC0001_yyyyMMddHHmmss.txt (windows-874, 14 ฟิลด์, พ.ศ.) | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ฟิลด์ 3/5/6 เป็นวันที่แบบไทย/พุทธศักราช |
-| STA endpoint alias | sta-compensation | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | resolve host/port/TLS policy จาก environment; ห้าม editable endpoint |
-| Secret reference | secret/sbpgi/interfaces/sta | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | credential/certificate/private key จาก Secret Manager; TLS verify-full หรือ strict known_hosts |
+| RabbitMQ exchange | sbpgi.interface (topic, durable) | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ชื่อจริงรอยืนยันกับทีม STA/EAI |
+| Routing key | sta.compensation.result | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | STA เป็นเจ้าของ queue ที่ bind มาที่ routing key นี้ |
+| Message payload | JSON UTF-8 · 14 ฟิลด์ตามสัญญา FRBC0001 เดิม | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ฟิลด์ 3/5/6 ยังเป็นวันที่ พ.ศ. ตามสัญญาเดิม (รอยืนยันว่าเปลี่ยนเป็น ISO ค.ศ. ได้หรือไม่) |
+| Message properties | persistent (delivery_mode=2) · message_id = interface_transactions.id | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | message_id เป็น idempotency key ให้ STA กันรับซ้ำ |
+| Secret reference | secret/sbpgi/mq/sta | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | user/password ของ broker จาก Secret Manager · เชื่อมด้วย AMQPS (TLS verify-full) |
 
 ### 5.9 Input / Progress / Output Contract
 
@@ -72,7 +74,7 @@ query rows for FS, generate compensation interface payload, insert/update compen
 | Output identity | FS outbound data and FGI compensation tables synchronized; run summary includes exported counts and file/status. | reconcile input, success, reject and skipped counts |
 | Dedup proof | UNIQUE(data_name,direction,business_key,period_key); STA ACK เปลี่ยน transaction เดิมเป็น ACKED ไม่ insert แถวใหม่ | rerun fixture produces no duplicate target business key |
 | Transaction proof | สร้าง payload/checksum ก่อน แล้ว insert outbox READY; dispatcher ส่งและเปลี่ยน SENT แยก transaction; callback ACK เปลี่ยน ACKED แบบ compare-and-set | injected failure leaves no partial committed state outside documented boundary |
-| Security proof | STA endpoint/SFTP ใช้ secretRef=secret/sbpgi/interfaces/sta, TLS 1.2+ verify-full หรือ strict known_hosts; certificate/key rotation ไม่ต้องแก้เอกสารหรือ job param | config/log/error contains no plaintext secret |
+| Security proof | RabbitMQ broker ใช้ secretRef=secret/sbpgi/mq/sta, เชื่อมด้วย AMQPS (TLS 1.2+ verify-full); exchange/routing key มาจาก config ไม่ใช่ค่าที่ผู้ใช้แก้ได้; credential rotation ไม่ต้องแก้เอกสารหรือ job param | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
 
@@ -90,7 +92,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | Repository | statementExportRepository |
 | Idempotency / dedup | UNIQUE(data_name,direction,business_key,period_key); STA ACK เปลี่ยน transaction เดิมเป็น ACKED ไม่ insert แถวใหม่ |
 | Transaction boundary | สร้าง payload/checksum ก่อน แล้ว insert outbox READY; dispatcher ส่งและเปลี่ยน SENT แยก transaction; callback ACK เปลี่ยน ACKED แบบ compare-and-set |
-| Security | STA endpoint/SFTP ใช้ secretRef=secret/sbpgi/interfaces/sta, TLS 1.2+ verify-full หรือ strict known_hosts; certificate/key rotation ไม่ต้องแก้เอกสารหรือ job param |
+| Security | RabbitMQ broker ใช้ secretRef=secret/sbpgi/mq/sta, เชื่อมด้วย AMQPS (TLS 1.2+ verify-full); exchange/routing key มาจาก config ไม่ใช่ค่าที่ผู้ใช้แก้ได้; credential rotation ไม่ต้องแก้เอกสารหรือ job param |
 
 #### Input / candidate query
 
@@ -171,6 +173,20 @@ export async function runLlddBeJob6Exportimpactstoretofs(ctx, services) {
 }
 ```
 
+### 5.96 เขียนข้อมูลรอบชดเชย (รับเข้าโครง 2026-08-21 · gap F8 + F1)
+
+Job 6 คือ job เดียวที่เขียนตารางรอบชดเชยในระบบเดิม — `ExportService.manageDBToFs()` เรียก 5 คำสั่งต่อกันเป็นชุด ระบบใหม่ต้องทำครบเหมือนเดิม แต่เขียนลงตารางของ SBPGI
+
+| ลำดับใน manageDBToFs() | ระบบเดิม (Oracle) | ระบบใหม่ (SBPGI) | ใช้ทำอะไรต่อ |
+| --- | --- | --- | --- |
+| updateFgiImpactStoreOnProcess(INITDATE) | FGI_IMPACT_STORE_ON_PROCESS · LAST_COMPENSATE_SEQ_NO + 1 เมื่อ FLAG_ACTION='Y' และเพิ่งชดเชยเดือนที่แล้ว | fgi_impact_processes.last_compensate_seq_no += 1 | **เคสต่อเนื่อง** (SEQ_NO > 1) |
+| insertFgiImpactStoreOnProcess() | แถวใหม่ · LAST_COMPENSATE_SEQ = MAX+1 · SEQ_NO = 1 · FLAG_ACTION='Y' · DATASOURCE | fgi_impact_processes แถวใหม่ (last_compensate_seq · last_compensate_seq_no=1 · flag_action · datasource) | **เปิดเรื่องใหม่** (SEQ_NO = 1) |
+| insertFgiImpactStoreCompensate(...) | FGI_IMPACT_STORE_COMPENSATE · COMPENSATE_FORECAST / COMPENSATE_ADJUST ต่องวด | **fgi_impact_compensations** (forecast_amount / adjust_amount) | **นับยอด 0 ติดกันกี่เดือน** (กติกาเดือน 1-3 / เดือนที่ 4) |
+| insertFgiNewStoreCompensate(...) | FGI_NEW_STORE_COMPENSATE | document_new_stores.compensation_amount / compensate_percent | ยอดต่อร้านเปิดใหม่ |
+| updateCompleteImpactStoreOnProcess / FlagYToW | FLAG_ACTION Y→N / Y→W | fgi_impact_processes.flag_action | ปิดรอบ / ส่งกลับรอตรวจ |
+
+⚠️ `ImportJdbc.insertImpactStoreOnProcess()` / `updateImpactStoreOnProcess()` มี SQL ชุดเดียวกันอยู่ในไฟล์ Import แต่ตรวจทั้ง src แล้ว **ไม่มี call site จริง** — เป็นโค้ดตาย ให้ยึด `ExportJdbc` เป็นต้นแบบเท่านั้น
+
 ### 5.95 Tracking Retention / Purge SQL
 
 Purge ทำได้เฉพาะ ACKED/COMPLETED ที่ครบ purge_after และไม่อยู่ใน legal hold; ต้องรันเป็น batch จำกัดจำนวนเพื่อไม่ lock ตารางยาว
@@ -212,8 +228,8 @@ RETURNING i.id, i.data_name, i.business_key;
 | --- | --- | --- |
 | fgi_impact_processes | R/W | หนึ่งใน 10 mutation (สถานะ process / last_compensation_amount) |
 | fgi_impact_stores | R/W | สถานะค่าชดเชย I/C/A/N/S/Z และข้อมูลร้าน/ผู้อนุมัติ/ค่าชดเชยร้านใหม่ |
-| fcs_qssi_score | R | ตรวจความครบคะแนน 6 หมวด (จาก Job 1) |
-| interface_transactions | W | tracking COMPENSATE_INIT / APPROVE (I,N) · typed FK = impact_process_id |
+| fcs_qssi_score | R | ตรวจความครบคะแนน 6 หมวด — อ่านอย่างเดียว ระบบ SBP เดิมเป็นคนนำเข้า (คอลัมน์จริง: store_id · category · month · year · score) |
+| interface_transactions | W | outbox + tracking COMPENSATE_INIT / APPROVE (I,N) · direction = OUT · READY → SENT → ACKED · typed FK = impact_process_id |
 
 ## 9. Skeleton Code (Batch Job 6)
 
@@ -227,7 +243,7 @@ RETURNING i.id, i.data_name, i.business_key;
 | --- | --- |
 | src/batch/sbpgi/job-6-export-impact-store-to-fs/job-6-export-impact-store-to-fs.job.ts | คลาส `ExportImpactStoreToFsJob` — `run(ctx)` เรียงตาม flow ของ Job 6 ทีละขั้น, ครอบ transaction, จบด้วย structured log |
 | src/batch/sbpgi/job-6-export-impact-store-to-fs/job-6-export-impact-store-to-fs.service.ts | คลาส `ExportImpactStoreToFsService` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE` |
-| src/batch/sbpgi/job-6-export-impact-store-to-fs/job-6-export-impact-store-to-fs.config.ts | คลาส `SbpgiJob6Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 7 ตัวของ Job 6 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
+| src/batch/sbpgi/job-6-export-impact-store-to-fs/job-6-export-impact-store-to-fs.config.ts | คลาส `SbpgiJob6Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 9 ตัวของ Job 6 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
 | src/batch/sbpgi/job-6-export-impact-store-to-fs/job-6-export-impact-store-to-fs.module.ts | NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule` |
 | src/batch/runner.ts | ตัวรันกลาง: resolve job ตาม jobNo, กันรันซ้อนด้วย advisory lock, จับ error → แจ้งเตือน, เขียน structured log สรุป (ใช้ร่วมทั้ง 11 job) |
 | src/batch/scheduler.ts | ลงทะเบียน cron จาก config (`SBPGI_JOB6_CRON` = `0 17 * * *`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook |
@@ -259,11 +275,15 @@ export interface Job6Config {
   numWaitPay: number;
   /** หมวด QSSI ที่ตรวจ — ต้องครบทั้ง 6 หมวดจากงวด max เดียว ในกรอบ 3 เดือน */
   qssi: string;
-  /** Output File — ฟิลด์ 3/5/6 เป็นวันที่แบบไทย/พุทธศักราช */
-  outputFile: string;
-  /** STA endpoint alias — resolve host/port/TLS policy จาก environment; ห้าม editable endpoint */
-  staEndpointAlias: string;
-  /** Secret reference — credential/certificate/private key จาก Secret Manager; TLS verify-full หรือ strict known_hosts */
+  /** RabbitMQ exchange — ชื่อจริงรอยืนยันกับทีม STA/EAI */
+  rabbitMqExchange: string;
+  /** Routing key — STA เป็นเจ้าของ queue ที่ bind มาที่ routing key นี้ */
+  routingKey: string;
+  /** Message payload — ฟิลด์ 3/5/6 ยังเป็นวันที่ พ.ศ. ตามสัญญาเดิม (รอยืนยันว่าเปลี่ยนเป็น ISO ค.ศ. ได้หรือไม่) */
+  messagePayload: string;
+  /** Message properties — message_id เป็น idempotency key ให้ STA กันรับซ้ำ */
+  messageProperties: string;
+  /** Secret reference — user/password ของ broker จาก Secret Manager · เชื่อมด้วย AMQPS (TLS verify-full) */
   secretReference: string;
   /** ผู้รับอีเมลเมื่อ job ล้มเหลว — เก็บเป็น string คั่น comma ให้ตรง signature ของ
       `EmailLibService.sendMail({ mailTo })` ที่รับ string ไม่ใช่ string[] */
@@ -279,10 +299,12 @@ export class SbpgiJob6Config implements Job6Config {
   dateStartInitToSta = Number(process.env.SBPGI_JOB6_DATE_START_INIT_TO_STA ?? 7); // TODO: แก้ผ่าน env/config file แล้ว deploy
   numWaitPay = Number(process.env.SBPGI_JOB6_NUM_WAIT_PAY ?? 3); // TODO: แก้ผ่าน env/config file แล้ว deploy
   qssi = process.env.SBPGI_JOB6_QSSI ?? '8, 9, 12, 1, 10, 16'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  outputFile = process.env.SBPGI_JOB6_OUTPUT_FILE ?? 'FRBC0001_yyyyMMddHHmmss.txt (windows-874, 14 ฟิลด์, พ.ศ.)'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  staEndpointAlias = process.env.SBPGI_JOB6_STA_ENDPOINT_ALIAS ?? 'sta-compensation'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  secretReference = process.env.SBPGI_JOB6_SECRET_REFERENCE ?? 'secret/sbpgi/interfaces/sta'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  mailTo = process.env.SBPGI_JOB6_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: storeretention + mailToBPM เมื่อสร้างไฟล์)
+  rabbitMqExchange = process.env.SBPGI_JOB6_RABBIT_MQ_EXCHANGE ?? 'sbpgi.interface (topic, durable)'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  routingKey = process.env.SBPGI_JOB6_ROUTING_KEY ?? 'sta.compensation.result'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  messagePayload = process.env.SBPGI_JOB6_MESSAGE_PAYLOAD ?? 'JSON UTF-8 · 14 ฟิลด์ตามสัญญา FRBC0001 เดิม'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  messageProperties = process.env.SBPGI_JOB6_MESSAGE_PROPERTIES ?? 'persistent (delivery_mode=2) · message_id = interface_transactions.id'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  secretReference = process.env.SBPGI_JOB6_SECRET_REFERENCE ?? 'secret/sbpgi/mq/sta'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  mailTo = process.env.SBPGI_JOB6_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: storeretention เมื่อ publish สำเร็จ (เลิกส่ง mailToBPM — ไม่มีไฟล์ BPM แล้ว))
 }
 
 // TODO: เพิ่ม SbpgiJob6Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
@@ -367,28 +389,28 @@ export class ExportImpactStoreToFsService {
     return true; // TODO: เงื่อนไขจริงตามผัง
   }
 
-  // เขียนไฟล์ FRBC0001 14 ฟิลด์ (windows-874 + พ.ศ.)
-  async step06WriteFile(state: JobState, manager?: EntityManager): Promise<void> {
+  // ประกอบ payload JSON UTF-8 14 ฟิลด์ (วันที่ พ.ศ. ตามสัญญาเดิม)
+  async step06Parse(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
-  // insert tracking: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N
+  // insert outbox: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N (direction = OUT · status = READY)
   async step07Insert(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
-  // SFTP ไฟล์ไป STA
-  async step08Connect(state: JobState, manager?: EntityManager): Promise<void> {
+  // publish ไป RabbitMQ exchange sbpgi.interface (routing sta.compensation.result)
+  async step08Publish(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
-  // SFTP สำเร็จ?
-  async check09Connect(state: JobState): Promise<boolean> {
+  // ได้ publisher confirm?
+  async check09Publish(state: JobState): Promise<boolean> {
     return true; // TODO: เงื่อนไขจริงตามผัง
   }
 
-  // ย้ายไฟล์เข้า backup
-  async step10Archive(state: JobState, manager?: EntityManager): Promise<void> {
+  // update outbox: status READY → SENT (บันทึก sent_at)
+  async step10Insert(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
@@ -406,11 +428,11 @@ export class ExportImpactStoreToFsService {
 | 3 | decision | QSSI ครบ 6 หมวด? (งวด max เดียว ในกรอบ 3 เดือน) | check03ResolvePeriod() | [branch] ข้ามเส้นทาง INIT — สาย APPROVE ยังไปต่อ |
 | 4 | process | สร้างชุดสถานะส่งออก: A, N, S (+ I, C เมื่อวันที่ ≥ 7 และ QSSI ครบ + Z ค้าง) | step04Parse() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 5 | decision | มีแถวส่งออก? | check05Condition() | [end] จบการทำงาน |
-| 6 | io | เขียนไฟล์ FRBC0001 14 ฟิลด์ (windows-874 + พ.ศ.) | step06WriteFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 7 | process | insert tracking: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N | step07Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 8 | io | SFTP ไฟล์ไป STA | step08Connect() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 9 | decision | SFTP สำเร็จ? | check09Connect() | [err] Rollback ทั้ง transaction + ลบไฟล์ |
-| 10 | io | ย้ายไฟล์เข้า backup | step10Archive() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 6 | process | ประกอบ payload JSON UTF-8 14 ฟิลด์ (วันที่ พ.ศ. ตามสัญญาเดิม) | step06Parse() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 7 | process | insert outbox: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N (direction = OUT · status = READY) | step07Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 8 | io | publish ไป RabbitMQ exchange sbpgi.interface (routing sta.compensation.result) | step08Publish() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 9 | decision | ได้ publisher confirm? | check09Publish() | [err] คง outbox เป็น READY/FAILED_RETRY ให้ dispatcher ส่งซ้ำ — ไม่ rollback การ sync |
+| 10 | process | update outbox: status READY → SENT (บันทึก sent_at) | step10Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 11 | end | จบ | summarize() | - |
 
 ```ts
@@ -439,7 +461,7 @@ export class ExportImpactStoreToFsJob {
     try {
       // ขั้นที่ 2: รัน 10 mutation ตามลำดับ บน fgi_impact_processes และ fgi_impact_stores · TODO: state sync ก่อน export — ตรวจครบทั้ง 10 ขั้นตอน post-run
       await this.service.step02Validate(state);
-      // ขั้นที่ 3 (decision): QSSI ครบ 6 หมวด? (งวด max เดียว ในกรอบ 3 เดือน) · TODO: หมวด 8, 9, 12, 1, 10, 16 จาก fcs_qssi_score (Job 1)
+      // ขั้นที่ 3 (decision): QSSI ครบ 6 หมวด? (งวด max เดียว ในกรอบ 3 เดือน) · TODO: หมวด 8, 9, 12, 1, 10, 16 จากคอลัมน์ category ของ fcs_qssi_score
       const ok03 = await this.service.check03ResolvePeriod(state);
       if (!ok03) { // NO → ข้ามเส้นทาง INIT — สาย APPROVE ยังไปต่อ
         // TODO: เส้น NO ของขั้นนี้เป็น branch ระดับ record — ผังไม่ได้ระบุว่าหยุดหรือไปต่อ
@@ -447,9 +469,9 @@ export class ExportImpactStoreToFsJob {
         //   ถ้าเป็น 'ตั้งค่าแล้วไปต่อ' -> เรียก service ตั้งค่าสถานะ แล้วเดินขั้นถัดไป (ห้าม return)
         //   ถ้าเป็น 'คงสถานะเดิม/ไม่เปิดงาน' -> หยุดเฉพาะ record นี้ ห้ามไหลไปขั้นถัดไป
       }
-      // === transaction boundary === TODO: หนึ่ง transaction คลุม sync + ไฟล์ + tracking + SFTP
+      // === transaction boundary === TODO: DB transaction คลุม 10 mutation + outbox (READY) เท่านั้น — publish อยู่นอก transaction แล้วค่อย update READY → SENT
       await this.dataSource.transaction(async (manager: EntityManager) => {
-        // ขั้นที่ 4: สร้างชุดสถานะส่งออก: A, N, S (+ I, C เมื่อวันที่ ≥ 7 และ QSSI ครบ + Z ค้าง) · TODO: Z จะถูกแปลงเป็น S เฉพาะในไฟล์ — ใน DB ยังเป็น Z
+        // ขั้นที่ 4: สร้างชุดสถานะส่งออก: A, N, S (+ I, C เมื่อวันที่ ≥ 7 และ QSSI ครบ + Z ค้าง) · TODO: Z จะถูกแปลงเป็น S เฉพาะใน payload ที่ส่งออก — ใน DB ยังเป็น Z
         await this.service.step04Parse(state, manager);
         // ขั้นที่ 5 (decision): มีแถวส่งออก?
         const ok05 = await this.service.check05Condition(state);
@@ -457,21 +479,21 @@ export class ExportImpactStoreToFsJob {
           throw new JobSkippedError('NO branch'); // ใน transaction: โยนออกเพื่อ rollback
           // runner จับ JobSkippedError แล้วสรุปเป็น SKIPPED (ไม่ใช่ FAILED)
         }
-        // ขั้นที่ 6: เขียนไฟล์ FRBC0001 14 ฟิลด์ (windows-874 + พ.ศ.) · TODO: วันที่ผิดตัวเดียวทำให้ mapData คืน null และยกเลิกทั้งไฟล์
-        await this.service.step06WriteFile(state, manager);
-        // ขั้นที่ 7: insert tracking: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N
+        // ขั้นที่ 6: ประกอบ payload JSON UTF-8 14 ฟิลด์ (วันที่ พ.ศ. ตามสัญญาเดิม) · TODO: ฟิลด์ผิด/แปลงวันที่ไม่ได้แม้แถวเดียว = ยกเลิกทั้งรอบ (คงพฤติกรรม mapData เดิม)
+        await this.service.step06Parse(state, manager);
+        // ขั้นที่ 7: insert outbox: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N (direction = OUT · status = READY) · TODO: อยู่ใน transaction เดียวกับ 10 mutation — commit แล้วข้อมูลจะไม่หาย แม้ broker ล่ม
         await this.service.step07Insert(state, manager);
       });
-      // ขั้นที่ 8: SFTP ไฟล์ไป STA
-      await this.service.step08Connect(state);
-      // ขั้นที่ 9 (decision): SFTP สำเร็จ? · TODO: transaction เดียวคลุม sync + ไฟล์ + tracking + SFTP
-      const ok09 = await this.service.check09Connect(state);
-      if (!ok09) throw new JobFailedError('JOB6_STEP09', 'Rollback ทั้ง transaction + ลบไฟล์');
-      // ขั้นที่ 10: ย้ายไฟล์เข้า backup
-      await this.service.step10Archive(state);
+      // ขั้นที่ 8: publish ไป RabbitMQ exchange sbpgi.interface (routing sta.compensation.result) · TODO: นอก DB transaction · persistent + publisher confirm + mandatory
+      await this.service.step08Publish(state);
+      // ขั้นที่ 9 (decision): ได้ publisher confirm? · TODO: เลี่ยง dual-write: การ sync สถานะกับการส่ง message แยก commit กัน · ส่งซ้ำได้เพราะ STA กันซ้ำด้วย message_id
+      const ok09 = await this.service.check09Publish(state);
+      if (!ok09) throw new JobFailedError('JOB6_STEP09', 'คง outbox เป็น READY/FAILED_RETRY ให้ dispatcher ส่งซ้ำ — ไม่ rollback การ sync');
+      // ขั้นที่ 10: update outbox: status READY → SENT (บันทึก sent_at) · TODO: ACK เชิงธุรกิจมาทีหลังทาง POST /interfaces/sta/ack · Job 10 เฝ้าแถวที่ค้างไม่ ACK ≥ 1 วัน
+      await this.service.step10Insert(state);
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
-      // TODO: error path ของ Job 6 — บั๊กจริง E20: SQL purge ต่อ data_name สองค่าเป็น string เดียว — tracking ไม่เคยถูกลบ สะสมโตขึ้นเรื่อย ๆ
+      // TODO: error path ของ Job 6 — บั๊กจริง E20 ของโค้ดเดิม: SQL purge ต่อ data_name สองค่าเป็น string เดียว — tracking ไม่เคยถูกลบ สะสมโตขึ้นเรื่อย ๆ
       this.logger.error(JSON.stringify({ event: 'job.failed', jobNo: '6', period: ctx.period,
         triggeredBy: ctx.triggeredBy, durationMs: Date.now() - startedAt, error: (error as Error).message }));
       // TODO: แจ้งผู้ดูแลผ่าน JobFailureNotifier (หัวข้อ 9.6.1) — runner เป็นผู้เรียกให้
@@ -483,7 +505,7 @@ export class ExportImpactStoreToFsJob {
     // TODO: structured log บรรทัดเดียวจบ — ไม่มีตาราง job_run_histories แล้ว (2026-08-06)
     const summary = {
       event: 'job.finish', jobNo: '6', jobName: 'ExportImpactStoreToFS', status,
-      period: state.period, output: 'FRBC0001 (windows-874)',
+      period: state.period, output: 'RabbitMQ message (sbpgi.interface / sta.compensation.result)',
       read: state.read, written: state.written, skipped: state.skipped,
       rejected: state.rejected, durationMs: Date.now() - startedAt,
     };
@@ -495,7 +517,7 @@ export class ExportImpactStoreToFsJob {
 
 #### 9.4 การกันรันซ้อนของ Job 6 (PostgreSQL advisory lock)
 
-Job 6 มีข้อควรระวังจาก legacy: บั๊กจริง E20: SQL purge ต่อ data_name สองค่าเป็น string เดียว — tracking ไม่เคยถูกลบ สะสมโตขึ้นเรื่อย ๆ — runner ล็อกด้วย `pg_try_advisory_lock` ก่อนเริ่มขั้นแรกเสมอ และรอบที่ล็อกไม่ได้ให้จบด้วยสถานะ SKIPPED_LOCKED (ไม่ใช่ FAILED)
+Job 6 มีข้อควรระวังจาก legacy: บั๊กจริง E20 ของโค้ดเดิม: SQL purge ต่อ data_name สองค่าเป็น string เดียว — tracking ไม่เคยถูกลบ สะสมโตขึ้นเรื่อย ๆ — runner ล็อกด้วย `pg_try_advisory_lock` ก่อนเริ่มขั้นแรกเสมอ และรอบที่ล็อกไม่ได้ให้จบด้วยสถานะ SKIPPED_LOCKED (ไม่ใช่ FAILED)
 
 ```ts
 // src/batch/runner.ts (ส่วนกันรันซ้อน)
@@ -546,8 +568,8 @@ repository ของ Job 6 ประกาศเป็น factory provider (`{pr
 | --- | --- | --- | --- |
 | fgi_impact_processes | R/W | หนึ่งใน 10 mutation (สถานะ process / last_compensation_amount) | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | fgi_impact_stores | R/W | สถานะค่าชดเชย I/C/A/N/S/Z และข้อมูลร้าน/ผู้อนุมัติ/ค่าชดเชยร้านใหม่ | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| fcs_qssi_score | R | ตรวจความครบคะแนน 6 หมวด (จาก Job 1) | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| interface_transactions | W | tracking COMPENSATE_INIT / APPROVE (I,N) · typed FK = impact_process_id | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| fcs_qssi_score | R | ตรวจความครบคะแนน 6 หมวด — อ่านอย่างเดียว ระบบ SBP เดิมเป็นคนนำเข้า (คอลัมน์จริง: store_id · category · month · year · score) | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| interface_transactions | W | outbox + tracking COMPENSATE_INIT / APPROVE (I,N) · direction = OUT · READY → SENT → ACKED · typed FK = impact_process_id | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 6 ExportImpactStoreToFS — query หลักที่ต้อง implement
@@ -578,7 +600,7 @@ UPDATE fgi_impact_stores
        updated_at = NOW(), updated_by = 'JOB6'
  WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
 
--- [R] fcs_qssi_score : ตรวจความครบคะแนน 6 หมวด (จาก Job 1)
+-- [R] fcs_qssi_score : ตรวจความครบคะแนน 6 หมวด — อ่านอย่างเดียว ระบบ SBP เดิมเป็นคนนำเข้า (คอลัมน์จริง: store_id · category · month · year · score)
 -- TODO: เติมเฉพาะคอลัมน์ที่ job ใช้จริง (ห้าม SELECT *) และตรวจว่ามี index รองรับ WHERE นี้
 SELECT /* TODO: columns */
   FROM fcs_qssi_score
@@ -586,7 +608,7 @@ SELECT /* TODO: columns */
  ORDER BY /* TODO: คีย์ที่ทำให้ลำดับคงที่ */
  LIMIT $3 OFFSET $4;  -- TODO: อ่านเป็น chunk กัน memory บวม
 
--- [W] interface_transactions : tracking COMPENSATE_INIT / APPROVE (I,N) · typed FK = impact_process_id
+-- [W] interface_transactions : outbox + tracking COMPENSATE_INIT / APPROVE (I,N) · direction = OUT · READY → SENT → ACKED · typed FK = impact_process_id
 -- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
 INSERT INTO interface_transactions
   (run_id, data_name, direction, status, business_key, period_key,
@@ -620,7 +642,7 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 6 เดิมคือ storeretention + mailToBPM เมื่อสร้างไฟล์ — ย้ายมาเป็น env SBPGI_JOB6_MAIL_TO
+    // TODO: ผู้รับของ Job 6 เดิมคือ storeretention เมื่อ publish สำเร็จ (เลิกส่ง mailToBPM — ไม่มีไฟล์ BPM แล้ว) — ย้ายมาเป็น env SBPGI_JOB6_MAIL_TO
     const recipients = (process.env.SBPGI_JOB6_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
@@ -636,9 +658,9 @@ export class JobFailureNotifier {
           jobNo, jobName: 'ExportImpactStoreToFS',
           jobTitle: 'ซิงก์สถานะ + ส่งค่าชดเชยไป STA',
           period: ctx.period, triggeredBy: ctx.triggeredBy,
-          output: 'FRBC0001 (windows-874)',
+          output: 'RabbitMQ message (sbpgi.interface / sta.compensation.result)',
           errorMessage: error.message,
-          rerunNote: 'transaction ป้องกันตามปกติ แต่ต้อง reconcile 10 mutation และระวังการ overwrite ไฟล์ปลายทางก่อนยืนยันผล',
+          rerunNote: 'transaction ป้องกันตามปกติ แต่ต้อง reconcile 10 mutation · ส่งซ้ำปลอดภัยเพราะ message_id = interface_transactions.id ให้ STA กันซ้ำได้',
         },
       });
     } catch (mailError) {
@@ -651,12 +673,12 @@ export class JobFailureNotifier {
 
 ##### 9.6.2 Checklist การ rerun
 
-- กติกา rerun ของ Job 6: transaction ป้องกันตามปกติ แต่ต้อง reconcile 10 mutation และระวังการ overwrite ไฟล์ปลายทางก่อนยืนยันผล
-- ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: หนึ่ง transaction คลุม sync + ไฟล์ + tracking + SFTP
-- ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: บั๊กจริง E20: SQL purge ต่อ data_name สองค่าเป็น string เดียว — tracking ไม่เคยถูกลบ สะสมโตขึ้นเรื่อย ๆ
+- กติกา rerun ของ Job 6: transaction ป้องกันตามปกติ แต่ต้อง reconcile 10 mutation · ส่งซ้ำปลอดภัยเพราะ message_id = interface_transactions.id ให้ STA กันซ้ำได้
+- ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: DB transaction คลุม 10 mutation + outbox (READY) เท่านั้น — publish อยู่นอก transaction แล้วค่อย update READY → SENT
+- ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: บั๊กจริง E20 ของโค้ดเดิม: SQL purge ต่อ data_name สองค่าเป็น string เดียว — tracking ไม่เคยถูกลบ สะสมโตขึ้นเรื่อย ๆ
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
 - สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=6 --period=<YYYYMM>`
-- หลังรันซ้ำ ตรวจ output `FRBC0001 (windows-874)` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
+- หลังรันซ้ำ ตรวจ output `RabbitMQ message (sbpgi.interface / sta.compensation.result)` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
 - ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 
 ## 10. Processing Flow
@@ -665,14 +687,14 @@ export class JobFailureNotifier {
 | --- | --- |
 | 1 | เริ่ม |
 | 2 | รัน 10 mutation ตามลำดับ บน fgi_impact_processes และ fgi_impact_stores (state sync ก่อน export — ตรวจครบทั้ง 10 ขั้นตอน post-run) |
-| 3 | QSSI ครบ 6 หมวด? (งวด max เดียว ในกรอบ 3 เดือน) \| No: ข้ามเส้นทาง INIT — สาย APPROVE ยังไปต่อ (หมวด 8, 9, 12, 1, 10, 16 จาก fcs_qssi_score (Job 1)) |
-| 4 | สร้างชุดสถานะส่งออก: A, N, S (+ I, C เมื่อวันที่ ≥ 7 และ QSSI ครบ + Z ค้าง) (Z จะถูกแปลงเป็น S เฉพาะในไฟล์ — ใน DB ยังเป็น Z) |
+| 3 | QSSI ครบ 6 หมวด? (งวด max เดียว ในกรอบ 3 เดือน) \| No: ข้ามเส้นทาง INIT — สาย APPROVE ยังไปต่อ (หมวด 8, 9, 12, 1, 10, 16 จากคอลัมน์ category ของ fcs_qssi_score) |
+| 4 | สร้างชุดสถานะส่งออก: A, N, S (+ I, C เมื่อวันที่ ≥ 7 และ QSSI ครบ + Z ค้าง) (Z จะถูกแปลงเป็น S เฉพาะใน payload ที่ส่งออก — ใน DB ยังเป็น Z) |
 | 5 | มีแถวส่งออก? \| No: จบการทำงาน |
-| 6 | เขียนไฟล์ FRBC0001 14 ฟิลด์ (windows-874 + พ.ศ.) (วันที่ผิดตัวเดียวทำให้ mapData คืน null และยกเลิกทั้งไฟล์) |
-| 7 | insert tracking: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N |
-| 8 | SFTP ไฟล์ไป STA |
-| 9 | SFTP สำเร็จ? \| No: Rollback ทั้ง transaction + ลบไฟล์ (transaction เดียวคลุม sync + ไฟล์ + tracking + SFTP) |
-| 10 | ย้ายไฟล์เข้า backup |
+| 6 | ประกอบ payload JSON UTF-8 14 ฟิลด์ (วันที่ พ.ศ. ตามสัญญาเดิม) (ฟิลด์ผิด/แปลงวันที่ไม่ได้แม้แถวเดียว = ยกเลิกทั้งรอบ (คงพฤติกรรม mapData เดิม)) |
+| 7 | insert outbox: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N (direction = OUT · status = READY) (อยู่ใน transaction เดียวกับ 10 mutation — commit แล้วข้อมูลจะไม่หาย แม้ broker ล่ม) |
+| 8 | publish ไป RabbitMQ exchange sbpgi.interface (routing sta.compensation.result) (นอก DB transaction · persistent + publisher confirm + mandatory) |
+| 9 | ได้ publisher confirm? \| No: คง outbox เป็น READY/FAILED_RETRY ให้ dispatcher ส่งซ้ำ — ไม่ rollback การ sync (เลี่ยง dual-write: การ sync สถานะกับการส่ง message แยก commit กัน · ส่งซ้ำได้เพราะ STA กันซ้ำด้วย message_id) |
+| 10 | update outbox: status READY → SENT (บันทึก sent_at) (ACK เชิงธุรกิจมาทีหลังทาง POST /interfaces/sta/ack · Job 10 เฝ้าแถวที่ค้างไม่ ACK ≥ 1 วัน) |
 | 11 | จบ |
 
 ## 11. Acceptance Criteria
@@ -696,7 +718,7 @@ export class JobFailureNotifier {
 
 ## 13. Unit Test Scope
 
-**6 ชั่วโมง** (30% ของ implementation 20 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+**8 ชั่วโมง** (30% ของ implementation 26 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
 
 หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
 

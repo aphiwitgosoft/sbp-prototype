@@ -64,7 +64,9 @@ LLDD_START_DATE = date(2026, 8, 10)
 # 2026-08-10: เลิกใช้เป็น "กรอบบังคับ" — วันจบมาจาก planned_finish_date() ที่คำนวณจาก dependency จริง
 LLDD_END_DATE = date(2026, 9, 8)  # คงไว้เป็นวันเป้าหมายเดิมเพื่อเทียบเท่านั้น
 WORKDAYS_PER_WEEK = 5
-HOURS_PER_DAY = 6
+# 2026-08-25: เปลี่ยนจาก 6 -> 8 ชม./วัน ตามกรอบใหม่ "จบใน 4 สัปดาห์ · 5 วัน/สัปดาห์ · 8 ชม./วัน"
+#             (ชั่วโมงงานรวมไม่เปลี่ยน 824 ชม. — เปลี่ยนแค่จำนวนวันที่แปลงออกมา)
+HOURS_PER_DAY = 8
 HOURS_PER_WEEK = WORKDAYS_PER_WEEK * HOURS_PER_DAY
 # 2026-08-11: ถอดกรอบ work-week ออก — เดิมบังคับให้ทุกคนอยู่ระหว่าง >3 ถึง <=4.5 สัปดาห์
 #             ซึ่งทำให้ต้องปรับชั่วโมงให้ "พอดีกรอบ" แทนที่จะประเมินตามเนื้องานจริง
@@ -83,15 +85,14 @@ ATTACHMENT_ALLOWED_EXTENSIONS = "vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jp
 # Job 8b -> Tunyatorn (job เดียวที่เรียก workflow engine · ถือ Workflow-Engine-Definition อยู่แล้ว)
 # Job 5/7/9/10 -> Peerakorn (งาน interface ที่พึ่งพา job อื่นน้อยที่สุด)
 JOB_ESTIMATES: dict[str, int] = {
-    "1": 16,
     "2": 14,
     "3": 10,
     "4": 14,
     "5": 16,
-    "6": 20,
+    "6": 26,   # +6 (2026-08-21): เขียน fgi_impact_compensations + 5 คอลัมน์รอบชดเชยใน fgi_impact_processes (F8+F1)
     "7": 10,
     "8": 18,
-    "8b": 16,
+    "8b": 22,   # +6 (2026-08-21): ตัดสินประเภทเคสก่อนเปิด workflow (3 จุดเข้า) + addPreApprover เจ้าของงานคนเดิม
     "9": 11,
     "10": 8,
 }
@@ -125,8 +126,8 @@ HIGH_LEVEL_ESTIMATES: dict[str, int] = {
     "BE/LLDD-BE-API-Lookup": 10,
     "BE/LLDD-BE-API-Report-and-Master-Data": 30,   # +3 (2026-08-11): ต้อง join store -> fr_store -> juristic ของระบบเดิม และดึงประเภทร้าน/ภาคจาก common_code + store/all-regions
     "BE/LLDD-BE-Job-Batch-Email-SRM": 14,
-    "BE/LLDD-BE-Database-Structure": 28,
-    "BE/LLDD-BE-Data-Migration-Cutover": 40,   # +6 (2026-08-11): งานเพิ่มจาก master จริง — SectionLimitCost 100,000 ต้อง seed ใหม่ · DecisionCode ที่ Excel แปลงเป็นวันที่ · สถานะเดิม 10 ค่า map เหลือ 6 · SectionCode เติมศูนย์ · doc_no เป็น UNIQUE ตาม DP-1
+    "BE/LLDD-BE-Database-Structure": 31,   # +3 (2026-08-21): DDL ตาราง fgi_impact_compensations + 5 คอลัมน์รอบชดเชย + index/UK (F8+F1)
+    "BE/LLDD-BE-Data-Migration-Cutover": 43,   # +3 (2026-08-21): map/migrate FGI_IMPACT_STORE_COMPENSATE และคอลัมน์รอบชดเชยจาก FGI_IMPACT_STORE_ON_PROCESS · +6 (2026-08-11): งานเพิ่มจาก master จริง — SectionLimitCost 100,000 ต้อง seed ใหม่ · DecisionCode ที่ Excel แปลงเป็นวันที่ · สถานะเดิม 10 ค่า map เหลือ 6 · SectionCode เติมศูนย์ · doc_no เป็น UNIQUE ตาม DP-1
 }
 
 
@@ -196,16 +197,6 @@ def pagebreak() -> dict[str, Any]:
 
 
 LEGACY_JOB_SOURCES: dict[str, dict[str, Any]] = {
-    "1": {
-        "input": "QSSI score files from configured SFTP/import paths plus common-code category mapping.",
-        "progress": "download/find files, parse pipe-delimited records, stage temp rows, map category scores, delete existing period/category rows, insert final scores, backup source files, send status mail.",
-        "output": "FCS_QSSI_SCORE refreshed for the target period/category set; temp rows cleared; run summary contains file name, success/fail status, record count, and error detail.",
-        "sources": [
-            ["fcsJar/src/th/co/gosoft/fcs/main/ImportQSSI.java", "31-246", "Legacy main entrypoint, SFTP/file orchestration, backup, and success/fail email."],
-            ["fcsJar/src/th/co/gosoft/fcs/controller/ImportQSSIController.java", "55-212, 456-481", "Read QSSI files, map rows to score models, delete/insert score data in batches."],
-            ["fcsJar/src/th/co/gosoft/fcs/dao/jdbc/ImportQSSIScoreJdbc.java", "17-77", "Insert/delete/query FCS_QSSI_SCORE and FCS_TMP_QSSI_SCORE."],
-        ],
-    },
     "2": {
         "input": "Period year/month, optional zone filter, and ALLMAP SEVEN_IMPACT_VIEW rows.",
         "progress": "query candidate impacted stores, deduplicate by store/month, batch insert impact-store master data, derive related new-store/impact-store records, update verification flags.",
@@ -226,8 +217,8 @@ LEGACY_JOB_SOURCES: dict[str, dict[str, Any]] = {
         ],
     },
     "4": {
-        "input": "FGI_IMPACT_STORE_SALES rows waiting for IAS sales data and export file/SFTP parameters.",
-        "progress": "query eligible stores, write outbound IAS request file, upload to SFTP, backup file, record success/failure and notification.",
+        "input": "FGI_IMPACT_STORE_SALES rows waiting for IAS sales data and EAI S3 bucket/prefix parameters.",
+        "progress": "query eligible stores, write outbound IAS request file, upload to EAI S3 outbound prefix, keep local backup, record success/failure and notification.",
         "output": "IAS request file containing store/open-date pairs; run history includes generated file name and exported row count.",
         "sources": [
             ["fcsJar/src/th/co/gosoft/fgi/main/PrepareImpactStoreToIAS.java", "28-243", "Legacy main entrypoint, file generation, upload, backup, notification."],
@@ -283,7 +274,7 @@ LEGACY_JOB_SOURCES: dict[str, dict[str, Any]] = {
         ],
     },
     "9": {
-        "input": "New-store compensation rows linked to active impact-process records, plus BPM/export SFTP parameters.",
+        "input": "New-store compensation rows linked to active impact-process records (writes to document_new_stores directly; no export file).",
         "progress": "query eligible new-store rows, filter process errors, write outbound new-store payload, insert confirm-receive rows, upload/export, backup, notify.",
         "output": "New-store sync payload/output and confirm-receive rows keyed by NEW_STORE_INFO_ID/month/year.",
         "sources": [
@@ -294,7 +285,7 @@ LEGACY_JOB_SOURCES: dict[str, dict[str, Any]] = {
     },
     "10": {
         "input": "FGI_CONFIRM_RECEIVE_DATA rows without return_code after the waiting threshold.",
-        "progress": "query missing receive data, group by data_name/interface_type, build notification message, send admin mail, close run.",
+        "progress": "query missing receive data, group by data_name/direction (To-Be — เดิม Oracle ใช้ interface_type), build notification message, send admin mail, close run.",
         "output": "Notification sent for overdue receive confirmations; run status records grouped counts or no-data success.",
         "sources": [
             ["fcsJar/src/th/co/gosoft/fgi/main/NotifyNoReceiveData.java", "16-37", "Legacy main entrypoint for missing-receive notification."],
@@ -306,26 +297,6 @@ LEGACY_JOB_SOURCES: dict[str, dict[str, Any]] = {
 
 
 JOB_IMPLEMENTATION_SPECS: dict[str, dict[str, str]] = {
-    "1": {
-        "repository": "qssiScoreRepository",
-        "read": """-- ⚠️ คอลัมน์จริงของ sps_store.fcs_qssi_score มี 7 ตัวเท่านั้น:
---    id · store_id · category · month · year · score · create_date
---    ไม่มี source_file_name / source_checksum / updated_at และ "ไม่มี UNIQUE" (index เดียวคือ PK บน id)
-SELECT store_id, category, month, year, score
-FROM fcs_qssi_score
-WHERE month = :month AND year = :year
-ORDER BY store_id, category;""",
-        "write": """-- ⚠️ ON CONFLICT ใช้ไม่ได้กับตารางจริง — ไม่มี unique constraint บน (store_id, category, month, year)
---    ต้องปิดข้อค้าง DP-4 ก่อน (เพิ่ม unique index บนตารางเดิม ต้อง sign-off เจ้าของ performance.service.ts)
---    ระหว่างยังไม่ปิด: กันซ้ำที่ระดับงาน — ลบงวดเดิมก่อนแล้วค่อย insert ภายใน transaction เดียว
-DELETE FROM fcs_qssi_score WHERE month = :month AND year = :year;
-INSERT INTO fcs_qssi_score (store_id, category, month, year, score, create_date)
-VALUES (:store_id, :category, :month, :year, :score, CURRENT_TIMESTAMP);""",
-        "idempotency": "⚠️ ตารางจริงไม่มี UNIQUE และไม่มีคอลัมน์ checksum — เก็บ SHA-256 ของไฟล์ไว้ที่ interface_transactions.file_checksum แทน แล้ว SKIP ทั้งงวดถ้า checksum ซ้ำ · การเพิ่ม unique index บน fcs_qssi_score เป็นข้อค้าง DP-4 (ต้อง sign-off เจ้าของ performance.service.ts)",
-        "transaction": "parse/validate นอก transaction; upsert คะแนนทั้งไฟล์และบันทึก interface tracking ใน transaction เดียว",
-        "security": "credential อ่านด้วย secretRef=secret/sbpgi/interfaces/qssi; SFTP บังคับ strict host-key verification จาก known_hosts และห้ามเก็บ password/private key ในไฟล์ config หรือ env โดยตรง (อ่านจาก Secret Manager เท่านั้น)",
-        "steps": "downloadAndVerifyQssiFiles|parseQssiFiles|upsertScores|archiveInboundFiles",
-    },
     "2": {
         "repository": "impactStoreRepository",
         "read": """SELECT impacted_store_code, new_store_code, impact_month, distance_km, region_code, zone_code, branch_type
@@ -389,7 +360,7 @@ WHERE id = ANY(:impact_store_ids)
 ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;""",
         "idempotency": "ชื่อไฟล์ deterministic จาก period+runId และ UNIQUE(data_name,direction,business_key,period_key); outbox retry ใช้ transaction เดิม ไม่สร้าง request ซ้ำ",
         "transaction": "สร้างไฟล์ temp, fsync, atomic rename และคำนวณ checksum ให้สำเร็จก่อน; จากนั้น transaction เดียว lock W, update W→P และ insert outbox READY; ห้าม commit W→P ก่อนมี durable file",
-        "security": "IAS SFTP credential ใช้ secretRef=secret/sbpgi/interfaces/ias; strict known_hosts, modern cipher, timeout และห้าม editable password/private key",
+        "security": "สิทธิ์เขียน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sbpgi/interfaces/eai-s3; จำกัดสิทธิ์เฉพาะ prefix ขาออกของ IAS (PutObject เท่านั้น) และห้าม editable access key ในหน้าจอ/ไฟล์ config",
         "steps": "lockWaitingSalesRequests|writeDurableIasFile|markPendingAndCreateOutbox|dispatchIasOutbox",
     },
     "5": {
@@ -418,7 +389,7 @@ SET total_working_days = :total_working_days,
 WHERE id = :sales_summary_id;""",
         "idempotency": "checksum กันไฟล์ซ้ำ + UNIQUE(sales_summary_id,txn_date,window_no); คำนวณ summary ใหม่จาก transaction rows ทุก rerun",
         "transaction": "upsert รายวันและ update summary ของ sales_summary_id เดียวกันใน transaction; checksum/file tracking commit พร้อมกัน",
-        "security": "IAS inbound SFTP ใช้ secretRef, strict known_hosts และ quarantine ไฟล์ที่ checksum/รูปแบบไม่ผ่านก่อน parse",
+        "security": "สิทธิ์อ่าน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sbpgi/interfaces/eai-s3 จำกัดเฉพาะ prefix ขาเข้า/backup ของ IAS (GetObject + PutObject เฉพาะ backup); quarantine อ็อบเจกต์ที่ checksum/รูปแบบไม่ผ่าน แทนการลบทิ้ง",
         "steps": "downloadAndStageIasSales|validateSalesWindows|upsertDailySales|recalculateSalesSummaries",
     },
     "6": {
@@ -465,7 +436,7 @@ WHERE i.id = p.id
 RETURNING i.id, i.data_name, i.business_key;""",
         "idempotency": "UNIQUE(data_name,direction,business_key,period_key); STA ACK เปลี่ยน transaction เดิมเป็น ACKED ไม่ insert แถวใหม่",
         "transaction": "สร้าง payload/checksum ก่อน แล้ว insert outbox READY; dispatcher ส่งและเปลี่ยน SENT แยก transaction; callback ACK เปลี่ยน ACKED แบบ compare-and-set",
-        "security": "STA endpoint/SFTP ใช้ secretRef=secret/sbpgi/interfaces/sta, TLS 1.2+ verify-full หรือ strict known_hosts; certificate/key rotation ไม่ต้องแก้เอกสารหรือ job param",
+        "security": "RabbitMQ broker ใช้ secretRef=secret/sbpgi/mq/sta, เชื่อมด้วย AMQPS (TLS 1.2+ verify-full); exchange/routing key มาจาก config ไม่ใช่ค่าที่ผู้ใช้แก้ได้; credential rotation ไม่ต้องแก้เอกสารหรือ job param",
         "steps": "loadApprovedCompensations|buildStatementPayload|enqueueStatementOutbox|purgeAcknowledgedTracking",
     },
     "7": {
@@ -494,7 +465,7 @@ WHERE dc.doc_no = :doc_no
         AND src.competitor_code = dc.competitor_code
   );""",
         "idempotency": "UNIQUE(doc_no,competitor_code); upsert และ prune เฉพาะ source_system=ALLMAP ให้ target ตรง source ปัจจุบันโดยไม่ลบแถว USER",
-        "transaction": "upsert + prune document_competitors และ tracking INTERNAL_DB_WRITE ใน transaction เดียวต่อ doc_no",
+        "transaction": "upsert + prune document_competitors และ tracking (direction=INTERNAL) ใน transaction เดียวต่อ doc_no",
         "security": "service account ภายในมีสิทธิ์ SELECT source และ INSERT/UPDATE target เท่านั้น; ไม่มี external credential",
         "steps": "loadLatestDocumentCompetitors|upsertDocumentCompetitors|recordInternalCompetitorSync|reconcileDocumentCompetitors",
     },
@@ -523,7 +494,7 @@ FROM compensation_documents d
 WHERE d.impact_process_id = :impact_process_id
 ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;""",
         "idempotency": "UNIQUE(impact_process_id) และ UNIQUE(year,running_no); lock running number ต่อปีใน transaction; conflict ต้องคืน/อ้าง doc_no เดิม และยอมให้เลขที่จองกระโดดโดยห้าม reuse",
-        "transaction": "lock เลขรัน + insert document + update process + INTERNAL_DB_WRITE tracking ใน transaction เดียว",
+        "transaction": "lock เลขรัน + insert document + update process + tracking (direction=INTERNAL) ใน transaction เดียว",
         "security": "internal service account เท่านั้น; ห้ามสร้างไฟล์ BPM06001O, ห้าม SFTP และห้ามเก็บ K2 credential",
         "steps": "loadDocumentCandidates|allocateDocumentNumbers|createCompensationDocuments|recordDocumentCreation",
     },
@@ -643,7 +614,7 @@ SELECT CASE WHEN ABS(SUM(compensate_percent) - 100) <= 0.0001 THEN TRUE ELSE FAL
 FROM document_new_stores
 WHERE doc_no = :doc_no;""",
         "idempotency": "UNIQUE(doc_no,new_store_code); upsert + prune เฉพาะ source_system=FGI ให้ target ตรง impact set ปัจจุบัน โดยไม่ลบแถว USER",
-        "transaction": "validate source percent ต้องไม่เป็น NULL และอยู่ 0..100 ก่อน upsert; จากนั้น upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking INTERNAL_DB_WRITE ใน transaction เดียว; invalid/ไม่ครบให้ rollback ก่อน prune",
+        "transaction": "validate source percent ต้องไม่เป็น NULL และอยู่ 0..100 ก่อน upsert; จากนั้น upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking (direction=INTERNAL) ใน transaction เดียว; invalid/ไม่ครบให้ rollback ก่อน prune",
         "security": "internal service account least privilege; ไม่มี SFTP/BPM credential หรือ editable external endpoint",
         "steps": "loadNewStoreAllocations|validateAllocationValues|upsertDocumentNewStores|reconcileAllocationTotals",
     },
@@ -805,7 +776,8 @@ def add_workdays(start: date, workdays: int) -> date:
 #
 # แหล่งอ้างอิงของแต่ละเส้น: field `rels` ของแต่ละ job ใน job-batch.html (ดู load_batch_jobs)
 # --------------------------------------------------------------------------------------
-JOB_PIPELINE_ORDER: list[str] = ["1", "2", "3", "4", "5", "6", "7", "8", "8b", "9", "10"]
+# Job 1 (ImportQSSI) ถูกตัดออก 2026-08-24 — ระบบ SBP เดิมนำเข้า fcs_qssi_score ให้แล้ว SBPGI แค่อ่าน
+JOB_PIPELINE_ORDER: list[str] = ["2", "3", "4", "5", "6", "7", "8", "8b", "9", "10"]
 
 # 2026-08-11: ถอดระบบ buffer ออกทั้งหมด — ชั่วโมงในเอกสารคือค่าประเมินตรง ๆ ไม่มีส่วนเผื่อ
 
@@ -813,7 +785,7 @@ JOB_DEPENDENCIES: dict[str, list[str]] = {
     "3": ["2"],       # fgi_impact_stores เป็นแม่ของ fgi_impact_competitors
     "4": ["2"],       # fgi_impact_sales_summaries ต่อจาก fgi_impact_stores
     "5": ["4"],       # Job 5 เติม sales_transactions ใต้หัวตารางที่ Job 4 สร้าง
-    "6": ["1", "2"],  # ตรวจ fcs_qssi_score ครบ 6 หมวด + mutate fgi_impact_stores
+    "6": ["2"],       # อ่าน fcs_qssi_score (ระบบ SBP เดิมเติมให้) ครบ 6 หมวด + mutate fgi_impact_stores
     "7": ["3", "8"],  # อ่าน fgi_impact_competitors เขียนลง document_competitors.doc_no
     "8": ["6"],       # query impact profile สถานะ COMPENSATE I ที่ Job 6 ปล่อย
     "8b": ["5", "8"], # growth_rate_diff -> Gen Flow Gate · ต้องมี compensation_documents ก่อน
@@ -1986,7 +1958,8 @@ def common_doc_fields() -> list[tuple[str, str, str, str]]:
         ("docNo", "YYYY/xxxxx", "required when opening existing document", "ใช้ปี **ค.ศ.** และ running 5 หลัก (มติ 2026-08-06)"),
         ("storeCode", "string 5 digits", "numeric length = 5", "แสดง leading zero"),
         ("amount", "number, 2 decimals", ">= 0", "format `#,##0.00` บาท"),
-        ("percent", "number, 2 decimals", "0-100", "ใช้ `%` และรวม allocation ต้องเท่ากับ 100"),
+        ("percent", "number, 2 decimals", "0-100", "ใช้ `%` และรวม allocation ต้องเท่ากับ 100 — **B5: เพิ่ม/ลบร้านที่กระทบเพิ่มเมื่อไร ต้องเกลี่ยใหม่ทั้งชุดแล้วคำนวณ `compensateAmount` ของทุกแถวใหม่ ไม่ใช่เฉพาะแถวที่เพิ่ม**"),
+        ("sourceSystem", "enum", "ALLMAP / USER", "**B5** ที่มาของแถวร้านเปิดใหม่ — `ALLMAP` ระบบ default ให้อัตโนมัติ (Job 9) · `USER` เจ้าหน้าที่ SBP DSA คีย์เองจากเอกสารแจ้งของหน่วยงานส่งเสริม (ผัง To-Be · SDD สไลด์ 7) · ซ้ำ `(doc_no, new_store_code)` ให้คืน `409`"),
         ("date", "DD/MM/YYYY", "valid date", "payload เป็น ISO ค.ศ. · FE แสดง ค.ศ. เป็นค่าเริ่มต้น (DatePicker buddhistEra=false) แสดง พ.ศ. เฉพาะจุดที่เปิด flag"),
         ("attachment", "file", "<= 5 MB", f"รองรับ {ATTACHMENT_ALLOWED_EXTENSIONS}"),
     ]
@@ -2032,6 +2005,39 @@ def workflow_engine_unconfirmed_warning_blocks() -> list[dict[str, Any]]:
     ที่ไม่มีอยู่จริง โดยไม่มีคำเตือนเหมือนที่เอกสาร BE-API มี
     """
     return [
+        h(1, "4a. จุดเข้า flow ตามประเภทเคส — Job 8b เป็นคนตัดสินว่าเปิด workflow ที่ state ไหน"),
+        p("ผัง To-Be 12/02/2026 กำหนดว่า **เอกสารไม่ได้เริ่มที่ state 06 เสมอไป** · Job 8b ต้องอ่านข้อมูลรอบชดเชย (คอลัมน์ที่รับเข้าโครง 2026-08-21 · gap F8) แล้วเลือก state เริ่มต้นก่อนเรียก initializeWorkflow/addPreApprover"),
+        table(["เคส", "เงื่อนไขที่ Job 8b ต้องอ่าน", "เปิด workflow ที่ state", "ผู้รับผิดชอบขั้นแรก"], [
+            ["① เปิดเรื่องใหม่", "fgi_impact_processes.last_compensate_seq_no = 1", "**06**", "group ฝ่าย SBP DSA (ปกติ)"],
+            ["② ชดเชยต่อเนื่อง", "last_compensate_seq_no > 1 และ flag_action = 'Y'", "**08** (Auto Approve — ข้ามขั้น 06)", "**เจ้าหน้าที่ SBP DSA คนเดิม** ผ่าน addPreApprover"],
+            ["③ ยอดชดเชย 0 ติดกัน <= 3 เดือน", "COALESCE(adjust_amount, forecast_amount) = 0 ใน fgi_impact_compensations งวดที่ 1-3", "**01** (ข้ามทั้ง 06 และ 08)", "group หน่วยงานส่งเสริมธุรกิจฯ"],
+            ["③ ยอดชดเชย 0 ติดกัน > 3 เดือน", "งวดที่ 4 ขึ้นไป", "**ไม่เปิด workflow** — ปิดเอกสารเป็นเสร็จสิ้น (หยุดชดเชยประกันรายได้)", "-"],
+        ]),
+        p("**ที่มาของค่าที่ใช้ตัดสิน** — ทุกค่าอยู่ในโซน A (FGI/FCS) ที่ batch เขียนไว้ก่อนเปิดเอกสาร ไม่ใช่ค่าที่ Job 8b คำนวณเอง"),
+        table(["ค่าที่ใช้ในเงื่อนไข", "ระบบเดิม (Oracle FCS_FRN)", "ตาราง SBPGI", "คอลัมน์ · ชนิด", "เขียนโดย"], [
+            ["`LAST_COMPENSATE_SEQ_NO`", "`FGI_IMPACT_STORE_ON_PROCESS.LAST_COMPENSATE_SEQ_NO`", "`fgi_impact_processes`", "`last_compensate_seq_no` · INTEGER", "Job 2 — `ImportJdbc` (`SEQ_NO + 1` เมื่อเป็นรอบต่อเนื่อง)"],
+            ["`FLAG_ACTION`", "`FGI_IMPACT_STORE_ON_PROCESS.FLAG_ACTION` (โดเมน Y/W/N)", "`fgi_impact_processes`", "`flag_action` · CHAR(1)", "Job 2 เขียน `'Y'` · Job 6 ปิดรอบ `Y->N` / พัก `Y->W`"],
+            ["`DATASOURCE`", "`FGI_IMPACT_STORE_ON_PROCESS.DATASOURCE` (เดิมมี ALM/STA/HRS)", "`fgi_impact_processes`", "`datasource` · VARCHAR(5)", "Job 2/3 = `ALM` · Job 5 = `STA` · **`PRO` เชิงรุก / `REA` เชิงรับ = คนคีย์** (รหัสใหม่ 2026-08-24)"],
+            ["`forecast`", "`FGI_IMPACT_STORE_COMPENSATE.COMPENSATE_FORECAST`", "`fgi_impact_compensations`", "`forecast_amount` · NUMERIC(14,2)", "Job 5 — นำเข้ายอดจาก IAS/MIS"],
+            ["`adjust`", "`FGI_IMPACT_STORE_COMPENSATE.COMPENSATE_ADJUST`", "`fgi_impact_compensations`", "`adjust_amount` · NUMERIC(14,2)", "เจ้าหน้าที่ SBP DSA ปรับยอดในเอกสาร"],
+        ]),
+        p("> ยอดที่ใช้จริงทุกที่คือ `COALESCE(adjust_amount, forecast_amount)` — ค่าที่คนปรับชนะค่าที่ระบบคำนวณเสมอ  \n"
+          "> `datasource` ไม่ได้เปลี่ยน state เริ่มต้นของ workflow — มันบอกแค่ว่า **ใครคีย์ข้อมูล** (`ALM`/`STA` = ระบบส่งงานมาให้เลือก · `PRO`/`REA` = เจ้าของงานคีย์เอง · SDD GI สไลด์ 17 · 47 · 49)  \n"
+          "> ⚠️ ทั้งสองตารางเป็น gap **F8/F1** ที่เพิ่งรับเข้าโครงเมื่อ 2026-08-21 — ต้อง migrate ครบก่อน Job 8b จึงทำงานตามผัง To-Be ได้"),
+        code("""-- ตัดสินประเภทเคสก่อนเปิด workflow (Job 8b)
+SELECT p.last_compensate_seq_no,
+       p.flag_action,
+       (SELECT COUNT(*) FROM fgi_impact_compensations c
+         WHERE c.impact_process_id = p.id
+           AND COALESCE(c.adjust_amount, c.forecast_amount) = 0
+           AND c.compensate_seq = p.last_compensate_seq) AS zero_months
+FROM fgi_impact_processes p
+WHERE p.id = :impactProcessId;
+-- zero_months >= 4            -> ไม่เปิด workflow · ปิดเอกสารเป็น 99 พร้อม result = หยุดชดเชยประกันรายได้
+-- zero_months BETWEEN 1 AND 3 -> initializeWorkflow แล้ว addPreApprover ที่ state 01
+-- seq_no > 1 AND flag_action='Y' -> state 08 + approver = เจ้าหน้าที่คนเดิม (จาก consideration_logs รอบก่อน)
+-- นอกนั้น                      -> state 06 ตามปกติ""", "sql"),
+        p("**ทุกเส้นทางอัตโนมัติต้องบันทึกลง `consideration_logs` ด้วยผู้ดำเนินการ `SYSTEM`** เพื่อไม่ให้ timeline ของเอกสารขาดช่วง · รายละเอียดกติกาเต็มดู `workflow.md` หัวข้อจุดเข้า flow ตามประเภทเคส"),
         h(1, "4b. ข้อค้างที่ต้องยืนยันก่อนเขียนโค้ด (workflow engine)"),
         p(
             "✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)"
@@ -2043,7 +2049,7 @@ def workflow_engine_unconfirmed_warning_blocks() -> list[dict[str, Any]]:
                     "DP-1 · `referenceId` ของ workflow ✅ ปิดแล้ว 2026-08-17",
                     "ระบบเดิม (cooperation-request · inform-evaluate) ใช้ surrogate id ทุกจุด",
                     "ค่าที่ส่งเข้า initialize และคีย์ที่ใช้เช็คซ้ำเปลี่ยนตามข้อนี้",
-                    "ยังไม่ตัดสิน — `SBP/SBPGI-vs-existing-system.md` §4",
+                    "✅ ปิดแล้ว 2026-08-17 — เลือก surrogate id (`compensation_documents.id` ส่งเป็น string) ตามที่ cooperation-request / inform-evaluate ทำจริง",
                 ],
                 [
                     "DP-2 · `sps_store.workflow_transaction` ไม่มี PK/index",
@@ -2088,21 +2094,21 @@ def pending_decision_blocks(heading: str, rows: list[list[str]]) -> list[dict[st
 
 def database_structure_extra_blocks() -> list[dict[str, Any]]:
     return [
-        h(2, "5.1 ขอบเขตตารางในโครง SBPGI (19 ตาราง — CREATE จริง 18 + reuse 1)"),
+        h(2, "5.1 ขอบเขตตารางในโครง SBPGI (20 ตาราง — CREATE จริง 19 + reuse 1)"),
         p(
             "DDL เต็มอยู่ที่เอกสาร `LLDD-Database` หัวข้อ Executable DDL · เอกสารฉบับนี้เป็นเจ้าของ "
             "**สคริปต์ deploy จริง** และกติกาว่าอะไรสร้างได้/สร้างไม่ได้"
         ),
         p(
-            "⚠️ **21 = จำนวนตารางในโครง ไม่ใช่จำนวนที่ต้อง CREATE** — `fcs_qssi_score` นับอยู่ในโครงโซน A "
+            "⚠️ **20 = จำนวนตารางในโครง ไม่ใช่จำนวนที่ต้อง CREATE** — `fcs_qssi_score` นับอยู่ในโครงโซน A "
             "แต่ใช้ตารางเดิมของ `sps_store` (23,958,780 แถว) จึง **ห้าม CREATE TABLE** ดูหัวข้อ 5.1.1 · "
-            "จำนวนที่ต้อง CREATE จริงคือ **18 ตาราง** (19 ตารางในโครง ลบ fcs_qssi_score ที่ reuse) · สถานะ reuse ของ `fcs_qssi_score` ยังผูกกับข้อค้าง "
+            "จำนวนที่ต้อง CREATE จริงคือ **19 ตาราง** (20 ตารางในโครง ลบ fcs_qssi_score ที่ reuse) · สถานะ reuse ของ `fcs_qssi_score` ยังผูกกับข้อค้าง "
             f"**DP-4** (จะแก้ตารางเดิมอย่างไร หรือจะสร้างตารางของ SBPGI เอง — ยังไม่ตัดสิน · `{DECISION_DOC}`)"
         ),
         table(
             ["โซน", "จำนวน", "ตาราง"],
             [
-                ["A — FGI/FCS pipeline", "7 (CREATE 6 + reuse 1)", "fgi_impact_processes, fgi_impact_stores, fgi_impact_sales_summaries, sales_transactions, fgi_impact_competitors, interface_transactions · **+ fcs_qssi_score = reuse ห้าม CREATE (ดู 5.1.1 · DP-4)**"],
+                ["A — FGI/FCS pipeline", "8 (CREATE 7 + reuse 1)", "fgi_impact_processes, **fgi_impact_compensations**, fgi_impact_stores, fgi_impact_sales_summaries, sales_transactions, fgi_impact_competitors, interface_transactions · **+ fcs_qssi_score = reuse ห้าม CREATE (ดู 5.1.1 · DP-4)**"],
                 ["B — เอกสาร/ประวัติ", "9", "compensation_documents, document_new_stores, document_competitors, document_external_factors, consideration_logs, document_attachments, compensation_histories, document_cost_details, document_running_numbers"],
                 ["C — master ที่ SBPGI เป็นเจ้าของ", "3", "impacted_stores, external_factors, competitors (decisions ย้ายไป common_code · DP-9 · status_email_rules ตัดตาม DP-5 — SBPGI เรียก email-lib เองโดยใช้เลข template จาก workflow_route.email_id)"],
                 ["รวม", "21 (CREATE 20 + reuse 1)", "ตรงกับ database.md (34 -> 24 เมื่อ 2026-08-06 -> 22 เมื่อตัดกลุ่ม batch -> 21 เมื่อยกเลิก audit_logs 2026-08-07)"],
@@ -2136,7 +2142,7 @@ def database_structure_extra_blocks() -> list[dict[str, Any]]:
         table(
             ["ไฟล์", "เนื้อหา", "รันเมื่อไร"],
             [
-                ["01_schema.sql", "CREATE TABLE 18 ตาราง เรียงตาม dependency (C master -> A pipeline -> B document) — ไม่รวม fcs_qssi_score ที่ reuse ของเดิม", "ครั้งเดียวต่อ environment"],
+                ["01_schema.sql", "CREATE TABLE 19 ตาราง เรียงตาม dependency (C master -> A pipeline -> B document) — ไม่รวม fcs_qssi_score ที่ reuse ของเดิม", "ครั้งเดียวต่อ environment"],
                 ["02_index.sql", "index, unique/partial index, check constraint", "หลัง 01 · rerun ได้เมื่อเพิ่ม index"],
                 ["03_seed.sql", "external_factors, competitors (01-11) — ไม่มี decisions แล้ว (DP-9 ย้ายไป common_code · seed ที่ระบบเดิม)", "หลัง 02"],
                 ["04_grant.sql", "GRANT ให้ role ของ application (แยก read/write)", "หลัง 03"],
@@ -2182,14 +2188,15 @@ COMMIT;""",
                 ["external_factors", "ปัจจัยภายนอกที่ใช้อยู่", "MSSQL FactorProfile"],
                 
                 ["common_code (ระบบเดิม)", "SBPGI_APPROVE_LIMIT: THRESHOLD=100000 (เกณฑ์เดียว)", "มติประชุม 2026-08-18 — เขียนที่ common_code ของระบบเดิม ไม่ใช่ตารางของ SBPGI"],
+                ["common_code (ระบบเดิม)", "SBPGI_DATASOURCE: ALM=ระบบ (ALLMAP) · STA=ระบบ (Statement) · PRO=เชิงรุก · REA=เชิงรับ", "SDD GI สไลด์ 17 — 3 แหล่งข้อมูลร้านที่ต้องชดเชย · รหัส PRO/REA ตั้งใหม่ 2026-08-24 ตามแพตเทิร์น 3 ตัวอักษรของ DATASOURCE เดิม (ALM/STA/HRS) เพราะ SDD และระบบเดิมไม่ได้กำหนดไว้"],
             ],
         ),
         *pending_decision_blocks(
             "5.4 ข้อค้างตัดสินใจที่กระทบ DDL (ยังไม่ตัดสิน)",
             [
-                ["DP-3 ✅ ตัดสินแล้ว 2026-08-10 = ทางเลือกที่ 3 (snapshot เฉพาะร้านที่เคยเข้ารอบชดเชย · เติมตอนสร้าง fgi_impact_processes)", "view จากระบบเดิม (`v_sbpgi_sp_store`) — ไม่ต้อง sync แต่ร้านที่ยกเลิกเกิน 1 เดือนหายจาก view ทำให้เอกสารย้อนหลังหาร้านไม่เจอ", "ตาราง snapshot ของ SBPGI — เอกสารย้อนหลังหาร้านเจอเสมอ แต่ต้อง sync (มีทางเลือกที่ 3: snapshot เฉพาะร้านที่เคยเข้ารอบชดเชย)", "ยังไม่ตัดสิน"],
-                ["DP-4 · `fcs_qssi_score` reuse หรือสร้างใหม่", "reuse ตารางเดิม 23,958,780 แถว — ต้อง backfill + SET NOT NULL บนตารางที่ `performance.service.ts` เขียนอยู่", "สร้างตารางของ SBPGI เอง — ไม่แตะของทีมอื่น แต่มีข้อมูล QSSI สองชุด", "ยังไม่ตัดสิน · มติที่แน่นอนแล้วคือ **ห้ามสร้างตารางชื่อ `fcs_qssi_scores` (พหูพจน์)**"],
-                ["DP-9 ✅ ตัดสินแล้ว 2026-08-10 = แยกตัดสิน (decisions → common_code · external_factors/competitors ยังเป็นตารางของ SBPGI)", "ยัดลง `common_code` ของระบบเดิม", "ตารางเล็กของ SBPGI ตามที่ DDL ปัจจุบันเขียนไว้", "ยังไม่ตัดสิน"],
+                ["DP-3 ✅ ตัดสินแล้ว 2026-08-10 = ทางเลือกที่ 3 (snapshot เฉพาะร้านที่เคยเข้ารอบชดเชย · เติมตอนสร้าง fgi_impact_processes)", "view จากระบบเดิม (`v_sbpgi_sp_store`) — ไม่ต้อง sync แต่ร้านที่ยกเลิกเกิน 1 เดือนหายจาก view ทำให้เอกสารย้อนหลังหาร้านไม่เจอ", "ตาราง snapshot ของ SBPGI — เอกสารย้อนหลังหาร้านเจอเสมอ แต่ต้อง sync (มีทางเลือกที่ 3: snapshot เฉพาะร้านที่เคยเข้ารอบชดเชย)", "✅ ตัดสินแล้ว 2026-08-10 = ทางเลือกที่ 3"],
+                ["DP-4 ✅ ปิดแล้ว 2026-08-24 · `fcs_qssi_score` reuse แบบอ่านอย่างเดียว", "reuse ตารางเดิม 23,958,780 แถว — ระบบ SBP เดิมนำเข้าให้แล้วผ่าน `POST /performance/import-qssi`", "สร้างตารางของ SBPGI เอง — ตกไป (จะมีข้อมูล QSSI สองชุด)", "✅ **reuse อ่านอย่างเดียว** — ตัด Job 1 (ImportQSSI) ทั้ง job · SBPGI ไม่เขียนตารางนี้ จึงไม่ต้อง backfill / SET NOT NULL / sign-off เจ้าของ `performance.service.ts` · ห้ามสร้างตารางชื่อ `fcs_qssi_scores` (พหูพจน์)"],
+                ["DP-9 ✅ ตัดสินแล้ว 2026-08-10 = แยกตัดสิน (decisions → common_code · external_factors/competitors ยังเป็นตารางของ SBPGI)", "ยัดลง `common_code` ของระบบเดิม", "ตารางเล็กของ SBPGI ตามที่ DDL ปัจจุบันเขียนไว้", "✅ ตัดสินแล้ว 2026-08-10 = แยกตัดสิน (`decisions` → `common_code` · `external_factors`/`competitors` ยังเป็นตารางของ SBPGI)"],
                 ["DP-1 · `reference_id` ของ workflow", "`doc_no` — ตกไป", "**เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255)) แบบที่ cooperation-request/inform-evaluate ทำจริง", "✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม"],
                 ["DP-7 · `consideration_logs`", "ตาราง timeline เต็มของ SBPGI ตามที่ DDL ปัจจุบันเขียนไว้", "ตารางส่วนขยายบน `sps_store.workflow_history` ของ engine (engine เก็บ state transition แต่ไม่มี decision code / ไฟล์แนบ / ความเห็น)", "ยังไม่ตัดสิน · กระทบ DDL ของตารางนี้และ response ของ `GET /documents/{docNo}/timeline`"],
                 ["DP-12 · audit ของ master", "เอากลับมาโดยใช้กลไกของระบบเดิม", "ไม่มีเลยตามมติ 2026-08-07 (สถานะปัจจุบันของ DDL)", "ยังไม่ตัดสิน"],
@@ -2204,8 +2211,9 @@ def data_migration_extra_blocks() -> list[dict[str, Any]]:
         table(
             ["ต้นทาง", "ระบบ", "ปลายทาง (SBPGI)", "กฎแปลงที่ต้องระวัง"],
             [
-                ["FGI_IMPACT_STORE_ON_PROCESS", "ORA FCS_FRN", "fgi_impact_processes", "PK IMPACT_PROCESS_ID (seq SEQ_FGI_IMPACT_PROCESS) เป็น hub ของทั้งโซน A"],
+                ["FGI_IMPACT_STORE_ON_PROCESS", "ORA FCS_FRN", "fgi_impact_processes", "PK IMPACT_PROCESS_ID (seq SEQ_FGI_IMPACT_PROCESS) เป็น hub ของทั้งโซน A · **ต้อง migrate คอลัมน์รอบชดเชยด้วย (gap F8 · รับเข้าโครง 2026-08-21)**: `LAST_COMPENSATE_SEQ/_SEQ_NO -> last_compensate_seq/_seq_no` · `START/END_COMPENSATE_MONTH-YEAR -> start/end_compensate_month/year` · `FLAG_ACTION -> flag_action` · `DATASOURCE -> datasource` · ⚠️ `FLAG_ACTION` โดเมนจริงคือ **Y/W/N** (active = `IN ('Y','W')`) ไม่ใช่ Y/N — Job 6 เขียน `Y->W` ตอนพัก/รอจ่าย ถ้า CHECK ปลายทางรับแค่ Y/N แถวกลุ่มนี้จะ migrate ไม่ผ่าน · ทั้ง 4 กลุ่มนี้คือค่าที่ Job 8b ใช้ตัดสินจุดเข้า flow"],
                 ["FGI_IMPACT_STORE", "ORA FCS_FRN", "fgi_impact_stores + impacted_stores", "แถวฝั่ง `_I` ทำ distinct เข้า impacted_stores · ที่เหลือเป็นคู่ร้าน"],
+                ["FGI_IMPACT_STORE_COMPENSATE", "ORA FCS_FRN", "**fgi_impact_compensations** (รับเข้าโครง 2026-08-21 · gap F1)", "`COMPENSATE_FORECAST -> forecast_amount` · `COMPENSATE_ADJUST -> adjust_amount` · `COMPENSATE_SEQ/_SEQ_NO -> compensate_seq/_seq_no` · UK (impact_process_id, compensate_month) · ใช้นับยอด 0 ติดกันกี่งวดด้วย `COALESCE(adjust_amount, forecast_amount) = 0` — เป็น input ของ Job 8b เคส ③"],
                 ["FGI_IMPACT_STORE_SALES", "ORA FCS_FRN", "fgi_impact_sales_summaries", "key STORECODE_I + MONTH + YEAR"],
                 ["FGI_IMPACT_STORE_SALES_TRN", "ORA FCS_FRN", "sales_transactions", "4 หน้าต่าง × 15 วัน — ห้ามใช้ fcs_monthly_sales แทน (รายเดือน ย้อนกลับเป็นรายวันไม่ได้)"],
                 ["FGI_IMPACT_COMPETITOR", "ORA FCS_FRN", "fgi_impact_competitors", "data_source = ALM"],
@@ -2214,6 +2222,9 @@ def data_migration_extra_blocks() -> list[dict[str, Any]]:
                 ["CompensateFlow", "MSSQL CPA_FRN_FGI", "compensation_documents", "CompDocumentID -> doc_no · เก็บ round_no/loop_no/allmap_url/statement_id/approver_snapshot"],
                 ["CompensateHistory", "MSSQL CPA_FRN_FGI", "consideration_logs", "PK ActionID · เติม result_category (APPROVE/REJECT/CANCELLED/PENDING)"],
                 ["ImpactProfile", "MSSQL CPA_FRN_FGI", "document_new_stores", "ฝั่ง `_N` + %ชดเชย/ยอดต่อร้าน"],
+                ["CompetInCompenProfile", "MSSQL CPA_FRN_FGI", "document_competitors", "คู่แข่งที่ผูกกับเอกสาร · competitor_code อ้าง master competitors (11 รหัส 01-11) · แถวที่มาจาก ALLMAP ตั้ง data_source = ALM"],
+                ["FactorInCompenProfile", "MSSQL CPA_FRN_FGI", "document_external_factors", "ปัจจัยภายนอกที่ผูกกับเอกสาร · factor_code อ้าง master external_factors + ช่วงวันที่มีผล"],
+                ["FGI_IMPACT_STORE_COMPENSATE + CompensateFlow", "ORA + MSSQL", "compensation_histories", "ประวัติชดเชยต่อร้าน/รอบ · submit_account_month (งวดที่ Job 6 ส่งไป STA ผ่าน RabbitMQ) · ⚠️ **ต้องปิด DP-11 ก่อน** — ยังไม่ตัดสินว่า SBPGI เป็นต้นทางตัวเลขเงิน หรือ fr_store_insure ยังคีย์มือ"],
                 ["ImpactCostDetail", "MSSQL CPA_FRN_FGI", "document_cost_details", "ยอดชดเชยแยกรายเดือน/รายร้านใหม่"],
                 ["RunningNumber", "MSSQL CPA_FRN_FGI", "document_running_numbers", "ตั้ง last_running_no ต่อปีให้ตรงกับเลขสูงสุดที่ย้ายมา"],
                 ["CompDocAttachment / CompTempAttachment / AttachFileProfile", "MSSQL CPA_FRN_FGI", "document_attachments", "metadata เท่านั้น · ไฟล์จริงต้องย้ายขึ้น S3 ของระบบเดิม"],
@@ -2253,8 +2264,8 @@ def data_migration_extra_blocks() -> list[dict[str, Any]]:
         *pending_decision_blocks(
             "5.5 ข้อค้างตัดสินใจที่กระทบ migration (ยังไม่ตัดสิน)",
             [
-                ["DP-4 · `fcs_qssi_score`", "reuse ตารางเดิม (ต้อง dedup + backfill 23.9M แถว ก่อนเพิ่ม constraint)", "สร้างตารางของ SBPGI แล้วโหลดใหม่", "ยังไม่ตัดสิน"],
-                ["DP-3 ✅ ตัดสินแล้ว = ทางเลือกที่ 3", "view (ไม่มีอะไรให้ migrate)", "ตาราง snapshot (ต้อง migrate + sync job)", "ยังไม่ตัดสิน · กระทบขอบเขต migration โดยตรง"],
+                ["DP-4 ✅ ปิดแล้ว 2026-08-24 · `fcs_qssi_score`", "reuse ตารางเดิมแบบอ่านอย่างเดียว — ระบบ SBP เดิมนำเข้าให้แล้ว", "สร้างตารางของ SBPGI แล้วโหลดใหม่ — ตกไป", "✅ **ไม่มีอะไรต้อง migrate** — SBPGI อ่านอย่างเดียว ไม่ต้อง dedup/backfill (ตัด Job 1 พร้อมกัน)"],
+                ["DP-3 ✅ ตัดสินแล้ว 2026-08-10 = ทางเลือกที่ 3", "view (ไม่มีอะไรให้ migrate)", "ตาราง snapshot (ต้อง migrate + sync job)", "✅ ตัดสินแล้ว — migrate เฉพาะร้านที่เคยเข้ารอบชดเชยเป็น snapshot"],
                 ["DP-1 · `reference_id`", "`doc_no` — ตกไป", "**เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255))", "✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม"],
                 ["DP-11 · ตัวเลขเงินประกันรายได้", "SBPGI เป็นต้นทาง", "`fr_store_insure` ยังคีย์มือ", "ยังไม่ตัดสิน (เป็นคำถามเชิงธุรกิจ)"],
                 ["retention/purge ของเอกสารเก่า", "ย้ายทั้งหมด", "ย้ายเฉพาะช่วงปีที่ตกลง แล้ว archive ที่เหลือ", "ยังไม่ตัดสิน · ระบบเดิมมี ListDocumentsPendingRemoval แต่โครงใหม่ยังไม่มี data retention plan"],
@@ -2507,15 +2518,45 @@ def workflow_action_transition_blocks() -> list[dict[str, Any]]:
         h(2, "5.1 Canonical Workflow Transition Matrix"),
         p("BE ต้องคำนวณ transition จาก currentSection, result และ totalCompensationAmount ภายใน transaction; FE ส่งเพียง result/comment และห้ามส่ง nextSection เอง"),
         table(["Current", "Result / condition", "statusCode", "nextSection", "Task effect"], [
-            ["06", "ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ", "08", "08", "close 06; open 08"],
+            ["06", "ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ (เส้นทางปกติ — ให้คำนวณยอดก่อน)", "08", "08", "close 06; open 08"],
+            ["06", "ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI · **เส้นทางข้ามขั้น 08**)", "01", "01", "close 06; open 01"],
+            ["06", "เห็นควรไม่ชดเชย หรือ หยุดชดเชยประกันรายได้", "99", "null", "close 06; complete instance"],
             ["08", "คำนวณเงินชดเชยเรียบร้อย", "01", "01", "close 08; open 01"],
             ["01", "เห็นควรชดเชย", "02", "02", "close 01; open 02"],
+            ["01", "เห็นควรไม่ชดเชย (SDD GI — **จบ flow ทันที** ไม่ตีกลับให้ 06)", "99", "null", "close 01; complete instance"],
             ["02", "เห็นควรชดเชย และ totalCompensationAmount >= 100,000 (มติ 2026-08-18)", "03", "03", "close 02; open 03"],
             ["02", "เห็นควรชดเชย และ totalCompensationAmount < 100,000 (มติ 2026-08-18)", "99", "null", "close 02; complete instance"],
+            ["02", "เห็นควรไม่ชดเชย (SDD GI — **จบ flow ทันที** ไม่ตีกลับเป็นทอด ๆ)", "99", "null", "close 02; complete instance"],
             ["03", "เห็นควรชดเชย", "99", "null", "close 03; complete instance"],
-            ["ทุก section ที่รองรับ", "ส่งกลับ", "รหัส section ปลายทางตาม action option", "section ปลายทาง", "close current; reopen target with new task id"],
-            ["06", "เห็นควรไม่ชดเชย หรือ หยุดชดเชยประกันรายได้", "99", "null", "close 06; complete instance"],
+            ["03", "เห็นควรไม่ชดเชย ⏳ *SDD GI ไม่ได้ระบุขั้น AVP — คงพฤติกรรมเดิม (ตีกลับ 06) รอ confirm*", "06", "06", "close 03; reopen 06"],
+            ["ทุก section ที่รองรับ", "ส่งกลับ", "รหัส section ปลายทางตาม action option (08→06 · 01→06 · 02→01 · 03→02)", "section ปลายทาง", "close current; reopen target with new task id"],
         ]),
+        h(2, "5.1b Auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48 · 64)"),
+        p("สองปุ่มที่จบเอกสารเหมือนกันแต่พฤติกรรมหน้ารายการตรงข้ามกัน — BE ต้อง implement แยกกันให้ชัด ห้ามรวมเป็นเส้นเดียว"),
+        table(["ปุ่มที่กดที่ขั้น 06", "เดือนที่กด", "เดือนถัดไป", "ผู้ดำเนินการ (เจ้าของงาน)"], [
+            ["เห็นควรไม่ชดเชยรายได้", "ปิดเอกสาร (99) และ GET /tasks ของ 06 ต้อง **ไม่คืน** เอกสารนี้ในเดือนนั้น", "ระบบตั้งงานรอบเดือนถัดไปของร้านเดิมอัตโนมัติ", "**คนเดิม** ที่พิจารณาเอกสารรอบก่อนในขั้นเดียวกัน"],
+            ["หยุดชดเชยประกันรายได้", "ปิดเอกสาร (99) แต่ GET /tasks ของ 06 **ต้องคืนทันที** พร้อม stoppedReopenable=true", "ไม่มีการตั้งงานอัตโนมัติ", "ฝ่าย SBP DSA (06)"],
+            ["เคสต่อเนื่อง (ไม่ใช่ปุ่ม — เงื่อนไขของงานรอบถัดไป)", "ระบบสร้างงานให้เอง ไม่ต้องแจกงานด้วยมือ", "เหมือนกันทุกเดือนที่ยังต่อเนื่อง", "**คนเดิม** — เจ้าหน้าที่ SBP DSA รอบก่อนหน้า"],
+        ]),
+        p("**วิธี resolve เจ้าของงานคนเดิม** — ไม่มีคอลัมน์ assignee ในตารางของ SBPGI (ตาราง workflow_tasks ถูกตัดออกจากโครง 20 ตารางแล้ว) ผู้รับผิดชอบเป็นข้อมูลของ engine"),
+        table(["ขั้น", "การทำงาน"], [
+            ["1", "หาเอกสารรอบก่อนหน้าของร้านเดียวกัน (impacted_store_code เดิม · round_no/loop_no ก่อนหน้า)"],
+            ["2", "อ่าน consideration_logs แถวล่าสุดของเอกสารนั้นที่ section_code = ขั้นที่จะมอบหมาย -> consider_by (คอลัมน์ผู้ดำเนินการ · อ้าง business_user ของระบบเดิม)"],
+            ["3", "ผูกเป็นผู้รับผิดชอบผ่าน addPreApprover(versionId, referenceId, stateId, approver, seq) ของ @srm/glb-workflow"],
+            ["4", "Fallback: รอบก่อนไม่เคยผ่านขั้นนั้น หรือพนักงานไม่อยู่ในกลุ่มแล้ว -> มอบหมายตาม group ของ auth-backend ตามปกติ"],
+            ["5", "พนักงานลาออกยังต้องเปิด SR เพื่อแก้ชื่อผู้ดำเนินการ (ข้อจำกัดที่ SDD สไลด์ 48 ระบุ ไม่แก้ในเฟสนี้)"],
+        ]),
+        code("""-- resolve เจ้าของงานคนเดิมของขั้น :sectionCode จากเอกสารรอบก่อนของร้านเดียวกัน
+SELECT cl.consider_by
+FROM compensation_documents d
+JOIN consideration_logs cl ON cl.doc_no = d.doc_no
+WHERE d.impacted_store_code = :impactedStoreCode
+  AND d.doc_no <> :currentDocNo
+  AND cl.section_code = :sectionCode
+ORDER BY d.round_no DESC, d.loop_no DESC, cl.action_datetime DESC
+LIMIT 1;
+-- ได้ค่าแล้วส่งเข้า addPreApprover(...) ตอนเปิดงานรอบใหม่ ห้าม INSERT sps_store.workflow_approver เอง
+-- NULL -> fallback group ของ auth-backend""", "sql"),
         h(2, "5.2 Action Response Type"),
         table(["Field", "Type", "Required", "Rule"], [
             ["statusCode", "enum 06|08|01|02|03|99", "Yes", "ค่าหลัง commit; 99 = เสร็จสิ้น"],
@@ -2913,8 +2954,8 @@ FE_COMPONENT_DETAILS: dict[str, list[tuple[str, str]]] = {
         ("โหลดงานของผู้ใช้จาก /tasks และ map 9 คอลัมน์หลักพร้อม task owner/status", "waiting list แสดง 9 คอลัมน์ตรง type และรักษา leading zero ของรหัสร้าน"),
         ("ค้นหาเอกสารจาก /documents โดยบังคับปีและแสดงเอกสารที่เกี่ยวข้องตาม permission", "ไม่ call API เมื่อไม่มีปี และ empty result ไม่แสดงข้อมูลจาก query ก่อนหน้า"),
         ("serialize docNo/year/status/store filters ลง query state และ restore เมื่อย้อนกลับจาก detail", "Search/Clear/refresh ให้ผลซ้ำได้และ pagination ใช้ filter ชุดเดียวกัน"),
-        ("ควบคุม page/size/sort และ row navigation โดยใช้ docNo เป็น stable key", "เปลี่ยนหน้าไม่ reset filter และเปิด detail ของ row ที่เลือกถูกเลขเอกสาร"),
-        ("คำนวณ presentation flag จาก salesDataDays < 60 โดยไม่ใช้ waitingDays แทน", "แถวผิดปกติเป็นสีแดงพร้อม accessible label เฉพาะเมื่อยอดขายไม่ครบ 60 วัน"),
+        ("ควบคุม page/size/sort และ row navigation โดยใช้ docNo เป็น stable key · เพิ่มคอลัมน์ checkbox แรกสุดสำหรับเลือกหลายเอกสาร (SDD GI สไลด์ 48) — checkbox ต้อง stopPropagation ไม่ให้ทริกเกอร์ row navigation และ \"เลือกทั้งหมด\" ครอบเฉพาะแถวที่แสดงในหน้านั้น ไม่ใช่ทั้งชุดผลลัพธ์", "เปลี่ยนหน้าไม่ reset filter และเปิด detail ของ row ที่เลือกถูกเลขเอกสาร · เลือกหลายรายการแล้วกด \"ดำเนินการที่เลือก\" ต้องเปิด popup ยืนยันพร้อมรายการเลขที่เอกสารก่อนส่ง และเคลียร์การเลือกหลังส่งสำเร็จ"),
+        ("คำนวณ presentation flag จาก salesDataDays < 60 โดยไม่ใช้ waitingDays แทน และ render เอกสารที่จบด้วยผลปฏิเสธทั้ง 2 แบบ — หยุดชดเชยประกันรายได้ (stoppedReopenable=true) และ เห็นควรไม่ชดเชยรายได้ (notCompensated=true) — เฉพาะบทบาท section 06", "แถวผิดปกติเป็นสีแดงพร้อม accessible label เฉพาะเมื่อยอดขายไม่ครบ 60 วัน · บทบาท 06 เห็น 3 กลุ่มในหน้าเดียว (มติ 2026-08-24): (1) รอฝ่าย SBP DSA ดำเนินการ (2) เสร็จสิ้นดำเนินการ + ชิป หยุดชดเชยฯ (3) เสร็จสิ้นดำเนินการ + ชิป เห็นควรไม่ชดเชยฯ · บทบาท 08/01/02/03 ต้องไม่เห็นกลุ่ม (2) และ (3) · ชิปทั้งสองเป็นผลการพิจารณาสุดท้าย ไม่ใช่สถานะที่ 7/8 — สถานะจริงยังเป็น เสร็จสิ้นดำเนินการ ตามชุด 6 ค่า และมีตัวกรองแยก 2 ตัวจาก dropdown สถานะ · กลุ่ม (2) คลิกแล้วเปิดเอกสารในโหมดเปิดพิจารณาใหม่ · หมายเหตุที่มา: กลุ่ม (3) กว้างกว่าตัวอักษรของ SDD สไลด์ 46/64 ที่ให้แสดงเฉพาะรอบเดือนถัดไปในหน้างานค้างของ เจ้าหน้าที่ SBP DSA"),
     ],
     "FE/LLDD-FE-Create-Document": [
         ("เป็นเจ้าของ source/activeTab, draft state และ unsaved-change guard ของหน้า create", "สลับ MANUAL/FS แล้ว field ที่ไม่เกี่ยวข้องไม่รั่วเข้า payload"),
@@ -2946,7 +2987,7 @@ FE_COMPONENT_DETAILS: dict[str, list[tuple[str, str]]] = {
     "FE/LLDD-FE-Report": [
         ("จัดการ filter 7 ตัวตาม SDD สไลด์ 60 (status, impacted/new store code, store type, period statement, region, result) พร้อม dependency validation", "status required, คู่รหัสร้านต้องมาด้วยกัน, period statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ และช่วง from-to ตรวจผ่านก่อนค้นหา/Export"),
         ("map response เป็น summary line และตาราง 14 คอลัมน์ (SDD สไลด์ 60) ด้วย formatter กลาง", "คอลัมน์/ยอดรวม/วันที่ (ค.ศ.)/leading zero ตรง response และข้อมูลยอดขายผิดปกติใช้ salesDataDays"),
-        ("ส่ง filter snapshot ล่าสุดไป export endpoint และจัดการ download/error state", "Export Excel ใช้เงื่อนไขเดียวกับการค้นหา และชื่อไฟล์/content type (.xlsx) ตรง response"),
+        ("ส่ง filter snapshot ล่าสุดไป export endpoint และจัดการ download/error state · SDD GI สไลด์ 62 กำหนดปุ่มออกผล 3 ตัว — Preview Report (ดูตัวอย่างก่อนออกไฟล์) · Export Excel (ทีมบัญชีเทียบ SAP) · Export CSV to Batch (ส่งเข้าคิว batch ประมวลผลต่อ)", "ทั้งสามปุ่มใช้เงื่อนไขค้นหาชุดเดียวกับตารางผลลัพธ์ และชื่อไฟล์/content type ตรง response (.xlsx สำหรับ Excel · .csv สำหรับ CSV to Batch)"),
         ("รองรับ fixture สำหรับ 0 แถว, หลาย region/type, เกิน threshold และยอดขายไม่ครบ 60 วัน", "sample verification ครอบคลุม table/export parity 14 คอลัมน์ โดยไม่ฝังข้อมูลทดสอบใน production"),
     ],
     "FE/LLDD-FE-Master-Data": [
@@ -3089,13 +3130,23 @@ def job_implementation_blocks(topic: Topic) -> list[dict[str, Any]]:
                     [1, "lock candidate W ด้วย FOR UPDATE SKIP LOCKED และสร้าง payload ใน memory", "validation fail: rollback lock; สถานะยัง W"],
                     [2, "เขียน temporary file, fsync, atomic rename และคำนวณ SHA-256", "write/rename/checksum fail: ลบ temp; สถานะยัง W; ไม่สร้าง outbox"],
                     [3, "transaction เดียว update W→P และ insert interface_transactions/outbox READY", "DB fail: rollback W→P และ outbox; durable file คงไว้ให้ cleanup/reconcile โดย checksum"],
-                    [4, "dispatcher อ่าน READY แล้วส่ง SFTP; compare checksum ก่อนส่ง", "ส่ง fail: outbox ยัง READY/FAILED_RETRY; ห้ามเปลี่ยน candidate กลับ W เพื่อไม่ให้สร้างไฟล์ซ้ำ"],
+                    [4, "dispatcher อ่าน READY แล้วอัปโหลดขึ้น EAI S3 (prefix ขาออก); compare checksum ก่อนส่ง", "อัปโหลด fail: outbox ยัง READY/FAILED_RETRY; ห้ามเปลี่ยน candidate กลับ W เพื่อไม่ให้สร้างไฟล์ซ้ำ"],
                     [5, "ส่งสำเร็จ mark SENT; callback/import ที่สัมพันธ์กัน mark ACKED", "ใช้ transaction id เดิมตลอด lifecycle"],
                 ],
             ),
         ])
     if job_no == "6":
         blocks.extend([
+            h(2, "5.96 เขียนข้อมูลรอบชดเชย (รับเข้าโครง 2026-08-21 · gap F8 + F1)"),
+            p("Job 6 คือ job เดียวที่เขียนตารางรอบชดเชยในระบบเดิม — `ExportService.manageDBToFs()` เรียก 5 คำสั่งต่อกันเป็นชุด ระบบใหม่ต้องทำครบเหมือนเดิม แต่เขียนลงตารางของ SBPGI"),
+            table(["ลำดับใน manageDBToFs()", "ระบบเดิม (Oracle)", "ระบบใหม่ (SBPGI)", "ใช้ทำอะไรต่อ"], [
+                ["updateFgiImpactStoreOnProcess(INITDATE)", "FGI_IMPACT_STORE_ON_PROCESS · LAST_COMPENSATE_SEQ_NO + 1 เมื่อ FLAG_ACTION='Y' และเพิ่งชดเชยเดือนที่แล้ว", "fgi_impact_processes.last_compensate_seq_no += 1", "**เคสต่อเนื่อง** (SEQ_NO > 1)"],
+                ["insertFgiImpactStoreOnProcess()", "แถวใหม่ · LAST_COMPENSATE_SEQ = MAX+1 · SEQ_NO = 1 · FLAG_ACTION='Y' · DATASOURCE", "fgi_impact_processes แถวใหม่ (last_compensate_seq · last_compensate_seq_no=1 · flag_action · datasource)", "**เปิดเรื่องใหม่** (SEQ_NO = 1)"],
+                ["insertFgiImpactStoreCompensate(...)", "FGI_IMPACT_STORE_COMPENSATE · COMPENSATE_FORECAST / COMPENSATE_ADJUST ต่องวด", "**fgi_impact_compensations** (forecast_amount / adjust_amount)", "**นับยอด 0 ติดกันกี่เดือน** (กติกาเดือน 1-3 / เดือนที่ 4)"],
+                ["insertFgiNewStoreCompensate(...)", "FGI_NEW_STORE_COMPENSATE", "document_new_stores.compensation_amount / compensate_percent", "ยอดต่อร้านเปิดใหม่"],
+                ["updateCompleteImpactStoreOnProcess / FlagYToW", "FLAG_ACTION Y→N / Y→W", "fgi_impact_processes.flag_action", "ปิดรอบ / ส่งกลับรอตรวจ"],
+            ]),
+            p("⚠️ `ImportJdbc.insertImpactStoreOnProcess()` / `updateImpactStoreOnProcess()` มี SQL ชุดเดียวกันอยู่ในไฟล์ Import แต่ตรวจทั้ง src แล้ว **ไม่มี call site จริง** — เป็นโค้ดตาย ให้ยึด `ExportJdbc` เป็นต้นแบบเท่านั้น"),
             h(2, "5.95 Tracking Retention / Purge SQL"),
             p("Purge ทำได้เฉพาะ ACKED/COMPLETED ที่ครบ purge_after และไม่อยู่ใน legal hold; ต้องรันเป็น batch จำกัดจำนวนเพื่อไม่ lock ตารางยาว"),
             code("""WITH purge_candidates AS (
@@ -3124,7 +3175,7 @@ RETURNING i.id, i.data_name, i.business_key;""", "sql"),
                     ["Rerun พบ impact_process_id เดิมก่อนจองเลข", "คืน/ข้ามด้วย doc_no เดิมโดยไม่จอง running_no เพิ่มเมื่อ fast lookup พบข้อมูลแล้ว", "duplicateExistingCount + existingDocNo"],
                     ["Concurrent worker ชน ON CONFLICT หลังจองเลข", "ยอมให้ running_no ที่จองแล้วกลายเป็น gap; ห้ามลด sequence และห้ามนำเลขกลับมาใช้", "numberGapCount + conflictedImpactProcessId"],
                     ["Conflict path", "อ่าน compensation_documents ด้วย impact_process_id แล้วใช้ d.doc_no เดิมสำหรับ tracking/reconcile", "tracking.doc_no ตรงกับเอกสารที่ commit อยู่จริง"],
-                    ["New document path", "insert document และ INTERNAL_DB_WRITE tracking ใน transaction เดียว", "createdCount และ trackingCount เพิ่มเท่ากัน"],
+                    ["New document path", "insert document และ tracking (direction=INTERNAL) ใน transaction เดียว", "createdCount และ trackingCount เพิ่มเท่ากัน"],
                     ["Audit/runbook", "อธิบายว่าเลขอาจไม่ต่อเนื่องแต่ต้องไม่ซ้ำและตรวจสอบย้อนกลับได้", "ไม่มีขั้นตอน manual reuse หรือ renumber"],
                 ],
             ),
@@ -3868,7 +3919,7 @@ def load_batch_jobs() -> list[dict[str, Any]]:
     jobs = read_js_array_from_html("job-batch.html", "JOBS")
     by_no = {str(j["no"]): j for j in jobs}
     selected: list[dict[str, Any]] = []
-    for no in ["1", "2", "3", "4", "5", "6", "7", "8", "8b", "9", "10"]:
+    for no in ["2", "3", "4", "5", "6", "7", "8", "8b", "9", "10"]:
         if no not in by_no:
             continue
         selected.append(target_job(dict(by_no[no])))
@@ -4038,10 +4089,10 @@ def new_be_design_topics() -> list[Topic]:
             4.0,
             24,
             BANK_BE_OWNER,
-            "กำหนด DDL ของ target schema 19 ตาราง พร้อม index/constraint/seed และสคริปต์ deploy ให้ทุกเอกสาร BE อ้างอิงโครงเดียวกัน — เป็น blocker ที่ต้องปิดในสัปดาห์แรก",
+            "กำหนด DDL ของ target schema 20 ตาราง พร้อม index/constraint/seed และสคริปต์ deploy ให้ทุกเอกสาร BE อ้างอิงโครงเดียวกัน — เป็น blocker ที่ต้องปิดในสัปดาห์แรก",
             [],
             [
-                "DDL ครบ 19 ตารางของ target schema (โซน A 7 · โซน B 9 · โซน C 3)",
+                "DDL ครบ 20 ตารางของ target schema (โซน A 8 · โซน B 9 · โซน C 3)",
                 "Index, unique/partial index, check constraint และ FK ที่ต้องมีก่อน SIT",
                 "Seed data ที่ต้องมีก่อนเปิดระบบ (external_factors · competitors) — decisions ไป seed ที่ common_code ของระบบเดิม (DP-9)",
                 "สคริปต์ deploy/rollback ต่อ environment และลำดับการรันตาม dependency",
@@ -4057,14 +4108,14 @@ def new_be_design_topics() -> list[Topic]:
                 ("fcs_qssi_score", "ตารางเดิมของ sps_store", "ห้าม CREATE TABLE ใหม่", "มีอยู่จริง 23,958,780 แถว + import pipeline ใช้งานอยู่ (POST /performance/import-qssi · staging fcs_tmp_qssi_score)"),
             ],
             [
-                ("รัน DDL baseline", "deploy script", "psql -f 01_schema.sql", "สร้าง 18 ตารางตามลำดับ dependency"),
+                ("รัน DDL baseline", "deploy script", "psql -f 01_schema.sql", "สร้าง 19 ตารางตามลำดับ dependency"),
                 ("รัน index/constraint", "deploy script", "psql -f 02_index.sql", "index/unique/check ครบก่อนเปิด SIT"),
                 ("รัน seed", "deploy script", "psql -f 03_seed.sql", "master ที่ระบบต้องมีตั้งแต่วันแรก"),
                 ("Rollback", "deploy script", "psql -f 99_rollback.sql", "DROP ย้อนลำดับ · ห้ามแตะตารางของระบบ SBP เดิม"),
             ],
             [],
             [
-                "ยืนยันรายการ 19 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL",
+                "ยืนยันรายการ 20 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL",
                 "เขียน 01_schema.sql เรียงตาม dependency: โซน C master -> โซน A pipeline -> โซน B document",
                 "เขียน 02_index.sql แยกไฟล์ เพื่อให้ rerun/เพิ่ม index ภายหลังได้โดยไม่แตะ schema",
                 "เขียน 03_seed.sql เฉพาะ master ที่ระบบต้องมีตั้งแต่วันแรก",
@@ -4074,7 +4125,7 @@ def new_be_design_topics() -> list[Topic]:
             ],
             [
                 "DDL รันบนฐานว่างได้ครบในครั้งเดียวโดยไม่มี error ลำดับ FK",
-                "จำนวนตารางที่สร้างจริง = 18 ตาราง (19 ในโครง ลบ fcs_qssi_score ที่ reuse) ตรงกับ database.md",
+                "จำนวนตารางที่สร้างจริง = 19 ตาราง (20 ในโครง ลบ fcs_qssi_score ที่ reuse) ตรงกับ database.md",
                 "ไม่มี CREATE TABLE ของ workflow engine, store master, common_code, mas_param, business_user, email_template หรือ fcs_qssi_score",
                 "ทุกตารางมี PK และทุก FK ชี้ไปตารางที่มีอยู่จริงในสคริปต์เดียวกัน",
                 "rollback script ลบเฉพาะตารางของ SBPGI",
@@ -4089,7 +4140,7 @@ def new_be_design_topics() -> list[Topic]:
                 "grep หา CREATE TABLE ของตาราง reuse ต้องได้ 0 บรรทัด",
             ],
             db_tables=[
-                ("19 target tables (โซน A/B/C)", "W", "สร้างจาก DDL baseline ของเอกสารนี้"),
+                ("20 target tables (โซน A/B/C)", "W", "สร้างจาก DDL baseline ของเอกสารนี้"),
                 ("workflow engine 13 ตาราง (sps_store)", "R", "ห้ามสร้างซ้ำ — ใช้ของ @srm/glb-workflow"),
                 ("fcs_qssi_score (sps_store)", "R", "ห้ามสร้างซ้ำ — 23,958,780 แถว + import pipeline ใช้งานอยู่"),
                 ("mas_param / common_code / business_user / email_template (sps_store)", "R", "ค่ากำหนดกลาง/master/ตัวตน/เทมเพลตอีเมลของระบบ SBP เดิม"),
@@ -4105,7 +4156,7 @@ def new_be_design_topics() -> list[Topic]:
             "ออกแบบการย้ายข้อมูลจากระบบเดิม (Oracle FCS_FRN ฝั่ง FGI/FCS + SQL Server CPA_FRN_FGI ฝั่ง K2) เข้าสู่ target schema ของ SBPGI พร้อมแผน cutover, reconcile และ rollback",
             [],
             [
-                "Source-to-target mapping ระดับตาราง/คอลัมน์ (ORA FCS_FRN · MSSQL CPA_FRN_FGI -> 19 ตาราง)",
+                "Source-to-target mapping ระดับตาราง/คอลัมน์ (ORA FCS_FRN · MSSQL CPA_FRN_FGI -> 20 ตาราง)",
                 "การแปลงคีย์: polymorphic TRANSACTION_PK -> typed FK · CompDocumentID -> doc_no · IMPACT_PROCESS_ID -> impact_process_id",
                 "แผน cutover เป็นรอบ (dry-run -> delta -> freeze -> final) และ rollback",
                 "Reconcile: นับแถว ยอดเงิน และ checksum ต่อโซน",
@@ -4157,7 +4208,7 @@ def new_be_design_topics() -> list[Topic]:
             db_tables=[
                 ("ORA FCS_FRN (FGI_IMPACT_* · FCS_QSSI_SCORE · FGI_CONFIRM_RECEIVE_DATA)", "R", "ต้นทางฝั่ง FGI/FCS"),
                 ("MSSQL CPA_FRN_FGI (CompensateFlow · CompensateHistory · ImpactProfile · ImpactCostDetail · RunningNumber)", "R", "ต้นทางฝั่ง K2 document"),
-                ("19 target tables (โซน A/B/C)", "W", "ปลายทางตาม DDL ของ LLDD-BE-Database-Structure"),
+                ("20 target tables (โซน A/B/C)", "W", "ปลายทางตาม DDL ของ LLDD-BE-Database-Structure"),
                 ("workflow_transaction / workflow_approver / workflow_history (sps_store)", "W", "เปิด transaction ให้เอกสารที่ยังไม่จบ flow"),
                 ("fcs_monthly_sales (sps_store)", "R", "ใช้ cross-check ยอดขายรายเดือนเท่านั้น — แทนยอดขายรายวันไม่ได้"),
             ],
@@ -4247,7 +4298,7 @@ def new_be_design_topics() -> list[Topic]:
                 "นิยาม route ของทุกปุ่ม · การแตก route ตามวงเงินอนุมัติ เกณฑ์เดียว 100,000 เขียนเป็น**ตัวอย่างทางเลือก B เท่านั้น** — แหล่งเก็บวงเงินยังไม่ตัดสิน (มติเดิมคือ common_code · ดูข้อค้าง 5.6)",
                 "สำรวจทางเลือกผู้อนุมัติ: workflow_group / workflow_group_map เทียบกับ addPreApprover รายคน — **ยังไม่ตัดสิน** (ดูข้อค้าง 5.6)",
                 "สำรวจทางเลือก workflow_part / workflow_part_display สำหรับคุมการแสดงผลรายส่วน — **ยังไม่ตัดสิน** ว่าจะใช้แทน data-editrole ของ SBPGI หรือไม่ (ดูข้อค้าง 5.5/5.6)",
-                "ความเสี่ยงและข้อค้างของ engine (ไม่มี PK/index · ชื่อ function ขัดกัน 3 ชุด) — ยังไม่ตัดสิน",
+                "ความเสี่ยงและข้อค้างของ engine — **ชื่อ function ปิดแล้ว 2026-08-14** (ยึด 8 API ตามชีต Detail ของ LLDD ฝั่ง lib) · ที่ยังค้างคือ DP-2 `workflow_transaction` ไม่มี PK/index",
             ],
             [
                 ("versionId", "integer", "1 ระบบ = 1 version", "SBPGI ขอ version ใหม่จากทีมเจ้าของ library"),
@@ -4403,7 +4454,7 @@ def topics() -> list[Topic]:
             FE_OWNER,
             "สร้างหน้ารายการเอกสารรอดำเนินการและเอกสารที่เกี่ยวข้อง",
             ["k2-list-waiting-01.png", "k2-list-waiting-02.png", "k2-list-related-01.png"],
-            ["Waiting list", "Related document list", "Search/filter/status filter", "Pagination/row action", "Red flag for sales data < 60 days"],
+            ["Waiting list", "Related document list", "Search/filter/status filter", "Pagination/row action + เลือกหลายเอกสาร (bulk)", "Red flag (sales < 60 days) + rejected-ending rows ที่บทบาท 06 ต้องเห็น"],
             [
                 ("docNo", "YYYY/xxxxx", "optional search", "ถ้าคลิก row ส่งไป detail"),
                 ("year", "ค.ศ. YYYY", "required สำหรับ /documents", "default current year (ค.ศ.)"),
@@ -4465,7 +4516,7 @@ def topics() -> list[Topic]:
                 ("Submit FS iframe", "ปุ่มส่งใน tab เอกสารจาก FS", "sync all mirror values + submit iframe form", "submit form ของ FS ใน hidden iframe"),
             ],
             [
-                ApiSpec("GET", "/store/search (ระบบ SBP เดิม)", "ค้นหาร้านสำหรับ popup", {"q": "012", "type": "impacted"}, {"items": [{"storeCode": "01234", "storeName": "สาขาตัวอย่าง", "regionCode": "RS"}]}),
+                ApiSpec("GET", "/store/search (ระบบ SBP เดิม)", "ค้นหาร้านสำหรับ popup", {"q": "012", "type": "impacted"}, {"items": [{"storeCode": "01234", "storeName": "สาขาตัวอย่าง", "regionCode": "BN"}]}),
                 # URL ของ FS iframe อ่านจาก backend config (env `FS_CREATE_DOCUMENT_URL`) — ไม่มี endpoint /configs แล้ว (2026-08-06)
                 ApiSpec("POST", "/api/v1/documents", "สร้างเอกสาร", {"source": "MANUAL", "impactMonth": "2026-07", "statementPeriod": "2026-07", "impactedStoreCode": "01234", "newStoreCode": "22864", "roundNo": 1, "reason": "สร้างเอกสารนอกเงื่อนไข"}, {"docNo": "2026/00001", "statusCode": "06", "message": "created"}),
             ],
@@ -4543,14 +4594,14 @@ def topics() -> list[Topic]:
             FE_OWNER_KITTISAK,
             "สร้างรายงานตรวจสอบประกันรายได้ตาม SDD สไลด์ 60 (7 ตัวกรอง / 14 คอลัมน์) พร้อมค้นหาข้อมูลและ Export Excel",
             ["k2-report-01.png", "k2-report-02.png"],
-            ["Report filters (SDD slide 60 · 2026-08-06: สถานะ*|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ|ประเภทร้าน (รหัสจาก common_code · รหัสที่ 4 รอยืนยัน) · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว)", "Summary table (sortable 14 columns)", "Export Excel action", "Sample data verification"],
+            ["Report filters (SDD slide 60 · 2026-08-06: สถานะ*|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ|ประเภทร้าน (รหัสจาก common_code · รหัสที่ 4 รอยืนยัน) · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว)", "Summary table (sortable 14 columns)", "ปุ่มออกผล 3 ตัว (Preview Report · Export Excel · Export CSV to Batch)", "Sample data verification"],
             [
                 ("impactedStoreCode", "string 5 digits", "optional; numeric only when input", "คง leading zero; ปุ่มแว่นขยายเรียก popup เลือกร้านที่ถูกกระทบ"),
                 ("impactedStoreName", "string", "readonly", "แสดงอัตโนมัติหลังเลือกรหัสร้าน; ไม่ส่งเป็น filter หลักถ้ามี storeCode"),
                 ("newStoreCode", "string 5 digits", "optional; numeric only when input", "รหัสร้านเปิดกระทบ/ร้านเปิดใหม่; คง leading zero"),
                 ("impactMonthFrom", "YYYY-MM", "optional; month picker", "ส่งและแสดงเป็น ค.ศ. เช่น 2026-05"),
                 ("impactMonthTo", "YYYY-MM", "optional; month picker; must be >= from", "ถ้า from > to ให้แสดง validation ก่อน call API"),
-                ("storeTypes", "array ของ BranchTypeFGIName", "optional multi select", "**ยืนยันจาก master จริงแล้ว (`ข้อมูล Master K2.xlsx` · ชีต `BranchTypeProfile` จาก `CPA_FRN_FGI`)**: ค่าที่ใช้คือคอลัมน์ `BranchTypeFGIName` มี **7 ค่าไม่ซ้ำ** — `A` (A-Mo) · `B` (B(1)) · `C` (C และ C(Retire CPALL)) · `D` (BGC) · `E` (B(2)) · `PTT` · `บริษัท` (Corporate) · ⚠️ **D กับ E เป็นคนละประเภทและมีจริงทั้งคู่** — เอกสารรุ่นก่อนที่แสดงเพียง 4 ตัวเลือก (A/B/C/E หรือ A/B/C/D) **ผิด** ทั้ง SDD สไลด์ 60 (แสดงบางส่วน) และ SRS (เขียน “พนักงาน” ซึ่ง**ไม่มีใน master**) · ยังคง**ห้าม hardcode** — โหลดจาก `GET /common/common-code` ของระบบ SBP เดิม แล้วใช้ 7 ค่านี้เป็น expected set ตอนทดสอบ"),
+                ("storeTypes", "array ของ BranchTypeFGIName", "optional multi select", "**ยืนยันจาก master จริงแล้ว (`ข้อมูล Master K2.xlsx` · ชีต `BranchTypeProfile` จาก `CPA_FRN_FGI`)**: ค่าที่ใช้คือคอลัมน์ `BranchTypeFGIName` มี **7 ค่าไม่ซ้ำ** — `A` (A-Mo) · `B` (B(1)) · `C` (C และ C(Retire CPALL)) · `D` (Type D — เดิมเรียก BGC) · `E` (B(2)) · `PTT` · `บริษัท` (Corporate) · ⚠️ **D กับ E เป็นคนละประเภทและมีจริงทั้งคู่** — เอกสารรุ่นก่อนที่แสดงเพียง 4 ตัวเลือก (A/B/C/E หรือ A/B/C/D) **ผิด** ทั้ง SDD สไลด์ 60 (แสดงบางส่วน) และ SRS (เขียน “พนักงาน” ซึ่ง**ไม่มีใน master**) · ยังคง**ห้าม hardcode** — โหลดจาก `GET /common/common-code` ของระบบ SBP เดิม แล้วใช้ 7 ค่านี้เป็น expected set ตอนทดสอบ"),
                 ("status", "statusCode string", "required single select", "บังคับเลือก 1 สถานะก่อน Preview/Export; options มาจาก sps_store.workflow_status ของ @srm/glb-workflow (ตาราง document_statuses ของ SBPGI ถูกตัดแล้ว)"),
                 ("resultCategory", "APPROVE|REJECT|CANCELLED|PENDING", "optional radio (status เท่านั้นที่บังคับ)", "**4 ค่า** — APPROVE=ประกันรายได้ · REJECT=ไม่ประกันรายได้ · **CANCELLED=ยกเลิกโดยระบบ (เพิ่ม 2026-08-10)** · PENDING/ไม่มีค่า=ยังไม่มีผล · CANCELLED มาจาก master จริง `DecisionProfile` decision 14 `CancelBySystem` (`DecisionResultName` = ยกเลิกโดยระบบ) ซึ่ง SDD สไลด์ 60 ไม่ได้แสดงไว้"),
                 ("regions", "array ของ ZoneName", "optional multi select", "**ยืนยันจาก master จริงแล้ว (`ข้อมูล Master K2.xlsx` · ชีต `ZoneProfile`)**: **13 ภาค** — BN(10) · BW(20) · BE(30) · BG(40) · BS(70) · REU(81) · NEU(82) · RSU(83) · RSL(84) · RN(85) · RC(86) · REL(90) · NEL(92) (ตัวเลขในวงเล็บคือ `ZoneCode`) — ตรงกับรายการที่ prototype ใช้ **ครบทั้ง 13 ค่า** · รายการ 8 ค่าใน SRS (BE/BN/BS/BW/RC/RE/RN/RS) เป็นของเก่า **ไม่ต้องใช้** · ยังคง**ห้าม hardcode** — โหลดจาก `GET /store/all-regions` ของระบบ SBP เดิม"),
@@ -4583,7 +4634,7 @@ def topics() -> list[Topic]:
                 ("Open detail", "คลิกเลขที่เอกสารหรือ row", "navigate /documents/{docNo} หรือ preview modal", "เปิดเอกสารที่เกี่ยวข้อง"),
             ],
             [
-                ApiSpec("GET", "/store/search (ระบบ SBP เดิม)", "Popup เลือกร้านที่ถูกกระทบ", {"q": "00788", "type": "impacted"}, {"items": [{"storeCode": "00788", "storeName": "รัตนอุทิศ ซ.13", "region": "RS", "storeType": "FR Type B"}]}),
+                ApiSpec("GET", "/store/search (ระบบ SBP เดิม)", "Popup เลือกร้านที่ถูกกระทบ", {"q": "00788", "type": "impacted"}, {"items": [{"storeCode": "00788", "storeName": "รัตนอุทิศ ซ.13", "region": "BN", "storeType": "SBP Type B"}]}),
                 ApiSpec("GET", "/api/v1/reports/status-summary", "ค้นหาข้อมูลรายงานตรวจสอบประกันรายได้ (14 คอลัมน์ · SDD สไลด์ 60)", {"status": "06", "impactedStoreCode": "00788", "newStoreCode": "00990", "periodStatementFrom": "2026-06-01", "periodStatementTo": "2026-06-30", "storeTypes": ["A", "B"], "regions": ["RSU", "BN"], "result": "APPROVE", "page": 1, "size": 20}, {"page": 1, "size": 20, "total": 10, "summary": {"totalItems": 10, "totalCompensationAmount": 439100.0, "overThresholdItems": 3, "abnormalSalesItems": 2}, "items": [{"impactedStoreCode": "00788", "impactedStoreName": "รัตนอุทิศ ซ.13", "impactedRegion": "RSU", "impactedStoreType": "B", "impactMonth": "2026-05", "periodStatement": "2026-06-07", "newStoreCode": "00990", "newStoreName": "เซเว่นฯ รัตนาธิเบศร์ 12", "newRegion": "RSU", "newStoreType": "A", "compensationAmount": 48200.0, "roundNo": 1, "createdDate": "2026-06-12", "docNo": "2026/00123"}]}),
                 ApiSpec("GET", "/api/v1/reports/status-summary/export", "Export Excel ด้วย filter เดียวกับการค้นหา", {"sameAsSearch": True, "format": "xlsx"}, {"contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "fileName": "insurance-verification-2026.xlsx"}),
             ],
@@ -4775,7 +4826,7 @@ def topics() -> list[Topic]:
             ],
             [
                 ApiSpec("POST", "/api/v1/documents", "Create document API", {"impactedStoreCode": "00788", "impactMonth": "2026-06", "source": "MANUAL", "newStoreCode": "00990", "roundNo": 1, "reason": "manual create", "requestId": "uuid"}, {"docNo": "2026/00124", "statusCode": "06"}),
-                ApiSpec("PUT", "/api/v1/documents/{docNo}", "Update document partial sections", {"newStores": [{"newStoreCode": "00990", "compensatePercent": 100}]}, {"message": "saved"}),
+                ApiSpec("PUT", "/api/v1/documents/{docNo}", "Update document partial sections", {"newStores": [{"newStoreCode": "00990", "compensatePercent": 60, "sourceSystem": "ALLMAP"}, {"newStoreCode": "01180", "compensatePercent": 40, "sourceSystem": "USER"}]}, {"message": "saved"}),
             ],
             ["Validate required fields", "Check duplicate store/month", "Generate docNo", "Insert compensation_documents", "Open workflow task", "Save section updates in transaction"],
             ["duplicate business key returns 409", "docNo format YYYY/xxxxx", "compensatePercent sum=100", "requestId trace does not replace business duplicate guard"],
@@ -4880,7 +4931,7 @@ def topics() -> list[Topic]:
                 "Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N",
                 "If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason",
                 "If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun",
-                "If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initialize + addPreApprover at state 06 — function names UNCONFIRMED, 3 conflicting sets), then update fgi_impact_processes.workflow_generation_status=Y in one transaction",
+                "If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initializeWorkflow + addPreApprover at state 06 — function names confirmed 2026-08-14 from the library's own LLDD, sheet Detail), then update fgi_impact_processes.workflow_generation_status=Y in one transaction",
                 "Enqueue notification summary outside transaction after commit",
             ],
             [
@@ -5037,10 +5088,11 @@ def topics() -> list[Topic]:
     base.extend(document_detail_role_topics())
     db_map = {
         "BE/LLDD-BE-API-Document-List-Search": [
-            ("workflow_transaction / workflow_approver (@srm/glb-workflow)", "R", "อ่าน inbox ผ่าน getPendingFlowByUser()"),
+            ("workflow_transaction / workflow_approver (@srm/glb-workflow)", "R", "อ่าน inbox ผ่าน getPendingFlowByUser() · เฉพาะ section 06 ต้อง union เอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้ามาด้วย (stoppedReopenable)"),
             ("compensation_documents", "R", "ค้นเอกสารตาม year/status/store"),
             ("impacted_stores", "R", "ชื่อร้าน ภาค และข้อมูลร้าน"),
             ("fgi_impact_sales_summaries", "R", "flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน"),
+            ("consideration_logs", "R", "ผลการพิจารณาสุดท้าย — คัดเอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้าคิวของ section 06 (SDD สไลด์ 46 ข้อ 1.9)"),
         ],
         "BE/LLDD-BE-API-Document-Create-Update": [
             ("compensation_documents", "R/W", "สร้างหัวเอกสารและแก้ไข section หลัก"),
@@ -5213,7 +5265,7 @@ def main_doc_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
         BE_OWNER_BUTSABA: "BE เอกสาร/สัญญากลางของ SBPGI เอง: Common Contracts -> List/Search -> Create/Update -> Detail Aggregate",
         BE_OWNER: "BE ที่ต่อกับระบบเดิม (นิยามสัญญาให้ฝั่ง FE ใช้ต่อ): Integration with SBP Platform -> Workflow Engine Definition -> Workflow Actions -> Workflow Instances -> Lookup -> Job 8b",
         BE_OWNER_PEERAKORN: "BE support/interface (ย้ายจากสาย FE 2026-08-07): Attachment/Sales/Timeline -> Report and Master Data -> Batch/Email -> Job 5, 7, 9, 10",
-        BANK_BE_OWNER: "BE data ownership: Database Structure -> Data Migration/Cutover -> Job 1, 2, 3, 4, 6, 8",
+        BANK_BE_OWNER: "BE data ownership: Database Structure -> Data Migration/Cutover -> Job 2, 3, 4, 6, 8",
     }
     owner_rows = []
     for key in owner_order:
@@ -5254,7 +5306,7 @@ def main_doc_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
         h(1, "3. High Level Activity Plan"),
         table(["Track", "หัวข้อ", "ชั่วโมง (impl + unit test)", "ลำดับขั้น", "Owner", "เอกสารรายละเอียด"], rows),
         h(1, "4. Workload Balance and Continuity"),
-        p("แผนนี้รวม owner ตามบุคคล (ปรับ 2026-08-07): ทีม 6 คนเหลือ FE 2 คนและ BE 4 คน โดย Peerakorn ย้ายจากสาย FE ไปสาย BE · Aphiwit เป็นเจ้าของ Database Structure + Data Migration/Cutover และ Job 1, 2, 3, 4, 6, 8 · Peerakorn รับ Job 5, 7, 9, 10 · Tunyatorn รับ Job 8b เพราะเป็น job เดียวที่เรียก workflow engine และถือ Workflow Engine Definition อยู่แล้ว ชั่วโมงคิดที่ 5 วันต่อสัปดาห์และ 6 ชั่วโมงต่อวัน (30 ชั่วโมงต่อสัปดาห์) · ตัวเลขในตารางเป็นค่าประเมินตรง ๆ **ไม่มีส่วนเผื่อ (buffer)**"),
+        p("แผนนี้รวม owner ตามบุคคล (ปรับ 2026-08-07): ทีม 6 คนเหลือ FE 2 คนและ BE 4 คน โดย Peerakorn ย้ายจากสาย FE ไปสาย BE · Aphiwit เป็นเจ้าของ Database Structure + Data Migration/Cutover และ Job 2, 3, 4, 6, 8 · Peerakorn รับ Job 5, 7, 9, 10 · Tunyatorn รับ Job 8b เพราะเป็น job เดียวที่เรียก workflow engine และถือ Workflow Engine Definition อยู่แล้ว ชั่วโมงคิดที่ 5 วันต่อสัปดาห์และ 6 ชั่วโมงต่อวัน (30 ชั่วโมงต่อสัปดาห์) · ตัวเลขในตารางเป็นค่าประเมินตรง ๆ **ไม่มีส่วนเผื่อ (buffer)**"),
         table(["Role", "Owner", "ชั่วโมง (impl + unit test)", "Work Focus"], owner_rows),
         h(1, "5. FE Summary"),
         table(["FE Topic", "ชั่วโมง", "ลำดับขั้น", "Deliverable"], [[t.title.replace("LLDD FE - ", ""), t.hours, steps[t.file], summary_scope(t, 3)] for t in fe]),
@@ -5289,7 +5341,7 @@ def main_doc_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
             ["Business rules", "BA/BE", "validation/action/report"],
         ]),
         h(1, "10. Deliverable Checklist"),
-        bullets(["Main LLDD Index", "Common contract LLDD สำหรับ API/FE integration", "LLDD-FE-Master-Data สำหรับปัจจัยภายนอกและรายชื่อคู่แข่ง", "Detailed FE LLDD per SBP Mall page group", "Detailed BE LLDD per SBP Mall API group and Jobs 1-10 + 8b", "Database Structure, Data Migration/Cutover, Integration with SBP Platform และ Workflow Engine Definition (เพิ่ม 2026-08-07)", "Screenshots embedded only for SBP Mall implementation pages", "Implementation flow diagrams embedded as reference, not Flow page deliverables"]),
+        bullets(["Main LLDD Index", "Common contract LLDD สำหรับ API/FE integration", "LLDD-FE-Master-Data สำหรับปัจจัยภายนอกและรายชื่อคู่แข่ง", "Detailed FE LLDD per SBP Mall page group", "Detailed BE LLDD per SBP Mall API group and Jobs 2-10 + 8b", "Database Structure, Data Migration/Cutover, Integration with SBP Platform และ Workflow Engine Definition (เพิ่ม 2026-08-07)", "Screenshots embedded only for SBP Mall implementation pages", "Implementation flow diagrams embedded as reference, not Flow page deliverables"]),
     ]
 
 
@@ -5476,10 +5528,10 @@ def lldd_api_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
 
 
 def database_table_catalog() -> list[list[Any]]:
-    """19 target tables: 34 -> 24 (ตัด 10 ตารางที่ระบบ SBP เดิมมีอยู่แล้ว 2026-08-06)
+    """20 target tables: 34 -> 24 (ตัด 10 ตารางที่ระบบ SBP เดิมมีอยู่แล้ว 2026-08-06)
     -> 22 (ตัด job_configs/job_run_histories พร้อม 2 tab ควบคุมของหน้า Batch Job)
     -> 21 (ตัด audit_logs 2026-08-07) -> 20 (ตัด decisions ไป common_code · มติ DP-9 2026-08-10).
-    แถวที่ zone = "REF" เป็น schema reference สำหรับ dev เท่านั้น ไม่นับใน 19 ตาราง.
+    แถวที่ zone = "REF" เป็น schema reference สำหรับ dev เท่านั้น ไม่นับใน 20 ตาราง.
     """
     return [
         ["A", "fgi_impact_stores", "id", "impact_process_id, impacted_store_code", "impact pair; sales request and allocation data"],
@@ -5487,7 +5539,7 @@ def database_table_catalog() -> list[list[Any]]:
         ["A", "fgi_impact_sales_summaries", "id", "impact_process_id", "sales summary/growth rate"],
         ["A", "sales_transactions", "id", "sales_summary_id", "daily sales 4 windows x 15 days"],
         ["A", "fgi_impact_competitors", "id", "impact_process_id", "ALLMAP competitors"],
-        ["A", "fcs_qssi_score", "id", "store_id + category_code + period", "QSSI scores — ⚠️ REUSE ตารางเดิมของ sps_store (เอกพจน์ · 23,958,780 แถว · มี import pipeline POST /performance/import-qssi ใช้งานอยู่) ห้ามสร้างใหม่ และห้ามใช้ชื่อพหูพจน์ fcs_qssi_scores"],
+        ["A", "fcs_qssi_score", "id", "store_id + category + month + year", "QSSI scores — ⚠️ REUSE ตารางเดิมของ sps_store (เอกพจน์ · 23,958,780 แถว · มี import pipeline POST /performance/import-qssi ใช้งานอยู่) ห้ามสร้างใหม่ และห้ามใช้ชื่อพหูพจน์ fcs_qssi_scores"],
         ["A", "interface_transactions", "id", "impact_process_id/sales_summary_id/doc_no", "interface tracking replacement"],
         ["B", "compensation_documents", "doc_no", "impact_process_id, status_code, current_section_code", "document header/core"],
         ["B", "document_new_stores", "id", "doc_no, new_store_code", "new stores, compensate percent and amount"],
@@ -5581,9 +5633,46 @@ CREATE TABLE competitors (
     process_status VARCHAR(30) NOT NULL, action_status VARCHAR(30),
     last_compensation_amount NUMERIC(14,2),
     workflow_generation_status CHAR(1) NOT NULL DEFAULT 'W' CHECK (workflow_generation_status IN ('W','Y','N')),
+    -- ⬇ รับเข้าโครงตามมติ 2026-08-21 (gap F8) — ขนจาก ORA FGI_IMPACT_STORE_ON_PROCESS
+    --   ใช้ตัดสิน "ประเภทเคส" ที่จุดเข้า flow และ auto-assign เจ้าของงานคนเดิม
+    last_compensate_seq INTEGER NOT NULL DEFAULT 1,        -- รอบชดเชย (ขึ้นใหม่เมื่อเปิดเรื่องใหม่)
+    last_compensate_seq_no INTEGER NOT NULL DEFAULT 1,     -- ครั้งที่ในรอบ · > 1 = เคสต่อเนื่อง
+    start_compensate_month CHAR(7), start_compensate_year INTEGER,   -- กรอบงวดที่ชดเชยได้ (เริ่ม)
+    end_compensate_month CHAR(7),   end_compensate_year INTEGER,     -- กรอบงวดที่ชดเชยได้ (จบ)
+    -- ORA FGI_IMPACT_STORE_ON_PROCESS.FLAG_ACTION — โดเมนจริง Y/W/N (active = IN ('Y','W'))
+    -- Job 6 ปิดรอบด้วย Y->N และพัก/รอจ่ายด้วย Y->W · CHECK เดิมที่รับแค่ ('Y','N') จะทำ migration ล้มทันทีที่เจอแถว 'W'
+    flag_action CHAR(1) NOT NULL DEFAULT 'Y' CHECK (flag_action IN ('Y','W','N')),
+    -- ช่องทางต้นทางของเคส (SDD GI สไลด์ 17 · 3 แหล่ง) — ORA FGI_IMPACT_STORE_ON_PROCESS.DATASOURCE
+    --   ALM = ระบบดึงจาก ALLMAP (Job 2/3)   · STA = ระบบดึงจาก Franchise Statement (Job 5)   [ทั้งคู่มีในระบบเดิม]
+    --   PRO = เชิงรุก  — OPT ประชุมพิจารณาแล้วเปิดเรื่อง (ต้นทางเอกสารอยู่ที่ All Memo)      [ใหม่ 2026-08-24]
+    --   REA = เชิงรับ  — หน่วยงานอื่นแจ้งเข้ามาว่าร้านถูกกระทบ                                [ใหม่ 2026-08-24]
+    -- ผลต่อ flow (SDD สไลด์ 47 · 49): ALM/STA = งานเข้ามาให้ จนท. SBP DSA เลือก · PRO/REA = เจ้าของงานต้องคีย์เอง
+    -- ไม่ใส่ CHECK constraint — ระบบเดิมยังมีค่า HRS (HR feed) ปนอยู่ ถ้าบังคับโดเมนแคบจะ migrate ไม่ผ่าน
+    datasource VARCHAR(5),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_impact_process UNIQUE (impacted_store_code, impact_month)
+);
+
+-- รับเข้าโครงตามมติ 2026-08-21 (gap F1) — ขนจาก ORA FGI_IMPACT_STORE_COMPENSATE
+-- ยอดชดเชย "รายงวด" ที่เกิดก่อนมีเอกสาร · จำเป็นเพื่อนับ "ยอด 0 ติดกันกี่เดือน" (กติกาเดือน 1-3 / เดือนที่ 4)
+CREATE TABLE fgi_impact_compensations (
+    id BIGSERIAL PRIMARY KEY,
+    impact_process_id BIGINT NOT NULL REFERENCES fgi_impact_processes(id),
+    impacted_store_code VARCHAR(5) NOT NULL REFERENCES impacted_stores(store_code),
+    compensate_seq INTEGER NOT NULL,        -- รอบ (คู่กับ fgi_impact_processes.last_compensate_seq)
+    compensate_seq_no INTEGER NOT NULL,     -- ครั้งที่ในรอบ
+    compensate_month CHAR(7) NOT NULL,      -- งวดที่ชดเชย 'YYYY-MM' (ค.ศ.)
+    compensate_year INTEGER NOT NULL,
+    forecast_amount NUMERIC(14,2),          -- ระบบคำนวณ
+    adjust_amount NUMERIC(14,2),            -- คนปรับ · ยอดที่ใช้จริง = COALESCE(adjust_amount, forecast_amount)
+    compensate_status VARCHAR(5),
+    compensate_comment VARCHAR(4000),
+    stmt_month INTEGER, stmt_year INTEGER,  -- งวด statement
+    approve_date DATE,
+    created_by VARCHAR(100), created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100), updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_impact_compensation UNIQUE (impact_process_id, compensate_month)
 );
 
 CREATE TABLE fgi_impact_stores (
@@ -5644,6 +5733,8 @@ CREATE TABLE interface_transactions (
     id BIGSERIAL PRIMARY KEY,
     -- run_id เป็น correlation id ของรอบรัน (มาจาก application log) — ไม่มี FK เพราะ job_run_histories ถูกตัด 2026-08-06
     run_id VARCHAR(50),
+    -- direction: OUT = ส่งไฟล์ออกไประบบภายนอก (Job 4 → IAS · Job 6 → STA) · IN = รับไฟล์/ACK กลับ (Job 5 · callback ของ STA)
+    --            INTERNAL = การส่งต่อ*ภายในระบบเดียวกัน* ที่มาแทนไฟล์ EAI เดิม (Jobs 7/8/9 เขียน DB ตรง — ไม่มี ACK ให้รอ จึงจบที่ status = COMPLETED)
     data_name VARCHAR(80) NOT NULL, direction VARCHAR(10) NOT NULL CHECK (direction IN ('IN','OUT','INTERNAL')),
     status VARCHAR(20) NOT NULL CHECK (status IN ('READY','SENT','ACKED','COMPLETED','FAILED','FAILED_RETRY')),
     impact_process_id BIGINT REFERENCES fgi_impact_processes(id),
@@ -5801,6 +5892,12 @@ CREATE INDEX idx_interface_impact_process ON interface_transactions(impact_proce
 CREATE INDEX idx_interface_sales_summary ON interface_transactions(sales_summary_id);
 CREATE INDEX idx_interface_doc ON interface_transactions(doc_no);
 
+-- index รองรับ FK ที่ PostgreSQL ไม่สร้างให้เอง (เพิ่ม 2026-08-24 หลังตรวจ FK coverage)
+CREATE INDEX idx_impact_store_process ON fgi_impact_stores(impact_process_id);
+CREATE INDEX idx_document_impacted_store ON compensation_documents(impacted_store_code);
+CREATE INDEX idx_compensation_history_doc ON compensation_histories(ref_doc_no);
+CREATE INDEX idx_impact_compensation_store ON fgi_impact_compensations(impacted_store_code);
+
 -- Retention worker: delete only terminal, expired, non-held rows in bounded batches.
 WITH purge_candidates AS (
     SELECT id FROM interface_transactions
@@ -5888,7 +5985,7 @@ def validate_schema_sql_contract() -> None:
             raise ValueError(f"API/DDL contract is missing canonical token: {token}")
     forbidden_api = [
         "u.password_hash",
-        # ตารางที่ถูกตัดออกจากโครง 19 ตาราง — ห้ามกลับมาเป็น SQL/DDL ที่ execute ได้ใน plan-api.html
+        # ตารางที่ถูกตัดออกจากโครง 20 ตาราง — ห้ามกลับมาเป็น SQL/DDL ที่ execute ได้ใน plan-api.html
         "FROM workflow_tasks",
         "INTO workflow_tasks",
         "FROM workflow_instances",
@@ -5958,8 +6055,8 @@ def lldd_database_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
                 ["fgi_impact_processes", "workflow_generation_status", "duplicate workflow flag on fgi_impact_stores"],
             ],
         ),
-        h(1, "5. Executable DDL — 18 Tables (+ fcs_qssi_score ที่ reuse = 19 ในโครง · + schema reference)"),
-        p("หัวข้อ 5.1-5.4 เป็น PostgreSQL DDL ของ **19 ตารางในโครง SBPGI** เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น ใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม"),
+        h(1, "5. Executable DDL — 19 ตาราง (+ fcs_qssi_score ที่ reuse ของระบบ SBP เดิม = 20 ในโครง · + schema reference)"),
+        p("หัวข้อ 5.1-5.4 เป็น PostgreSQL DDL ของ **20 ตารางในโครง SBPGI** เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น ใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม"),
         *[
             block
             for section_title, sql_text in database_ddl_sections()
@@ -5983,8 +6080,9 @@ def lldd_database_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
             [
                 ["Create document", "docNo sequence lock (document_running_numbers) + compensation_documents + initializeWorkflow/addPreApprover ของ @srm/glb-workflow", "any fail rollback all; no partial document · engine อยู่คนละ DataSource จึงต้องมี compensating action เมื่อ commit ฝั่งใดฝั่งหนึ่งไม่ผ่าน"],
                 ["Submit action", "ตรวจ current_approver จาก workflow_transaction + insert consideration_logs + eventWorkflow (เดิน state) + update compensation_documents", "duplicate/current approver conflict returns 409"],
+                ["Auto-assign (SDD 46/48)", "06 เห็นควรไม่ชดเชย -> ปิดเอกสารและตั้งงานเดือนถัดไปให้เจ้าของงานคนเดิม ผ่าน addPreApprover · 06 หยุดชดเชยฯ -> เอกสารกลับเข้า GET /tasks ของ 06 ทันที (stoppedReopenable)", "เดือนที่กดเห็นควรไม่ชดเชย ต้องไม่พบเอกสารใน GET /tasks ของ 06 · เดือนถัดไปต้องพบพร้อม assignee คนเดิม"],
                 ["Attachment upload", "metadata insert only after storage write and AV clean; objectKey never exposed", "storage/scan fail leaves no CLEAN metadata"],
-                ["Job 4 IAS request", "durable file (fsync + atomic rename + checksum) ก่อน transaction W→P + outbox READY", "file fail คง W; DB fail rollback W→P/outbox; SFTP fail retry transaction เดิม"],
+                ["Job 4 IAS request", "durable file (fsync + atomic rename + checksum) ก่อน transaction W→P + outbox READY", "file fail คง W; DB fail rollback W→P/outbox; S3 upload fail retry transaction เดิม"],
                 ["Interface ACK/purge", "ACK compare-and-set บน transaction เดิม; purge เฉพาะ terminal + purge_after + non-held", "pending/failed/unacked/legal-hold ห้ามลบ"],
                 ["Master mutation", "update entity ใน transaction เดียว", "mutation fail ต้อง rollback ครบ"],
             ],
@@ -6010,7 +6108,7 @@ def lldd_database_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
                 ["docNo", "year/running_no/doc_no generated in DB transaction; concurrency test 20 parallel requests"],
                 ["Workflow", "no active 04/05 accounting sections/statuses; ไม่มีตาราง workflow ของ SBPGI — ตรวจว่า state/route ถูกลงทะเบียนที่ engine ครบ"],
                 ["Security", "no secrets in mas_param/backend config; storage objectKey not returned to FE"],
-                ["External interface", "credential/certificate/private key อยู่ Secret Manager ผ่าน secretRef; TLS verify-full หรือ SFTP strict known_hosts; ทดสอบ rotation และ invalid certificate/host key"],
+                ["External interface", "credential/certificate/private key อยู่ Secret Manager ผ่าน secretRef; TLS verify-full (HTTPS สำหรับ EAI S3 · AMQPS สำหรับ RabbitMQ ของ STA); ทดสอบ rotation และ invalid certificate/host key"],
                 ["Tracking retention", "backfill typed FK/purge_after, validate FK, dry-run count แล้ว purge เฉพาะ ACKED/COMPLETED เป็น batch; reconcile count ก่อน/หลัง"],
                 ["Data integrity", "FK/check constraints enabled before SIT; reject legacy invalid enum values"],
                 ["Performance", "list/report/inbox queries explain plan uses indexes above"],
@@ -6335,7 +6433,10 @@ TOBE_ITEMS: list[tuple[str, str, str, list[str]]] = [
         "Step 1.0 — เจ้าหน้าที่ SBP DSA **คีย์ข้อมูลร้านเปิดกระทบเอง** เพื่อให้ระบบคำนวณและ Adjust ยอดชดเชย",
         "Step 1.1 — ฝ่าย SBP DSA ตรวจสอบตัวเลข + ปุ่มพิจารณา 4 ปุ่ม (เห็นควรไม่ชดเชย · หยุดชดเชย · หน่วยงานส่งเสริมฯ SBP · เจ้าหน้าที่ SBP DSA)",
         "**เปิดเรื่องซ้ำได้เองโดยไม่ต้องเปิด SR** — สาขาที่เคยถูกปฏิเสธ/หยุดชดเชย เปิดใหม่ได้ในเดือนเดียวกันหรือเดือนถัดไป",
-        "**auto-assign เจ้าของงานคนเดิม** เมื่อเป็นเคสต่อเนื่อง และเมื่อฝ่าย SBP DSA คลิก เห็นควรไม่ชดเชย",
+        "**auto-assign เจ้าของงานคนเดิม (สไลด์ 48)** — (ก) เคสต่อเนื่อง ระบบส่งงานให้เจ้าหน้าที่ SBP DSA **คนเดิม** อัตโนมัติ · (ข) ฝ่าย SBP DSA คลิก **เห็นควรไม่ชดเชย** เอกสารจบและ**ไม่แสดง**ในหน้ารอดำเนินการของ 06 ในเดือนนั้น แล้ว**เดือนถัดไป**ระบบดึงเข้ามาใหม่พร้อมเจ้าของงานคนเดิม",
+        "**หยุดชดเชยประกันรายได้ (สไลด์ 46 ข้อ 1.9)** — เอกสารกลับมาแสดงใน**หน้ารอดำเนินการของ ฝ่าย SBP DSA (06) ทันทีในเดือนนั้น** ให้พิจารณาคำขอชดเชยอีกครั้งได้เอง · เปิดเอกสารแล้วเห็นข้อมูลเดิมครบ + แผงพิจารณาชุดเดียวกับสถานะ รอฝ่าย SBP DSA ดำเนินการ · บทบาทอื่นไม่เห็น",
+        "**หลังพัฒนาไม่ต้องเปิด SR เพื่อลบข้อมูล (สไลด์ 46 · Note)** — กระบวนการลบ/แก้ข้อมูลเอกสารที่เดิมต้องเปิด SR (มี log ที่ TransectionDeleteStore พร้อม SRNumber) ต้องทำได้ในระบบ · **ยังไม่ระบุขอบเขต ต้องเคาะว่าอนุญาตให้ลบอะไรได้บ้างและใครลบได้**",
+        "**แก้ไขครอบคลุมเอกสารทุก Type (สไลด์ 46 · Note)** — การเปลี่ยนแปลงข้อ TB-1 มีผลกับเอกสารทุกประเภทร้าน ไม่จำกัดเฉพาะ Type ใด Type หนึ่ง",
         "ยอดชดเชย 0: เดือน 1-3 คลิก หน่วยงานส่งเสริมธุรกิจ SBP · เดือน 4 คลิก หยุดชดเชยรายได้",
         "สิทธิ์การมองเห็น — เจ้าหน้าที่/ฝ่าย SBP DSA ดูรายละเอียดได้ทุกสาขา ไม่จำกัดเฉพาะงานที่รับผิดชอบ",
     ]),
@@ -6354,8 +6455,8 @@ TOBE_ITEMS: list[tuple[str, str, str, list[str]]] = [
         "ปุ่ม ค้นหาข้อมูล · Export Excel · เคลียร์ค่าเริ่มต้น · Preview Report · Export CSV to Batch",
     ]),
     ("TB-0", "งานฐานรากที่ To-Be ทุกข้อใช้ร่วมกัน (ไม่ได้ระบุเป็นข้อใน SDD)", "—", [
-        "โครงฐานข้อมูลเป้าหมาย 19 ตาราง + migration/cutover จากระบบเดิม",
-        "pipeline FGI/FCS ที่ป้อนข้อมูลให้ทุก To-Be (Job 1-6, Job 10 และงาน interface/อีเมล)",
+        "โครงฐานข้อมูลเป้าหมาย 20 ตาราง + migration/cutover จากระบบเดิม",
+        "pipeline FGI/FCS ที่ป้อนข้อมูลให้ทุก To-Be (Job 2-6, Job 10 และงาน interface/อีเมล)",
         "สัญญากลาง API/FE (envelope · error · auth · pagination) และ shell ของ portal",
         "master ที่ SBPGI ดูแลเอง (ปัจจัยภายนอก · แบรนด์คู่แข่ง) และงานทดสอบ/ส่งมอบ",
     ]),
@@ -6382,7 +6483,6 @@ TOBE_ALLOCATION: dict[str, dict[str, int]] = {
     "BE/LLDD-BE-Data-Migration-Cutover": {"TB-0": 100},
     "BE/LLDD-BE-API-Common-Contracts": {"TB-0": 100},
     "BE/LLDD-BE-Job-Batch-Email-SRM": {"TB-0": 100},
-    "BE/Jobs/LLDD-BE-Job-1-ImportQSSI": {"TB-0": 100},
     "BE/Jobs/LLDD-BE-Job-2-ImportImpactStore": {"TB-0": 100},
     "BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor": {"TB-0": 100},
     "BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS": {"TB-0": 100},

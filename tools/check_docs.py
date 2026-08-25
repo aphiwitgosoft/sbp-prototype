@@ -24,8 +24,8 @@ import glob
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 
-CANON_TABLES = 19          # 18 CREATE + fcs_qssi_score ที่ reuse ของเดิม
-CANON_DOCS = 41           # 38 topic + LLDD-API + LLDD-Database + LLDD-To-Be
+CANON_TABLES = 20          # 19 CREATE + fcs_qssi_score ที่ reuse ของเดิม (รับ F8+F1 เข้าโครง 2026-08-21)
+CANON_DOCS = 40           # 37 topic + LLDD-API + LLDD-Database + LLDD-To-Be (ตัด Job 1 ImportQSSI 2026-08-24)
 CANON_ENDPOINTS = 29       # 6 กลุ่ม (เอกสาร 11 · Lookup 2 · Master 8 · รายงาน 2 · Workflow 3 · Interface 3)            # 38 topic + LLDD-API + LLDD-Database
 ENGINE_API = {
     "initializeWorkflow", "eventWorkflow", "getPermissionEvents", "getHistory",
@@ -196,13 +196,23 @@ _api = read("api.md")
 _start = _api.index("## รายการ endpoint ทั้ง 6 กลุ่ม")
 _end = _api.index("## กฎธุรกิจสำคัญที่ผูกกับ API", _start)
 _scope = _api[_start:_end]
-_n = 0
-for verbs, paths in re.findall(r"^\|\s*((?:GET|POST|PUT|PATCH|DELETE)(?:/(?:GET|POST|PUT|PATCH|DELETE))*)\s*\|([^|]+)\|", _scope, re.M):
-    # แถวรวม: หลาย verb = จับคู่ verb กับ path ตามลำดับ (GET/POST/PUT/DELETE | /a · /a/{code} = 4 เส้น)
-    #          verb เดียว + หลาย path = นับตาม path
-    _v = len(verbs.split("/"))
-    _p = len([x for x in paths.split("·") if "`" in x])
-    _n += _v if _v > 1 else _p
+# นับเป็นคู่ (verb, path) ที่เขียนไว้ชัดเจน — เลิกเดาจาก "จำนวน verb ในแถวรวม" ซึ่งอ่านได้หลายแบบ
+_pairs = set()
+for _line in _scope.split("\n"):
+    if not _line.startswith("|"):
+        continue
+    _cells = _line.split("|")
+    # แบบ A (ชัดเจน): VERB `path` เขียนติดกัน — ใช้ได้ทุกคอลัมน์ เช่น "GET `/factors` · POST `/factors`"
+    _explicit = re.findall(r"\b(GET|POST|PUT|PATCH|DELETE)\s+`(/[^`]+)`", _line)
+    if _explicit:
+        _pairs |= set(_explicit)
+        continue
+    # แบบ B (แถวเก่า): คอลัมน์แรกเป็น verb เดียว คอลัมน์ถัดไปเป็น path ใน backtick
+    _m = re.match(r"^\s*(GET|POST|PUT|PATCH|DELETE)\s*$", _cells[1]) if len(_cells) > 2 else None
+    if _m:
+        for _pa in re.findall(r"`(/[^`]+)`", _cells[2]):
+            _pairs.add((_m.group(1), _pa))
+_n = len(_pairs)
 check(f"endpoint ที่ api.md ระบุ (ขยายแถวรวม) = {CANON_ENDPOINTS}",
       [] if _n == CANON_ENDPOINTS else [f"นับได้ {_n} — api.md กับ plan-api.html ไม่ตรงกัน"])
 

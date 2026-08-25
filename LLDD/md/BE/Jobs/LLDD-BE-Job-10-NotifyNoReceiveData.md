@@ -10,7 +10,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **11 ชั่วโมง** = implementation 8 + unit test 3 (30%) |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | Watchdog เฝ้าระวัง ACK ค้าง: งาน safety net ตรวจ interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/interfaces/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน Notification Service กลาง |
+| Objective | Watchdog เฝ้าระวัง ACK ค้าง: งาน safety net ตรวจ interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/interfaces/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน email-lib กลาง (sendEmail) |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -39,20 +39,20 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 10 NotifyNoR
 | --- | --- | --- | --- |
 | กำหนดการรัน (Cron) | 0 07 * * * | แก้ไขได้ | ทุกวัน 07:00; เป็น safety net หลัง STA callback |
 | Pending threshold | >= 1 วัน | แก้ไขได้ | เตือนเมื่อยังไม่มี ACK หลังครบ threshold |
-| data_name ที่เฝ้าดู | COMPENSATE_INIT_I, COMPENSATE_APPROVE_I | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | เฉพาะฝั่ง STA - ไม่เฝ้า dataset ของ BPM |
-| Encoding | UTF-8 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | แทน TIS-620 เดิมตาม Notification Service กลาง |
+| ขอบเขตที่เฝ้าดู | direction = OUT · data_name = COMPENSATE_INIT_I, COMPENSATE_APPROVE_I | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | เฉพาะฝั่ง STA - ไม่เฝ้า dataset ของ BPM |
+| Encoding | UTF-8 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | แทน TIS-620 เดิมตาม email-lib กลาง (sendEmail) |
 
 ### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
 | Input | FGI_CONFIRM_RECEIVE_DATA rows without return_code after the waiting threshold. |
-| Progress | query missing receive data, group by data_name/interface_type, build notification message, send admin mail, close run. |
+| Progress | query missing receive data, group by data_name/direction (To-Be — เดิม Oracle ใช้ interface_type), build notification message, send admin mail, close run. |
 | Output | Notification sent for overdue receive confirmations; run status records grouped counts or no-data success. |
 
 ### 5.90 Job 10 Execution Stages
 
-query missing receive data, group by data_name/interface_type, build notification message, send admin mail, close run.
+query missing receive data, group by data_name/direction (To-Be — เดิม Oracle ใช้ interface_type), build notification message, send admin mail, close run.
 
 | Order | Service step | Repository | Output / failure contract |
 | --- | --- | --- | --- |
@@ -206,9 +206,9 @@ export interface Job10Config {
   cron: string;
   /** Pending threshold — เตือนเมื่อยังไม่มี ACK หลังครบ threshold */
   pendingThreshold: string;
-  /** data_name ที่เฝ้าดู — เฉพาะฝั่ง STA - ไม่เฝ้า dataset ของ BPM */
-  dataName: string;
-  /** Encoding — แทน TIS-620 เดิมตาม Notification Service กลาง */
+  /** ขอบเขตที่เฝ้าดู — เฉพาะฝั่ง STA - ไม่เฝ้า dataset ของ BPM */
+  param3: string;
+  /** Encoding — แทน TIS-620 เดิมตาม email-lib กลาง (sendEmail) */
   encoding: string;
   /** ผู้รับอีเมลเมื่อ job ล้มเหลว — เก็บเป็น string คั่น comma ให้ตรง signature ของ
       `EmailLibService.sendMail({ mailTo })` ที่รับ string ไม่ใช่ string[] */
@@ -222,9 +222,9 @@ export class SbpgiJob10Config implements Job10Config {
   cron = process.env.SBPGI_JOB10_CRON ?? '0 07 * * *';
   cron = process.env.SBPGI_JOB10_CRON ?? '0 07 * * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
   pendingThreshold = process.env.SBPGI_JOB10_PENDING_THRESHOLD ?? '>= 1 วัน'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  dataName = process.env.SBPGI_JOB10_DATA_NAME ?? 'COMPENSATE_INIT_I, COMPENSATE_APPROVE_I'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  param3 = process.env.SBPGI_JOB10_PARAM3 ?? 'direction = OUT · data_name = COMPENSATE_INIT_I, COMPENSATE_APPROVE_I'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   encoding = process.env.SBPGI_JOB10_ENCODING ?? 'UTF-8'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  mailTo = process.env.SBPGI_JOB10_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: Notification Service UTF-8)
+  mailTo = process.env.SBPGI_JOB10_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: email-lib (sendEmail · UTF-8))
 }
 
 // TODO: เพิ่ม SbpgiJob10Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
@@ -289,7 +289,7 @@ export class NotifyNoReceiveDataService {
     return { period: ctx.period, read: 0, written: 0, skipped: 0, rejected: 0 };
   }
 
-  // อ่าน interface_transactions ฝั่ง STA ที่ยังไม่มี ACK และอายุ >= threshold
+  // อ่าน interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold
   async step02Read(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -319,7 +319,7 @@ export class NotifyNoReceiveDataService {
 | ลำดับ | ชนิด | ขั้นตอนจากผัง | Method ที่ต้อง implement | เส้นทาง NO / error |
 | --- | --- | --- | --- | --- |
 | 1 | start | เริ่ม | createState() | - |
-| 2 | process | อ่าน interface_transactions ฝั่ง STA ที่ยังไม่มี ACK และอายุ >= threshold | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 2 | process | อ่าน interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 3 | decision | พบรายการค้าง? | check03Condition() | [end] จบการทำงาน |
 | 4 | io | ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม | step04Notify() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 5 | process | แสดงรายการใน /interfaces/pending-ack | step05Process() | throw JobFailedError เมื่อทำไม่สำเร็จ |
@@ -349,7 +349,7 @@ export class NotifyNoReceiveDataJob {
     // TODO: state ถือ counter (read/written/skipped/rejected) และค่าจาก job10Config
     const state = this.service.createState(ctx);
     try {
-      // ขั้นที่ 2: อ่าน interface_transactions ฝั่ง STA ที่ยังไม่มี ACK และอายุ >= threshold
+      // ขั้นที่ 2: อ่าน interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold
       await this.service.step02Read(state);
       // ขั้นที่ 3 (decision): พบรายการค้าง?
       const ok03 = await this.service.check03Condition(state);
@@ -506,7 +506,7 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 10 เดิมคือ Notification Service UTF-8 — ย้ายมาเป็น env SBPGI_JOB10_MAIL_TO
+    // TODO: ผู้รับของ Job 10 เดิมคือ email-lib (sendEmail · UTF-8) — ย้ายมาเป็น env SBPGI_JOB10_MAIL_TO
     const recipients = (process.env.SBPGI_JOB10_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
@@ -550,7 +550,7 @@ export class JobFailureNotifier {
 | Step | Description |
 | --- | --- |
 | 1 | เริ่ม |
-| 2 | อ่าน interface_transactions ฝั่ง STA ที่ยังไม่มี ACK และอายุ >= threshold |
+| 2 | อ่าน interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold |
 | 3 | พบรายการค้าง? \| No: จบการทำงาน |
 | 4 | ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม (ผู้รับตาม backend config) |
 | 5 | แสดงรายการใน /interfaces/pending-ack (POST /interfaces/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ) |

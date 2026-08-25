@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | **21 ชั่วโมง** = implementation 16 + unit test 5 (30%) |
+| Estimate | **29 ชั่วโมง** = implementation 22 + unit test 7 (30%) |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
 | Objective | เปิด Workflow ภายใน: คัดรายการที่ผ่าน Gen Flow Gate แล้วเรียก Workflow Engine ภายในผ่าน POST /api/v1/workflows/instances แทน K2 REST StartInstance; เกณฑ์ W/Y/N เดิมยังคงใช้สำหรับ reconcile |
@@ -17,9 +17,9 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 ## 2. Screen / Functional Scope
 
 - Main class/script: workflow.service.startFromImpact / (internal scheduler / service token)
-- Phase: B
+- Phase: D
 - Output: sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SBPGI)
-- Estimate: 16 ชั่วโมง
+- Estimate: 22 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
 - Depends on LLDD-BE-API-Workflow-Instances; Job 8b เรียก Workflow Engine ภายในและไม่ duplicate Gen Flow Gate logic
@@ -44,13 +44,56 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 8b StartInte
 | Branch Type ผ่าน Gate | FAM, FB1, FC1, FB2, FVB, FVC | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | นอกเซ็ตหรือระยะทางเกินเกณฑ์ให้ตั้ง N |
 | เงื่อนไข Gate อื่น | workflow_generation_status=W · DV ไม่ว่าง · juristic ต่างกัน · sales_status in {Y,N} | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | DV หาย, นิติบุคคลเดียวกัน หรือ growth ไม่ถึงเกณฑ์เป็น N; distance/juristic/growth/sales status ที่ยังไม่มีค่าเท่านั้นจึงคง W |
 
+## 4a. จุดเข้า flow ตามประเภทเคส — Job 8b เป็นคนตัดสินว่าเปิด workflow ที่ state ไหน
+
+ผัง To-Be 12/02/2026 กำหนดว่า **เอกสารไม่ได้เริ่มที่ state 06 เสมอไป** · Job 8b ต้องอ่านข้อมูลรอบชดเชย (คอลัมน์ที่รับเข้าโครง 2026-08-21 · gap F8) แล้วเลือก state เริ่มต้นก่อนเรียก initializeWorkflow/addPreApprover
+
+| เคส | เงื่อนไขที่ Job 8b ต้องอ่าน | เปิด workflow ที่ state | ผู้รับผิดชอบขั้นแรก |
+| --- | --- | --- | --- |
+| ① เปิดเรื่องใหม่ | fgi_impact_processes.last_compensate_seq_no = 1 | **06** | group ฝ่าย SBP DSA (ปกติ) |
+| ② ชดเชยต่อเนื่อง | last_compensate_seq_no > 1 และ flag_action = 'Y' | **08** (Auto Approve — ข้ามขั้น 06) | **เจ้าหน้าที่ SBP DSA คนเดิม** ผ่าน addPreApprover |
+| ③ ยอดชดเชย 0 ติดกัน <= 3 เดือน | COALESCE(adjust_amount, forecast_amount) = 0 ใน fgi_impact_compensations งวดที่ 1-3 | **01** (ข้ามทั้ง 06 และ 08) | group หน่วยงานส่งเสริมธุรกิจฯ |
+| ③ ยอดชดเชย 0 ติดกัน > 3 เดือน | งวดที่ 4 ขึ้นไป | **ไม่เปิด workflow** — ปิดเอกสารเป็นเสร็จสิ้น (หยุดชดเชยประกันรายได้) | - |
+
+**ที่มาของค่าที่ใช้ตัดสิน** — ทุกค่าอยู่ในโซน A (FGI/FCS) ที่ batch เขียนไว้ก่อนเปิดเอกสาร ไม่ใช่ค่าที่ Job 8b คำนวณเอง
+
+| ค่าที่ใช้ในเงื่อนไข | ระบบเดิม (Oracle FCS_FRN) | ตาราง SBPGI | คอลัมน์ · ชนิด | เขียนโดย |
+| --- | --- | --- | --- | --- |
+| `LAST_COMPENSATE_SEQ_NO` | `FGI_IMPACT_STORE_ON_PROCESS.LAST_COMPENSATE_SEQ_NO` | `fgi_impact_processes` | `last_compensate_seq_no` · INTEGER | Job 2 — `ImportJdbc` (`SEQ_NO + 1` เมื่อเป็นรอบต่อเนื่อง) |
+| `FLAG_ACTION` | `FGI_IMPACT_STORE_ON_PROCESS.FLAG_ACTION` (โดเมน Y/W/N) | `fgi_impact_processes` | `flag_action` · CHAR(1) | Job 2 เขียน `'Y'` · Job 6 ปิดรอบ `Y->N` / พัก `Y->W` |
+| `DATASOURCE` | `FGI_IMPACT_STORE_ON_PROCESS.DATASOURCE` (เดิมมี ALM/STA/HRS) | `fgi_impact_processes` | `datasource` · VARCHAR(5) | Job 2/3 = `ALM` · Job 5 = `STA` · **`PRO` เชิงรุก / `REA` เชิงรับ = คนคีย์** (รหัสใหม่ 2026-08-24) |
+| `forecast` | `FGI_IMPACT_STORE_COMPENSATE.COMPENSATE_FORECAST` | `fgi_impact_compensations` | `forecast_amount` · NUMERIC(14,2) | Job 5 — นำเข้ายอดจาก IAS/MIS |
+| `adjust` | `FGI_IMPACT_STORE_COMPENSATE.COMPENSATE_ADJUST` | `fgi_impact_compensations` | `adjust_amount` · NUMERIC(14,2) | เจ้าหน้าที่ SBP DSA ปรับยอดในเอกสาร |
+
+> ยอดที่ใช้จริงทุกที่คือ `COALESCE(adjust_amount, forecast_amount)` — ค่าที่คนปรับชนะค่าที่ระบบคำนวณเสมอ  
+> `datasource` ไม่ได้เปลี่ยน state เริ่มต้นของ workflow — มันบอกแค่ว่า **ใครคีย์ข้อมูล** (`ALM`/`STA` = ระบบส่งงานมาให้เลือก · `PRO`/`REA` = เจ้าของงานคีย์เอง · SDD GI สไลด์ 17 · 47 · 49)  
+> ⚠️ ทั้งสองตารางเป็น gap **F8/F1** ที่เพิ่งรับเข้าโครงเมื่อ 2026-08-21 — ต้อง migrate ครบก่อน Job 8b จึงทำงานตามผัง To-Be ได้
+
+```sql
+-- ตัดสินประเภทเคสก่อนเปิด workflow (Job 8b)
+SELECT p.last_compensate_seq_no,
+       p.flag_action,
+       (SELECT COUNT(*) FROM fgi_impact_compensations c
+         WHERE c.impact_process_id = p.id
+           AND COALESCE(c.adjust_amount, c.forecast_amount) = 0
+           AND c.compensate_seq = p.last_compensate_seq) AS zero_months
+FROM fgi_impact_processes p
+WHERE p.id = :impactProcessId;
+-- zero_months >= 4            -> ไม่เปิด workflow · ปิดเอกสารเป็น 99 พร้อม result = หยุดชดเชยประกันรายได้
+-- zero_months BETWEEN 1 AND 3 -> initializeWorkflow แล้ว addPreApprover ที่ state 01
+-- seq_no > 1 AND flag_action='Y' -> state 08 + approver = เจ้าหน้าที่คนเดิม (จาก consideration_logs รอบก่อน)
+-- นอกนั้น                      -> state 06 ตามปกติ
+```
+
+**ทุกเส้นทางอัตโนมัติต้องบันทึกลง `consideration_logs` ด้วยผู้ดำเนินการ `SYSTEM`** เพื่อไม่ให้ timeline ของเอกสารขาดช่วง · รายละเอียดกติกาเต็มดู `workflow.md` หัวข้อจุดเข้า flow ตามประเภทเคส
+
 ## 4b. ข้อค้างที่ต้องยืนยันก่อนเขียนโค้ด (workflow engine)
 
 ✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
 | ข้อค้าง | ข้อเท็จจริงที่ตรวจแล้ว | ผลต่อ Job 8b | สถานะ |
 | --- | --- | --- | --- |
-| DP-1 · `referenceId` ของ workflow ✅ ปิดแล้ว 2026-08-17 | ระบบเดิม (cooperation-request · inform-evaluate) ใช้ surrogate id ทุกจุด | ค่าที่ส่งเข้า initialize และคีย์ที่ใช้เช็คซ้ำเปลี่ยนตามข้อนี้ | ยังไม่ตัดสิน — `SBP/SBPGI-vs-existing-system.md` §4 |
+| DP-1 · `referenceId` ของ workflow ✅ ปิดแล้ว 2026-08-17 | ระบบเดิม (cooperation-request · inform-evaluate) ใช้ surrogate id ทุกจุด | ค่าที่ส่งเข้า initialize และคีย์ที่ใช้เช็คซ้ำเปลี่ยนตามข้อนี้ | ✅ ปิดแล้ว 2026-08-17 — เลือก surrogate id (`compensation_documents.id` ส่งเป็น string) ตามที่ cooperation-request / inform-evaluate ทำจริง |
 | DP-2 · `sps_store.workflow_transaction` ไม่มี PK/index | 19,283 แถว · ไม่มีทั้ง PK และ index (`SBP/db-schema-sps_store.md`) ต่างจาก `sps_auth` ที่มี PK ปกติ | กันซ้ำด้วย DB constraint ไม่ได้ ต้องกันที่ application · query ตาม reference_id เป็น seq-scan | ยังไม่ตัดสิน — ขอ sign-off เพิ่ม index กับทีมเจ้าของ library หรือยอมรับสภาพ |
 | schema ของ engine | engine ตัวจริงมี **13 ตาราง** อยู่ใน schema **`sps_store`** — `sps_auth` มีชื่อตารางชุดเดียวกันแต่เป็นสำเนาของ auth-backend คนละเวอร์ชัน | ทุก SQL ในเอกสารนี้ต้อง prefix `sps_store.` | ข้อเท็จจริง ไม่ใช่ข้อค้าง |
 
@@ -222,6 +265,9 @@ export async function runLlddBeJob8BStartinternalworkflow(ctx, services) {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
+| fgi_impact_processes | R | last_compensate_seq_no + flag_action — ใช้ตัดสินจุดเข้า flow (คอลัมน์กลุ่ม F8) |
+| fgi_impact_compensations | R | COALESCE(adjust_amount, forecast_amount) = 0 กี่งวดติดกัน — เกณฑ์ยอด 0 (ตาราง F1) |
+| impacted_stores | R | opt_dv_user_id สำหรับ group อีเมลราย DV และเงื่อนไข Gate (ต้องไม่ว่าง) |
 | fgi_impact_stores | R/W | อ่าน candidate + เขียน W/Y/N |
 | compensation_documents | R/W | ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency |
 | workflow_transaction (@srm/glb-workflow · sps_store) | W | เปิด instance ผ่าน engine — ห้าม insert ตรง |
@@ -289,7 +335,7 @@ export class SbpgiJob8BConfig implements Job8BConfig {
   growthRate = process.env.SBPGI_JOB8B_GROWTH_RATE ?? 'growth_rate_diff <= -10'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   branchTypeGate = process.env.SBPGI_JOB8B_BRANCH_TYPE_GATE ?? 'FAM, FB1, FC1, FB2, FVB, FVC'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   gate = process.env.SBPGI_JOB8B_GATE ?? 'workflow_generation_status=W · DV ไม่ว่าง · juristic ต่างกัน · sales_status in {Y,N}'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  mailTo = process.env.SBPGI_JOB8B_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: อีเมลราย DV ผ่าน Notification Service)
+  mailTo = process.env.SBPGI_JOB8B_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: อีเมลราย DV ผ่าน email-lib กลาง (sendEmail))
 }
 
 // TODO: เพิ่ม SbpgiJob8BConfig ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
@@ -369,23 +415,28 @@ export class StartInternalWorkflowService {
     return true; // TODO: เงื่อนไขจริงตามผัง
   }
 
-  // POST /api/v1/workflows/instances
-  async step05Workflow(state: JobState, manager?: EntityManager): Promise<void> {
+  // ตัดสินจุดเข้า flow จากประเภทเคส
+  async step05Read(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
-  // เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state 06)
-  async step06Insert(state: JobState, manager?: EntityManager): Promise<void> {
+  // POST /api/v1/workflows/instances
+  async step06Workflow(state: JobState, manager?: EntityManager): Promise<void> {
+    // TODO: implement
+  }
+
+  // เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state ตามประเภทเคส)
+  async step07Insert(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
   // workflow_generation_status = Y
-  async step07Workflow(state: JobState, manager?: EntityManager): Promise<void> {
+  async step08Workflow(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
-  // ส่งอีเมลสรุปราย DV ผ่าน Notification Service
-  async step08Notify(state: JobState, manager?: EntityManager): Promise<void> {
+  // ส่งอีเมลสรุปราย DV ผ่าน email-lib กลาง (sendEmail)
+  async step09Notify(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
@@ -402,11 +453,12 @@ export class StartInternalWorkflowService {
 | 2 | process | อ่าน candidate ที่มี compensation_documents แล้วและ workflow_generation_status=W | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 3 | decision | พบเงื่อนไขไม่ผ่านถาวร? | check03Condition() | [branch] ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ |
 | 4 | decision | ข้อมูล Gate พร้อมครบ? | check04Condition() | [branch] distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W |
-| 5 | io | POST /api/v1/workflows/instances | step05Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 6 | process | เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state 06) | step06Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 7 | process | workflow_generation_status = Y | step07Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 8 | io | ส่งอีเมลสรุปราย DV ผ่าน Notification Service | step08Notify() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 9 | end | จบ | summarize() | - |
+| 5 | process | ตัดสินจุดเข้า flow จากประเภทเคส | step05Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 6 | io | POST /api/v1/workflows/instances | step06Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 7 | process | เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state ตามประเภทเคส) | step07Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 8 | process | workflow_generation_status = Y | step08Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 9 | io | ส่งอีเมลสรุปราย DV ผ่าน email-lib กลาง (sendEmail) | step09Notify() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 10 | end | จบ | summarize() | - |
 
 ```ts
 // src/batch/sbpgi/job-8b-start-internal-workflow/job-8b-start-internal-workflow.job.ts
@@ -450,17 +502,19 @@ export class StartInternalWorkflowJob {
         //   ถ้าเป็น 'ตั้งค่าแล้วไปต่อ' -> เรียก service ตั้งค่าสถานะ แล้วเดินขั้นถัดไป (ห้าม return)
         //   ถ้าเป็น 'คงสถานะเดิม/ไม่เปิดงาน' -> หยุดเฉพาะ record นี้ ห้ามไหลไปขั้นถัดไป
       }
+      // ขั้นที่ 5: ตัดสินจุดเข้า flow จากประเภทเคส · TODO: อ่าน fgi_impact_processes.last_compensate_seq_no + flag_action และจำนวนงวดที่ COALESCE(adjust_amount, forecast_amount) = 0 จาก fgi_impact_compensations → เปิดที่ state 06 (เปิดเรื่องใหม่) · 08 (ชดเชยต่อเนื่อง) · 01 (ยอด 0 ไม่เกิน 3 เดือน) หรือปิดเอกสารเป็นหยุดชดเชย (ยอด 0 เดือนที่ 4) — ดู LLDD Job 8b ข้อ 4a
+      await this.service.step05Read(state);
       // === transaction boundary === TODO: DB transaction ครอบ create instance/task + update W/Y/N
       await this.dataSource.transaction(async (manager: EntityManager) => {
-        // ขั้นที่ 5: POST /api/v1/workflows/instances · TODO: service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST
-        await this.service.step05Workflow(state, manager);
-        // ขั้นที่ 6: เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state 06) · TODO: engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3
-        await this.service.step06Insert(state, manager);
+        // ขั้นที่ 6: POST /api/v1/workflows/instances · TODO: service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST
+        await this.service.step06Workflow(state, manager);
+        // ขั้นที่ 7: เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state ตามประเภทเคส) · TODO: engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3
+        await this.service.step07Insert(state, manager);
       });
-      // ขั้นที่ 7: workflow_generation_status = Y · TODO: เปิด workflow สำเร็จ
-      await this.service.step07Workflow(state);
-      // ขั้นที่ 8: ส่งอีเมลสรุปราย DV ผ่าน Notification Service
-      await this.service.step08Notify(state);
+      // ขั้นที่ 8: workflow_generation_status = Y · TODO: เปิด workflow สำเร็จ
+      await this.service.step08Workflow(state);
+      // ขั้นที่ 9: ส่งอีเมลสรุปราย DV ผ่าน email-lib กลาง (sendEmail)
+      await this.service.step09Notify(state);
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
       // TODO: error path ของ Job 8b — ห้ามเรียก K2 REST endpoint legacy; เก็บไว้เป็น reference migration เท่านั้น
@@ -536,6 +590,9 @@ repository ของ Job 8b ประกาศเป็น factory provider (`{p
 
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
+| fgi_impact_processes | R | last_compensate_seq_no + flag_action — ใช้ตัดสินจุดเข้า flow (คอลัมน์กลุ่ม F8) | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| fgi_impact_compensations | R | COALESCE(adjust_amount, forecast_amount) = 0 กี่งวดติดกัน — เกณฑ์ยอด 0 (ตาราง F1) | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| impacted_stores | R | opt_dv_user_id สำหรับ group อีเมลราย DV และเงื่อนไข Gate (ต้องไม่ว่าง) | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | fgi_impact_stores | R/W | อ่าน candidate + เขียน W/Y/N | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | compensation_documents | R/W | ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | workflow_transaction (@srm/glb-workflow · sps_store) | W | เปิด instance ผ่าน engine — ห้าม insert ตรง | เขียน SQL ตรงผ่าน DATA_SOURCE |
@@ -546,6 +603,30 @@ repository ของ Job 8b ประกาศเป็น factory provider (`{p
 -- Job 8b StartInternalWorkflow — query หลักที่ต้อง implement
 -- TODO: ทุก statement รันผ่าน DATA_SOURCE (SELECT ไป slave, write ไป master) และ
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
+
+-- [R] fgi_impact_processes : last_compensate_seq_no + flag_action — ใช้ตัดสินจุดเข้า flow (คอลัมน์กลุ่ม F8)
+-- TODO: เติมเฉพาะคอลัมน์ที่ job ใช้จริง (ห้าม SELECT *) และตรวจว่ามี index รองรับ WHERE นี้
+SELECT /* TODO: columns */
+  FROM fgi_impact_processes
+ WHERE impact_year = $1 AND impact_month = $2  -- TODO: ยืนยันชื่อคอลัมน์งวดกับ database.md
+ ORDER BY /* TODO: คีย์ที่ทำให้ลำดับคงที่ */
+ LIMIT $3 OFFSET $4;  -- TODO: อ่านเป็น chunk กัน memory บวม
+
+-- [R] fgi_impact_compensations : COALESCE(adjust_amount, forecast_amount) = 0 กี่งวดติดกัน — เกณฑ์ยอด 0 (ตาราง F1)
+-- TODO: เติมเฉพาะคอลัมน์ที่ job ใช้จริง (ห้าม SELECT *) และตรวจว่ามี index รองรับ WHERE นี้
+SELECT /* TODO: columns */
+  FROM fgi_impact_compensations
+ WHERE impact_year = $1 AND impact_month = $2  -- TODO: ยืนยันชื่อคอลัมน์งวดกับ database.md
+ ORDER BY /* TODO: คีย์ที่ทำให้ลำดับคงที่ */
+ LIMIT $3 OFFSET $4;  -- TODO: อ่านเป็น chunk กัน memory บวม
+
+-- [R] impacted_stores : opt_dv_user_id สำหรับ group อีเมลราย DV และเงื่อนไข Gate (ต้องไม่ว่าง)
+-- TODO: เติมเฉพาะคอลัมน์ที่ job ใช้จริง (ห้าม SELECT *) และตรวจว่ามี index รองรับ WHERE นี้
+SELECT /* TODO: columns */
+  FROM impacted_stores
+ WHERE impact_year = $1 AND impact_month = $2  -- TODO: ยืนยันชื่อคอลัมน์งวดกับ database.md
+ ORDER BY /* TODO: คีย์ที่ทำให้ลำดับคงที่ */
+ LIMIT $3 OFFSET $4;  -- TODO: อ่านเป็น chunk กัน memory บวม
 
 -- [R/W] fgi_impact_stores : อ่าน candidate + เขียน W/Y/N
 -- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
@@ -558,40 +639,6 @@ UPDATE fgi_impact_stores
    SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
        updated_at = NOW(), updated_by = 'JOB8B'
  WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
-
--- [R/W] compensation_documents : ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency
--- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
-SELECT /* TODO: PK + คอลัมน์ที่ต้องใช้ */
-  FROM compensation_documents
- WHERE /* TODO: เงื่อนไขงวด/สถานะที่ job นี้คัดแถว */ 1 = 1
-   FOR UPDATE SKIP LOCKED;
-
-UPDATE compensation_documents
-   SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
-       updated_at = NOW(), updated_by = 'JOB8B'
- WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
-
--- [W] workflow_transaction (@srm/glb-workflow · sps_store) : เปิด instance ผ่าน engine — ห้าม insert ตรง
--- TODO: เติมคอลัมน์ payload จริงจาก database.md
-INSERT INTO workflow_transaction (@srm/glb-workflow · sps_store)
-  (/* TODO: business key + payload + created_by, created_at */)
-VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
--- ⚠️ ตารางของ @srm/glb-workflow — SBPGI ห้าม INSERT/UPDATE ตรง ต้องเรียกผ่าน engine เท่านั้น
---    (workflow_transaction ไม่มี PK และไม่มี index เลย · ข้อค้าง DP-2)
-ON CONFLICT (/* ไม่ใช้ — ลบ statement นี้ทิ้งแล้วเรียก engine แทน */)
-DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
-       updated_at = NOW(), updated_by = 'JOB8B';
-
--- [W] workflow_approver (@srm/glb-workflow · sps_store) : prepared approver ขั้นแรก state 06 — ผ่าน engine
--- TODO: เติมคอลัมน์ payload จริงจาก database.md
-INSERT INTO workflow_approver (@srm/glb-workflow · sps_store)
-  (/* TODO: business key + payload + created_by, created_at */)
-VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
--- ⚠️ ตารางของ @srm/glb-workflow — SBPGI ห้าม INSERT/UPDATE ตรง ต้องเรียกผ่าน engine เท่านั้น
---    (workflow_transaction ไม่มี PK และไม่มี index เลย · ข้อค้าง DP-2)
-ON CONFLICT (/* ไม่ใช้ — ลบ statement นี้ทิ้งแล้วเรียก engine แทน */)
-DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
-       updated_at = NOW(), updated_by = 'JOB8B';
 ```
 
 #### 9.6 การแจ้งเตือนและการรันซ้ำของ Job 8b
@@ -617,7 +664,7 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 8b เดิมคือ อีเมลราย DV ผ่าน Notification Service — ย้ายมาเป็น env SBPGI_JOB8B_MAIL_TO
+    // TODO: ผู้รับของ Job 8b เดิมคือ อีเมลราย DV ผ่าน email-lib กลาง (sendEmail) — ย้ายมาเป็น env SBPGI_JOB8B_MAIL_TO
     const recipients = (process.env.SBPGI_JOB8B_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
@@ -664,11 +711,12 @@ export class JobFailureNotifier {
 | 2 | อ่าน candidate ที่มี compensation_documents แล้วและ workflow_generation_status=W |
 | 3 | พบเงื่อนไขไม่ผ่านถาวร? \| No: ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ (branch type, distance, missing DV, same juristic หรือ growth > -10 -> N) |
 | 4 | ข้อมูล Gate พร้อมครบ? \| No: distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W (คง W เฉพาะข้อมูลต้นทางที่ยังรอเติมเพื่อให้ rerun ได้) |
-| 5 | POST /api/v1/workflows/instances (service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST) |
-| 6 | เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state 06) (engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3) |
-| 7 | workflow_generation_status = Y (เปิด workflow สำเร็จ) |
-| 8 | ส่งอีเมลสรุปราย DV ผ่าน Notification Service |
-| 9 | จบ |
+| 5 | ตัดสินจุดเข้า flow จากประเภทเคส (อ่าน fgi_impact_processes.last_compensate_seq_no + flag_action และจำนวนงวดที่ COALESCE(adjust_amount, forecast_amount) = 0 จาก fgi_impact_compensations → เปิดที่ state 06 (เปิดเรื่องใหม่) · 08 (ชดเชยต่อเนื่อง) · 01 (ยอด 0 ไม่เกิน 3 เดือน) หรือปิดเอกสารเป็นหยุดชดเชย (ยอด 0 เดือนที่ 4) — ดู LLDD Job 8b ข้อ 4a) |
+| 6 | POST /api/v1/workflows/instances (service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST) |
+| 7 | เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state ตามประเภทเคส) (engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3) |
+| 8 | workflow_generation_status = Y (เปิด workflow สำเร็จ) |
+| 9 | ส่งอีเมลสรุปราย DV ผ่าน email-lib กลาง (sendEmail) |
+| 10 | จบ |
 
 ## 11. Acceptance Criteria
 
@@ -691,7 +739,7 @@ export class JobFailureNotifier {
 
 ## 13. Unit Test Scope
 
-**5 ชั่วโมง** (30% ของ implementation 16 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+**7 ชั่วโมง** (30% ของ implementation 22 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
 
 หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
 

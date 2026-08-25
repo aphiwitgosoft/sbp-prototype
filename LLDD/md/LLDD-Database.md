@@ -48,7 +48,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | A | fgi_impact_sales_summaries | id | impact_process_id | sales summary/growth rate |
 | A | sales_transactions | id | sales_summary_id | daily sales 4 windows x 15 days |
 | A | fgi_impact_competitors | id | impact_process_id | ALLMAP competitors |
-| A | fcs_qssi_score | id | store_id + category_code + period | QSSI scores — ⚠️ REUSE ตารางเดิมของ sps_store (เอกพจน์ · 23,958,780 แถว · มี import pipeline POST /performance/import-qssi ใช้งานอยู่) ห้ามสร้างใหม่ และห้ามใช้ชื่อพหูพจน์ fcs_qssi_scores |
+| A | fcs_qssi_score | id | store_id + category + month + year | QSSI scores — ⚠️ REUSE ตารางเดิมของ sps_store (เอกพจน์ · 23,958,780 แถว · มี import pipeline POST /performance/import-qssi ใช้งานอยู่) ห้ามสร้างใหม่ และห้ามใช้ชื่อพหูพจน์ fcs_qssi_scores |
 | A | interface_transactions | id | impact_process_id/sales_summary_id/doc_no | interface tracking replacement |
 | B | compensation_documents | doc_no | impact_process_id, status_code, current_section_code | document header/core |
 | B | document_new_stores | id | doc_no, new_store_code | new stores, compensate percent and amount |
@@ -76,9 +76,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | interface_transactions | id, acked_at | tracking_id/receive_date (API aliases only) |
 | fgi_impact_processes | workflow_generation_status | duplicate workflow flag on fgi_impact_stores |
 
-## 5. Executable DDL — 18 Tables (+ fcs_qssi_score ที่ reuse = 19 ในโครง · + schema reference)
+## 5. Executable DDL — 19 ตาราง (+ fcs_qssi_score ที่ reuse ของระบบ SBP เดิม = 20 ในโครง · + schema reference)
 
-หัวข้อ 5.1-5.4 เป็น PostgreSQL DDL ของ **19 ตารางในโครง SBPGI** เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น ใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม
+หัวข้อ 5.1-5.4 เป็น PostgreSQL DDL ของ **20 ตารางในโครง SBPGI** เรียงตาม dependency พร้อม PK, typed FK, unique/check constraint และ index ที่จำเป็น ใช้เป็น migration baseline ได้โดยไม่ต้องเดา column เพิ่มเติม
 
 ### 5.1 Zone C — Shared Master, RBAC, Config and Operations
 
@@ -157,9 +157,46 @@ CREATE TABLE fgi_impact_processes (
     process_status VARCHAR(30) NOT NULL, action_status VARCHAR(30),
     last_compensation_amount NUMERIC(14,2),
     workflow_generation_status CHAR(1) NOT NULL DEFAULT 'W' CHECK (workflow_generation_status IN ('W','Y','N')),
+    -- ⬇ รับเข้าโครงตามมติ 2026-08-21 (gap F8) — ขนจาก ORA FGI_IMPACT_STORE_ON_PROCESS
+    --   ใช้ตัดสิน "ประเภทเคส" ที่จุดเข้า flow และ auto-assign เจ้าของงานคนเดิม
+    last_compensate_seq INTEGER NOT NULL DEFAULT 1,        -- รอบชดเชย (ขึ้นใหม่เมื่อเปิดเรื่องใหม่)
+    last_compensate_seq_no INTEGER NOT NULL DEFAULT 1,     -- ครั้งที่ในรอบ · > 1 = เคสต่อเนื่อง
+    start_compensate_month CHAR(7), start_compensate_year INTEGER,   -- กรอบงวดที่ชดเชยได้ (เริ่ม)
+    end_compensate_month CHAR(7),   end_compensate_year INTEGER,     -- กรอบงวดที่ชดเชยได้ (จบ)
+    -- ORA FGI_IMPACT_STORE_ON_PROCESS.FLAG_ACTION — โดเมนจริง Y/W/N (active = IN ('Y','W'))
+    -- Job 6 ปิดรอบด้วย Y->N และพัก/รอจ่ายด้วย Y->W · CHECK เดิมที่รับแค่ ('Y','N') จะทำ migration ล้มทันทีที่เจอแถว 'W'
+    flag_action CHAR(1) NOT NULL DEFAULT 'Y' CHECK (flag_action IN ('Y','W','N')),
+    -- ช่องทางต้นทางของเคส (SDD GI สไลด์ 17 · 3 แหล่ง) — ORA FGI_IMPACT_STORE_ON_PROCESS.DATASOURCE
+    --   ALM = ระบบดึงจาก ALLMAP (Job 2/3)   · STA = ระบบดึงจาก Franchise Statement (Job 5)   [ทั้งคู่มีในระบบเดิม]
+    --   PRO = เชิงรุก  — OPT ประชุมพิจารณาแล้วเปิดเรื่อง (ต้นทางเอกสารอยู่ที่ All Memo)      [ใหม่ 2026-08-24]
+    --   REA = เชิงรับ  — หน่วยงานอื่นแจ้งเข้ามาว่าร้านถูกกระทบ                                [ใหม่ 2026-08-24]
+    -- ผลต่อ flow (SDD สไลด์ 47 · 49): ALM/STA = งานเข้ามาให้ จนท. SBP DSA เลือก · PRO/REA = เจ้าของงานต้องคีย์เอง
+    -- ไม่ใส่ CHECK constraint — ระบบเดิมยังมีค่า HRS (HR feed) ปนอยู่ ถ้าบังคับโดเมนแคบจะ migrate ไม่ผ่าน
+    datasource VARCHAR(5),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_impact_process UNIQUE (impacted_store_code, impact_month)
+);
+
+-- รับเข้าโครงตามมติ 2026-08-21 (gap F1) — ขนจาก ORA FGI_IMPACT_STORE_COMPENSATE
+-- ยอดชดเชย "รายงวด" ที่เกิดก่อนมีเอกสาร · จำเป็นเพื่อนับ "ยอด 0 ติดกันกี่เดือน" (กติกาเดือน 1-3 / เดือนที่ 4)
+CREATE TABLE fgi_impact_compensations (
+    id BIGSERIAL PRIMARY KEY,
+    impact_process_id BIGINT NOT NULL REFERENCES fgi_impact_processes(id),
+    impacted_store_code VARCHAR(5) NOT NULL REFERENCES impacted_stores(store_code),
+    compensate_seq INTEGER NOT NULL,        -- รอบ (คู่กับ fgi_impact_processes.last_compensate_seq)
+    compensate_seq_no INTEGER NOT NULL,     -- ครั้งที่ในรอบ
+    compensate_month CHAR(7) NOT NULL,      -- งวดที่ชดเชย 'YYYY-MM' (ค.ศ.)
+    compensate_year INTEGER NOT NULL,
+    forecast_amount NUMERIC(14,2),          -- ระบบคำนวณ
+    adjust_amount NUMERIC(14,2),            -- คนปรับ · ยอดที่ใช้จริง = COALESCE(adjust_amount, forecast_amount)
+    compensate_status VARCHAR(5),
+    compensate_comment VARCHAR(4000),
+    stmt_month INTEGER, stmt_year INTEGER,  -- งวด statement
+    approve_date DATE,
+    created_by VARCHAR(100), created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(100), updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_impact_compensation UNIQUE (impact_process_id, compensate_month)
 );
 
 CREATE TABLE fgi_impact_stores (
@@ -220,6 +257,8 @@ CREATE TABLE interface_transactions (
     id BIGSERIAL PRIMARY KEY,
     -- run_id เป็น correlation id ของรอบรัน (มาจาก application log) — ไม่มี FK เพราะ job_run_histories ถูกตัด 2026-08-06
     run_id VARCHAR(50),
+    -- direction: OUT = ส่งไฟล์ออกไประบบภายนอก (Job 4 → IAS · Job 6 → STA) · IN = รับไฟล์/ACK กลับ (Job 5 · callback ของ STA)
+    --            INTERNAL = การส่งต่อ*ภายในระบบเดียวกัน* ที่มาแทนไฟล์ EAI เดิม (Jobs 7/8/9 เขียน DB ตรง — ไม่มี ACK ให้รอ จึงจบที่ status = COMPLETED)
     data_name VARCHAR(80) NOT NULL, direction VARCHAR(10) NOT NULL CHECK (direction IN ('IN','OUT','INTERNAL')),
     status VARCHAR(20) NOT NULL CHECK (status IN ('READY','SENT','ACKED','COMPLETED','FAILED','FAILED_RETRY')),
     impact_process_id BIGINT REFERENCES fgi_impact_processes(id),
@@ -387,6 +426,12 @@ CREATE INDEX idx_interface_impact_process ON interface_transactions(impact_proce
 CREATE INDEX idx_interface_sales_summary ON interface_transactions(sales_summary_id);
 CREATE INDEX idx_interface_doc ON interface_transactions(doc_no);
 
+-- index รองรับ FK ที่ PostgreSQL ไม่สร้างให้เอง (เพิ่ม 2026-08-24 หลังตรวจ FK coverage)
+CREATE INDEX idx_impact_store_process ON fgi_impact_stores(impact_process_id);
+CREATE INDEX idx_document_impacted_store ON compensation_documents(impacted_store_code);
+CREATE INDEX idx_compensation_history_doc ON compensation_histories(ref_doc_no);
+CREATE INDEX idx_impact_compensation_store ON fgi_impact_compensations(impacted_store_code);
+
 -- Retention worker: delete only terminal, expired, non-held rows in bounded batches.
 WITH purge_candidates AS (
     SELECT id FROM interface_transactions
@@ -421,8 +466,9 @@ RETURNING i.id, i.data_name, i.business_key;
 | --- | --- | --- |
 | Create document | docNo sequence lock (document_running_numbers) + compensation_documents + initializeWorkflow/addPreApprover ของ @srm/glb-workflow | any fail rollback all; no partial document · engine อยู่คนละ DataSource จึงต้องมี compensating action เมื่อ commit ฝั่งใดฝั่งหนึ่งไม่ผ่าน |
 | Submit action | ตรวจ current_approver จาก workflow_transaction + insert consideration_logs + eventWorkflow (เดิน state) + update compensation_documents | duplicate/current approver conflict returns 409 |
+| Auto-assign (SDD 46/48) | 06 เห็นควรไม่ชดเชย -> ปิดเอกสารและตั้งงานเดือนถัดไปให้เจ้าของงานคนเดิม ผ่าน addPreApprover · 06 หยุดชดเชยฯ -> เอกสารกลับเข้า GET /tasks ของ 06 ทันที (stoppedReopenable) | เดือนที่กดเห็นควรไม่ชดเชย ต้องไม่พบเอกสารใน GET /tasks ของ 06 · เดือนถัดไปต้องพบพร้อม assignee คนเดิม |
 | Attachment upload | metadata insert only after storage write and AV clean; objectKey never exposed | storage/scan fail leaves no CLEAN metadata |
-| Job 4 IAS request | durable file (fsync + atomic rename + checksum) ก่อน transaction W→P + outbox READY | file fail คง W; DB fail rollback W→P/outbox; SFTP fail retry transaction เดิม |
+| Job 4 IAS request | durable file (fsync + atomic rename + checksum) ก่อน transaction W→P + outbox READY | file fail คง W; DB fail rollback W→P/outbox; S3 upload fail retry transaction เดิม |
 | Interface ACK/purge | ACK compare-and-set บน transaction เดิม; purge เฉพาะ terminal + purge_after + non-held | pending/failed/unacked/legal-hold ห้ามลบ |
 | Master mutation | update entity ใน transaction เดียว | mutation fail ต้อง rollback ครบ |
 
@@ -446,7 +492,7 @@ RETURNING i.id, i.data_name, i.business_key;
 | docNo | year/running_no/doc_no generated in DB transaction; concurrency test 20 parallel requests |
 | Workflow | no active 04/05 accounting sections/statuses; ไม่มีตาราง workflow ของ SBPGI — ตรวจว่า state/route ถูกลงทะเบียนที่ engine ครบ |
 | Security | no secrets in mas_param/backend config; storage objectKey not returned to FE |
-| External interface | credential/certificate/private key อยู่ Secret Manager ผ่าน secretRef; TLS verify-full หรือ SFTP strict known_hosts; ทดสอบ rotation และ invalid certificate/host key |
+| External interface | credential/certificate/private key อยู่ Secret Manager ผ่าน secretRef; TLS verify-full (HTTPS สำหรับ EAI S3 · AMQPS สำหรับ RabbitMQ ของ STA); ทดสอบ rotation และ invalid certificate/host key |
 | Tracking retention | backfill typed FK/purge_after, validate FK, dry-run count แล้ว purge เฉพาะ ACKED/COMPLETED เป็น batch; reconcile count ก่อน/หลัง |
 | Data integrity | FK/check constraints enabled before SIT; reject legacy invalid enum values |
 | Performance | list/report/inbox queries explain plan uses indexes above |
@@ -464,18 +510,17 @@ RETURNING i.id, i.data_name, i.business_key;
 | LLDD-BE-API-Lookup | impacted_stores (SBPGI) / store · mas_store · sevenshop (SBP เดิม)(R), workflow_status / workflow_state (@srm/glb-workflow · sps_store)(R), business_user (SBP เดิม)(R), auth-backend groups / menus / permissions (ระบบเดิม)(R) |
 | LLDD-BE-API-Report-and-Master-Data | compensation_documents(R), compensation_histories(R), consideration_logs(R), auth-backend group + scope (business_user_group) / prepared approver ของ @srm/glb-workflow(R) |
 | LLDD-BE-Job-Batch-Email-SRM | (backend config: config file/env)(R), (application log แบบ structured)(W), interface_transactions(R/W), email_template (SBP)(R) |
-| LLDD-BE-Database-Structure | 19 target tables (โซน A/B/C)(W), workflow engine 13 ตาราง (sps_store)(R), fcs_qssi_score (sps_store)(R), mas_param / common_code / business_user / email_template (sps_store)(R) |
-| LLDD-BE-Data-Migration-Cutover | ORA FCS_FRN (FGI_IMPACT_* · FCS_QSSI_SCORE · FGI_CONFIRM_RECEIVE_DATA)(R), MSSQL CPA_FRN_FGI (CompensateFlow · CompensateHistory · ImpactProfile · ImpactCostDetail · RunningNumber)(R), 19 target tables (โซน A/B/C)(W), workflow_transaction / workflow_approver / workflow_history (sps_store)(W) |
+| LLDD-BE-Database-Structure | 20 target tables (โซน A/B/C)(W), workflow engine 13 ตาราง (sps_store)(R), fcs_qssi_score (sps_store)(R), mas_param / common_code / business_user / email_template (sps_store)(R) |
+| LLDD-BE-Data-Migration-Cutover | ORA FCS_FRN (FGI_IMPACT_* · FCS_QSSI_SCORE · FGI_CONFIRM_RECEIVE_DATA)(R), MSSQL CPA_FRN_FGI (CompensateFlow · CompensateHistory · ImpactProfile · ImpactCostDetail · RunningNumber)(R), 20 target tables (โซน A/B/C)(W), workflow_transaction / workflow_approver / workflow_history (sps_store)(W) |
 | LLDD-BE-Integration-SBP-Platform | mas_param (sps_store)(R), common_code / common_code_type (sps_store)(R), email_template (sps_store)(R), email_sent (sps_store)(W (โดย email-lib)) |
 | LLDD-BE-Workflow-Engine-Definition | workflow / workflow_version / workflow_state / workflow_status / workflow_event / workflow_route (sps_store)(R + W ครั้งเดียวตอน setup), workflow_group / workflow_group_map (sps_store)(R + W ครั้งเดียวตอน setup), workflow_transaction / workflow_history / workflow_approver (sps_store)(R (เขียนผ่าน lib เท่านั้น)), workflow_part / workflow_part_display (sps_store)(R + W ครั้งเดียวตอน setup) |
-| LLDD-BE-Job-1-ImportQSSI | fcs_qssi_score(W) |
 | LLDD-BE-Job-2-ImportImpactStore | fgi_impact_stores(W) |
 | LLDD-BE-Job-3-ImportImpactCompetitor | fgi_impact_competitors(W) |
 | LLDD-BE-Job-4-PrepareImpactStoreToIAS | fgi_impact_stores(R/W), fgi_impact_sales_summaries(R/W), interface_transactions(W), (application log แบบ structured)(W) |
 | LLDD-BE-Job-5-ImportImpactSaleFromIAS | sales_transactions(W), fgi_impact_sales_summaries(R/W), interface_transactions(W) |
 | LLDD-BE-Job-6-ExportImpactStoreToFS | fgi_impact_processes(R/W), fgi_impact_stores(R/W), fcs_qssi_score(R), interface_transactions(W) |
 | LLDD-BE-Job-7-SyncCompetitorToDocument | fgi_impact_competitors(R), compensation_documents(R), document_competitors(W), interface_transactions(W) |
-| LLDD-BE-Job-8-CreateCompensationDocument | fgi_impact_stores(R/W), fgi_impact_processes(R), compensation_documents(W), interface_transactions(W) |
-| LLDD-BE-Job-8b-StartInternalWorkflow | fgi_impact_stores(R/W), compensation_documents(R/W), workflow_transaction (@srm/glb-workflow · sps_store)(W), workflow_approver (@srm/glb-workflow · sps_store)(W) |
-| LLDD-BE-Job-9-SyncNewStoreToDocument | fgi_impact_stores(R), compensation_documents(R), document_new_stores(W), interface_transactions(W) |
+| LLDD-BE-Job-8-CreateCompensationDocument | document_running_numbers(R/W), fgi_impact_stores(R/W), fgi_impact_processes(R), compensation_documents(W) |
+| LLDD-BE-Job-8b-StartInternalWorkflow | fgi_impact_processes(R), fgi_impact_compensations(R), impacted_stores(R), fgi_impact_stores(R/W) |
+| LLDD-BE-Job-9-SyncNewStoreToDocument | fgi_impact_compensations(R), fgi_impact_stores(R), compensation_documents(R), document_new_stores(W) |
 | LLDD-BE-Job-10-NotifyNoReceiveData | interface_transactions(R), email_template (ระบบ SBP เดิม)(R), email_sent (ระบบ SBP เดิม)(W (โดย @gosoft-sbp/email-lib)), (backend config)(R) |

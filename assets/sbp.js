@@ -12,7 +12,6 @@
     cog:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-3c0-.4 0-.8-.1-1.2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-2-1.2L14.5 2h-5l-.4 2.6a7.6 7.6 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 2 1.2l.4 2.6h5l.4-2.6a7.6 7.6 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2Z',
     chevR:'m9 6 6 6-6 6', chevD:'m6 9 6 6 6-6', chevU:'m6 15 6-6 6 6',
     home:'M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5',
-    recruit:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6',
     statement:'M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6H9ZM14 3v6h6M8 13h8M8 17h6',
     shield:'M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3ZM9 12l2 2 4-4',
     users:'M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11',
@@ -510,53 +509,12 @@
   function clean(s) { return (s || '').replace(/\s+/g, ' ').trim(); }
 
   // grounded entity schemas (key, label, optional col = table header it maps to, type, options, wide)
-  // ⚠️ SCHEMAS 8 ตัวต่อไปนี้เป็น "ซาก" จากหน้าจอที่ถูกลบไปแล้ว — ไม่มีหน้าไหนใช้ data-entity นี้อีก:
-  //    abnormal (k2-list-abnormal ลบ 2026-08-06) · applicant/contract/employee/grade/store/survey
-  //    (application*.html / recruitment.html ลบก่อนหน้านั้น) · aduser
-  //    เก็บไว้เพื่อไม่ให้กระทบของเดิม แต่ **ห้ามใช้เป็นต้นแบบของหน้าใหม่** — ให้ดู competitor/factor แทน
-  //    (COMPETITOR_MASTER / FACTOR_MASTER ยังใช้อยู่จริงผ่าน optionsFrom ไม่ใช่ซาก)
+  /* SCHEMAS 8 ชุดที่เป็นซากจากหน้าจอที่ถูกลบ (applicant · aduser · store · employee · contract ·
+     grade · survey · abnormal) ถูกลบทิ้งเมื่อ 2026-08-24 — กู้จาก git ได้ถ้าหน้าจอกลับมา
+     เหลือ 6 ชุดที่มีตารางใช้จริง + 2 ชุด MASTER ที่ competitor/factordoc เรียกผ่าน optionsFrom
+     ⚠️ ชุดภาคในทุก schema ต้องเป็น 13 รหัสเดียวกันทั้งระบบ (mas_zone · GET /store/all-regions)
+        ชุดเก่า 8 ค่าของ SRS ที่มี RE/RS เลิกใช้แล้ว — ห้ามนำกลับมา (ดู database.md · workflow.md) */
   var SCHEMAS = {
-    applicant: [
-      { key: 'code', label: 'รหัสผู้สมัคร', col: 'รหัสผู้สมัคร' },
-      { key: 'title', label: 'คำนำหน้า', type: 'select', options: ['นาย', 'นาง', 'นางสาว'] },
-      { key: 'name', label: 'ชื่อ - สกุล', col: 'ชื่อ-สกุล', wide: true },
-      { key: 'idcard', label: 'เลขบัตรประชาชน', col: 'เลขบัตรประชาชน' },
-      { key: 'stype', label: 'ประเภทร้าน', col: 'ประเภทร้าน', type: 'select', options: ['OP (ลงทุนเอง)', 'SBP (บริษัทร่วมลงทุน)'] },
-      { key: 'region', label: 'ภาค', type: 'select', options: ['RN', 'RS', 'RE', 'RW'] },
-      { key: 'tel', label: 'เบอร์โทรศัพท์' },
-      { key: 'email', label: 'อีเมล' },
-      { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' },
-      { key: 'date', label: 'วันที่สมัคร', col: 'วันที่สมัคร', type: 'date' }
-    ],
-    aduser: [
-      { key: 'empid', label: 'Employee ID (EMP_ID)', col: 'Employee ID' },
-      { key: 'title', label: 'คำนำหน้า (TITLE_NAME_TH)', type: 'select', options: ['นาย', 'นาง', 'นางสาว'] },
-      { key: 'name', label: 'ชื่อ - สกุล (FIRST/LAST_NAME_TH)', col: 'ชื่อ-สกุล', wide: true },
-      { key: 'idcard', label: 'เลขบัตรประชาชน (ID_CARD)' },
-      { key: 'pos', label: 'ตำแหน่ง (POSITION_NAME)', col: 'ตำแหน่ง' },
-      { key: 'store', label: 'รหัสสาขา (STORE_ID)', col: 'สาขา' },
-      { key: 'etype', label: 'ประเภทพนักงาน (EMP_TYPE)', type: 'select', options: ['Full-time', 'Part-time'] },
-      { key: 'domain', label: 'Domain (DOMAIN_AD)', col: 'Domain' },
-      { key: 'status', label: 'สถานะ AD', col: 'สถานะ AD', type: 'status' }
-    ],
-    store: [
-      { key: 'sid', label: 'รหัสร้าน (STORE_ID)', col: 'รหัสร้าน' },
-      { key: 'sname', label: 'ชื่อร้าน (STORE_NAME)', col: 'ชื่อร้าน', wide: true },
-      { key: 'prov', label: 'จังหวัด', col: 'จังหวัด' },
-      { key: 'amphur', label: 'อำเภอ/เขต' },
-      { key: 'stype', label: 'ประเภท (STORE_TYPE)', col: 'ประเภท', type: 'select', options: ['OP', 'SBP'] },
-      { key: 'avg', label: 'ยอดขายเฉลี่ย/เดือน (บาท)', col: 'ยอดขายเฉลี่ย/เดือน (บาท)' },
-      { key: 'qssi', label: 'QSSI', col: 'QSSI' }
-    ],
-    employee: [
-      { key: 'eid', label: 'รหัสพนักงาน (EMP_ID)', col: 'รหัสพนักงาน' },
-      { key: 'name', label: 'ชื่อ - สกุล', col: 'ชื่อ-สกุล', wide: true },
-      { key: 'store', label: 'สาขา (STORE_ID)', col: 'สาขา' },
-      { key: 'pos', label: 'ตำแหน่ง (POSITION_NAME)', col: 'ตำแหน่ง' },
-      { key: 'shift', label: 'กะ', col: 'กะ', type: 'select', options: ['เช้า', 'บ่าย', 'ดึก'] },
-      { key: 'etype', label: 'ประเภทพนักงาน (EMP_TYPE)', type: 'select', options: ['Full-time', 'Part-time (P/T)'] },
-      { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' }
-    ],
     role: [
       { key: 'code', label: 'รหัส Role (role_code)', col: 'Code' },
       { key: 'name', label: 'ชื่อ Role (role_name)', col: 'Role', wide: true },
@@ -566,7 +524,7 @@
       { key: 'name', label: 'ชื่อผู้ปฏิบัติงาน (employee_name)', col: 'ชื่อผู้ปฏิบัติงาน', wide: true },
       { key: 'email', label: 'E-Mail (employee_email)', col: 'E-Mail', wide: true },
       { key: 'position', label: 'ชื่อตำแหน่ง (section_code)', col: 'ชื่อตำแหน่ง', type: 'select', options: ['ฝ่าย SBP DSA', 'เจ้าหน้าที่ SBP DSA', 'ส่งเสริมธุรกิจพันธมิตรฯ', 'GM ส่งเสริมธุรกิจฯ', 'ผู้บริหารสำนักบริหาร SBP (AVP)'] },
-      { key: 'zone', label: 'ภาคที่รับผิดชอบ (zone_code)', col: 'ภาคที่รับผิดชอบ', type: 'select', options: ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS', '-'] }
+      { key: 'zone', label: 'ภาคที่รับผิดชอบ (zone_code)', col: 'ภาคที่รับผิดชอบ', type: 'select', options: ['BE', 'BS', 'NEU', 'REU', 'RSU', 'BG', 'BW', 'RC', 'RN', 'BN', 'NEL', 'REL', 'RSL', '-'] }
     ],
     /* master ปัจจัยภายนอก — จัดการที่หน้า k2-factors.html (ตาราง external_factors)
        เพิ่ม/แก้ที่นั่นแล้ว dropdown "ปัจจัยอื่นๆ" ในหน้าเอกสารต้องเปลี่ยนตาม */
@@ -604,45 +562,6 @@
       { key: 'end', label: 'วันที่สิ้นสุด', col: 'วันที่สิ้นสุด', type: 'date' },
       { key: 'remark', label: 'รายละเอียดเพิ่มเติม', col: 'รายละเอียดเพิ่มเติม', wide: true }
     ],
-    contract: [
-      { key: 'sid', label: 'รหัสสาขา (STORE_ID)', col: 'รหัสสาขา' },
-      { key: 'sname', label: 'ชื่อสาขา / คู่ค้า', col: 'ชื่อสาขา', wide: true },
-      { key: 'ccode', label: 'เลขที่สัญญา (ContractCode)', col: 'เลขที่สัญญา' },
-      { key: 'cstart', label: 'วันเริ่มสัญญา', col: 'วันเริ่มสัญญา' },
-      { key: 'cend', label: 'วันหมดอายุสัญญา (EndContractDate)', col: 'วันหมดอายุ' },
-      { key: 'prob', label: 'สถานะทดลองงาน (Probation)', col: 'ทดลองงาน', type: 'select', options: ['อยู่ระหว่างทดลองงาน', 'ผ่านทดลองงาน', 'ไม่ผ่าน'] },
-      { key: 'invest', label: 'เงินลงทุน/ค่าธรรมเนียม (บาท)', col: 'เงินลงทุน (บาท)' },
-      { key: 'goodwill', label: 'ค่า Goodwill (GoodwillFee)' },
-      { key: 'guarantee', label: 'ค่าประกันความเสียหาย (DamageGuaranteeFee)' },
-      { key: 'status', label: 'สถานะสัญญา', col: 'สถานะ', type: 'status' }
-    ],
-    grade: [
-      { key: 'sid', label: 'รหัสสาขา (STORE_ID)', col: 'รหัสสาขา' },
-      { key: 'sname', label: 'ชื่อสาขา', col: 'ชื่อสาขา', wide: true },
-      { key: 'round', label: 'รอบประเมิน (evalMonth/Year)', col: 'รอบประเมิน' },
-      { key: 'grade', label: 'เกรด (grade)', col: 'เกรด', type: 'select', options: ['A', 'B', 'C', 'D'] },
-      { key: 'point', label: 'คะแนนรวม % (totalPointPercent)', col: 'คะแนน (%)' },
-      { key: 'bank', label: 'เลขบัญชีธนาคาร (bankAccount)', col: 'บัญชีธนาคาร' },
-      { key: 'bankname', label: 'ธนาคาร (bankName)', type: 'select', options: ['ธ.กสิกรไทย', 'ธ.ไทยพาณิชย์', 'ธ.กรุงเทพ', 'ธ.กรุงไทย'] },
-      { key: 'ias', label: 'สถานะส่ง IAS', col: 'สถานะส่ง IAS', type: 'status' }
-    ],
-    survey: [
-      { key: 'sid', label: 'รหัสแบบสอบถาม', col: 'รหัสแบบสอบถาม' },
-      { key: 'sname', label: 'ชื่อแบบสอบถาม', col: 'ชื่อแบบสอบถาม', wide: true },
-      { key: 'store', label: 'สาขา (Map to Store)', col: 'สาขา' },
-      { key: 'resp', label: 'ผู้ตอบ (Participant)', col: 'ผู้ตอบ' },
-      { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' },
-      { key: 'date', label: 'วันที่', col: 'วันที่', type: 'date' }
-    ],
-    abnormal: [
-      { key: 'docno', label: 'เลขที่เอกสาร', col: 'เลขที่เอกสาร' },
-      { key: 'store', label: 'รหัสร้าน', col: 'รหัสร้าน' },
-      { key: 'name', label: 'ชื่อร้านถูกกระทบ', col: 'ชื่อร้าน', wide: true },
-      { key: 'region', label: 'ภาค', col: 'ภาค', type: 'select', options: ['BE', 'BN', 'BS', 'BW', 'RC', 'RE', 'RN', 'RS'] },
-      { key: 'reason', label: 'สาเหตุผิดปกติ', col: 'สาเหตุผิดปกติ', wide: true, type: 'select', options: ['ยอดขายไม่ครบ 60 วัน', 'ข้อมูลร้านไม่ครบ', 'ไม่มีข้อมูลสาขา', 'ระยะห่างผิดปกติ'] },
-      { key: 'assignee', label: 'ผู้รับผิดชอบ (แจกงาน)', col: 'ผู้รับผิดชอบ', type: 'select', options: ['- ยังไม่แจกงาน -', 'นายสมชาย ใจดี', 'นางสาวมาลี ศรีสุข', 'นายวีรพล มั่นคง', 'Phatcharida P.'] },
-      { key: 'status', label: 'สถานะ', col: 'สถานะ', type: 'status' }
-    ]
   };
 
   function tableMeta(table) {
@@ -790,9 +709,6 @@
     if (table.getAttribute('data-entity') === 'k2doc') return openK2Doc(table, row, tableMeta(table));
     var meta = tableMeta(table), fields = resolveFields(table, meta);
     var foot = [footBtn('ปิด', 'btn-ghost', closeModal)];
-    // ⚠️ dead path — data-entity="applicant" ไม่มีหน้าไหนใช้แล้ว (application*.html ถูกลบ)
-    if (table.getAttribute('data-entity') === 'applicant')
-      foot.unshift(footBtn(svg(I.recruit, '', 17) + ' เปิดใบสมัครเต็ม', 'btn-primary', function () { location.href = 'application.html'; }));
     openModal({ title: 'รายละเอียดข้อมูล', sub: subtitleOf(fields, row), icon: I.eye, body: renderView(fields, row, table), footer: foot });
   }
   function openEdit(table, row) {

@@ -17,7 +17,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 ## 2. Screen / Functional Scope
 
 - Main class/script: document.service.createFromImpact / (internal scheduler / service)
-- Phase: B
+- Phase: C
 - Output: compensation_documents (DB)
 - Estimate: 18 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
@@ -68,7 +68,7 @@ update BPM sequence, query eligible impact-store rows, refresh not-OPT data, gen
 | Input identity | Impact-store compensation rows in initial status with workflow sequence values and no prior confirm-receive output. | snapshot input file/business key/period in run record |
 | Output identity | Impact-store workflow create payload/output with generated sequence numbers and duplicate guard. | reconcile input, success, reject and skipped counts |
 | Dedup proof | UNIQUE(impact_process_id) และ UNIQUE(year,running_no); lock running number ต่อปีใน transaction; conflict ต้องคืน/อ้าง doc_no เดิม และยอมให้เลขที่จองกระโดดโดยห้าม reuse | rerun fixture produces no duplicate target business key |
-| Transaction proof | lock เลขรัน + insert document + update process + INTERNAL_DB_WRITE tracking ใน transaction เดียว | injected failure leaves no partial committed state outside documented boundary |
+| Transaction proof | lock เลขรัน + insert document + update process + tracking (direction=INTERNAL) ใน transaction เดียว | injected failure leaves no partial committed state outside documented boundary |
 | Security proof | internal service account เท่านั้น; ห้ามสร้างไฟล์ BPM06001O, ห้าม SFTP และห้ามเก็บ K2 credential | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
@@ -87,7 +87,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | --- | --- |
 | Repository | compensationDocumentRepository |
 | Idempotency / dedup | UNIQUE(impact_process_id) และ UNIQUE(year,running_no); lock running number ต่อปีใน transaction; conflict ต้องคืน/อ้าง doc_no เดิม และยอมให้เลขที่จองกระโดดโดยห้าม reuse |
-| Transaction boundary | lock เลขรัน + insert document + update process + INTERNAL_DB_WRITE tracking ใน transaction เดียว |
+| Transaction boundary | lock เลขรัน + insert document + update process + tracking (direction=INTERNAL) ใน transaction เดียว |
 | Security | internal service account เท่านั้น; ห้ามสร้างไฟล์ BPM06001O, ห้าม SFTP และห้ามเก็บ K2 credential |
 
 #### Input / candidate query
@@ -160,7 +160,7 @@ Job 8 ใช้ running number แบบ monotonic ต่อปี ค.ศ. ช�
 | Rerun พบ impact_process_id เดิมก่อนจองเลข | คืน/ข้ามด้วย doc_no เดิมโดยไม่จอง running_no เพิ่มเมื่อ fast lookup พบข้อมูลแล้ว | duplicateExistingCount + existingDocNo |
 | Concurrent worker ชน ON CONFLICT หลังจองเลข | ยอมให้ running_no ที่จองแล้วกลายเป็น gap; ห้ามลด sequence และห้ามนำเลขกลับมาใช้ | numberGapCount + conflictedImpactProcessId |
 | Conflict path | อ่าน compensation_documents ด้วย impact_process_id แล้วใช้ d.doc_no เดิมสำหรับ tracking/reconcile | tracking.doc_no ตรงกับเอกสารที่ commit อยู่จริง |
-| New document path | insert document และ INTERNAL_DB_WRITE tracking ใน transaction เดียว | createdCount และ trackingCount เพิ่มเท่ากัน |
+| New document path | insert document และ tracking (direction=INTERNAL) ใน transaction เดียว | createdCount และ trackingCount เพิ่มเท่ากัน |
 | Audit/runbook | อธิบายว่าเลขอาจไม่ต่อเนื่องแต่ต้องไม่ซ้ำและตรวจสอบย้อนกลับได้ | ไม่มีขั้นตอน manual reuse หรือ renumber |
 
 ## 6. Button / User Action Mapping
@@ -180,10 +180,11 @@ Job 8 ใช้ running number แบบ monotonic ต่อปี ค.ศ. ช�
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
+| document_running_numbers | R/W | ตัวนับเลขเอกสารรายปี — ออก doc_no YYYY/xxxxx (ค.ศ.) |
 | fgi_impact_stores | R/W | อ่าน candidate และอัปเดตสถานะสร้างเอกสาร |
 | fgi_impact_processes | R | hub รอบชดเชย |
 | compensation_documents | W | สร้างหัวเอกสารแทนไฟล์ BPM06001O |
-| interface_transactions | W | tracking ภายใน type=INTERNAL_DB_WRITE |
+| interface_transactions | W | tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง) |
 
 ## 9. Skeleton Code (Batch Job 8)
 
@@ -243,7 +244,7 @@ export class SbpgiJob8Config implements Job8Config {
   targetTable = process.env.SBPGI_JOB8_TARGET_TABLE ?? 'compensation_documents'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   condition = process.env.SBPGI_JOB8_CONDITION ?? 'สถานะ I + forecast + ยังไม่สร้างเอกสาร'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   param4 = process.env.SBPGI_JOB8_PARAM4 ?? 'ห้ามสร้างไฟล์ BPM06001O, ห้าม SFTP, ห้ามเรียก K2 REST'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  mailTo = process.env.SBPGI_JOB8_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: Notification Service แจ้ง error/pending ตาม config)
+  mailTo = process.env.SBPGI_JOB8_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: email-lib กลาง (sendEmail) แจ้ง error/pending ตาม config)
 }
 
 // TODO: เพิ่ม SbpgiJob8Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
@@ -328,7 +329,7 @@ export class CreateCompensationDocumentService {
     // TODO: implement
   }
 
-  // บันทึก interface_transactions เป็น INTERNAL_DB_WRITE
+  // insert interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED
   async step06WriteFile(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -347,7 +348,7 @@ export class CreateCompensationDocumentService {
 | 3 | decision | ข้อมูลผู้อนุมัติ/ร้าน/ยอดชดเชยครบ? | check03Condition() | [err] บันทึก reject reason / ไม่สร้างเอกสาร |
 | 4 | process | generate doc_no YYYY/xxxxx | step04Document() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 5 | process | insert compensation_documents | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 6 | process | บันทึก interface_transactions เป็น INTERNAL_DB_WRITE | step06WriteFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 6 | process | insert interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED | step06WriteFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 7 | end | จบ - workflow เปิดโดย Job 8b / POST /workflows/instances | summarize() | - |
 
 ```ts
@@ -385,7 +386,7 @@ export class CreateCompensationDocumentJob {
         await this.service.step04Document(state, manager);
         // ขั้นที่ 5: insert compensation_documents · TODO: ผูก impact_process_id และสถานะเริ่มต้น
         await this.service.step05Insert(state, manager);
-        // ขั้นที่ 6: บันทึก interface_transactions เป็น INTERNAL_DB_WRITE · TODO: ไม่สร้างไฟล์ BPM06001O
+        // ขั้นที่ 6: insert interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED · TODO: ไม่สร้างไฟล์ BPM06001O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ
         await this.service.step06WriteFile(state, manager);
       });
       return this.summarize(state, 'SUCCESS', startedAt);
@@ -463,15 +464,28 @@ repository ของ Job 8 ประกาศเป็น factory provider (`{pr
 
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
+| document_running_numbers | R/W | ตัวนับเลขเอกสารรายปี — ออก doc_no YYYY/xxxxx (ค.ศ.) | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | fgi_impact_stores | R/W | อ่าน candidate และอัปเดตสถานะสร้างเอกสาร | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | fgi_impact_processes | R | hub รอบชดเชย | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | compensation_documents | W | สร้างหัวเอกสารแทนไฟล์ BPM06001O | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| interface_transactions | W | tracking ภายใน type=INTERNAL_DB_WRITE | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| interface_transactions | W | tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง) | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 8 CreateCompensationDocument — query หลักที่ต้อง implement
 -- TODO: ทุก statement รันผ่าน DATA_SOURCE (SELECT ไป slave, write ไป master) และ
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
+
+-- [R/W] document_running_numbers : ตัวนับเลขเอกสารรายปี — ออก doc_no YYYY/xxxxx (ค.ศ.)
+-- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
+SELECT /* TODO: PK + คอลัมน์ที่ต้องใช้ */
+  FROM document_running_numbers
+ WHERE /* TODO: เงื่อนไขงวด/สถานะที่ job นี้คัดแถว */ 1 = 1
+   FOR UPDATE SKIP LOCKED;
+
+UPDATE document_running_numbers
+   SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
+       updated_at = NOW(), updated_by = 'JOB8'
+ WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
 
 -- [R/W] fgi_impact_stores : อ่าน candidate และอัปเดตสถานะสร้างเอกสาร
 -- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
@@ -501,16 +515,6 @@ VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้
 ON CONFLICT (source, impacted_store_code, impact_month, new_store_code, round_no)   -- unique key จริงตาม DDL ของ compensation_documents (ห้ามเดา)
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
        updated_at = NOW(), updated_by = 'JOB8';
-
--- [W] interface_transactions : tracking ภายใน type=INTERNAL_DB_WRITE
--- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
-INSERT INTO interface_transactions
-  (run_id, data_name, direction, status, business_key, period_key,
-   file_name, file_checksum, created_at)
-VALUES ($1 /* run_id = correlation id ของรอบรัน Job 8 จาก application log */,
-        $2 /* TODO: data_name ของ Job 8 */, $3 /* IN|OUT|INTERNAL */, 'READY',
-        $4 /* business key ของแถว */, $5 /* YYYYMM */, $6, $7, NOW())
-ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;
 ```
 
 #### 9.6 การแจ้งเตือนและการรันซ้ำของ Job 8
@@ -536,7 +540,7 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 8 เดิมคือ Notification Service แจ้ง error/pending ตาม config — ย้ายมาเป็น env SBPGI_JOB8_MAIL_TO
+    // TODO: ผู้รับของ Job 8 เดิมคือ email-lib กลาง (sendEmail) แจ้ง error/pending ตาม config — ย้ายมาเป็น env SBPGI_JOB8_MAIL_TO
     const recipients = (process.env.SBPGI_JOB8_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
@@ -584,7 +588,7 @@ export class JobFailureNotifier {
 | 3 | ข้อมูลผู้อนุมัติ/ร้าน/ยอดชดเชยครบ? \| No: บันทึก reject reason / ไม่สร้างเอกสาร |
 | 4 | generate doc_no YYYY/xxxxx (running ต่อปี ค.ศ. (มติ 2026-08-06)) |
 | 5 | insert compensation_documents (ผูก impact_process_id และสถานะเริ่มต้น) |
-| 6 | บันทึก interface_transactions เป็น INTERNAL_DB_WRITE (ไม่สร้างไฟล์ BPM06001O) |
+| 6 | insert interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED (ไม่สร้างไฟล์ BPM06001O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ) |
 | 7 | จบ - workflow เปิดโดย Job 8b / POST /workflows/instances |
 
 ## 11. Acceptance Criteria
@@ -620,7 +624,7 @@ export class JobFailureNotifier {
 | business rule | logic | ทุกรอบต้องเขียน application log แบบ structured (เวลา/แถว/ไฟล์/ผล) และ error ต้องส่ง EM-07 |
 | business rule | logic | DB/table mapping ใช้เป็น reference สำหรับ implement Job เท่านั้น ไม่ใช่งานสร้างหน้า Database |
 | business rule | logic | รองรับ rerun rule และ risk note ตาม runbook |
-| `fgi_impact_stores`, `compensation_documents`, `interface_transactions` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| `document_running_numbers`, `fgi_impact_stores`, `compensation_documents` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | runner | idempotency | รันซ้ำด้วย fixture เดิมต้องไม่เกิดแถวซ้ำ (ON CONFLICT / business unique key ทำงาน) |
 | runner | lock | เรียกซ้อนขณะกำลังรัน ต้องถูกปฏิเสธด้วย advisory lock |
 

@@ -17,7 +17,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 ## 2. Screen / Functional Scope
 
 - Main class/script: document.service.syncCompetitors / (internal scheduler / service)
-- Phase: B
+- Phase: C
 - Output: document_competitors (DB)
 - Estimate: 10 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
@@ -67,7 +67,7 @@ query latest competitor rows, skip already-confirmed transactions, create outbou
 | Input identity | FGI_IMPACT_COMPETITOR rows linked to active impact-process records and BPM/export confirmation state. | snapshot input file/business key/period in run record |
 | Output identity | Competitor sync payload/output for downstream workflow; confirm-receive rows prevent duplicate export. | reconcile input, success, reject and skipped counts |
 | Dedup proof | UNIQUE(doc_no,competitor_code); upsert และ prune เฉพาะ source_system=ALLMAP ให้ target ตรง source ปัจจุบันโดยไม่ลบแถว USER | rerun fixture produces no duplicate target business key |
-| Transaction proof | upsert + prune document_competitors และ tracking INTERNAL_DB_WRITE ใน transaction เดียวต่อ doc_no | injected failure leaves no partial committed state outside documented boundary |
+| Transaction proof | upsert + prune document_competitors และ tracking (direction=INTERNAL) ใน transaction เดียวต่อ doc_no | injected failure leaves no partial committed state outside documented boundary |
 | Security proof | service account ภายในมีสิทธิ์ SELECT source และ INSERT/UPDATE target เท่านั้น; ไม่มี external credential | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
@@ -86,7 +86,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | --- | --- |
 | Repository | documentCompetitorRepository |
 | Idempotency / dedup | UNIQUE(doc_no,competitor_code); upsert และ prune เฉพาะ source_system=ALLMAP ให้ target ตรง source ปัจจุบันโดยไม่ลบแถว USER |
-| Transaction boundary | upsert + prune document_competitors และ tracking INTERNAL_DB_WRITE ใน transaction เดียวต่อ doc_no |
+| Transaction boundary | upsert + prune document_competitors และ tracking (direction=INTERNAL) ใน transaction เดียวต่อ doc_no |
 | Security | service account ภายในมีสิทธิ์ SELECT source และ INSERT/UPDATE target เท่านั้น; ไม่มี external credential |
 
 #### Input / candidate query
@@ -171,7 +171,7 @@ export async function runLlddBeJob7Synccompetitortodocument(ctx, services) {
 | fgi_impact_competitors | R | ข้อมูลคู่แข่งล่าสุดจาก Job 3 |
 | compensation_documents | R | หา doc_no จาก impact_process_id |
 | document_competitors | W | บันทึกคู่แข่งเข้าเอกสารโดยตรง |
-| interface_transactions | W | tracking ภายใน type=INTERNAL_DB_WRITE |
+| interface_transactions | W | tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง) |
 
 ## 9. Skeleton Code (Batch Job 7)
 
@@ -228,7 +228,7 @@ export class SbpgiJob7Config implements Job7Config {
   cron = process.env.SBPGI_JOB7_CRON ?? '30 17 7-31 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
   targetTable = process.env.SBPGI_JOB7_TARGET_TABLE ?? 'document_competitors'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   condition = process.env.SBPGI_JOB7_CONDITION ?? 'งวดคู่แข่งล่าสุดต่อร้าน + forecast เริ่มต้น + ยังไม่ sync'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  mailTo = process.env.SBPGI_JOB7_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: ส่ง error ผ่าน Notification Service กลางเมื่อ sync ล้มเหลว)
+  mailTo = process.env.SBPGI_JOB7_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: ส่ง error ผ่าน email-lib กลาง (sendEmail) เมื่อ sync ล้มเหลว)
 }
 
 // TODO: เพิ่ม SbpgiJob7Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
@@ -308,7 +308,7 @@ export class SyncCompetitorToDocumentService {
     // TODO: implement
   }
 
-  // บันทึก interface_transactions เป็น INTERNAL_DB_WRITE
+  // insert interface_transactions: data_name = IMPACT_COMPETITOR · direction = INTERNAL · status = COMPLETED
   async step05WriteFile(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -326,7 +326,7 @@ export class SyncCompetitorToDocumentService {
 | 2 | process | อ่านคู่แข่งงวดล่าสุดต่อร้านจาก fgi_impact_competitors | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 3 | decision | มี compensation_documents ของ impact_process_id แล้ว? | check03Document() | [err] คงสถานะรอ sync / log pending |
 | 4 | process | upsert document_competitors | step04Upsert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 5 | process | บันทึก interface_transactions เป็น INTERNAL_DB_WRITE | step05WriteFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 5 | process | insert interface_transactions: data_name = IMPACT_COMPETITOR · direction = INTERNAL · status = COMPLETED | step05WriteFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | end | จบ | summarize() | - |
 
 ```ts
@@ -362,7 +362,7 @@ export class SyncCompetitorToDocumentJob {
       await this.dataSource.transaction(async (manager: EntityManager) => {
         // ขั้นที่ 4: upsert document_competitors · TODO: source_system=ALM, ผูก doc_no และ competitor_code
         await this.service.step04Upsert(state, manager);
-        // ขั้นที่ 5: บันทึก interface_transactions เป็น INTERNAL_DB_WRITE · TODO: ไม่สร้างไฟล์ BPM06003O
+        // ขั้นที่ 5: insert interface_transactions: data_name = IMPACT_COMPETITOR · direction = INTERNAL · status = COMPLETED · TODO: ไม่สร้างไฟล์ BPM06003O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ
         await this.service.step05WriteFile(state, manager);
       });
       return this.summarize(state, 'SUCCESS', startedAt);
@@ -443,7 +443,7 @@ repository ของ Job 7 ประกาศเป็น factory provider (`{pr
 | fgi_impact_competitors | R | ข้อมูลคู่แข่งล่าสุดจาก Job 3 | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | compensation_documents | R | หา doc_no จาก impact_process_id | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | document_competitors | W | บันทึกคู่แข่งเข้าเอกสารโดยตรง | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| interface_transactions | W | tracking ภายใน type=INTERNAL_DB_WRITE | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| interface_transactions | W | tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง) | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 7 SyncCompetitorToDocument — query หลักที่ต้อง implement
@@ -475,7 +475,7 @@ ON CONFLICT (doc_no, competitor_code)   -- unique key จริงตาม DDL 
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
        updated_at = NOW(), updated_by = 'JOB7';
 
--- [W] interface_transactions : tracking ภายใน type=INTERNAL_DB_WRITE
+-- [W] interface_transactions : tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง)
 -- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
 INSERT INTO interface_transactions
   (run_id, data_name, direction, status, business_key, period_key,
@@ -509,7 +509,7 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 7 เดิมคือ ส่ง error ผ่าน Notification Service กลางเมื่อ sync ล้มเหลว — ย้ายมาเป็น env SBPGI_JOB7_MAIL_TO
+    // TODO: ผู้รับของ Job 7 เดิมคือ ส่ง error ผ่าน email-lib กลาง (sendEmail) เมื่อ sync ล้มเหลว — ย้ายมาเป็น env SBPGI_JOB7_MAIL_TO
     const recipients = (process.env.SBPGI_JOB7_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
@@ -556,7 +556,7 @@ export class JobFailureNotifier {
 | 2 | อ่านคู่แข่งงวดล่าสุดต่อร้านจาก fgi_impact_competitors (dense rank ตามงวดต้นทางของคู่แข่ง) |
 | 3 | มี compensation_documents ของ impact_process_id แล้ว? \| No: คงสถานะรอ sync / log pending |
 | 4 | upsert document_competitors (source_system=ALM, ผูก doc_no และ competitor_code) |
-| 5 | บันทึก interface_transactions เป็น INTERNAL_DB_WRITE (ไม่สร้างไฟล์ BPM06003O) |
+| 5 | insert interface_transactions: data_name = IMPACT_COMPETITOR · direction = INTERNAL · status = COMPLETED (ไม่สร้างไฟล์ BPM06003O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ) |
 | 6 | จบ |
 
 ## 11. Acceptance Criteria

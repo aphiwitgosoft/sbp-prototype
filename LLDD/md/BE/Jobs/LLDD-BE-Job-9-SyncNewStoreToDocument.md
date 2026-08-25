@@ -17,7 +17,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 ## 2. Screen / Functional Scope
 
 - Main class/script: document.service.syncNewStores / (internal scheduler / service)
-- Phase: B
+- Phase: C
 - Output: document_new_stores (DB)
 - Estimate: 11 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
@@ -39,14 +39,14 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 9 SyncNewSto
 | --- | --- | --- | --- |
 | กำหนดการรัน (Cron) | 30 17 7-31 * * | แก้ไขได้ | ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน |
 | Target table | document_new_stores | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | upsert ด้วย doc_no / new_store_code |
-| กฎ Forecast / Percent | NVL(adjust_n, forecast_n) | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ค่า adjust มาก่อน forecast เสมอ; NULL หรือค่านอกช่วง 0..100 ต้อง reject ก่อน upsert |
+| กฎ Forecast / Percent | COALESCE(adjust_amount, forecast_amount) จาก fgi_impact_compensations | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ค่า adjust มาก่อน forecast เสมอ; NULL หรือค่านอกช่วง 0..100 ต้อง reject ก่อน upsert |
 | เงื่อนไขเลือกข้อมูล | ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ |  |
 
 ### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | New-store compensation rows linked to active impact-process records, plus BPM/export SFTP parameters. |
+| Input | New-store compensation rows linked to active impact-process records (writes to document_new_stores directly; no export file). |
 | Progress | query eligible new-store rows, filter process errors, write outbound new-store payload, insert confirm-receive rows, upload/export, backup, notify. |
 | Output | New-store sync payload/output and confirm-receive rows keyed by NEW_STORE_INFO_ID/month/year. |
 
@@ -65,10 +65,10 @@ query eligible new-store rows, filter process errors, write outbound new-store p
 
 | Evidence | Job-specific value | Acceptance |
 | --- | --- | --- |
-| Input identity | New-store compensation rows linked to active impact-process records, plus BPM/export SFTP parameters. | snapshot input file/business key/period in run record |
+| Input identity | New-store compensation rows linked to active impact-process records (writes to document_new_stores directly; no export file). | snapshot input file/business key/period in run record |
 | Output identity | New-store sync payload/output and confirm-receive rows keyed by NEW_STORE_INFO_ID/month/year. | reconcile input, success, reject and skipped counts |
 | Dedup proof | UNIQUE(doc_no,new_store_code); upsert + prune เฉพาะ source_system=FGI ให้ target ตรง impact set ปัจจุบัน โดยไม่ลบแถว USER | rerun fixture produces no duplicate target business key |
-| Transaction proof | validate source percent ต้องไม่เป็น NULL และอยู่ 0..100 ก่อน upsert; จากนั้น upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking INTERNAL_DB_WRITE ใน transaction เดียว; invalid/ไม่ครบให้ rollback ก่อน prune | injected failure leaves no partial committed state outside documented boundary |
+| Transaction proof | validate source percent ต้องไม่เป็น NULL และอยู่ 0..100 ก่อน upsert; จากนั้น upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking (direction=INTERNAL) ใน transaction เดียว; invalid/ไม่ครบให้ rollback ก่อน prune | injected failure leaves no partial committed state outside documented boundary |
 | Security proof | internal service account least privilege; ไม่มี SFTP/BPM credential หรือ editable external endpoint | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
@@ -87,7 +87,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | --- | --- |
 | Repository | documentNewStoreRepository |
 | Idempotency / dedup | UNIQUE(doc_no,new_store_code); upsert + prune เฉพาะ source_system=FGI ให้ target ตรง impact set ปัจจุบัน โดยไม่ลบแถว USER |
-| Transaction boundary | validate source percent ต้องไม่เป็น NULL และอยู่ 0..100 ก่อน upsert; จากนั้น upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking INTERNAL_DB_WRITE ใน transaction เดียว; invalid/ไม่ครบให้ rollback ก่อน prune |
+| Transaction boundary | validate source percent ต้องไม่เป็น NULL และอยู่ 0..100 ก่อน upsert; จากนั้น upsert + prune ร้านของ doc_no, validate ผลรวม 100% และ tracking (direction=INTERNAL) ใน transaction เดียว; invalid/ไม่ครบให้ rollback ก่อน prune |
 | Security | internal service account least privilege; ไม่มี SFTP/BPM credential หรือ editable external endpoint |
 
 #### Input / candidate query
@@ -184,10 +184,11 @@ export async function runLlddBeJob9Syncnewstoretodocument(ctx, services) {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
+| fgi_impact_compensations | R | ยอด forecast_amount / adjust_amount รายงวด — ที่มาของ %ชดเชย (ตาราง F1) |
 | fgi_impact_stores | R | โปรไฟล์ร้านเปิดใหม่และค่า forecast/adjust รายงวด |
 | compensation_documents | R | หา doc_no จาก impact_process_id |
 | document_new_stores | W | บันทึกร้านเปิดใหม่เข้าเอกสารโดยตรง |
-| interface_transactions | W | tracking ภายใน type=INTERNAL_DB_WRITE |
+| interface_transactions | W | tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง) |
 
 ## 9. Skeleton Code (Batch Job 9)
 
@@ -245,9 +246,9 @@ export class SbpgiJob9Config implements Job9Config {
   cron = process.env.SBPGI_JOB9_CRON ?? '30 17 7-31 * *';
   cron = process.env.SBPGI_JOB9_CRON ?? '30 17 7-31 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
   targetTable = process.env.SBPGI_JOB9_TARGET_TABLE ?? 'document_new_stores'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  forecastPercent = process.env.SBPGI_JOB9_FORECAST_PERCENT ?? 'NVL(adjust_n, forecast_n)'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  forecastPercent = process.env.SBPGI_JOB9_FORECAST_PERCENT ?? 'COALESCE(adjust_amount, forecast_amount) จาก fgi_impact_compensations'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   condition = process.env.SBPGI_JOB9_CONDITION ?? 'ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  mailTo = process.env.SBPGI_JOB9_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: ส่ง error ผ่าน Notification Service กลางเมื่อ sync ล้มเหลว)
+  mailTo = process.env.SBPGI_JOB9_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: ส่ง error ผ่าน email-lib กลาง (sendEmail) เมื่อ sync ล้มเหลว)
 }
 
 // TODO: เพิ่ม SbpgiJob9Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
@@ -337,7 +338,7 @@ export class SyncNewStoreToDocumentService {
     // TODO: implement
   }
 
-  // บันทึก interface_transactions เป็น INTERNAL_DB_WRITE
+  // insert interface_transactions: data_name = NEW_STORE · direction = INTERNAL · status = COMPLETED
   async step07WriteFile(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -357,7 +358,7 @@ export class SyncNewStoreToDocumentService {
 | 4 | decision | compensate_percent ครบและอยู่ในช่วง 0..100 ทุกแถว? | check04Condition() | [err] COMPENSATE_PERCENT_INVALID + rollback ก่อน upsert/prune |
 | 5 | process | upsert document_new_stores | step05Upsert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | process | validate allocation percent รวมต่อ doc_no | step06Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 7 | process | บันทึก interface_transactions เป็น INTERNAL_DB_WRITE | step07WriteFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 7 | process | insert interface_transactions: data_name = NEW_STORE · direction = INTERNAL · status = COMPLETED | step07WriteFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 8 | end | จบ | summarize() | - |
 
 ```ts
@@ -394,11 +395,11 @@ export class SyncNewStoreToDocumentJob {
       if (!ok04) throw new JobFailedError('JOB9_STEP04', 'COMPENSATE_PERCENT_INVALID + rollback ก่อน upsert/prune');
       // === transaction boundary === TODO: validate percent ไม่เป็น NULL และอยู่ 0..100 ก่อน; DB transaction ครอบ upsert document_new_stores + tracking; พบค่าผิดให้ rollback ก่อน prune
       await this.dataSource.transaction(async (manager: EntityManager) => {
-        // ขั้นที่ 5: upsert document_new_stores · TODO: forecast/percent = NVL(adjust_n, forecast_n)
+        // ขั้นที่ 5: upsert document_new_stores · TODO: compensate_percent = COALESCE(adjust_compensate_percent, forecast_compensate_percent) · compensation_amount = COALESCE(adjust_amount, forecast_amount)
         await this.service.step05Upsert(state, manager);
         // ขั้นที่ 6: validate allocation percent รวมต่อ doc_no · TODO: ต้องรวมได้ 100 ก่อน submit workflow
         await this.service.step06Workflow(state, manager);
-        // ขั้นที่ 7: บันทึก interface_transactions เป็น INTERNAL_DB_WRITE · TODO: ไม่สร้างไฟล์ BPM06002O
+        // ขั้นที่ 7: insert interface_transactions: data_name = NEW_STORE · direction = INTERNAL · status = COMPLETED · TODO: ไม่สร้างไฟล์ BPM06002O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ
         await this.service.step07WriteFile(state, manager);
       });
       return this.summarize(state, 'SUCCESS', startedAt);
@@ -476,15 +477,24 @@ repository ของ Job 9 ประกาศเป็น factory provider (`{pr
 
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
+| fgi_impact_compensations | R | ยอด forecast_amount / adjust_amount รายงวด — ที่มาของ %ชดเชย (ตาราง F1) | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | fgi_impact_stores | R | โปรไฟล์ร้านเปิดใหม่และค่า forecast/adjust รายงวด | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | compensation_documents | R | หา doc_no จาก impact_process_id | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | document_new_stores | W | บันทึกร้านเปิดใหม่เข้าเอกสารโดยตรง | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| interface_transactions | W | tracking ภายใน type=INTERNAL_DB_WRITE | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| interface_transactions | W | tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง) | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 9 SyncNewStoreToDocument — query หลักที่ต้อง implement
 -- TODO: ทุก statement รันผ่าน DATA_SOURCE (SELECT ไป slave, write ไป master) และ
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
+
+-- [R] fgi_impact_compensations : ยอด forecast_amount / adjust_amount รายงวด — ที่มาของ %ชดเชย (ตาราง F1)
+-- TODO: เติมเฉพาะคอลัมน์ที่ job ใช้จริง (ห้าม SELECT *) และตรวจว่ามี index รองรับ WHERE นี้
+SELECT /* TODO: columns */
+  FROM fgi_impact_compensations
+ WHERE impact_year = $1 AND impact_month = $2  -- TODO: ยืนยันชื่อคอลัมน์งวดกับ database.md
+ ORDER BY /* TODO: คีย์ที่ทำให้ลำดับคงที่ */
+ LIMIT $3 OFFSET $4;  -- TODO: อ่านเป็น chunk กัน memory บวม
 
 -- [R] fgi_impact_stores : โปรไฟล์ร้านเปิดใหม่และค่า forecast/adjust รายงวด
 -- TODO: เติมเฉพาะคอลัมน์ที่ job ใช้จริง (ห้าม SELECT *) และตรวจว่ามี index รองรับ WHERE นี้
@@ -510,16 +520,6 @@ VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้
 ON CONFLICT (doc_no, new_store_code)   -- unique key จริงตาม DDL ของ document_new_stores (ห้ามเดา)
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
        updated_at = NOW(), updated_by = 'JOB9';
-
--- [W] interface_transactions : tracking ภายใน type=INTERNAL_DB_WRITE
--- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
-INSERT INTO interface_transactions
-  (run_id, data_name, direction, status, business_key, period_key,
-   file_name, file_checksum, created_at)
-VALUES ($1 /* run_id = correlation id ของรอบรัน Job 9 จาก application log */,
-        $2 /* TODO: data_name ของ Job 9 */, $3 /* IN|OUT|INTERNAL */, 'READY',
-        $4 /* business key ของแถว */, $5 /* YYYYMM */, $6, $7, NOW())
-ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;
 ```
 
 #### 9.6 การแจ้งเตือนและการรันซ้ำของ Job 9
@@ -545,7 +545,7 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 9 เดิมคือ ส่ง error ผ่าน Notification Service กลางเมื่อ sync ล้มเหลว — ย้ายมาเป็น env SBPGI_JOB9_MAIL_TO
+    // TODO: ผู้รับของ Job 9 เดิมคือ ส่ง error ผ่าน email-lib กลาง (sendEmail) เมื่อ sync ล้มเหลว — ย้ายมาเป็น env SBPGI_JOB9_MAIL_TO
     const recipients = (process.env.SBPGI_JOB9_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
@@ -592,9 +592,9 @@ export class JobFailureNotifier {
 | 2 | query ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync |
 | 3 | มี compensation_documents ของ impact_process_id แล้ว? \| No: คงสถานะรอ sync / log pending |
 | 4 | compensate_percent ครบและอยู่ในช่วง 0..100 ทุกแถว? \| No: COMPENSATE_PERCENT_INVALID + rollback ก่อน upsert/prune (COALESCE(adjust_compensate_percent, forecast_compensate_percent) ต้องไม่เป็น NULL) |
-| 5 | upsert document_new_stores (forecast/percent = NVL(adjust_n, forecast_n)) |
+| 5 | upsert document_new_stores (compensate_percent = COALESCE(adjust_compensate_percent, forecast_compensate_percent) · compensation_amount = COALESCE(adjust_amount, forecast_amount)) |
 | 6 | validate allocation percent รวมต่อ doc_no (ต้องรวมได้ 100 ก่อน submit workflow) |
-| 7 | บันทึก interface_transactions เป็น INTERNAL_DB_WRITE (ไม่สร้างไฟล์ BPM06002O) |
+| 7 | insert interface_transactions: data_name = NEW_STORE · direction = INTERNAL · status = COMPLETED (ไม่สร้างไฟล์ BPM06002O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ) |
 | 8 | จบ |
 
 ## 11. Acceptance Criteria
@@ -624,7 +624,7 @@ export class JobFailureNotifier {
 
 | สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
 | --- | --- | --- |
-| `กฎ Forecast / Percent` | rule | ใช้กฎกับข้อมูลตัวอย่างแล้วได้ผลตามที่ระบุ — NVL(adjust_n, forecast_n) |
+| `กฎ Forecast / Percent` | rule | ใช้กฎกับข้อมูลตัวอย่างแล้วได้ผลตามที่ระบุ — COALESCE(adjust_amount, forecast_amount) จาก fgi_impact_compensations |
 | `เงื่อนไขเลือกข้อมูล` | rule | ใช้กฎกับข้อมูลตัวอย่างแล้วได้ผลตามที่ระบุ — ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync |
 | business rule | logic | พารามิเตอร์และ cron อ่านจาก backend config เท่านั้น — เปลี่ยนค่าโดย deploy config ไม่ใช่ผ่าน API/หน้าจอ |
 | business rule | logic | การรันต้องตรวจ enabled flag ใน config และกันรันซ้อนด้วย distributed/advisory lock |

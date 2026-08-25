@@ -81,7 +81,7 @@ Entry แบบมี `children: [{key,label,href}]` (ไม่มี href บ�
 - catalog `GROUPS` (**29 เส้น 6 กลุ่ม** · inline script) → คลิกแถว → `selectEp()` เปิด modal
 - โครง modal: ชิป (ที่มา/สิทธิ์/กลุ่ม) → **Flow (ลำดับการทำงาน) อยู่นอกแท็บ** → แท็บ 1 Request/Response → แท็บ 2 Database + SQL → แท็บ 3 Flowchart (โผล่เฉพาะเส้นที่มี spec)
 - **`SQL_BY_PATH`** — ตัวอย่าง SQL ต่อ endpoint keyed `'METHOD path'` (เช่น `'GET /api/v1/tasks'`) ครบทุกเส้น active · bind params ขึ้นต้น `:` · illustrative (key ของเส้นที่ตัดออกยังอยู่แต่ไม่ถูกใช้)
-- **`FLOWCHART_BY_PATH`** — spec flowchart (nodes/edges) เฉพาะเส้นซับซ้อน: `POST /documents/{docNo}/actions` · `POST /workflows/instances` · `POST /documents` (spec ของ `POST /jobs/{jobNo}/run` ยังอยู่แต่ไม่ถูกใช้ หลังลบกลุ่ม Batch Job Admin) · เรนเดอร์ด้วย `renderFlow()` เป็น inline SVG (node type: term/termOk/proc/dec/err)
+- **`FLOWCHART_BY_PATH`** — spec flowchart (nodes/edges) เฉพาะเส้นซับซ้อน: `POST /documents/{docNo}/actions` · `POST /workflows/instances` · `POST /documents` (spec ของ `POST /jobs/{jobNo}/run` **ถูกลบออกแล้ว** พร้อมกลุ่ม Batch Job Admin — เหลือ 3 เส้น · ตรวจยืนยัน 2026-08-24) · เรนเดอร์ด้วย `renderFlow()` เป็น inline SVG (node type: term/termOk/proc/dec/err)
 - เพิ่ม endpoint = เพิ่ม object ใน `GROUPS` (+ entry ใน `SQL_BY_PATH`) · ถ้าซับซ้อนพอค่อยเพิ่ม `FLOWCHART_BY_PATH` · อัปเดตตัวเลขสรุป (page-sub + stat cards + comment) และ `api.md`
 - รายการ endpoint เต็ม + กฎธุรกิจต่อเส้น ดู `api.md`
 

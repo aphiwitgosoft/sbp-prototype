@@ -17,7 +17,7 @@
 
 ## ภาพรวม
 
-- **19 ตาราง** ใน Target Schema เดียว (1 schema ใช้ร่วมกัน) — 34 ตารางเดิม **ตัดออก 10 ตารางที่ระบบ SBP ปัจจุบันมีอยู่แล้ว** เมื่อ 2026-08-06 (workflow engine · store/zone/employee master · email template · config — ดูหัวข้อ "ตารางที่ตัดออกรอบ 2" ท้ายไฟล์) แล้ว **ตัดอีก 2 ตาราง** (`job_configs` · `job_run_histories`) เมื่อ 2026-08-06 เพราะตัด 2 tab ควบคุมของหน้า Batch Job (ดูหมายเหตุในโซน C) และ **ตัด `audit_logs`** เมื่อ 2026-08-07 เพราะยกเลิกระบบ audit ของ master
+- **20 ตาราง** ใน Target Schema เดียว (1 schema ใช้ร่วมกัน) — 34 ตารางเดิม **ตัดออก 10 ตารางที่ระบบ SBP ปัจจุบันมีอยู่แล้ว** เมื่อ 2026-08-06 (workflow engine · store/zone/employee master · email template · config — ดูหัวข้อ "ตารางที่ตัดออกรอบ 2" ท้ายไฟล์) แล้ว **ตัดอีก 2 ตาราง** (`job_configs` · `job_run_histories`) เมื่อ 2026-08-06 เพราะตัด 2 tab ควบคุมของหน้า Batch Job (ดูหมายเหตุในโซน C) และ **ตัด `audit_logs`** เมื่อ 2026-08-07 เพราะยกเลิกระบบ audit ของ master
 - **3 Data Zones**: A = FGI/FCS Impact Pipeline · B = K2 เอกสาร & Workflow · C = Master/Config ใช้ร่วม
 - **4 Core IDs** ใช้ trace งาน (Data Spine)
 - มาตรฐานชื่อ: อังกฤษ `lower_snake_case` ทั้ง schema · ป้ายที่มา (FGI/FCS), (K2), (ใหม่) ต้องคงไว้เสมอ
@@ -40,7 +40,12 @@
 | 4 | B | `approver_id` | งานของแต่ละ Section และผู้รับผิดชอบ — มาจาก `sps_store.workflow_approver` + `GET /api/workflow/pending` (เดิมเรียก `task_id`) |
 | 5 | C | `employee_id` | ผู้ปฏิบัติงานที่อ้างร่วมกันทุกขั้น — ตัวตน/สิทธิ์เมนูมาจากระบบ SBP เดิม (auth-backend) ผ่าน user-context header ไม่ใช่ตารางใน SBPGI |
 
-## Data Dictionary (19 ตาราง)
+> ### ✅ มติ 2026-08-21 — DP-10 ปิดแล้ว: SBPGI อยู่ใน `srm-sps-spsap-store-backend` เดิม
+>
+> **ไม่แยก backend ใหม่** — SBPGI เป็นโมดูลใน `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM) ร่วมกับระบบ SBP เดิม
+> ผลที่ตามมา: ใช้ connection/schema `sps_store` เดียวกัน เรียก `@srm/glb-workflow` และ email-lib ได้ตรง ๆ ไม่ต้องข้าม service · deploy/CI ไปตาม pipeline ของ store-backend · ตาราง 20 ตัวของ SBPGI สร้างใน schema เดียวกับของเดิม (ชื่อไม่ชนกัน — ตรวจแล้วด้วย `tools/check_docs.py`)
+
+## Data Dictionary (20 ตาราง)
 
 คอลัมน์ **ตารางต้นทาง (Migration)** = ตารางใน DB เดิมที่ต้องดึงข้อมูลมาลงตารางใหม่ ใช้เขียนสคริปต์ import ได้ตรง ๆ · ป้ายกำกับต้นทาง:
 
@@ -53,12 +58,13 @@
 
 | ตาราง | ที่มา | ตารางต้นทาง (Migration) | PK | FK / ความสัมพันธ์หลัก | บทบาท |
 |---|---|---|---|---|---|
+| `fgi_impact_compensations` ★ | FGI/FCS | **ORA** `FGI_IMPACT_STORE_COMPENSATE` (PK `COMPENSATE_I_ID`) | id | `impact_process_id` → fgi_impact_processes · `impacted_store_code` | **(รับเข้าโครง 2026-08-21 · gap F1)** ยอดชดเชย**รายงวด**ที่เกิดก่อนมีเอกสาร · แยก `forecast_amount` (ระบบคำนวณ) กับ `adjust_amount` (คนปรับ) · UK `(impact_process_id, compensate_month)` · **จำเป็นเพื่อนับ "ยอด 0 ติดกันกี่เดือน"** ตามกติกาเดือน 1–3 / เดือนที่ 4 |
 | `fgi_impact_stores` | FGI/FCS | **ORA** `FGI_IMPACT_STORE` (PK `IMPACT_STORE_ID` · business key `STORECODE_I`+`MONTH`+`YEAR`) | id | `impact_process_id` → fgi_impact_processes · `impacted_store_code` → impacted_stores | คู่ร้านกระทบ–เปิดใหม่ · `verify_status` (W/P/Y/N) · ข้อมูล %/ยอดชดเชยต่อคู่ร้าน |
 | `fgi_impact_processes` ★ | FGI/FCS | **ORA** `FGI_IMPACT_STORE_ON_PROCESS` (PK `IMPACT_PROCESS_ID` — seq `SEQ_FGI_IMPACT_PROCESS`) | id | `impacted_store_code` · แม่ของตารางรายรอบทั้งหมด | **hub รอบชดเชย** · `action_status` (Y/W/N) · `last_compensation_amount` · source of truth ของ `workflow_generation_status` (W/Y/N) |
 | `fgi_impact_sales_summaries` | FGI/FCS | **ORA** `FGI_IMPACT_STORE_SALES` (key `STORECODE_I`+`MONTH`+`YEAR`) | id | `impact_process_id` → fgi_impact_processes · → sales_transactions (1:N) | หัวยอดขาย · `growth_rate_diff` · `total_working_days` (เกณฑ์ 60 วัน) |
 | `sales_transactions` | FGI/FCS | **ORA** `FGI_IMPACT_STORE_SALES_TRN` (key เดียวกับหัว + `SEQ`) | id | `sales_summary_id` → fgi_impact_sales_summaries | ยอดขายรายวันจาก IAS · 4 หน้าต่าง × 15 วัน · sales_diff/outlier ≥ 50 แบบจับคู่ |
 | `fgi_impact_competitors` | FGI/FCS | **ORA** `FGI_IMPACT_COMPETITOR` (PK `IMPACT_COMPETITOR_ID`) | id | `impact_process_id` → fgi_impact_processes · → document_competitors (นำเข้า) | คู่แข่งจาก ALLMAP (data_source=ALM) · งวดล่าสุดต่อร้าน |
-| `fcs_qssi_score` | FGI/FCS | **ORA** `FCS_QSSI_SCORE` (`STORE_ID`+`CATEGORY`+`MONTH`+`YEAR`) — ⚠ **ไม่ต้อง migrate ใหม่ ของเดิมมีข้อมูลครบแล้ว** | id | UK: store_id + category_code + งวด (**ยังไม่มีจริงในของเดิม** — ดู DP-4) | คะแนน QSSI 6 หมวด (8,9,12,1,10,16) จาก Job 1 — **มีอยู่จริงใน `sps_store.fcs_qssi_score` (ชื่อ *เอกพจน์*) 23,958,780 แถว · 7 คอลัมน์** (`SBP/db-schema-sps_store.md`) และมี **import pipeline ที่ทำงานอยู่แล้ว**: `POST /performance/import-qssi` + staging `fcs_tmp_qssi_score` + `performance.service.ts` → **ห้ามสร้างตาราง/entity ใหม่ ให้ reuse ของเดิม** · ชื่อพหูพจน์ `fcs_qssi_scores` **ผิด ห้ามใช้** · ข้อจำกัดที่ต้องปิด: 4 คอลัมน์คีย์ (`store_id`/`category`/`month`/`year`) เป็น **nullable** · index มีแค่ `fcs_qssi_score_pkey` บน `id` → **จะแก้ตารางเดิมอย่างไรยังไม่ตัดสิน (DP-4 · ต้อง sign-off เจ้าของ `performance.service.ts`)** · `fcs_qssi_score_bak_20260710` (18,577,924 แถว) เป็น snapshot **ห้ามอ่าน/ห้าม join** |
+| `fcs_qssi_score` | FGI/FCS | **ORA** `FCS_QSSI_SCORE` (`STORE_ID`+`CATEGORY`+`MONTH`+`YEAR`) — ⚠ **ไม่ต้อง migrate ใหม่ ของเดิมมีข้อมูลครบแล้ว · อ่านอย่างเดียว (READ-ONLY)** — ระบบ SBP เดิมเป็นคนนำเข้าผ่าน `POST /performance/import-qssi` · **SBPGI ตัด Job 1 ImportQSSI ออกจากขอบเขตแล้ว (2026-08-24)** จึงไม่มีการเขียนตารางนี้จากฝั่งเรา (ปิด DP-4) | id | UK: store_id + category_code + งวด (**ยังไม่มีจริงในของเดิม** — ดู DP-4) | คะแนน QSSI 6 หมวด (8,9,12,1,10,16) — **มีอยู่จริงใน `sps_store.fcs_qssi_score` (ชื่อ *เอกพจน์*) 23,958,780 แถว · 7 คอลัมน์** (`SBP/db-schema-sps_store.md`) และมี **import pipeline ที่ทำงานอยู่แล้ว**: `POST /performance/import-qssi` + staging `fcs_tmp_qssi_score` + `performance.service.ts` → **ห้ามสร้างตาราง/entity ใหม่ ให้ reuse ของเดิม** · ชื่อพหูพจน์ `fcs_qssi_scores` **ผิด ห้ามใช้** · ข้อจำกัดที่ต้องปิด: 4 คอลัมน์คีย์ (`store_id`/`category`/`month`/`year`) เป็น **nullable** · index มีแค่ `fcs_qssi_score_pkey` บน `id` → **จะแก้ตารางเดิมอย่างไรยังไม่ตัดสิน (DP-4 · ต้อง sign-off เจ้าของ `performance.service.ts`)** · `fcs_qssi_score_bak_20260710` (18,577,924 แถว) เป็น snapshot **ห้ามอ่าน/ห้าม join** |
 | `interface_transactions` | ใหม่ | **ORA** `FGI_CONFIRM_RECEIVE_DATA` — ⚠ `TRANSACTION_PK` เป็น polymorphic ต้องแตกตาม `DATA_NAME` เป็น typed FK ตอน migrate | id | typed FK: `impact_process_id` / `sales_summary_id` / `doc_no` | แทน FGI_CONFIRM_RECEIVE_DATA — เลิก polymorphic PK + purge ทำงานจริง · **คอลัมน์ `last_ack_notified_on` (DATE · ใหม่ 2026-08-07)** — marker กันงาน watchdog ส่งอีเมลเตือนซ้ำในวันเดียวกัน (ย้ายมาจาก `audit_logs` ที่ถูกยกเลิก) (แก้ E20) · **ยังไม่ตัดสิน (DP-6)** ว่าจะออกแบบใหม่ หรือลอกแพตเทิร์น `statement_summary` ของระบบเดิม — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) §4 |
 
 ### Zone B · K2 — เอกสารประกันรายได้และ Workflow ภายใน
@@ -85,11 +91,11 @@
 | `external_factors` | K2 · SRS 3.1.9 | **MSSQL** `FactorProfile` | `factor_code` | ← document_external_factors | ปัจจัยภายนอก master · รหัสห้ามซ้ำ |
 | `competitors` | K2 | **MSSQL** `CompetitionProfile` (+ **ORA** `MAS_STORE_COMPETITOR`) | `competitor_code` | ← document_competitors | **master แบรนด์ร้านคู่แข่ง 11 รายการ** (รหัส `01`–`11`) · `name_th` + `name_en` (ระบบเดิมเก็บทั้งไทยและอังกฤษ) — จัดการที่หน้าจอ `k2-competitors.html` (เพิ่ม 2026-08-06 ตามหน้าจอ K2 เดิม) · **คนละระดับกับ `document_competitors`** ที่เก็บ *รายสาขา* ของคู่แข่งพร้อมรหัสจาก ALLMAP (เช่น `4832`, `TD58_08`) + ชื่อสาขา + zone/subzone (ดู `docs/K2-interface-files.md`) |
 
-> **Batch Job — ตัด 2 tab ควบคุมออก (2026-08-06):** ตาราง `job_configs` และ `job_run_histories` **ถูกลบจาก target schema** พร้อมกับลบ API กลุ่ม Batch Job Admin 6 เส้น · หน้า `job-batch.html` **ย้ายไปกลุ่มเมนู `Flow` ชื่อ "Flow Batch Job" และเหลือเฉพาะ 2 แท็บ `Flowchart การทำงาน` + `Database ที่ใช้`** (ตัดแบบฟอร์มพารามิเตอร์ · ประวัติการรัน · ปุ่มสั่งรัน/เปิด-ปิด job · stat cards · กราฟ · การ์ด audit ออกทั้งหมด) — เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม · **batch job ทั้ง 11 entry point ยังทำงานตามปกติ** แต่พารามิเตอร์/ตารางเวลากำหนดใน **backend config** (config file/env ฝั่ง BE) และผลการรันเก็บที่ application log + `interface_transactions` แทน · ถ้าทำ 2 tab ควบคุมใน phase ถัดไป ให้กลับมาเพิ่ม 2 ตารางนี้พร้อม endpoint กลุ่มเดิม
+> **Batch Job — ตัด 2 tab ควบคุมออก (2026-08-06):** ตาราง `job_configs` และ `job_run_histories` **ถูกลบจาก target schema** พร้อมกับลบ API กลุ่ม Batch Job Admin 6 เส้น · หน้า `job-batch.html` **ย้ายไปกลุ่มเมนู `Flow` ชื่อ "Flow Batch Job" และเหลือเฉพาะ 2 แท็บ `Flowchart การทำงาน` + `Database ที่ใช้`** (ตัดแบบฟอร์มพารามิเตอร์ · ประวัติการรัน · ปุ่มสั่งรัน/เปิด-ปิด job · stat cards · กราฟ · การ์ด audit ออกทั้งหมด) — เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม · **batch job ทั้ง 10 entry point (Jobs 2–10 + 8b) ยังทำงานตามปกติ** แต่พารามิเตอร์/ตารางเวลากำหนดใน **backend config** (config file/env ฝั่ง BE) และผลการรันเก็บที่ application log + `interface_transactions` แทน · ถ้าทำ 2 tab ควบคุมใน phase ถัดไป ให้กลับมาเพิ่ม 2 ตารางนี้พร้อม endpoint กลุ่มเดิม
 
 > **✅ ปิด DP-5 (แก้มติ 2026-08-14) — workflow ให้ "เลข template" · SBPGI เป็นคนเรียก lib ส่งเอง**
 >
-> **ไม่มีตารางใหม่** — `status_email_rules` ยังถูกตัดตามเดิม (19 ตารางไม่เปลี่ยน) เปลี่ยนเฉพาะ **ใครเป็นคนเรียก**
+> **ไม่มีตารางใหม่** — `status_email_rules` ยังถูกตัดตามเดิม (จำนวนตารางไม่เปลี่ยนจากมตินั้น) เปลี่ยนเฉพาะ **ใครเป็นคนเรียก**
 >
 > **แหล่งความจริง:** `SBP/TSM-SRM-LLDD SBP EMAIL1.0.xlsx` (v1.0 · 15/09/2025 · Sukol K.) — lib ส่งอีเมลกลาง **ทำเสร็จและใช้งานจริงแล้ว** ให้ module อื่น import
 >
@@ -147,7 +153,16 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 | `user_accounts` | AWS Cognito + auth-backend `users`/`user_group_memberships` — SBPGI รับตัวตนจาก BFF ผ่าน header `x-user-id`/`x-user-group-id` ไม่เก็บบัญชีเอง |
 | `operator_assignments` | จับกลุ่มผู้ปฏิบัติงานต่อ section/พื้นที่ด้วย group + scope ของ auth-backend (แบบเดียวกับ `business_user_group` ของ store-backend) · การผูกผู้อนุมัติรายเอกสารใช้ pattern prepared approvers ของ workflow engine เดิม (`@srm/glb-workflow` — `AddPreparedApproverUseCase`) |
 
-ผลที่ตาม: 8 role (00–10) ของ SRS ถูก map เป็น group ใน auth-backend · `workflow_tasks.assignee_employee_id` ยังอยู่ (เก็บผลการ resolve แล้ว) แต่แหล่งข้อมูลการ resolve คือระบบเดิม · การแก้สิทธิ์/กลุ่มลง audit ของระบบเดิม ไม่ใช่ `audit_logs` ของ SBPGI
+ผลที่ตาม: 8 role (00–10) ของ SRS ถูก map เป็น group ใน auth-backend · การแก้สิทธิ์/กลุ่มลง audit ของระบบเดิม ไม่ใช่ `audit_logs` ของ SBPGI
+
+> ⚠️ **แก้บันทึกเดิมที่ผิด (2026-08-20):** เอกสารรุ่นก่อนเขียนว่า *"`workflow_tasks.assignee_employee_id` ยังอยู่"* — **ไม่จริง** ตาราง `workflow_tasks` ถูกตัดออกจากโครง 20 ตารางไปตั้งแต่รอบ reuse 2026-08-06 (ย้ายไป engine 13 ตารางใน `sps_store`) จึง **ไม่มีคอลัมน์เก็บ "เจ้าของงาน" ในตารางของ SBPGI เลย**
+>
+> **ที่เก็บ/วิธีได้มาซึ่งเจ้าของงาน (auto-assign ตาม SDD สไลด์ 46 · 48):**
+> - **ผู้รับผิดชอบขั้นปัจจุบัน** อยู่ที่ engine — `sps_store.workflow_approver` (ผูกด้วย `addPreApprover()`) และ `sps_store.workflow_transaction.current_approver`
+> - **"คนเดิม"** ได้จากการ query `consideration_logs` ของ **เอกสารรอบก่อนหน้าของร้านเดียวกัน** — แถวล่าสุดที่ `section_code` ตรงกับขั้นที่จะมอบหมาย → **`consider_by`**
+> - แล้วส่งค่านั้นเข้า `addPreApprover(versionId, referenceId, stateId, approver, seq)` ตอนเปิดงานรอบใหม่
+> - **Fallback** เมื่อรอบก่อนไม่เคยผ่านขั้นนั้น / พนักงานลาออก → มอบหมายตาม group ของ auth-backend ตามปกติ
+> - เหตุผลที่ไม่เพิ่มคอลัมน์ `assignee_employee_id`: ผู้รับผิดชอบเป็นข้อมูลของ engine อยู่แล้ว การเก็บซ้ำจะสร้าง source of truth ที่สอง — ดู [`workflow.md`](workflow.md) §การมอบหมายเจ้าของงานอัตโนมัติ
 
 ## ช่องว่างเทียบ DB เดิมของ K2 (`script_TB_DB_CPA_FRN_FGI_20260722.sql` · ตรวจ 2026-08-06)
 
@@ -163,9 +178,9 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 | `RunningNumber` | `document_running_numbers` | ออกเลข `YYYY/xxxxx` แบบ atomic ต่อปี — กันเลขชนเมื่อ batch + ผู้ใช้สร้างพร้อมกัน |
 | `ImpactCostDetail` | `document_cost_details` | ยอดชดเชยแยกรายเดือน/รายร้านใหม่ — จำเป็นต่อการทวนยอดกับ Statement/SAP |
 | `SectionProfile.SectionLimitCost` | `common_code` (`code_type = SBPGI_APPROVE_LIMIT`) — ตาราง `workflow_sections` ถูกตัดแล้ว | ทำให้วงเงิน เกณฑ์เดียว 100,000 (SDD GI) เป็น data |
-| `CompensateFlow` (84 คอลัมน์) | คอลัมน์เติมใน `compensation_documents` | `round_no`/`loop_no` · `allmap_url` · `statement_id` · งวดบัญชี · `approver_snapshot` |
+| `CompensateFlow` (84 คอลัมน์) | คอลัมน์เติมใน `compensation_documents` | `round_no`/`loop_no` · `allmap_url` · `statement_id` · งวดบัญชี **(อยู่ใน DDL แล้ว)** · ⏳ `approver_snapshot` **ยังไม่ได้เติมลง DDL** |
 | `AttachFileProfile` | คอลัมน์เติมใน `document_attachments` | สถานะอัปโหลด + lifecycle ลบไฟล์บน object storage |
-| `CompTransferSBPDate` | `impacted_stores.transfer_sbp_date` | เงื่อนไขร้านก่อน/หลัง 1/10/2014 |
+| `CompTransferSBPDate` | `impacted_stores.transfer_sbp_date` ⏳ **ยังไม่ได้เติมลง DDL** | เงื่อนไขร้านก่อน/หลัง 1/10/2014 |
 
 ### ตรวจแล้ว — มีของเทียบเท่าอยู่แล้ว ไม่ต้องเพิ่ม
 
@@ -184,7 +199,7 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 | `MaintainMessage` | master **ข้อความ popup/validation ต่อฟอร์ม** (title/body/type) — ถ้ามี จะแก้ข้อความ SRS verbatim ได้โดยไม่ deploy |
 | `MonitorAdjust` | log **ปรับยอด forecast/actual** ต่อเอกสาร (KeyCallSMO) |
 | `TransectionDeleteStore` | log ลบร้าน/เอกสารพร้อม **SRNumber** — เป็นหลักฐานของปัญหา "ต้องเปิด SR" ที่ SDD GI ยกเลิก · ควรมี log การยกเลิก/ลบเอกสารแบบใหม่แทน |
-| `LogCompensate` / `LogCompensateReturn` | log request/response ข้ามระบบ (FMS) — `interface_transactions` ครอบเฉพาะไฟล์/ACK |
+| `LogCompensate` / `LogCompensateReturn` | log request/response ข้ามระบบ (FMS) — `interface_transactions` ครอบไฟล์/ACK กับระบบภายนอก และ **การส่งต่อภายใน (`direction = INTERNAL`)** ที่มาแทนไฟล์ EAI ของ Jobs 7/8/9 |
 | `ServerMaster` | เก็บ `username`/`password` เป็น plaintext — **ยืนยันข้อ P0 เดิม**: ย้าย credential ไป Secret Manager |
 | `Versions` / `FGIHelp` | ข้อมูลเวอร์ชันระบบ + เนื้อหาหน้า Help |
 
@@ -206,7 +221,49 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 | `FGI_CONFIRM_RECEIVE_DATA` | `interface_transactions` (typed FK แทน polymorphic — แก้ E20) |
 | `FCS_QSSI_SCORE` | `fcs_qssi_score` |
 
-### ต้องพิจารณาเพิ่ม — **ยังไม่รับเข้าโครง 19 ตาราง รอตัดสินใจ**
+> ### ✅ มติ 2026-08-21 — รับ F8 + F1 เข้าโครงแล้ว (19 → 20 ตาราง)
+>
+> **F1** → ตาราง **`fgi_impact_compensations`** (ยอดชดเชยรายงวด forecast/adjust)
+> **F8** → เติม 5 กลุ่มคอลัมน์เข้า `fgi_impact_processes`: `last_compensate_seq` · `last_compensate_seq_no` · `start/end_compensate_month/year` · `flag_action` · `datasource`
+
+
+#### 🔀 ช่องทางต้นทางของเคส — `fgi_impact_processes.datasource` (B2 · ตั้งรหัสใหม่ 2026-08-24)
+
+SDD GI สไลด์ 17 ระบุว่าข้อมูลร้านที่ต้องชดเชยมาจาก **3 แหล่ง** และสไลด์ 47/49 ผูกพฤติกรรมไว้ว่าแหล่งไหนต้องคีย์เอง — แต่**ไม่มีที่ไหนกำหนดรหัสไว้**: SDD ไม่มีรหัสเลย · Java เดิมมีแค่ `ALM`/`STA`/`HRS` · ระบบ SBP เดิมไม่มีข้อมูล → ตั้งรหัสใหม่ตามแพตเทิร์นเดิม (ตัวพิมพ์ใหญ่ 3 ตัว)
+
+| รหัส | ช่องทาง | ใครเป็นคนเริ่ม | งานมาถึง จนท. SBP DSA ยังไง | สถานะ |
+|---|---|---|---|---|
+| `ALM` | **จากระบบ** — ALLMAP เจอร้านใหม่เปิดในรัศมี | ไม่มีคน · Job 2/3 | **เลือกงานของตนเอง**จากที่ระบบส่งมา | มีในระบบเดิม |
+| `STA` | **จากระบบ** — Franchise Statement | ไม่มีคน · Job 5 | **เลือกงานของตนเอง** | มีในระบบเดิม |
+| `PRO` | **เชิงรุก** — ประชุมพิจารณาการชดเชยประกันรายได้ | หน่วยงานส่งเสริมฯ (OPT) · ต้นทางเอกสารอยู่ที่ **All Memo** | **เจ้าของงานคีย์ข้อมูลเอง** | **ใหม่** |
+| `REA` | **เชิงรับ** — รับแจ้งข้อมูลจากหน่วยงานอื่น ๆ | GM ส่งเสริมธุรกิจ | **เจ้าของงานคีย์ข้อมูลเอง** | **ใหม่** |
+
+> `HRS` (HR feed) มีอยู่ในระบบเดิมแต่**ไม่ใช่ช่องทางเปิดเรื่องชดเชย** — ต้อง migrate มาได้ จึง**ไม่ใส่ CHECK constraint** บนคอลัมน์นี้ (บทเรียนเดียวกับ `flag_action` ที่ CHECK แคบไปจนแถว `'W'` migrate ไม่ผ่าน)
+>
+> FE อ่านตัวเลือกจาก `common_code` ของระบบเดิม (`code_type = SBPGI_DATASOURCE`) ผ่าน `GET /common/common-code` — **ห้าม hardcode**
+>
+> **ที่มาในโค้ด Java เดิม — ทั้งสองตารางเขียนโดย Job 6 (`ExportImpactStoreToFS`) จุดเดียวกัน:**
+> `main/ExportImpactStoreToFS.java` → `ExportController.getImpactStoreToFS()` → **`ExportService.manageDBToFs()`** ซึ่งเรียกต่อกันเป็นชุด:
+> ```java
+> updateCompleteImpactStoreOnProcess(NUM_WAIT_PAY);
+> updateImpactStoreOnProcessFlagYToW(...);
+> if (isCreateData) {
+>     updateFgiImpactStoreOnProcess(INITDATE);   // เคสต่อเนื่อง → LAST_COMPENSATE_SEQ_NO + 1   (F8)
+>     insertFgiImpactStoreOnProcess();           // เปิดเรื่องใหม่ → SEQ +1 · SEQ_NO = 1        (F8)
+>     insertFgiImpactStoreCompensate(...);       // ยอดชดเชยรายงวด                              (F1)
+>     insertFgiNewStoreCompensate(...);
+>     insertImpactStoreInfo();
+> }
+> ```
+> แปลว่า **งาน implement ฝั่งเราอยู่ที่ `LLDD-BE-Job-6-ExportImpactStoreToFS`** — Job 6 ต้องเขียน `fgi_impact_processes` (5 คอลัมน์ใหม่) และ `fgi_impact_compensations` เพิ่มจากงานเดิมที่ทำอยู่
+>
+> ⚠️ `ImportJdbc.insertImpactStoreOnProcess()` / `updateImpactStoreOnProcess()` มี SQL ชุดเดียวกันอยู่ในไฟล์ Import แต่**ไม่มี call site จริง** (ตรวจแล้วทั้ง src) — เป็นโค้ดตาย อย่ายึดเป็นต้นแบบ ให้ยึดฝั่ง `ExportJdbc`
+>
+> เหตุผล: ตรรกะ**มีอยู่แล้ว**ในระบบเดิม (Oracle) — ขนมาเพื่อให้ระบบใหม่ตัดสิน **ประเภทเคส** ที่จุดเข้า flow (ต่อเนื่อง / เปิดเรื่องใหม่ / ยอด 0) และทำ **auto-assign เจ้าของงานคนเดิม** ได้จริง · ถ้าไม่ขนมา ฟีเจอร์กลุ่มนี้ implement ไม่ได้เลย
+>
+> ผลที่ตามมา: `check_docs.py` เปลี่ยนเกณฑ์เป็น 20 ตาราง (19 CREATE + `fcs_qssi_score` ที่ reuse) · รายการที่เหลือด้านล่างยัง**ไม่รับเข้าโครง**
+
+### ยังไม่รับเข้าโครง — รอตัดสินใจ
 
 | # | ตารางเดิม (FGI) | ช่องว่างที่พบ | ข้อเสนอ |
 |---|---|---|---|
@@ -363,7 +420,7 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 
 | # | เรื่อง | สถานะ |
 |---|---|---|
-| DP-1 … DP-12 | **12 ข้อ · ตัดสินแล้ว 3 (DP-1 · DP-3 · DP-9 เมื่อ 2026-08-10) เหลือค้าง 9** — ที่ยังค้างเช่น DP-2 (index บน `workflow_transaction`) · DP-4 (`fcs_qssi_score`) · DP-11 (ตัวเลขเงิน) · SBPGI อยู่ใน store-backend เดิมหรือแยก backend ใหม่ · audit ของ master เอากลับมาหรือไม่ | **ยังไม่ตัดสิน** — รายละเอียดครบทุกข้อพร้อมข้อดี/ข้อเสียอยู่ที่ [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) §4 · **เอกสารนี้บันทึกไว้เฉย ๆ ไม่เปลี่ยนดีไซน์ตามข้อเสนอ** |
+| DP-1 … DP-12 | **12 ข้อ · ตัดสินแล้ว 6 (DP-1 · DP-3 · DP-9 เมื่อ 2026-08-10 · DP-5 · DP-10 · DP-4 ปิด 2026-08-24 พร้อมการตัด Job 1) เหลือค้าง 6** — ที่ยังค้างเช่น DP-2 (index บน `workflow_transaction`) · DP-11 (ตัวเลขเงิน) · SBPGI อยู่ใน store-backend เดิมหรือแยก backend ใหม่ · audit ของ master เอากลับมาหรือไม่ | **ยังไม่ตัดสิน** — รายละเอียดครบทุกข้อพร้อมข้อดี/ข้อเสียอยู่ที่ [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) §4 · **เอกสารนี้บันทึกไว้เฉย ๆ ไม่เปลี่ยนดีไซน์ตามข้อเสนอ** |
 | ✅ ปิด 2026-08-14 | **ชื่อ function ของ workflow engine** — ยึดชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง) เป็น API จริง 8 ตัว: `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` | **ปิดแล้ว** — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` ไม่ใช่ชื่อ API · `*UseCase` เป็น class ที่ store-backend ห่อไว้เอง |
 | — | `workflow_part` + `workflow_part_display` ของ engine คุมการแสดงผล **รายส่วนของหน้าจอ (READ/WRITE ต่อ state)** ซึ่ง**ทับซ้อน**กับกลไก `data-editrole` / `.edit-only` ที่ prototype ทำเอง | **ข้อสังเกต ยังไม่ตัดสิน** ว่าจะย้ายไปใช้ของ engine หรือคงกลไกฝั่ง FE |
 
@@ -377,7 +434,7 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 | `BPM06002O_` | 24 | ร้านเปิดใหม่ต่อร้านถูกกระทบ — `radius` + `radius_unit` · `distance_km` · **`compensate_amount` (ฟิลด์ 16) + `compensate_percent` (ฟิลด์ 17)** → ยืนยันสูตร ยอด × % และผลรวม = ยอดของเอกสาร · ประเภทร้านเป็น **ตัวอักษรเดียว (`B`)** ยืนยันชุด 7 ค่า `A B C D E PTT บริษัท` (BranchTypeProfile.BranchTypeFGIName · ห้าม hardcode) |
 | `BPM06003O_` | 14 | คู่แข่งระดับสาขา — รหัส ALLMAP · **ชื่อไทย + ชื่ออังกฤษ** (→ `competitors.name_th`/`name_en`) · ชื่อสาขา · zone + subzone |
 
-**ข้อเท็จจริงของไฟล์ที่ต้องแก้ในเอกสารเก่า:** ไฟล์กลุ่ม BPM เป็น **UTF-8** (ไม่ใช่ windows-874 — ตัวที่เป็น windows-874 คือ `FRBC0001` ที่ส่งไป STA) · ตัวคั่น `|` · ไม่มีบรรทัดหัวคอลัมน์ · วันที่/ปีเป็น **ค.ศ.** · ชุดตัวอย่างมี `BPM06002O_` ซ้ำ 2 ไฟล์เนื้อหาเหมือนกันทุกไบต์ → **การนำเข้าต้อง idempotent ด้วย business key ไม่ใช่ชื่อไฟล์**
+**ข้อเท็จจริงของไฟล์ที่ต้องแก้ในเอกสารเก่า:** ไฟล์กลุ่ม BPM เป็น **UTF-8** (ไม่ใช่ windows-874 — ตัวที่เป็น windows-874 คือไฟล์ `FRBC0001` ที่เคยส่งไป STA ก่อนย้ายเป็น RabbitMQ เมื่อ 2026-08-24) · ตัวคั่น `|` · ไม่มีบรรทัดหัวคอลัมน์ · วันที่/ปีเป็น **ค.ศ.** · ชุดตัวอย่างมี `BPM06002O_` ซ้ำ 2 ไฟล์เนื้อหาเหมือนกันทุกไบต์ → **การนำเข้าต้อง idempotent ด้วย business key ไม่ใช่ชื่อไฟล์**
 
 ## Master data ที่ยืนยันจากไฟล์จริง (`ข้อมูล Master K2.xlsx` · 2026-08-10)
 
@@ -404,9 +461,48 @@ SBPGI เป็น backend ใหม่ที่จะเสียบเข้�
 >
 > หน้ารายงาน (`k2-report`) กรองด้วย **FGIName**  · หน้าเอกสาร (`k2-document`) ใช้ **BranchTypeName** (ชื่อแสดงผล) — **ต้องเลือกใช้ระบบชื่อเดียวต่อหน้าจอ** และ **`พนักงาน` ไม่ปรากฏใน master เลย** (SRS เขียนไว้แต่ไม่มีแถวรองรับ) → ข้อค้าง: ยืนยันกับ BA ว่า `พนักงาน` คือ `B(2)`/`E` หรือเป็นค่าที่เลิกใช้แล้ว
 >
-> ⚠️ **`D` และ `E` มีจริงทั้งคู่และเป็นคนละประเภท** (D = BGC · E = B(2)) → ค่าไม่ซ้ำมี **7 ค่า**: `A B C D E PTT บริษัท`
+> ⚠️ **`D` และ `E` มีจริงทั้งคู่และเป็นคนละประเภท** (D = `Type D` — เดิมเรียก BGC · E = B(2)) → ค่าไม่ซ้ำมี **7 ค่า**: `A B C D E PTT บริษัท`
+#### 🔤 เปลี่ยนคำเรียกประเภทร้าน (มติ 2026-08-20)
+
+| ข้อ | เดิม | **ใหม่** | หมายเหตุ |
+|---|---|---|---|
+| 1.1 | `FR` (เช่น `FR Type A`) | **`SBP`** (`SBP Type A`) | เปลี่ยนคำนำหน้าทุกประเภท — เป็นการเปลี่ยน**คำแสดงผล** ไม่ใช่รหัสใน master |
+| 1.2 | `BGC` | **`Type D`** | ตรงกับ `BranchTypeFGIName = D` ที่ pipeline ใช้อยู่แล้ว (`BranchTypeCode = 6` · `FMSName = FBGC`) |
+| 1.3 | `C r` (`C(Retire CPALL)`) | **แตกเป็น 2 ประเภท: `Type V(C)` + `Type V(B)`** | ประเภทร้านในรายละเอียดเอกสารจึงเป็น **9 ชนิด** (เดิม 8) |
+
+**ประเภทร้าน 9 ชนิดในหน้ารายละเอียดเอกสาร (คำเรียกใหม่):**
+`SBP Type A` · `SBP Type B` · `SBP Type C` · `SBP Type V(C)` · `SBP Type V(B)` · `บริษัท` · `SBP Type พนักงาน` · `SBP Type PTT` · `SBP Type D`
+
+> ⚠️ **ข้อค้างที่ยังไม่ตัดสิน (DP-13) — `BranchTypeFGIName` ของ `Type V(C)` และ `Type V(B)`**
+>
+> 📌 **DP-13 นิยามอยู่ที่นี่ (ไฟล์นี้) ไม่ใช่ในทะเบียน DP-1…DP-12 ของ [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md)** — ทะเบียนนั้นเป็นเอกสารของระบบเดิมที่เราไม่แก้ · DP-13 เกิดใหม่จากมติเปลี่ยนคำเรียกประเภทร้าน 2026-08-20 จึงต่อเลขไว้ในชุดเดียวกันเพื่อไม่ให้สับสน แต่บันทึกไว้ฝั่ง SBPGI
+>
+> ใน master ปัจจุบัน `C(Retire CPALL)` (`BranchTypeCode = 9`) map ไปที่ **`FGIName = C`** ค่าเดียว — เมื่อแตกเป็น 2 ประเภทแล้วยังไม่ทราบว่า:
+> - `Type V(C)` และ `Type V(B)` ใช้ `BranchTypeFGIName` อะไร (คงเป็น `C` ทั้งคู่ · หรือได้รหัสใหม่คนละตัว)
+> - ตัวกรองประเภทร้านในหน้ารายงาน (ที่ใช้ `FGIName` **7 ค่า** `A B C D E PTT บริษัท`) ต้องเพิ่มตัวเลือกหรือไม่
+> - `Type V(B)` ผูกกับสูตรคำนวณกลุ่มไหน — SDD สไลด์ 36 จัดกลุ่มไว้เป็น **`Type B, E, V(B)`** (คนละสูตรกับกลุ่ม `Type A, C`) ซึ่งบ่งว่า `V(B)` **ไม่ใช่** `C` ในเชิงการคำนวณ
+>
+> จนกว่าจะเคาะ: ตาราง master ด้านบน**คงไว้ตามข้อมูลจริง**ในไฟล์ `ข้อมูล Master K2.xlsx` · คำเรียกใหม่ใช้กับ **ชื่อแสดงผล** เท่านั้น · ระบบยัง**ห้าม hardcode** ให้โหลดจาก `GET /common/common-code`
+
+> 📌 **ไม่แก้เอกสารต้นฉบับ** — `SRS_Income_Compensation_v3.1.md` · `ประกันรายได้-K2-รายการหน้าจอ.md` · `RDM-SRS-ประกันรายได้-K2-รายการหน้าจอ.md` · `SDD-GI-Compensation/*.md` เป็น**คำแปลตรงตัวจากไฟล์ต้นทาง** จึงยังใช้คำว่า `FR Type` / `BGC` / `C R` ตามเดิม เพื่อคงร่องรอยการอ้างอิง — ให้เทียบกับตารางนี้เวลาย้อนอ่าน
+
 > เอกสาร/หน้าจอรุ่นก่อนแสดงเพียง 4 ตัวเลือกจึง**ผิดทั้งหมด** — SDD สไลด์ 60 แสดงบางส่วน · SRS เขียน “พนักงาน” ซึ่ง **ไม่มีอยู่ใน master**
 > แก้แล้วที่ `k2-report.html` (4 → 7 ตัวเลือก) และ `LLDD-FE-Report` · ยังคง**ห้าม hardcode** ให้โหลดจาก `GET /common/common-code` แล้วใช้ 7 ค่านี้เป็น expected set ตอนทดสอบ
+
+### PDPA — ข้อมูลส่วนบุคคลที่ตารางของ SBPGI เก็บจริง (SDD สไลด์ 63)
+
+SDD §1.10 ระบุว่างานนี้ **มี Normal Personal Data** (ชื่อ-นามสกุล · ที่อยู่/อีเมล/โทรศัพท์) และ **ไม่มี Sensitive Data** · ตรวจกับ DDL จริงแล้วได้ดังนี้:
+
+| ตารางของ SBPGI | คอลัมน์ที่เป็นข้อมูลบุคคล | ลักษณะ |
+|---|---|---|
+| `consideration_logs` | `consider_by` | รหัส/ชื่อผู้พิจารณา — อ้าง `business_user` ของระบบเดิม |
+| `compensation_documents` · `fgi_impact_compensations` | `created_by` · `updated_by` | ผู้สร้าง/ผู้แก้ไข |
+| `compensation_documents` | `approver_snapshot` (JSONB) ⏳ **ยังไม่มีใน DDL** | **ชื่อ + อีเมล** ของ FC/Section/Manager/GM/AVP ณ เวลาเปิดเอกสาร |
+| `document_attachments` | `file_name` | ชื่อไฟล์อาจมีชื่อบุคคล |
+
+> **ข้อมูลบุคคลส่วนที่เหลืออยู่ในระบบ SBP เดิม ไม่ใช่ของเรา** — ชื่อ/ที่อยู่เจ้าของร้านและนิติบุคคลอ่านจาก `store` · `fr_store` · `juristic` · อีเมลที่ส่งจริงบันทึกใน `email_sent` ของ email-lib
+>
+> ⚠️ **ยังไม่ได้ทำ (SDD สไลด์ 63 สั่งไว้):** *"กรณีมี Personal Data จะต้องเพิ่มเติมรายละเอียดตาม Template ของ PDPA Requirement ตามเอกสารแนบ"* — ยังไม่มีเอกสาร PDPA Requirement ในชุดส่งมอบ และยังไม่ได้ตัดสินเรื่อง **retention / masking ใน log / สิทธิ์เข้าถึง `approver_snapshot`** · เปิดเป็นข้อค้าง **2.7** ใน [`DECISIONS-รอตัดสินใจ.md`](DECISIONS-รอตัดสินใจ.md)
 
 ### ภาค — `ZoneProfile` (ยืนยันว่าของเราถูกอยู่แล้ว)
 
@@ -448,7 +544,8 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 3. **`compensation_documents.impact_process_id → fgi_impact_processes`** — FK ใหม่ **1 รอบชดเชย : 1 เอกสาร** แทนการส่งไฟล์ BPM06001O (48 ฟิลด์) ข้ามระบบ (ใหม่)
 4. **`sps_store.workflow_transaction.reference_id → compensation_documents`** — เปิด instance ของ engine กลางเมื่อผ่าน Gen Flow Gate · สถานะ instance แทน `workflow_generation_status = Y` ของเดิม (ใหม่) · ✅ **มติ DP-1 (2026-08-10) = ทางเลือก B** — `reference_id` ใช้ **surrogate id** (`compensation_documents.id`) **ไม่ใช่ `doc_no`** ตามที่ระบบเดิมทำจริงทั้ง `cooperation-request` (7 จุด) และ `inform-evaluate` · การแปลง transaction ↔ เอกสาร join ผ่าน `compensation_documents.id` · **ผลพลอยได้:** ปลดล็อกให้ออกเลข `doc_no` ทีหลังได้และแก้เลขภายหลังได้ (จังหวะการออกเลขจริงยังเป็นคำถามธุรกิจที่ยังไม่ตอบ)
 5. **`document_competitors.source_system = 'ALLMAP'`** — แถวจาก fgi_impact_competitors (Jobs 3/7 เดิม) แยกจากที่ผู้ใช้เพิ่มเอง (USER)
-6. **`compensation_histories.submit_account_month`** — งวดที่ส่งเข้าไฟล์ FRBC0001 ไป STA (Job 6) · สถานะ I/C/A/N/S/Z ตามเดิม
+6. **`document_new_stores.source_system`** — ใช้แพตเทิร์นเดียวกัน: `ALLMAP` = ระบบ default ร้านที่กระทบเพิ่มมาให้ (Job 9) · `USER` = เจ้าหน้าที่ SBP DSA คีย์เองจากเอกสารแจ้งของหน่วยงานส่งเสริม (**B5** · ผัง To-Be · SDD สไลด์ 7) — เพิ่มแถวเมื่อไรต้องเกลี่ย `compensate_percent` ใหม่ให้รวมเป็น 100%
+6. **`compensation_histories.submit_account_month`** — งวดที่ส่งไป STA ด้วย RabbitMQ `sta.compensation.result` (Job 6 · เดิมเป็นไฟล์ `FRBC0001`) · สถานะ I/C/A/N/S/Z ตามเดิม
 7. **`interface_transactions`** — FK แยกประเภทเป็นคอลัมน์ (impact_process_id / sales_summary_id / doc_no) + `data_name` เป็น enum — เลิก `parseInt(impacted_store_code)` ที่ทำเลขศูนย์นำหน้าหาย (ใหม่)
 
 ## ข้อปรับปรุงจากระบบเดิม (P0 × 3 · P1 × 4)
@@ -458,7 +555,7 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 3. **ครอบ Job 4 ด้วย transaction (outbox pattern)** — เดิม commit W→P ก่อนเขียนไฟล์ rollback ไม่ได้ (**P0 อันดับหนึ่ง**)
 4. **แก้บั๊ก purge tracking (E20)** — SQL เดิมต่อ data_name สองค่าเป็น string เดียวทำให้ไม่เคยลบ — ต้องทำพร้อม data migration และ test
 5. **ทบทวน NULL → auto-accept ของ Job 5** (P1) — ระบบใหม่ตั้งสถานะ "รอตรวจสอบ" แทน accept อัตโนมัติ · **ต้องขอ business sign-off ก่อนเปลี่ยน**
-6. **ย้าย credential ทั้งหมดไป Secret Manager + บังคับ TLS** — เดิม SFTP/K2 Basic Auth เป็น plaintext/hardcoded (P0)
+6. **ย้าย credential ทั้งหมดไป Secret Manager + บังคับ TLS** — เดิม SFTP/K2 Basic Auth เป็น plaintext/hardcoded (P0) · ระบบใหม่เหลือ credential ของ **EAI S3** (IAS/MIS) กับ **RabbitMQ** (STA) ซึ่งต้องอยู่ใน Secret Manager และเชื่อมด้วย TLS/AMQPS เท่านั้น
 7. **ใช้ identity ต่อตารางแทน sequence รวม 7 ตัว** — คงชื่อ sequence เดิมเฉพาะช่วง migrate (Errata E18)
 8. **golden-file tests ต่อ interface ภายนอก** — encoding WINDOWS-874 / UTF-8 / TIS-620, วันที่ พ.ศ., ชื่อประกอบ first + last
 

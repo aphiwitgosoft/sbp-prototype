@@ -1,6 +1,5 @@
 {
   "generated": [
-    "LLDD/assets/flows/BE-Job-1-ImportQSSI.png",
     "LLDD/assets/flows/BE-Job-10-NotifyNoReceiveData.png",
     "LLDD/assets/flows/BE-Job-2-ImportImpactStore.png",
     "LLDD/assets/flows/BE-Job-3-ImportImpactCompetitor.png",
@@ -38,7 +37,6 @@
     "LLDD/assets/flows/FE-LLDD-FE-Master-Data.png",
     "LLDD/assets/flows/FE-LLDD-FE-Report.png",
     "LLDD/index.html",
-    "LLDD/md/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.md",
     "LLDD/md/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.md",
     "LLDD/md/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.md",
     "LLDD/md/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.md",
@@ -81,7 +79,6 @@
     "LLDD/md/LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management.md",
     "LLDD/md/LLDD-To-Be.md",
     "LLDD/md/README.md",
-    "LLDD/pdf/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.pdf",
     "LLDD/pdf/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.pdf",
     "LLDD/pdf/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.pdf",
     "LLDD/pdf/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.pdf",
@@ -123,7 +120,6 @@
     "LLDD/pdf/LLDD-Database.pdf",
     "LLDD/pdf/LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management.pdf",
     "LLDD/pdf/LLDD-To-Be.pdf",
-    "LLDD/word/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.docx",
     "LLDD/word/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.docx",
     "LLDD/word/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.docx",
     "LLDD/word/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.docx",

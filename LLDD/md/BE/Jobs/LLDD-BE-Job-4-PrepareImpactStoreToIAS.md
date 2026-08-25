@@ -10,7 +10,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **19 ชั่วโมง** = implementation 14 + unit test 5 (30%) |
 | Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | เตรียมและส่งคำขอยอดขายไป IAS: สร้างไฟล์คำขอยอดขาย IAS/MIS แบบ durable ก่อนเปลี่ยนสถานะ W→P แล้วบันทึก transactional outbox เพื่อส่งซ้ำได้โดยไม่สร้างรายการซ้ำ |
+| Objective | เตรียมและส่งคำขอยอดขายไป IAS: สร้างไฟล์คำขอยอดขาย IAS/MIS แบบ durable ก่อนเปลี่ยนสถานะ W→P แล้วบันทึก transactional outbox เพื่อส่งซ้ำได้โดยไม่สร้างรายการซ้ำ · **วางไฟล์บน EAI S3** (มติ 2026-08-24 — แทน SFTP ตรงไป IAS) |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -38,21 +38,21 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 4 PrepareImp
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | กำหนดการรัน (Cron) | 0 16 7-16 * * | แก้ไขได้ | รันวันที่ 7-16 เวลา 16:00 |
-| IAS SFTP endpoint alias | ias-sales-request | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | host/port resolve จาก environment; credential ใช้ secretRef และ strict known_hosts |
-| Secret reference | secret/sbpgi/interfaces/ias | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ห้ามเก็บ password/private key ใน config/env ของ job |
-| Output staging path | /data/sbpgi/outbox/ias | แก้ไขได้ | ต้องรองรับ temp file, fsync และ atomic rename |
+| EAI S3 bucket + prefix (ขาออก) | eai-sbpgi/outbound/ias/ | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | endpoint/region resolve จาก environment; สิทธิ์ใช้ IAM role ของ pod หรือ secretRef และจำกัดเฉพาะ prefix ขาออกของ IAS |
+| Credential reference (IAM role / secret) | secret/sbpgi/interfaces/eai-s3 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ห้ามเก็บ password/private key ใน config/env ของ job |
+| Local staging path (ก่อนอัปโหลด) | /data/sbpgi/outbox/ias | แก้ไขได้ | ต้องรองรับ temp file, fsync และ atomic rename |
 
 ### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | FGI_IMPACT_STORE_SALES rows waiting for IAS sales data and export file/SFTP parameters. |
-| Progress | query eligible stores, write outbound IAS request file, upload to SFTP, backup file, record success/failure and notification. |
+| Input | FGI_IMPACT_STORE_SALES rows waiting for IAS sales data and EAI S3 bucket/prefix parameters. |
+| Progress | query eligible stores, write outbound IAS request file, upload to EAI S3 outbound prefix, keep local backup, record success/failure and notification. |
 | Output | IAS request file containing store/open-date pairs; run history includes generated file name and exported row count. |
 
 ### 5.90 Job 4 Execution Stages
 
-query eligible stores, write outbound IAS request file, upload to SFTP, backup file, record success/failure and notification.
+query eligible stores, write outbound IAS request file, upload to EAI S3 outbound prefix, keep local backup, record success/failure and notification.
 
 | Order | Service step | Repository | Output / failure contract |
 | --- | --- | --- | --- |
@@ -65,11 +65,11 @@ query eligible stores, write outbound IAS request file, upload to SFTP, backup f
 
 | Evidence | Job-specific value | Acceptance |
 | --- | --- | --- |
-| Input identity | FGI_IMPACT_STORE_SALES rows waiting for IAS sales data and export file/SFTP parameters. | snapshot input file/business key/period in run record |
+| Input identity | FGI_IMPACT_STORE_SALES rows waiting for IAS sales data and EAI S3 bucket/prefix parameters. | snapshot input file/business key/period in run record |
 | Output identity | IAS request file containing store/open-date pairs; run history includes generated file name and exported row count. | reconcile input, success, reject and skipped counts |
 | Dedup proof | ชื่อไฟล์ deterministic จาก period+runId และ UNIQUE(data_name,direction,business_key,period_key); outbox retry ใช้ transaction เดิม ไม่สร้าง request ซ้ำ | rerun fixture produces no duplicate target business key |
 | Transaction proof | สร้างไฟล์ temp, fsync, atomic rename และคำนวณ checksum ให้สำเร็จก่อน; จากนั้น transaction เดียว lock W, update W→P และ insert outbox READY; ห้าม commit W→P ก่อนมี durable file | injected failure leaves no partial committed state outside documented boundary |
-| Security proof | IAS SFTP credential ใช้ secretRef=secret/sbpgi/interfaces/ias; strict known_hosts, modern cipher, timeout และห้าม editable password/private key | config/log/error contains no plaintext secret |
+| Security proof | สิทธิ์เขียน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sbpgi/interfaces/eai-s3; จำกัดสิทธิ์เฉพาะ prefix ขาออกของ IAS (PutObject เท่านั้น) และห้าม editable access key ในหน้าจอ/ไฟล์ config | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
 
@@ -87,7 +87,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | Repository | iasRequestRepository |
 | Idempotency / dedup | ชื่อไฟล์ deterministic จาก period+runId และ UNIQUE(data_name,direction,business_key,period_key); outbox retry ใช้ transaction เดิม ไม่สร้าง request ซ้ำ |
 | Transaction boundary | สร้างไฟล์ temp, fsync, atomic rename และคำนวณ checksum ให้สำเร็จก่อน; จากนั้น transaction เดียว lock W, update W→P และ insert outbox READY; ห้าม commit W→P ก่อนมี durable file |
-| Security | IAS SFTP credential ใช้ secretRef=secret/sbpgi/interfaces/ias; strict known_hosts, modern cipher, timeout และห้าม editable password/private key |
+| Security | สิทธิ์เขียน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sbpgi/interfaces/eai-s3; จำกัดสิทธิ์เฉพาะ prefix ขาออกของ IAS (PutObject เท่านั้น) และห้าม editable access key ในหน้าจอ/ไฟล์ config |
 
 #### Input / candidate query
 
@@ -153,7 +153,7 @@ export async function runLlddBeJob4Prepareimpactstoretoias(ctx, services) {
 | 1 | lock candidate W ด้วย FOR UPDATE SKIP LOCKED และสร้าง payload ใน memory | validation fail: rollback lock; สถานะยัง W |
 | 2 | เขียน temporary file, fsync, atomic rename และคำนวณ SHA-256 | write/rename/checksum fail: ลบ temp; สถานะยัง W; ไม่สร้าง outbox |
 | 3 | transaction เดียว update W→P และ insert interface_transactions/outbox READY | DB fail: rollback W→P และ outbox; durable file คงไว้ให้ cleanup/reconcile โดย checksum |
-| 4 | dispatcher อ่าน READY แล้วส่ง SFTP; compare checksum ก่อนส่ง | ส่ง fail: outbox ยัง READY/FAILED_RETRY; ห้ามเปลี่ยน candidate กลับ W เพื่อไม่ให้สร้างไฟล์ซ้ำ |
+| 4 | dispatcher อ่าน READY แล้วอัปโหลดขึ้น EAI S3 (prefix ขาออก); compare checksum ก่อนส่ง | อัปโหลด fail: outbox ยัง READY/FAILED_RETRY; ห้ามเปลี่ยน candidate กลับ W เพื่อไม่ให้สร้างไฟล์ซ้ำ |
 | 5 | ส่งสำเร็จ mark SENT; callback/import ที่สัมพันธ์กัน mark ACKED | ใช้ transaction id เดิมตลอด lifecycle |
 
 ## 6. Button / User Action Mapping
@@ -216,12 +216,12 @@ export interface Job4Config {
   cron: string;
   /** กำหนดการรัน (Cron) — รันวันที่ 7-16 เวลา 16:00 */
   cron: string;
-  /** IAS SFTP endpoint alias — host/port resolve จาก environment; credential ใช้ secretRef และ strict known_hosts */
-  iasSftpEndpoint: string;
-  /** Secret reference — ห้ามเก็บ password/private key ใน config/env ของ job */
-  secretReference: string;
-  /** Output staging path — ต้องรองรับ temp file, fsync และ atomic rename */
-  outputStagingPath: string;
+  /** EAI S3 bucket + prefix (ขาออก) — endpoint/region resolve จาก environment; สิทธิ์ใช้ IAM role ของ pod หรือ secretRef และจำกัดเฉพาะ prefix ขาออกของ IAS */
+  eaiS3Bucket: string;
+  /** Credential reference (IAM role / secret) — ห้ามเก็บ password/private key ใน config/env ของ job */
+  credentialReferenceIam: string;
+  /** Local staging path (ก่อนอัปโหลด) — ต้องรองรับ temp file, fsync และ atomic rename */
+  localStagingPath: string;
   /** ผู้รับอีเมลเมื่อ job ล้มเหลว — เก็บเป็น string คั่น comma ให้ตรง signature ของ
       `EmailLibService.sendMail({ mailTo })` ที่รับ string ไม่ใช่ string[] */
   mailTo: string;
@@ -233,10 +233,10 @@ export class SbpgiJob4Config implements Job4Config {
   enabled = (process.env.SBPGI_JOB4_ENABLED ?? 'true') === 'true';
   cron = process.env.SBPGI_JOB4_CRON ?? '0 16 7-16 * *';
   cron = process.env.SBPGI_JOB4_CRON ?? '0 16 7-16 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  iasSftpEndpoint = process.env.SBPGI_JOB4_IAS_SFTP_ENDPOINT ?? 'ias-sales-request'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  secretReference = process.env.SBPGI_JOB4_SECRET_REFERENCE ?? 'secret/sbpgi/interfaces/ias'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  outputStagingPath = process.env.SBPGI_JOB4_OUTPUT_STAGING_PATH ?? '/data/sbpgi/outbox/ias'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  mailTo = process.env.SBPGI_JOB4_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: Notification Service แจ้งเมื่อ durable write, DB transaction หรือ SFTP retry เกิน threshold)
+  eaiS3Bucket = process.env.SBPGI_JOB4_EAI_S3_BUCKET ?? 'eai-sbpgi/outbound/ias/'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  credentialReferenceIam = process.env.SBPGI_JOB4_CREDENTIAL_REFERENCE_IAM ?? 'secret/sbpgi/interfaces/eai-s3'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  localStagingPath = process.env.SBPGI_JOB4_LOCAL_STAGING_PATH ?? '/data/sbpgi/outbox/ias'; // TODO: แก้ผ่าน env/config file แล้ว deploy
+  mailTo = process.env.SBPGI_JOB4_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: email-lib กลาง (sendEmail) แจ้งเมื่อ durable write, DB transaction หรือการอัปโหลดขึ้น EAI S3 retry เกิน threshold)
 }
 
 // TODO: เพิ่ม SbpgiJob4Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
@@ -321,8 +321,8 @@ export class PrepareImpactStoreToIasService {
     // TODO: implement
   }
 
-  // dispatcher ส่ง SFTP ด้วย secretRef/strict known_hosts
-  async step06Connect(state: JobState, manager?: EntityManager): Promise<void> {
+  // dispatcher อัปโหลดไฟล์ขึ้น EAI S3 (prefix ขาออก) ด้วย IAM role/secretRef
+  async step06Upload(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
@@ -340,7 +340,7 @@ export class PrepareImpactStoreToIasService {
 | 3 | process | สร้าง temporary file และ validate record count | step03Validate() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 4 | process | fsync + atomic rename + SHA-256 | step04Process() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 5 | process | transaction: update W→P + insert outbox READY | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 6 | io | dispatcher ส่ง SFTP ด้วย secretRef/strict known_hosts | step06Connect() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 6 | io | dispatcher อัปโหลดไฟล์ขึ้น EAI S3 (prefix ขาออก) ด้วย IAM role/secretRef | step06Upload() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 7 | end | จบ | summarize() | - |
 
 ```ts
@@ -378,11 +378,11 @@ export class PrepareImpactStoreToIasJob {
         // ขั้นที่ 5: transaction: update W→P + insert outbox READY · TODO: fail แล้ว rollback ทั้งสถานะและ outbox
         await this.service.step05Insert(state, manager);
       });
-      // ขั้นที่ 6: dispatcher ส่ง SFTP ด้วย secretRef/strict known_hosts · TODO: retry จาก outbox transaction เดิม
-      await this.service.step06Connect(state);
+      // ขั้นที่ 6: dispatcher อัปโหลดไฟล์ขึ้น EAI S3 (prefix ขาออก) ด้วย IAM role/secretRef · TODO: retry จาก outbox transaction เดิม
+      await this.service.step06Upload(state);
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
-      // TODO: error path ของ Job 4 — Target remediation: ห้าม commit W→P ก่อน fsync/atomic rename/checksum สำเร็จ และห้ามส่ง SFTP โดยไม่มี outbox
+      // TODO: error path ของ Job 4 — Target remediation: ห้าม commit W→P ก่อน fsync/atomic rename/checksum สำเร็จ และห้ามส่ง อัปโหลดขึ้น S3 โดยไม่มี outbox
       this.logger.error(JSON.stringify({ event: 'job.failed', jobNo: '4', period: ctx.period,
         triggeredBy: ctx.triggeredBy, durationMs: Date.now() - startedAt, error: (error as Error).message }));
       // TODO: แจ้งผู้ดูแลผ่าน JobFailureNotifier (หัวข้อ 9.6.1) — runner เป็นผู้เรียกให้
@@ -406,7 +406,7 @@ export class PrepareImpactStoreToIasJob {
 
 #### 9.4 การกันรันซ้อนของ Job 4 (PostgreSQL advisory lock)
 
-Job 4 มีข้อควรระวังจาก legacy: Target remediation: ห้าม commit W→P ก่อน fsync/atomic rename/checksum สำเร็จ และห้ามส่ง SFTP โดยไม่มี outbox — runner ล็อกด้วย `pg_try_advisory_lock` ก่อนเริ่มขั้นแรกเสมอ และรอบที่ล็อกไม่ได้ให้จบด้วยสถานะ SKIPPED_LOCKED (ไม่ใช่ FAILED)
+Job 4 มีข้อควรระวังจาก legacy: Target remediation: ห้าม commit W→P ก่อน fsync/atomic rename/checksum สำเร็จ และห้ามส่ง อัปโหลดขึ้น S3 โดยไม่มี outbox — runner ล็อกด้วย `pg_try_advisory_lock` ก่อนเริ่มขั้นแรกเสมอ และรอบที่ล็อกไม่ได้ให้จบด้วยสถานะ SKIPPED_LOCKED (ไม่ใช่ FAILED)
 
 ```ts
 // src/batch/runner.ts (ส่วนกันรันซ้อน)
@@ -527,7 +527,7 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 4 เดิมคือ Notification Service แจ้งเมื่อ durable write, DB transaction หรือ SFTP retry เกิน threshold — ย้ายมาเป็น env SBPGI_JOB4_MAIL_TO
+    // TODO: ผู้รับของ Job 4 เดิมคือ email-lib กลาง (sendEmail) แจ้งเมื่อ durable write, DB transaction หรือการอัปโหลดขึ้น EAI S3 retry เกิน threshold — ย้ายมาเป็น env SBPGI_JOB4_MAIL_TO
     const recipients = (process.env.SBPGI_JOB4_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
@@ -560,7 +560,7 @@ export class JobFailureNotifier {
 
 - กติกา rerun ของ Job 4: UNIQUE(data_name,direction,business_key,period_key) และ checksum เดิมไม่สร้าง request ซ้ำ
 - ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: durable file ก่อน; transaction เดียว update W→P + insert outbox READY; dispatcher ส่งภายหลัง
-- ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: Target remediation: ห้าม commit W→P ก่อน fsync/atomic rename/checksum สำเร็จ และห้ามส่ง SFTP โดยไม่มี outbox
+- ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: Target remediation: ห้าม commit W→P ก่อน fsync/atomic rename/checksum สำเร็จ และห้ามส่ง อัปโหลดขึ้น S3 โดยไม่มี outbox
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
 - สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=4 --period=<YYYYMM>`
 - หลังรันซ้ำ ตรวจ output `AMS06001O (UTF-8)` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
@@ -575,7 +575,7 @@ export class JobFailureNotifier {
 | 3 | สร้าง temporary file และ validate record count (ยังไม่เปลี่ยน W→P) |
 | 4 | fsync + atomic rename + SHA-256 (ไฟล์ต้อง durable ก่อนเริ่ม DB transaction) |
 | 5 | transaction: update W→P + insert outbox READY (fail แล้ว rollback ทั้งสถานะและ outbox) |
-| 6 | dispatcher ส่ง SFTP ด้วย secretRef/strict known_hosts (retry จาก outbox transaction เดิม) |
+| 6 | dispatcher อัปโหลดไฟล์ขึ้น EAI S3 (prefix ขาออก) ด้วย IAM role/secretRef (retry จาก outbox transaction เดิม) |
 | 7 | จบ |
 
 ## 11. Acceptance Criteria

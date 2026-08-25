@@ -403,19 +403,15 @@ service ประกาศ method ครบทุกเส้นที่ contro
 // src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.service.ts
 import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { WorkflowService } from '../workflow/workflow.service';
 import { SBPGI_SQL } from './sbpgi-job-batch-email-srm.sql';
 
 @Injectable()
 export class SbpgiJobBatchEmailSRMService {
   private readonly logger = new Logger(SbpgiJobBatchEmailSRMService.name);
-  // versionId ของ workflow ประกันรายได้ (ตั้งใน env เหมือน COOPERATION_WORKFLOW_VERSION_ID)
-  private readonly versionId = Number(process.env.SBPGI_WORKFLOW_VERSION_ID);
 
   constructor(
     // DATA_SOURCE override query(): SELECT/WITH ไป slave pool, write ไป master
     @Inject('DATA_SOURCE') private readonly dataSource: DataSource,
-    private readonly workflow: WorkflowService,
   ) {}
 
   // GET /api/v1/interfaces/tracking — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
@@ -454,12 +450,6 @@ export class SbpgiJobBatchEmailSRMService {
       }
       await runner.query(SBPGI_SQL.receiveAckSta, [/* TODO: ผูกค่าจาก body */]);
       await runner.commitTransaction();
-      // ⚠️ workflow engine อยู่คนละ DataSource ('workflow-connection' ของ @srm/glb-workflow)
-      //    จึง **atomic ร่วมกับ transaction ข้างบนไม่ได้** — ต้อง commit ฝั่ง SBPGI ให้เสร็จก่อน
-      //    แล้วค่อย eventWorkflow (idempotency key = referenceId = docNo)
-      // TODO: เรียก workflow use case ตามตารางหัวข้อ Workflow ด้านล่าง + retry
-      // TODO: ถ้า eventWorkflow ล้มเหลว ต้องมี compensating action และบันทึกผลลง
-      //       consideration_logs เพื่อให้ job reconcile ตามเก็บได้
       return { message: 'saved' };
     } catch (error) {
       await runner.rollbackTransaction();
@@ -472,28 +462,7 @@ export class SbpgiJobBatchEmailSRMService {
 }
 ```
 
-#### 9.5 Workflow (`@srm/glb-workflow`)
-
-✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
-
-| Endpoint | Use case ที่ต้องเรียก | เหตุผล |
-| --- | --- | --- |
-| GET /api/v1/interfaces/pending-ack | getPendingFlowByUser() | inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header |
-
-```ts
-// src/modules/sbpgi-job-batch-email-srm/sbpgi-job-batch-email-srm.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
-// WorkflowService = wrapper ของ @srm/glb-workflow ที่ store-backend มีอยู่แล้ว
-// (DataSource แยกชื่อ 'workflow-connection', ทุก use case ห่อด้วย TypeOrmUnitOfWork)
-
-  // inbox งานค้าง — ใช้ร่วมกับ /api/workflow/pending ของ backlog เดิมได้
-  const pending = await this.workflow.getPendingFlowByUser({
-    userData: { userId: Number(userId), groupId: Number(groupId) },
-    versionId: this.versionId,
-  });
-  // TODO: join referenceId (= doc_no) กลับไปที่ compensation_documents เพื่อเติมข้อมูลเอกสาร
-```
-
-#### 9.6 Entity (TypeORM)
+#### 9.5 Entity (TypeORM)
 
 ```ts
 // src/entitys/interface-transactions.entity.ts
@@ -562,7 +531,7 @@ export class EmailSent {
 | --- | --- | --- |
 | email_template | R | email_template + email_sent + @gosoft-sbp/email-lib |
 
-#### 9.7 Repository Providers + Module wiring
+#### 9.6 Repository Providers + Module wiring
 
 ```ts
 // src/providers/sbpgi/sbpgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
@@ -595,13 +564,12 @@ import { DatabaseModule } from '../../database/database.module';
 // — app.module.ts **ไม่ได้** apply แบบ global (มีแค่ HttpContext/LoggerContext) แต่ละโมดูลต้อง apply เอง
 // (ดู evaluation-process.module.ts / inform-evaluate.module.ts / cooperation-request.module.ts)
 import { UserContextMiddleware } from '../../common/middleware/user-context.middleware';
-import { WorkflowModule } from '../workflow/workflow.module';
 import { sbpgiJobBatchEmailSRMProviders } from '../../providers/sbpgi/sbpgi';
 import { SbpgiJobBatchEmailSRMController } from './sbpgi-job-batch-email-srm.controller';
 import { SbpgiJobBatchEmailSRMService } from './sbpgi-job-batch-email-srm.service';
 
 @Module({
-  imports: [DatabaseModule, WorkflowModule],
+  imports: [DatabaseModule],
   controllers: [SbpgiJobBatchEmailSRMController],
   providers: [SbpgiJobBatchEmailSRMService, ...sbpgiJobBatchEmailSRMProviders],
   exports: [SbpgiJobBatchEmailSRMService],
@@ -615,7 +583,7 @@ export class SbpgiJobBatchEmailSRMModule implements NestModule {
 // TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SBPGI ตัวอื่น
 ```
 
-#### 9.8 BFF Proxy (module + controller + client service)
+#### 9.7 BFF Proxy (module + controller + client service)
 
 BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sbpgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
@@ -725,10 +693,14 @@ LIMIT :size OFFSET :offset;
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
--- เกณฑ์ watchdog Job 10: return_code NULL · interface แบบไฟล์ · อายุ ≥ 1 วัน
+-- เกณฑ์ watchdog Job 10: เฉพาะขาส่งออกที่ยังไม่มี ACK และอายุ ≥ 1 วัน
+--   direction = OUT เท่านั้น — แถว INTERNAL ของ Jobs 7/8/9 จบที่ COMPLETED ทันที ไม่มี ACK ให้รอ
+--   (ตรงเจตนาเดิมของ Java: interface_type != 'WS' = เฝ้าเฉพาะ interface แบบไฟล์)
 SELECT data_name, doc_no, sent_at, (CURRENT_DATE - sent_at::date) AS age_days
 FROM interface_transactions
-WHERE return_code IS NULL
+WHERE direction = 'OUT'
+  AND status NOT IN ('ACKED','COMPLETED')
+  AND return_code IS NULL
   AND data_name IN (:staDatasets)
   AND sent_at < CURRENT_DATE - 1
 ORDER BY sent_at;

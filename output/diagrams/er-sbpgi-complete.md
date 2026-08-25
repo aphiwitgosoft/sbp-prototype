@@ -1,10 +1,10 @@
 # ER Diagram ฉบับสมบูรณ์ — SBPGI + ฐานข้อมูลระบบ SBP เดิม
 
 > สร้างอัตโนมัติด้วย `python3 tools/build_er_diagram.py` — **ห้ามแก้ไฟล์นี้ด้วยมือ**  
-> แหล่งข้อมูล: `LLDD/md/LLDD-Database.md` (DDL 19 ตาราง) · `SBP/db-schema-sps_store.md` · `SBP/db-schema-sps_auth.md` (ดึงฐานจริง 07/08/2026) · `database.md` (Cross-System Keys)  
+> แหล่งข้อมูล: `LLDD/md/LLDD-Database.md` (DDL 20 ตาราง) · `SBP/db-schema-sps_store.md` · `SBP/db-schema-sps_auth.md` (ดึงฐานจริง 07/08/2026) · `database.md` (Cross-System Keys)  
 > รูป: `er-sbpgi-complete.svg` (เวกเตอร์) · `er-sbpgi-complete.png` · `er-sbpgi-complete.html` (โต้ตอบได้ · มีภาคผนวกตารางครบทุกตาราง)
 
-**บนรูป:** 69 ตาราง (19 SBPGI · 39 sps_store · 11 sps_auth) · 151 ความสัมพันธ์
+**บนรูป:** 70 ตาราง (20 SBPGI · 39 sps_store · 11 sps_auth) · 153 ความสัมพันธ์
 
 ## โซน A · FGI/FCS Impact Pipeline
 
@@ -12,7 +12,8 @@
 
 | ตาราง | คอลัมน์ | PK | ความสัมพันธ์ออก | แถวจริง |
 |---|---|---|---|---|
-| `fgi_impact_processes` | 10 | id | ออก 2 · เข้า 5 | — |
+| `fgi_impact_processes` | 18 | id | ออก 2 · เข้า 6 | — |
+| `fgi_impact_compensations` | 18 | id | ออก 2 · เข้า 0 | — |
 | `fgi_impact_stores` | 12 | id | ออก 4 · เข้า 0 | — |
 | `fgi_impact_sales_summaries` | 8 | id | ออก 1 · เข้า 2 | — |
 | `sales_transactions` | 9 | id | ออก 1 · เข้า 0 | — |
@@ -42,7 +43,7 @@
 
 | ตาราง | คอลัมน์ | PK | ความสัมพันธ์ออก | แถวจริง |
 |---|---|---|---|---|
-| `impacted_stores` | 7 | store_code | ออก 5 · เข้า 3 | — |
+| `impacted_stores` | 7 | store_code | ออก 5 · เข้า 4 | — |
 | `competitors` | 6 | competitor_code | ออก 0 · เข้า 2 | — |
 | `external_factors` | 5 | factor_code | ออก 0 · เข้า 1 | — |
 
@@ -157,6 +158,8 @@ SBPGI รับผ่าน header ของ BFF ไม่ query ตรง
 | `sbpgi.document_new_stores.new_store_code` | N:1 | `sps_store.store.store_id` | logical | ร้านเปิดใหม่ในเอกสาร | confirmed | LLDD-Database.md §5.3 |
 | `sbpgi.document_running_numbers.year` | 1:N | `sbpgi.compensation_documents.year` | logical | ออกเลข YYYY/xxxxx แบบ atomic ต่อปี ค.ศ. | confirmed | LLDD-Database.md §5.3 · database.md §Canonical |
 | `sbpgi.fcs_qssi_score.store_id` | N:1 | `sps_store.store.store_id` | logical | คะแนน QSSI ต่อร้าน 23.9 ล้านแถว | confirmed | db-schema-sps_store.md §fcs_qssi_score |
+| `sbpgi.fgi_impact_compensations.impact_process_id` | N:1 | `sbpgi.fgi_impact_processes.id` | fk | FK | confirmed | sbpgi · DDL/dump |
+| `sbpgi.fgi_impact_compensations.impacted_store_code` | N:1 | `sbpgi.impacted_stores.store_code` | fk | FK | confirmed | sbpgi · DDL/dump |
 | `sbpgi.fgi_impact_competitors.competitor_code` | N:1 | `sbpgi.competitors.competitor_code` | fk | FK | confirmed | sbpgi · DDL/dump |
 | `sbpgi.fgi_impact_competitors.competitor_code` | 1:N | `sbpgi.document_competitors.source_system` | logical | นำเข้าเป็นแถว source_system=ALLMAP (แยกจาก USER ที่ผู้ใช้เพิ่มเอง) | confirmed | database.md §กุญแจเชื่อมข้ามระบบ ข้อ 5 |
 | `sbpgi.fgi_impact_competitors.impact_process_id` | N:1 | `sbpgi.fgi_impact_processes.id` | fk | FK | confirmed | sbpgi · DDL/dump |
@@ -294,6 +297,8 @@ SBPGI รับผ่าน header ของ BFF ไม่ query ตรง
 ```mermaid
 erDiagram
     sbpgi__fgi_impact_processes }o--|| sbpgi__impacted_stores : "impacted_store_code→store_code"
+    sbpgi__fgi_impact_compensations }o--|| sbpgi__fgi_impact_processes : "impact_process_id→id"
+    sbpgi__fgi_impact_compensations }o--|| sbpgi__impacted_stores : "impacted_store_code→store_code"
     sbpgi__fgi_impact_stores }o--|| sbpgi__fgi_impact_processes : "impact_process_id→id"
     sbpgi__fgi_impact_stores }o--|| sbpgi__impacted_stores : "impacted_store_code→store_code"
     sbpgi__fgi_impact_sales_summaries }o--|| sbpgi__fgi_impact_processes : "impact_process_id→id"

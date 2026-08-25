@@ -59,7 +59,8 @@ inbox ของแต่ละ role = เอกสารสถานะ "รอ\
 ## ข้อเท็จจริง SRS ที่พลาดบ่อย
 
 - **ภาคมี 13 รหัส (ชุดปัจจุบัน · SDD v7.5):** `BE BS NEU REU RSU BG BW RC RN BN NEL REL RSL` — ใช้ทั้งตัวกรองหน้ารายการและรายงาน · **ภาคใหม่เพิ่มอัตโนมัติ** จาก master `zones` (`GET /zones`) ห้าม hardcode ใน FE · ชุดเดิม 8 ค่าของ SRS 3.1.7 (`BE BN BS BW RC RE RN RS` — มี RC ไม่มี RW) **เลิกใช้แล้ว**
-- ประเภทร้านในเงื่อนไขค้นหา: FR Type A / B / C / พนักงาน (4 ค่า multi-select) — ประเภทเต็ม 8 ชนิดอยู่เฉพาะรายละเอียดเอกสาร
+- ประเภทร้านในเงื่อนไขค้นหา: SBP Type A / B / C / พนักงาน (4 ค่า multi-select) — ประเภทเต็ม **9 ชนิด**อยู่เฉพาะรายละเอียดเอกสาร
+- **คำเรียกประเภทร้าน เปลี่ยนเมื่อ 2026-08-20:** `FR` → **`SBP`** · `BGC` → **`Type D`** · `C r` **แตกเป็น 2 ประเภท** `Type V(C)` + `Type V(B)` (8 → 9 ชนิด)
 - รายงานสรุปสถานะ (3.1.7): ต้องระบุปี · ออกเฉพาะรายการที่มีเลขที่เอกสาร · ผลลัพธ์ 19 คอลัมน์ · Export Excel
 - แก้ master (3.1.8/3.1.9) ต้องระบุ**เหตุผลการแก้ไข** และลงประวัติ (`audit_logs` — เดิม MaintainMasterHistory)
 - รหัสปัจจัยภายนอกห้ามซ้ำ
@@ -87,7 +88,7 @@ EM-04/05 รับพฤติกรรมมาจาก Approve Flow เดิ
 ## ระบบใหม่ SBPGI — จุดยึดสั้น ๆ (รายละเอียด = living docs)
 
 - **รวม EAI + K2 เข้า SBPGI**: ตัดไฟล์ภายใน `BPM06001O_/2O_/3O_` (Jobs 7/8/9) และ K2 REST StartInstance (Job 8b) → Document Service เขียน DB ตรง + Workflow Engine ภายใน
-- Interface ภายนอก **คงเดิม** (ระบบของทีมอื่น): QSSI (SFTP) · ALLMAP (SQL Server) · IAS/MIS (ไฟล์ AMS06001O/I) · STA (FRBC0001 + ACK, เพิ่ม `POST /interfaces/sta/ack`) · SMTP
+- Interface ภายนอก **ยังเป็นระบบของทีมอื่น** แต่ช่องทางเปลี่ยนบางส่วน (มติ 2026-08-24): ~~QSSI (SFTP)~~ **ตัด Job 1 — อ่าน `fcs_qssi_score` ที่ระบบ SBP เดิมนำเข้าให้** · ALLMAP (SQL Server) · IAS/MIS (ไฟล์ AMS06001O/I ผ่าน **EAI S3** แทน SFTP) · STA (**RabbitMQ `sta.compensation.result`** แทนไฟล์ FRBC0001 + SFTP · ACK ผ่าน `POST /interfaces/sta/ack`) · SMTP
 - Workflow engine `@srm/glb-workflow` มี **API 8 ตัว** (ชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx`): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` (= หน้ารอดำเนินการ) · `getWorkflowsByUser` (= หน้าที่เกี่ยวข้อง) · `addPreApprover` — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` ไม่ใช่ชื่อ API
 - Flow 12 ขั้น 4 Stage (A รับข้อมูล Jobs 1–5 · B สร้างเอกสาร+เปิด workflow · C พิจารณา 5 ขั้น · D ส่งออก+watchdog Jobs 6/10) → `workflow.md`
 - Schema **19 ตาราง 3 โซน (A 7 · B 9 · C 3)** (A=FGI/FCS · B=K2 docs/workflow · C=shared master/config · RBAC/ผู้ปฏิบัติงาน + workflow engine + master/config ที่ระบบ SBP มีอยู่แล้ว ใช้ของเดิม) + Data Spine 4 ID (`impact_process_id` → `doc_no` → `transaction_id`/`approver_id` ของ `sps_store.workflow_transaction` / `workflow_approver` ใน `@srm/glb-workflow`) → `database.md`

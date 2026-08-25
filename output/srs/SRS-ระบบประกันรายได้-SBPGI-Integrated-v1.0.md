@@ -36,7 +36,7 @@ Version 1.0
 - รายละเอียดเชิงออกแบบต้องไม่เพิ่ม ลด หรือเปลี่ยน requirement โดยไม่มีการอนุมัติ change request
 - รายการที่ระบุ OPEN ยังไม่ถือเป็นขอบเขตที่อนุมัติจนกว่าจะมีข้อยุติและปรับ baseline
 - ข้อมูลตัวอย่างและพฤติกรรม prototype ใช้ยืนยัน UX เท่านั้น ต้องไม่ถูกนำไปใช้เป็นข้อมูล Production
-- ขอบเขต API ใน SRS ประกอบด้วย 30 endpoints / 6 กลุ่ม โดยบริการยืนยันตัวตนเป็นบริการ platform กลาง
+- ขอบเขต API ใน SRS ประกอบด้วย 29 endpoints / 6 กลุ่ม โดยบริการยืนยันตัวตนเป็นบริการ platform กลาง
 
 ## 1.4 How to read this document
 
@@ -92,7 +92,7 @@ Version 1.0
 | Frontend | Web SPA จากต้นแบบหน้าจอ | Dashboard, K2 forms, report, batch monitor และ administration |
 | Backend | RBAC, Document, Workflow, Batch Scheduler, Interface, Report/Notification | ให้บริการ REST API /api/v1 และ orchestration ภายใน; Auth token/menu มาจาก platform กลาง |
 | Database | Schema รวม Zone A/B/C | เก็บ pipeline, เอกสาร/workflow, master/config และ audit |
-| External | QSSI, ALLMAP, IAS/MIS, STA, SAP, SMTP | คง file/SFTP/API ตามขอบเขตระบบภายนอก |
+| External | QSSI, ALLMAP, IAS/MIS, STA, SAP, SMTP | คงขอบเขตระบบภายนอก · IAS/MIS ผ่าน EAI S3 · STA ผ่าน RabbitMQ |
 
 > SYS: ระบบต้องรวมการสร้างเอกสารและ workflow ไว้ภายใน SBPGI โดยใช้ DB transaction และ Workflow Engine ภายใน ห้ามสร้างไฟล์ BPM06001O/BPM06002O/BPM06003O หรือเรียก K2 StartInstance ใน runtime ใหม่
 
@@ -117,10 +117,10 @@ Version 1.0
 
 | System | Direction | Mechanism | Requirement |
 | --- | --- | --- | --- |
-| QSSI | Inbound | SFTP, mrs* 4 files | WINDOWS-874; คะแนน 6 หมวด 8,9,12,1,10,16 |
+| QSSI | Inbound | ระบบ SBP เดิมนำเข้าให้ (fcs_qssi_score) | SBPGI อ่านอย่างเดียว; คะแนน 6 หมวด 8,9,12,1,10,16 |
 | ALLMAP | Inbound | SQL Server views / link | คู่ร้านถูกกระทบ ร้านคู่แข่ง และ POI map |
 | IAS/MIS | Outbound/Inbound | AMS06001O / AMS06001I | ยอดขาย 4 windows x 15 days |
-| STA | Outbound/Inbound | FRBC0001 + ACK/API callback | ส่งผลชดเชยและเฝ้าระวัง ACK |
+| STA | Outbound/Inbound | RabbitMQ sta.compensation.result + ACK/API callback | ส่งผลชดเชยและเฝ้าระวัง ACK |
 | SAP | Downstream via STA | Accounting posting | รับรายการเมื่อ STA approve |
 | SMTP | Outbound | E-mail | แจ้งผู้ดำเนินการ เตือนงานค้าง และ batch errors |
 
@@ -154,7 +154,7 @@ Version 1.0
 | REQ-BUS-003 | ระบบต้องเปิด workflow เฉพาะรายการที่ Gen Flow Gate ทุกเงื่อนไขผ่าน | Job 8b/API gate test ครบ Y/W/N |
 | REQ-BUS-004 | ระบบต้อง flag รายการที่ยอดขายมีวันทำการน้อยกว่า 60 วันและแสดงเป็นแถวผิดปกติ | list/report test ที่ 59/60 วัน |
 | REQ-BUS-005 | ระบบต้องปฏิเสธการบันทึกเมื่อผลรวมเปอร์เซ็นต์ชดเชยของร้านเปิดใหม่ไม่เท่ากับ 100% | validation test ต่ำกว่า/เท่ากับ/มากกว่า 100 |
-| REQ-BUS-006 | ยอดชดเชยไม่เกิน 100,000 บาทต้องสิ้นสุดที่ Section 02; ยอดเกิน 100,000 บาทต้องผ่าน Section 03 ก่อนสิ้นสุด | routing boundary test 99,999.99/100,000/100,000.01 |
+| REQ-BUS-006 | ยอดชดเชยน้อยกว่า 100,000 บาทต้องสิ้นสุดที่ Section 02; ยอดตั้งแต่ 100,000 บาทขึ้นไปต้องผ่าน Section 03 ก่อนสิ้นสุด | routing boundary test 99,999.99/100,000/100,000.01 |
 | REQ-DOC-001 | ระบบต้องสร้างเลขเอกสารรูป YYYY/xxxxx โดยใช้ปี พ.ศ. และ running แยกต่อปี | uniqueness/format/concurrency test |
 | REQ-DOC-002 | ระบบต้องป้องกันเอกสารซ้ำต่อ business key และ impact process | duplicate/idempotency test |
 | REQ-DOC-003 | ระบบต้องเก็บความสัมพันธ์ impact_process_id -> doc_no -> instance_id -> task_id ให้ trace ได้ | referential-integrity trace |
@@ -170,8 +170,8 @@ Version 1.0
 | REQ-RPT-001 | รายงานหน้าจอและไฟล์ Excel ต้องใช้ filter/dataset เดียวกันและมีข้อมูลครบ 14 คอลัมน์ (SDD สไลด์ 60) | preview/export reconciliation |
 | REQ-OPS-001 | Jobs 1-10 และ 8b ต้องรองรับ rerun โดยไม่สร้างข้อมูลซ้ำและต้องรายงาน input/success/reject/skipped | rerun/reconcile evidence |
 | REQ-SCR-001 | ระบบต้องมีหน้าจอ committed SCR-01 ถึง SCR-08 ตาม requirement รายหน้าจอ | screen/UAT traceability |
-| SYS-API-001 | ระบบต้องมี API capability 30 endpoints ใน 6 กลุ่มตาม catalog | OpenAPI/contract coverage |
-| SYS-DAT-001 | ระบบต้องมี logical data model 19 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ) | migration/schema test |
+| SYS-API-001 | ระบบต้องมี API capability 29 endpoints ใน 6 กลุ่มตาม catalog | OpenAPI/contract coverage |
+| SYS-DAT-001 | ระบบต้องมี logical data model 20 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ) | migration/schema test |
 | SYS-NFR-001 | ระบบต้องมี correlation log, metrics, alert และ audit ที่เชื่อม request/job/interface กับผลธุรกิจได้ | observability trace |
 
 
@@ -205,7 +205,7 @@ Version 1.0
 
 | Step | Process | Requirement |
 | --- | --- | --- |
-| A1 | นำเข้าคะแนน QSSI รายเดือน | Job 1 รับ 4 ไฟล์ผ่าน SFTP, dedup และบันทึก fcs_qssi_score |
+| A1 | คะแนน QSSI รายเดือน | ระบบ SBP เดิมนำเข้าลง fcs_qssi_score; SBPGI อ่านอย่างเดียว (ตัด Job 1 ออก 2026-08-24) |
 | A2 | นำเข้าคู่ร้านและคู่แข่ง | Jobs 2-3 อ่าน ALLMAP ทุกวันที่ 7 และตั้ง verify_status ตามกฎ DENY/ON_PROCESS |
 | A3 | ขอยอดขายรายวัน | Job 4 สร้าง AMS06001O วันที่ 7-16 เวลา 16:00 |
 | A4 | รับยอดขายและคำนวณ | Job 5 รับ AMS06001I, คำนวณ 4x15 วัน, outlier \|sales_diff\| >= 50 |
@@ -213,9 +213,9 @@ Version 1.0
 | B2 | เปิด workflow | Workflow Engine เปิด instance เมื่อผ่าน Gen Flow Gate และเริ่ม Section 06 |
 | C1 | SBP DSA ตรวจสอบ | Section 06 และ 08 ตรวจข้อมูลและคำนวณเงินชดเชย |
 | C2 | ฝ่ายส่งเสริมธุรกิจปรับข้อมูล | Section 01 แก้ร้านเปิดใหม่ คู่แข่ง ปัจจัย และตรวจ % ชดเชยรวม 100% |
-| C3 | GM/AVP อนุมัติ | Section 02; ยอด > 100,000 ผ่าน Section 03 แล้วจบ, ยอด <= 100,000 จบที่ GM |
+| C3 | GM/AVP อนุมัติ | Section 02; ยอดตั้งแต่ 100,000 ขึ้นไปผ่าน Section 03 แล้วจบ, ยอดน้อยกว่า 100,000 จบที่ GM |
 | C4 | บัญชีตรวจสอบนอก workflow | เมื่อเอกสารเสร็จสิ้น ทีมบัญชีใช้รายงาน SBP Mall และ Export Excel เพื่อกระทบ SAP |
-| D1 | ส่ง Statement | Job 6 ส่ง FRBC0001 ไป STA เวลา 17:00 ทุกวัน |
+| D1 | ส่ง Statement | Job 6 publish RabbitMQ sta.compensation.result ไป STA เวลา 17:00 ทุกวัน |
 | D2 | ติดตาม ACK | STA callback อัปเดต ACK และ Job 10 เป็น safety net เมื่อค้าง >= 1 วัน |
 
 
@@ -241,7 +241,7 @@ Version 1.0
 | Audit | ทุก action ต้องบันทึกผลพิจารณา ความคิดเห็น สถานะก่อน/หลัง ผู้กระทำ เวลา และ correlation id |
 | Notification | เมื่อ action สำเร็จ ระบบต้องแจ้งผู้เกี่ยวข้องตาม e-mail rule/template ที่กำหนด |
 
-> ลำดับ workflow ที่ต้องรองรับคือ Section 06 -> 08 -> 01 -> 02; ยอดรวมไม่เกิน 100,000 บาทสิ้นสุดที่ Section 02 ส่วนยอดเกิน 100,000 บาทต้องส่งต่อ Section 03 ก่อนสิ้นสุด ระบบต้องคืน action ที่อนุญาตตาม role, section และ task owner ปัจจุบัน
+> ลำดับ workflow ที่ต้องรองรับคือ Section 06 -> 08 -> 01 -> 02; ยอดรวมน้อยกว่า 100,000 บาทสิ้นสุดที่ Section 02 ส่วนยอดตั้งแต่ 100,000 บาทขึ้นไปต้องส่งต่อ Section 03 ก่อนสิ้นสุด ระบบต้องคืน action ที่อนุญาตตาม role, section และ task owner ปัจจุบัน
 
 
 ---
@@ -249,16 +249,7 @@ Version 1.0
 
 ### 3.1.4 Migration map
 
-| Connection | Legacy | Target |
-| --- | --- | --- |
-| ส่งข้อมูลชดเชย/ร้านใหม่/คู่แข่ง เข้าระบบเอกสาร | ไฟล์ BPM06001O (48 ฟิลด์) / BPM06002O / BPM06003O ผ่าน SFTP ไป BPM (Jobs 7, 8, 9) | Document Service เขียน DB ตรง (compensation_documents / document_new_stores / document_competitors) - ตัดไฟล์และ SFTP ภายในทิ้ง |
-| เปิด Workflow | Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded - ความเสี่ยง P0) | @srm/glb-workflow ของระบบ SBP เดิม (13 ตาราง · schema sps_store ) เรียกผ่าน POST /workflows/instances · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ · ชื่อ function (initializeWorkflow -> addPreApprover) ยังไม่ยืนยัน - เอกสาร 3 ชุดขัดกัน · referenceId ยังไม่ตัดสิน (DP-1) |
-| รับ ACK ผลประมวลจาก STA | รอ STA อัปเดต return_code ใน tracking · Job 10 ตรวจทุกเช้า | เพิ่ม POST /interfaces/sta/ack (API key) · Job 10 คงไว้เป็น safety net |
-| ตาราง tracking interface | FGI_CONFIRM_RECEIVE_DATA - transaction_key เป็น polymorphic FK + บั๊ก purge (E20) | interface_transactions - typed FK ต่อประเภทข้อมูล + งาน purge ทำงานจริง |
-| อีเมลแจ้งเตือน | แต่ละ job ต่อ SMTP เอง · encoding TIS-620 · ผู้รับ hardcoded บางจุด (template 34) | Notification Service กลาง · UTF-8 · ผู้รับตาม status_email_rules + config ต่อ job |
-| Interface ภายนอก QSSI / ALLMAP / IAS / STA | SFTP + ไฟล์ตาม encoding เฉพาะ (WINDOWS-874 / UTF-8 / พ.ศ.) | คงเดิม (ระบบของทีมอื่น) - ย้าย credential ไป Secret Manager + บังคับ known_hosts |
-| สิทธิ์ผู้ใช้และเมนู | ตารางสิทธิ์ 8 role ในระบบ BPM เดิม | ใช้ระบบ SBP เดิม - auth-backend (ABS): groups/menus/permissions ต่อ URL · จัดการผ่านหน้า /setting/manage-user-rights ที่มีอยู่แล้ว · 8 role map เป็น group · ไม่สร้างหน้า/ตารางใน SBPGI (ตัดสินใจ 2026-08-05) |
-| กำหนดผู้ปฏิบัติงาน | หน้าจอ + ตารางผู้ปฏิบัติงานต่อ section/พื้นที่ (SRS 3.1.8 · ระบบ BPM เดิม) | ใช้ระบบ SBP เดิม - group + scope ของ auth-backend · prepared approvers ของ workflow engine เดิม (@srm/glb-workflow) · ไม่สร้างหน้า/ตารางใน SBPGI |
+ระบบต้องแสดงลำดับการย้ายจากกระบวนการเดิมสู่บริการเป้าหมายให้ตรวจสอบได้
 
 
 ### 3.1.5 Flow controls
@@ -339,16 +330,15 @@ Version 1.0
 
 | Job | Name | Thai name | Phase | Schedule | Output |
 | --- | --- | --- | --- | --- | --- |
-| 1 | ImportQSSI | นำเข้าคะแนน QSSI รายเดือน | A | Monthly (รายเดือน (ต้นเดือน)) | fcs_qssi_score |
 | 2 | ImportImpactStore | นำเข้าคู่ร้านถูกกระทบจาก ALLMAP | A | 0 07 7 * * (ทุกวันที่ 7 เวลา 07:00) | fgi_impact_stores |
 | 3 | ImportImpactCompetitor | นำเข้าร้านคู่แข่งจาก ALLMAP | A | 0 07 7 * * (ทุกวันที่ 7 เวลา 07:00) | fgi_impact_competitors |
 | 4 | PrepareImpactStoreToIAS | เตรียมและส่งคำขอยอดขายไป IAS | B | 0 16 7-16 * * (วันที่ 7-16 เวลา 16:00) | AMS06001O (UTF-8) |
 | 5 | ImportImpactSaleFromIAS | รับยอดขายจาก IAS + คำนวณ Growth | B | 30 16 7-16 * * (วันที่ 7-16 เวลา 16:30) | AMS06001I (รับเข้า) |
-| 6 | ExportImpactStoreToFS | ซิงก์สถานะ + ส่งค่าชดเชยไป STA | D | 0 17 * * * (ทุกวัน 17:00) | FRBC0001 (windows-874) |
-| 7 | SyncCompetitorToDocument | บันทึกข้อมูลคู่แข่งเข้าเอกสาร | B | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | document_competitors (DB) |
-| 8 | CreateCompensationDocument | สร้างเอกสารประกันรายได้อัตโนมัติ | B | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | compensation_documents (DB) |
-| 8b | StartInternalWorkflow | เปิด Workflow ภายใน | B | after-job-8 (trigger หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ได้ตาม period) | sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SBPGI) |
-| 9 | SyncNewStoreToDocument | บันทึกร้านเปิดใหม่เข้าเอกสาร | B | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | document_new_stores (DB) |
+| 6 | ExportImpactStoreToFS | ซิงก์สถานะ + ส่งค่าชดเชยไป STA | D | 0 17 * * * (ทุกวัน 17:00) | RabbitMQ message (sbpgi.interface / sta.compensation.result) |
+| 7 | SyncCompetitorToDocument | บันทึกข้อมูลคู่แข่งเข้าเอกสาร | C | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | document_competitors (DB) |
+| 8 | CreateCompensationDocument | สร้างเอกสารประกันรายได้อัตโนมัติ | C | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | compensation_documents (DB) |
+| 8b | StartInternalWorkflow | เปิด Workflow ภายใน | D | after-job-8 (trigger หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ได้ตาม period) | sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SBPGI) |
+| 9 | SyncNewStoreToDocument | บันทึกร้านเปิดใหม่เข้าเอกสาร | C | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | document_new_stores (DB) |
 | 10 | NotifyNoReceiveData | Watchdog เฝ้าระวัง ACK ค้าง | E | 0 07 * * * (ทุกวัน 07:00) | อีเมลเตือน UTF-8 + pending ACK dashboard |
 
 
@@ -364,18 +354,7 @@ Version 1.0
 ### 3.3.3 Job business requirement catalog
 
 
-#### 3.3.3.1 Job 1 - นำเข้าคะแนน QSSI รายเดือน
-
-| หัวข้อ | รายละเอียด |
-| --- | --- |
-| เป้าหมาย | นำเข้าคะแนน QSSI รายเดือนเพื่อใช้ประกอบการคำนวณและตรวจเงื่อนไขการชดเชย |
-| รับข้อมูล/เงื่อนไข | ไฟล์คะแนน QSSI รายเดือน 4 ชุดจาก SFTP, งวดเดือนที่ต้องประมวลผล, และหมวดคะแนนที่ระบบกำหนด |
-| ระบบทำอะไรโดยสรุป | ระบบอ่านไฟล์ ตรวจรูปแบบและงวดข้อมูล คัดรายการล่าสุดต่อร้าน/หมวดคะแนน แล้วปรับปรุงคะแนน QSSI ของงวดนั้นให้เป็นชุดล่าสุด |
-| ผลลัพธ์ที่ต้องได้ | คะแนน QSSI ของร้านถูกบันทึกพร้อมใช้งานสำหรับงานส่ง Statement และรายงานผลการประมวลผลแสดงจำนวนไฟล์/จำนวนรายการ/สถานะสำเร็จหรือผิดพลาด |
-| ผู้ใช้ติดตามได้จาก | ทีมผู้ดูแลระบบติดตามได้จาก application log; ผู้ใช้ธุรกิจเห็นผลผ่านข้อมูลประกอบเอกสาร/รายงาน |
-
-
-#### 3.3.3.2 Job 2 - นำเข้าคู่ร้านถูกกระทบจาก ALLMAP
+#### 3.3.3.1 Job 2 - นำเข้าคู่ร้านถูกกระทบจาก ALLMAP
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
@@ -386,7 +365,7 @@ Version 1.0
 | ผู้ใช้ติดตามได้จาก | Admin เห็นจำนวนรายการที่นำเข้าและสถานะรอบล่าสุด; ทีมงานเห็นข้อมูลเป็น candidate ของเอกสารในขั้นต่อไป |
 
 
-#### 3.3.3.3 Job 3 - นำเข้าร้านคู่แข่งจาก ALLMAP
+#### 3.3.3.2 Job 3 - นำเข้าร้านคู่แข่งจาก ALLMAP
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
@@ -397,7 +376,7 @@ Version 1.0
 | ผู้ใช้ติดตามได้จาก | Admin ตรวจได้จาก run history; ผู้พิจารณาเห็นคู่แข่งในหน้าเอกสารเมื่อ sync สำเร็จ |
 
 
-#### 3.3.3.4 Job 4 - เตรียมและส่งคำขอยอดขายไป IAS
+#### 3.3.3.3 Job 4 - เตรียมและส่งคำขอยอดขายไป IAS
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
@@ -408,7 +387,7 @@ Version 1.0
 | ผู้ใช้ติดตามได้จาก | Admin เห็นชื่อไฟล์ จำนวนรายการ และสถานะส่งออก; งานที่ยังรอยอดขายไม่ควรถูกสร้างเอกสารก่อนครบข้อมูล |
 
 
-#### 3.3.3.5 Job 5 - รับยอดขายจาก IAS + คำนวณ Growth
+#### 3.3.3.4 Job 5 - รับยอดขายจาก IAS + คำนวณ Growth
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
@@ -419,7 +398,7 @@ Version 1.0
 | ผู้ใช้ติดตามได้จาก | ผู้ใช้เห็นผลผ่านสถานะข้อมูลผิดปกติ/ข้อมูลพร้อมสร้างเอกสาร และ Admin เห็นจำนวน success/reject ใน run history |
 
 
-#### 3.3.3.6 Job 6 - ซิงก์สถานะ + ส่งค่าชดเชยไป STA
+#### 3.3.3.5 Job 6 - ซิงก์สถานะ + ส่งค่าชดเชยไป STA
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
@@ -430,7 +409,7 @@ Version 1.0
 | ผู้ใช้ติดตามได้จาก | ทีมบัญชีและผู้ดูแลระบบเห็นสถานะส่งออก/รอ ACK ผ่านรายงานและ API ติดตาม interface |
 
 
-#### 3.3.3.7 Job 7 - บันทึกข้อมูลคู่แข่งเข้าเอกสาร
+#### 3.3.3.6 Job 7 - บันทึกข้อมูลคู่แข่งเข้าเอกสาร
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
@@ -441,7 +420,7 @@ Version 1.0
 | ผู้ใช้ติดตามได้จาก | ผู้พิจารณาเห็นข้อมูลคู่แข่งในหน้าเอกสาร; Admin เห็นจำนวนรายการที่ sync สำเร็จหรือรอเอกสาร |
 
 
-#### 3.3.3.8 Job 8 - สร้างเอกสารประกันรายได้อัตโนมัติ
+#### 3.3.3.7 Job 8 - สร้างเอกสารประกันรายได้อัตโนมัติ
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
@@ -452,7 +431,7 @@ Version 1.0
 | ผู้ใช้ติดตามได้จาก | ผู้ใช้เห็นเอกสารใหม่ในรายการเมื่อสิทธิ์และ workflow พร้อม; Admin เห็นจำนวนเอกสารที่สร้าง/ข้ามเพราะมีอยู่แล้ว |
 
 
-#### 3.3.3.9 Job 8b - เปิด Workflow ภายใน
+#### 3.3.3.8 Job 8b - เปิด Workflow ภายใน
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
@@ -463,7 +442,7 @@ Version 1.0
 | ผู้ใช้ติดตามได้จาก | ผู้รับผิดชอบเห็นงานใน Inbox; Admin เห็นรายการผ่าน/ไม่ผ่าน gate และเหตุผลใน run history |
 
 
-#### 3.3.3.10 Job 9 - บันทึกร้านเปิดใหม่เข้าเอกสาร
+#### 3.3.3.9 Job 9 - บันทึกร้านเปิดใหม่เข้าเอกสาร
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
@@ -474,7 +453,7 @@ Version 1.0
 | ผู้ใช้ติดตามได้จาก | ผู้พิจารณาเห็นร้านเปิดใหม่ในหน้าเอกสาร; Admin เห็นจำนวนรายการ sync สำเร็จหรือรอเอกสาร |
 
 
-#### 3.3.3.11 Job 10 - Watchdog เฝ้าระวัง ACK ค้าง
+#### 3.3.3.10 Job 10 - Watchdog เฝ้าระวัง ACK ค้าง
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
@@ -549,7 +528,7 @@ Version 1.0
 
 #### Actions
 
-ล้างตัวกรอง
+ล้างตัวกรอง · ยกเลิกการเลือก · ดำเนินการที่เลือก · ยกเลิก · ยืนยันดำเนินการ
 
 
 #### Business rules / acceptance
@@ -583,7 +562,7 @@ Version 1.0
 
 #### Actions
 
-ล้างตัวกรอง
+ล้างตัวกรอง · ยกเลิกการเลือก · ดำเนินการที่เลือก · ยกเลิก · ยืนยันดำเนินการ
 
 
 #### Business rules / acceptance
@@ -625,7 +604,7 @@ Version 1.0
 
 #### Actions
 
-พิมพ์ · Copy Doc Link · ข้อมูลยอดขายเพิ่มเติม (QlikView BI) · Link To ALLMAP · รีเฟรช · คืนค่าก่อนแก้ไข · คำนวณเงินชดเชย · เพิ่ม · ล้างการเลือก · ลบที่เลือก · ดาวน์โหลดทั้งหมด (.zip) · แนบเอกสาร · บันทึก · ส่งดำเนินการ · ยกเลิก · OK · ปิด · ดาวน์โหลดเอกสาร
+พิมพ์ · Copy Doc Link · ข้อมูลยอดขายเพิ่มเติม (QlikView BI) · Link To ALLMAP · รีเฟรช · เพิ่มร้านกระทบเพิ่ม · คืนค่าก่อนแก้ไข · คำนวณเงินชดเชย · เพิ่ม · ล้างการเลือก · ลบที่เลือก · ดาวน์โหลดทั้งหมด (.zip) · แนบเอกสาร · บันทึก · ส่งดำเนินการ · ยกเลิก · OK · ปิด · ดาวน์โหลดเอกสาร
 
 
 #### Business rules / acceptance
@@ -663,7 +642,7 @@ Version 1.0
 
 #### Actions
 
-เคลียร์ค่าเริ่มใหม่ · ค้นหาข้อมูล · Export Excel
+เคลียร์ค่าเริ่มใหม่ · ค้นหาข้อมูล · Preview Report · Export Excel · Export CSV to Batch
 
 
 #### Business rules / acceptance
@@ -785,7 +764,7 @@ Version 1.0
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo} | ตามสิทธิ์เมนู | เอกสารฉบับเต็ม 12 ส่วนย่อย (Document Detail) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน |
 | งาน & เอกสารประกันรายได้ | POST | /api/v1/documents | 02 HQ, 03 User Admin | สร้างเอกสารจากข้อมูลที่ FS/SBP Statement ส่งกลับ - ตัดสินใจ 2026-08-06: ไม่มีฟอร์มสร้างเอกสารใน FE แล้ว (Create Document เหลือเป็นหน้าอธิบายกระบวนการ) เส้นนี้เรียกโดย pipeline/service token |
 | งาน & เอกสารประกันรายได้ | PUT | /api/v1/documents/{docNo} | ตาม section ปัจจุบัน | บันทึกแก้ไขส่วนย่อยของเอกสาร (ร้านใหม่ / คู่แข่ง / ปัจจัย) ตามสิทธิ์ของขั้นที่ถืออยู่ |
-| งาน & เอกสารประกันรายได้ | POST | /api/v1/documents/{docNo}/actions | เจ้าของ task ปัจจุบัน | ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน - หัวใจ workflow 5 ขั้น · วงเงิน GM 50,000 / AVP 300,000 (SDD GI 24/02/2026) |
+| งาน & เอกสารประกันรายได้ | POST | /api/v1/documents/{docNo}/actions | เจ้าของ task ปัจจุบัน | ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน - หัวใจ workflow 5 ขั้น · วงเงิน เกณฑ์เดียว 100,000 (SDD GI 24/02/2026) |
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo}/timeline | ตามสิทธิ์เมนู | ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร) |
 | งาน & เอกสารประกันรายได้ | POST | /api/v1/documents/{docNo}/attachments | ตาม section ปัจจุบัน | แนบไฟล์เข้าเอกสาร - จำกัด 5MB ต่อไฟล์ตาม SRS |
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo}/attachments/{attachId}/download | ตามสิทธิ์อ่านเอกสาร | ดาวน์โหลดไฟล์แนบผ่าน BE stream โดยตรวจสิทธิ์เอกสารและ scanStatus=CLEAN ก่อนส่ง binary |
@@ -793,7 +772,6 @@ Version 1.0
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/documents/{docNo}/sales | ตามสิทธิ์เมนู | ข้อมูลยอดขายเพิ่มเติมของเอกสาร (4 หน้าต่าง x 15 วัน) - ปุ่ม "ข้อมูลยอดขายเพิ่มเติม" ในหน้าเอกสาร Document Detail |
 | ข้อมูล Lookup | GET | /api/v1/document-statuses | ทุก role | รายการสถานะเอกสารทั้งหมด - เติม dropdown ตัวกรองสถานะในหน้าค้นหาเอกสาร (เอกสารที่เกี่ยวข้อง) และรายงาน (รายงานสรุปสถานะ) |
 | ข้อมูล Lookup | GET | /api/v1/workflow-sections | ทุก role | รายการ Section 5 ขั้น + วงเงินอนุมัติต่อขั้น - dropdown ตำแหน่ง/ตัวกรอง · FE แสดงวงเงินจากข้อมูล ไม่ hardcode |
-| ข้อมูล Lookup | GET | /api/v1/decisions | ทุก role | ผลพิจารณาจาก master decisions - FE เรนเดอร์ปุ่มพิจารณาจากเส้นนี้ ไม่ hardcode 6-enum (เปลี่ยนชื่อปุ่มตาม SDD GI ได้ที่ data) |
 | Master Data | GET | /api/v1/competitors | ตาม section ปัจจุบัน | master แบรนด์ร้านคู่แข่ง 11 รายการ (รหัส 01-11 · ชื่อไทย+อังกฤษ) - dropdown ตอนกดปุ่ม "เพิ่ม" ตารางร้านคู่แข่งเปิดกระทบ (Document Detail) · จัดการที่หน้า Competitor Master |
 | Master Data | POST | /api/v1/competitors | Admin / ผู้ดูแล master | เพิ่มแบรนด์ร้านคู่แข่งใน master (หน้า Competitor Master) - เพิ่ม 2026-08-06 ตามหน้าจอ K2 เดิม |
 | Master Data | PUT | /api/v1/competitors/{code} | Admin / ผู้ดูแล master | แก้ไขชื่อไทย/อังกฤษ/รายละเอียดของแบรนด์คู่แข่ง - แก้รหัสไม่ได้ |
@@ -869,7 +847,7 @@ Version 1.0
 - ผลรวม % ชดเชย 100% ถูกตรวจทั้ง FE และ BE
 - ร้านยอดขายไม่ครบ 60 วันถูก flag ใน inbox/report และมีเหตุผลตรวจสอบย้อนกลับ
 - Jobs 1-10/8b รันซ้ำตาม runbook โดยไม่สร้างข้อมูลซ้ำหรือสูญหาย
-- API capability 30 endpoints ใน scope ต้องผ่าน authorization, validation, audit, duplicate guard/idempotency, pagination และ error-contract test; Auth Group 1 เป็น platform service
+- API capability 29 endpoints ใน scope ต้องผ่าน authorization, validation, audit, duplicate guard/idempotency, pagination และ error-contract test; Auth Group 1 เป็น platform service
 - ข้อมูล export/import ทุก interface ผ่าน golden-file test เรื่อง encoding/date/delimiter/field count
 - หน้าจอรายงานและ CSV Export to Batch ให้ผลตรงกันภายใต้ filter เดียวกัน
 
@@ -890,8 +868,8 @@ Version 1.0
 | REQ-RPT-001 | Report export | 19 columns และ preview/export reconciliation | 3.0, SCR-07 |
 | REQ-OPS-001 | Batch rerun | idempotency และ run reconciliation | 3.0, 3.3 |
 | REQ-SCR-001 | Committed screens | SCR-01..04 และ SCR-06..11 | 3.4 |
-| SYS-API-001 | API capability | 30 endpoints / 6 groups | 3.5 |
-| SYS-DAT-001 | Data model | 19 tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม) | 3.2 |
+| SYS-API-001 | API capability | 29 endpoints / 6 groups | 3.5 |
+| SYS-DAT-001 | Data model | 20 tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม) | 3.2 |
 | SYS-NFR-001 | Observability | correlation/metrics/alert/audit evidence | 4 |
 | FLOW-01 | Batch pipeline | ขั้นตอนนำเข้า คำนวณ สร้างเอกสาร ส่ง Statement และติดตาม ACK | 3.1, 3.3 |
 | FLOW-02 | Approval workflow | Section 06 -> 08 -> 01 -> 02 และ Section 03 ตามวงเงิน | 3.1.1, 3.1.3 |
@@ -906,7 +884,7 @@ Version 1.0
 | K2-07 | Competitor Master | Competitor brand master 01-11 (Thai/English) | SCR-07 |
 | K2-08 | Global Config | Global system configuration (ตาราง mas_param ของระบบ SBP เดิม) | SCR-08 |
 | EMAIL-01 | Email Template | หน้าจอผู้ดูแล template และกฎ Notification Service | 3.4.13 |
-| API-01 | REST API | Capability catalog 30 endpoints และข้อกำหนด contract กลาง | 3.5 |
+| API-01 | REST API | Capability catalog 29 endpoints และข้อกำหนด contract กลาง | 3.5 |
 
 
 ---

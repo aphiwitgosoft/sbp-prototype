@@ -46,7 +46,7 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 **แก้เรื่อง flow/workflow** — อ่าน `workflow.md` → แก้ `workflow.md` + `plan-flow.html` คู่กัน → เช็คว่ากระทบ `workflow_status_document.md` (ตารางสถานะ × ผู้รับ × อีเมล) หรือไม่
 
 **แก้เรื่อง API** — อ่าน `api.md` → แก้ `api.md` + `plan-api.html` คู่กัน → ถ้ากระทบตาราง/flow แก้ `database.md`/`workflow.md` ด้วย
-โครง modal ต่อ endpoint ใน `plan-api.html`: Flow อธิบาย**นอกแท็บ** · แท็บ 1 Request/Response · แท็บ 2 Database + SQL (ตัวอย่าง SQL ต่อเส้นใน `SQL_BY_PATH` keyed `'METHOD path'` ครบทุกเส้น) · แท็บ 3 Flowchart **เฉพาะ 4 เส้นซับซ้อน** (spec ใน `FLOWCHART_BY_PATH` เรนเดอร์ด้วย `renderFlow()` inline SVG) — ดูรายละเอียดใน [references/architecture.md](references/architecture.md) §plan-api
+โครง modal ต่อ endpoint ใน `plan-api.html`: Flow อธิบาย**นอกแท็บ** · แท็บ 1 Request/Response · แท็บ 2 Database + SQL (ตัวอย่าง SQL ต่อเส้นใน `SQL_BY_PATH` keyed `'METHOD path'` ครบทุกเส้น) · แท็บ 3 Flowchart **เฉพาะ 3 เส้นซับซ้อน** (spec ใน `FLOWCHART_BY_PATH` เรนเดอร์ด้วย `renderFlow()` inline SVG) — ดูรายละเอียดใน [references/architecture.md](references/architecture.md) §plan-api
 
 **แก้ email template / ค่ากำหนดกลาง** — **ไม่มีหน้าจอใน SBPGI แล้ว (ลบทั้งฟีเจอร์ 2026-08-06)** · template 8 ฉบับ (EM-01–08) อยู่ในตาราง `email_template` และค่ากำหนดกลางอยู่ใน `mas_param` ของ**ระบบ SBP เดิม** ซึ่งมีหน้าจอบริหารจัดการอยู่แล้ว · SBPGI อ่านอย่างเดียวแล้วส่งผ่าน `@gosoft-sbp/email-lib` (log ลง `email_sent`)
 

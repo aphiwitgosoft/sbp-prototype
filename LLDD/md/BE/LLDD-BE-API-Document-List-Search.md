@@ -39,7 +39,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 | docNo | YYYY/xxxxx | required when opening existing document | ใช้ปี **ค.ศ.** และ running 5 หลัก (มติ 2026-08-06) |
 | storeCode | string 5 digits | numeric length = 5 | แสดง leading zero |
 | amount | number, 2 decimals | >= 0 | format `#,##0.00` บาท |
-| percent | number, 2 decimals | 0-100 | ใช้ `%` และรวม allocation ต้องเท่ากับ 100 |
+| percent | number, 2 decimals | 0-100 | ใช้ `%` และรวม allocation ต้องเท่ากับ 100 — **B5: เพิ่ม/ลบร้านที่กระทบเพิ่มเมื่อไร ต้องเกลี่ยใหม่ทั้งชุดแล้วคำนวณ `compensateAmount` ของทุกแถวใหม่ ไม่ใช่เฉพาะแถวที่เพิ่ม** |
+| sourceSystem | enum | ALLMAP / USER | **B5** ที่มาของแถวร้านเปิดใหม่ — `ALLMAP` ระบบ default ให้อัตโนมัติ (Job 9) · `USER` เจ้าหน้าที่ SBP DSA คีย์เองจากเอกสารแจ้งของหน่วยงานส่งเสริม (ผัง To-Be · SDD สไลด์ 7) · ซ้ำ `(doc_no, new_store_code)` ให้คืน `409` |
 | date | DD/MM/YYYY | valid date | payload เป็น ISO ค.ศ. · FE แสดง ค.ศ. เป็นค่าเริ่มต้น (DatePicker buddhistEra=false) แสดง พ.ศ. เฉพาะจุดที่เปิด flag |
 | attachment | file | <= 5 MB | รองรับ vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv |
 | year | ค.ศ. YYYY | required for /documents | ไม่ระบุคืน 400 ตาม SRS · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. |
@@ -173,10 +174,11 @@ Document search API
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| workflow_transaction / workflow_approver (@srm/glb-workflow) | R | อ่าน inbox ผ่าน getPendingFlowByUser() |
+| workflow_transaction / workflow_approver (@srm/glb-workflow) | R | อ่าน inbox ผ่าน getPendingFlowByUser() · เฉพาะ section 06 ต้อง union เอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้ามาด้วย (stoppedReopenable) |
 | compensation_documents | R | ค้นเอกสารตาม year/status/store |
 | impacted_stores | R | ชื่อร้าน ภาค และข้อมูลร้าน |
 | fgi_impact_sales_summaries | R | flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน |
+| consideration_logs | R | ผลการพิจารณาสุดท้าย — คัดเอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้าคิวของ section 06 (SDD สไลด์ 46 ข้อ 1.9) |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -448,7 +450,7 @@ export class ImpactedStore {
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`fgi_impact_sales_summaries`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`fgi_impact_sales_summaries`, `consideration_logs`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
@@ -601,6 +603,7 @@ export class SbpgiDocumentListSearchBffController {
 | compensation_documents | R | ค้นเอกสารตาม year/status/store |
 | impacted_stores | R | ชื่อร้าน ภาค และข้อมูลร้าน |
 | fgi_impact_sales_summaries | R | flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน |
+| consideration_logs | R | ผลการพิจารณาสุดท้าย — คัดเอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้าคิวของ section 06 (SDD สไลด์ 46 ข้อ 1.9) |
 | workflow_transaction | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_approver | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 
@@ -722,6 +725,7 @@ LIMIT :size OFFSET :offset;
 | `storeCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: numeric length = 5 · รูปแบบ: string 5 digits |
 | `amount` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: >= 0 · รูปแบบ: number, 2 decimals |
 | `percent` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: 0-100 · รูปแบบ: number, 2 decimals |
+| `sourceSystem` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: ALLMAP / USER · รูปแบบ: enum |
 | `date` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: valid date · รูปแบบ: DD/MM/YYYY |
 | `attachment` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: <= 5 MB · รูปแบบ: file |
 | `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for /documents · รูปแบบ: ค.ศ. YYYY |

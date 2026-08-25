@@ -28,7 +28,7 @@ GROUPS = [
         "tint": "#e6f6f2",
         "cell": (0, 0),
         "columns": [
-            ["fgi_impact_processes", "fgi_impact_stores", "fgi_impact_sales_summaries", "sales_transactions"],
+            ["fgi_impact_processes", "fgi_impact_compensations", "fgi_impact_stores", "fgi_impact_sales_summaries", "sales_transactions"],
             ["fgi_impact_competitors", "fcs_qssi_score", "interface_transactions"],
         ],
     },
@@ -474,7 +474,7 @@ NOTES = [
         "07/08/2026 — ยกเลิก audit_logs → ย้าย marker ไป interface_transactions",
         "DP-5 (แก้มติ 14/08/2026) ปิดแล้ว — workflow ให้เลข template · SBPGI เรียก lib ส่งเอง · ตัด status_email_rules",
         "   อ่าน workflow_route.email_id → sendEmail() ของ email-lib → lib เขียน email_sent ของระบบเดิมให้เอง",
-        "   → โครงเหลือ 19 ตาราง (โซน A 7 · B 9 · C 3)",
+        "   → โครงเหลือ 20 ตาราง (โซน A 8 · B 9 · C 3)",
     ]),
     ("ข้อค้างที่ยังไม่ตัดสิน — กระทบรูปนี้โดยตรง", [
         "DP-2  workflow_transaction ไม่มี PK/index ทั้งที่มี 19,283 แถว (ตารางของ library)",
@@ -488,7 +488,7 @@ NOTES = [
         "   getPermissionEvents/getHistory/getTransaction/getPendingFlowByUser/getWorkflowsByUser/addPreApprover",
     ]),
     ("อ่านรูปนี้อย่างไร", [
-        "กล่องสีเข้ม = ตารางในโครง SBPGI (19 ตาราง) · กล่องเขียว/แดง = ตารางของระบบเดิม",
+        "กล่องสีเข้ม = ตารางในโครง SBPGI (20 ตาราง) · กล่องเขียว/แดง = ตารางของระบบเดิม",
         "ตาราง SBPGI และ workflow engine แสดง 'ทุกคอลัมน์' ตาม DDL/ฐานจริง",
         "ตารางแพลตฟอร์มที่กว้างมาก (สูงสุด 86 คอลัมน์) แสดงเฉพาะคอลัมน์ที่ SBPGI ใช้",
         "   แล้วบอกจำนวนที่เหลือไว้ท้ายกล่อง — ดูครบทุกคอลัมน์ได้ในไฟล์ .html",
@@ -502,7 +502,7 @@ NOTES = [
         "3  compensation_documents.impact_process_id → 1 รอบ : 1 เอกสาร (UNIQUE)",
         "4  workflow_transaction.reference_id → compensation_documents.id",
         "5  document_competitors.source_system = ALLMAP แยกจากที่ผู้ใช้เพิ่มเอง (USER)",
-        "6  compensation_histories.submit_account_month → ไฟล์ FRBC0001 ของ Job 6",
+        "6  compensation_histories.submit_account_month → งวดที่ Job 6 ส่งไป STA (RabbitMQ)",
         "7  interface_transactions ใช้ typed FK 3 คอลัมน์แทน polymorphic key เดิม",
     ]),
 ]

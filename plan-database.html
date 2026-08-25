@@ -45,7 +45,7 @@
       <div class="page-head">
         <div><h1 class="page-title">ฐานข้อมูล FGI/FCS + K2</h1>
           <p class="page-sub">เริ่มจาก Data Spine แล้วขยายเป็น 3 โซน: Impact Pipeline · เอกสารและ Workflow · Master/Config ใช้ร่วม</p></div>
-        <div class="page-actions"><span class="pill info" style="align-self:center;">Target Schema · 19 ตาราง</span></div>
+        <div class="page-actions"><span class="pill info" style="align-self:center;">Target Schema · 20 ตาราง</span></div>
       </div>
 
       <nav class="db-switcher" aria-label="เลือกแบบฐานข้อมูล">
@@ -100,7 +100,7 @@
         <div style="font-size:13px;color:#45525f;line-height:1.9;">
           <b style="color:#2b3440;">ตรวจเทียบ DB เดิมของ FGI เมื่อ 2026-08-06 — <code>fcs_frn_stqa_schema_20260806.sql</code> (Oracle 19c · schema FCS_FRN ทั้งระบบ 707 ตาราง · ส่วน FGI 19 ตาราง):</b>
           zone A ทั้ง 7 ตารางของโครงใหม่ <b>ครอบของเดิมครบแล้ว</b> (IMPACT_STORE / ON_PROCESS / SALES / SALES_TRN / COMPETITOR / CONFIRM_RECEIVE_DATA / QSSI_SCORE)
-          แต่พบ <b>8 ช่องว่างที่ยังไม่รับเข้าโครง 19 ตาราง — รอตัดสินใจ</b>:
+          รับ <b>F1 + F8 เข้าโครงแล้ว (มติ 2026-08-21 · 19 → 20 ตาราง)</b> — เพิ่มตาราง <code>fgi_impact_compensations</code> และ 5 กลุ่มคอลัมน์ใน <code>fgi_impact_processes</code> · ที่เหลือ <b>ยังไม่รับเข้าโครง — รอตัดสินใจ</b>:
           <b>F1</b> <code>FGI_IMPACT_STORE_COMPENSATE</code> ยอดชดเชยรายงวดฝั่ง pipeline (แยก forecast/adjust + งวด statement) ·
           <b>F2</b> <code>FGI_NEW_STORE_COMPENSATE</code> เก็บ <b>ยอด+% ทั้ง forecast และ adjust</b> ต่อร้านใหม่ (โครงเรามีชุดเดียว) ·
           <b>F3</b> <code>FGI_IMPACT_STORE_INFO</code> (63 คอลัมน์) + <code>FGI_NEW_STORE_INFO</code> — snapshot ร้าน+ผู้อนุมัติต่องวด รวม <b>DV</b> ที่ <code>approver_snapshot</code> ของเรายังไม่มี ·
@@ -187,7 +187,7 @@
           <defs><marker id="za" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L6.5,3 L0,6 Z" fill="#8493a5"/></marker></defs>
 
           <!-- zone panels -->
-          <rect x="16" y="14" width="336" height="412" rx="14" fill="#f5f9ff" stroke="#1d4ed8" stroke-width="1.6"/>
+          <rect x="16" y="14" width="336" height="462" rx="14" fill="#f5f9ff" stroke="#1d4ed8" stroke-width="1.6"/>
           <text x="32" y="40" font-size="13" font-weight="700" fill="#1d4ed8">โซน A · Batch / Impact Pipeline</text>
           <rect x="272" y="26" width="64" height="18" rx="9" fill="#e8f0fe"/><text x="304" y="39" text-anchor="middle" font-size="10" font-weight="700" fill="#1d4ed8">FGI/FCS</text>
 
@@ -228,6 +228,10 @@
             <rect x="32" y="356" width="304" height="40" rx="8" fill="#f2fbf5" stroke="#15803d" stroke-width="1.4" stroke-dasharray="5 4"/>
             <text x="44" y="373" font-size="11.5" font-weight="700" fill="#15803d" font-family="Menlo,monospace">interface_transactions</text>
             <text x="44" y="388" font-size="9.5" fill="#5d6b7a">ใหม่ — แทน FGI_CONFIRM_RECEIVE_DATA · typed FK · purge ใช้งานจริง</text>
+
+            <rect x="32" y="406" width="304" height="40" rx="8" fill="#fff" stroke="#96b4f0" stroke-width="1.4"/>
+            <text x="44" y="423" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">fgi_impact_compensations</text>
+            <text x="44" y="438" font-size="9.5" fill="#8493a5">ยอดชดเชยรายงวดก่อนมีเอกสาร · forecast_amount / adjust_amount (F1)</text>
           </g>
 
           <!-- zone B tables -->
@@ -258,7 +262,7 @@
 
             <rect x="388" y="356" width="304" height="40" rx="8" fill="#fff" stroke="#c8a2e8" stroke-width="1.4"/>
             <text x="400" y="373" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">compensation_histories</text>
-            <text x="400" y="388" font-size="9.5" fill="#8493a5">ประวัติชดเชยต่อร้าน/รอบ · เดือนส่งบัญชี (→ FRBC0001)</text>
+            <text x="400" y="388" font-size="9.5" fill="#8493a5">ประวัติชดเชยต่อร้าน/รอบ · เดือนส่งบัญชี (→ STA)</text>
 
             <rect x="388" y="406" width="304" height="40" rx="8" fill="#fff" stroke="#c8a2e8" stroke-width="1.4"/>
             <text x="400" y="423" font-size="11.5" font-weight="700" fill="#2b3440" font-family="Menlo,monospace">document_cost_details ★</text>
@@ -335,13 +339,13 @@
           <div class="lg"><span style="width:14px;height:14px;border-radius:4px;background:#fff;border:1.5px solid #c8a2e8;display:inline-block;"></span> ตารางฝั่ง K2 (SRS / ออกแบบตามหน้าจอ)</div>
           <div class="lg"><span style="width:14px;height:14px;border-radius:4px;background:#f2fbf5;border:1.5px dashed #15803d;display:inline-block;"></span> ตารางใหม่ของระบบใหม่</div>
           <div class="lg"><span style="width:14px;height:14px;border-radius:4px;background:#f6f8fb;border:1.5px dashed #c4cdd8;display:inline-block;"></span> ตารางที่ <b>ตัดออกจากโครง</b> — ใช้ของระบบ SBP เดิม/engine กลาง</div>
-          <div class="lg">★ = hub · เส้นทึบ = FK ใหม่ที่เชื่อมสองระบบ · เส้นประ = เงื่อนไขเชิงข้อมูล · <b>กล่องที่ไม่ถูกขีดฆ่ารวมกัน = 19 ตาราง (A 7 · B 9 · C 3)</b></div>
+          <div class="lg">★ = hub · เส้นทึบ = FK ใหม่ที่เชื่อมสองระบบ · เส้นประ = เงื่อนไขเชิงข้อมูล · <b>กล่องที่ไม่ถูกขีดฆ่ารวมกัน = 20 ตาราง (A 8 · B 9 · C 3)</b></div>
         </div>
       </div>
 
       <!-- ===== all tables ===== -->
       <div class="card">
-        <div class="card-head"><h2>2. Data Dictionary ระดับภาพรวม</h2><span class="pill info">19 ตาราง · โซน A 7 · B 9 · C 3</span></div>
+        <div class="card-head"><h2>2. Data Dictionary ระดับภาพรวม</h2><span class="pill info">20 ตาราง · โซน A 8 · B 9 · C 3</span></div>
         <div style="font-size:12.5px;color:#5d6b7a;line-height:1.85;margin:-2px 0 12px;padding:10px 14px;background:#f7f9fc;border:1px solid #e8eef6;border-radius:10px;">
           <b style="color:#2b3440;">คอลัมน์ “ตารางต้นทาง (Migration)”</b> = ตารางใน DB เดิมที่ต้องดึงข้อมูลมาลงตารางใหม่ ใช้เขียนสคริปต์ import ได้ตรง ๆ ·
           <b>ORA</b> = Oracle <code>FCS_FRN</code> (<code>fcs_frn_stqa_schema_20260806.sql</code> · ฝั่ง FGI/FCS) ·
@@ -356,6 +360,7 @@
               <tr class="zone-row a"><td colspan="7">Zone A · FGI/FCS — Impact Pipeline และ External Interfaces</td></tr>
               <tr><td class="tb">fgi_impact_stores</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="src-cell"><b>ORA</b> FGI_IMPACT_STORE<br><small>PK IMPACT_STORE_ID · key STORECODE_I+MONTH+YEAR</small></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · impacted_store_code → impacted_stores</td><td>คู่ร้านกระทบ–เปิดใหม่ · verify_status (W/P/Y/N) · ข้อมูล %/ยอดชดเชยต่อคู่ร้าน</td></tr>
               <tr><td class="tb">fgi_impact_processes</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="src-cell"><b>ORA</b> FGI_IMPACT_STORE_ON_PROCESS<br><small>PK IMPACT_PROCESS_ID · seq SEQ_FGI_IMPACT_PROCESS</small></td><td class="num">id</td><td>impacted_store_code · แม่ของตารางรายรอบทั้งหมด</td><td>hub รอบชดเชย · action_status · last_compensation_amount · source of truth ของ workflow_generation_status (W/Y/N)</td></tr>
+              <tr><td class="tb">fgi_impact_compensations</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="src-cell"><b>ORA</b> FGI_IMPACT_STORE_COMPENSATE<br><small>PK COMPENSATE_I_ID</small></td><td class="num">id</td><td>impact_process_id &middot; impacted_store_code</td><td><b>(รับเข้าโครง 2026-08-21 &middot; gap F1)</b> ยอดชดเชย<b>รายงวด</b>ที่เกิด<i>ก่อน</i>มีเอกสาร — <code>forecast_amount</code> (ระบบคำนวณ) / <code>adjust_amount</code> (คนปรับ) &middot; ใช้นับ &ldquo;ยอด 0 ติดกันกี่เดือน&rdquo; ที่ Job 8b ใช้ตัดสินจุดเข้า flow (เดือน 1&ndash;3 &rarr; ขั้น 01 &middot; เดือนที่ 4 &rarr; หยุดชดเชย)</td></tr>
               <tr><td class="tb">fgi_impact_sales_summaries</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="src-cell"><b>ORA</b> FGI_IMPACT_STORE_SALES<br><small>key STORECODE_I+MONTH+YEAR</small></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · → sales_transactions (1:N)</td><td>หัวยอดขาย · growth_rate_diff · total_working_days (เกณฑ์ 60 วัน)</td></tr>
               <tr><td class="tb">sales_transactions</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="src-cell"><b>ORA</b> FGI_IMPACT_STORE_SALES_TRN<br><small>key เดียวกับหัว + SEQ</small></td><td class="num">id</td><td>sales_summary_id → fgi_impact_sales_summaries</td><td>ยอดขายรายวันจาก IAS · sales_diff/outlier ≥ 50 แบบจับคู่</td></tr>
               <tr><td class="tb">fgi_impact_competitors</td><td>A</td><td><span class="ref fgi">FGI/FCS</span></td><td class="src-cell"><b>ORA</b> FGI_IMPACT_COMPETITOR<br><small>PK IMPACT_COMPETITOR_ID</small></td><td class="num">id</td><td>impact_process_id → fgi_impact_processes · → document_competitors (นำเข้า)</td><td>คู่แข่งจาก ALLMAP (data_source=ALM) · งวดล่าสุดต่อร้าน</td></tr>
@@ -412,7 +417,7 @@
           <li><b>compensation_documents.impact_process_id → fgi_impact_processes</b> — FK ใหม่ 1 รอบชดเชย : 1 เอกสาร แทนการส่งไฟล์ BPM06001O (48 ฟิลด์) ข้ามระบบ <span class="ref new">ใหม่</span></li>
           <li><b>sps_store.workflow_transaction.reference_id → compensation_documents</b> — เปิด instance ของ engine กลางเมื่อผ่าน Gen Flow Gate · สถานะ instance ทำหน้าที่แทน workflow_generation_status = Y ของเดิม · ⚠ <b>ค่าที่จะใส่ใน reference_id (<code>doc_no</code> หรือ surrogate id) ยังไม่ตัดสิน — DP-1 ใน <code>SBP/SBPGI-vs-existing-system.md</code></b> <span class="ref new">ใหม่</span></li>
           <li><b>document_competitors.source_system = 'ALLMAP'</b> — แถวที่มาจาก fgi_impact_competitors (Jobs 3/7 เดิม) แยกจากที่ผู้ใช้เพิ่มเอง (USER) <span class="ref fgi">FGI/FCS</span></li>
-          <li><b>compensation_histories.submit_account_month</b> — งวดที่ส่งเข้าไฟล์ FRBC0001 ไป STA (Job 6) · สถานะ I/C/A/N/S/Z ตามเดิม <span class="ref fgi">FGI/FCS</span></li>
+          <li><b>compensation_histories.submit_account_month</b> — งวดที่ส่งไป STA ด้วย RabbitMQ <code>sta.compensation.result</code> (Job 6 · เดิมเป็นไฟล์ FRBC0001) · สถานะ I/C/A/N/S/Z ตามเดิม <span class="ref fgi">FGI/FCS</span></li>
           <li><b>interface_transactions</b> — คอลัมน์ FK แยกประเภท (impact_process_id / sales_summary_id / doc_no) + data_name เป็น enum — เลิก parseInt(impacted_store_code) ที่ทำเลขศูนย์นำหน้าหาย <span class="ref new">ใหม่</span></li>
         </ul>
       </div>
@@ -426,7 +431,7 @@
           <li><b>ครอบ Job 4 ด้วย transaction (outbox pattern)</b> — เดิม commit W→P ก่อนเขียนไฟล์ rollback ไม่ได้ (P0 อันดับหนึ่งของระบบ)</li>
           <li><b>แก้บั๊ก purge tracking (E20)</b> — SQL เดิมต่อ data_name สองค่าเป็น string เดียว ทำให้ไม่เคยลบ — ต้องทำพร้อม data migration และ test</li>
           <li><b>ทบทวน NULL → auto-accept ของ Job 5</b> (P1) — ระบบใหม่ตั้งสถานะ "รอตรวจสอบ" แทนการ accept อัตโนมัติ · ต้องขอ business sign-off ก่อนเปลี่ยน</li>
-          <li><b>ย้าย credential ทั้งหมดไป Secret Manager + บังคับ TLS</b> — เดิม SFTP/K2 Basic Auth เป็น plaintext/hardcoded (P0)</li>
+          <li><b>ย้าย credential ทั้งหมดไป Secret Manager + บังคับ TLS</b> — เดิม SFTP/K2 Basic Auth เป็น plaintext/hardcoded (P0) · ระบบใหม่เหลือ credential ของ EAI S3 (IAS/MIS) กับ RabbitMQ (STA) เท่านั้น</li>
           <li><b>ใช้ identity ต่อตารางแทน sequence รวม 7 ตัว</b> — คงชื่อ sequence เดิมไว้เฉพาะช่วง migrate (Errata E18)</li>
           <li><b>golden-file tests ต่อ interface ภายนอก</b> — encoding WINDOWS-874 / UTF-8 / TIS-620, วันที่ พ.ศ., ชื่อประกอบ first + last — กันพฤติกรรมเพี้ยนตอน re-implement</li>
         </ol>

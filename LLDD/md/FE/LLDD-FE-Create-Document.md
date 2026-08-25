@@ -277,7 +277,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
     {
       "storeCode": "01234",
       "storeName": "สาขาตัวอย่าง",
-      "regionCode": "RS"
+      "regionCode": "BN"
     }
   ]
 }

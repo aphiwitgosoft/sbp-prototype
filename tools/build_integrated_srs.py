@@ -244,286 +244,9 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
         return value
 
     no = str(job.get("no", ""))
-    overrides: dict[str, dict[str, Any]] = {
-        "1": {
-            "params": [
-                ["กำหนดการรัน (Cron)", "Monthly", "text", 1, "ตั้งเวลาใน scheduler ผ่าน deployment config"],
-                ["งวดข้อมูล (เดือนที่รัน)", "07/2026", "text", 1, "ชื่อไฟล์ใช้เดือนปัจจุบัน แต่งวดใน DB คือเดือนก่อนหน้า"],
-                ["SFTP endpoint alias", "qssi-monthly", "text", 0, "resolve host/port จาก environment; ไม่รับค่า host/port จาก request — resolve จาก environment เท่านั้น"],
-                ["Secret reference", "secret/sbpgi/interfaces/qssi", "text", 0, "credential/private key อ่านจาก Secret Manager และบังคับ strict known_hosts"],
-                ["Remote Directory", "/export/qssishare/onl/qssi/textfile/SBP/QSSI_Monthly/", "text", 1, "path เท่านั้น ไม่รวม credential"],
-                ["Local Directory", "/appshare/SPS/FCS/interface_data/in/", "text", 1, "staging/quarantine path"],
-                ["File Prefix (4 ไฟล์)", "mrs1trnf_, mrs2trnf_, mrs3trnf_, mrs5trnf_", "text", 0, ""],
-                ["Encoding", "WINDOWS-874", "text", 0, ""],
-                ["Batch Insert Size", "10000", "number", 1, "จำนวนแถวต่อรอบ insert"],
-            ],
-            "flow": [
-                {"k": "start", "t": "เริ่ม"},
-                {"k": "p", "t": "กำหนดงวดและ snapshot config", "d": "endpoint alias + secretRef; ไม่รับ host/port/credential จาก UI"},
-                {"k": "io", "t": "เชื่อมต่อ SFTP ผ่าน qssi-monthly", "d": "Secret Manager + strict known_hosts"},
-                {"k": "d", "t": "ดาวน์โหลดครบและ checksum ถูกต้อง?", "no": "quarantine / FAILED; ไม่แก้คะแนนเดิม", "noKind": "err", "d": ""},
-                {"k": "p", "t": "parse และ validate 4 prefix / WINDOWS-874", "d": "reject ราย record พร้อมเหตุผล"},
-                {"k": "p", "t": "transaction upsert fcs_qssi_score", "d": "UNIQUE(store_code, category_code, score_period)"},
-                {"k": "p", "t": "archive source และ reconcile count", "d": "checksum เดิมให้ SKIP"},
-                {"k": "end", "t": "จบ"},
-            ],
-        },
-        "3": {
-            **job,
-            "cls": "th.co.gosoft.fgi.main.ImportImpactCompetitor",
-            "script": "/appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh",
-            "params": [
-                ["กำหนดการรัน (Cron)", "0 07 7 * *", "text", 1, "ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh; Operations ตรวจ deployment path และ owner permission ก่อนขึ้น production"],
-                ["Argument (งวด)", "2569|06", "text", 1, "รูปแบบ YYYY|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ขัดกับกติกา ค.ศ. ทั้งระบบ ต้องยืนยันกับเจ้าของ ALLMAP"],
-                ["Chunk Size", "10000", "number", 1, "จำนวนแถวต่อรอบ insert"],
-                ["Source View", "COMPETITOR_IMPACT_VIEW", "text", 0, "SELECT DISTINCT / map คอลัมน์ NAMT -> NAME_TH, BRANCHT -> BRANCH_TH"],
-            ],
-        },
-        "4": {
-            "desc": "สร้างไฟล์คำขอยอดขาย IAS/MIS แบบ durable ก่อนเปลี่ยนสถานะ W→P แล้วบันทึก transactional outbox เพื่อส่งซ้ำได้โดยไม่สร้างรายการซ้ำ",
-            "params": [
-                ["กำหนดการรัน (Cron)", "0 16 7-16 * *", "text", 1, "รันวันที่ 7-16 เวลา 16:00"],
-                ["IAS SFTP endpoint alias", "ias-sales-request", "text", 0, "host/port resolve จาก environment; credential ใช้ secretRef และ strict known_hosts"],
-                ["Secret reference", "secret/sbpgi/interfaces/ias", "text", 0, "ห้ามเก็บ password/private key ใน config/env ของ job"],
-                ["Output staging path", "/data/sbpgi/outbox/ias", "text", 1, "ต้องรองรับ temp file, fsync และ atomic rename"],
-            ],
-            "flow": [
-                {"k": "start", "t": "เริ่ม"},
-                {"k": "p", "t": "lock รายการ sales_request_status=W", "d": "FOR UPDATE SKIP LOCKED"},
-                {"k": "p", "t": "สร้าง temporary file และ validate record count", "d": "ยังไม่เปลี่ยน W→P"},
-                {"k": "p", "t": "fsync + atomic rename + SHA-256", "d": "ไฟล์ต้อง durable ก่อนเริ่ม DB transaction"},
-                {"k": "p", "t": "transaction: update W→P + insert outbox READY", "d": "fail แล้ว rollback ทั้งสถานะและ outbox"},
-                {"k": "io", "t": "dispatcher ส่ง SFTP ด้วย secretRef/strict known_hosts", "d": "retry จาก outbox transaction เดิม"},
-                {"k": "end", "t": "จบ"},
-            ],
-            "tables": [
-                ["fgi_impact_stores", "R/W", "lock candidate W และเปลี่ยนเป็น P หลัง durable file สำเร็จเท่านั้น"],
-                ["fgi_impact_sales_summaries", "R/W", "สร้าง/ผูกหัวสรุปยอดขายใน transaction"],
-                ["interface_transactions", "W", "transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key"],
-                ["(application log แบบ structured)", "W", "run status และ reconcile count — ตาราง job_run_histories ถูกตัด 2026-08-06"],
-            ],
-            "meta": {
-                "trans": "durable file ก่อน; transaction เดียว update W→P + insert outbox READY; dispatcher ส่งภายหลัง",
-                "rerun": "UNIQUE(data_name,direction,business_key,period_key) และ checksum เดิมไม่สร้าง request ซ้ำ",
-                "mail": "Notification Service แจ้งเมื่อ durable write, DB transaction หรือ SFTP retry เกิน threshold",
-                "risk": "Target remediation: ห้าม commit W→P ก่อน fsync/atomic rename/checksum สำเร็จ และห้ามส่ง SFTP โดยไม่มี outbox",
-            },
-        },
-        "6": {
-            "params": [
-                ["กำหนดการรัน (Cron)", "0 17 * * *", "text", 1, "ทุกวัน 17:00"],
-                ["dateStartInitToSTA", "7", "number", 1, "วันของเดือนที่เริ่มปล่อยสถานะ I, C"],
-                ["numWaitPay", "3", "number", 1, "จำนวนงวดรอจ่าย"],
-                ["หมวด QSSI ที่ตรวจ", "8, 9, 12, 1, 10, 16", "text", 0, "ต้องครบทั้ง 6 หมวดจากงวด max เดียว ในกรอบ 3 เดือน"],
-                ["Output File", "FRBC0001_yyyyMMddHHmmss.txt (windows-874, 14 ฟิลด์, พ.ศ.)", "text", 0, "ฟิลด์ 3/5/6 เป็นวันที่แบบไทย/พุทธศักราช"],
-                ["STA endpoint alias", "sta-compensation", "text", 0, "resolve host/port/TLS policy จาก environment; ห้าม editable endpoint"],
-                ["Secret reference", "secret/sbpgi/interfaces/sta", "text", 0, "credential/certificate/private key จาก Secret Manager; TLS verify-full หรือ strict known_hosts"],
-            ],
-        },
-        "7": {
-            "name": "SyncCompetitorToDocument",
-            "th": "บันทึกข้อมูลคู่แข่งเข้าเอกสาร",
-            "tag": "DOCUMENT SERVICE",
-            "tagCls": "doc",
-            "phase": "B",
-            "cls": "document.service.syncCompetitors",
-            "script": "(internal scheduler / service)",
-            "out": "document_competitors (DB)",
-            "desc": "อ่านข้อมูลคู่แข่งล่าสุดจาก fgi_impact_competitors แล้วบันทึกเข้า document_competitors ผ่าน Document Service โดยตรง แทนการเขียนไฟล์ BPM06003O และ SFTP ไป BPM",
-            "params": [
-                ["กำหนดการรัน (Cron)", "30 17 7-31 * *", "text", 1, "ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน"],
-                ["Target table", "document_competitors", "text", 0, "upsert ด้วย doc_no / competitor_code / source_system=ALM"],
-                ["เงื่อนไขเลือกข้อมูล", "งวดคู่แข่งล่าสุดต่อร้าน + forecast เริ่มต้น + ยังไม่ sync", "text", 0, "คง business rule เดิม"],
-            ],
-            "flow": [
-                {"k": "start", "t": "เริ่ม"},
-                {"k": "p", "t": "อ่านคู่แข่งงวดล่าสุดต่อร้านจาก fgi_impact_competitors", "d": "dense rank ตามงวดต้นทางของคู่แข่ง"},
-                {"k": "d", "t": "มี compensation_documents ของ impact_process_id แล้ว?", "no": "คงสถานะรอ sync / log pending", "noKind": "err", "d": ""},
-                {"k": "p", "t": "upsert document_competitors", "d": "source_system=ALM, ผูก doc_no และ competitor_code"},
-                {"k": "p", "t": "บันทึก interface_transactions เป็น INTERNAL_DB_WRITE", "d": "ไม่สร้างไฟล์ BPM06003O"},
-                {"k": "end", "t": "จบ"},
-            ],
-            "tables": [
-                ["fgi_impact_competitors", "R", "ข้อมูลคู่แข่งล่าสุดจาก Job 3"],
-                ["compensation_documents", "R", "หา doc_no จาก impact_process_id"],
-                ["document_competitors", "W", "บันทึกคู่แข่งเข้าเอกสารโดยตรง"],
-                ["interface_transactions", "W", "tracking ภายใน type=INTERNAL_DB_WRITE"],
-            ],
-            "rels": [
-                "แทน legacy BPM06003O ด้วย document_competitors.doc_no -> compensation_documents",
-                "ไม่มี SFTP/EAI/BPM ภายในใน target architecture",
-            ],
-            "meta": {
-                "trans": "DB transaction ครอบการ upsert document_competitors + tracking",
-                "rerun": "idempotent ด้วย doc_no + competitor_code + source_system",
-                "mail": "ส่ง error ผ่าน Notification Service กลางเมื่อ sync ล้มเหลว",
-                "risk": "ห้าม re-implement การเขียนไฟล์ BPM06003O หรือ SFTP ไป BPM; legacy file เป็น reference เท่านั้น",
-            },
-        },
-        "8": {
-            "name": "CreateCompensationDocument",
-            "th": "สร้างเอกสารประกันรายได้อัตโนมัติ",
-            "tag": "DOCUMENT SERVICE",
-            "tagCls": "doc",
-            "phase": "B",
-            "cls": "document.service.createFromImpact",
-            "script": "(internal scheduler / service)",
-            "out": "compensation_documents (DB)",
-            "desc": "สร้าง compensation_documents จาก impact profile และข้อมูลชดเชยในฐานข้อมูลเดียวกัน แทนการเขียนไฟล์ BPM06001O และ SFTP ไป compensateflow; ไม่เรียก workflow โดยตรง",
-            "params": [
-                ["กำหนดการรัน (Cron)", "30 17 7-31 * *", "text", 1, "ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน"],
-                ["Target table", "compensation_documents", "text", 0, "สร้าง doc_no YYYY/xxxxx และผูก impact_process_id"],
-                ["เงื่อนไขเลือกข้อมูล", "สถานะ I + forecast + ยังไม่สร้างเอกสาร", "text", 0, "Gen Flow Gate อยู่ที่ Job 8b / Workflow Engine"],
-                ["ข้อห้ามเชิงสถาปัตยกรรม", "ห้ามสร้างไฟล์ BPM06001O, ห้าม SFTP, ห้ามเรียก K2 REST", "text", 0, "ใช้ Document Service + DB transaction เท่านั้น"],
-            ],
-            "flow": [
-                {"k": "start", "t": "เริ่ม"},
-                {"k": "p", "t": "query impact profile สถานะ I + forecast + ยังไม่สร้างเอกสาร", "d": "ใช้ impact_process_id เป็น idempotency key"},
-                {"k": "d", "t": "ข้อมูลผู้อนุมัติ/ร้าน/ยอดชดเชยครบ?", "no": "บันทึก reject reason / ไม่สร้างเอกสาร", "noKind": "err", "d": ""},
-                {"k": "p", "t": "generate doc_no YYYY/xxxxx", "d": "running ต่อปี ค.ศ. (มติ 2026-08-06)"},
-                {"k": "p", "t": "insert compensation_documents", "d": "ผูก impact_process_id และสถานะเริ่มต้น"},
-                {"k": "p", "t": "บันทึก interface_transactions เป็น INTERNAL_DB_WRITE", "d": "ไม่สร้างไฟล์ BPM06001O"},
-                {"k": "end", "t": "จบ - workflow เปิดโดย Job 8b / POST /workflows/instances"},
-            ],
-            "tables": [
-                ["fgi_impact_stores", "R/W", "อ่าน candidate และอัปเดตสถานะสร้างเอกสาร"],
-                ["fgi_impact_processes", "R", "hub รอบชดเชย"],
-                ["compensation_documents", "W", "สร้างหัวเอกสารแทนไฟล์ BPM06001O"],
-                ["interface_transactions", "W", "tracking ภายใน type=INTERNAL_DB_WRITE"],
-            ],
-            "rels": [
-                "compensation_documents.impact_process_id -> fgi_impact_processes แทน BPM06001O",
-                "Job 8 สร้างเอกสารเท่านั้น; Job 8b เป็นตัวเปิด Workflow ภายใน",
-            ],
-            "meta": {
-                "trans": "DB transaction เดียวครอบ generate doc_no + insert document + tracking",
-                "rerun": "idempotent ด้วย impact_process_id; เจอ doc เดิมให้ skip และคืนสถานะ already_created",
-                "mail": "Notification Service แจ้ง error/pending ตาม config",
-                "risk": "ห้ามนำ logic SFTP compensateflow หรือ K2 StartInstance กลับมาใช้ใน target design",
-            },
-        },
-        "8b": {
-            "name": "StartInternalWorkflow",
-            "th": "เปิด Workflow ภายใน",
-            "tag": "WORKFLOW ENGINE",
-            "tagCls": "k2",
-            "phase": "B",
-            "cls": "workflow.service.startFromImpact",
-            "script": "(internal scheduler / service token)",
-            "cron": "after-job-8",
-            "cronTh": "trigger หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ได้ตาม period",
-            "out": "sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SBPGI)",
-            "desc": "คัดรายการที่ผ่าน Gen Flow Gate แล้วเรียก Workflow Engine ภายในผ่าน POST /api/v1/workflows/instances แทน K2 REST StartInstance; เกณฑ์ W/Y/N เดิมยังคงใช้สำหรับ reconcile",
-            "params": [
-                ["Scheduler", "หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ตาม period", "text", 1, "แยกเพื่อ rerun ได้อิสระ; Operations ตรวจ deployment schedule/queue เท่านั้น"],
-                ["Workflow API", "POST /api/v1/workflows/instances", "text", 0, "internal service token; ไม่ใช่ K2 REST"],
-                ["เกณฑ์ Growth Rate", "growth_rate_diff <= -10", "number", 0, "คง business rule เดิม"],
-                ["Branch Type ผ่าน Gate", "FAM, FB1, FC1, FB2, FVB, FVC", "text", 0, "นอกเซ็ตหรือระยะทางเกินเกณฑ์ให้ตั้ง N"],
-                ["เงื่อนไข Gate อื่น", "workflow_generation_status=W · DV ไม่ว่าง · juristic ต่างกัน · sales_status in {Y,N}", "text", 0, "DV หาย, นิติบุคคลเดียวกัน หรือ growth ไม่ถึงเกณฑ์เป็น N; distance/juristic/growth/sales status ที่ยังไม่มีค่าเท่านั้นจึงคง W"],
-            ],
-            "flow": [
-                {"k": "start", "t": "เริ่ม"},
-                {"k": "p", "t": "อ่าน candidate ที่มี compensation_documents แล้วและ workflow_generation_status=W", "d": ""},
-                {"k": "d", "t": "พบเงื่อนไขไม่ผ่านถาวร?", "no": "ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ", "d": "branch type, distance, missing DV, same juristic หรือ growth > -10 -> N"},
-                {"k": "d", "t": "ข้อมูล Gate พร้อมครบ?", "no": "distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W", "d": "คง W เฉพาะข้อมูลต้นทางที่ยังรอเติมเพื่อให้ rerun ได้"},
-                {"k": "io", "t": "POST /api/v1/workflows/instances", "d": "service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST"},
-                {"k": "p", "t": "เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state 06)", "d": "engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3"},
-                {"k": "p", "t": "workflow_generation_status = Y", "d": "เปิด workflow สำเร็จ"},
-                {"k": "io", "t": "ส่งอีเมลสรุปราย DV ผ่าน Notification Service", "d": ""},
-                {"k": "end", "t": "จบ"},
-            ],
-            "tables": [
-                ["fgi_impact_stores", "R/W", "อ่าน candidate + เขียน W/Y/N"],
-                ["compensation_documents", "R/W", "ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency"],
-                ["workflow_transaction (@srm/glb-workflow · sps_store)", "W", "เปิด instance ผ่าน engine — ห้าม insert ตรง"],
-                ["workflow_approver (@srm/glb-workflow · sps_store)", "W", "prepared approver ขั้นแรก state 06 — ผ่าน engine"],
-                ["(backend config)", "R", "ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · เลข template ของ workflow มาจาก workflow_route.email_id"],
-            ],
-            "rels": [
-                "แทน K2 REST StartInstance ด้วย Workflow Engine ภายใน",
-                "ไม่มี Basic Auth/HTTP endpoint legacy ใน runtime target",
-            ],
-            "meta": {
-                "trans": "DB transaction ครอบ create instance/task + update W/Y/N",
-                "rerun": "idempotent ด้วย doc_no/impact_process_id; ตรวจ workflow_transaction เดิมของ engine ก่อนสร้างใหม่",
-                "mail": "อีเมลราย DV ผ่าน Notification Service",
-                "risk": "ห้ามเรียก K2 REST endpoint legacy; เก็บไว้เป็น reference migration เท่านั้น",
-            },
-        },
-        "9": {
-            "name": "SyncNewStoreToDocument",
-            "th": "บันทึกร้านเปิดใหม่เข้าเอกสาร",
-            "tag": "DOCUMENT SERVICE",
-            "tagCls": "doc",
-            "phase": "B",
-            "cls": "document.service.syncNewStores",
-            "script": "(internal scheduler / service)",
-            "out": "document_new_stores (DB)",
-            "desc": "อ่านโปรไฟล์ร้านเปิดใหม่และค่า forecast/adjust แล้วบันทึกเข้า document_new_stores ผ่าน Document Service โดยตรง แทนการเขียนไฟล์ BPM06002O และ SFTP ไป impactprofile",
-            "params": [
-                ["กำหนดการรัน (Cron)", "30 17 7-31 * *", "text", 1, "ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน"],
-                ["Target table", "document_new_stores", "text", 0, "upsert ด้วย doc_no / new_store_code"],
-                ["กฎ Forecast / Percent", "NVL(adjust_n, forecast_n)", "text", 0, "ค่า adjust มาก่อน forecast เสมอ; NULL หรือค่านอกช่วง 0..100 ต้อง reject ก่อน upsert"],
-                ["เงื่อนไขเลือกข้อมูล", "ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync", "text", 0, ""],
-            ],
-            "flow": [
-                {"k": "start", "t": "เริ่ม"},
-                {"k": "p", "t": "query ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync", "d": ""},
-                {"k": "d", "t": "มี compensation_documents ของ impact_process_id แล้ว?", "no": "คงสถานะรอ sync / log pending", "noKind": "err", "d": ""},
-                {"k": "d", "t": "compensate_percent ครบและอยู่ในช่วง 0..100 ทุกแถว?", "no": "COMPENSATE_PERCENT_INVALID + rollback ก่อน upsert/prune", "noKind": "err", "d": "COALESCE(adjust_compensate_percent, forecast_compensate_percent) ต้องไม่เป็น NULL"},
-                {"k": "p", "t": "upsert document_new_stores", "d": "forecast/percent = NVL(adjust_n, forecast_n)"},
-                {"k": "p", "t": "validate allocation percent รวมต่อ doc_no", "d": "ต้องรวมได้ 100 ก่อน submit workflow"},
-                {"k": "p", "t": "บันทึก interface_transactions เป็น INTERNAL_DB_WRITE", "d": "ไม่สร้างไฟล์ BPM06002O"},
-                {"k": "end", "t": "จบ"},
-            ],
-            "tables": [
-                ["fgi_impact_stores", "R", "โปรไฟล์ร้านเปิดใหม่และค่า forecast/adjust รายงวด"],
-                ["compensation_documents", "R", "หา doc_no จาก impact_process_id"],
-                ["document_new_stores", "W", "บันทึกร้านเปิดใหม่เข้าเอกสารโดยตรง"],
-                ["interface_transactions", "W", "tracking ภายใน type=INTERNAL_DB_WRITE"],
-            ],
-            "rels": [
-                "แทน legacy BPM06002O ด้วย document_new_stores.doc_no -> compensation_documents",
-                "ไม่มี SFTP/EAI/BPM ภายในใน target architecture",
-            ],
-            "meta": {
-                "trans": "validate percent ไม่เป็น NULL และอยู่ 0..100 ก่อน; DB transaction ครอบ upsert document_new_stores + tracking; พบค่าผิดให้ rollback ก่อน prune",
-                "rerun": "idempotent ด้วย doc_no + new_store_code",
-                "mail": "ส่ง error ผ่าน Notification Service กลางเมื่อ sync ล้มเหลว",
-                "risk": "ห้าม re-implement การเขียนไฟล์ BPM06002O หรือ SFTP ไป BPM; legacy file เป็น reference เท่านั้น",
-            },
-        },
-        "10": {
-            "out": "อีเมลเตือน UTF-8 + pending ACK dashboard",
-            "desc": "งาน safety net ตรวจ interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/interfaces/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน Notification Service กลาง",
-            "params": [
-                ["กำหนดการรัน (Cron)", "0 07 * * *", "text", 1, "ทุกวัน 07:00; เป็น safety net หลัง STA callback"],
-                ["Pending threshold", ">= 1 วัน", "number", 1, "เตือนเมื่อยังไม่มี ACK หลังครบ threshold"],
-                ["data_name ที่เฝ้าดู", "COMPENSATE_INIT_I, COMPENSATE_APPROVE_I", "text", 0, "เฉพาะฝั่ง STA - ไม่เฝ้า dataset ของ BPM"],
-                ["Encoding", "UTF-8", "text", 0, "แทน TIS-620 เดิมตาม Notification Service กลาง"],
-            ],
-            "flow": [
-                {"k": "start", "t": "เริ่ม"},
-                {"k": "p", "t": "อ่าน interface_transactions ฝั่ง STA ที่ยังไม่มี ACK และอายุ >= threshold", "d": ""},
-                {"k": "d", "t": "พบรายการค้าง?", "no": "จบการทำงาน", "noKind": "end", "d": ""},
-                {"k": "io", "t": "ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม", "d": "ผู้รับตาม backend config"},
-                {"k": "p", "t": "แสดงรายการใน /interfaces/pending-ack", "d": "POST /interfaces/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ"},
-                {"k": "end", "t": "จบ"},
-            ],
-            "tables": [
-                ["interface_transactions", "R", "pending ACK จาก STA และสถานะล่าสุด"],
-                ["email_template (ระบบ SBP เดิม)", "R", "template EM-08 watchdog ACK — อ่านอย่างเดียว"],
-                ["email_sent (ระบบ SBP เดิม)", "W (โดย @gosoft-sbp/email-lib)", "lib เขียน log ให้เอง · SBPGI ไม่ INSERT เอง"],
-                ["(backend config)", "R", "ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env"],
-            ],
-            "meta": {
-                "trans": "read-only; callback /interfaces/sta/ack เป็นผู้เขียน ACK หลัก",
-                "rerun": "รันซ้ำได้; ต้องไม่ส่งอีเมลซ้ำถ้ามี sent marker ในรอบเดียวกัน",
-                "mail": "Notification Service UTF-8",
-                "risk": "ห้ามกลับไปใช้ TIS-620/hardcoded recipient; Job 10 เป็น safety net ไม่ใช่ primary ACK path",
-            },
-        },
-    }
+    # ⚠️ overrides ถูกลบเมื่อ 2026-08-24 — เนื้อหา To-Be ถูกย้ายเข้า JOBS ใน job-batch.html แล้ว
+    #    เพื่อให้เหลือ *แหล่งเดียว* · เดิมมี override 9 job ทำให้หน้าเว็บกับ LLDD ไม่ตรงกัน 7 job
+    overrides: dict[str, dict[str, Any]] = {}
     updated = dict(job)
     if no in overrides:
         updated.update(overrides[no])
@@ -536,13 +259,6 @@ def target_job(job: dict[str, Any]) -> dict[str, Any]:
 
 
 SRS_JOB_USER_CATALOG: dict[str, dict[str, str]] = {
-    "1": {
-        "purpose": "นำเข้าคะแนน QSSI รายเดือนเพื่อใช้ประกอบการคำนวณและตรวจเงื่อนไขการชดเชย",
-        "input": "ไฟล์คะแนน QSSI รายเดือน 4 ชุดจาก SFTP, งวดเดือนที่ต้องประมวลผล, และหมวดคะแนนที่ระบบกำหนด",
-        "summary": "ระบบอ่านไฟล์ ตรวจรูปแบบและงวดข้อมูล คัดรายการล่าสุดต่อร้าน/หมวดคะแนน แล้วปรับปรุงคะแนน QSSI ของงวดนั้นให้เป็นชุดล่าสุด",
-        "output": "คะแนน QSSI ของร้านถูกบันทึกพร้อมใช้งานสำหรับงานส่ง Statement และรายงานผลการประมวลผลแสดงจำนวนไฟล์/จำนวนรายการ/สถานะสำเร็จหรือผิดพลาด",
-        "visible": "ทีมผู้ดูแลระบบติดตามได้จาก application log; ผู้ใช้ธุรกิจเห็นผลผ่านข้อมูลประกอบเอกสาร/รายงาน",
-    },
     "2": {
         "purpose": "นำเข้าคู่ร้านที่ได้รับผลกระทบจากร้านเปิดใหม่ เพื่อสร้างฐานข้อมูลการพิจารณาชดเชย",
         "input": "ข้อมูลงวดเดือนและข้อมูลร้านจาก ALLMAP ที่ระบุร้านเปิดใหม่ ร้านถูกกระทบ ระยะทาง รัศมี โซน และประเภทสาขา",
@@ -889,7 +605,7 @@ def build_model() -> Model:
             ["Frontend", "Web SPA จากต้นแบบหน้าจอ", "Dashboard, K2 forms, report, batch monitor และ administration"],
             ["Backend", "RBAC, Document, Workflow, Batch Scheduler, Interface, Report/Notification", "ให้บริการ REST API /api/v1 และ orchestration ภายใน; Auth token/menu มาจาก platform กลาง"],
             ["Database", "Schema รวม Zone A/B/C", "เก็บ pipeline, เอกสาร/workflow, master/config และ audit"],
-            ["External", "QSSI, ALLMAP, IAS/MIS, STA, SAP, SMTP", "คง file/SFTP/API ตามขอบเขตระบบภายนอก"],
+            ["External", "QSSI, ALLMAP, IAS/MIS, STA, SAP, SMTP", "คงขอบเขตระบบภายนอก · IAS/MIS ผ่าน EAI S3 · STA ผ่าน RabbitMQ"],
         ],
         [0.15, 0.35, 0.5],
     )
@@ -920,10 +636,10 @@ def build_model() -> Model:
     model.table(
         ["System", "Direction", "Mechanism", "Requirement"],
         [
-            ["QSSI", "Inbound", "SFTP, mrs* 4 files", "WINDOWS-874; คะแนน 6 หมวด 8,9,12,1,10,16"],
+            ["QSSI", "Inbound", "ระบบ SBP เดิมนำเข้าให้ (fcs_qssi_score)", "SBPGI อ่านอย่างเดียว; คะแนน 6 หมวด 8,9,12,1,10,16"],
             ["ALLMAP", "Inbound", "SQL Server views / link", "คู่ร้านถูกกระทบ ร้านคู่แข่ง และ POI map"],
             ["IAS/MIS", "Outbound/Inbound", "AMS06001O / AMS06001I", "ยอดขาย 4 windows x 15 days"],
-            ["STA", "Outbound/Inbound", "FRBC0001 + ACK/API callback", "ส่งผลชดเชยและเฝ้าระวัง ACK"],
+            ["STA", "Outbound/Inbound", "RabbitMQ sta.compensation.result + ACK/API callback", "ส่งผลชดเชยและเฝ้าระวัง ACK"],
             ["SAP", "Downstream via STA", "Accounting posting", "รับรายการเมื่อ STA approve"],
             ["SMTP", "Outbound", "E-mail", "แจ้งผู้ดำเนินการ เตือนงานค้าง และ batch errors"],
         ],
@@ -958,7 +674,7 @@ def build_model() -> Model:
         ["REQ-BUS-003", "ระบบต้องเปิด workflow เฉพาะรายการที่ Gen Flow Gate ทุกเงื่อนไขผ่าน", "Job 8b/API gate test ครบ Y/W/N"],
         ["REQ-BUS-004", "ระบบต้อง flag รายการที่ยอดขายมีวันทำการน้อยกว่า 60 วันและแสดงเป็นแถวผิดปกติ", "list/report test ที่ 59/60 วัน"],
         ["REQ-BUS-005", "ระบบต้องปฏิเสธการบันทึกเมื่อผลรวมเปอร์เซ็นต์ชดเชยของร้านเปิดใหม่ไม่เท่ากับ 100%", "validation test ต่ำกว่า/เท่ากับ/มากกว่า 100"],
-        ["REQ-BUS-006", "ยอดชดเชยไม่เกิน 100,000 บาทต้องสิ้นสุดที่ Section 02; ยอดเกิน 100,000 บาทต้องผ่าน Section 03 ก่อนสิ้นสุด", "routing boundary test 99,999.99/100,000/100,000.01"],
+        ["REQ-BUS-006", "ยอดชดเชยน้อยกว่า 100,000 บาทต้องสิ้นสุดที่ Section 02; ยอดตั้งแต่ 100,000 บาทขึ้นไปต้องผ่าน Section 03 ก่อนสิ้นสุด", "routing boundary test 99,999.99/100,000/100,000.01"],
         ["REQ-DOC-001", "ระบบต้องสร้างเลขเอกสารรูป YYYY/xxxxx โดยใช้ปี พ.ศ. และ running แยกต่อปี", "uniqueness/format/concurrency test"],
         ["REQ-DOC-002", "ระบบต้องป้องกันเอกสารซ้ำต่อ business key และ impact process", "duplicate/idempotency test"],
         ["REQ-DOC-003", "ระบบต้องเก็บความสัมพันธ์ impact_process_id -> doc_no -> instance_id -> task_id ให้ trace ได้", "referential-integrity trace"],
@@ -990,7 +706,7 @@ def build_model() -> Model:
     model.pagebreak()
     model.heading("3.1.1 End-to-end flow", 3)
     stages = [
-        ("A1", "นำเข้าคะแนน QSSI รายเดือน", "Job 1 รับ 4 ไฟล์ผ่าน SFTP, dedup และบันทึก fcs_qssi_score"),
+        ("A1", "คะแนน QSSI รายเดือน", "ระบบ SBP เดิมนำเข้าลง fcs_qssi_score; SBPGI อ่านอย่างเดียว (ตัด Job 1 ออก 2026-08-24)"),
         ("A2", "นำเข้าคู่ร้านและคู่แข่ง", "Jobs 2-3 อ่าน ALLMAP ทุกวันที่ 7 และตั้ง verify_status ตามกฎ DENY/ON_PROCESS"),
         ("A3", "ขอยอดขายรายวัน", "Job 4 สร้าง AMS06001O วันที่ 7-16 เวลา 16:00"),
         ("A4", "รับยอดขายและคำนวณ", "Job 5 รับ AMS06001I, คำนวณ 4x15 วัน, outlier |sales_diff| >= 50"),
@@ -998,9 +714,9 @@ def build_model() -> Model:
         ("B2", "เปิด workflow", "Workflow Engine เปิด instance เมื่อผ่าน Gen Flow Gate และเริ่ม Section 06"),
         ("C1", "SBP DSA ตรวจสอบ", "Section 06 และ 08 ตรวจข้อมูลและคำนวณเงินชดเชย"),
         ("C2", "ฝ่ายส่งเสริมธุรกิจปรับข้อมูล", "Section 01 แก้ร้านเปิดใหม่ คู่แข่ง ปัจจัย และตรวจ % ชดเชยรวม 100%"),
-        ("C3", "GM/AVP อนุมัติ", "Section 02; ยอด > 100,000 ผ่าน Section 03 แล้วจบ, ยอด <= 100,000 จบที่ GM"),
+        ("C3", "GM/AVP อนุมัติ", "Section 02; ยอดตั้งแต่ 100,000 ขึ้นไปผ่าน Section 03 แล้วจบ, ยอดน้อยกว่า 100,000 จบที่ GM"),
         ("C4", "บัญชีตรวจสอบนอก workflow", "เมื่อเอกสารเสร็จสิ้น ทีมบัญชีใช้รายงาน SBP Mall และ Export Excel เพื่อกระทบ SAP"),
-        ("D1", "ส่ง Statement", "Job 6 ส่ง FRBC0001 ไป STA เวลา 17:00 ทุกวัน"),
+        ("D1", "ส่ง Statement", "Job 6 publish RabbitMQ sta.compensation.result ไป STA เวลา 17:00 ทุกวัน"),
         ("D2", "ติดตาม ACK", "STA callback อัปเดต ACK และ Job 10 เป็น safety net เมื่อค้าง >= 1 วัน"),
     ]
     model.table(["Step", "Process", "Requirement"], stages, [0.1, 0.28, 0.62])
@@ -1030,8 +746,8 @@ def build_model() -> Model:
         [0.24, 0.76],
     )
     model.note(
-        "ลำดับ workflow ที่ต้องรองรับคือ Section 06 -> 08 -> 01 -> 02; ยอดรวมไม่เกิน 100,000 บาทสิ้นสุดที่ Section 02 "
-        "ส่วนยอดเกิน 100,000 บาทต้องส่งต่อ Section 03 ก่อนสิ้นสุด ระบบต้องคืน action ที่อนุญาตตาม role, section และ task owner ปัจจุบัน"
+        "ลำดับ workflow ที่ต้องรองรับคือ Section 06 -> 08 -> 01 -> 02; ยอดรวมน้อยกว่า 100,000 บาทสิ้นสุดที่ Section 02 "
+        "ส่วนยอดตั้งแต่ 100,000 บาทขึ้นไปต้องส่งต่อ Section 03 ก่อนสิ้นสุด ระบบต้องคืน action ที่อนุญาตตาม role, section และ task owner ปัจจุบัน"
     )
     model.pagebreak()
     model.heading("3.1.4 Migration map", 3)

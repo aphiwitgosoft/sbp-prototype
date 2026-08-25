@@ -184,6 +184,7 @@ def _is_number(value: Any) -> bool:
 # ---------------------------------------------------------------------------
 
 _VERB_HINTS: list[tuple[tuple[str, ...], str]] = [
+    (("publish", "Publish", "MQ"), "Publish"),
     (("ดาวน์โหลด", "download"), "Download"),
     (("เชื่อมต่อ SFTP", "SFTP", "เชื่อมต่อ"), "Connect"),
     (("อ่านไฟล์", "รับไฟล์"), "ReadFile"),
@@ -245,6 +246,10 @@ def _verb(text: str, fallback: str) -> str:
 
 
 def _is_write_step(step: dict[str, Any]) -> bool:
+    # tx:0 = ขั้นที่ตั้งใจให้อยู่ "นอก" DB transaction (เช่น publish MQ ของ Job 6)
+    # — ต้องกันออกจาก write_indexes ไม่งั้นขอบเขต transaction จะลากคลุมไปด้วย
+    if step.get("tx") == 0:
+        return False
     text = f"{step.get('t', '')} {step.get('d', '')}"
     return step.get("k") in {"p", "io"} and any(hint in text for hint in _WRITE_HINTS)
 

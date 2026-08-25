@@ -44,7 +44,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Master Data | 8 | /api/v1/competitors, /api/v1/competitors, /api/v1/competitors/{code}, /api/v1/competitors/{code} ... | K2 · SRS 3.1.9 |
 | รายงาน | 2 | /api/v1/reports/status-summary, /api/v1/reports/status-summary/export | K2 · SRS 3.1.7 |
 | Workflow ภายใน | 3 | /api/v1/workflows/instances, /api/v1/workflows/instances/{id}, /api/v1/workflows/summary | K2 3.1.4 + FGI/FCS Job 8b |
-| Interface & Dashboard | 3 | /api/v1/interfaces/tracking, /api/v1/interfaces/sta/ack, /api/v1/interfaces/pending-ack | FGI/FCS · tracking / watchdog |
+| Interface (tracking / ACK) | 3 | /api/v1/interfaces/tracking, /api/v1/interfaces/sta/ack, /api/v1/interfaces/pending-ack | FGI/FCS · tracking / watchdog |
 
 ## 5. Request Lifecycle
 
@@ -93,7 +93,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | 1 | อ่าน sectionCode ของผู้ใช้จาก JWT |
 | 2 | อ่านงานค้างจาก engine เดิม (schema sps_store): getPendingFlowByUser({userData}) ของ @srm/glb-workflow  — ไม่มีตาราง workflow_tasks ของ SBPGI แล้ว |
-| 3 | join compensation_documents + stores + fgi_impact_sales_summaries คืน 9 คอลัมน์ตามหน้าจอและ salesDataDays สำหรับ red flag |
+| 3 | เฉพาะ section 06 (ฝ่าย SBP DSA): union เอกสารที่จบแล้วซึ่งผลการพิจารณาสุดท้ายเป็น "หยุดชดเชยประกันรายได้" เข้ามาด้วย พร้อม flag stoppedReopenable=true (SDD สไลด์ 46 ข้อ 1.9 · บทบาทอื่นไม่เห็นชุดนี้) |
+| 4 | join compensation_documents + stores + fgi_impact_sales_summaries คืน 9 คอลัมน์ตามหน้าจอและ salesDataDays สำหรับ red flag |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
@@ -101,6 +102,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | compensation_documents | R | ข้อมูลเอกสาร |
 | store (SBP เดิม) | R | ชื่อและภาคของร้าน — ตาราง stores ของ SBPGI ถูกตัด 2026-08-06 · คีย์ store_id · ภาค zone_cd |
 | fgi_impact_sales_summaries | R | อัตรายอดขายลดลงและจำนวนวันข้อมูลยอดขาย |
+| consideration_logs | R | ผลการพิจารณาสุดท้าย — คัดเอกสารที่จบด้วย "หยุดชดเชยประกันรายได้" เข้าคิวของ section 06 (SDD สไลด์ 46 ข้อ 1.9) |
 
 #### Request / Query / Header
 
@@ -125,9 +127,16 @@ Query: ?page=1&size=20&q=00788
     "statusCode": "06",
     "currentSection": "06",
     "daysPending": 3,
-    "salesDataDays": 58
+    "salesDataDays": 58,
+    "stoppedReopenable": false
+  }, {
+    "docNo": "2026/00036",
+    "statusCode": "END",
+    "currentSection": null,
+    "stoppedReopenable": true
   }]
 }
+// stoppedReopenable=true คืนเฉพาะผู้เรียกใน section 06 — เอกสารจบด้วย "หยุดชดเชยประกันรายได้" ที่เปิดพิจารณาใหม่ได้ (SDD สไลด์ 46 ข้อ 1.9)
 ```
 
 | Error / Condition |
@@ -190,6 +199,7 @@ LIMIT :size OFFSET :offset;
 | --- | --- | --- |
 | compensation_documents | R | เอกสารตามเงื่อนไข |
 | impacted_stores | R | ข้อมูลร้าน |
+| fgi_impact_sales_summaries | R | total_working_days → salesDataDays สำหรับ flag แถวแดง < 60 วัน |
 
 #### Request / Query / Header
 
@@ -331,7 +341,7 @@ SELECT * FROM consideration_logs           WHERE doc_no = :docNo ORDER BY action
 | --- | --- |
 | 1 | ตรวจซ้ำ: ร้าน + เดือนที่ถูกกระทบ ต้องยังไม่มีเอกสาร |
 | 2 | ออกเลขที่ YYYY/xxxxx (running ต่อปี เริ่ม 00001 — กติกา SRS) |
-| 3 | insert compensation_documents สถานะเริ่มต้น + เรียก initializeWorkflow({versionId, referenceId, userId}) [referenceId ยังไม่ตัดสินว่าใช้ docNo หรือ surrogate id — DP-1 ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4] ของ @srm/glb-workflow แล้ว addPreApprover ขั้น 06 |
+| 3 | insert compensation_documents สถานะเริ่มต้น + เรียก initializeWorkflow({versionId, referenceId, userId}) [referenceId = compensation_documents.id (surrogate · ส่งเป็น string) — DP-1 ปิดแล้ว 2026-08-17] ของ @srm/glb-workflow แล้ว addPreApprover ขั้น 06 |
 | 4 | SBPGI เรียก sendEmail() แจ้งเปิดเรื่อง ด้วยเลข template จาก workflow_route.email_id (นอก transaction) |
 
 | DB Object | R/W | Usage |
@@ -407,6 +417,7 @@ VALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :status
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
+| compensation_documents | R/W | หัวเอกสาร — อัปเดตความเห็น/ยอดรวม/ผู้แก้ไข (SQL ของเส้นนี้ UPDATE ตารางนี้) |
 | document_new_stores | R/W | %ชดเชย · ระยะห่าง · เงินชดเชยต่อร้าน |
 | document_competitors | R/W/D | คู่แข่ง — ลบรายการที่ไม่ได้ส่งมา |
 | document_external_factors | R/W/D | ปัจจัยภายนอก — ลบรายการที่ไม่ได้ส่งมา |
@@ -471,14 +482,15 @@ DELETE FROM document_external_factors WHERE doc_no = :docNo AND id NOT IN (:keep
 | 1 | ตรวจว่าผู้ใช้เป็น approver ของ state ปัจจุบันใน @srm/glb-workflow schema sps_store (getTransaction / getPermissionEvents ) |
 | 2 | validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว |
 | 3 | คำนวณขั้นถัดไปตามตารางเส้นทาง (ตารางเส้นทาง workflow · SDD GI): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 01/02 เห็นควรไม่ชดเชย → เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น) · 02 ชดเชย < 100,000 → เสร็จสิ้น (จบที่ GM) · ≥ 100,000 → 03 → จบ  · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ |
-| 4 | insert consideration_logs + ปิด task เดิม เปิด task ใหม่ · กรณี 06 เห็นควรไม่ชดเชย ระบบตั้งงานเดือนถัดไปให้เจ้าของงานคนเดิม (SDD GI) |
-| 5 | SBPGI เรียก sendEmail() แจ้งผู้อนุมัติถัดไป ด้วยเลข template จาก workflow_route.email_id (นอก transaction) |
+| 4 | insert consideration_logs + ปิด task เดิม เปิด task ใหม่ |
+| 5 | auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48): กรณี 06 เห็นควรไม่ชดเชย → ปิดเอกสารและไม่แสดงในหน้ารอดำเนินการของ 06 ในเดือนนั้น แล้วตั้งงานรอบเดือนถัดไปให้ผู้ดำเนินการคนเดิม · เคสต่อเนื่อง → ส่งงานให้เจ้าหน้าที่ SBP DSA คนเดิมอัตโนมัติ · resolve จาก consideration_logs ของเอกสารรอบก่อนของร้านเดียวกัน (section_code เดียวกัน) แล้วผูกด้วย addPreApprover() — ไม่มีคอลัมน์ assignee ในตารางของ SBPGI · fallback เป็น group ของ auth-backend เมื่อรอบก่อนไม่เคยผ่านขั้นนั้นหรือพนักงานลาออก |
+| 6 | SBPGI เรียก sendEmail() แจ้งผู้อนุมัติถัดไป ด้วยเลข template จาก workflow_route.email_id (นอก transaction) |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
 | sps_store.workflow_transaction / workflow_history / workflow_approver | R (เขียนผ่าน lib) | 🔴 ห้าม INSERT/UPDATE ตรง — eventWorkflow() + addPreApprover() ของ engine เดิม (schema sps_store) — เดิน state + บันทึก history + ตั้ง approver ขั้นถัดไป · API 8 ตัวตามชีต Detail ของ LLDD lib (ปิด 2026-08-14) |
 | compensation_documents | W | อัปเดต Status + CurSection |
-| consideration_logs | W | บันทึกผลพิจารณา |
+| consideration_logs | W/R | บันทึกผลพิจารณา · และอ่านย้อนของเอกสารรอบก่อนเพื่อ resolve เจ้าของงานคนเดิม (auto-assign · SDD สไลด์ 46 · 48) |
 | email_template (SBP เดิม) | R | template — อ่านอย่างเดียว ไม่แก้ของระบบเดิม |
 | email_sent (SBP เดิม) | W (โดย email-lib) | ปิด DP-5 · 2026-08-14 — SBPGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง (คอลัมน์ผู้ส่ง = send_by) |
 
@@ -1403,6 +1415,8 @@ DELETE FROM external_factors WHERE factor_code = :code;
 | compensation_histories | R | ยอด/งวดชดเชย |
 | impacted_stores | R | ข้อมูลร้าน |
 | consideration_logs | R | ผลพิจารณาล่าสุด (กรองประกัน/ไม่ประกัน) |
+| document_new_stores | R | รหัส/ชื่อ/ภาค/ประเภทร้านเปิดกระทบ — 4 ใน 14 คอลัมน์ผลลัพธ์ |
+| fgi_impact_processes | R | เดือน/ปีที่ถูกกระทบ (impact_month · impact_year) |
 
 #### Request / Query / Header
 
@@ -1606,7 +1620,7 @@ UPDATE fgi_impact_processes SET workflow_generation_status = :flagN
 WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagN;
 
 -- ผ่าน gate → ใช้เอกสารที่ Job 8 สร้างแล้ว เปิด instance + งานแรกผ่าน @srm/glb-workflow แล้วตั้ง Y ใน transaction เดียว
--- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 19 ตารางแล้ว)
+-- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 20 ตารางแล้ว)
 --    initialize(versionId=:sbpgiVersionId, referenceId=:referenceId, userId=:serviceActor)
 --    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
 -- referenceId = compensation_documents.id (DP-1 ปิดแล้ว) · ไม่มี UNIQUE กันซ้ำจริงบน
@@ -1738,7 +1752,7 @@ WHERE w.version_id = :sbpgiVersionId AND w.current_status_id <> :statusDone
 GROUP BY w.current_state_id;
 ```
 
-### 6.6 Interface & Dashboard
+### 6.6 Interface (tracking / ACK)
 
 | Endpoint | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -1755,7 +1769,7 @@ GROUP BY w.current_state_id;
 | Global No. | 27 |
 | Method | GET |
 | Path | /api/v1/interfaces/tracking |
-| Group | Interface & Dashboard |
+| Group | Interface (tracking / ACK) |
 | Access / Role | 01 Admin |
 | Requirement Tag | FGI/FCS |
 
@@ -1811,7 +1825,7 @@ Callback ให้ระบบ STA ยิงตอบรับ (ACK) ตรง �
 | Global No. | 28 |
 | Method | POST |
 | Path | /api/v1/interfaces/sta/ack |
-| Group | Interface & Dashboard |
+| Group | Interface (tracking / ACK) |
 | Access / Role | API key ของระบบ STA |
 | Requirement Tag | ใหม่ (เสริม Job 10) |
 
@@ -1864,14 +1878,15 @@ WHERE id = :trackingId;
 | Global No. | 29 |
 | Method | GET |
 | Path | /api/v1/interfaces/pending-ack |
-| Group | Interface & Dashboard |
+| Group | Interface (tracking / ACK) |
 | Access / Role | 01 Admin |
 | Requirement Tag | FGI/FCS · Job 10 |
 
 | Step | Flow |
 | --- | --- |
-| 1 | เกณฑ์เดิมของ Job 10: returnCode IS NULL · interface แบบไฟล์ · อายุ ≥ 1 วัน |
-| 2 | เฉพาะ dataset ฝั่ง STA (COMPENSATE_INIT_I / COMPENSATE_APPROVE_I) |
+| 1 | เกณฑ์เดิมของ Job 10: returnCode IS NULL · อายุ ≥ 1 วัน |
+| 2 | เฉพาะขาส่งออก direction = OUT (แถว INTERNAL ของ Jobs 7/8/9 จบที่ COMPLETED ทันที ไม่มี ACK ให้รอ) |
+| 3 | เฉพาะ dataset ฝั่ง STA (COMPENSATE_INIT_I / COMPENSATE_APPROVE_I) ที่ส่งผ่าน RabbitMQ |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
@@ -1899,10 +1914,14 @@ WHERE id = :trackingId;
 SQL Reference
 
 ```sql
--- เกณฑ์ watchdog Job 10: return_code NULL · interface แบบไฟล์ · อายุ ≥ 1 วัน
+-- เกณฑ์ watchdog Job 10: เฉพาะขาส่งออกที่ยังไม่มี ACK และอายุ ≥ 1 วัน
+--   direction = OUT เท่านั้น — แถว INTERNAL ของ Jobs 7/8/9 จบที่ COMPLETED ทันที ไม่มี ACK ให้รอ
+--   (ตรงเจตนาเดิมของ Java: interface_type != 'WS' = เฝ้าเฉพาะ interface แบบไฟล์)
 SELECT data_name, doc_no, sent_at, (CURRENT_DATE - sent_at::date) AS age_days
 FROM interface_transactions
-WHERE return_code IS NULL
+WHERE direction = 'OUT'
+  AND status NOT IN ('ACKED','COMPLETED')
+  AND return_code IS NULL
   AND data_name IN (:staDatasets)
   AND sent_at < CURRENT_DATE - 1
 ORDER BY sent_at;

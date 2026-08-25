@@ -21,7 +21,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - นิยาม route ของทุกปุ่ม · การแตก route ตามวงเงินอนุมัติ เกณฑ์เดียว 100,000 เขียนเป็น**ตัวอย่างทางเลือก B เท่านั้น** — แหล่งเก็บวงเงินยังไม่ตัดสิน (มติเดิมคือ common_code · ดูข้อค้าง 5.6)
 - สำรวจทางเลือกผู้อนุมัติ: workflow_group / workflow_group_map เทียบกับ addPreApprover รายคน — **ยังไม่ตัดสิน** (ดูข้อค้าง 5.6)
 - สำรวจทางเลือก workflow_part / workflow_part_display สำหรับคุมการแสดงผลรายส่วน — **ยังไม่ตัดสิน** ว่าจะใช้แทน data-editrole ของ SBPGI หรือไม่ (ดูข้อค้าง 5.5/5.6)
-- ความเสี่ยงและข้อค้างของ engine (ไม่มี PK/index · ชื่อ function ขัดกัน 3 ชุด) — ยังไม่ตัดสิน
+- ความเสี่ยงและข้อค้างของ engine — **ชื่อ function ปิดแล้ว 2026-08-14** (ยึด 8 API ตามชีต Detail ของ LLDD ฝั่ง lib) · ที่ยังค้างคือ DP-2 `workflow_transaction` ไม่มี PK/index
 
 ## 3. Screenshot Reference
 

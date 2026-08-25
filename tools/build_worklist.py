@@ -653,7 +653,7 @@ function wireBoard(){
 }
 
 /* ---------- Work Plan: งานเป็นแถว · สัปดาห์เป็นคอลัมน์ ---------- */
-const DAYS_PER_WEEK=5;   // 1 สัปดาห์ = 5 วันทำการ (30 ชม.) ตามกติกาในเอกสาร
+const DAYS_PER_WEEK=5;   // 1 สัปดาห์ = 5 วันทำการ × 8 ชม. = 40 ชม. (กรอบใหม่ 2026-08-25)
 const weekOf=d=>Math.floor(d/DAYS_PER_WEEK);
 
 function renderPlan(){
@@ -694,12 +694,12 @@ function renderPlan(){
   const load=weeks.map(()=>0);
   all.forEach(t=>{ const dur=t.endDay-t.startDay+1, per=t.total/dur;
     for(let d=t.startDay;d<=t.endDay;d++) load[weekOf(d)]+=per; });
-  const foot='<tr><td class="tname"><b>ภาระงานรวม/สัปดาห์</b><div class="sm">6 คน × 30 ชม. = 180 ชม./สัปดาห์</div></td>'+
+  const foot='<tr><td class="tname"><b>ภาระงานรวม/สัปดาห์</b><div class="sm">6 คน × 40 ชม. = 240 ชม./สัปดาห์ · เป้าหมาย 4 สัปดาห์</div></td>'+
     weeks.map(w=>`<td class="wk"><b style="color:${load[w]>180?'var(--del)':'var(--muted)'}">${Math.round(load[w])}h</b></td>`).join('')+'</tr>';
 
   return `<h1>แผนงานรายสัปดาห์ (Work Plan)</h1>
   <p class="sub">ลำดับงานคำนวณจาก <b>dependency จริง</b> + คิวของเจ้าของงาน (หนึ่งคนทำได้ทีละฉบับ) ·
-  ความยาวแท่งมาจาก <b>ชั่วโมงรวม impl + unit test</b> ที่ 6 ชม./วัน · ไม่ผูกกับปฏิทินจริง จึงนับเป็น W1, W2, …</p>
+  ความยาวแท่งมาจาก <b>ชั่วโมงรวม impl + unit test</b> ที่ 8 ชม./วัน · ไม่ผูกกับปฏิทินจริง จึงนับเป็น W1, W2, …</p>
   <div class="bar">
     <select id="fTrack"><option value="">ทุกสาย</option>${['FE','BE','Job'].map(k=>`<option value="${k}"${f.track===k?' selected':''}>${k}</option>`).join('')}</select>
     <select id="fOwner"><option value="">ทุกคน</option>${owners.map(o=>`<option${f.owner===o?' selected':''}>${esc(o)}</option>`).join('')}</select>

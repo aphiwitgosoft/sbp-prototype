@@ -3,13 +3,13 @@
 เปิดหน้า portal ใน browser หรือใช้รายการลิงก์ด้านล่าง.
 
 - Main index: [PDF](../pdf/LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management.pdf)
-- Documents: 41
-- Total estimate: 823 hours  (implementation 669 + unit test 154)
+- Documents: 40
+- Total estimate: 824 hours  (implementation 671 + unit test 153)
 - Unit test: BE/Job 30% · FE 25% ของชั่วโมง implementation · เอกสารสัญญา/ออกแบบไม่คิดแยก (ดู NO_UNIT_TEST_DOCS)
 - ขอบเขต 2026-08-07: ตัด `LLDD-FE-Overview` และ `LLDD-BE-API-Dashboard-Summary` · เพิ่ม `LLDD-BE-Database-Structure`, `LLDD-BE-Data-Migration-Cutover`, `LLDD-BE-Integration-SBP-Platform`, `LLDD-BE-Workflow-Engine-Definition` · เปลี่ยนชื่อ `FE-Master-Config` -> `FE-Master-Data`, `BE-API-Lookup-RBAC-Email` -> `BE-API-Lookup`, `BE-API-Report-Master-Config` -> `BE-API-Report-and-Master-Data`
 - ขอบเขต 2026-08-06: ตัด `LLDD-FE-Batch-Monitor` และ `LLDD-FE-Email-Template` ออกจากชุดส่งมอบ — หน้า Global Config/Email Template ลบทั้งฟีเจอร์ (ใช้ `mas_param`/`email_template` ของระบบ SBP เดิม) และหน้า Batch Job ย้ายไปกลุ่มเมนู Flow เหลือเฉพาะ Flowchart + Database ที่ใช้ (พารามิเตอร์อยู่ใน backend config)
 - Plan: hours + dependency step only (no calendar dates) with 6-person team `Kittisak <New> Kaeowika`, `Chidchanok <lin> Saengamnat` (FE) and `Butsaba <But> Podamrong`, `Tunyatorn <Vava> Kiatkongphongsa`, `Peerakorn <Pete> Sakunkaewphithak`, `Aphiwit <Bank> Khammoon` (BE) — Peerakorn moved FE -> BE on 2026-08-07
-- Working-time rule: 1 week = 5 days, 1 day = 6 hours (30 hours/week)
+- Working-time rule: 1 week = 5 days, 1 day = 8 hours (40 hours/week)
 
 ## Reference Design Documents
 
@@ -56,8 +56,8 @@
 | BE-API-Lookup | Tunyatorn <Vava> Kiatkongphongsa | 13h (impl 10 + test 3) | [PDF](../pdf/BE/LLDD-BE-API-Lookup.pdf) | [DOCX](../word/BE/LLDD-BE-API-Lookup.docx) |
 | BE-API-Report-and-Master-Data | Peerakorn <Pete> Sakunkaewphithak | 39h (impl 30 + test 9) | [PDF](../pdf/BE/LLDD-BE-API-Report-and-Master-Data.pdf) | [DOCX](../word/BE/LLDD-BE-API-Report-and-Master-Data.docx) |
 | BE-Job-Batch-Email-SRM | Peerakorn <Pete> Sakunkaewphithak | 19h (impl 14 + test 5) | [PDF](../pdf/BE/LLDD-BE-Job-Batch-Email-SRM.pdf) | [DOCX](../word/BE/LLDD-BE-Job-Batch-Email-SRM.docx) |
-| BE-Database-Structure | Aphiwit <Bank> Khammoon | 28h | [PDF](../pdf/BE/LLDD-BE-Database-Structure.pdf) | [DOCX](../word/BE/LLDD-BE-Database-Structure.docx) |
-| BE-Data-Migration-Cutover | Aphiwit <Bank> Khammoon | 40h | [PDF](../pdf/BE/LLDD-BE-Data-Migration-Cutover.pdf) | [DOCX](../word/BE/LLDD-BE-Data-Migration-Cutover.docx) |
+| BE-Database-Structure | Aphiwit <Bank> Khammoon | 31h | [PDF](../pdf/BE/LLDD-BE-Database-Structure.pdf) | [DOCX](../word/BE/LLDD-BE-Database-Structure.docx) |
+| BE-Data-Migration-Cutover | Aphiwit <Bank> Khammoon | 43h | [PDF](../pdf/BE/LLDD-BE-Data-Migration-Cutover.pdf) | [DOCX](../word/BE/LLDD-BE-Data-Migration-Cutover.docx) |
 | BE-Integration-SBP-Platform | Tunyatorn <Vava> Kiatkongphongsa | 20h | [PDF](../pdf/BE/LLDD-BE-Integration-SBP-Platform.pdf) | [DOCX](../word/BE/LLDD-BE-Integration-SBP-Platform.docx) |
 | BE-Workflow-Engine-Definition | Tunyatorn <Vava> Kiatkongphongsa | 24h | [PDF](../pdf/BE/LLDD-BE-Workflow-Engine-Definition.pdf) | [DOCX](../word/BE/LLDD-BE-Workflow-Engine-Definition.docx) |
 
@@ -65,14 +65,13 @@
 
 | Document | Owner | Estimate | PDF | DOCX |
 | --- | --- | --- | --- | --- |
-| BE-Job-1-ImportQSSI | Aphiwit <Bank> Khammoon | 21h (impl 16 + test 5) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-1-ImportQSSI.docx) |
 | BE-Job-2-ImportImpactStore | Aphiwit <Bank> Khammoon | 19h (impl 14 + test 5) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.docx) |
 | BE-Job-3-ImportImpactCompetitor | Aphiwit <Bank> Khammoon | 13h (impl 10 + test 3) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.docx) |
 | BE-Job-4-PrepareImpactStoreToIAS | Aphiwit <Bank> Khammoon | 19h (impl 14 + test 5) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS.docx) |
 | BE-Job-5-ImportImpactSaleFromIAS | Peerakorn <Pete> Sakunkaewphithak | 21h (impl 16 + test 5) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.docx) |
-| BE-Job-6-ExportImpactStoreToFS | Aphiwit <Bank> Khammoon | 26h (impl 20 + test 6) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.docx) |
+| BE-Job-6-ExportImpactStoreToFS | Aphiwit <Bank> Khammoon | 34h (impl 26 + test 8) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.docx) |
 | BE-Job-7-SyncCompetitorToDocument | Peerakorn <Pete> Sakunkaewphithak | 13h (impl 10 + test 3) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument.docx) |
 | BE-Job-8-CreateCompensationDocument | Aphiwit <Bank> Khammoon | 24h (impl 18 + test 6) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-8-CreateCompensationDocument.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-8-CreateCompensationDocument.docx) |
-| BE-Job-8b-StartInternalWorkflow | Tunyatorn <Vava> Kiatkongphongsa | 21h (impl 16 + test 5) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.docx) |
+| BE-Job-8b-StartInternalWorkflow | Tunyatorn <Vava> Kiatkongphongsa | 29h (impl 22 + test 7) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.docx) |
 | BE-Job-9-SyncNewStoreToDocument | Peerakorn <Pete> Sakunkaewphithak | 15h (impl 11 + test 4) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument.docx) |
 | BE-Job-10-NotifyNoReceiveData | Peerakorn <Pete> Sakunkaewphithak | 11h (impl 8 + test 3) | [PDF](../pdf/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.pdf) | [DOCX](../word/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.docx) |

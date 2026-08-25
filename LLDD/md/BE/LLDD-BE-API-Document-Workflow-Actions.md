@@ -46,14 +46,52 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 
 | Current | Result / condition | statusCode | nextSection | Task effect |
 | --- | --- | --- | --- | --- |
-| 06 | ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ | 08 | 08 | close 06; open 08 |
+| 06 | ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ (เส้นทางปกติ — ให้คำนวณยอดก่อน) | 08 | 08 | close 06; open 08 |
+| 06 | ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI · **เส้นทางข้ามขั้น 08**) | 01 | 01 | close 06; open 01 |
+| 06 | เห็นควรไม่ชดเชย หรือ หยุดชดเชยประกันรายได้ | 99 | null | close 06; complete instance |
 | 08 | คำนวณเงินชดเชยเรียบร้อย | 01 | 01 | close 08; open 01 |
 | 01 | เห็นควรชดเชย | 02 | 02 | close 01; open 02 |
+| 01 | เห็นควรไม่ชดเชย (SDD GI — **จบ flow ทันที** ไม่ตีกลับให้ 06) | 99 | null | close 01; complete instance |
 | 02 | เห็นควรชดเชย และ totalCompensationAmount >= 100,000 (มติ 2026-08-18) | 03 | 03 | close 02; open 03 |
 | 02 | เห็นควรชดเชย และ totalCompensationAmount < 100,000 (มติ 2026-08-18) | 99 | null | close 02; complete instance |
+| 02 | เห็นควรไม่ชดเชย (SDD GI — **จบ flow ทันที** ไม่ตีกลับเป็นทอด ๆ) | 99 | null | close 02; complete instance |
 | 03 | เห็นควรชดเชย | 99 | null | close 03; complete instance |
-| ทุก section ที่รองรับ | ส่งกลับ | รหัส section ปลายทางตาม action option | section ปลายทาง | close current; reopen target with new task id |
-| 06 | เห็นควรไม่ชดเชย หรือ หยุดชดเชยประกันรายได้ | 99 | null | close 06; complete instance |
+| 03 | เห็นควรไม่ชดเชย ⏳ *SDD GI ไม่ได้ระบุขั้น AVP — คงพฤติกรรมเดิม (ตีกลับ 06) รอ confirm* | 06 | 06 | close 03; reopen 06 |
+| ทุก section ที่รองรับ | ส่งกลับ | รหัส section ปลายทางตาม action option (08→06 · 01→06 · 02→01 · 03→02) | section ปลายทาง | close current; reopen target with new task id |
+
+### 5.1b Auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48 · 64)
+
+สองปุ่มที่จบเอกสารเหมือนกันแต่พฤติกรรมหน้ารายการตรงข้ามกัน — BE ต้อง implement แยกกันให้ชัด ห้ามรวมเป็นเส้นเดียว
+
+| ปุ่มที่กดที่ขั้น 06 | เดือนที่กด | เดือนถัดไป | ผู้ดำเนินการ (เจ้าของงาน) |
+| --- | --- | --- | --- |
+| เห็นควรไม่ชดเชยรายได้ | ปิดเอกสาร (99) และ GET /tasks ของ 06 ต้อง **ไม่คืน** เอกสารนี้ในเดือนนั้น | ระบบตั้งงานรอบเดือนถัดไปของร้านเดิมอัตโนมัติ | **คนเดิม** ที่พิจารณาเอกสารรอบก่อนในขั้นเดียวกัน |
+| หยุดชดเชยประกันรายได้ | ปิดเอกสาร (99) แต่ GET /tasks ของ 06 **ต้องคืนทันที** พร้อม stoppedReopenable=true | ไม่มีการตั้งงานอัตโนมัติ | ฝ่าย SBP DSA (06) |
+| เคสต่อเนื่อง (ไม่ใช่ปุ่ม — เงื่อนไขของงานรอบถัดไป) | ระบบสร้างงานให้เอง ไม่ต้องแจกงานด้วยมือ | เหมือนกันทุกเดือนที่ยังต่อเนื่อง | **คนเดิม** — เจ้าหน้าที่ SBP DSA รอบก่อนหน้า |
+
+**วิธี resolve เจ้าของงานคนเดิม** — ไม่มีคอลัมน์ assignee ในตารางของ SBPGI (ตาราง workflow_tasks ถูกตัดออกจากโครง 20 ตารางแล้ว) ผู้รับผิดชอบเป็นข้อมูลของ engine
+
+| ขั้น | การทำงาน |
+| --- | --- |
+| 1 | หาเอกสารรอบก่อนหน้าของร้านเดียวกัน (impacted_store_code เดิม · round_no/loop_no ก่อนหน้า) |
+| 2 | อ่าน consideration_logs แถวล่าสุดของเอกสารนั้นที่ section_code = ขั้นที่จะมอบหมาย -> consider_by (คอลัมน์ผู้ดำเนินการ · อ้าง business_user ของระบบเดิม) |
+| 3 | ผูกเป็นผู้รับผิดชอบผ่าน addPreApprover(versionId, referenceId, stateId, approver, seq) ของ @srm/glb-workflow |
+| 4 | Fallback: รอบก่อนไม่เคยผ่านขั้นนั้น หรือพนักงานไม่อยู่ในกลุ่มแล้ว -> มอบหมายตาม group ของ auth-backend ตามปกติ |
+| 5 | พนักงานลาออกยังต้องเปิด SR เพื่อแก้ชื่อผู้ดำเนินการ (ข้อจำกัดที่ SDD สไลด์ 48 ระบุ ไม่แก้ในเฟสนี้) |
+
+```sql
+-- resolve เจ้าของงานคนเดิมของขั้น :sectionCode จากเอกสารรอบก่อนของร้านเดียวกัน
+SELECT cl.consider_by
+FROM compensation_documents d
+JOIN consideration_logs cl ON cl.doc_no = d.doc_no
+WHERE d.impacted_store_code = :impactedStoreCode
+  AND d.doc_no <> :currentDocNo
+  AND cl.section_code = :sectionCode
+ORDER BY d.round_no DESC, d.loop_no DESC, cl.action_datetime DESC
+LIMIT 1;
+-- ได้ค่าแล้วส่งเข้า addPreApprover(...) ตอนเปิดงานรอบใหม่ ห้าม INSERT sps_store.workflow_approver เอง
+-- NULL -> fallback group ของ auth-backend
+```
 
 ### 5.2 Action Response Type
 

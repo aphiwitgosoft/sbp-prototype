@@ -108,7 +108,7 @@ ENDPOINT_OWNER: dict[str, str] = {
 }
 
 # --------------------------------------------------------------------------------------
-# ตารางที่ถูกตัดจาก target design 19 ตาราง — SQL ที่ยังอ้างถึงต้องมีคำเตือนกำกับเสมอ
+# ตารางที่ถูกตัดจาก target design 20 ตาราง — SQL ที่ยังอ้างถึงต้องมีคำเตือนกำกับเสมอ
 # --------------------------------------------------------------------------------------
 CUT_TABLE_REPLACEMENT: dict[str, str] = {
     "workflow_instances": "workflow_transaction (@srm/glb-workflow) ผ่าน getTransaction()/initializeWorkflow()",
@@ -652,7 +652,9 @@ def _workflow_plan(topic: Any, endpoints: list[_Endpoint], reused: list[tuple[st
             plan.append([label, "getTransaction()", "อ่าน currentState ของ instance ตาม referenceId"])
         elif path.endswith("/timeline"):
             plan.append([label, "getHistory()", "timeline การเปลี่ยน state (fromState/toState/event/remark)"])
-        elif path.rstrip("/").endswith("/tasks") or "pending" in path:
+        # ⚠️ ห้ามใช้ substring "pending" — จะไปโดน /interfaces/pending-ack ซึ่งเป็น watchdog ACK ของ STA
+        #    (อ่าน interface_transactions) ไม่ใช่ inbox ของ workflow engine
+        elif path.rstrip("/").endswith("/tasks"):
             plan.append([label, "getPendingFlowByUser()", "inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header"])
         elif "/workflows/summary" in path:
             plan.append([label, "getPendingFlowByUser() (aggregate)", "นับงานค้างต่อ state แล้วรวมกับ workflow_generation_status W/Y/N"])
@@ -1399,7 +1401,7 @@ def _sql_warnings(sql: str) -> list[str]:
         if tname in CUT_TABLE_REPLACEMENT and tname not in hit_tables:
             hit_tables.append(tname)
     if hit_tables:
-        lines.append("-- ⚠️ SQL ตัวอย่างนี้ยังอ้างตารางที่ถูกตัดจาก target design 19 ตารางแล้ว")
+        lines.append("-- ⚠️ SQL ตัวอย่างนี้ยังอ้างตารางที่ถูกตัดจาก target design 20 ตารางแล้ว")
         lines.append("--    ห้าม implement ตามตัวอักษร ให้แทนที่ก่อนใช้งาน:")
         for tname in hit_tables:
             lines.append(f"--      {tname}  ->  {CUT_TABLE_REPLACEMENT[tname]}")

@@ -7,7 +7,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | 40 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
+| Estimate | 43 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
 | Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบการย้ายข้อมูลจากระบบเดิม (Oracle FCS_FRN ฝั่ง FGI/FCS + SQL Server CPA_FRN_FGI ฝั่ง K2) เข้าสู่ target schema ของ SBPGI พร้อมแผน cutover, reconcile และ rollback |
@@ -16,7 +16,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ## 2. Screen / Functional Scope
 
-- Source-to-target mapping ระดับตาราง/คอลัมน์ (ORA FCS_FRN · MSSQL CPA_FRN_FGI -> 19 ตาราง)
+- Source-to-target mapping ระดับตาราง/คอลัมน์ (ORA FCS_FRN · MSSQL CPA_FRN_FGI -> 20 ตาราง)
 - การแปลงคีย์: polymorphic TRANSACTION_PK -> typed FK · CompDocumentID -> doc_no · IMPACT_PROCESS_ID -> impact_process_id
 - แผน cutover เป็นรอบ (dry-run -> delta -> freeze -> final) และ rollback
 - Reconcile: นับแถว ยอดเงิน และ checksum ต่อโซน
@@ -48,8 +48,9 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Data Migration a
 
 | ต้นทาง | ระบบ | ปลายทาง (SBPGI) | กฎแปลงที่ต้องระวัง |
 | --- | --- | --- | --- |
-| FGI_IMPACT_STORE_ON_PROCESS | ORA FCS_FRN | fgi_impact_processes | PK IMPACT_PROCESS_ID (seq SEQ_FGI_IMPACT_PROCESS) เป็น hub ของทั้งโซน A |
+| FGI_IMPACT_STORE_ON_PROCESS | ORA FCS_FRN | fgi_impact_processes | PK IMPACT_PROCESS_ID (seq SEQ_FGI_IMPACT_PROCESS) เป็น hub ของทั้งโซน A · **ต้อง migrate คอลัมน์รอบชดเชยด้วย (gap F8 · รับเข้าโครง 2026-08-21)**: `LAST_COMPENSATE_SEQ/_SEQ_NO -> last_compensate_seq/_seq_no` · `START/END_COMPENSATE_MONTH-YEAR -> start/end_compensate_month/year` · `FLAG_ACTION -> flag_action` · `DATASOURCE -> datasource` · ⚠️ `FLAG_ACTION` โดเมนจริงคือ **Y/W/N** (active = `IN ('Y','W')`) ไม่ใช่ Y/N — Job 6 เขียน `Y->W` ตอนพัก/รอจ่าย ถ้า CHECK ปลายทางรับแค่ Y/N แถวกลุ่มนี้จะ migrate ไม่ผ่าน · ทั้ง 4 กลุ่มนี้คือค่าที่ Job 8b ใช้ตัดสินจุดเข้า flow |
 | FGI_IMPACT_STORE | ORA FCS_FRN | fgi_impact_stores + impacted_stores | แถวฝั่ง `_I` ทำ distinct เข้า impacted_stores · ที่เหลือเป็นคู่ร้าน |
+| FGI_IMPACT_STORE_COMPENSATE | ORA FCS_FRN | **fgi_impact_compensations** (รับเข้าโครง 2026-08-21 · gap F1) | `COMPENSATE_FORECAST -> forecast_amount` · `COMPENSATE_ADJUST -> adjust_amount` · `COMPENSATE_SEQ/_SEQ_NO -> compensate_seq/_seq_no` · UK (impact_process_id, compensate_month) · ใช้นับยอด 0 ติดกันกี่งวดด้วย `COALESCE(adjust_amount, forecast_amount) = 0` — เป็น input ของ Job 8b เคส ③ |
 | FGI_IMPACT_STORE_SALES | ORA FCS_FRN | fgi_impact_sales_summaries | key STORECODE_I + MONTH + YEAR |
 | FGI_IMPACT_STORE_SALES_TRN | ORA FCS_FRN | sales_transactions | 4 หน้าต่าง × 15 วัน — ห้ามใช้ fcs_monthly_sales แทน (รายเดือน ย้อนกลับเป็นรายวันไม่ได้) |
 | FGI_IMPACT_COMPETITOR | ORA FCS_FRN | fgi_impact_competitors | data_source = ALM |
@@ -58,6 +59,9 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Data Migration a
 | CompensateFlow | MSSQL CPA_FRN_FGI | compensation_documents | CompDocumentID -> doc_no · เก็บ round_no/loop_no/allmap_url/statement_id/approver_snapshot |
 | CompensateHistory | MSSQL CPA_FRN_FGI | consideration_logs | PK ActionID · เติม result_category (APPROVE/REJECT/CANCELLED/PENDING) |
 | ImpactProfile | MSSQL CPA_FRN_FGI | document_new_stores | ฝั่ง `_N` + %ชดเชย/ยอดต่อร้าน |
+| CompetInCompenProfile | MSSQL CPA_FRN_FGI | document_competitors | คู่แข่งที่ผูกกับเอกสาร · competitor_code อ้าง master competitors (11 รหัส 01-11) · แถวที่มาจาก ALLMAP ตั้ง data_source = ALM |
+| FactorInCompenProfile | MSSQL CPA_FRN_FGI | document_external_factors | ปัจจัยภายนอกที่ผูกกับเอกสาร · factor_code อ้าง master external_factors + ช่วงวันที่มีผล |
+| FGI_IMPACT_STORE_COMPENSATE + CompensateFlow | ORA + MSSQL | compensation_histories | ประวัติชดเชยต่อร้าน/รอบ · submit_account_month (งวดที่ Job 6 ส่งไป STA ผ่าน RabbitMQ) · ⚠️ **ต้องปิด DP-11 ก่อน** — ยังไม่ตัดสินว่า SBPGI เป็นต้นทางตัวเลขเงิน หรือ fr_store_insure ยังคีย์มือ |
 | ImpactCostDetail | MSSQL CPA_FRN_FGI | document_cost_details | ยอดชดเชยแยกรายเดือน/รายร้านใหม่ |
 | RunningNumber | MSSQL CPA_FRN_FGI | document_running_numbers | ตั้ง last_running_no ต่อปีให้ตรงกับเลขสูงสุดที่ย้ายมา |
 | CompDocAttachment / CompTempAttachment / AttachFileProfile | MSSQL CPA_FRN_FGI | document_attachments | metadata เท่านั้น · ไฟล์จริงต้องย้ายขึ้น S3 ของระบบเดิม |
@@ -93,8 +97,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Data Migration a
 
 | ข้อค้าง | ทางเลือก A | ทางเลือก B | สถานะ |
 | --- | --- | --- | --- |
-| DP-4 · `fcs_qssi_score` | reuse ตารางเดิม (ต้อง dedup + backfill 23.9M แถว ก่อนเพิ่ม constraint) | สร้างตารางของ SBPGI แล้วโหลดใหม่ | ยังไม่ตัดสิน |
-| DP-3 ✅ ตัดสินแล้ว = ทางเลือกที่ 3 | view (ไม่มีอะไรให้ migrate) | ตาราง snapshot (ต้อง migrate + sync job) | ยังไม่ตัดสิน · กระทบขอบเขต migration โดยตรง |
+| DP-4 ✅ ปิดแล้ว 2026-08-24 · `fcs_qssi_score` | reuse ตารางเดิมแบบอ่านอย่างเดียว — ระบบ SBP เดิมนำเข้าให้แล้ว | สร้างตารางของ SBPGI แล้วโหลดใหม่ — ตกไป | ✅ **ไม่มีอะไรต้อง migrate** — SBPGI อ่านอย่างเดียว ไม่ต้อง dedup/backfill (ตัด Job 1 พร้อมกัน) |
+| DP-3 ✅ ตัดสินแล้ว 2026-08-10 = ทางเลือกที่ 3 | view (ไม่มีอะไรให้ migrate) | ตาราง snapshot (ต้อง migrate + sync job) | ✅ ตัดสินแล้ว — migrate เฉพาะร้านที่เคยเข้ารอบชดเชยเป็น snapshot |
 | DP-1 · `reference_id` | `doc_no` — ตกไป | **เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255)) | ✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม |
 | DP-11 · ตัวเลขเงินประกันรายได้ | SBPGI เป็นต้นทาง | `fr_store_insure` ยังคีย์มือ | ยังไม่ตัดสิน (เป็นคำถามเชิงธุรกิจ) |
 | retention/purge ของเอกสารเก่า | ย้ายทั้งหมด | ย้ายเฉพาะช่วงปีที่ตกลง แล้ว archive ที่เหลือ | ยังไม่ตัดสิน · ระบบเดิมมี ListDocumentsPendingRemoval แต่โครงใหม่ยังไม่มี data retention plan |
@@ -105,7 +109,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Data Migration a
 | --- | --- |
 | Input | User action, route/query state, form values, and permission context for this feature. |
 | Progress | ยืนยันปลายทางกับ LLDD-BE-Database-Structure (DDL ต้องนิ่งก่อน); ทำ profiling ต้นทาง: นับแถว/ค่า null/ค่าซ้ำของทุกตารางที่จะย้าย; เขียน mapping ต่อคอลัมน์ พร้อมกฎแปลง (พ.ศ.->ค.ศ. · lpad store_code · polymorphic key -> typed FK); Dry-run บน environment ทดสอบ แล้วแก้ reject rule จนแถวที่ reject อธิบายได้ทุกแถว |
-| Output | 19 target tables (โซน A/B/C); workflow_transaction / workflow_approver / workflow_history (sps_store) |
+| Output | 20 target tables (โซน A/B/C); workflow_transaction / workflow_approver / workflow_history (sps_store) |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -146,7 +150,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Data Migration a
 | --- | --- | --- |
 | ORA FCS_FRN (FGI_IMPACT_* · FCS_QSSI_SCORE · FGI_CONFIRM_RECEIVE_DATA) | R | ต้นทางฝั่ง FGI/FCS |
 | MSSQL CPA_FRN_FGI (CompensateFlow · CompensateHistory · ImpactProfile · ImpactCostDetail · RunningNumber) | R | ต้นทางฝั่ง K2 document |
-| 19 target tables (โซน A/B/C) | W | ปลายทางตาม DDL ของ LLDD-BE-Database-Structure |
+| 20 target tables (โซน A/B/C) | W | ปลายทางตาม DDL ของ LLDD-BE-Database-Structure |
 | workflow_transaction / workflow_approver / workflow_history (sps_store) | W | เปิด transaction ให้เอกสารที่ยังไม่จบ flow |
 | fcs_monthly_sales (sps_store) | R | ใช้ cross-check ยอดขายรายเดือนเท่านั้น — แทนยอดขายรายวันไม่ได้ |
 

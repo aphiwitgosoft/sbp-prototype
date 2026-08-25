@@ -84,8 +84,8 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 ### 4. Master Data · K2 3.1.9 (8 เส้น · master ที่มีหน้าจอดูแลของตัวเอง — ปัจจัยภายนอก + รายชื่อคู่แข่ง · CRUD คู่แข่งเพิ่ม 2026-08-06 · ตัด `/audit-logs` 2026-08-07)
 | Method | Path | ทำอะไร |
 |---|---|---|
-| GET/POST/PUT/DELETE | `/factors` · `/factors/{code}` | ปัจจัยภายนอก (external_factors) — รหัสห้ามซ้ำ |
-| GET/POST/PUT/DELETE | `/competitors` · `/competitors/{code}` | **master แบรนด์ร้านคู่แข่ง 11 รายการ** (รหัส 01–11 · ชื่อไทย+อังกฤษ) — `code` + `nameTh` + `nameEn` บังคับ · รหัสห้ามซ้ำ · หน้าจอ `k2-competitors.html` (**ใหม่ 2026-08-06** ตามหน้าจอ K2 เดิม) · `GET` เป็นแหล่งของ dropdown "ร้านคู่แข่ง (Master)" ในหน้าเอกสารด้วย · ต่างจาก `document_competitors` ที่เก็บ**รายสาขา**พร้อมรหัสจาก ALLMAP (ดู `docs/K2-interface-files.md`) |
+| GET `/factors` · POST `/factors` · PUT `/factors/{code}` · DELETE `/factors/{code}` | **4 เส้น** | ปัจจัยภายนอก (external_factors) — รหัสห้ามซ้ำ · *ไม่มี `GET /factors/{code}` และไม่มี `PUT`/`DELETE` ที่ระดับ collection* |
+| GET `/competitors` · POST `/competitors` · PUT `/competitors/{code}` · DELETE `/competitors/{code}` | **4 เส้น** | **master แบรนด์ร้านคู่แข่ง 11 รายการ** (รหัส 01–11 · ชื่อไทย+อังกฤษ) — `code` + `nameTh` + `nameEn` บังคับ · รหัสห้ามซ้ำ · หน้าจอ `k2-competitors.html` (**ใหม่ 2026-08-06** ตามหน้าจอ K2 เดิม) · `GET` เป็นแหล่งของ dropdown "ร้านคู่แข่ง (Master)" ในหน้าเอกสารด้วย · ต่างจาก `document_competitors` ที่เก็บ**รายสาขา**พร้อมรหัสจาก ALLMAP (ดู `docs/K2-interface-files.md`) |
 
 > **กติกาการจัดกลุ่ม (ปรับให้ตรงกันทั้ง `api.md` และ `plan-api.html` · 2026-08-06):** master ที่**มีหน้าจอดูแลของตัวเอง** (ปัจจัยภายนอก → `k2-factors.html` · รายชื่อคู่แข่ง → `k2-competitors.html`) ให้เก็บ **CRUD ทั้งชุดไว้ในกลุ่ม Master Data** แม้ `GET` จะถูกใช้เป็น dropdown ในหน้าเอกสารด้วยก็ตาม — ส่วนกลุ่ม **Lookup** เหลือเฉพาะรายการอ้างอิงที่**อ่านอย่างเดียวและไม่มีหน้าจอดูแล** (`/document-statuses` · `/workflow-sections` · `/decisions`) เดิมทั้งสองไฟล์จัด `/competitors` คนละกลุ่มกัน ทำให้ตัวเลขต่อกลุ่มไม่ตรง
 
@@ -105,27 +105,39 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 | POST | `/workflows/instances` | เปิด workflow (แทน K2 StartInstance) — Gen Flow Gate (service token · มี Flowchart) |
 | GET | `/workflows/instances/{id}` · `/workflows/summary` | สถานะ instance · ตัวเลขเฝ้าระวัง W/Y/N + งานค้างต่อ section |
 
-### 7. Interface & Dashboard · FGI/FCS (3 เส้น · ตัด `/dashboard/summary` 2026-08-06)
+### 7. Interface (tracking / ACK) · FGI/FCS (3 เส้น · ตัด `/dashboard/summary` 2026-08-06 — ชื่อกลุ่มจึงไม่มีคำว่า Dashboard แล้ว)
 | Method | Path | ทำอะไร |
 |---|---|---|
-| GET | `/interfaces/tracking` · `/interfaces/pending-ack` | สถานะรับ–ส่งไฟล์ (interface_transactions) · ACK ค้าง ≥ 1 วัน (Job 10) |
+| GET | `/interfaces/tracking` · `/interfaces/pending-ack` | สถานะรับ–ส่งของ interface (`interface_transactions`) · ACK ค้าง ≥ 1 วัน (Job 10) — **นับเฉพาะ `direction = 'OUT'`** เพราะแถว `INTERNAL` ของ Jobs 7/8/9 จบที่ `COMPLETED` ทันที ไม่มี ACK ให้รอ (ตรงเจตนาเดิมของ Java ที่กรอง `interface_type != 'WS'`) |
 | POST | `/interfaces/sta/ack` | callback ให้ STA ยิง ACK ตรง (API key) |
 | ~~GET~~ | ~~`/dashboard/summary`~~ | **ตัดออกถาวร 2026-08-06** — ถอด stat cards ออกจากหน้ารอดำเนินการ/ที่เกี่ยวข้องแล้ว จึงไม่มีผู้เรียก (เดิมคืนตัวเลข: งานรอดำเนินการของ section · ยอดขายไม่ครบ 60 วัน · รอเกิน 3 วัน · วงเงินเข้าเส้น AVP) |
 
 ## กฎธุรกิจสำคัญที่ผูกกับ API
 
 - **บังคับระบุปี (ค.ศ.)** ใน `/documents` และ `/reports/status-summary` ไม่งั้นตอบ 400 (กติกา SRS · BE ต้องผ่าน `toAD()` ก่อน query เผื่อ client ส่ง พ.ศ. มา)
-- **เส้นทางข้ามขั้นที่ section 06** ใน `/documents/{docNo}/actions`: `result = "ส่งหน่วยงานส่งเสริมธุรกิจ SBP"` → `nextSection = "01"` (**ข้ามขั้น 08**) ใช้เมื่อยอดที่ระบบคำนวณถูกต้องแล้วไม่ต้องให้เจ้าหน้าที่คำนวณซ้ำ · `result = "ส่งเจ้าหน้าที่ SBP DSA"` → `nextSection = "08"` (เส้นทางปกติ ให้คำนวณยอดก่อน) · การส่งกลับจาก 01 กลับไปที่ 06 เสมอ ไม่ใช่ 08 (ดูตารางเทียบใน `workflow.md`)
+- **เส้นทางข้ามขั้นที่ section 06** ใน `/documents/{docNo}/actions`: `result = "ส่งหน่วยงานส่งเสริมธุรกิจ SBP"` → `nextSection = "01"` (**ข้ามขั้น 08**) ใช้เมื่อ**ทราบยอดเงินชดเชยจากเจ้าหน้าที่ SBP DSA แล้ว** (ข้อความอ้างอิง SDD สไลด์ 21: “ส่งต่อ Flow หลังทราบยอดเงินชดเชยรายได้จากเจ้าหน้าที่ SBP DSA ดำเนินการ”) · `result = "ส่งเจ้าหน้าที่ SBP DSA"` → `nextSection = "08"` (เส้นทางปกติ — ยังไม่ทราบยอด ต้องมอบหมายให้คำนวณก่อน) · การส่งกลับจาก 01 กลับไปที่ 06 เสมอ ไม่ใช่ 08 (ดูตารางเทียบใน `workflow.md`)
 - **กฎวงเงินอนุมัติ (SDD GI 24/02/2026)** ใน `/documents/{docNo}/actions`: เห็นควรชดเชย < 100,000 → **จบที่ GM (02)** · ≥ 100,000 → AVP (03) แล้วจบ  · เห็นควรไม่ชดเชยที่ 01/02 → **เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น)** · 06 ไม่ชดเชย/หยุด → เสร็จสิ้น · **ตัดขั้นบัญชี 04/05 ตาม SDD v7.5** (ดูตารางเต็มใน `workflow.md`) · เดิมใช้เกณฑ์เดียว 100,000
+- **auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48 · ระบุละเอียด 2026-08-20)** — ผูกกับ `POST /documents/{docNo}/actions` และ `GET /tasks`:
+  - **06 เห็นควรไม่ชดเชย** → ปิดเอกสาร (`เสร็จสิ้นดำเนินการ`) และ **`GET /tasks` ของ 06 ต้องไม่คืนเอกสารนี้ในเดือนที่ถูกปฏิเสธ** · ระบบตั้งงาน**รอบเดือนถัดไป**ให้ร้านเดิม โดยมอบหมาย**ผู้ดำเนินการคนเดิม**
+  - **เคสต่อเนื่อง** (ชดเชยติดกันหลายเดือน) → ระบบส่งงานให้ **เจ้าหน้าที่ SBP DSA คนเดิม** อัตโนมัติ ไม่ต้องแจกงานด้วยมือ
+  - **วิธี resolve** — หาเอกสารรอบก่อนของ `impacted_store_code` เดียวกัน แล้วอ่าน `consideration_logs` แถวล่าสุดที่ `section_code` ตรงกับขั้นที่จะมอบหมาย → **`consider_by`** → ส่งเข้า **`addPreApprover(versionId, referenceId, stateId, approver, seq)`** ของ `@srm/glb-workflow` · **ไม่มีคอลัมน์ assignee ในตารางของ SBPGI** (`workflow_tasks` ถูกตัดไปแล้ว)
+  - **Fallback** — รอบก่อนไม่เคยผ่านขั้นนั้น / พนักงานลาออก → มอบหมายตาม group ของ auth-backend ตามปกติ (พนักงานลาออกยังต้องเปิด SR แก้ชื่อผู้ดำเนินการ · SDD สไลด์ 48)
+  - ⚠️ **ต่างจาก "หยุดชดเชยประกันรายได้"** ซึ่ง `GET /tasks` ของ 06 **ต้องคืนทันทีในเดือนนั้น** (ดูข้อถัดไป) — สองปุ่มนี้จบเอกสารเหมือนกันแต่พฤติกรรมหน้ารายการตรงข้ามกัน
 - **เปิดเรื่องซ้ำได้ (SDD GI)** ใน `POST /documents`: 409 เฉพาะกรณีมีเอกสาร **active** ของร้าน+เดือนนั้น — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้ทั้งเดือนเดียวกันและเดือนถัดไป (ยกเลิกการเปิด SR) · กรณีเห็นควรไม่ชดเชย (06) เดือนถัดไประบบสร้างงานเข้า `GET /tasks` อัตโนมัติพร้อม assignee คนเดิม · ยอดชดเชย 0: เดือน 1–3 ส่งต่อ 01 · เดือนที่ 4 หยุดชดเชย
 - **งานค้าง (SDD GI)** ใน `GET /tasks`: รองรับ filter + เลือกหลายเอกสาร (bulk action) · เจ้าหน้าที่/ฝ่าย SBP DSA เห็นเอกสารได้ทุกสาขา (ไม่จำกัดงานตน) · ทีมส่งเสริม/บัญชีตามสิทธิ์เดิม
+- **เอกสารที่หยุดชดเชยฯ กลับเข้าคิวของ 06 (SDD สไลด์ 46 ข้อ 1.9 · เพิ่ม 2026-08-20)** — `GET /tasks` เมื่อผู้เรียกอยู่ใน **section 06 (ฝ่าย SBP DSA)** ต้องคืน **2 ชุดรวมกัน**: (1) เอกสารสถานะ `รอฝ่าย SBP DSA ดำเนินการ` ตามปกติ + (2) เอกสารสถานะ `เสร็จสิ้นดำเนินการ` ที่**ผลการพิจารณาสุดท้ายเป็น "หยุดชดเชยประกันรายได้"** เพื่อให้ 06 พิจารณาคำขอชดเชยรายได้อีกครั้งได้เองโดยไม่ต้องเปิด SR · **บทบาทอื่น (08/01/02/03) ไม่เห็นชุดที่ (2)**
+  - ชุดที่ (2) มาจากการ query `consideration_logs` แถวล่าสุดของเอกสารที่จบแล้ว (`result_code = หยุดชดเชยประกันรายได้`) — **ไม่ใช่สถานะที่ 7** สถานะเอกสารยังคงเป็น `เสร็จสิ้นดำเนินการ` ตามชุดสถานะ 6 ค่า
+  - response ต้องมี flag `stoppedReopenable: true` ให้ FE ขึ้นชิป `↺ หยุดชดเชยฯ` และเปิดเอกสารด้วยโหมด "เปิดพิจารณาใหม่"
+  - `GET /documents/{docNo}` ของเอกสารกลุ่มนี้คืนข้อมูลเดิมครบทุกส่วน + `actionOptions` **ชุดเดียวกับ section 06** (เห็นควรไม่ชดเชย · หยุดชดเชยประกันรายได้ · ส่งหน่วยงานส่งเสริมธุรกิจ SBP · ส่งเจ้าหน้าที่ SBP DSA) · การกด `POST /documents/{docNo}/actions` จะเปิดรอบพิจารณาใหม่ให้ร้าน+เดือนนั้น
+  - ⚠️ ต้องกันไม่ให้เอกสารกลุ่มนี้ถูกนับซ้ำในตัวเลข "งานค้าง" ของ engine (`getPendingFlowByUser()` ไม่คืนเอกสารที่ instance ปิดแล้ว — ชุดที่ (2) เป็นการ union ฝั่ง SBPGI เอง)
 - **filter `result`** ใน report = **4 ค่า** (Radio เลือกอย่างใดอย่างหนึ่ง · **ไม่บังคับ** — บังคับเฉพาะ `status`) อิง **ผลพิจารณาล่าสุด** `consideration_logs.result_category`: `APPROVE` = ประกันรายได้ · `REJECT` = ไม่ประกันรายได้ · **`CANCELLED` = ยกเลิกโดยระบบ (เพิ่ม 2026-08-10)** · `PENDING`/ไม่มีค่า = ยังไม่มีผล — SDD สไลด์ 60 แสดงเพียง 2 ค่าแรก แต่ master จริง (`DecisionProfile.DecisionResultName` ของ `CPA_FRN_FGI`) มี **ยกเลิกโดยระบบ** จาก decision 14 `CancelBySystem` ด้วย จึงแยกเป็นตัวเลือกที่ 4 (ตัดสินใจ 2026-08-10) — ขั้นบัญชี 05 ที่เคยอ้างถูกตัดออกแล้ว
 - **%ชดเชยรวม = 100%** ใน `PUT /documents/{docNo}` · **เงินชดเชยต่อร้านเปิดใหม่ = ยอดชดเชยของร้านถูกกระทบ × %ชดเชย** คำนวณและปัดเศษที่ **BE** แล้วส่งกลับเป็น `compensateAmount` (FE ห้ามคูณเอง — กันยอดปัดเศษไม่ตรงกับที่บัญชีใช้) · ผลรวม `compensateAmount` ทุกร้านต้องเท่ากับยอดชดเชยของร้านถูกกระทบพอดี — แสดงในคอลัมน์ "เงินชดเชย (ร้านใหม่)" ของตารางร้านเปิดใหม่ (**กราฟสัดส่วนเงินชดเชยถูกถอดออก 2026-08-06**)
+- **เพิ่มร้านที่กระทบเพิ่มระหว่างทาง (B5)** — `newStores` ของ `PUT /documents/{docNo}` รับได้ทั้งแถวที่ระบบดึงมาเอง (`sourceSystem = "ALLMAP"`) และแถวที่ผู้ใช้คีย์เอง (`sourceSystem = "USER"`) · **BE ต้อง validate `%ชดเชยรวม = 100%` ใหม่ทุกครั้งที่จำนวนแถวเปลี่ยน** แล้วคำนวณ `compensateAmount` ของทุกแถวใหม่ ไม่ใช่เฉพาะแถวที่เพิ่ม · กันซ้ำด้วย `UNIQUE (doc_no, new_store_code)` → ซ้ำให้คืน `409`
 - API payload ใช้ `newStoreCode` สำหรับรหัสร้านเปิดใหม่ 5 หลัก (เช่น `"00990"`) เพื่อคง leading zero **ทั้งใน response ของ `GET /documents/{docNo}` และ request ของ `PUT /documents/{docNo}`** (ห้ามใช้ `storeCode` ในสองเส้นนี้ — สงวนไว้ให้ร้านถูกกระทบ); internal table `document_new_stores.id` เป็น key ภายใน ไม่ expose เป็น field code
 - **require field ของแถวที่ผู้ใช้เพิ่มเองในส่วนร้านคู่แข่ง/ปัจจัยอื่นๆ ของ `PUT /documents/{docNo}`** (ตัดสินใจ 2026-08-06): คู่แข่ง = **รหัสแบรนด์คู่แข่ง** (เลือกจาก master `GET /competitors` รหัส `01`–`11` เท่านั้น ไม่ใช่ free text — แถว `source_system = ALLMAP` ที่ pipeline นำเข้ามีรหัสรายสาขาของตัวเองอยู่แล้ว) + **วันที่เปิดกระทบ** · ปัจจัย = **รหัสปัจจัยภายนอก** (เลือกจาก master `GET /factors`) + **วันที่เริ่มต้น** (วันที่สิ้นสุดไม่บังคับ แต่ถ้ามีต้อง ≥ วันที่เริ่มต้น — SRS ข้อ 11) · ไม่ผ่าน → 400 พร้อมข้อความ **verbatim จาก SRS §10**: “กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ” · ส่วนฝั่งปัจจัย “กรุณาเลือกปัจจัยอื่นๆ ที่ท่านต้องการ” **ไม่ได้อยู่ใน SRS** — เราตั้งขึ้นให้ล้อกับข้อความคู่แข่ง (SRS §11 ระบุแต่กฎวันที่ ไม่ได้ให้ข้อความ) **ต้องให้ BA ยืนยันก่อน UAT** · UI: `k2-document.html` แสดง `*` แดงบน require field และไม่มีปุ่ม “บันทึก” ระดับการ์ดแล้ว (บันทึกผ่าน modal เพิ่ม/แก้ไขเท่านั้น)
 - **การบันทึกส่วนร้านคู่แข่ง/ปัจจัยอื่นๆ เป็นแบบ “บันทึกทันทีรายรายการ”** (ตัดสินใจ 2026-08-06 — ไม่มีปุ่มบันทึกระดับการ์ดแล้ว): กด **เพิ่ม/แก้ไข** ใน modal แล้วกดบันทึกใน modal = ยิง `PUT /documents/{docNo}` ทันที 1 ครั้ง · **ลบรายการที่เลือก (bulk remove)** ก็ยิง `PUT` ทันทีหลังผู้ใช้กดยืนยันใน popup (ไม่ค้างเป็น draft) — ไม่มี endpoint ลบแยก · ทุกครั้งส่ง**อาร์เรย์ชุดเต็มของส่วนนั้น** ให้ BE ลบรายการที่หายไป (`DELETE … NOT IN`) ในทรานแซกชันเดียวกัน · ปุ่มเพิ่ม/ลบ/checkbox แสดงเฉพาะ role ที่แก้ส่วนนั้นได้ (ปัจจุบันคือ section 01)
 - **⚠️ ข้อค้าง (2026-08-11): วิว ALLMAP** — `workflow.md` จัด ALLMAP อยู่กลุ่ม interface ที่ใช้ **พ.ศ.** และ argument ของ Job 2/3 ก็เป็น `2569|06` แต่หัวข้อนี้ระบุข้อยกเว้นไว้แค่ STA/IAS · **ยังไม่ยืนยันว่าวิว ALLMAP เก็บปีเป็น พ.ศ. จริงหรือไม่** — ต้องถามเจ้าของ ALLMAP แล้วปรับให้ตรงกันทั้งสองไฟล์
-- **ข้อยกเว้นเดียวของกติกา ค.ศ.:** ชื่อไฟล์และเนื้อไฟล์ interface ที่ส่งออกไป **STA** (`FRBC0001_YYYYMMDD.txt`) และไฟล์ที่รับจาก IAS (`AMS06001I_…`) ยังใช้ **พ.ศ. + windows-874** ตามสัญญาเดิมของระบบปลายทาง — แปลงเฉพาะตอนเขียน/อ่านไฟล์เท่านั้น ห้ามให้ปนเข้ามาใน DB/API
+- **ข้อยกเว้นเดียวของกติกา ค.ศ.:** ไฟล์ที่รับจาก IAS (`AMS06001I_…`) ยังใช้ **พ.ศ. + windows-874** และ **message ที่ส่งไป STA** (RabbitMQ `sta.compensation.result` · JSON UTF-8 · 14 ฟิลด์ตามสัญญา `FRBC0001` เดิม) ยังคง **ฟิลด์วันที่เป็น พ.ศ.** ตามสัญญาเดิมของระบบปลายทาง — แปลงเฉพาะตอนอ่านไฟล์/ประกอบ payload เท่านั้น ห้ามให้ปนเข้ามาใน DB/API · *ตัว windows-874 หายไปพร้อมกับไฟล์ `FRBC0001` เมื่อย้าย STA ไป RabbitMQ (มติ 2026-08-24) — เหลือรอยืนยันว่าจะเปลี่ยนฟิลด์วันที่เป็น ISO ค.ศ. ได้หรือไม่*
 - **เลขเอกสาร YYYY/xxxxx** (ปี **ค.ศ.** · running ต่อปี เริ่ม 00001) · **เลขเอกสารและวันที่ทั้งระบบเป็น ค.ศ.** (ตัดสินใจ 2026-08-06 — ยึดตามระบบ SBP ปัจจุบัน: DatePicker ของ FE ตั้งค่า `buddhistEra = false` เป็นค่าเริ่มต้น และ BE มี helper `toAD(y) = y >= 2500 ? y - 543 : y` บังคับแปลงค่าที่หลุดมาเป็น พ.ศ. ให้เป็น ค.ศ. · แสดงผลเป็น พ.ศ. ได้เฉพาะจุดที่เปิด `buddhistEra` ที่ระดับ component เท่านั้น · ภาพหน้าจอ K2 จริงก็ใช้ ค.ศ. เช่นกัน เช่น `2026/01870`)
 - **Gen Flow Gate** ใน `/workflows/instances` (เกณฑ์คงเดิมทุกข้อ — ดูขั้น 6 ใน `workflow.md`)
 - `POST /workflows/instances` เป็น BE internal Workflow Engine contract สำหรับ Job 8b เท่านั้น ไม่ใช่งาน FE/Flow page: request `{impactProcessId, sourceJobNo:"8b", requestId}`; ผ่าน gate → สร้าง/คืน `{docNo, instanceId, workflowGenerationStatus:"Y", firstSection:"06", statusCode:"06"}`; fail ถาวร (branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10) → ตั้ง `N`; เฉพาะ distance/juristic/growth เป็น NULL หรือ sales_status ยังไม่พร้อม → คง `W` และคืน 422/reason เพื่อ rerun
@@ -133,6 +145,39 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 - เส้นที่แก้**เอกสาร** ยังบันทึกผู้ทำและผลพิจารณาลง `consideration_logs` ตามเดิม (นี่ไม่ใช่ audit ของ master)
 
 ## การกระทบยอด SAP และแก้ข้อมูลผิดปกติ (SDD v7.5)
+
+
+### C4 · checklist ที่ทีมบัญชีต้องตรวจ (SDD GI สไลด์ 40)
+
+RPA ดึงข้อมูลร้านจาก SBP Mall ให้ทีมบัญชีตรวจ — **ตรวจ 5 ข้อ** ก่อนกระทบยอดกับ SAP และ Post คู่บัญชี
+
+| # | สิ่งที่ต้องตรวจ | ข้อมูลที่ใช้ |
+|---|---|---|
+| 1 | **ยอดเงินคำนวณ 3 จุดตรงกัน** | รายงานประกันรายได้ · ไฟล์ที่ส่ง STA · SAP |
+| 2 | **Performance Index** — คะแนนมาตรฐานมาจาก **QSSI** | `fcs_qssi_score` (ระบบ SBP เดิมนำเข้าให้) |
+| 3 | **สาขาที่ถูกกระทบ และสาขาที่เปิดใกล้เคียง** | `document_new_stores` · `fgi_impact_stores` |
+| 4 | **กรณีร้าน Take** — ตรวจเพิ่มสำหรับ "สาขาที่ถูกกระทบ" ที่เป็นร้าน Take | `impacted_stores` |
+| 5 | **Center ตรวจจากรายงานประกันรายได้ของระบบ** แล้วกระทบยอดกับ SAP · Post คู่บัญชีถูกต้อง | `GET /reports/status-summary` |
+
+**กรณียอดไม่ตรง มี 2 สาเหตุ (SDD ระบุไว้):**
+1. ระบบคำนวณจำนวนที่ชดเชย **ไม่ตรงกับ File PDF**
+2. **ต้นทางแจ้งข้อมูลไม่ถูกต้อง/ไม่ครบถ้วน**
+
+> ทั้งหมดนี้ทำ**นอก workflow** ผ่านหน้ารายงานตรวจสอบประกันรายได้ (ค้นหา + Export) — ไม่มีสถานะเอกสารรองรับตาม SDD v7.5
+
+### C5 · ปริมาณงานจริงที่ใช้เป็นฐาน sizing / NFR (SDD GI สไลด์ 41)
+
+| ตัวชี้วัด | ค่า | ที่มา |
+|---|---|---|
+| จำนวนเอกสารอนุมัติ | **150–170 ฉบับ/เดือน** | SDD สไลด์ 41 |
+| เวลาอนุมัติต่อฉบับ | **~4 นาที** | SDD สไลด์ 41 |
+| ภาระงานอนุมัติรวม | 4 นาที × 150 ฉบับ = **600 นาที ≈ 10 ชม./เดือน** | คำนวณใน SDD |
+| ผจก.แผนกตรวจใน Flow K2 | **~5 นาที/ฉบับ** | SDD สไลด์ 41 |
+
+**ใช้ทำอะไร** — เป็นฐานกำหนด NFR ของ `GET /tasks` · `GET /documents` · `GET /reports/status-summary`:
+- ปริมาณข้อมูลระดับ **~170 เอกสาร/เดือน ≈ 2,000 เอกสาร/ปี** ไม่ใช่ระบบ high-volume → ไม่ต้องออกแบบ sharding/cache ซับซ้อน
+- แต่ **`sps_store.workflow_transaction` มี 19,283 แถวและไม่มี index เลย** (DP-2) — ที่ปริมาณนี้ seq-scan ยังพอรับได้ แต่โตขึ้นทุกเดือน **ควรปิด DP-2 ก่อนขึ้น production**
+- ปุ่ม **Export CSV to Batch** และ bulk action รองรับการเลือกทีละหลายฉบับได้จริง เพราะจำนวนต่อรอบไม่เกินหลักร้อย
 
 ยกเลิกหน้าจอ Approve ของบัญชีและ**ยกเลิกสถานะบัญชีในเอกสาร 2 ค่า** — To-Be ทีมบัญชี **ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี ผ่านหน้ารายงาน**: `GET /reports/status-summary` (ค้นหาข้อมูล · **สถานะเป็น dropdown บังคับ 6 ค่า ไม่มีสถานะบัญชี**) + `/export` (Export Excel) แล้วกระทบยอดกับ SAP เอง งานฝั่ง SAP อยู่นอก API ชุดนี้:
 - **SAP** `FBL3H` (GL Account Line-Item Browser — กระทบยอด) · `SAPPOST` (Update Transaction to SAP) · `FS/FSWEB` (ตรวจ STATUS=Completed)
@@ -174,7 +219,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 **เหตุผล:** ทั้ง 6 เส้นมีไว้รองรับ 2 tab ที่ถูกตัดออกจากหน้าจอโดยตรง (`แบบฟอร์มพารามิเตอร์`, `ประวัติการรัน`) — ส่วนที่เหลือของหน้า (Flowchart + Database ที่ใช้) เป็นเนื้อหา static ไม่ต้องเรียก API
 
 **สิ่งที่ยังอยู่:**
-- **batch job ทั้ง 11 entry point (Jobs 1–10 + 8b) ยังทำงานตามปกติ** ตามเอกสาร Batch v4.0 — ไม่กระทบ pipeline FGI/FCS
+- **batch job ทั้ง 10 entry point (Jobs 2–10 + 8b · ตัด Job 1 ImportQSSI 2026-08-24) ยังทำงานตามปกติ** ตามเอกสาร Batch v4.0 — ไม่กระทบ pipeline FGI/FCS
 - **พารามิเตอร์และตารางเวลา** ย้ายไปกำหนดใน **backend config** (config file/env ของฝั่ง BE) แทนตาราง `job_configs` — แก้ค่าโดยการ deploy config ไม่ใช่ผ่านหน้าจอ
 - **ผลการรัน** เก็บที่ application log ของ BE และ `interface_transactions` (สถานะรับ–ส่งไฟล์/ACK ซึ่งยังมี endpoint กลุ่ม Interface อยู่) แทนตาราง `job_run_histories`
 - ตาราง `job_configs` และ `job_run_histories` **ถูกลบจาก target schema** (24 → 22 ตาราง)
@@ -195,7 +240,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 | **DP-1 = ทางเลือก B** | `POST /workflows/instances` ต้องส่ง **`referenceId` = `compensation_documents.id` (surrogate)** ไม่ใช่ `doc_no` · `GET /documents/{docNo}/timeline` และเส้นที่ต้องคุยกับ engine ต้อง **join ผ่าน `id`** ก่อนเรียก engine · `docNo` ยังเป็น path parameter ที่ผู้ใช้เห็นเหมือนเดิม |
 | **DP-3 = ทางเลือกที่ 3** | ไม่กระทบ endpoint — `impacted_stores` ยังเป็นตาราง (snapshot บางส่วน) เส้นที่อ่านข้อมูลร้านไม่เปลี่ยน |
 
-**ยังค้าง 9 ข้อ** (DP-2 · DP-4 ถึง DP-8 · DP-10 · DP-11 · DP-12) — ดู [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md)
+**ยังค้าง 6 ข้อ** (DP-2 · DP-6 ถึง DP-8 · DP-11 · DP-12 — **DP-4 ปิดแล้ว 2026-08-24** เมื่อตัด Job 1 ImportQSSI · **DP-10 ปิดแล้ว** SBPGI อยู่ใน store-backend เดิม) — ดู [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md)
 
 ## เส้นที่ตัดออก — ใช้ระบบ SBP เดิม (ตัดสินใจ 2026-08-05 · 18 เส้น)
 
@@ -286,7 +331,10 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 | `fileAttach` | ไฟล์แนบ | ปกติไม่ใช้ในงาน workflow |
 | `userId` | ผู้ดำเนินการ | → ลง `email_sent.send_by` |
 
-ลำดับใน lib (ชีต MermaidSeq): `findById(emailId)` → แทนค่า `{{key}}` ใน subject/body → ส่งผ่าน SMTP/AWS SES → `INSERT email_sent` (`is_sent='Y'` หรือ `'N'` + `error`) → return `Success` / `Fail`
+ลำดับใน lib (ชีต MermaidSeq): `findById(emailId)` → แทนค่า `{{key}}` ใน subject/body → ส่ง → `INSERT email_sent` (`is_sent='Y'` หรือ `'N'` + `error`) → return `Success` / `Fail`
+
+> ⚠️ **transport ยังไม่ยืนยัน — เอกสาร lib ขัดกันเองในไฟล์เดียว** (`SBP/TSM-SRM-LLDD SBP EMAIL1.0.xlsx`): ผังไฟล์เขียน *“ส่งเมล์ผ่าน **AWS SES**”* แต่ลำดับขั้นตอนเขียน *“ส่งเมล์ไปที่ **server mail SMTP**”* · และเอกสาร**ไม่ได้ระบุชื่อ package** (โครงไฟล์เขียนแค่ `email/`) → ดูข้อ 4.3 ใน [`DECISIONS-รอตัดสินใจ.md`](DECISIONS-รอตัดสินใจ.md)
+> เรื่องที่**ยืนยันแล้ว**: อาร์กิวเมนต์ 6 ตัว · การแทนค่า `{{key}}` · การเขียน `email_sent` ทั้งกรณีสำเร็จและล้มเหลว · `is_sent` เป็น `'Y'`/`'N'` · เก็บ `error` เมื่อล้มเหลว
 
 ตัวอย่างการแทนค่าจากเอกสาร: subject ใน DB = `[AD] ExportUserToAD ({{status}})` · ส่ง `param = {"status":"Success"}` → ได้ `[AD] ExportUserToAD (Success)`
 
@@ -306,7 +354,7 @@ input ของ `eventWorkflow` มีแค่ `versionId · referenceId · eve
 
 ## เอกสารที่เกี่ยวข้อง
 
-- ตารางที่แต่ละเส้นอ่าน/เขียน: [database.md](database.md) · `plan-database.html` (**19 ตาราง** หลังตัด `audit_logs` 2026-08-07 และ `status_email_rules` 2026-08-11 · DP-5)
+- ตารางที่แต่ละเส้นอ่าน/เขียน: [database.md](database.md) · `plan-database.html` (**20 ตาราง** หลังตัด `audit_logs` 2026-08-07 และ `status_email_rules` 2026-08-11 · DP-5)
 - เทียบ SBPGI กับระบบ SBP เดิม + **12 ข้อค้างตัดสินใจ (Decision Points)**: `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4
 - Schema จริงของระบบเดิม (ที่มาของตัวเลขทุกตัวในหัวข้อ workflow engine): `SBP/db-schema-sps_store.md` · `SBP/db-schema-sps_auth.md`
 - LLDD ของ workflow engine (ที่มาของ API 8 function): `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` ชีต `Detail` · ฉบับแปลง `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md`

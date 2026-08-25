@@ -72,7 +72,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | 4 | Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N | missing DV sets N |
 | 5 | If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason | same juristic sets N |
 | 6 | If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun | growth NULL keeps W but growth > -10 sets N |
-| 7 | If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initialize + addPreApprover at state 06 — function names UNCONFIRMED, 3 conflicting sets), then update fgi_impact_processes.workflow_generation_status=Y in one transaction | sales status NULL keeps W |
+| 7 | If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initializeWorkflow + addPreApprover at state 06 — function names confirmed 2026-08-14 from the library's own LLDD, sheet Detail), then update fgi_impact_processes.workflow_generation_status=Y in one transaction | sales status NULL keeps W |
 | 8 | Enqueue notification summary outside transaction after commit | duplicate request returns existing instance |
 
 ## 6. Button / User Action Mapping
@@ -726,7 +726,7 @@ UPDATE fgi_impact_processes SET workflow_generation_status = :flagN
 WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagN;
 
 -- ผ่าน gate → ใช้เอกสารที่ Job 8 สร้างแล้ว เปิด instance + งานแรกผ่าน @srm/glb-workflow แล้วตั้ง Y ใน transaction เดียว
--- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 19 ตารางแล้ว)
+-- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 20 ตารางแล้ว)
 --    initialize(versionId=:sbpgiVersionId, referenceId=:referenceId, userId=:serviceActor)
 --    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
 -- referenceId = compensation_documents.id (DP-1 ปิดแล้ว) · ไม่มี UNIQUE กันซ้ำจริงบน
@@ -791,7 +791,7 @@ GROUP BY w.current_state_id;
 | 4 | Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N |
 | 5 | If branch type is outside allowlist, distance exceeds threshold, DV is missing, juristic is the same, or growth_rate_diff > -10, update workflow_generation_status=N and return 200 with permanent-skip reason |
 | 6 | If distance/juristic/growth data is NULL or sales_status is not ready, keep workflow_generation_status=W and return 422 reason so Job 8b can rerun |
-| 7 | If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initialize + addPreApprover at state 06 — function names UNCONFIRMED, 3 conflicting sets), then update fgi_impact_processes.workflow_generation_status=Y in one transaction |
+| 7 | If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initializeWorkflow + addPreApprover at state 06 — function names confirmed 2026-08-14 from the library's own LLDD, sheet Detail), then update fgi_impact_processes.workflow_generation_status=Y in one transaction |
 | 8 | Enqueue notification summary outside transaction after commit |
 
 ## 12. Acceptance Criteria

@@ -10,7 +10,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **21 ชั่วโมง** = implementation 16 + unit test 5 (30%) |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | รับยอดขายจาก IAS + คำนวณ Growth: อ่านไฟล์ตอบกลับยอดขาย AMS06001I จาก IAS บันทึกยอดขายรายวันลง sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff |
+| Objective | รับยอดขายจาก IAS + คำนวณ Growth: อ่านไฟล์ตอบกลับยอดขาย AMS06001I ที่ IAS/MIS วางไว้บน **EAI S3** (prefix ขาเข้า · มติ 2026-08-24 แทนการรับผ่าน SFTP) บันทึกยอดขายรายวันลง sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -38,8 +38,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 5 ImportImpa
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | กำหนดการรัน (Cron) | 30 16 7-16 * * | แก้ไขได้ | 30 นาทีหลัง Job 4 |
-| Input File | AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์) | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | impacted_store_code \| OPENDATE_N \| SALES_DATE \| SALES_AMOUNT |
-| หน้าต่างคำนวณ | 4 ช่วง × 15 วัน รอบ OPENDATE_N (ไม่รวมวันเปิด) | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ |  |
+| Input File | AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์) | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | impacted_store_code \| วันเปิดร้านใหม่ \| วันที่ขาย \| ยอดขาย (4 ฟิลด์ตามสัญญาไฟล์ของ IAS) |
+| หน้าต่างคำนวณ | 4 ช่วง × 15 วัน รอบวันเปิดร้านใหม่ (ไม่รวมวันเปิด) — วันเปิดร้านอ่านจาก master ของระบบ SBP เดิม | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ |  |
 | เกณฑ์ Outlier | \|sales_diff\| ≥ 50 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | literal ในโค้ด — เปลี่ยนต้องอนุมัติธุรกิจ (8.2) |
 | วันทำการคาดหวัง | 60 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ถ้าไม่เท่า 60 → pre-accept เป็น Y ทันที |
 | กฎ Pre-accept | อายุร้าน < 12 เดือน 15 วัน หรือวันทำการ < 60 → Y | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ |  |
@@ -71,7 +71,7 @@ scan files, validate pattern, parse daily sales windows, derive before/after imp
 | Output identity | FGI_IMPACT_STORE_SALES_TRN and FGI_IMPACT_STORE_SALES updated; confirm-receive rows written; source file moved to backup or error recorded. | reconcile input, success, reject and skipped counts |
 | Dedup proof | checksum กันไฟล์ซ้ำ + UNIQUE(sales_summary_id,txn_date,window_no); คำนวณ summary ใหม่จาก transaction rows ทุก rerun | rerun fixture produces no duplicate target business key |
 | Transaction proof | upsert รายวันและ update summary ของ sales_summary_id เดียวกันใน transaction; checksum/file tracking commit พร้อมกัน | injected failure leaves no partial committed state outside documented boundary |
-| Security proof | IAS inbound SFTP ใช้ secretRef, strict known_hosts และ quarantine ไฟล์ที่ checksum/รูปแบบไม่ผ่านก่อน parse | config/log/error contains no plaintext secret |
+| Security proof | สิทธิ์อ่าน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sbpgi/interfaces/eai-s3 จำกัดเฉพาะ prefix ขาเข้า/backup ของ IAS (GetObject + PutObject เฉพาะ backup); quarantine อ็อบเจกต์ที่ checksum/รูปแบบไม่ผ่าน แทนการลบทิ้ง | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
 
@@ -90,7 +90,7 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | Repository | iasSalesRepository |
 | Idempotency / dedup | checksum กันไฟล์ซ้ำ + UNIQUE(sales_summary_id,txn_date,window_no); คำนวณ summary ใหม่จาก transaction rows ทุก rerun |
 | Transaction boundary | upsert รายวันและ update summary ของ sales_summary_id เดียวกันใน transaction; checksum/file tracking commit พร้อมกัน |
-| Security | IAS inbound SFTP ใช้ secretRef, strict known_hosts และ quarantine ไฟล์ที่ checksum/รูปแบบไม่ผ่านก่อน parse |
+| Security | สิทธิ์อ่าน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sbpgi/interfaces/eai-s3 จำกัดเฉพาะ prefix ขาเข้า/backup ของ IAS (GetObject + PutObject เฉพาะ backup); quarantine อ็อบเจกต์ที่ checksum/รูปแบบไม่ผ่าน แทนการลบทิ้ง |
 
 #### Input / candidate query
 
@@ -172,7 +172,7 @@ export async function runLlddBeJob5Importimpactsalefromias(ctx, services) {
 | --- | --- | --- |
 | sales_transactions | W | ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา) |
 | fgi_impact_sales_summaries | R/W | อัปเดต total_working_days, growth_rate_diff, sales_status Y/N |
-| interface_transactions | W | tracking: data_name=IMPORT_SALES_FROM_IAS · typed FK = sales_summary_id |
+| interface_transactions | W | tracking: data_name=IMPACT_STORE_SALES · direction=IN · status=ACKED (ขารับกลับของรอบที่ Job 4 ส่งออก) · typed FK = sales_summary_id |
 
 ## 9. Skeleton Code (Batch Job 5)
 
@@ -212,7 +212,7 @@ export interface Job5Config {
   cron: string;
   /** กำหนดการรัน (Cron) — 30 นาทีหลัง Job 4 */
   cron: string;
-  /** Input File — impacted_store_code | OPENDATE_N | SALES_DATE | SALES_AMOUNT */
+  /** Input File — impacted_store_code | วันเปิดร้านใหม่ | วันที่ขาย | ยอดขาย (4 ฟิลด์ตามสัญญาไฟล์ของ IAS) */
   inputFile: string;
   /** หน้าต่างคำนวณ */
   calcWindow: string;
@@ -234,7 +234,7 @@ export class SbpgiJob5Config implements Job5Config {
   cron = process.env.SBPGI_JOB5_CRON ?? '30 16 7-16 * *';
   cron = process.env.SBPGI_JOB5_CRON ?? '30 16 7-16 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
   inputFile = process.env.SBPGI_JOB5_INPUT_FILE ?? 'AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์)'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  calcWindow = process.env.SBPGI_JOB5_CALC_WINDOW ?? '4 ช่วง × 15 วัน รอบ OPENDATE_N (ไม่รวมวันเปิด)'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  calcWindow = process.env.SBPGI_JOB5_CALC_WINDOW ?? '4 ช่วง × 15 วัน รอบวันเปิดร้านใหม่ (ไม่รวมวันเปิด) — วันเปิดร้านอ่านจาก master ของระบบ SBP เดิม'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   outlier = process.env.SBPGI_JOB5_OUTLIER ?? '|sales_diff| ≥ 50'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   workingDays = Number(process.env.SBPGI_JOB5_WORKING_DAYS ?? 60); // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   preAccept = process.env.SBPGI_JOB5_PRE_ACCEPT ?? 'อายุร้าน < 12 เดือน 15 วัน หรือวันทำการ < 60 → Y'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
@@ -303,8 +303,8 @@ export class ImportImpactSaleFromIasService {
     return { period: ctx.period, read: 0, written: 0, skipped: 0, rejected: 0 };
   }
 
-  // อ่านไฟล์ WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด
-  async step02ReadFile(state: JobState, manager?: EntityManager): Promise<void> {
+  // ดึงไฟล์จาก EAI S3 (prefix ขาเข้า) แล้วอ่าน WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด
+  async step02Read(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
@@ -318,33 +318,38 @@ export class ImportImpactSaleFromIasService {
     // TODO: implement
   }
 
+  // insert interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED
+  async step05ReadFile(state: JobState, manager?: EntityManager): Promise<void> {
+    // TODO: implement
+  }
+
   // total_working_days = จำนวนแถวดิบทั้งหมด
-  async step05Calculate(state: JobState, manager?: EntityManager): Promise<void> {
+  async step06Calculate(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
   // ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept)
-  async check06Calculate(state: JobState): Promise<boolean> {
+  async check07Calculate(state: JobState): Promise<boolean> {
     return true; // TODO: เงื่อนไขจริงตามผัง
   }
 
   // คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (|sales_diff| ≥ 50)
-  async step07Calculate(state: JobState, manager?: EntityManager): Promise<void> {
+  async step08Calculate(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
-  // NVL(growth_rate_diff, −1) < 0 ?
-  async check08Condition(state: JobState): Promise<boolean> {
+  // COALESCE(growth_rate_diff, −1) < 0 ?
+  async check09Condition(state: JobState): Promise<boolean> {
     return true; // TODO: เงื่อนไขจริงตามผัง
   }
 
-  // sales_status = Y แล้ว insert tracking IMPORT_SALES_FROM_IAS
-  async step09Insert(state: JobState, manager?: EntityManager): Promise<void> {
+  // sales_status = Y (เข้าเกณฑ์ชดเชย)
+  async step10ReadFile(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
-  // ย้ายไฟล์เข้า backup
-  async step10Archive(state: JobState, manager?: EntityManager): Promise<void> {
+  // ย้ายอ็อบเจกต์ไป prefix backup บน EAI S3
+  async step11Archive(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
@@ -358,16 +363,17 @@ export class ImportImpactSaleFromIasService {
 | ลำดับ | ชนิด | ขั้นตอนจากผัง | Method ที่ต้อง implement | เส้นทาง NO / error |
 | --- | --- | --- | --- | --- |
 | 1 | start | เริ่ม | createState() | - |
-| 2 | io | อ่านไฟล์ WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด | step02ReadFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 2 | io | ดึงไฟล์จาก EAI S3 (prefix ขาเข้า) แล้วอ่าน WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 3 | decision | เป็นงวดที่ยังไม่นำเข้า? | check03ResolvePeriod() | [end] จบ (idempotency guard กันนำเข้าซ้ำ) |
 | 4 | process | เปิด transaction ต่อไฟล์ แล้ว insert sales_transactions แถวดิบ | step04Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 5 | process | total_working_days = จำนวนแถวดิบทั้งหมด | step05Calculate() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 6 | decision | ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept) | check06Calculate() | [branch] Pre-accept: sales_status = Y ทันที |
-| 7 | process | คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (\|sales_diff\| ≥ 50) | step07Calculate() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 8 | decision | NVL(growth_rate_diff, −1) < 0 ? | check08Condition() | [branch] sales_status = N (ไม่เข้าเกณฑ์ชดเชย) |
-| 9 | process | sales_status = Y แล้ว insert tracking IMPORT_SALES_FROM_IAS | step09Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 10 | io | ย้ายไฟล์เข้า backup | step10Archive() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 11 | end | จบ | summarize() | - |
+| 5 | process | insert interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED | step05ReadFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 6 | process | total_working_days = จำนวนแถวดิบทั้งหมด | step06Calculate() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 7 | decision | ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept) | check07Calculate() | [branch] Pre-accept: sales_status = Y ทันที |
+| 8 | process | คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (\|sales_diff\| ≥ 50) | step08Calculate() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 9 | decision | COALESCE(growth_rate_diff, −1) < 0 ? | check09Condition() | [branch] sales_status = N (ไม่เข้าเกณฑ์ชดเชย) |
+| 10 | process | sales_status = Y (เข้าเกณฑ์ชดเชย) | step10ReadFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 11 | io | ย้ายอ็อบเจกต์ไป prefix backup บน EAI S3 | step11Archive() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 12 | end | จบ | summarize() | - |
 
 ```ts
 // src/batch/sbpgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.job.ts
@@ -393,8 +399,8 @@ export class ImportImpactSaleFromIasJob {
     // TODO: state ถือ counter (read/written/skipped/rejected) และค่าจาก job5Config
     const state = this.service.createState(ctx);
     try {
-      // ขั้นที่ 2: อ่านไฟล์ WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด
-      await this.service.step02ReadFile(state);
+      // ขั้นที่ 2: ดึงไฟล์จาก EAI S3 (prefix ขาเข้า) แล้วอ่าน WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด
+      await this.service.step02Read(state);
       // ขั้นที่ 3 (decision): เป็นงวดที่ยังไม่นำเข้า?
       const ok03 = await this.service.check03ResolvePeriod(state);
       if (!ok03) { // NO → จบ (idempotency guard กันนำเข้าซ้ำ)
@@ -404,31 +410,33 @@ export class ImportImpactSaleFromIasJob {
       await this.dataSource.transaction(async (manager: EntityManager) => {
         // ขั้นที่ 4: เปิด transaction ต่อไฟล์ แล้ว insert sales_transactions แถวดิบ · TODO: ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน
         await this.service.step04Insert(state, manager);
-        // ขั้นที่ 5: total_working_days = จำนวนแถวดิบทั้งหมด · TODO: นับรวมแถวนอกหน้าต่างคำนวณด้วย (raw count)
-        await this.service.step05Calculate(state, manager);
-        // ขั้นที่ 6 (decision): ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept) · TODO: pre-accept เมื่ออายุร้าน < 12ด.15ว. หรือวันทำการ < 60
-        const ok06 = await this.service.check06Calculate(state);
-        if (!ok06) { // NO → Pre-accept: sales_status = Y ทันที
+        // ขั้นที่ 5: insert interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED · TODO: บันทึก*การรับไฟล์* — ทำทันทีที่อ่านไฟล์สำเร็จ ไม่ผูกกับผล Y/N เพราะไฟล์มาถึงแล้วไม่ว่าผลจะเป็นอะไร (ถ้าผูกกับสาขา Y งวดที่ผลเป็น N จะไม่มีบันทึก แล้ว Job 10 จะเข้าใจว่า IAS ไม่ตอบกลับ) · เป็นขารับกลับของรอบที่ Job 4 ส่งออก จึงใช้ data_name เดิม — UNIQUE (data_name, direction, business_key, period_key) แยกขา OUT/IN ให้อยู่แล้ว · typed FK = sales_summary_id · acked_at = now
+        await this.service.step05ReadFile(state, manager);
+        // ขั้นที่ 6: total_working_days = จำนวนแถวดิบทั้งหมด · TODO: นับรวมแถวนอกหน้าต่างคำนวณด้วย (raw count)
+        await this.service.step06Calculate(state, manager);
+        // ขั้นที่ 7 (decision): ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept) · TODO: pre-accept เมื่ออายุร้าน < 12ด.15ว. หรือวันทำการ < 60
+        const ok07 = await this.service.check07Calculate(state);
+        if (!ok07) { // NO → Pre-accept: sales_status = Y ทันที
           // TODO: เส้น NO ของขั้นนี้เป็น branch ระดับ record — ผังไม่ได้ระบุว่าหยุดหรือไปต่อ
           //   ถ้าเป็น 'ข้ามรายการ'      -> state.skipped += 1; แล้ว continue ในลูปของ record
           //   ถ้าเป็น 'ตั้งค่าแล้วไปต่อ' -> เรียก service ตั้งค่าสถานะ แล้วเดินขั้นถัดไป (ห้าม return)
           //   ถ้าเป็น 'คงสถานะเดิม/ไม่เปิดงาน' -> หยุดเฉพาะ record นี้ ห้ามไหลไปขั้นถัดไป
         }
-        // ขั้นที่ 7: คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (|sales_diff| ≥ 50) · TODO: 4 หน้าต่าง × 15 วัน ไม่รวมวันเปิดร้านใหม่ / ธงรวมอดีต-ปัจจุบันต้องตรงกัน
-        await this.service.step07Calculate(state, manager);
-        // ขั้นที่ 8 (decision): NVL(growth_rate_diff, −1) < 0 ? · TODO: NULL ถูกแทนด้วย −1 = accept อัตโนมัติ (ความเสี่ยง P1)
-        const ok08 = await this.service.check08Condition(state);
-        if (!ok08) { // NO → sales_status = N (ไม่เข้าเกณฑ์ชดเชย)
+        // ขั้นที่ 8: คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (|sales_diff| ≥ 50) · TODO: 4 หน้าต่าง × 15 วัน ไม่รวมวันเปิดร้านใหม่ / ธงรวมอดีต-ปัจจุบันต้องตรงกัน
+        await this.service.step08Calculate(state, manager);
+        // ขั้นที่ 9 (decision): COALESCE(growth_rate_diff, −1) < 0 ? · TODO: NULL ถูกแทนด้วย −1 = accept อัตโนมัติ (ความเสี่ยง P1)
+        const ok09 = await this.service.check09Condition(state);
+        if (!ok09) { // NO → sales_status = N (ไม่เข้าเกณฑ์ชดเชย)
           // TODO: เส้น NO ของขั้นนี้เป็น branch ระดับ record — ผังไม่ได้ระบุว่าหยุดหรือไปต่อ
           //   ถ้าเป็น 'ข้ามรายการ'      -> state.skipped += 1; แล้ว continue ในลูปของ record
           //   ถ้าเป็น 'ตั้งค่าแล้วไปต่อ' -> เรียก service ตั้งค่าสถานะ แล้วเดินขั้นถัดไป (ห้าม return)
           //   ถ้าเป็น 'คงสถานะเดิม/ไม่เปิดงาน' -> หยุดเฉพาะ record นี้ ห้ามไหลไปขั้นถัดไป
         }
-        // ขั้นที่ 9: sales_status = Y แล้ว insert tracking IMPORT_SALES_FROM_IAS
-        await this.service.step09Insert(state, manager);
+        // ขั้นที่ 10: sales_status = Y (เข้าเกณฑ์ชดเชย) · TODO: ผลทางธุรกิจอย่างเดียว — การรับไฟล์บันทึกไปแล้วตั้งแต่ต้น ไม่ขึ้นกับผล Y/N
+        await this.service.step10ReadFile(state, manager);
       });
-      // ขั้นที่ 10: ย้ายไฟล์เข้า backup
-      await this.service.step10Archive(state);
+      // ขั้นที่ 11: ย้ายอ็อบเจกต์ไป prefix backup บน EAI S3
+      await this.service.step11Archive(state);
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
       // TODO: error path ของ Job 5 — P1: growth_rate_diff = NULL ถูก accept อัตโนมัติ / ต้องทดสอบ ก.พ. ปีอธิกสุรทิน และร้านไม่มียอดขาย
@@ -506,7 +514,7 @@ repository ของ Job 5 ประกาศเป็น factory provider (`{pr
 | --- | --- | --- | --- |
 | sales_transactions | W | ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา) | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | fgi_impact_sales_summaries | R/W | อัปเดต total_working_days, growth_rate_diff, sales_status Y/N | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| interface_transactions | W | tracking: data_name=IMPORT_SALES_FROM_IAS · typed FK = sales_summary_id | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| interface_transactions | W | tracking: data_name=IMPACT_STORE_SALES · direction=IN · status=ACKED (ขารับกลับของรอบที่ Job 4 ส่งออก) · typed FK = sales_summary_id | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 5 ImportImpactSaleFromIAS — query หลักที่ต้อง implement
@@ -534,7 +542,7 @@ UPDATE fgi_impact_sales_summaries
        updated_at = NOW(), updated_by = 'JOB5'
  WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
 
--- [W] interface_transactions : tracking: data_name=IMPORT_SALES_FROM_IAS · typed FK = sales_summary_id
+-- [W] interface_transactions : tracking: data_name=IMPACT_STORE_SALES · direction=IN · status=ACKED (ขารับกลับของรอบที่ Job 4 ส่งออก) · typed FK = sales_summary_id
 -- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
 INSERT INTO interface_transactions
   (run_id, data_name, direction, status, business_key, period_key,
@@ -612,16 +620,17 @@ export class JobFailureNotifier {
 | Step | Description |
 | --- | --- |
 | 1 | เริ่ม |
-| 2 | อ่านไฟล์ WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด |
+| 2 | ดึงไฟล์จาก EAI S3 (prefix ขาเข้า) แล้วอ่าน WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด |
 | 3 | เป็นงวดที่ยังไม่นำเข้า? \| No: จบ (idempotency guard กันนำเข้าซ้ำ) |
 | 4 | เปิด transaction ต่อไฟล์ แล้ว insert sales_transactions แถวดิบ (ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน) |
-| 5 | total_working_days = จำนวนแถวดิบทั้งหมด (นับรวมแถวนอกหน้าต่างคำนวณด้วย (raw count)) |
-| 6 | ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept) \| No: Pre-accept: sales_status = Y ทันที (pre-accept เมื่ออายุร้าน < 12ด.15ว. หรือวันทำการ < 60) |
-| 7 | คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (\|sales_diff\| ≥ 50) (4 หน้าต่าง × 15 วัน ไม่รวมวันเปิดร้านใหม่ / ธงรวมอดีต-ปัจจุบันต้องตรงกัน) |
-| 8 | NVL(growth_rate_diff, −1) < 0 ? \| No: sales_status = N (ไม่เข้าเกณฑ์ชดเชย) (NULL ถูกแทนด้วย −1 = accept อัตโนมัติ (ความเสี่ยง P1)) |
-| 9 | sales_status = Y แล้ว insert tracking IMPORT_SALES_FROM_IAS |
-| 10 | ย้ายไฟล์เข้า backup |
-| 11 | จบ |
+| 5 | insert interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED (บันทึก*การรับไฟล์* — ทำทันทีที่อ่านไฟล์สำเร็จ ไม่ผูกกับผล Y/N เพราะไฟล์มาถึงแล้วไม่ว่าผลจะเป็นอะไร (ถ้าผูกกับสาขา Y งวดที่ผลเป็น N จะไม่มีบันทึก แล้ว Job 10 จะเข้าใจว่า IAS ไม่ตอบกลับ) · เป็นขารับกลับของรอบที่ Job 4 ส่งออก จึงใช้ data_name เดิม — UNIQUE (data_name, direction, business_key, period_key) แยกขา OUT/IN ให้อยู่แล้ว · typed FK = sales_summary_id · acked_at = now) |
+| 6 | total_working_days = จำนวนแถวดิบทั้งหมด (นับรวมแถวนอกหน้าต่างคำนวณด้วย (raw count)) |
+| 7 | ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept) \| No: Pre-accept: sales_status = Y ทันที (pre-accept เมื่ออายุร้าน < 12ด.15ว. หรือวันทำการ < 60) |
+| 8 | คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (\|sales_diff\| ≥ 50) (4 หน้าต่าง × 15 วัน ไม่รวมวันเปิดร้านใหม่ / ธงรวมอดีต-ปัจจุบันต้องตรงกัน) |
+| 9 | COALESCE(growth_rate_diff, −1) < 0 ? \| No: sales_status = N (ไม่เข้าเกณฑ์ชดเชย) (NULL ถูกแทนด้วย −1 = accept อัตโนมัติ (ความเสี่ยง P1)) |
+| 10 | sales_status = Y (เข้าเกณฑ์ชดเชย) (ผลทางธุรกิจอย่างเดียว — การรับไฟล์บันทึกไปแล้วตั้งแต่ต้น ไม่ขึ้นกับผล Y/N) |
+| 11 | ย้ายอ็อบเจกต์ไป prefix backup บน EAI S3 |
+| 12 | จบ |
 
 ## 11. Acceptance Criteria
 
