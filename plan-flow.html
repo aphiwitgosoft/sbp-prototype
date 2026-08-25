@@ -48,7 +48,7 @@
       <div class="card" style="border-left:5px solid var(--primary);">
         <div style="font-size:13px;color:#45525f;line-height:1.9;">
           <b style="color:#2b3440;">วิธีอ่าน ref ที่มา:</b>
-          <span class="ref fgi">FGI/FCS</span> = มาจากเอกสาร Batch Job Technical Document v4.0 (Jobs 1–10 + 8b) ·
+          <span class="ref fgi">FGI/FCS</span> = มาจากเอกสาร Batch Job Technical Document v4.0 (Jobs 2–10 + 8b · ตัด Job 1 ImportQSSI 2026-08-24) ·
           <span class="ref k2">K2</span> = มาจาก SRS ประกันรายได้-K2 v3.1 (หน้าจอ / workflow 5 ขั้น) ·
           <span class="ref new">ใหม่</span> = ส่วนที่ออกแบบเพิ่มสำหรับระบบใหม่ ·
           <span class="ref mix">ทั้งสอง</span> = พฤติกรรมรวมจากสองระบบ<br>
@@ -149,7 +149,7 @@
 
           <!-- row 2 -->
           <rect x="64" y="336" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#96b4f0" stroke-width="1.5"/>
-          <text x="78" y="358" font-size="12.5" font-weight="600" fill="#2b3440">Batch Scheduler (Jobs 1–10)</text>
+          <text x="78" y="358" font-size="12.5" font-weight="600" fill="#2b3440">Batch Scheduler (Jobs 2–10 + 8b)</text>
           <rect x="78" y="366" width="60" height="17" rx="8" fill="#e8f0fe"/><text x="108" y="378.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">FGI/FCS</text>
           <text x="78" y="402" font-size="10.5" fill="#5d6b7a">คง cron เดิม · พารามิเตอร์แก้ได้จากหน้าจอ · กันรันซ้อน</text>
 
@@ -328,7 +328,7 @@
         <div class="card-head"><h2>4. พฤติกรรมจาก Approve Flow เดิมที่ยังต้องทำเพิ่ม</h2><span class="pill info">Flow ประกันรายได้.png</span></div>
         <p style="margin:0 0 12px;color:#5d6b7a;font-size:13px;line-height:1.7;">
           จากแผนภาพอนุมัติระบบเดิม (BPMN "A-Document Approve Flow ประกันรายได้") มี 4 พฤติกรรมที่ flow ด้านบนยังไม่ครอบคลุม —
-          ทั้งหมดอยู่ฝั่งเอกสาร/Workflow (โซน B/C) <b>ไม่กระทบ FGI/FCS pipeline (Jobs 1–10) และ interface ภายนอก</b></p>
+          ทั้งหมดอยู่ฝั่งเอกสาร/Workflow (โซน B/C) <b>ไม่กระทบ FGI/FCS pipeline (Jobs 2–10 + 8b) และ interface ภายนอก</b></p>
         <div class="table-wrap">
           <table class="data">
             <thead><tr><th>พฤติกรรม</th><th>จาก flow เดิม</th><th>ระบบใหม่</th><th>ขอบเขตผลกระทบ</th></tr></thead>

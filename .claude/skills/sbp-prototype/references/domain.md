@@ -80,7 +80,7 @@ inbox ของแต่ละ role = เอกสารสถานะ "รอ\
 | EM-04 | เตือนงานค้างรายสัปดาห์ (จันทร์ 10:00 แก้ได้) | ผู้มีงานค้าง (จาก `sps_store.workflow_approver` / `workflow_transaction` ของ `@srm/glb-workflow`) |
 | EM-05 | Escalation งานค้าง 30/45/60 วัน | หัวหน้า Section / GM OPT |
 | EM-06 | สรุปเปิด workflow ราย DV (เดิม Job 8b) | DV/GM user |
-| EM-07 | Batch job จบด้วย Error (Jobs 1–10) | ผู้ดูแลระบบ (กำหนดผู้รับใน backend config ต่อ job) |
+| EM-07 | Batch job จบด้วย Error (Jobs 2–10 + 8b) | ผู้ดูแลระบบ (กำหนดผู้รับใน backend config ต่อ job) |
 | EM-08 | Watchdog ACK จาก STA ค้าง ≥ 1 วัน (Job 10, 07:00) | ผู้ดูแลระบบ |
 
 EM-04/05 รับพฤติกรรมมาจาก Approve Flow เดิม (จุด 10.1, 20.2, 20.3, 30.1, 70.1, 80.1, 110.2)
@@ -90,6 +90,6 @@ EM-04/05 รับพฤติกรรมมาจาก Approve Flow เดิ
 - **รวม EAI + K2 เข้า SBPGI**: ตัดไฟล์ภายใน `BPM06001O_/2O_/3O_` (Jobs 7/8/9) และ K2 REST StartInstance (Job 8b) → Document Service เขียน DB ตรง + Workflow Engine ภายใน
 - Interface ภายนอก **ยังเป็นระบบของทีมอื่น** แต่ช่องทางเปลี่ยนบางส่วน (มติ 2026-08-24): ~~QSSI (SFTP)~~ **ตัด Job 1 — อ่าน `fcs_qssi_score` ที่ระบบ SBP เดิมนำเข้าให้** · ALLMAP (SQL Server) · IAS/MIS (ไฟล์ AMS06001O/I ผ่าน **EAI S3** แทน SFTP) · STA (**RabbitMQ `sta.compensation.result`** แทนไฟล์ FRBC0001 + SFTP · ACK ผ่าน `POST /interfaces/sta/ack`) · SMTP
 - Workflow engine `@srm/glb-workflow` มี **API 8 ตัว** (ชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx`): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` (= หน้ารอดำเนินการ) · `getWorkflowsByUser` (= หน้าที่เกี่ยวข้อง) · `addPreApprover` — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` ไม่ใช่ชื่อ API
-- Flow 12 ขั้น 4 Stage (A รับข้อมูล Jobs 1–5 · B สร้างเอกสาร+เปิด workflow · C พิจารณา 5 ขั้น · D ส่งออก+watchdog Jobs 6/10) → `workflow.md`
-- Schema **19 ตาราง 3 โซน (A 7 · B 9 · C 3)** (A=FGI/FCS · B=K2 docs/workflow · C=shared master/config · RBAC/ผู้ปฏิบัติงาน + workflow engine + master/config ที่ระบบ SBP มีอยู่แล้ว ใช้ของเดิม) + Data Spine 4 ID (`impact_process_id` → `doc_no` → `transaction_id`/`approver_id` ของ `sps_store.workflow_transaction` / `workflow_approver` ใน `@srm/glb-workflow`) → `database.md`
+- Flow 12 ขั้น 4 Stage (A รับข้อมูล Jobs 2–5 · B สร้างเอกสาร+เปิด workflow · C พิจารณา 5 ขั้น · D ส่งออก+watchdog Jobs 6/10) → `workflow.md`
+- Schema **20 ตาราง 3 โซน (A 8 · B 9 · C 3)** — 19 CREATE + `fcs_qssi_score` ที่ reuse ของระบบเดิม (A=FGI/FCS · B=K2 docs/workflow · C=shared master/config · RBAC/ผู้ปฏิบัติงาน + workflow engine + master/config ที่ระบบ SBP มีอยู่แล้ว ใช้ของเดิม) + Data Spine 4 ID (`impact_process_id` → `doc_no` → `transaction_id`/`approver_id` ของ `sps_store.workflow_transaction` / `workflow_approver` ใน `@srm/glb-workflow`) → `database.md`
 - P0 สำคัญ: ครอบ Job 4 ด้วย transaction · ย้าย credential ไป Secret Manager · ห้ามเก็บ secret ใน config ของระบบ (`mas_param`/backend config)

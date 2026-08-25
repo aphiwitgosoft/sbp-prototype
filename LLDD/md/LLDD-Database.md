@@ -259,7 +259,17 @@ CREATE TABLE interface_transactions (
     run_id VARCHAR(50),
     -- direction: OUT = ส่งไฟล์ออกไประบบภายนอก (Job 4 → IAS · Job 6 → STA) · IN = รับไฟล์/ACK กลับ (Job 5 · callback ของ STA)
     --            INTERNAL = การส่งต่อ*ภายในระบบเดียวกัน* ที่มาแทนไฟล์ EAI เดิม (Jobs 7/8/9 เขียน DB ตรง — ไม่มี ACK ให้รอ จึงจบที่ status = COMPLETED)
-    data_name VARCHAR(80) NOT NULL, direction VARCHAR(10) NOT NULL CHECK (direction IN ('IN','OUT','INTERNAL')),
+    -- ชุดค่าปิด 9 ค่า เขียนโดย batch เท่านั้น (ไม่ใช่ input ของผู้ใช้) — ต้องล็อกเพราะ data_name เป็นส่วนหนึ่งของ
+    -- UNIQUE ที่กันส่งซ้ำ และเป็นตัวกรองของ watchdog Job 10 · พิมพ์ผิดหนึ่งตัว = กันซ้ำไม่ทำงาน + watchdog เงียบ
+    -- เพิ่ม interface ใหม่ = ALTER CONSTRAINT + อัปเดตตารางใน database.md พร้อมกัน
+    data_name VARCHAR(80) NOT NULL CHECK (data_name IN (
+        'IAS_SALES_REQUEST',                                    -- Job 4 -> IAS/MIS (OUT)
+        'IMPACT_STORE_SALES',                                   -- Job 5 <- IAS/MIS (IN)
+        'COMPENSATE_INIT_I','COMPENSATE_INIT_N',                -- Job 6 -> STA (OUT)
+        'COMPENSATE_APPROVE_I','COMPENSATE_APPROVE_N',          -- Job 6 -> STA (OUT)
+        'IMPACT_COMPETITOR','IMPACT_STORE','NEW_STORE'          -- Jobs 7/8/9 เขียน DB ตรง (INTERNAL)
+    )),
+    direction VARCHAR(10) NOT NULL CHECK (direction IN ('IN','OUT','INTERNAL')),
     status VARCHAR(20) NOT NULL CHECK (status IN ('READY','SENT','ACKED','COMPLETED','FAILED','FAILED_RETRY')),
     impact_process_id BIGINT REFERENCES fgi_impact_processes(id),
     sales_summary_id BIGINT REFERENCES fgi_impact_sales_summaries(id),
@@ -431,6 +441,13 @@ CREATE INDEX idx_impact_store_process ON fgi_impact_stores(impact_process_id);
 CREATE INDEX idx_document_impacted_store ON compensation_documents(impacted_store_code);
 CREATE INDEX idx_compensation_history_doc ON compensation_histories(ref_doc_no);
 CREATE INDEX idx_impact_compensation_store ON fgi_impact_compensations(impacted_store_code);
+CREATE INDEX idx_impact_competitor_code ON fgi_impact_competitors(competitor_code);
+CREATE INDEX idx_document_competitor_code ON document_competitors(competitor_code);
+CREATE INDEX idx_document_factor_code ON document_external_factors(factor_code);
+
+-- index ที่หัวข้อ 6 (Index & Constraint) ระบุไว้ — เดิมมีแต่ในตารางสรุป ยังไม่ถูกสร้างจริง (เพิ่ม 2026-08-25)
+CREATE INDEX idx_attachment_scan_status ON document_attachments(scan_status);
+CREATE INDEX idx_consideration_result ON consideration_logs(result_category);
 
 -- Retention worker: delete only terminal, expired, non-held rows in bounded batches.
 WITH purge_candidates AS (
@@ -455,9 +472,9 @@ RETURNING i.id, i.data_name, i.business_key;
 | --- | --- | --- |
 | compensation_documents | UNIQUE (year, running_no), UNIQUE(source, impacted_store_code, impact_month, new_store_code, round_no), INDEX(status_code,current_section_code), INDEX(impact_process_id) | docNo uniqueness, duplicate guard, list/inbox/report, pipeline trace |
 | workflow_transaction (@srm/glb-workflow · sps_store) | ปัจจุบัน **ไม่มี PK และไม่มี index เลย** ทั้งที่มี 19,283 แถว (ตรวจ 2026-08-07) — ที่ต้องการคือ PK(transaction_id) + UNIQUE(version_id, reference_id) + INDEX(current_approver) | current approver guard และ inbox · เป็นตารางของ library ไม่ใช่ของ SBPGI จึงต้องขอ sign-off (DP-2 · ยังไม่ตัดสิน) |
-| document_new_stores | INDEX(doc_no), CHECK compensate_percent between 0 and 100 | detail load and allocation validation |
+| document_new_stores | INDEX(doc_no) *(ได้จาก UNIQUE (doc_no, new_store_code))*, CHECK compensate_percent between 0 and 100 | detail load and allocation validation |
 | consideration_logs | INDEX(doc_no, action_datetime DESC), INDEX(result_category) | timeline/report result filter |
-| document_attachments | INDEX(doc_no), INDEX(scan_status), UNIQUE(sha256, doc_no, deleted_flag) | attachment list/download/security |
+| document_attachments | INDEX(doc_no) *(ได้จาก UNIQUE ที่ขึ้นต้นด้วย doc_no)*, INDEX(scan_status), UNIQUE(doc_no, sha256, deleted_flag) | attachment list/download/security |
 | interface_transactions | INDEX(data_name,status), INDEX(impact_process_id), INDEX(doc_no) | tracking and pending ACK |
 
 ## 7. Transaction Rules

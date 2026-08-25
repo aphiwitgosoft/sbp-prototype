@@ -4,7 +4,7 @@
     python3 tools/build_worklist.py
 
 เชื่อม 3 ชั้นเข้าด้วยกัน คลิกข้ามกันได้:
-    งาน (LLDD 38 ฉบับ)  ->  API ที่งานนั้นเรียก  ->  ตาราง DB ที่ API นั้นแตะ
+    งาน (37 หัวข้อจาก LLDD 40 ฉบับ)  ->  API ที่งานนั้นเรียก  ->  ตาราง DB ที่ API นั้นแตะ
 
 ข้อมูลทั้งหมด derive จากแหล่งเดียวกับเอกสารส่งมอบ จึงไม่มีทางหลุดจากกัน:
   * งาน/ชั่วโมง/owner/scope/flow/acceptance/unit test -> tools/build_lldd_documents.py
@@ -409,6 +409,10 @@ function renderHome(){
     <div><b>${Object.values(D).filter(t=>t.existing).length}</b><small>ตารางระบบเดิม</small></div>
     <div><b>${sum('total')}</b><small>ชั่วโมงรวม</small></div>
   </div>
+  <div class="note" style="border-left:3px solid #2f6fed"><b>กระทบยอดกับเอกสาร LLDD:</b>
+  <b>งาน ${ts.length}</b> = การ์ดงานตั้งต้น + <b>${Object.values(T).filter(t=>t.included).length}</b> role pack ที่รวมอยู่ใน FE-Document-Detail = <b>${Object.values(T).length} หัวข้อ</b> · บวกเอกสารอ้างอิง 3 ฉบับ (LLDD-API / LLDD-Database / LLDD-To-Be ที่ไม่คิดชั่วโมงแยก) = <b>LLDD 40 ฉบับ</b> ที่ส่งมอบ &nbsp;·&nbsp;
+  <b>API ${Object.values(A).filter(a=>a.kind==='own').length}</b> = ครบ 29 เส้นตาม <code>api.md</code> พอดี (ที่เห็นเพิ่มคือ ${Object.values(A).filter(a=>a.kind==='external').length} เส้นของระบบเดิม และ ${Object.values(A).filter(a=>a.kind==='contract').length} รายการ pseudo <code>/*</code> จากเอกสารสัญญากลาง ซึ่งไม่นับเป็น endpoint) &nbsp;·&nbsp;
+  <b>ตาราง ${Object.values(D).filter(t=>!t.existing).length}</b> = จำนวน <code>CREATE TABLE</code> ใน DDL — <code>database.md</code> นับเป็น <b>20 ตาราง</b> เพราะรวม <code>fcs_qssi_score</code> ที่ reuse ของระบบเดิมแบบอ่านอย่างเดียว (หน้านี้จัดอยู่ในกลุ่มตารางระบบเดิม)</div>
   <div class="note"><b>อ่านยังไง:</b> เริ่มที่กลุ่มงานทางซ้าย → เปิดงานที่รับผิดชอบ → ในหน้างานจะมี <b>ขั้นตอนการทำงาน</b>, <b>เกณฑ์ตรวจรับ</b> และ <b>ขอบเขต unit test</b> ครบ ·
   ส่วน <b>API ที่ต้องต่อ</b> และ <b>ตารางที่แตะ</b> กดเข้าไปดูรายละเอียดต่อได้ทันที</div>
   <p style="margin:16px 0"><a class="pill" href="#/board" style="padding:8px 16px;font-size:14px">🗂 เปิด Kanban Board</a>
@@ -778,7 +782,14 @@ def main() -> None:
     model = build_model()
     out = ROOT / "worklist.html"
     out.write_text(render(model), encoding="utf-8")
-    print(f"worklist.html · งาน {len(model['tasks'])} · API {len(model['apis'])} · ตาราง {len(model['tables'])} · {out.stat().st_size//1024} KB")
+    _own = sum(1 for a in model["apis"].values() if a.get("kind") == "own")
+    _ext = sum(1 for a in model["apis"].values() if a.get("kind") == "external")
+    _ctr = sum(1 for a in model["apis"].values() if a.get("kind") == "contract")
+    _new = sum(1 for t in model["tables"].values() if not t.get("existing"))
+    _old = len(model["tables"]) - _new
+    print(f"worklist.html · งาน {len(model['tasks'])} หัวข้อ (LLDD 40 ฉบับ) · "
+          f"API {_own} ของ SBPGI + {_ext} ระบบเดิม + {_ctr} pseudo · "
+          f"ตาราง {_new} SBPGI + {_old} ระบบเดิม · {out.stat().st_size//1024} KB")
 
 
 if __name__ == "__main__":

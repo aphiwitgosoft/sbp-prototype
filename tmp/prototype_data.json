@@ -321,7 +321,7 @@
           "eai-sbpgi/outbound/ias/",
           "text",
           0,
-          "host/port resolve จาก environment; credential ใช้ secretRef และ strict known_hosts"
+          "endpoint/region resolve จาก environment; สิทธิ์ใช้ IAM role ของ pod หรือ secretRef และจำกัดเฉพาะ prefix ขาออกของ IAS"
         ],
         [
           "Credential reference (IAM role / secret)",
@@ -1658,7 +1658,7 @@
           "flow": [
             "ตรวจซ้ำ: ร้าน + เดือนที่ถูกกระทบ ต้องยังไม่มีเอกสาร",
             "ออกเลขที่ YYYY/xxxxx (running ต่อปี เริ่ม 00001 — กติกา SRS)",
-            "insert compensation_documents สถานะเริ่มต้น + เรียก initializeWorkflow({versionId, referenceId, userId}) [referenceId ยังไม่ตัดสินว่าใช้ docNo หรือ surrogate id — DP-1 ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4] ของ @srm/glb-workflow แล้ว addPreApprover ขั้น 06",
+            "insert compensation_documents สถานะเริ่มต้น + เรียก initializeWorkflow({versionId, referenceId, userId}) [referenceId = compensation_documents.id (surrogate · ส่งเป็น string) — DP-1 ปิดแล้ว 2026-08-17] ของ @srm/glb-workflow แล้ว addPreApprover ขั้น 06",
             "SBPGI เรียก sendEmail() แจ้งเปิดเรื่อง ด้วยเลข template จาก workflow_route.email_id (นอก transaction)"
           ],
           "db": [
@@ -2426,7 +2426,7 @@
       ]
     },
     {
-      "name": "Interface & Dashboard",
+      "name": "Interface (tracking / ACK)",
       "refT": "FGI/FCS · tracking / watchdog",
       "eps": [
         {

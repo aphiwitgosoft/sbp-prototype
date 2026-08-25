@@ -546,7 +546,23 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 5. **`document_competitors.source_system = 'ALLMAP'`** — แถวจาก fgi_impact_competitors (Jobs 3/7 เดิม) แยกจากที่ผู้ใช้เพิ่มเอง (USER)
 6. **`document_new_stores.source_system`** — ใช้แพตเทิร์นเดียวกัน: `ALLMAP` = ระบบ default ร้านที่กระทบเพิ่มมาให้ (Job 9) · `USER` = เจ้าหน้าที่ SBP DSA คีย์เองจากเอกสารแจ้งของหน่วยงานส่งเสริม (**B5** · ผัง To-Be · SDD สไลด์ 7) — เพิ่มแถวเมื่อไรต้องเกลี่ย `compensate_percent` ใหม่ให้รวมเป็น 100%
 6. **`compensation_histories.submit_account_month`** — งวดที่ส่งไป STA ด้วย RabbitMQ `sta.compensation.result` (Job 6 · เดิมเป็นไฟล์ `FRBC0001`) · สถานะ I/C/A/N/S/Z ตามเดิม
-7. **`interface_transactions`** — FK แยกประเภทเป็นคอลัมน์ (impact_process_id / sales_summary_id / doc_no) + `data_name` เป็น enum — เลิก `parseInt(impacted_store_code)` ที่ทำเลขศูนย์นำหน้าหาย (ใหม่)
+7. **`interface_transactions`** — FK แยกประเภทเป็นคอลัมน์ (impact_process_id / sales_summary_id / doc_no) + `data_name` เป็น enum ที่ **บังคับด้วย CHECK จริงใน DDL แล้ว (2026-08-25)** — เลิก `parseInt(impacted_store_code)` ที่ทำเลขศูนย์นำหน้าหาย (ใหม่)
+
+### ชุดค่า `interface_transactions.data_name` — 9 ค่า (ปิด)
+
+`data_name` เป็นส่วนหนึ่งของ `UNIQUE (data_name, direction, business_key, period_key)` ที่กันการส่งซ้ำ และเป็นตัวกรองของ watchdog Job 10 — **พิมพ์ผิดตัวเดียวแปลว่ากันซ้ำไม่ทำงานและ watchdog เงียบ** จึงล็อกด้วย `CHECK` ใน DDL (ค่าทั้งหมดเขียนโดย batch ไม่ใช่ input ของผู้ใช้)
+
+| `data_name` | เขียนโดย | `direction` | ปลายทาง / ความหมาย |
+|---|---|---|---|
+| `IAS_SALES_REQUEST` | Job 4 | `OUT` | ไฟล์คำขอยอดขาย `AMS06001O` วางบน EAI S3 |
+| `IMPACT_STORE_SALES` | Job 5 | `IN` | ไฟล์ยอดขายตอบกลับ `AMS06001I` ที่ดึงจาก EAI S3 |
+| `COMPENSATE_INIT_I` · `COMPENSATE_INIT_N` | Job 6 | `OUT` | สถานะ I, C → STA (RabbitMQ) · **Job 10 เฝ้า `_I`** |
+| `COMPENSATE_APPROVE_I` · `COMPENSATE_APPROVE_N` | Job 6 | `OUT` | สถานะ A, N, S, Z → STA (RabbitMQ) · **Job 10 เฝ้า `_I`** |
+| `IMPACT_COMPETITOR` | Job 7 | `INTERNAL` | แทนไฟล์ `BPM06003O` เดิม — เขียน DB ตรง จบที่ `COMPLETED` |
+| `IMPACT_STORE` | Job 8 | `INTERNAL` | แทนไฟล์ `BPM06001O` เดิม |
+| `NEW_STORE` | Job 9 | `INTERNAL` | แทนไฟล์ `BPM06002O` เดิม |
+
+> **กติกาเมื่อเพิ่ม interface ใหม่:** ต้อง `ALTER TABLE interface_transactions DROP CONSTRAINT … ADD CONSTRAINT …` **พร้อมกับ**อัปเดตตารางนี้ในการแก้ครั้งเดียวกัน · ค่าเดิมของระบบ legacy ที่ **ไม่ได้ยกมา** เพราะไม่มี job ไหนเขียนแล้ว: `QSSI_CATEG` (ตัดไปกับ Job 1) · `LINK_SMO_IMPACTSTORE` · `FLAG_SENED_FGI_REPORT_UNCONDITIONAL`
 
 ## ข้อปรับปรุงจากระบบเดิม (P0 × 3 · P1 × 4)
 

@@ -111,7 +111,7 @@ export class BffUserGuard implements CanActivate {
 | --- | --- | --- | --- |
 | DP-5 · อีเมล ✅ ปิดแล้ว 2026-08-14 | ให้ engine ส่งเอง — **ตกไป** เพราะ `triggerEvent` ไม่มี `mailTo`/`mailCc`/`param` ที่ `sendEmail` บังคับ | **เลือกทางนี้:** workflow ให้เลข template ผ่าน `workflow_route.email_id` แล้ว **SBPGI เรียก `sendEmail()` ของ email-lib เอง** · reminder/escalation ที่ไม่ใช่ transition เก็บเลข template ที่ `mas_param` | ปิดแล้ว · เหลือยืนยันกับทีม engine ว่าไม่ส่งซ้ำ |
 | DP-8 · `document_attachments` | ตารางของ SBPGI เอง (สถานะปัจจุบันของแบบ) | ต่อยอด `upload_general` ของระบบเดิม | ยังไม่ตัดสิน |
-| DP-10 · ที่อยู่ของ SBPGI | โมดูลใน store-backend เดิม | backend ใหม่แยกต่างหาก | ยังไม่ตัดสิน · กระทบว่า guard/interceptor ใช้ของเดิมได้เลยหรือต้องเขียนใหม่ |
+| DP-10 ✅ ปิดแล้ว 2026-08-21 · ที่อยู่ของ SBPGI | **เลือกข้อนี้** — โมดูลใน `srm-sps-spsap-store-backend` เดิม | backend ใหม่แยกต่างหาก — ตกไป | ✅ ปิดแล้ว — ใช้ guard/interceptor/response envelope ของ store-backend เดิมได้ทันที ไม่ต้องเขียนใหม่ |
 | DP-6 · `interface_transactions` | ออกแบบใหม่ตาม DDL ปัจจุบัน | ลอกแพตเทิร์น `statement_summary` ของระบบเดิม | ยังไม่ตัดสิน |
 
 ### 5.9 Input / Progress / Output Contract

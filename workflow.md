@@ -68,7 +68,7 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 
 ## Flow ต้นทางถึงปลายทาง (12 ขั้น · เดือนละ 1 รอบใหญ่)
 
-### Stage A — รับและวิเคราะห์ข้อมูลผลกระทบ · Jobs 1–5
+### Stage A — รับและวิเคราะห์ข้อมูลผลกระทบ · Jobs 2–5
 
 1. **คะแนน QSSI รายเดือน — ❌ ไม่อยู่ในขอบเขต SBPGI แล้ว (ตัด Job 1 ImportQSSI · 2026-08-24)** — ระบบ SBP เดิมนำเข้าข้อมูลนี้ลง **`sps_store.fcs_qssi_score`** ให้อยู่แล้วผ่าน `POST /performance/import-qssi` (staging `fcs_tmp_qssi_score` · 23,958,780 แถว) → **SBPGI แค่ `SELECT` อ่านตารางนั้น** ไม่ต้องสร้าง job นำเข้าเอง ไม่ต้อง migrate และ**ไม่ต้องแตะ constraint/index ของตารางเดิม** (ปิดข้อค้าง **DP-4** ไปด้วย — ไม่ต้องขอ sign-off เจ้าของ `performance.service.ts` เพราะไม่มีการเขียนจากฝั่งเรา) · ผู้ใช้ข้อมูลคือ **Job 6** ที่ตรวจความครบของคะแนน 6 หมวดก่อนปล่อยสถานะ INIT
 2. **นำเข้าคู่ร้านถูกกระทบ + ร้านคู่แข่ง** (FGI/FCS · Jobs 2–3) — ทุกวันที่ 7 เวลา 07:00 จาก ALLMAP (SQL Server) → `fgi_impact_stores` (กฎ DENY/ON_PROCESS → W/N/P) และ `fgi_impact_competitors`

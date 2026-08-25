@@ -445,7 +445,7 @@ def _runner_contract_blocks(no: str, pascal: str, steps: list[dict[str, Any]], s
         seen.add(name)
         methods += [f"  // {text}", sig, ret, "  }", ""]
     runner = "\n".join([
-        "// src/batch/runner.ts — สัญญากลางของทุก job (ประกาศครั้งเดียว ใช้ร่วมทั้ง 11 ฉบับ)",
+        "// src/batch/runner.ts — สัญญากลางของทุก job (ประกาศครั้งเดียว ใช้ร่วมทั้ง 10 ฉบับ)",
         "",
         "export interface JobRunContext {",
         "  jobNo: string;",
