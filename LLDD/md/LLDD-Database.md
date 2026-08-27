@@ -519,16 +519,16 @@ RETURNING i.id, i.data_name, i.business_key;
 | Document | DB usage |
 | --- | --- |
 | LLDD-BE-API-Document-List-Search | workflow_transaction / workflow_approver (@srm/glb-workflow)(R), compensation_documents(R), impacted_stores(R), fgi_impact_sales_summaries(R) |
-| LLDD-BE-API-Document-Create-Update | compensation_documents(R/W), workflow_transaction / workflow_approver (@srm/glb-workflow)(W), document_new_stores(R/W), document_competitors(R/W) |
+| LLDD-BE-API-Document-Create-Update | compensation_documents(R/W), workflow_transaction / workflow_approver (@srm/glb-workflow)(W (ผ่าน lib)), document_new_stores(R/W), document_competitors(R/W) |
 | LLDD-BE-API-Document-Detail-Aggregate | compensation_documents(R), impacted_stores(R), document_new_stores(R), document_competitors(R) |
 | LLDD-BE-API-Document-Workflow-Actions | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow)(R (เขียนผ่าน lib)), compensation_documents(W), consideration_logs(W), workflow_transaction (@srm/glb-workflow)(R (เขียนผ่าน lib)) |
-| LLDD-BE-API-Workflow-Instances | fgi_impact_processes / fgi_impact_stores(R/W), compensation_documents(R/W), workflow_transaction (@srm/glb-workflow)(W (โดย lib)), workflow_approver (@srm/glb-workflow)(W) |
+| LLDD-BE-API-Workflow-Instances | fgi_impact_processes / fgi_impact_stores(R/W), compensation_documents(R/W), workflow_transaction (@srm/glb-workflow)(W (โดย lib)), workflow_approver (@srm/glb-workflow)(W (ผ่าน lib)) |
 | LLDD-BE-API-Attachment-Sales-Timeline | document_attachments(R/W), compensation_documents(R), fgi_impact_sales_summaries(R), sales_transactions(R) |
 | LLDD-BE-API-Lookup | impacted_stores (SBPGI) / store · mas_store · sevenshop (SBP เดิม)(R), workflow_status / workflow_state (@srm/glb-workflow · sps_store)(R), business_user (SBP เดิม)(R), auth-backend groups / menus / permissions (ระบบเดิม)(R) |
 | LLDD-BE-API-Report-and-Master-Data | compensation_documents(R), compensation_histories(R), consideration_logs(R), auth-backend group + scope (business_user_group) / prepared approver ของ @srm/glb-workflow(R) |
 | LLDD-BE-Job-Batch-Email-SRM | (backend config: config file/env)(R), (application log แบบ structured)(W), interface_transactions(R/W), email_template (SBP)(R) |
 | LLDD-BE-Database-Structure | 20 target tables (โซน A/B/C)(W), workflow engine 13 ตาราง (sps_store)(R), fcs_qssi_score (sps_store)(R), mas_param / common_code / business_user / email_template (sps_store)(R) |
-| LLDD-BE-Data-Migration-Cutover | ORA FCS_FRN (FGI_IMPACT_* · FCS_QSSI_SCORE · FGI_CONFIRM_RECEIVE_DATA)(R), MSSQL CPA_FRN_FGI (CompensateFlow · CompensateHistory · ImpactProfile · ImpactCostDetail · RunningNumber)(R), 20 target tables (โซน A/B/C)(W), workflow_transaction / workflow_approver / workflow_history (sps_store)(W) |
+| LLDD-BE-Data-Migration-Cutover | ORA FCS_FRN (FGI_IMPACT_* · FCS_QSSI_SCORE · FGI_CONFIRM_RECEIVE_DATA)(R), MSSQL CPA_FRN_FGI (CompensateFlow · CompensateHistory · ImpactProfile · ImpactCostDetail · RunningNumber)(R), 20 target tables (โซน A/B/C)(W), workflow_transaction / workflow_approver / workflow_history (sps_store)(W (ผ่าน lib)) |
 | LLDD-BE-Integration-SBP-Platform | mas_param (sps_store)(R (+ W ครั้งเดียวตอน seed)), common_code / common_code_type (sps_store)(R (+ W ครั้งเดียวตอน seed)), email_template (sps_store)(R), email_sent (sps_store)(W (โดย email-lib)) |
 | LLDD-BE-Workflow-Engine-Definition | workflow (sps_store)(W ครั้งเดียวตอน setup), workflow_version (sps_store)(W ครั้งเดียวตอน setup), workflow_state (sps_store)(W ครั้งเดียวตอน setup), workflow_status (sps_store)(W ครั้งเดียวตอน setup) |
 | LLDD-BE-Job-2-ImportImpactStore | fgi_impact_stores(W) |

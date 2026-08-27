@@ -489,6 +489,45 @@ check("คอลัมน์ของตารางระบบเดิมท�
 check("ชื่อ function ของ engine นอก API 8 ตัว", fn_bad)
 check("ใช้ชื่อคอลัมน์ email ผิดแบบสั่งให้ทำตาม", mail_bad)
 
+# ---------------------------------------- worklist.html ต้องตรงกับ LLDD (งานที่ต้อง trigger event)
+wl_bad: list[str] = []
+_wl = os.path.join(ROOT, "worklist.html")
+if os.path.exists(_wl):
+    import json as _json
+
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import build_lldd_documents as B  # noqa: E402
+
+    with open(_wl, encoding="utf-8") as _fh:
+        _m = re.search(r"const DATA = (\{.*?\});", _fh.read(), re.S)
+    if not _m:
+        wl_bad.append("worklist.html :: หา const DATA ไม่เจอ — สร้างใหม่ด้วย tools/build_worklist.py")
+    else:
+        _tasks = _json.loads(_m.group(1))["tasks"].values()
+        _have = {t["file"].rsplit("/", 1)[-1] for t in _tasks if t.get("triggerEvent")}
+        _want = set(B.WORKFLOW_TRIGGER_CONTRACTS)
+        for _k in sorted(_want - _have):
+            wl_bad.append(f"worklist.html :: {_k} มีหัวข้อ trigger event ใน LLDD แต่การ์ดงานไม่แสดง")
+        for _k in sorted(_have - _want):
+            wl_bad.append(f"worklist.html :: {_k} แสดง trigger event แต่ LLDD ไม่มีหัวข้อนี้")
+        _steps = B.dependency_steps(B.topics())
+        for _t in _tasks:
+            _s = _steps.get(_t["file"])
+            if _s is not None and _t.get("step") not in (None, _s):
+                wl_bad.append(f"worklist.html :: {_t['file']} step {_t.get('step')} ≠ {_s} ของ LLDD")
+
+        # ตาราง runtime ของ engine ห้ามมีป้าย "W" เปล่า — ต้องกำกับว่าเขียนผ่าน lib
+        for _t in _tasks:
+            for _r in _t.get("dbTables", []):
+                _n = str(_r[0]).split("(")[0].strip().split("/")[0].strip()
+                if _n.startswith("workflow") and re.fullmatch(r"\s*W\s*", str(_r[1])):
+                    wl_bad.append(
+                        f"{_t['file']} :: {_r[0]} ป้าย R/W = 'W' เปล่า — ต้องเป็น 'W (ผ่าน lib)' "
+                        "เพราะ SBPGI ห้าม INSERT/UPDATE ตาราง engine ตรง"
+                    )
+
+check("worklist.html ไม่ตรงกับ LLDD (trigger event / ลำดับขั้น)", wl_bad)
+
 # ------------------------------------------------------------------- รายงานผล
 print(f"schema sps_store: {len(schema)} ตาราง · ตรวจ {len(DOC_FILES)} ไฟล์\n")
 print(f"{'ตรวจ':<52}{'ผิด':>5}")

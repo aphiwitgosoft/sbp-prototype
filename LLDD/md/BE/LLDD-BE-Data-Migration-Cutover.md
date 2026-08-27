@@ -109,7 +109,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Data Migration a
 | --- | --- |
 | Input | ไม่มี endpoint ของตัวเอง — input คือ request ที่เอกสารอื่นส่งเข้ามา พร้อม user context จาก BFF header (ดู 5.1) และค่ากำหนดกลางที่อ่านจากระบบเดิม |
 | Progress | ยืนยันปลายทางกับ LLDD-BE-Database-Structure (DDL ต้องนิ่งก่อน); ทำ profiling ต้นทาง: นับแถว/ค่า null/ค่าซ้ำของทุกตารางที่จะย้าย; เขียน mapping ต่อคอลัมน์ พร้อมกฎแปลง (พ.ศ.->ค.ศ. · lpad store_code · polymorphic key -> typed FK); Dry-run บน environment ทดสอบ แล้วแก้ reject rule จนแถวที่ reject อธิบายได้ทุกแถว |
-| Output | 20 target tables (โซน A/B/C); workflow_transaction / workflow_approver / workflow_history (sps_store) |
+| Output | 20 target tables (โซน A/B/C) |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -165,7 +165,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Data Migration a
 | ORA FCS_FRN (FGI_IMPACT_* · FCS_QSSI_SCORE · FGI_CONFIRM_RECEIVE_DATA) | R | ต้นทางฝั่ง FGI/FCS |
 | MSSQL CPA_FRN_FGI (CompensateFlow · CompensateHistory · ImpactProfile · ImpactCostDetail · RunningNumber) | R | ต้นทางฝั่ง K2 document |
 | 20 target tables (โซน A/B/C) | W | ปลายทางตาม DDL ของ LLDD-BE-Database-Structure |
-| workflow_transaction / workflow_approver / workflow_history (sps_store) | W | เปิด transaction ให้เอกสารที่ยังไม่จบ flow |
+| workflow_transaction / workflow_approver / workflow_history (sps_store) | W (ผ่าน lib) | เปิด transaction ให้เอกสารที่ยังไม่จบ flow ด้วย initializeWorkflow() + addPreApprover() — **ห้าม INSERT ตรง** แม้เป็นสคริปต์ย้ายข้อมูล |
 | fcs_monthly_sales (sps_store) | R | ใช้ cross-check ยอดขายรายเดือนเท่านั้น — แทนยอดขายรายวันไม่ได้ |
 
 ## 9. Processing Flow

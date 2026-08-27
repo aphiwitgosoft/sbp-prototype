@@ -287,8 +287,8 @@ export async function runLlddBeJob8BStartinternalworkflow(ctx, services) {
 | impacted_stores | R | opt_dv_user_id สำหรับ group อีเมลราย DV และเงื่อนไข Gate (ต้องไม่ว่าง) |
 | fgi_impact_stores | R/W | อ่าน candidate + เขียน W/Y/N |
 | compensation_documents | R/W | ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency |
-| workflow_transaction (@srm/glb-workflow · sps_store) | W | เปิด instance ผ่าน engine — ห้าม insert ตรง |
-| workflow_approver (@srm/glb-workflow · sps_store) | W | prepared approver ขั้นแรก state 06 — ผ่าน engine |
+| workflow_transaction (@srm/glb-workflow · sps_store) | W (ผ่าน lib) | เปิด instance ด้วย initializeWorkflow() — ห้าม insert ตรง |
+| workflow_approver (@srm/glb-workflow · sps_store) | W (ผ่าน lib) | prepared approver ขั้นแรก state 06 ด้วย addPreApprover() — ห้าม insert ตรง |
 | (backend config) | R | ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · เลข template ของ workflow มาจาก workflow_route.email_id |
 
 ## 9. Skeleton Code (Batch Job 8b)
@@ -612,8 +612,8 @@ repository ของ Job 8b ประกาศเป็น factory provider (`{p
 | impacted_stores | R | opt_dv_user_id สำหรับ group อีเมลราย DV และเงื่อนไข Gate (ต้องไม่ว่าง) | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | fgi_impact_stores | R/W | อ่าน candidate + เขียน W/Y/N | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | compensation_documents | R/W | ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| workflow_transaction (@srm/glb-workflow · sps_store) | W | เปิด instance ผ่าน engine — ห้าม insert ตรง | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| workflow_approver (@srm/glb-workflow · sps_store) | W | prepared approver ขั้นแรก state 06 — ผ่าน engine | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| workflow_transaction (@srm/glb-workflow · sps_store) | W (ผ่าน lib) | เปิด instance ด้วย initializeWorkflow() — ห้าม insert ตรง | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| workflow_approver (@srm/glb-workflow · sps_store) | W (ผ่าน lib) | prepared approver ขั้นแรก state 06 ด้วย addPreApprover() — ห้าม insert ตรง | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | (backend config) | R | ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · เลข template ของ workflow มาจาก workflow_route.email_id | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql

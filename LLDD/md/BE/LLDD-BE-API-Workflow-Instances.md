@@ -52,7 +52,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | --- | --- |
 | Input | POST /api/v1/sbpgi/workflow/instances; GET /api/v1/sbpgi/workflow/instances/{id}; GET /api/v1/sbpgi/workflow/summary |
 | Progress | Validate service token and idempotency key; Load impact process and current workflow_generation_status; Reject if status is already Y and return existing doc/instance idempotently; Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N |
-| Output | fgi_impact_processes / fgi_impact_stores; compensation_documents; workflow_approver (@srm/glb-workflow) |
+| Output | fgi_impact_processes / fgi_impact_stores; compensation_documents; interface_transactions |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -240,7 +240,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | fgi_impact_processes / fgi_impact_stores | R/W | อ่านข้อมูล impact และอัปเดต workflow_generation_status W/Y/N |
 | compensation_documents | R/W | create-if-missing จาก impact process และผูก docNo |
 | workflow_transaction (@srm/glb-workflow) | W (โดย lib) | initializeWorkflow() แทน K2 StartInstance — ห้าม INSERT ตรง |
-| workflow_approver (@srm/glb-workflow) | W | addPreApprover state 06 |
+| workflow_approver (@srm/glb-workflow) | W (ผ่าน lib) | addPreApprover() ปักผู้รับงาน state 06 — **ห้าม INSERT ตรง** |
 | workflow_status / workflow_state (@srm/glb-workflow · sps_store) | R | lookup statusCode/status และ state แรก — ตาราง document_statuses/workflow_sections ของ SBPGI ถูกตัดแล้ว |
 | interface_transactions | W | บันทึกผลเรียกจาก Job 8b · ตาราง job_run_histories ถูกตัด 2026-08-06 — ผลการรันไปที่ application log |
 
@@ -551,7 +551,7 @@ export class FgiImpactStore {
 | Object | R/W | ใช้ของระบบเดิมตัวไหน |
 | --- | --- | --- |
 | workflow_transaction | W (โดย lib) | workflow engine @srm/glb-workflow |
-| workflow_approver | W | workflow engine @srm/glb-workflow |
+| workflow_approver | W (ผ่าน lib) | workflow engine @srm/glb-workflow |
 | workflow_status | R | workflow engine @srm/glb-workflow |
 | workflow_state | R | workflow engine @srm/glb-workflow |
 
@@ -705,7 +705,7 @@ export class SbpgiWorkflowInstancesBffController {
 | compensation_documents | R/W | create-if-missing จาก impact process และผูก docNo |
 | interface_transactions | W | บันทึกผลเรียกจาก Job 8b · ตาราง job_run_histories ถูกตัด 2026-08-06 — ผลการรันไปที่ application log |
 | workflow_transaction | W (โดย lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
-| workflow_approver | W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| workflow_approver | W (ผ่าน lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_status | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_state | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 

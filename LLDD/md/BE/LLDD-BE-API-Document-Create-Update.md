@@ -120,7 +120,7 @@ INSERT INTO compensation_documents (
 | --- | --- |
 | Input | POST /api/v1/sbpgi/document; PUT /api/v1/sbpgi/document/{docNo} |
 | Progress | Validate required fields; Check duplicate store/month; Generate docNo; Insert compensation_documents |
-| Output | compensation_documents; workflow_transaction / workflow_approver (@srm/glb-workflow); document_new_stores |
+| Output | compensation_documents; document_new_stores; document_competitors |
 
 ### 5.90 Endpoint Implementation Contract
 
@@ -260,7 +260,7 @@ Update document partial sections
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
 | compensation_documents | R/W | สร้างหัวเอกสารและแก้ไข section หลัก |
-| workflow_transaction / workflow_approver (@srm/glb-workflow) | W | เปิด workflow งานแรกตอนสร้างเอกสาร |
+| workflow_transaction / workflow_approver (@srm/glb-workflow) | W (ผ่าน lib) | เปิด workflow งานแรกตอนสร้างเอกสารด้วย initializeWorkflow() + addPreApprover() — **ห้าม INSERT ตรง** |
 | document_new_stores | R/W | ร้านเปิดใหม่และ % ชดเชย |
 | document_competitors | R/W | ร้านคู่แข่งในเอกสาร |
 | document_running_numbers | R/W | ตัวนับเลขเอกสารต่อปี ค.ศ. — ออกเลข YYYY/xxxxx แบบ atomic (INSERT … ON CONFLICT DO UPDATE … RETURNING) |
@@ -563,8 +563,8 @@ export class DocumentNewStore {
 
 | Object | R/W | ใช้ของระบบเดิมตัวไหน |
 | --- | --- | --- |
-| workflow_transaction | W | workflow engine @srm/glb-workflow |
-| workflow_approver | W | workflow engine @srm/glb-workflow |
+| workflow_transaction | W (ผ่าน lib) | workflow engine @srm/glb-workflow |
+| workflow_approver | W (ผ่าน lib) | workflow engine @srm/glb-workflow |
 
 #### 9.7 Repository Providers + Module wiring
 
@@ -713,8 +713,8 @@ export class SbpgiDocumentCreateUpdateBffController {
 | document_running_numbers | R/W | ตัวนับเลขเอกสารต่อปี ค.ศ. — ออกเลข YYYY/xxxxx แบบ atomic (INSERT … ON CONFLICT DO UPDATE … RETURNING) |
 | document_cost_details | R/W | ยอดชดเชยแยกรายเดือน/รายร้านเปิดใหม่ (cost_year/cost_month · cost_target · cost_amount · _n / _nc) |
 | document_external_factors | R/W | ปัจจัยภายนอกในเอกสาร |
-| workflow_transaction | W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
-| workflow_approver | W | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| workflow_transaction | W (ผ่าน lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| workflow_approver | W (ผ่าน lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 
 #### 10.2 SQL จริงต่อ Endpoint
 

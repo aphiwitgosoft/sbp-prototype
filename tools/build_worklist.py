@@ -162,7 +162,9 @@ def build_model() -> dict:
     sqls = parse_sql_by_path()
     preds = B.document_dependencies(topics)
     billable = [t for t in topics if not B.is_document_detail_role_doc(t.file)]
-    steps = B.dependency_steps(billable)
+    # ลำดับขั้นต้องคิดจาก topic "ทั้งหมด" (รวม role pack 5 ฉบับที่ชั่วโมงรวมอยู่ในเอกสารแม่)
+    # ไม่งั้น FE-Testing-Delivery จะได้ step 5 ขณะที่ build_planner_tasks.py ได้ 6 — ต้องตรงกัน
+    steps = B.dependency_steps(topics)
     # ตารางเวลาแบบรู้จัก dependency + คิวของเจ้าของงาน (ชั่วโมงรวม impl + unit test)
     sched = B.build_topic_schedule(billable)
     base = min(s for s, _ in sched.values()) if sched else None
@@ -193,6 +195,8 @@ def build_model() -> dict:
             "acceptance": list(t.acceptance),
             "tests": list(t.tests),
             "dbTables": [list(d) for d in t.db_tables],
+            # หัวข้อ Workflow Trigger Event Contract ของ LLDD — แหล่งเดียวกับ build_lldd_documents.py
+            "triggerEvent": [list(r) for r in B.WORKFLOW_TRIGGER_CONTRACTS.get(t.file.rsplit("/", 1)[-1], [])],
             "apis": [f"{a.method} {a.path}" for a in t.apis],
             "deps": sorted(slug(d) for d in preds.get(t.file, set())),
             "step": steps.get(t.file),
@@ -477,7 +481,7 @@ function renderHome(){
       <span class="tag ${t.track}">${t.track}</span>
       <div class="t">${esc(t.title)}</div>
       <div class="d">${esc(t.objective).slice(0,120)}…</div>
-      <div class="d" style="margin-top:7px">👤 ${esc(t.ownerShort)} · ⏱ ${t.total} ชม. · 🔌 ${t.apis.length} API</div>
+      <div class="d" style="margin-top:7px">👤 ${esc(t.ownerShort)} · ⏱ ${t.total} ชม. · 🔌 ${t.apis.length} API${t.triggerEvent.length?' · <span title="ต้องเรียก workflow engine">⚙️ WF</span>':''}</div>
     </a>`).join('')+`</div>`;
   }).join('')}`;
 }
@@ -510,6 +514,9 @@ function renderTask(id){
   ${t.dbTables.length? table(['ตาราง / Object','R/W','การใช้งาน'],
       t.dbTables.map(d=>[dbPill(String(d[0]).replace('sps_store.','').split(/[ /(]/)[0])+' <span class="mono" style="color:var(--muted);font-size:12px">'+esc(d[0])+'</span>', md(d[1]), md(d[2])]))
     : '<p class="empty">— ไม่ระบุ —</p>'}
+  ${t.triggerEvent.length? `<h2>6b. Workflow Trigger Event <small style="font-weight:400;color:var(--muted)">— งานนี้ต้องเรียก @srm/glb-workflow</small></h2>
+  <div class="note">🔴 ตาราง <code>sps_store.workflow_*</code> เป็นของ lib — <b>อ่านอย่างเดียว</b> ห้าม INSERT/UPDATE ตรง · ทุกการเรียกต้องผ่าน <code>WorkflowGateway</code> กลาง</div>
+  ${table(['จุดที่เรียก','Engine function','พารามิเตอร์หลัก','กติกา / transaction boundary'], t.triggerEvent.map(r=>r.map(md)))}` : ''}
   <h2>7. เกณฑ์ตรวจรับ</h2>${list(t.acceptance)}
   <h2>8. ขอบเขต Unit Test${t.unitTest?` <small style="font-weight:400;color:var(--muted)">— ${t.unitTest} ชั่วโมง</small>`:''}</h2>
   ${t.unitTestCases.length? table(['สิ่งที่ทดสอบ','ประเภท','เกณฑ์ผ่าน'], t.unitTestCases.map(r=>r.map(md)))
@@ -647,7 +654,7 @@ function renderBoard(){
           <span class="tag ${t.track}">${t.track}</span>
           <div class="kt">${esc(t.title)}</div>
           <div class="km"><span>👤 ${esc(t.ownerShort)}</span><span>⏱ ${t.included?'incl.':t.total+'h'}</span>
-            <span>🔌 ${t.apis.length}</span>${t.step?`<span>📶 ${t.step}</span>`:''}
+            <span>🔌 ${t.apis.length}</span>${t.triggerEvent.length?'<span title="ต้องเรียก workflow engine">⚙️ WF</span>':''}${t.step?`<span>📶 ${t.step}</span>`:''}
             ${blocked.length?`<span class="lock" title="รอ ${blocked.length} งาน">🔒 ${blocked.length}</span>`:''}</div>
           <a class="open" draggable="false" href="#/task/${t.id}">เปิดรายละเอียด →</a>
         </div>`}).join('')||'<p class="empty" style="margin:4px">— ว่าง —</p>'}
