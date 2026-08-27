@@ -220,6 +220,8 @@ RETURNING i.id, i.data_name, i.business_key;
 
 ## 7. API Contract
 
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
+
 ## 8. Reference DB Mapping (No Database Page Work)
 
 ส่วนนี้เป็นข้อมูลอ้างอิงสำหรับการ implement API/Job เท่านั้น ไม่ใช่งานสร้างหน้า Database, ไม่ใช่งานออกแบบ DB page และไม่ถูกนับเป็น deliverable แยกของ FE/BE
@@ -489,7 +491,7 @@ export class ExportImpactStoreToFsJob {
       // ขั้นที่ 9 (decision): ได้ publisher confirm? · TODO: เลี่ยง dual-write: การ sync สถานะกับการส่ง message แยก commit กัน · ส่งซ้ำได้เพราะ STA กันซ้ำด้วย message_id
       const ok09 = await this.service.check09Publish(state);
       if (!ok09) throw new JobFailedError('JOB6_STEP09', 'คง outbox เป็น READY/FAILED_RETRY ให้ dispatcher ส่งซ้ำ — ไม่ rollback การ sync');
-      // ขั้นที่ 10: update outbox: status READY → SENT (บันทึก sent_at) · TODO: ACK เชิงธุรกิจมาทีหลังทาง POST /interfaces/sta/ack · Job 10 เฝ้าแถวที่ค้างไม่ ACK ≥ 1 วัน
+      // ขั้นที่ 10: update outbox: status READY → SENT (บันทึก sent_at) · TODO: ACK เชิงธุรกิจมาทีหลังทาง POST /sbpgi/interface/sta/ack · Job 10 เฝ้าแถวที่ค้างไม่ ACK ≥ 1 วัน
       await this.service.step10Insert(state);
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
@@ -694,7 +696,7 @@ export class JobFailureNotifier {
 | 7 | insert outbox: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N (direction = OUT · status = READY) (อยู่ใน transaction เดียวกับ 10 mutation — commit แล้วข้อมูลจะไม่หาย แม้ broker ล่ม) |
 | 8 | publish ไป RabbitMQ exchange sbpgi.interface (routing sta.compensation.result) (นอก DB transaction · persistent + publisher confirm + mandatory) |
 | 9 | ได้ publisher confirm? \| No: คง outbox เป็น READY/FAILED_RETRY ให้ dispatcher ส่งซ้ำ — ไม่ rollback การ sync (เลี่ยง dual-write: การ sync สถานะกับการส่ง message แยก commit กัน · ส่งซ้ำได้เพราะ STA กันซ้ำด้วย message_id) |
-| 10 | update outbox: status READY → SENT (บันทึก sent_at) (ACK เชิงธุรกิจมาทีหลังทาง POST /interfaces/sta/ack · Job 10 เฝ้าแถวที่ค้างไม่ ACK ≥ 1 วัน) |
+| 10 | update outbox: status READY → SENT (บันทึก sent_at) (ACK เชิงธุรกิจมาทีหลังทาง POST /sbpgi/interface/sta/ack · Job 10 เฝ้าแถวที่ค้างไม่ ACK ≥ 1 วัน) |
 | 11 | จบ |
 
 ## 11. Acceptance Criteria

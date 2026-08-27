@@ -48,14 +48,16 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Attachment S
 
 ### 5.1 Attachment Storage and Security Design
 
-Attachment API ต้องจัดการ binary file จริง ไม่ใช่บันทึก metadata อย่างเดียว โดย BE เป็นเจ้าของ storage adapter, virus scan, authorization และ streaming response
+Attachment API จัดการ binary file จริง ไม่ใช่บันทึกแต่ metadata — แต่ **SBPGI ไม่ได้เป็นเจ้าของ storage layer** · ตามมติ **DP-8 (ปิด 2026-08-24)** SBPGI เก็บแค่ metadata ใน `document_attachments` ของตัวเอง แล้ว **ยืม service S3 ของระบบ SBP เดิม** (`POST /statement/upload-file-aws` · `download-file-aws`) — สิ่งที่ SBPGI เป็นเจ้าของจริงคือ **validation · authorization · metadata · การแปลงเป็น stream ให้ FE**
+
+🔴 **wrapper ของระบบเดิมเป็น base64 ไม่ใช่ stream** (ตรวจ `store-backend` 2026-08-26) — สายส่งจริงคือ `FE ← binary stream ← SBPGI BE ← base64 JSON ← /statement/{upload,download}-file-aws ← S3` · ไฟล์ 5 MB จะกลายเป็น ~6.7 MB ใน JSON (body limit ของ store-backend คือ 100 MB) · ปุ่ม **ดาวน์โหลดทั้งหมด (.zip)** ห้ามโหลดทุกไฟล์เข้า memory พร้อมกัน ให้ดึงทีละไฟล์แล้ว stream เข้า zip — รายละเอียดเต็มอยู่ที่ **LLDD-BE-Integration-SBP-Platform** 5.3
 
 | Item | Required value / convention | Developer note |
 | --- | --- | --- |
-| Storage provider | `OBJECT_STORAGE` ผ่าน adapter กลาง | รองรับ S3-compatible/MinIO/NAS ตาม env โดย service code ไม่ผูก vendor โดยตรง |
-| Bucket/container | `sbpgi-{env}-attachments` | แยก dev/test/prod และกำหนด lifecycle/backup ที่ infra |
+| Storage provider | **service S3 ของระบบ SBP เดิม** (`AwsService` ผ่าน `/statement/{upload,download}-file-aws`) | 🔴 มติ DP-8 — SBPGI **ห้ามสร้าง storage adapter/ไม่ต่อ S3 SDK เอง** และไม่ต้องเลือก vendor · เก็บ `storage_provider` ไว้เป็น metadata เผื่ออนาคตเท่านั้น |
+| Bucket/container | **bucket ของระบบเดิม** (ทีม SBP เป็นผู้กำหนด) | ⚠️ ต้องยืนยันกับทีม store-backend ว่าไฟล์ของ SBPGI แยก prefix/bucket หรือปนกับของเดิม — lifecycle/backup เป็นของ infra ฝั่งนั้น |
 | Object key | `documents/{year}/{docNoSafe}/{attachId}/{sha256Prefix}-{safeFileName}` | `docNoSafe` แทน `/` ด้วย `-`; sanitize filename ก่อนใช้ใน key |
-| Quarantine path | `quarantine/{runDate}/{uuid}` | ไฟล์ใหม่ต้องเข้า quarantine ก่อน scan; ยัง download ไม่ได้ |
+| Quarantine / AV | ⚠️ **ยังไม่ยืนยันว่าแพลตฟอร์มมีตัวสแกน** | 🔴 ไม่พบ AV scanner ในเอกสารวิเคราะห์ระบบเดิมเลย · จนกว่าจะยืนยัน ให้ `scan_status` เริ่มที่ `PENDING` และ **ตัดสินร่วมกับทีม infra** ว่าจะสแกนที่ไหน (ฝั่ง S3 event · ฝั่ง SBPGI · หรือยอมรับความเสี่ยง) — ห้ามสมมติว่ามีของให้ใช้แล้ว |
 | Allowed extension | vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv | ตรวจทั้ง extension และ content type/magic bytes เท่าที่ platform รองรับ |
 | AV scan status | PENDING -> CLEAN หรือ BLOCKED/FAILED | download อนุญาตเฉพาะ CLEAN; BLOCKED/FAILED คืน FILE_SCAN_BLOCKED |
 | Max size | 5 MB ต่อไฟล์ | เกินให้คืน 413 FILE_TOO_LARGE ก่อน upload เข้า storage |
@@ -81,9 +83,9 @@ Attachment API ต้องจัดการ binary file จริง ไม่
 | --- | --- | --- |
 | 1. Authorize | ตรวจผู้ใช้มีสิทธิ์อ่านเอกสารและ canUploadAttachment/current task owner | ไม่มีสิทธิ์คืน 403 |
 | 2. Validate multipart | ตรวจ file present, size, extension, content type, sectionCode | คืน 400/413/415 ตาม catalog |
-| 3. Hash and quarantine | stream file คำนวณ sha256 และเขียน quarantine object | storage fail คืน 503 และไม่ insert metadata CLEAN |
-| 4. Scan | เรียก AV scanner แบบ sync หรือ async ตาม platform; ระหว่าง PENDING ห้าม download | พบไวรัสตั้ง BLOCKED และคืน FILE_SCAN_BLOCKED |
-| 5. Promote | เมื่อ CLEAN ให้ move/copy ไป objectKey ถาวรและ insert/update metadata | metadata ต้องมี objectKey และ scanStatus=CLEAN |
+| 3. Hash + ส่งขึ้น storage | คำนวณ sha256 จาก buffer แล้วเรียก `POST /statement/upload-file-aws` (**ส่งเป็น base64**) เก็บ objectKey ที่ได้กลับมา | service ของระบบเดิม fail คืน 503 และ **ไม่ insert metadata** |
+| 4. Scan | ⚠️ **ขึ้นกับข้อค้าง AV ด้านบน** — ถ้ายังไม่มีตัวสแกน ให้ค้างที่ `PENDING` ตามนโยบายที่ตกลง | พบไวรัส (เมื่อมีตัวสแกน) ตั้ง BLOCKED และคืน FILE_SCAN_BLOCKED |
+| 5. Insert metadata | insert `document_attachments` พร้อม objectKey · sha256 · scan_status | 🔴 ไม่มีขั้น move/promote — wrapper ของระบบเดิมไม่มี API ย้าย object ให้ SBPGI เรียก |
 | 6. Respond | คืน attachId, fileName, fileSizeBytes, scanStatus, uploadedAt | ไม่คืน bucket/objectKey ให้ FE |
 
 ### 5.4 Download Flow and Authorization
@@ -92,15 +94,15 @@ Attachment API ต้องจัดการ binary file จริง ไม่
 | --- | --- | --- |
 | 1. Validate path | ตรวจ docNo/attachId และ attachment belongs to docNo | ไม่พบคืน 404 |
 | 2. Authorize read | สิทธิ์เท่ากับ document read หรือ report/admin ที่ได้รับสิทธิ์ | ไม่มีสิทธิ์คืน 403 |
-| 3. Check scan | อนุญาตเฉพาะ scanStatus=CLEAN และ deletedFlag=false | PENDING/BLOCKED/FAILED คืน 422 FILE_SCAN_BLOCKED |
-| 4. Stream | stream binary ผ่าน BE หรือ signed internal stream ตาม platform | ตั้ง Content-Type และ Content-Disposition จาก metadata |
-| 5. Audit | บันทึก download audit เมื่อ policy กำหนด | ต้อง trace userId/docNo/attachId/requestId ได้ |
+| 3. Check scan | อนุญาตเฉพาะ `scan_status` ที่นโยบายกำหนดว่าดาวน์โหลดได้ และ `deleted_flag = false` | 🔴 **ถ้ายังไม่มี AV scanner** (ดูข้อค้างใน 5.1) การบังคับ `CLEAN` อย่างเดียวจะทำให้ **ดาวน์โหลดไม่ได้เลยทั้งระบบ** — ต้องเคาะนโยบายก่อน go-live: เปิดให้ `PENDING` ดาวน์โหลดได้ หรือรอตัวสแกน · BLOCKED/FAILED คืน 422 FILE_SCAN_BLOCKED เสมอ |
+| 4. Stream | เรียก `POST /statement/download-file-aws` ได้ **base64** แล้ว decode เป็น buffer ก่อน stream ออกไป | 🔴 **ไม่มี signed URL ให้ใช้** — wrapper ของระบบเดิมไม่คืน presigned url · ตั้ง Content-Type และ Content-Disposition จาก metadata |
+| 5. Audit | บันทึกร่องรอยการดาวน์โหลดที่ **application log** (structured) | 🔴 ตาราง `audit_logs` ถูกตัดไปแล้ว 2026-08-07 — ห้ามอ้างตารางนี้ · ต้อง trace userId/docNo/attachId/requestId ได้จาก log |
 
 ### 5.5 Download Endpoint Contract
 
 | Method | Path | Response |
 | --- | --- | --- |
-| GET | /api/v1/documents/{docNo}/attachments/{attachId}/download | binary stream; headers Content-Type, Content-Length, Content-Disposition |
+| GET | /api/v1/sbpgi/document/{docNo}/attachments/{attachId}/download | binary stream; headers Content-Type, Content-Length, Content-Disposition |
 
 ### 5.6 Attachment Repository SQL Reference
 
@@ -131,7 +133,7 @@ WHERE doc_no = :docNo
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | POST /api/v1/documents/{docNo}/attachments; GET /api/v1/documents/{docNo}/attachments/{attachId}/download; GET /api/v1/documents/{docNo}/attachments/download-all |
+| Input | POST /api/v1/sbpgi/document/{docNo}/attachments; GET /api/v1/sbpgi/document/{docNo}/attachments/{attachId}/download; GET /api/v1/sbpgi/document/{docNo}/attachments/download-all |
 | Progress | Validate docNo/permission; Validate file size/type; Store file metadata; Load sales summary and transactions |
 | Output | document_attachments |
 
@@ -139,11 +141,11 @@ WHERE doc_no = :docNo
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| POST /api/v1/documents/{docNo}/attachments | Upload attachment API | Validate docNo/permission | file >5MB returns 413 |
-| GET /api/v1/documents/{docNo}/attachments/{attachId}/download | ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน stream | Validate file size/type | unsupported file type returns 415 |
-| GET /api/v1/documents/{docNo}/attachments/download-all | ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (ไม่คืน zip เปล่า) | Store file metadata | sales windows are ordered |
-| GET /api/v1/documents/{docNo}/sales | Sales detail API | Load sales summary and transactions | timeline newest/oldest order matches FE expectation |
-| GET /api/v1/documents/{docNo}/timeline | Timeline/history API | Return timeline ordered by action time | file >5MB returns 413 |
+| POST /api/v1/sbpgi/document/{docNo}/attachments | Upload attachment API | Validate docNo/permission | file >5MB returns 413 |
+| GET /api/v1/sbpgi/document/{docNo}/attachments/{attachId}/download | ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน stream | Validate file size/type | unsupported file type returns 415 |
+| GET /api/v1/sbpgi/document/{docNo}/attachments/download-all | ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (ไม่คืน zip เปล่า) | Store file metadata | sales windows are ordered |
+| GET /api/v1/sbpgi/document/{docNo}/sales | Sales detail API | Load sales summary and transactions | timeline newest/oldest order matches FE expectation |
+| GET /api/v1/sbpgi/document/{docNo}/timeline | Timeline/history API | Return timeline ordered by action time | file >5MB returns 413 |
 
 ### 5.91 Backend Execution Sequence
 
@@ -155,6 +157,18 @@ WHERE doc_no = :docNo
 | 4 | Load sales summary and transactions | sales not found |
 | 5 | Return timeline ordered by action time | timeline empty |
 
+### 5.92 Workflow Trigger Event Contract
+
+งานชิ้นนี้ **ต้องเรียก workflow engine** ตามตารางด้านล่าง · ชื่อ function ยึด API 8 ตัวของ `@srm/glb-workflow` ตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — รายละเอียด signature และตารางที่ engine เขียน ดู **LLDD-BE-Workflow-Engine-Definition** หัวข้อ 5.3
+
+| จุดที่เรียก (call site) | Engine function | พารามิเตอร์หลัก | กติกา / transaction boundary |
+| --- | --- | --- | --- |
+| แท็บประวัติ (timeline) | `getHistory` | versionId, referenceId | ⚠️ ขึ้นกับ DP-7 — ถ้าเลือกอ่าน engine ต้อง join `consideration_logs` เพิ่ม decision code / ไฟล์แนบ / ความเห็นที่ engine ไม่มี |
+
+- 🔴 กติกาเหล็ก: ตาราง `sps_store.workflow_*` (13 ตาราง) เป็นของ lib — SBPGI **R เท่านั้น** ห้าม INSERT/UPDATE/DELETE ตรงในทุกกรณี
+- ทุกการเรียก engine ต้องผ่านตัวห่อกลาง `WorkflowGateway` ที่นิยามใน **LLDD-BE-API-Common-Contracts** (timeout · retry · map error เข้า envelope) ห้าม import lib ตรงจาก service
+- unit test ต้อง mock engine และครอบอย่างน้อย: เรียกสำเร็จ · engine โยน error แล้ว rollback ฝั่ง SBPGI ครบ · เรียกซ้ำด้วย referenceId เดิมไม่เกิดผลซ้ำ
+
 ## 6. Button / User Action Mapping
 
 | Action | Trigger | API / Service | Expected Result |
@@ -165,7 +179,7 @@ WHERE doc_no = :docNo
 
 ## 7. API Contract
 
-### POST /api/v1/documents/{docNo}/attachments
+### POST /api/v1/sbpgi/document/{docNo}/attachments
 
 Upload attachment API
 
@@ -201,7 +215,7 @@ Upload attachment API
 | attachId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/documents/{docNo}/attachments/{attachId}/download
+### GET /api/v1/sbpgi/document/{docNo}/attachments/{attachId}/download
 
 ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน stream
 
@@ -233,7 +247,7 @@ Upload attachment API
 | contentType | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | note | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/documents/{docNo}/attachments/download-all
+### GET /api/v1/sbpgi/document/{docNo}/attachments/download-all
 
 ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (ไม่คืน zip เปล่า)
 
@@ -265,7 +279,7 @@ Upload attachment API
 | contentType | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/documents/{docNo}/sales
+### GET /api/v1/sbpgi/document/{docNo}/sales
 
 Sales detail API
 
@@ -308,7 +322,7 @@ Sales detail API
 | windows[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | windows[].rows | array<object> | Yes | JSON array; element type shown in Type column |
 
-### GET /api/v1/documents/{docNo}/timeline
+### GET /api/v1/sbpgi/document/{docNo}/timeline
 
 Timeline/history API
 
@@ -378,7 +392,7 @@ Timeline/history API
 
 | Endpoint | จุดประสงค์ | เหตุผล |
 | --- | --- | --- |
-| GET /api/v1/documents/{docNo}/timeline | Timeline/history API | **reference — implement ที่เอกสาร `LLDD-BE-API-Document-Workflow-Actions`** (1 เส้น = 1 เจ้าของ ไม่ประกาศ controller ซ้ำ ไม่งั้น NestJS จะ register ทับกันเงียบ ๆ) |
+| GET /api/v1/sbpgi/document/{docNo}/timeline | Timeline/history API | **reference — implement ที่เอกสาร `LLDD-BE-API-Document-Workflow-Actions`** (1 เส้น = 1 เจ้าของ ไม่ประกาศ controller ซ้ำ ไม่งั้น NestJS จะ register ทับกันเงียบ ๆ) |
 
 #### 9.2 Controller (store-backend)
 
@@ -388,49 +402,49 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { HttpHeaderGuard } from '../../guards/http-header.guard';
 import { UserId } from '../../common/decorators/user-id.decorator';
 import { SbpgiAttachmentSalesTimelineService } from './sbpgi-attachment-sales-timeline.service';
-import { CreateDocumentsAttachmentsBodyDto } from './dto/sbpgi-attachment-sales-timeline.dto';
+import { CreateSbpgiDocumentAttachmentsBodyDto } from './dto/sbpgi-attachment-sales-timeline.dto';
 
 // LLDD BE - API Attachment Sales and Timeline
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sbpgi/documents')
+@Controller('sbpgi/sbpgi/document')
 @UseGuards(HttpHeaderGuard)
 export class SbpgiAttachmentSalesTimelineController {
   constructor(private readonly service: SbpgiAttachmentSalesTimelineService) {}
 
-  // POST /api/v1/documents/{docNo}/attachments — Upload attachment API
-  @Post(':docNo/attachments')
-  createDocumentsAttachments(
+  // POST /api/v1/sbpgi/document/{docNo}/attachments — Upload attachment API
+  @Post('document/:docNo/attachments')
+  createSbpgiDocumentAttachments(
     @Param('docNo') docNo: string,
-    @Body() body: CreateDocumentsAttachmentsBodyDto,
+    @Body() body: CreateSbpgiDocumentAttachmentsBodyDto,
     @UserId() userId: string,
   ) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.createDocumentsAttachments(docNo, body, userId);
+    return this.service.createSbpgiDocumentAttachments(docNo, body, userId);
   }
 
-  // GET /api/v1/documents/{docNo}/attachments/{attachId}/download — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป…
-  @Get(':docNo/attachments/:attachId/download')
-  getDocumentsAttachmentsDownload(
+  // GET /api/v1/sbpgi/document/{docNo}/attachments/{attachId}/download — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป…
+  @Get('document/:docNo/attachments/:attachId/download')
+  getSbpgiDocumentAttachmentsDownload(
     @Param('docNo') docNo: string,
     @Param('attachId') attachId: string,
     @UserId() userId: string,
   ) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getDocumentsAttachmentsDownload(docNo, attachId, userId);
+    return this.service.getSbpgiDocumentAttachmentsDownload(docNo, attachId, userId);
   }
 
-  // GET /api/v1/documents/{docNo}/attachments/download-all — ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (…
-  @Get(':docNo/attachments/download-all')
-  getDocumentsAttachmentsDownloadAll(@Param('docNo') docNo: string, @UserId() userId: string) {
+  // GET /api/v1/sbpgi/document/{docNo}/attachments/download-all — ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (…
+  @Get('document/:docNo/attachments/download-all')
+  getSbpgiDocumentAttachmentsDownloadAll(@Param('docNo') docNo: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getDocumentsAttachmentsDownloadAll(docNo, userId);
+    return this.service.getSbpgiDocumentAttachmentsDownloadAll(docNo, userId);
   }
 
-  // GET /api/v1/documents/{docNo}/sales — Sales detail API
-  @Get(':docNo/sales')
-  getDocumentsSales(@Param('docNo') docNo: string, @UserId() userId: string) {
+  // GET /api/v1/sbpgi/document/{docNo}/sales — Sales detail API
+  @Get('document/:docNo/sales')
+  getSbpgiDocumentSales(@Param('docNo') docNo: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getDocumentsSales(docNo, userId);
+    return this.service.getSbpgiDocumentSales(docNo, userId);
   }
 }
 ```
@@ -448,8 +462,8 @@ import {
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
 // property ที่ไม่ประกาศที่นี่จะถูก reject เป็น 400 อัตโนมัติ
 
-// body ของ POST /api/v1/documents/{docNo}/attachments
-export class CreateDocumentsAttachmentsBodyDto {
+// body ของ POST /api/v1/sbpgi/document/{docNo}/attachments
+export class CreateSbpgiDocumentAttachmentsBodyDto {
   /** validate extension and content type */
   // TODO: ใช้ FileInterceptor + ValidationPipe แยก ไม่ผ่าน class-validator
   file: Express.Multer.File;
@@ -480,19 +494,19 @@ export class SbpgiAttachmentSalesTimelineService {
     @Inject('DATA_SOURCE') private readonly dataSource: DataSource,
   ) {}
 
-  // POST /api/v1/documents/{docNo}/attachments — Upload attachment API
+  // POST /api/v1/sbpgi/document/{docNo}/attachments — Upload attachment API
   // mutation ต้องอยู่ใน transaction เดียว (ไม่มี audit ของ master แล้ว · 2026-08-07)
-  async createDocumentsAttachments(docNo: string, body: CreateDocumentsAttachmentsBodyDto, userId: string) {
+  async createSbpgiDocumentAttachments(docNo: string, body: CreateSbpgiDocumentAttachmentsBodyDto, userId: string) {
     const runner = this.dataSource.createQueryRunner();
     await runner.connect();
     await runner.startTransaction();
     try {
       // TODO: lock แถวเป้าหมายของ document_attachments ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SBPGI_SQL.createDocumentsAttachmentsLock, [docNo]);
+      const [current] = await runner.query(SBPGI_SQL.createSbpgiDocumentAttachmentsLock, [docNo]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }
-      await runner.query(SBPGI_SQL.createDocumentsAttachments, [/* TODO: ผูกค่าจาก body */]);
+      await runner.query(SBPGI_SQL.createSbpgiDocumentAttachments, [/* TODO: ผูกค่าจาก body */]);
       await runner.commitTransaction();
       return { message: 'saved' };
     } catch (error) {
@@ -504,14 +518,14 @@ export class SbpgiAttachmentSalesTimelineService {
     }
   }
 
-  // GET /api/v1/documents/{docNo}/attachments/{attachId}/download — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป…
-  async getDocumentsAttachmentsDownload(docNo: string, attachId: string, userId: string) {
+  // GET /api/v1/sbpgi/document/{docNo}/attachments/{attachId}/download — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป…
+  async getSbpgiDocumentAttachmentsDownload(docNo: string, attachId: string, userId: string) {
     const page = 1;
     const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
-    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/documents/{docNo}/attachments/{attachId}/download')
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sbpgi/document/{docNo}/attachments/{attachId}/download')
     // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
     //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
-    const rows = await this.dataSource.query(SBPGI_SQL.getDocumentsAttachmentsDownload, [
+    const rows = await this.dataSource.query(SBPGI_SQL.getSbpgiDocumentAttachmentsDownload, [
       // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
       userId, (page - 1) * size, size,
     ]);
@@ -519,18 +533,18 @@ export class SbpgiAttachmentSalesTimelineService {
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/documents/{docNo}/attachments/download-all — ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (…
-  async getDocumentsAttachmentsDownloadAll(docNo: string, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/documents/{docNo}/attachments/download-all
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/documents/{docNo}/attachments/download-all')
-    throw new NotImplementedException('getDocumentsAttachmentsDownloadAll ยังไม่ implement');
+  // GET /api/v1/sbpgi/document/{docNo}/attachments/download-all — ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (…
+  async getSbpgiDocumentAttachmentsDownloadAll(docNo: string, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/document/{docNo}/attachments/download-all
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/document/{docNo}/attachments/download-all')
+    throw new NotImplementedException('getSbpgiDocumentAttachmentsDownloadAll ยังไม่ implement');
   }
 
-  // GET /api/v1/documents/{docNo}/sales — Sales detail API
-  async getDocumentsSales(docNo: string, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/documents/{docNo}/sales
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/documents/{docNo}/sales')
-    throw new NotImplementedException('getDocumentsSales ยังไม่ implement');
+  // GET /api/v1/sbpgi/document/{docNo}/sales — Sales detail API
+  async getSbpgiDocumentSales(docNo: string, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/document/{docNo}/sales
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/document/{docNo}/sales')
+    throw new NotImplementedException('getSbpgiDocumentSales ยังไม่ implement');
   }
 }
 ```
@@ -745,16 +759,16 @@ export class SbpgiAttachmentSalesTimelineBffService {
     };
   }
 
-  createDocumentsAttachments(docNo: string, body: any, user: any) {
-    return this.client.post(`/api/v1/documents/${docNo}/attachments`, body, { headers: this.userHeaders(user) });
+  createSbpgiDocumentAttachments(docNo: string, body: any, user: any) {
+    return this.client.post(`/api/v1/sbpgi/document/${docNo}/attachments`, body, { headers: this.userHeaders(user) });
   }
 
-  getDocumentsAttachmentsDownload(docNo: string, attachId: string, params: any, user: any) {
-    return this.client.get(`/api/v1/documents/${docNo}/attachments/${attachId}/download`, { params, headers: this.userHeaders(user) });
+  getSbpgiDocumentAttachmentsDownload(docNo: string, attachId: string, params: any, user: any) {
+    return this.client.get(`/api/v1/sbpgi/document/${docNo}/attachments/${attachId}/download`, { params, headers: this.userHeaders(user) });
   }
 
-  getDocumentsAttachmentsDownloadAll(docNo: string, params: any, user: any) {
-    return this.client.get(`/api/v1/documents/${docNo}/attachments/download-all`, { params, headers: this.userHeaders(user) });
+  getSbpgiDocumentAttachmentsDownloadAll(docNo: string, params: any, user: any) {
+    return this.client.get(`/api/v1/sbpgi/document/${docNo}/attachments/download-all`, { params, headers: this.userHeaders(user) });
   }
 }
 
@@ -768,16 +782,16 @@ import { AuthGuard } from '@nestjs/passport';
 export class SbpgiAttachmentSalesTimelineBffController {
   constructor(private readonly service: SbpgiAttachmentSalesTimelineBffService) {}
 
-  // proxy ของ POST /api/v1/documents/{docNo}/attachments
-  @Post('documents/:docNo/attachments')
-  createDocumentsAttachments(@Param('docNo') docNo: string, @Body() body: any, @Req() req: any) {
-    return this.service.createDocumentsAttachments(docNo, body, req.user);
+  // proxy ของ POST /api/v1/sbpgi/document/{docNo}/attachments
+  @Post('sbpgi/document/:docNo/attachments')
+  createSbpgiDocumentAttachments(@Param('docNo') docNo: string, @Body() body: any, @Req() req: any) {
+    return this.service.createSbpgiDocumentAttachments(docNo, body, req.user);
   }
 
-  // proxy ของ GET /api/v1/documents/{docNo}/attachments/{attachId}/download
-  @Get('documents/:docNo/attachments/:attachId/download')
-  getDocumentsAttachmentsDownload(@Param('docNo') docNo: string, @Param('attachId') attachId: string, @Query() query: any, @Req() req: any) {
-    return this.service.getDocumentsAttachmentsDownload(docNo, attachId, query, req.user);
+  // proxy ของ GET /api/v1/sbpgi/document/{docNo}/attachments/{attachId}/download
+  @Get('sbpgi/document/:docNo/attachments/:attachId/download')
+  getSbpgiDocumentAttachmentsDownload(@Param('docNo') docNo: string, @Param('attachId') attachId: string, @Query() query: any, @Req() req: any) {
+    return this.service.getSbpgiDocumentAttachmentsDownload(docNo, attachId, query, req.user);
   }
 }
 // TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
@@ -797,7 +811,7 @@ export class SbpgiAttachmentSalesTimelineBffController {
 
 #### 10.2 SQL จริงต่อ Endpoint
 
-**POST /api/v1/documents/{docNo}/attachments** — Upload attachment API
+**POST /api/v1/sbpgi/document/{docNo}/attachments** — Upload attachment API
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -807,7 +821,7 @@ INSERT INTO document_attachments (doc_no, section_code, file_name, mime_type, fi
 VALUES (:docNo, :sectionCode, :fileName, :mimeType, :fileSize, :storageProvider, :bucket, :objectKey, :sha256, :scanClean, :empId, :now);
 ```
 
-**GET /api/v1/documents/{docNo}/attachments/{attachId}/download** — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน str…
+**GET /api/v1/sbpgi/document/{docNo}/attachments/{attachId}/download** — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน str…
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -818,12 +832,13 @@ FROM document_attachments
 WHERE doc_no = :docNo AND attach_id = :attachId;
 ```
 
-**GET /api/v1/documents/{docNo}/attachments/download-all** — ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (ไม่คืน zip เปล่า)
+**GET /api/v1/sbpgi/document/{docNo}/attachments/download-all** — ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (ไม่คืน zip เปล่า)
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- รวมไฟล์แนบทั้งหมดเป็น .zip — ตรวจสิทธิ์อ่านเอกสารก่อน แล้วรวมเฉพาะไฟล์ที่ scan ผ่าน
+-- ⚠️ นโยบาย AV ยังไม่เคาะ (ดู LLDD-BE-API-Attachment-Sales-Timeline 5.1) — ถ้ายังไม่มีตัวสแกน การบังคับ CLEAN จะทำให้ดาวน์โหลดไม่ได้เลย
 -- ไม่มีไฟล์ที่ดาวน์โหลดได้เลย -> 404 (ไม่คืน zip เปล่า)
 SELECT attach_id, bucket, object_key, file_name, mime_type, file_size
 FROM document_attachments
@@ -831,7 +846,7 @@ WHERE doc_no = :docNo AND scan_status = 'CLEAN'
 ORDER BY section_code, attach_id;
 ```
 
-**GET /api/v1/documents/{docNo}/sales** — Sales detail API
+**GET /api/v1/sbpgi/document/{docNo}/sales** — Sales detail API
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -904,11 +919,11 @@ ORDER BY window_no, txn_date;
 | business rule | logic | unsupported file type returns 415 |
 | business rule | logic | sales windows are ordered |
 | business rule | logic | timeline newest/oldest order matches FE expectation |
-| `POST /api/v1/documents/{docNo}/attachments` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/documents/{docNo}/attachments/{attachId}/download` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/documents/{docNo}/attachments/download-all` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/documents/{docNo}/sales` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/documents/{docNo}/timeline` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `POST /api/v1/sbpgi/document/{docNo}/attachments` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/document/{docNo}/attachments/{attachId}/download` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/document/{docNo}/attachments/download-all` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/document/{docNo}/sales` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/document/{docNo}/timeline` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | `document_attachments` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 

@@ -54,12 +54,12 @@
 
 | # | ข้อกำหนดใน SDD | สถานะ | หลักฐาน / หมายเหตุ |
 |---|---|---|---|
-| 1.1 | เจ้าหน้าที่ SBP DSA **กรอกข้อมูลร้านเปิดกระทบเพื่อคำนวณยอด** (เชิงรุก/เชิงรับ) | 🔵 **ต่างโดยตั้งใจ** | มติผู้ใช้: `k2-create.html` **ไม่มีฟอร์ม** — ต้นทางสร้างที่ **FS** แล้วรอ **SBP Statement** ส่งกลับ (~1 วัน) · การคีย์/ปรับข้อมูลร้านทำในหน้าเอกสาร (`PUT /documents/{docNo}`) · **ต้อง sign-off (ดูข้อ 6.2)** |
-| 1.2 | เจ้าหน้าที่ **เลือกงานของตนเอง** จากระบบ | ✅ | `k2-list-waiting.html` = หน้าแรกของระบบ · `GET /tasks` |
-| 1.3 | หยุดชดเชยแล้ว **สร้างเอกสารใหม่ได้เดือนเดียวกัน/ถัดไป** (เลิกเปิด SR) | ✅ | `POST /documents` คืน 409 **เฉพาะเอกสาร active** · SQL ใช้ `status_code <> :statusDone` · partial unique index ใน|
+| 1.1 | เจ้าหน้าที่ SBP DSA **กรอกข้อมูลร้านเปิดกระทบเพื่อคำนวณยอด** (เชิงรุก/เชิงรับ) | 🔵 **ต่างโดยตั้งใจ** | มติผู้ใช้: `k2-create.html` **ไม่มีฟอร์ม** — ต้นทางสร้างที่ **FS** แล้วรอ **SBP Statement** ส่งกลับ (~1 วัน) · การคีย์/ปรับข้อมูลร้านทำในหน้าเอกสาร (`PUT /sbpgi/document/{docNo}`) · **ต้อง sign-off (ดูข้อ 6.2)** |
+| 1.2 | เจ้าหน้าที่ **เลือกงานของตนเอง** จากระบบ | ✅ | `k2-list-waiting.html` = หน้าแรกของระบบ · `GET /sbpgi/document/tasks` |
+| 1.3 | หยุดชดเชยแล้ว **สร้างเอกสารใหม่ได้เดือนเดียวกัน/ถัดไป** (เลิกเปิด SR) | ✅ | `POST /sbpgi/document` คืน 409 **เฉพาะเอกสาร active** · SQL ใช้ `status_code <> :statusDone` · partial unique index ใน|
 | 1.4 | เห็นควรไม่ชดเชย → เดือนถัดไปเข้าหน้างานค้าง **พร้อมเจ้าของงานคนเดิม** | ✅ | สไลด์ 46 · 48 · 64 · UI: คอลัมน์ **"ผู้ดำเนินการ (เจ้าของงาน)"** + ชิป **"ต่อเนื่อง"** (ผูกกับครั้งที่ ≥ 2 · เจ้าของงานคงที่ต่อร้าน) |
 | 1.5 | **ยอดชดเชย 0**: เดือน 1–3 ส่งต่อ 01 · เดือนที่ 4 หยุดชดเชย | ✅ | สไลด์ 51 · `k2-document.html` แผงพิจารณาขั้น 06 แสดงกติกาเสมอ · ยอด = 0 → ไฮไลต์ตัวเลือกที่ต้องกดตามครั้งที่ |
-| 1.6 | **สิทธิ์การมองเห็น** — DSA เห็นทุกสาขา · ส่งเสริม/บัญชีตามสิทธิ์เดิม | ✅ | `workflow.md` · `api.md` (กฎของ `GET /tasks`) |
+| 1.6 | **สิทธิ์การมองเห็น** — DSA เห็นทุกสาขา · ส่งเสริม/บัญชีตามสิทธิ์เดิม | ✅ | `workflow.md` · `api.md` (กฎของ `GET /sbpgi/document/tasks`) |
 | 1.7 | หน้างานค้าง: **filter เอกสารได้** | ✅ | แผงกรอง (ปี/เดือน/สถานะ/ภาค 13/ประเภท/ช่วงยอด/ช่วงวัน) |
 | 1.8 | หน้างานค้าง: **checkbox เลือกหลายเอกสาร + popup ยืนยัน** | ❌ | สไลด์ 48 · ไม่มีคอลัมน์ checkbox และ bulk action ทั้งสองหน้า → **งาน P1** |
 | 1.9 | พนักงานลาออก → ยังต้องเปิด SR แก้ชื่อผู้ดำเนินการ | ✅ | บันทึกเป็นข้อจำกัดที่รับมาใน `workflow.md` |
@@ -149,7 +149,7 @@
 | L | ⚠️ `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index เลย** ทั้งที่มี 19,283 แถว (ตัวเดียวกันใน `sps_auth` มี PK) | **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library** · ยังไม่ตัดสิน → **DP-2** |
 | M | ✅ **ชื่อ function ของ engine — ปิดแล้ว 2026-08-14 (ยึด LLDD ของ lib):** API จริง 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` = `initializeWorkflow`/`eventWorkflow`/`getPermissionEvents`/`getHistory`/`getTransaction`/`getPendingFlowByUser`/`getWorkflowsByUser`/`addPreApprover` | *Trigger Event* = ชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` · `*UseCase` = wrapper ของ store-backend | 
 | N | `workflow_part` + `workflow_part_display` ของ engine คุม **READ/WRITE รายส่วนของหน้าจอต่อ state** ทับซ้อนกับ `data-editrole`/`.edit-only` ที่ prototype ทำเอง | **ข้อค้างตัดสินใจ ยังไม่เปลี่ยนดีไซน์** (บันทึกไว้ที่|
-| O | **`fcs_qssi_score` (เอกพจน์) มีอยู่จริงแล้ว 23,958,780 แถว** ใน `sps_store` พร้อม import pipeline ที่ทำงานอยู่ (`POST /performance/import-qssi` + staging `fcs_tmp_qssi_score`) · โครงเดิม `store_id`/`category`/`month`/`year` nullable ทั้ง 4 และไม่มี UK | **ห้ามสร้างตารางใหม่ ให้ reuse** · วิธีเพิ่ม constraint/index บน 23.9M แถว **ยังไม่ตัดสิน** → **DP-4** |
+| O | **`fcs_qssi_score` (เอกพจน์) มีอยู่จริงแล้ว 23,958,780 แถว** ใน `sps_store` พร้อม import pipeline ที่ทำงานอยู่ (`POST /performance/import-qssi` + staging `fcs_tmp_qssi_score`) · โครงเดิม `store_id`/`category`/`month`/`year` nullable ทั้ง 4 และไม่มี UK | **ห้ามสร้างตารางใหม่ ให้ reuse** · **✅ DP-4 ปิดแล้ว 2026-08-24** — ไม่เพิ่ม constraint/index บนตารางเดิม เพราะ SBPGI อ่านอย่างเดียว (ตัด Job 1 ImportQSSI) |
 | P | **แกนธุรกิจประกันรายได้ไม่มีในระบบเดิมเลย** — ค้น 276 ตาราง / 4,396 คอลัมน์ ด้วย impact · compensat · guarantee · income · competitor · growth · outlier · distance · radius · latitude · longitude · window_no → **0 hit ทุกคำ** | ยืนยันว่าโซน A และแกนเอกสารโซน B **ต้องสร้างเอง** |
 | Q | `fcs_monthly_sales` เป็น**ยอดขายรายเดือน** (711,384 แถว · key `store_id`+`year`+`month`) | **ใช้แทน `sales_transactions` (รายวัน 4 หน้าต่าง × 15 วัน) ไม่ได้** — ย้อนกลับเป็นรายวันไม่ได้ · ใช้ cross-check ได้ |
 | R | แก้ความเข้าใจผิดเดิม 2 จุด: (ก) `upload_general` **ไม่ได้ติด FK `job_id`** (`job_id`/`audit_log_id` nullable ทั้งคู่) — เหตุผลจริงที่ต้องมีตารางเองคือขาด `file_size`/`content_type`/`section_code`/`upload_status`/`purge_flag` · (ข) **มีที่เก็บ CC ของอีเมลอยู่แล้ว 3 ที่**: `email_sent.mail_cc` · `fcs_reminder_log.reminder_cc` · `fml_email_account` | ปรับเหตุผลประกอบใน `database.md` (ไฟล์นั้นไม่อยู่ในขอบเขตการแก้ครั้งนี้) |

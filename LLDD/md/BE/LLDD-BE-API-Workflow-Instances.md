@@ -10,7 +10,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **32 ชั่วโมง** = implementation 24 + unit test 8 (30%) |
 | Owner | Tunyatorn <Vava> Kiatkongphongsa |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
-| Objective | ออกแบบ Workflow Engine ภายในและ POST /api/v1/workflows/instances สำหรับเปิด workflow จาก Job 8b แทน K2 REST StartInstance โดยเป็นเจ้าของ Gen Flow Gate W/Y/N |
+| Objective | ออกแบบ Workflow Engine ภายในและ POST /api/v1/sbpgi/workflow/instances สำหรับเปิด workflow จาก Job 8b แทน K2 REST StartInstance โดยเป็นเจ้าของ Gen Flow Gate W/Y/N |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -50,7 +50,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | POST /api/v1/workflows/instances; GET /api/v1/workflows/instances/{id}; GET /api/v1/workflows/summary |
+| Input | POST /api/v1/sbpgi/workflow/instances; GET /api/v1/sbpgi/workflow/instances/{id}; GET /api/v1/sbpgi/workflow/summary |
 | Progress | Validate service token and idempotency key; Load impact process and current workflow_generation_status; Reject if status is already Y and return existing doc/instance idempotently; Evaluate Gen Flow Gate in one service: status W, branch type allowlist, DV present, juristic different, growth_rate_diff <= -10, sales_status in Y/N |
 | Output | fgi_impact_processes / fgi_impact_stores; compensation_documents; workflow_approver (@srm/glb-workflow) |
 
@@ -58,9 +58,9 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| POST /api/v1/workflows/instances | เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service token ไม่ใช่ FE | Validate service token and idempotency key | ไม่มี FE screen หรือ Flow page deliverable เพิ่มจาก LLDD นี้ |
-| GET /api/v1/workflows/instances/{id} | อ่านสถานะ workflow instance | Load impact process and current workflow_generation_status | Job 8b ต้องเรียก API/service นี้และไม่ duplicate Gen Flow Gate |
-| GET /api/v1/workflows/summary | สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor | Reject if status is already Y and return existing doc/instance idempotently | ไม่เรียก K2 REST StartInstance และไม่สร้างไฟล์ BPM06001O/2O/3O |
+| POST /api/v1/sbpgi/workflow/instances | เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service token ไม่ใช่ FE | Validate service token and idempotency key | ไม่มี FE screen หรือ Flow page deliverable เพิ่มจาก LLDD นี้ |
+| GET /api/v1/sbpgi/workflow/instances/{id} | อ่านสถานะ workflow instance | Load impact process and current workflow_generation_status | Job 8b ต้องเรียก API/service นี้และไม่ duplicate Gen Flow Gate |
+| GET /api/v1/sbpgi/workflow/summary | สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor | Reject if status is already Y and return existing doc/instance idempotently | ไม่เรียก K2 REST StartInstance และไม่สร้างไฟล์ BPM06001O/2O/3O |
 
 ### 5.91 Backend Execution Sequence
 
@@ -75,17 +75,31 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | 7 | If gate passes, require compensation_documents from Job 8, open workflow via @srm/glb-workflow (initializeWorkflow + addPreApprover at state 06 — function names confirmed 2026-08-14 from the library's own LLDD, sheet Detail), then update fgi_impact_processes.workflow_generation_status=Y in one transaction | sales status NULL keeps W |
 | 8 | Enqueue notification summary outside transaction after commit | duplicate request returns existing instance |
 
+### 5.92 Workflow Trigger Event Contract
+
+งานชิ้นนี้ **ต้องเรียก workflow engine** ตามตารางด้านล่าง · ชื่อ function ยึด API 8 ตัวของ `@srm/glb-workflow` ตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — รายละเอียด signature และตารางที่ engine เขียน ดู **LLDD-BE-Workflow-Engine-Definition** หัวข้อ 5.3
+
+| จุดที่เรียก (call site) | Engine function | พารามิเตอร์หลัก | กติกา / transaction boundary |
+| --- | --- | --- | --- |
+| เปิด instance ให้เอกสาร | `initializeWorkflow` | versionId, userId, referenceId = `compensation_documents.id` (DP-1 ปิดแล้ว) | idempotent — referenceId เดิมต้องไม่เกิด workflow_transaction ที่สอง |
+| ระบุผู้อนุมัติล่วงหน้า | `addPreApprover` | versionId, referenceId, stateId, approver, seq, userId | เรียกต่อทันทีหลัง initialize ภายใน transaction เดียว |
+| อ่านสถานะ instance | `getTransaction` | versionId, referenceId | ใช้ยืนยันว่า initialize สำเร็จจริงก่อนคืน 201 |
+
+- 🔴 กติกาเหล็ก: ตาราง `sps_store.workflow_*` (13 ตาราง) เป็นของ lib — SBPGI **R เท่านั้น** ห้าม INSERT/UPDATE/DELETE ตรงในทุกกรณี
+- ทุกการเรียก engine ต้องผ่านตัวห่อกลาง `WorkflowGateway` ที่นิยามใน **LLDD-BE-API-Common-Contracts** (timeout · retry · map error เข้า envelope) ห้าม import lib ตรงจาก service
+- unit test ต้อง mock engine และครอบอย่างน้อย: เรียกสำเร็จ · engine โยน error แล้ว rollback ฝั่ง SBPGI ครบ · เรียกซ้ำด้วย referenceId เดิมไม่เกิดผลซ้ำ
+
 ## 6. Button / User Action Mapping
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
 | Open workflow | POST | workflowInstance.service.openFromImpact | ผ่าน gate แล้วสร้าง/คืน instance |
-| Check status | GET | /api/v1/workflows/instances/{id} | อ่าน instance status |
-| Summary | GET | /api/v1/workflows/summary | ตัวเลข W/Y/N และงานค้างต่อ section |
+| Check status | GET | /api/v1/sbpgi/workflow/instances/{id} | อ่าน instance status |
+| Summary | GET | /api/v1/sbpgi/workflow/summary | ตัวเลข W/Y/N และงานค้างต่อ section |
 
 ## 7. API Contract
 
-### POST /api/v1/workflows/instances
+### POST /api/v1/sbpgi/workflow/instances
 
 เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service token ไม่ใช่ FE
 
@@ -131,7 +145,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | statusCode | string | Yes | canonical code; do not replace with display label |
 | status | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/workflows/instances/{id}
+### GET /api/v1/sbpgi/workflow/instances/{id}
 
 อ่านสถานะ workflow instance
 
@@ -169,7 +183,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Workflow Engine 
 | status | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | currentSection | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/workflows/summary
+### GET /api/v1/sbpgi/workflow/summary
 
 สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor
 
@@ -260,37 +274,37 @@ import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/co
 import { HttpHeaderGuard } from '../../guards/http-header.guard';
 import { UserId } from '../../common/decorators/user-id.decorator';
 import { SbpgiWorkflowInstancesService } from './sbpgi-workflow-instances.service';
-import { WorkflowInstancesQueryDto, CreateWorkflowsInstancesBodyDto } from './dto/sbpgi-workflow-instances.dto';
+import { WorkflowInstancesQueryDto, CreateSbpgiWorkflowInstancesBodyDto } from './dto/sbpgi-workflow-instances.dto';
 
 // LLDD BE - Workflow Engine and API Workflow Instances
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sbpgi/workflows')
+@Controller('sbpgi/sbpgi/workflow')
 @UseGuards(HttpHeaderGuard)
 export class SbpgiWorkflowInstancesController {
   constructor(private readonly service: SbpgiWorkflowInstancesService) {}
 
-  // POST /api/v1/workflows/instances — เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service t…
-  @Post('instances')
-  createWorkflowsInstances(
-    @Body() body: CreateWorkflowsInstancesBodyDto,
+  // POST /api/v1/sbpgi/workflow/instances — เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service t…
+  @Post('workflow/instances')
+  createSbpgiWorkflowInstances(
+    @Body() body: CreateSbpgiWorkflowInstancesBodyDto,
     @UserId() userId: string,
   ) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.createWorkflowsInstances(body, userId);
+    return this.service.createSbpgiWorkflowInstances(body, userId);
   }
 
-  // GET /api/v1/workflows/instances/{id} — อ่านสถานะ workflow instance
-  @Get('instances/:id')
-  getWorkflowsInstancesById(@Param('id') id: string, @UserId() userId: string) {
+  // GET /api/v1/sbpgi/workflow/instances/{id} — อ่านสถานะ workflow instance
+  @Get('workflow/instances/:id')
+  getSbpgiWorkflowInstancesById(@Param('id') id: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getWorkflowsInstancesById(id, userId);
+    return this.service.getSbpgiWorkflowInstancesById(id, userId);
   }
 
-  // GET /api/v1/workflows/summary — สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor
-  @Get('summary')
-  getWorkflowsSummary(@Query() query: WorkflowInstancesQueryDto, @UserId() userId: string) {
+  // GET /api/v1/sbpgi/workflow/summary — สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor
+  @Get('workflow/summary')
+  getWorkflowSummary(@Query() query: WorkflowInstancesQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getWorkflowsSummary(query, userId);
+    return this.service.getWorkflowSummary(query, userId);
   }
 }
 ```
@@ -318,8 +332,8 @@ export class WorkflowInstancesQueryDto {
 ```
 
 ```ts
-// body ของ POST /api/v1/workflows/instances
-export class CreateWorkflowsInstancesBodyDto {
+// body ของ POST /api/v1/sbpgi/workflow/instances
+export class CreateSbpgiWorkflowInstancesBodyDto {
   /** อ้าง fgi_impact_processes และ compensation_documents ที่ Job 8 สร้างแล้ว */
   @IsNotEmpty()
   @Type(() => Number)
@@ -361,19 +375,19 @@ export class SbpgiWorkflowInstancesService {
     private readonly workflow: WorkflowService,
   ) {}
 
-  // POST /api/v1/workflows/instances — เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service t…
+  // POST /api/v1/sbpgi/workflow/instances — เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service t…
   // mutation ต้องอยู่ใน transaction เดียว (ไม่มี audit ของ master แล้ว · 2026-08-07)
-  async createWorkflowsInstances(body: CreateWorkflowsInstancesBodyDto, userId: string) {
+  async createSbpgiWorkflowInstances(body: CreateSbpgiWorkflowInstancesBodyDto, userId: string) {
     const runner = this.dataSource.createQueryRunner();
     await runner.connect();
     await runner.startTransaction();
     try {
       // TODO: lock แถวเป้าหมายของ fgi_impact_processes ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SBPGI_SQL.createWorkflowsInstancesLock, [body.docNo]);
+      const [current] = await runner.query(SBPGI_SQL.createSbpgiWorkflowInstancesLock, [body.docNo]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }
-      await runner.query(SBPGI_SQL.createWorkflowsInstances, [/* TODO: ผูกค่าจาก body */]);
+      await runner.query(SBPGI_SQL.createSbpgiWorkflowInstances, [/* TODO: ผูกค่าจาก body */]);
       await runner.commitTransaction();
       // ⚠️ workflow engine อยู่คนละ DataSource ('workflow-connection' ของ @srm/glb-workflow)
       //    จึง **atomic ร่วมกับ transaction ข้างบนไม่ได้** — ต้อง commit ฝั่ง SBPGI ให้เสร็จก่อน
@@ -391,14 +405,14 @@ export class SbpgiWorkflowInstancesService {
     }
   }
 
-  // GET /api/v1/workflows/instances/{id} — อ่านสถานะ workflow instance
-  async getWorkflowsInstancesById(id: string, userId: string) {
+  // GET /api/v1/sbpgi/workflow/instances/{id} — อ่านสถานะ workflow instance
+  async getSbpgiWorkflowInstancesById(id: string, userId: string) {
     const page = 1;
     const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
-    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/workflows/instances/{id}')
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sbpgi/workflow/instances/{id}')
     // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
     //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
-    const rows = await this.dataSource.query(SBPGI_SQL.getWorkflowsInstancesById, [
+    const rows = await this.dataSource.query(SBPGI_SQL.getSbpgiWorkflowInstancesById, [
       // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
       userId, (page - 1) * size, size,
     ]);
@@ -406,11 +420,11 @@ export class SbpgiWorkflowInstancesService {
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/workflows/summary — สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor
-  async getWorkflowsSummary(query: WorkflowInstancesQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/workflows/summary
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/workflows/summary')
-    throw new NotImplementedException('getWorkflowsSummary ยังไม่ implement');
+  // GET /api/v1/sbpgi/workflow/summary — สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor
+  async getWorkflowSummary(query: WorkflowInstancesQueryDto, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/workflow/summary
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/workflow/summary')
+    throw new NotImplementedException('getWorkflowSummary ยังไม่ implement');
   }
 }
 ```
@@ -421,9 +435,9 @@ export class SbpgiWorkflowInstancesService {
 
 | Endpoint | Use case ที่ต้องเรียก | เหตุผล |
 | --- | --- | --- |
-| POST /api/v1/workflows/instances | initializeWorkflow() → addPreApprover() | เปิด transaction ใหม่ (referenceId = docNo) แล้วผูกผู้อนุมัติ state 06 |
-| GET /api/v1/workflows/instances/{id} | getTransaction() | อ่าน currentState ของ instance ตาม referenceId |
-| GET /api/v1/workflows/summary | getPendingFlowByUser() (aggregate) | นับงานค้างต่อ state แล้วรวมกับ workflow_generation_status W/Y/N |
+| POST /api/v1/sbpgi/workflow/instances | initializeWorkflow() → addPreApprover() | เปิด transaction ใหม่ (referenceId = docNo) แล้วผูกผู้อนุมัติ state 06 |
+| GET /api/v1/sbpgi/workflow/instances/{id} | getTransaction() | อ่าน currentState ของ instance ตาม referenceId |
+| GET /api/v1/sbpgi/workflow/summary | getPendingFlowByUser() (aggregate) | นับงานค้างต่อ state แล้วรวมกับ workflow_generation_status W/Y/N |
 
 ```ts
 // src/modules/sbpgi-workflow-instances/sbpgi-workflow-instances.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
@@ -642,16 +656,16 @@ export class SbpgiWorkflowInstancesBffService {
     };
   }
 
-  createWorkflowsInstances(body: any, user: any) {
-    return this.client.post('/api/v1/workflows/instances', body, { headers: this.userHeaders(user) });
+  createSbpgiWorkflowInstances(body: any, user: any) {
+    return this.client.post('/api/v1/sbpgi/workflow/instances', body, { headers: this.userHeaders(user) });
   }
 
-  getWorkflowsInstancesById(id: string, params: any, user: any) {
-    return this.client.get(`/api/v1/workflows/instances/${id}`, { params, headers: this.userHeaders(user) });
+  getSbpgiWorkflowInstancesById(id: string, params: any, user: any) {
+    return this.client.get(`/api/v1/sbpgi/workflow/instances/${id}`, { params, headers: this.userHeaders(user) });
   }
 
-  getWorkflowsSummary(params: any, user: any) {
-    return this.client.get('/api/v1/workflows/summary', { params, headers: this.userHeaders(user) });
+  getWorkflowSummary(params: any, user: any) {
+    return this.client.get('/api/v1/sbpgi/workflow/summary', { params, headers: this.userHeaders(user) });
   }
 }
 
@@ -665,16 +679,16 @@ import { AuthGuard } from '@nestjs/passport';
 export class SbpgiWorkflowInstancesBffController {
   constructor(private readonly service: SbpgiWorkflowInstancesBffService) {}
 
-  // proxy ของ POST /api/v1/workflows/instances
-  @Post('workflows/instances')
-  createWorkflowsInstances(@Body() body: any, @Req() req: any) {
-    return this.service.createWorkflowsInstances(body, req.user);
+  // proxy ของ POST /api/v1/sbpgi/workflow/instances
+  @Post('sbpgi/workflow/instances')
+  createSbpgiWorkflowInstances(@Body() body: any, @Req() req: any) {
+    return this.service.createSbpgiWorkflowInstances(body, req.user);
   }
 
-  // proxy ของ GET /api/v1/workflows/instances/{id}
-  @Get('workflows/instances/:id')
-  getWorkflowsInstancesById(@Param('id') id: string, @Query() query: any, @Req() req: any) {
-    return this.service.getWorkflowsInstancesById(id, query, req.user);
+  // proxy ของ GET /api/v1/sbpgi/workflow/instances/{id}
+  @Get('sbpgi/workflow/instances/:id')
+  getSbpgiWorkflowInstancesById(@Param('id') id: string, @Query() query: any, @Req() req: any) {
+    return this.service.getSbpgiWorkflowInstancesById(id, query, req.user);
   }
 }
 // TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
@@ -697,7 +711,7 @@ export class SbpgiWorkflowInstancesBffController {
 
 #### 10.2 SQL จริงต่อ Endpoint
 
-**POST /api/v1/workflows/instances** — เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service token ไม่ใช่ FE
+**POST /api/v1/sbpgi/workflow/instances** — เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service token ไม่ใช่ FE
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -738,7 +752,7 @@ UPDATE fgi_impact_processes SET workflow_generation_status = :flagY
 WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagY;
 ```
 
-**GET /api/v1/workflows/instances/{id}** — อ่านสถานะ workflow instance
+**GET /api/v1/sbpgi/workflow/instances/{id}** — อ่านสถานะ workflow instance
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -755,7 +769,7 @@ WHERE w.transaction_id = :id AND w.version_id = :sbpgiVersionId;
 SELECT doc_no, status_code, current_section_code FROM compensation_documents WHERE doc_no = :referenceId;
 ```
 
-**GET /api/v1/workflows/summary** — สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor
+**GET /api/v1/sbpgi/workflow/summary** — สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -840,9 +854,9 @@ GROUP BY w.current_state_id;
 | business rule | logic | ผ่าน gate แล้ว transaction ต้องมี document + instance + first task + Y ครบ หรือ rollback ทั้งหมด |
 | business rule | logic | fail ถาวร (branch type, distance over threshold, missing DV, same juristic, growth not met) ต้องตั้ง N; เฉพาะข้อมูล distance/juristic/growth/sales status ยังไม่พร้อมจึงคง W |
 | business rule | logic | idempotent rerun ไม่สร้าง docNo/instance/task ซ้ำ |
-| `POST /api/v1/workflows/instances` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/workflows/instances/{id}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/workflows/summary` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `POST /api/v1/sbpgi/workflow/instances` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/workflow/instances/{id}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/workflow/summary` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | `fgi_impact_processes / fgi_impact_stores`, `compensation_documents`, `workflow_transaction (@srm/glb-workflow)` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 

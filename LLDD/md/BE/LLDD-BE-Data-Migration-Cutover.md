@@ -107,7 +107,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Data Migration a
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | User action, route/query state, form values, and permission context for this feature. |
+| Input | ไม่มี endpoint ของตัวเอง — input คือ request ที่เอกสารอื่นส่งเข้ามา พร้อม user context จาก BFF header (ดู 5.1) และค่ากำหนดกลางที่อ่านจากระบบเดิม |
 | Progress | ยืนยันปลายทางกับ LLDD-BE-Database-Structure (DDL ต้องนิ่งก่อน); ทำ profiling ต้นทาง: นับแถว/ค่า null/ค่าซ้ำของทุกตารางที่จะย้าย; เขียน mapping ต่อคอลัมน์ พร้อมกฎแปลง (พ.ศ.->ค.ศ. · lpad store_code · polymorphic key -> typed FK); Dry-run บน environment ทดสอบ แล้วแก้ reject rule จนแถวที่ reject อธิบายได้ทุกแถว |
 | Output | 20 target tables (โซน A/B/C); workflow_transaction / workflow_approver / workflow_history (sps_store) |
 
@@ -127,8 +127,20 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Data Migration a
 | 4 | Dry-run บน environment ทดสอบ แล้วแก้ reject rule จนแถวที่ reject อธิบายได้ทุกแถว | ทดสอบร้านที่ store_code ขึ้นต้นด้วย 0 |
 | 5 | Full load + reconcile ครั้งที่ 1 | ทดสอบเอกสารที่มีหลายรอบ (round_no/loop_no) ว่าลำดับไม่สลับ |
 | 6 | Freeze ระบบเดิม -> delta load -> reconcile ครั้งสุดท้าย | ทดสอบ rollback: restore snapshot แล้วระบบเดิมกลับมาใช้งานได้ |
-| 7 | ย้าย workflow ที่ยังวิ่งอยู่: initialize transaction ใน @srm/glb-workflow ให้ตรง state ปัจจุบันของเอกสาร | dry-run แล้วรายงาน reject อธิบายได้ครบทุก reason code |
-| 8 | เปิดระบบใหม่ · เก็บ snapshot ก่อน cutover ไว้สำหรับ rollback ตามหน้าต่างที่ตกลง | full load + reconcile ผ่านบน dataset จริงชุด staging |
+| 7 | ย้าย workflow ที่ยังวิ่งอยู่: initialize transaction ใน @srm/glb-workflow ให้ตรง state ปัจจุบันของเอกสาร | — (ยังไม่มี test เฉพาะขั้นนี้ · ครอบด้วย test รวมของเอกสารในหัวข้อ 11) |
+| 8 | เปิดระบบใหม่ · เก็บ snapshot ก่อน cutover ไว้สำหรับ rollback ตามหน้าต่างที่ตกลง | — (ยังไม่มี test เฉพาะขั้นนี้ · ครอบด้วย test รวมของเอกสารในหัวข้อ 11) |
+
+### 5.92 Workflow Trigger Event Contract
+
+งานชิ้นนี้ **ต้องเรียก workflow engine** ตามตารางด้านล่าง · ชื่อ function ยึด API 8 ตัวของ `@srm/glb-workflow` ตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — รายละเอียด signature และตารางที่ engine เขียน ดู **LLDD-BE-Workflow-Engine-Definition** หัวข้อ 5.3
+
+| จุดที่เรียก (call site) | Engine function | พารามิเตอร์หลัก | กติกา / transaction boundary |
+| --- | --- | --- | --- |
+| ย้ายเอกสารที่ค้างกลางทาง | `initializeWorkflow` แล้ว `eventWorkflow` ซ้ำจนถึง state ปัจจุบัน | versionId, referenceId, ลำดับ event ตามสถานะเดิมใน K2 | 🔴 ห้าม INSERT `workflow_transaction` ตรงเพื่อ 'ตั้ง state ให้ตรง' — ต้องเดิน event จริงเพื่อให้ history ครบ · ต้อง rerun ได้ (referenceId เดิมไม่สร้าง instance ซ้ำ) |
+
+- 🔴 กติกาเหล็ก: ตาราง `sps_store.workflow_*` (13 ตาราง) เป็นของ lib — SBPGI **R เท่านั้น** ห้าม INSERT/UPDATE/DELETE ตรงในทุกกรณี
+- ทุกการเรียก engine ต้องผ่านตัวห่อกลาง `WorkflowGateway` ที่นิยามใน **LLDD-BE-API-Common-Contracts** (timeout · retry · map error เข้า envelope) ห้าม import lib ตรงจาก service
+- unit test ต้อง mock engine และครอบอย่างน้อย: เรียกสำเร็จ · engine โยน error แล้ว rollback ฝั่ง SBPGI ครบ · เรียกซ้ำด้วย referenceId เดิมไม่เกิดผลซ้ำ
 
 ## 6. Button / User Action Mapping
 
@@ -141,6 +153,8 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Data Migration a
 | Rollback | runbook | restore snapshot ก่อน cutover | กลับไปใช้ระบบเดิมได้ภายในหน้าต่างที่ตกลง |
 
 ## 7. API Contract
+
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 

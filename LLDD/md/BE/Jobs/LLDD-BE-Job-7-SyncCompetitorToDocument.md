@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | **13 ชั่วโมง** = implementation 10 + unit test 3 (30%) |
-| Owner | Peerakorn <Pete> Sakunkaewphithak |
+| Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
 | Objective | บันทึกข้อมูลคู่แข่งเข้าเอกสาร: อ่านข้อมูลคู่แข่งล่าสุดจาก fgi_impact_competitors แล้วบันทึกเข้า document_competitors ผ่าน Document Service โดยตรง แทนการเขียนไฟล์ BPM06003O และ SFTP ไป BPM |
 
@@ -161,6 +161,8 @@ export async function runLlddBeJob7Synccompetitortodocument(ctx, services) {
 | ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ interface_transactions |
 
 ## 7. API Contract
+
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 

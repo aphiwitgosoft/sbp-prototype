@@ -4,13 +4,13 @@ FE - Application Foundation and Shared UI,Chidchanok <lin> Saengamnat,35,28,7,3
 FE - Document Lists,Chidchanok <lin> Saengamnat,35,28,7,4
 FE - Create Document,Kittisak <New> Kaeowika,8,6,2,4
 FE - Document Detail and Action,Kittisak <New> Kaeowika,75,60,15,4
-FE - Status Summary Report,Kittisak <New> Kaeowika,25,20,5,4
+FE - Status Summary Report,Chidchanok <lin> Saengamnat,25,20,5,4
 FE - Master Data,Kittisak <New> Kaeowika,20,16,4,4
 FE - Testing and Delivery,Chidchanok <lin> Saengamnat,12,12,0,5
 BE - Database Structure and Deployment,Aphiwit <Bank> Khammoon,31,31,0,1
 BE - Data Migration and Cutover,Aphiwit <Bank> Khammoon,43,43,0,2
 BE - Integration with SBP Platform,Tunyatorn <Vava> Kiatkongphongsa,20,20,0,1
-BE - Workflow Engine Definition,Tunyatorn <Vava> Kiatkongphongsa,24,24,0,1
+BE - Workflow Engine Definition,Aphiwit <Bank> Khammoon,24,24,0,1
 BE - API Common Contracts,Butsaba <But> Podamrong,18,18,0,2
 BE - API Document List and Search,Butsaba <But> Podamrong,26,20,6,3
 BE - API Document Create and Update,Butsaba <But> Podamrong,32,24,8,3
@@ -24,10 +24,10 @@ BE - Job Batch and Email Integration,Peerakorn <Pete> Sakunkaewphithak,19,14,5,2
 BE - Job 2 ImportImpactStore,Aphiwit <Bank> Khammoon,19,14,5,3
 BE - Job 3 ImportImpactCompetitor,Aphiwit <Bank> Khammoon,13,10,3,4
 BE - Job 4 PrepareImpactStoreToIAS,Aphiwit <Bank> Khammoon,19,14,5,4
-BE - Job 5 ImportImpactSaleFromIAS,Peerakorn <Pete> Sakunkaewphithak,21,16,5,5
+BE - Job 5 ImportImpactSaleFromIAS,Aphiwit <Bank> Khammoon,21,16,5,5
 BE - Job 6 ExportImpactStoreToFS,Aphiwit <Bank> Khammoon,34,26,8,4
-BE - Job 7 SyncCompetitorToDocument,Peerakorn <Pete> Sakunkaewphithak,13,10,3,6
+BE - Job 7 SyncCompetitorToDocument,Aphiwit <Bank> Khammoon,13,10,3,6
 BE - Job 8 CreateCompensationDocument,Aphiwit <Bank> Khammoon,24,18,6,5
-BE - Job 8b StartInternalWorkflow,Tunyatorn <Vava> Kiatkongphongsa,29,22,7,6
-BE - Job 9 SyncNewStoreToDocument,Peerakorn <Pete> Sakunkaewphithak,15,11,4,6
-BE - Job 10 NotifyNoReceiveData,Peerakorn <Pete> Sakunkaewphithak,11,8,3,5
+BE - Job 8b StartInternalWorkflow,Aphiwit <Bank> Khammoon,29,22,7,6
+BE - Job 9 SyncNewStoreToDocument,Aphiwit <Bank> Khammoon,15,11,4,6
+BE - Job 10 NotifyNoReceiveData,Aphiwit <Bank> Khammoon,11,8,3,5

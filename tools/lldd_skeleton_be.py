@@ -102,9 +102,9 @@ CUT_PREFIXES: tuple[tuple[str, str], ...] = (
 # (เอกสารที่ไม่ใช่เจ้าของจะ generate เป็น "หมายเหตุอ้างอิง" แทน @Get/@Post ซ้ำ)
 # --------------------------------------------------------------------------------------
 ENDPOINT_OWNER: dict[str, str] = {
-    "GET /api/v1/tasks": "LLDD-BE-API-Document-List-Search",
-    "POST /api/v1/documents/{docNo}/actions": "LLDD-BE-API-Document-Workflow-Actions",
-    "GET /api/v1/documents/{docNo}/timeline": "LLDD-BE-API-Document-Workflow-Actions",
+    "GET /api/v1/sbpgi/document/tasks": "LLDD-BE-API-Document-List-Search",
+    "POST /api/v1/sbpgi/document/{docNo}/actions": "LLDD-BE-API-Document-Workflow-Actions",
+    "GET /api/v1/sbpgi/document/{docNo}/timeline": "LLDD-BE-API-Document-Workflow-Actions",
 }
 
 # --------------------------------------------------------------------------------------
@@ -646,17 +646,17 @@ def _workflow_plan(topic: Any, endpoints: list[_Endpoint], reused: list[tuple[st
         label = f"{ep.method} {ep.path}"
         if path.endswith("/actions") and ep.method == "POST":
             plan.append([label, "getPermissionEvents() → eventWorkflow()", "ตรวจสิทธิ์ event ของผู้ใช้ก่อนเดิน state และบันทึก history"])
-        elif "/workflows/instances" in path and ep.method == "POST":
+        elif "/sbpgi/workflow/instances" in path and ep.method == "POST":
             plan.append([label, "initializeWorkflow() → addPreApprover()", "เปิด transaction ใหม่ (referenceId = docNo) แล้วผูกผู้อนุมัติ state 06"])
-        elif "/workflows/instances" in path:
+        elif "/sbpgi/workflow/instances" in path:
             plan.append([label, "getTransaction()", "อ่าน currentState ของ instance ตาม referenceId"])
         elif path.endswith("/timeline"):
             plan.append([label, "getHistory()", "timeline การเปลี่ยน state (fromState/toState/event/remark)"])
-        # ⚠️ ห้ามใช้ substring "pending" — จะไปโดน /interfaces/pending-ack ซึ่งเป็น watchdog ACK ของ STA
+        # ⚠️ ห้ามใช้ substring "pending" — จะไปโดน /sbpgi/interface/pending-ack ซึ่งเป็น watchdog ACK ของ STA
         #    (อ่าน interface_transactions) ไม่ใช่ inbox ของ workflow engine
-        elif path.rstrip("/").endswith("/tasks"):
+        elif path.rstrip("/").endswith("/sbpgi/document/tasks"):
             plan.append([label, "getPendingFlowByUser()", "inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header"])
-        elif "/workflows/summary" in path:
+        elif "/sbpgi/workflow/summary" in path:
             plan.append([label, "getPendingFlowByUser() (aggregate)", "นับงานค้างต่อ state แล้วรวมกับ workflow_generation_status W/Y/N"])
     if not plan and any(t[0].lower().startswith(_WORKFLOW_PREFIX) for t in reused):
         plan.append(["(อ่านสถานะประกอบ)", "getTransaction()", "อ่านสถานะปัจจุบันของเอกสารเพื่อประกอบ response"])

@@ -97,9 +97,9 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Master Data_
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/factors; POST /api/v1/factors; PUT /api/v1/factors/{code} |
+| Input | GET /api/v1/sbpgi/master/factors; POST /api/v1/sbpgi/master/factors; PUT /api/v1/sbpgi/master/factors/{code} |
 | Progress | Open master page; Load table; Open modal; Validate required/unique |
-| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Master Data Component Contract
 
@@ -114,14 +114,14 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Master Data_
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
-| GET /api/v1/factors | SCR-09 list/filter ปัจจัยภายนอก | Add/Edit (modal action) |
-| POST /api/v1/factors | SCR-09 เพิ่มปัจจัยภายนอก | Delete (ปุ่มถังขยะ + confirm) |
-| PUT /api/v1/factors/{code} | SCR-09 แก้ไขปัจจัยภายนอก | Toggle active (switch ในตาราง) |
-| DELETE /api/v1/factors/{code} | SCR-09 ลบปัจจัยภายนอกที่ยังไม่ถูกอ้างในเอกสาร | Add/Edit (modal action) |
-| GET /api/v1/competitors | list แบรนด์คู่แข่ง (master 11 รายการ) | Delete (ปุ่มถังขยะ + confirm) |
-| POST /api/v1/competitors | เพิ่มแบรนด์คู่แข่ง | Toggle active (switch ในตาราง) |
-| PUT /api/v1/competitors/{code} | แก้ไขแบรนด์คู่แข่ง | Add/Edit (modal action) |
-| DELETE /api/v1/competitors/{code} | ลบแบรนด์คู่แข่งที่ยังไม่ถูกอ้างใน document_competitors | Delete (ปุ่มถังขยะ + confirm) |
+| GET /api/v1/sbpgi/master/factors | SCR-09 list/filter ปัจจัยภายนอก | Add/Edit (modal action) |
+| POST /api/v1/sbpgi/master/factors | SCR-09 เพิ่มปัจจัยภายนอก | Delete (ปุ่มถังขยะ + confirm) |
+| PUT /api/v1/sbpgi/master/factors/{code} | SCR-09 แก้ไขปัจจัยภายนอก | Toggle active (switch ในตาราง) |
+| DELETE /api/v1/sbpgi/master/factors/{code} | SCR-09 ลบปัจจัยภายนอกที่ยังไม่ถูกอ้างในเอกสาร | Add/Edit (modal action) |
+| GET /api/v1/sbpgi/master/competitors | list แบรนด์คู่แข่ง (master 11 รายการ) | Delete (ปุ่มถังขยะ + confirm) |
+| POST /api/v1/sbpgi/master/competitors | เพิ่มแบรนด์คู่แข่ง | Toggle active (switch ในตาราง) |
+| PUT /api/v1/sbpgi/master/competitors/{code} | แก้ไขแบรนด์คู่แข่ง | Add/Edit (modal action) |
+| DELETE /api/v1/sbpgi/master/competitors/{code} | ลบแบรนด์คู่แข่งที่ยังไม่ถูกอ้างใน document_competitors | Delete (ปุ่มถังขยะ + confirm) |
 
 ### 5.92 Master Data Interaction State Machine
 
@@ -151,7 +151,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Master Data_
 
 ## 7. API Contract
 
-### GET /api/v1/factors
+### GET /api/v1/sbpgi/master/factors
 
 SCR-09 list/filter ปัจจัยภายนอก
 
@@ -206,7 +206,7 @@ SCR-09 list/filter ปัจจัยภายนอก
 | items[].description | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/factors
+### POST /api/v1/sbpgi/master/factors
 
 SCR-09 เพิ่มปัจจัยภายนอก
 
@@ -246,7 +246,7 @@ SCR-09 เพิ่มปัจจัยภายนอก
 | factorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | created | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### PUT /api/v1/factors/{code}
+### PUT /api/v1/sbpgi/master/factors/{code}
 
 SCR-09 แก้ไขปัจจัยภายนอก
 
@@ -284,7 +284,7 @@ SCR-09 แก้ไขปัจจัยภายนอก
 | factorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | updated | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### DELETE /api/v1/factors/{code}
+### DELETE /api/v1/sbpgi/master/factors/{code}
 
 SCR-09 ลบปัจจัยภายนอกที่ยังไม่ถูกอ้างในเอกสาร
 
@@ -316,7 +316,7 @@ SCR-09 ลบปัจจัยภายนอกที่ยังไม่ถ�
 | factorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | deleted | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/competitors
+### GET /api/v1/sbpgi/master/competitors
 
 list แบรนด์คู่แข่ง (master 11 รายการ)
 
@@ -363,7 +363,7 @@ list แบรนด์คู่แข่ง (master 11 รายการ)
 | items[].remark | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/competitors
+### POST /api/v1/sbpgi/master/competitors
 
 เพิ่มแบรนด์คู่แข่ง
 
@@ -405,7 +405,7 @@ list แบรนด์คู่แข่ง (master 11 รายการ)
 | competitorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | created | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### PUT /api/v1/competitors/{code}
+### PUT /api/v1/sbpgi/master/competitors/{code}
 
 แก้ไขแบรนด์คู่แข่ง
 
@@ -445,7 +445,7 @@ list แบรนด์คู่แข่ง (master 11 รายการ)
 | competitorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | updated | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### DELETE /api/v1/competitors/{code}
+### DELETE /api/v1/sbpgi/master/competitors/{code}
 
 ลบแบรนด์คู่แข่งที่ยังไม่ถูกอ้างใน document_competitors
 
@@ -511,17 +511,17 @@ import { permissionStore } from '@/stores/permissionStore';
 // ConfirmDialog เป็น named export (index.ts = `export * from './confirm-dialog'`) และ prop ยืนยัน
 // ของ PrimeReact คือ accept/reject — ไม่มี onConfirm; helper confirmDialog() คือรูปแบบที่ทีมใช้จริง
 import { ConfirmDialog, confirmDialog } from '@/components/ConfirmDialog';
-import { useFactorsQuery, useCreateFactorsMutation } from '@/hooks/sbpgi/master.query';
-import type { FactorsItem } from '@/types/sbpgi/master';
+import { useSbpgiMasterFactorsQuery, useCreateSbpgiMasterFactorsMutation } from '@/hooks/sbpgi/master.query';
+import type { SbpgiMasterFactorsItem } from '@/types/sbpgi/master';
 
 const PAGE_URL = '/sbpgi/master/factors';
 
 export default function MasterFactorsPage() {
   const { hasPermission, isPermissionLoaded } = permissionStore();
   const [query, setQuery] = useState({ page: 1, size: 20 });
-  const [editing, setEditing] = useState<Partial<FactorsItem> | null>(null);
-  const { data, isLoading } = useFactorsQuery(query);
-  const save = useCreateFactorsMutation();
+  const [editing, setEditing] = useState<Partial<SbpgiMasterFactorsItem> | null>(null);
+  const { data, isLoading } = useSbpgiMasterFactorsQuery(query);
+  const save = useCreateSbpgiMasterFactorsMutation();
 
   const canManage = hasPermission(PAGE_URL, 'canManage');
   // รอ permission โหลดเสร็จก่อน ไม่งั้นจะเห็น AccessDenied แว่บหนึ่งทุกครั้งที่เข้าหน้า
@@ -529,7 +529,7 @@ export default function MasterFactorsPage() {
   if (!hasPermission(PAGE_URL, 'canView')) return <AccessDenied />;
 
   // ทุก mutation ของ master ต้องแนบ `reason` เพื่อเขียน audit ในทรานแซกชันเดียวกัน
-  const confirmSave = (values: Partial<FactorsItem> & { reason: string }) =>
+  const confirmSave = (values: Partial<SbpgiMasterFactorsItem> & { reason: string }) =>
     confirmDialog({
       severity: 'question',
       header: 'ยืนยันการบันทึก',
@@ -555,7 +555,7 @@ export default function MasterFactorsPage() {
         <Column field="active" header="active" sortable />
         <Column
           header="จัดการ"
-          body={(row: FactorsItem) =>
+          body={(row: SbpgiMasterFactorsItem) =>
             canManage && (
               // TODO: ใส่ icon component ของทีม (เช่น Edit จาก @/components/Icons)
               <TableActionButton icon={EditIcon} severity="primary" tooltipMessage="แก้ไข" onClick={() => setEditing(row)} />
@@ -581,37 +581,37 @@ import apiClient from '@/lib/apiClient';
 import type { ApiResponse, PageResponse } from '@/types/sbpgi/common';
 import type * as T from '@/types/sbpgi/master';
 
-/** GET /api/v1/factors — SCR-09 list/filter ปัจจัยภายนอก */
-export async function getFactors(params: T.FactorsParams): Promise<PageResponse<T.FactorsItem>> {
-  const { data } = await apiClient.get<ApiResponse<PageResponse<T.FactorsItem>>>('/factors', { params });
+/** GET /api/v1/sbpgi/master/factors — SCR-09 list/filter ปัจจัยภายนอก */
+export async function getSbpgiMasterFactors(params: T.SbpgiMasterFactorsParams): Promise<PageResponse<T.SbpgiMasterFactorsItem>> {
+  const { data } = await apiClient.get<ApiResponse<PageResponse<T.SbpgiMasterFactorsItem>>>('/sbpgi/master/factors', { params });
   return data.data;
 }
 
-/** POST /api/v1/factors — SCR-09 เพิ่มปัจจัยภายนอก */
-export async function createFactors(body: T.CreateFactorsRequest): Promise<T.CreateFactorsResponse> {
-  const { data } = await apiClient.post<ApiResponse<T.CreateFactorsResponse>>('/factors', body);
+/** POST /api/v1/sbpgi/master/factors — SCR-09 เพิ่มปัจจัยภายนอก */
+export async function createSbpgiMasterFactors(body: T.CreateSbpgiMasterFactorsRequest): Promise<T.CreateSbpgiMasterFactorsResponse> {
+  const { data } = await apiClient.post<ApiResponse<T.CreateSbpgiMasterFactorsResponse>>('/sbpgi/master/factors', body);
   return data.data;
 }
 
-/** PUT /api/v1/factors/{code} — SCR-09 แก้ไขปัจจัยภายนอก */
-export async function updateFactors(code: string, body: T.UpdateFactorsRequest): Promise<T.UpdateFactorsResponse> {
-  const { data } = await apiClient.put<ApiResponse<T.UpdateFactorsResponse>>(`/factors/${encodeURIComponent(code)}`, body);
+/** PUT /api/v1/sbpgi/master/factors/{code} — SCR-09 แก้ไขปัจจัยภายนอก */
+export async function updateSbpgiMasterFactors(code: string, body: T.UpdateSbpgiMasterFactorsRequest): Promise<T.UpdateSbpgiMasterFactorsResponse> {
+  const { data } = await apiClient.put<ApiResponse<T.UpdateSbpgiMasterFactorsResponse>>(`/sbpgi/master/factors/${encodeURIComponent(code)}`, body);
   return data.data;
 }
 
-/** DELETE /api/v1/factors/{code} — SCR-09 ลบปัจจัยภายนอกที่ยังไม่ถูกอ้างในเอกสาร */
-export async function removeFactors(code: string): Promise<T.RemoveFactorsResponse> {
-  const { data } = await apiClient.delete<ApiResponse<T.RemoveFactorsResponse>>(`/factors/${encodeURIComponent(code)}`);
+/** DELETE /api/v1/sbpgi/master/factors/{code} — SCR-09 ลบปัจจัยภายนอกที่ยังไม่ถูกอ้างในเอกสาร */
+export async function removeSbpgiMasterFactors(code: string): Promise<T.RemoveSbpgiMasterFactorsResponse> {
+  const { data } = await apiClient.delete<ApiResponse<T.RemoveSbpgiMasterFactorsResponse>>(`/sbpgi/master/factors/${encodeURIComponent(code)}`);
   return data.data;
 }
 
-/** GET /api/v1/competitors — list แบรนด์คู่แข่ง (master 11 รายการ) */
-export async function getCompetitors(params: T.CompetitorsParams): Promise<PageResponse<T.CompetitorsItem>> {
-  const { data } = await apiClient.get<ApiResponse<PageResponse<T.CompetitorsItem>>>('/competitors', { params });
+/** GET /api/v1/sbpgi/master/competitors — list แบรนด์คู่แข่ง (master 11 รายการ) */
+export async function getSbpgiMasterCompetitors(params: T.SbpgiMasterCompetitorsParams): Promise<PageResponse<T.SbpgiMasterCompetitorsItem>> {
+  const { data } = await apiClient.get<ApiResponse<PageResponse<T.SbpgiMasterCompetitorsItem>>>('/sbpgi/master/competitors', { params });
   return data.data;
 }
 
-// TODO: ยังขาดอีก 3 เส้นที่ต้องเพิ่มในไฟล์นี้ด้วยรูปแบบเดียวกัน: POST /competitors, PUT /competitors/{code}, DELETE /competitors/{code}
+// TODO: ยังขาดอีก 3 เส้นที่ต้องเพิ่มในไฟล์นี้ด้วยรูปแบบเดียวกัน: POST /sbpgi/master/competitors, PUT /sbpgi/master/competitors/{code}, DELETE /sbpgi/master/competitors/{code}
 // TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
 ```
 
@@ -623,54 +623,54 @@ export async function getCompetitors(params: T.CompetitorsParams): Promise<PageR
 
 import type { PageResponse } from '@/types/sbpgi/common';
 
-/** GET /api/v1/factors — request */
-export interface FactorsParams {
+/** GET /api/v1/sbpgi/master/factors — request */
+export interface SbpgiMasterFactorsParams {
   q?: string;
   active?: boolean;
   page?: number;
   size?: number;
 }
 
-/** GET /api/v1/factors — 1 แถวในตาราง */
-export interface FactorsItem {
+/** GET /api/v1/sbpgi/master/factors — 1 แถวในตาราง */
+export interface SbpgiMasterFactorsItem {
   factorCode: string;
   factorName: string;
   description: string;
   active: boolean;
 }
-export type FactorsListResponse = PageResponse<FactorsItem>;
+export type SbpgiMasterFactorsListResponse = PageResponse<SbpgiMasterFactorsItem>;
 
-/** POST /api/v1/factors — request */
-export interface CreateFactorsRequest {
+/** POST /api/v1/sbpgi/master/factors — request */
+export interface CreateSbpgiMasterFactorsRequest {
   factorCode: string;
   factorName: string;
   description: string;
   active: boolean;
 }
 
-/** POST /api/v1/factors — response */
-export interface CreateFactorsResponse {
+/** POST /api/v1/sbpgi/master/factors — response */
+export interface CreateSbpgiMasterFactorsResponse {
   factorCode: string;
   created: boolean;
 }
 
-/** PUT /api/v1/factors/{code} — request */
-export interface UpdateFactorsRequest {
+/** PUT /api/v1/sbpgi/master/factors/{code} — request */
+export interface UpdateSbpgiMasterFactorsRequest {
   factorName: string;
   description: string;
   active: boolean;
 }
 
-/** PUT /api/v1/factors/{code} — response */
-export interface UpdateFactorsResponse {
+/** PUT /api/v1/sbpgi/master/factors/{code} — response */
+export interface UpdateSbpgiMasterFactorsResponse {
   factorCode: string;
   updated: boolean;
 }
 
 // endpoint ที่เหลือของเอกสารนี้ — TODO: แทน placeholder ด้วย interface เต็มรูปแบบเดียวกับข้างบน
-export type RemoveFactorsResponse = Record<string, unknown>;
-export type CompetitorsParams = Record<string, unknown>;
-export type CompetitorsItem = Record<string, unknown>;
+export type RemoveSbpgiMasterFactorsResponse = Record<string, unknown>;
+export type SbpgiMasterCompetitorsParams = Record<string, unknown>;
+export type SbpgiMasterCompetitorsItem = Record<string, unknown>;
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
@@ -684,32 +684,32 @@ import type * as T from '@/types/sbpgi/master';
 
 export const masterKeys = {
   all: ['sbpgi', 'master'] as const,
-  factors: (params?: T.FactorsParams | null) => [...masterKeys.all, 'factors', params] as const,
-  competitors: (params?: T.CompetitorsParams | null) => [...masterKeys.all, 'competitors', params] as const,
+  sbpgiMasterFactors: (params?: T.SbpgiMasterFactorsParams | null) => [...masterKeys.all, 'sbpgiMasterFactors', params] as const,
+  sbpgiMasterCompetitors: (params?: T.SbpgiMasterCompetitorsParams | null) => [...masterKeys.all, 'sbpgiMasterCompetitors', params] as const,
 };
 
-export function useFactorsQuery(params?: T.FactorsParams | null) {
+export function useSbpgiMasterFactorsQuery(params?: T.SbpgiMasterFactorsParams | null) {
   return useQuery({
-    queryKey: masterKeys.factors(params),
-    queryFn: () => api.getFactors(params!),
+    queryKey: masterKeys.sbpgiMasterFactors(params),
+    queryFn: () => api.getSbpgiMasterFactors(params!),
     enabled: !!params, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
     staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
   });
 }
 
-export function useCompetitorsQuery(params?: T.CompetitorsParams | null) {
+export function useSbpgiMasterCompetitorsQuery(params?: T.SbpgiMasterCompetitorsParams | null) {
   return useQuery({
-    queryKey: masterKeys.competitors(params),
-    queryFn: () => api.getCompetitors(params!),
+    queryKey: masterKeys.sbpgiMasterCompetitors(params),
+    queryFn: () => api.getSbpgiMasterCompetitors(params!),
     enabled: !!params, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
     staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
   });
 }
 
-export function useCreateFactorsMutation() {
+export function useCreateSbpgiMasterFactorsMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: T.CreateFactorsRequest) => api.createFactors(body),
+    mutationFn: (body: T.CreateSbpgiMasterFactorsRequest) => api.createSbpgiMasterFactors(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: masterKeys.all }); // reload list/detail/timeline
     },
@@ -717,10 +717,10 @@ export function useCreateFactorsMutation() {
   });
 }
 
-export function useUpdateFactorsMutation(code: string) {
+export function useUpdateSbpgiMasterFactorsMutation(code: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: T.UpdateFactorsRequest) => api.updateFactors(code, body),
+    mutationFn: (body: T.UpdateSbpgiMasterFactorsRequest) => api.updateSbpgiMasterFactors(code, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: masterKeys.all }); // reload list/detail/timeline
     },
@@ -728,7 +728,7 @@ export function useUpdateFactorsMutation(code: string) {
   });
 }
 
-// TODO: ยังขาดอีก 1 เส้น เขียน hook ด้วยรูปแบบเดียวกัน: DELETE /factors/{code}
+// TODO: ยังขาดอีก 1 เส้น เขียน hook ด้วยรูปแบบเดียวกัน: DELETE /sbpgi/master/factors/{code}
 ```
 
 #### 8.6 ฟอร์ม + validation — `src/components/sbpgi/master-data/MasterDataForm.tsx`
@@ -832,14 +832,14 @@ export default function MasterDataForm({ defaultValues, onSubmit }: {
 | business rule | logic | nameTh และ nameEn ของคู่แข่งบังคับทั้งคู่ |
 | business rule | logic | ลบไม่ได้ถ้าถูกอ้างใน document_external_factors / document_competitors → 409 ให้ปิด active แทน |
 | business rule | logic | ไม่มี reason และไม่มี audit log (ยกเลิกระบบ audit ของ master 2026-08-07) |
-| `GET /api/v1/factors` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `POST /api/v1/factors` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `PUT /api/v1/factors/{code}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `DELETE /api/v1/factors/{code}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `GET /api/v1/competitors` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `POST /api/v1/competitors` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `PUT /api/v1/competitors/{code}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `DELETE /api/v1/competitors/{code}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/sbpgi/master/factors` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `POST /api/v1/sbpgi/master/factors` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `PUT /api/v1/sbpgi/master/factors/{code}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `DELETE /api/v1/sbpgi/master/factors/{code}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/sbpgi/master/competitors` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `POST /api/v1/sbpgi/master/competitors` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `PUT /api/v1/sbpgi/master/competitors/{code}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `DELETE /api/v1/sbpgi/master/competitors/{code}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
 | component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
 | hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
 | error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |

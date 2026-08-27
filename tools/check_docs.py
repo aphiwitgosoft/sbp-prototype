@@ -190,6 +190,18 @@ _eps = re.findall(r"m:\s*'(GET|POST|PUT|PATCH|DELETE)'[^}]*?p:\s*'([^']+)'", _pl
 check(f"endpoint ที่ยังใช้งานใน plan-api.html = {CANON_ENDPOINTS}",
       [] if len(_eps) == CANON_ENDPOINTS else [f"นับได้ {len(_eps)}"])
 
+# ทุกเส้นของ SBPGI ต้องอยู่ใต้ namespace /api/v1/sbpgi/ (มติ 2026-08-25)
+# เหตุผล: SBPGI อยู่ใน store-backend ตัวเดิมที่มี /document /report /interface/... อยู่ก่อนแล้ว
+check("endpoint ของ SBPGI ที่ไม่ได้อยู่ใต้ /api/v1/sbpgi/",
+      [f"{m} {pth}" for m, pth in _eps if not pth.startswith("/api/v1/sbpgi/")])
+
+# ต้องอยู่ในกลุ่มใดกลุ่มหนึ่งใน 6 กลุ่ม (ตรงกับ 6 กลุ่มใน api.md แบบ 1:1)
+SBPGI_GROUPS = ("document", "lookup", "master", "report", "workflow", "interface")
+check(f"endpoint ที่ไม่ได้อยู่ใน 6 กลุ่มของ sbpgi ({'/'.join(SBPGI_GROUPS)})",
+      [f"{m} {pth}" for m, pth in _eps
+       if pth.startswith("/api/v1/sbpgi/")
+       and pth[len("/api/v1/sbpgi/"):].split("/")[0] not in SBPGI_GROUPS])
+
 # api.md เขียนแบบรวมแถวได้ (GET/POST/PUT/DELETE | /a · /a/{id}) — ขยายแล้วต้องได้เท่ากัน
 _api = read("api.md")
 # นับเฉพาะในหัวข้อ "รายการ endpoint ทั้ง 6 กลุ่ม" — ท้ายไฟล์มีตารางของกลุ่มที่ถูกตัดออกแล้ว
@@ -202,7 +214,7 @@ for _line in _scope.split("\n"):
     if not _line.startswith("|"):
         continue
     _cells = _line.split("|")
-    # แบบ A (ชัดเจน): VERB `path` เขียนติดกัน — ใช้ได้ทุกคอลัมน์ เช่น "GET `/factors` · POST `/factors`"
+    # แบบ A (ชัดเจน): VERB `path` เขียนติดกัน — ใช้ได้ทุกคอลัมน์ เช่น "GET `/sbpgi/master/factors` · POST `/sbpgi/master/factors`"
     _explicit = re.findall(r"\b(GET|POST|PUT|PATCH|DELETE)\s+`(/[^`]+)`", _line)
     if _explicit:
         _pairs |= set(_explicit)
@@ -281,11 +293,20 @@ else:
     if f"<b>{GRAND}</b>" not in read("LLDD/index.html"):
         hour_bad.append(f"portal LLDD/index.html ไม่ได้แสดง {GRAND} ชั่วโมง")
     _tobe = read("LLDD/md/LLDD-To-Be.md")
-    _tm = re.search(r"\*\*รวมทั้งชุดส่งมอบ\*\*[^|]*\|[^|]*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*\*\*(\d+)\*\*", _tobe)
-    if not _tm:
-        hour_bad.append("LLDD-To-Be อ่านแถวรวมทั้งชุดส่งมอบไม่ได้")
-    elif int(_tm.group(3)) != GRAND or int(_tm.group(1)) + int(_tm.group(2)) != GRAND:
-        hour_bad.append(f"LLDD-To-Be รวม {_tm.group(3)} (FE {_tm.group(1)} + BE {_tm.group(2)}) != {GRAND}")
+    # โครงใหม่: แถว "รวมงานที่ To-Be เพิ่ม" + แถว TB-0 (ฐานราก · ไม่นับเป็นเวลาของ To-Be) ต้องบวกได้ยอดรวมทั้งชุด
+    _add = re.search(r"\*\*รวมงานที่ To-Be เพิ่ม\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*\*\*(\d+)\*\*", _tobe)
+    _base = re.search(r"\|\s*TB-0\s*\|[^|]*\|[^|]*\|\s*\*(\d+)\*\s*\|\s*\*(\d+)\*\s*\|\s*\*(\d+)\*", _tobe)
+    if not _add or not _base:
+        hour_bad.append("LLDD-To-Be อ่านแถวสรุป (รวมงานที่ To-Be เพิ่ม / TB-0 ฐานราก) ไม่ได้")
+    else:
+        _a = [int(x) for x in _add.groups()]
+        _b = [int(x) for x in _base.groups()]
+        if _a[0] + _a[1] != _a[2]:
+            hour_bad.append(f"LLDD-To-Be แถว To-Be: FE {_a[0]} + BE {_a[1]} != {_a[2]}")
+        if _b[0] + _b[1] != _b[2]:
+            hour_bad.append(f"LLDD-To-Be แถว TB-0: FE {_b[0]} + BE {_b[1]} != {_b[2]}")
+        if _a[2] + _b[2] != GRAND:
+            hour_bad.append(f"LLDD-To-Be: To-Be {_a[2]} + ฐานราก {_b[2]} = {_a[2] + _b[2]} != {GRAND}")
     _mi = read("LLDD/md/LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management.md")
     # นับเฉพาะหัวข้อ 4 (ภาระงานต่อคน) — หัวข้อ 3 ใช้รูปแบบเดียวกันแต่เป็นรายเอกสาร
     _s4 = _mi[_mi.index("## 4. Workload Balance"): _mi.index("## 5. ")]

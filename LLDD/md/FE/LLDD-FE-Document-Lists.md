@@ -47,7 +47,7 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | docNo | YYYY/xxxxx | optional search | ถ้าคลิก row ส่งไป detail |
-| year | ค.ศ. YYYY | required สำหรับ /documents | default current year (ค.ศ.) |
+| year | ค.ศ. YYYY | required สำหรับ /sbpgi/document | default current year (ค.ศ.) |
 | status | status code/string | optional single select | ใช้ filter chip |
 | table.roundNo | integer | column 1 | ครั้งที่ (รอบชดเชยของร้าน) |
 | table.docNo | YYYY/xxxxx | column 2 | เลขที่เอกสารและลิงก์เปิด detail |
@@ -64,16 +64,16 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/tasks; GET /api/v1/documents |
+| Input | GET /api/v1/sbpgi/document/tasks; GET /api/v1/sbpgi/document |
 | Progress | Read route mode; Bind filter values; Call list API; Render table |
-| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Document Lists Component Contract
 
 | ID | Component / Scope | Single responsibility | Definition of done |
 | --- | --- | --- | --- |
-| C01 | Waiting list | โหลดงานของผู้ใช้จาก /tasks และ map 9 คอลัมน์หลักพร้อม task owner/status | waiting list แสดง 9 คอลัมน์ตรง type และรักษา leading zero ของรหัสร้าน |
-| C02 | Related document list | ค้นหาเอกสารจาก /documents โดยบังคับปีและแสดงเอกสารที่เกี่ยวข้องตาม permission | ไม่ call API เมื่อไม่มีปี และ empty result ไม่แสดงข้อมูลจาก query ก่อนหน้า |
+| C01 | Waiting list | โหลดงานของผู้ใช้จาก /sbpgi/document/tasks และ map 9 คอลัมน์หลักพร้อม task owner/status | waiting list แสดง 9 คอลัมน์ตรง type และรักษา leading zero ของรหัสร้าน |
+| C02 | Related document list | ค้นหาเอกสารจาก /sbpgi/document โดยบังคับปีและแสดงเอกสารที่เกี่ยวข้องตาม permission | ไม่ call API เมื่อไม่มีปี และ empty result ไม่แสดงข้อมูลจาก query ก่อนหน้า |
 | C03 | Search/filter/status filter | serialize docNo/year/status/store filters ลง query state และ restore เมื่อย้อนกลับจาก detail | Search/Clear/refresh ให้ผลซ้ำได้และ pagination ใช้ filter ชุดเดียวกัน |
 | C04 | Pagination/row action + เลือกหลายเอกสาร (bulk) | ควบคุม page/size/sort และ row navigation โดยใช้ docNo เป็น stable key · เพิ่มคอลัมน์ checkbox แรกสุดสำหรับเลือกหลายเอกสาร (SDD GI สไลด์ 48) — checkbox ต้อง stopPropagation ไม่ให้ทริกเกอร์ row navigation และ "เลือกทั้งหมด" ครอบเฉพาะแถวที่แสดงในหน้านั้น ไม่ใช่ทั้งชุดผลลัพธ์ | เปลี่ยนหน้าไม่ reset filter และเปิด detail ของ row ที่เลือกถูกเลขเอกสาร · เลือกหลายรายการแล้วกด "ดำเนินการที่เลือก" ต้องเปิด popup ยืนยันพร้อมรายการเลขที่เอกสารก่อนส่ง และเคลียร์การเลือกหลังส่งสำเร็จ |
 | C05 | Red flag (sales < 60 days) + rejected-ending rows ที่บทบาท 06 ต้องเห็น | คำนวณ presentation flag จาก salesDataDays < 60 โดยไม่ใช้ waitingDays แทน และ render เอกสารที่จบด้วยผลปฏิเสธทั้ง 2 แบบ — หยุดชดเชยประกันรายได้ (stoppedReopenable=true) และ เห็นควรไม่ชดเชยรายได้ (notCompensated=true) — เฉพาะบทบาท section 06 | แถวผิดปกติเป็นสีแดงพร้อม accessible label เฉพาะเมื่อยอดขายไม่ครบ 60 วัน · บทบาท 06 เห็น 3 กลุ่มในหน้าเดียว (มติ 2026-08-24): (1) รอฝ่าย SBP DSA ดำเนินการ (2) เสร็จสิ้นดำเนินการ + ชิป หยุดชดเชยฯ (3) เสร็จสิ้นดำเนินการ + ชิป เห็นควรไม่ชดเชยฯ · บทบาท 08/01/02/03 ต้องไม่เห็นกลุ่ม (2) และ (3) · ชิปทั้งสองเป็นผลการพิจารณาสุดท้าย ไม่ใช่สถานะที่ 7/8 — สถานะจริงยังเป็น เสร็จสิ้นดำเนินการ ตามชุด 6 ค่า และมีตัวกรองแยก 2 ตัวจาก dropdown สถานะ · กลุ่ม (2) คลิกแล้วเปิดเอกสารในโหมดเปิดพิจารณาใหม่ · หมายเหตุที่มา: กลุ่ม (3) กว้างกว่าตัวอักษรของ SDD สไลด์ 46/64 ที่ให้แสดงเฉพาะรอบเดือนถัดไปในหน้างานค้างของ เจ้าหน้าที่ SBP DSA |
@@ -82,23 +82,23 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
-| GET /api/v1/tasks | รายการเอกสารรอดำเนินการ | Search (ปุ่มค้นหา) |
-| GET /api/v1/documents | ค้นหาเอกสารที่เกี่ยวข้อง ต้องระบุปี | Clear (ปุ่มเคลียร์) |
+| GET /api/v1/sbpgi/document/tasks | รายการเอกสารรอดำเนินการ | Search (ปุ่มค้นหา) |
+| GET /api/v1/sbpgi/document | ค้นหาเอกสารที่เกี่ยวข้อง ต้องระบุปี | Search (ปุ่มค้นหา) |
 
 ### 5.92 Document Lists Interaction State Machine
 
 | Action | Trigger | API / State transition | Expected visible result |
 | --- | --- | --- | --- |
-| Search | ปุ่มค้นหา | GET /api/v1/tasks หรือ /documents | reload table |
+| Search | ปุ่มค้นหา | GET /api/v1/sbpgi/document/tasks หรือ /sbpgi/document | reload table |
 | Clear | ปุ่มเคลียร์ | client state | reset filters |
-| Open detail | click row | navigate /documents/:docNo | เปิดเอกสาร |
+| Open detail | click row | navigate /sbpgi/document/:docNo | เปิดเอกสาร |
 
 ### 5.93 Document Lists Feature Failure Checks
 
 | Case | Feature-specific scenario | Expected evidence |
 | --- | --- | --- |
 | FE-01 | ค้นหาด้วย docNo | ตาราง 9 คอลัมน์หลักครบ |
-| FE-02 | filter status | ปีเป็น required เมื่อใช้ /documents |
+| FE-02 | filter status | ปีเป็น required เมื่อใช้ /sbpgi/document |
 | FE-03 | เปิด detail | ยอดขายไม่ครบ 60 วันแสดงแดง |
 | FE-04 | empty result | pagination คง filter เดิม |
 | FE-05 | abnormal row | ตาราง 9 คอลัมน์หลักครบ |
@@ -107,13 +107,13 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
-| Search | ปุ่มค้นหา | GET /api/v1/tasks หรือ /documents | reload table |
+| Search | ปุ่มค้นหา | GET /api/v1/sbpgi/document/tasks หรือ /sbpgi/document | reload table |
 | Clear | ปุ่มเคลียร์ | client state | reset filters |
-| Open detail | click row | navigate /documents/:docNo | เปิดเอกสาร |
+| Open detail | click row | navigate /sbpgi/document/:docNo | เปิดเอกสาร |
 
 ## 7. API Contract
 
-### GET /api/v1/tasks
+### GET /api/v1/sbpgi/document/tasks
 
 รายการเอกสารรอดำเนินการ
 
@@ -180,7 +180,7 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 | items[].daysPending | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].salesDataDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/documents
+### GET /api/v1/sbpgi/document
 
 ค้นหาเอกสารที่เกี่ยวข้อง ต้องระบุปี
 
@@ -257,8 +257,8 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 
 | Path ไฟล์ | หน้าที่ |
 | --- | --- |
-| src/app/(main)/sbpgi/documents/waiting/page.tsx | route page — หน้ารายการเอกสารรอดำเนินการ (GET /tasks) |
-| src/app/(main)/sbpgi/documents/related/page.tsx | route page — หน้าเอกสารที่เกี่ยวข้อง (GET /documents · ปี = required) |
+| src/app/(main)/sbpgi/document/waiting/page.tsx | route page — หน้ารายการเอกสารรอดำเนินการ (GET /sbpgi/document/tasks) |
+| src/app/(main)/sbpgi/document/related/page.tsx | route page — หน้าเอกสารที่เกี่ยวข้อง (GET /sbpgi/document · ปี = required) |
 | src/components/sbpgi/document-lists/DocumentListsForm.tsx | component — ฟอร์ม/ฟิลเตอร์ (react-hook-form + yup + FormInputControl) |
 | src/services/sbpgi/document.service.ts | service — เรียก BFF ผ่าน apiClient (GET) |
 | src/hooks/sbpgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
@@ -268,8 +268,8 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Lists_
 
 ```tsx
 'use client';
-// หน้ารายการเอกสารรอดำเนินการ (GET /tasks)
-// route: /sbpgi/documents/waiting  ·  ต้องมี record ใน GET /menus และสิทธิ์ใน GET /groups/current-user/permissions
+// หน้ารายการเอกสารรอดำเนินการ (GET /sbpgi/document/tasks)
+// route: /sbpgi/document/waiting  ·  ต้องมี record ใน GET /menus และสิทธิ์ใน GET /groups/current-user/permissions
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -280,17 +280,17 @@ import AccessDenied from '@/components/Permission/AccessDenied';
 // permissionStore เป็น named export ของ Zustand store (ไม่มี symbol ชื่อ usePermissionStore ในโปรเจกต์)
 import { permissionStore } from '@/stores/permissionStore';
 import { apiErrorMessage } from '@/lib/sbpgi/apiError';
-import { useTasksQuery } from '@/hooks/sbpgi/document.query';
-import type { TasksItem } from '@/types/sbpgi/document';
+import { useSbpgiDocumentTasksQuery } from '@/hooks/sbpgi/document.query';
+import type { SbpgiDocumentTasksItem } from '@/types/sbpgi/document';
 
-const PAGE_URL = '/sbpgi/documents/waiting';
+const PAGE_URL = '/sbpgi/document/waiting';
 
-export default function DocumentsWaitingPage() {
+export default function DocumentWaitingPage() {
   const router = useRouter();
   const { hasPermission, isPermissionLoaded } = permissionStore();
   const [query, setQuery] = useState({ page: 1, size: 20 });
   // NOTE: เรียก hook ให้ครบก่อน แล้วค่อย early-return (rules of hooks)
-  const { data, isLoading, isError, error } = useTasksQuery(query);
+  const { data, isLoading, isError, error } = useSbpgiDocumentTasksQuery(query);
 
   // รอ permission โหลดเสร็จก่อน ไม่งั้นจะเห็น AccessDenied แว่บหนึ่งทุกครั้งที่เข้าหน้า
   if (!isPermissionLoaded) return null;
@@ -309,9 +309,9 @@ export default function DocumentsWaitingPage() {
         first={(query.page - 1) * query.size}
         totalRecords={data?.total ?? 0}
         onPage={(e) => setQuery((q) => ({ ...q, page: (e.page ?? 0) + 1, size: e.rows ?? q.size }))}
-        onRowClick={(e) => router.push(`/sbpgi/documents/${encodeURIComponent((e.data as TasksItem).docNo)}`)}
+        onRowClick={(e) => router.push(`/sbpgi/document/${encodeURIComponent((e.data as SbpgiDocumentTasksItem).docNo)}`)}
         emptyMessage="ไม่พบข้อมูล"
-        rowClassName={(row: TasksItem) => (row.salesDataDays < 60 ? 'flag-red' : '')} // ยอดขายไม่ครบ 60 วัน = แถวผิดปกติ
+        rowClassName={(row: SbpgiDocumentTasksItem) => (row.salesDataDays < 60 ? 'flag-red' : '')} // ยอดขายไม่ครบ 60 วัน = แถวผิดปกติ
       >
         <Column field="roundNo" header="ครั้งที่ (รอบชดเชยของร้าน)" sortable align="right" />
         <Column field="docNo" header="เลขที่เอกสารและลิงก์เปิด detail" sortable />
@@ -343,15 +343,15 @@ import apiClient from '@/lib/apiClient';
 import type { ApiResponse, PageResponse } from '@/types/sbpgi/common';
 import type * as T from '@/types/sbpgi/document';
 
-/** GET /api/v1/tasks — รายการเอกสารรอดำเนินการ */
-export async function getTasks(params: T.TasksParams): Promise<PageResponse<T.TasksItem>> {
-  const { data } = await apiClient.get<ApiResponse<PageResponse<T.TasksItem>>>('/tasks', { params });
+/** GET /api/v1/sbpgi/document/tasks — รายการเอกสารรอดำเนินการ */
+export async function getSbpgiDocumentTasks(params: T.SbpgiDocumentTasksParams): Promise<PageResponse<T.SbpgiDocumentTasksItem>> {
+  const { data } = await apiClient.get<ApiResponse<PageResponse<T.SbpgiDocumentTasksItem>>>('/sbpgi/document/tasks', { params });
   return data.data;
 }
 
-/** GET /api/v1/documents — ค้นหาเอกสารที่เกี่ยวข้อง ต้องระบุปี */
-export async function getDocuments(params: T.DocumentsParams): Promise<PageResponse<T.DocumentsItem>> {
-  const { data } = await apiClient.get<ApiResponse<PageResponse<T.DocumentsItem>>>('/documents', { params });
+/** GET /api/v1/sbpgi/document — ค้นหาเอกสารที่เกี่ยวข้อง ต้องระบุปี */
+export async function getSbpgiDocument(params: T.SbpgiDocumentParams): Promise<PageResponse<T.SbpgiDocumentItem>> {
+  const { data } = await apiClient.get<ApiResponse<PageResponse<T.SbpgiDocumentItem>>>('/sbpgi/document', { params });
   return data.data;
 }
 
@@ -368,15 +368,15 @@ export async function getDocuments(params: T.DocumentsParams): Promise<PageRespo
 
 import type { PageResponse } from '@/types/sbpgi/common';
 
-/** GET /api/v1/tasks — request */
-export interface TasksParams {
+/** GET /api/v1/sbpgi/document/tasks — request */
+export interface SbpgiDocumentTasksParams {
   page?: number;
   size?: number;
   status?: string;
 }
 
-/** GET /api/v1/tasks — 1 แถวในตาราง */
-export interface TasksItem {
+/** GET /api/v1/sbpgi/document/tasks — 1 แถวในตาราง */
+export interface SbpgiDocumentTasksItem {
   roundNo: number;
   docNo: string;
   impactedStoreCode: string;
@@ -389,17 +389,17 @@ export interface TasksItem {
   daysPending: number;
   salesDataDays: number;
 }
-export type TasksListResponse = PageResponse<TasksItem>;
+export type SbpgiDocumentTasksListResponse = PageResponse<SbpgiDocumentTasksItem>;
 
-/** GET /api/v1/documents — request */
-export interface DocumentsParams {
+/** GET /api/v1/sbpgi/document — request */
+export interface SbpgiDocumentParams {
   year?: number;
   page?: number;
   size?: number;
 }
 
-/** GET /api/v1/documents — 1 แถวในตาราง */
-export interface DocumentsItem {
+/** GET /api/v1/sbpgi/document — 1 แถวในตาราง */
+export interface SbpgiDocumentItem {
   roundNo: number;
   docNo: string;
   impactedStoreCode: string;
@@ -412,7 +412,7 @@ export interface DocumentsItem {
   daysPending: number;
   salesDataDays: number;
 }
-export type DocumentsListResponse = PageResponse<DocumentsItem>;
+export type SbpgiDocumentListResponse = PageResponse<SbpgiDocumentItem>;
 
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
@@ -429,23 +429,23 @@ import type * as T from '@/types/sbpgi/document';
 
 export const documentKeys = {
   all: ['sbpgi', 'document'] as const,
-  tasks: (params?: T.TasksParams | null) => [...documentKeys.all, 'tasks', params] as const,
-  documents: (params?: T.DocumentsParams | null) => [...documentKeys.all, 'documents', params] as const,
+  sbpgiDocumentTasks: (params?: T.SbpgiDocumentTasksParams | null) => [...documentKeys.all, 'sbpgiDocumentTasks', params] as const,
+  sbpgiDocument: (params?: T.SbpgiDocumentParams | null) => [...documentKeys.all, 'sbpgiDocument', params] as const,
 };
 
-export function useTasksQuery(params?: T.TasksParams | null) {
+export function useSbpgiDocumentTasksQuery(params?: T.SbpgiDocumentTasksParams | null) {
   return useQuery({
-    queryKey: documentKeys.tasks(params),
-    queryFn: () => api.getTasks(params!),
+    queryKey: documentKeys.sbpgiDocumentTasks(params),
+    queryFn: () => api.getSbpgiDocumentTasks(params!),
     enabled: !!params, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
     staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
   });
 }
 
-export function useDocumentsQuery(params?: T.DocumentsParams | null) {
+export function useSbpgiDocumentQuery(params?: T.SbpgiDocumentParams | null) {
   return useQuery({
-    queryKey: documentKeys.documents(params),
-    queryFn: () => api.getDocuments(params!),
+    queryKey: documentKeys.sbpgiDocument(params),
+    queryFn: () => api.getSbpgiDocument(params!),
     enabled: !!params, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
     staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
   });
@@ -527,7 +527,7 @@ export default function DocumentListsForm({ defaultValues, onSubmit }: {
 ## 10. Acceptance Criteria
 
 - ตาราง 9 คอลัมน์หลักครบ
-- ปีเป็น required เมื่อใช้ /documents
+- ปีเป็น required เมื่อใช้ /sbpgi/document
 - ยอดขายไม่ครบ 60 วันแสดงแดง
 - pagination คง filter เดิม
 
@@ -549,16 +549,16 @@ export default function DocumentListsForm({ defaultValues, onSubmit }: {
 
 | สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
 | --- | --- | --- |
-| `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required สำหรับ /documents · รูปแบบ: ค.ศ. YYYY |
+| `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required สำหรับ /sbpgi/document · รูปแบบ: ค.ศ. YYYY |
 | `table.totalCompensationAmount` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: column 7; >=0 · รูปแบบ: decimal |
 | `table.daysPending` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: column 9; >=0 · รูปแบบ: integer |
 | `table.salesDataDays` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: internal (ไม่ใช่คอลัมน์แสดง) · รูปแบบ: integer |
 | business rule | logic | ตาราง 9 คอลัมน์หลักครบ |
-| business rule | logic | ปีเป็น required เมื่อใช้ /documents |
+| business rule | logic | ปีเป็น required เมื่อใช้ /sbpgi/document |
 | business rule | logic | ยอดขายไม่ครบ 60 วันแสดงแดง |
 | business rule | logic | pagination คง filter เดิม |
-| `GET /api/v1/tasks` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `GET /api/v1/documents` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/sbpgi/document/tasks` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/sbpgi/document` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
 | component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
 | hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
 | error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |

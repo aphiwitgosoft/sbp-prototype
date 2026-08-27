@@ -96,7 +96,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ### 5.6 API Response Example
 
-#### GET /api/v1/documents/{docNo} response
+#### GET /api/v1/sbpgi/document/{docNo} response
 
 ```json
 {
@@ -161,15 +161,15 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/documents/{docNo}; POST /api/v1/documents/{docNo}/actions |
+| Input | GET /api/v1/sbpgi/document/{docNo}; POST /api/v1/sbpgi/document/{docNo}/actions |
 | Progress | Load document detail; Apply visibleSections and editableSections; Render fields/actions for this role only; Validate popup text |
-| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Document Detail Role 03 AVP SBP Implementation Steps
 
 | Step | Implementation detail | Check |
 | --- | --- | --- |
-| Load exact profile | เรียก GET /api/v1/documents/{docNo} และยืนยัน roleProfileCode=P-03, statusCode=03 ก่อน render action state | profile mismatch ต้อง fail closed; ไม่ใช้ role switcher เพื่อจำลอง P-03 |
+| Load exact profile | เรียก GET /api/v1/sbpgi/document/{docNo} และยืนยัน roleProfileCode=P-03, statusCode=03 ก่อน render action state | profile mismatch ต้อง fail closed; ไม่ใช้ role switcher เพื่อจำลอง P-03 |
 | Render profile sections | render เฉพาะ visibleSections ของ P-03: doc-header, sec-sales, sec-map, sec-newstore, sec-competitor, sec-factor, sec-attach, sec-comp-history, sec-decision-history, sec-action; ซ่อน: sec-calc | section ที่ซ่อนต้องไม่อยู่ใน DOM และ section key ที่ไม่รู้จักต้อง log/ignore แบบ fail closed |
 | Apply edit boundary | เปิด mutation control เฉพาะ editableSections ของ P-03: ไม่มี; business section ทั้งหมด read-only | read-only section ไม่มี focusable input/save/add/delete และ payload ต้องไม่มี field นอก editableSections |
 | Attachment control | canUploadAttachment=true สำหรับ AVP SBP; ใช้ allowlist, 5 MB และ scan-status contract | ปุ่ม upload ตรง flag, FILE_TOO_LARGE/FILE_SCAN_BLOCKED แสดงที่ attachment section |
@@ -180,14 +180,14 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
-| Load detail | เปิดเอกสาร | GET /api/v1/documents/{docNo} | render role profile |
-| Save editable section | ปุ่มบันทึก | PUT /api/v1/documents/{docNo} | ใช้เฉพาะ role ที่มี editableSections |
-| Upload attachment | เลือกไฟล์ | POST /api/v1/documents/{docNo}/attachments | append attachment when allowed |
-| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/documents/{docNo}/actions | submit selected result |
+| Load detail | เปิดเอกสาร | GET /api/v1/sbpgi/document/{docNo} | render role profile |
+| Save editable section | ปุ่มบันทึก | PUT /api/v1/sbpgi/document/{docNo} | ใช้เฉพาะ role ที่มี editableSections |
+| Upload attachment | เลือกไฟล์ | POST /api/v1/sbpgi/document/{docNo}/attachments | append attachment when allowed |
+| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/sbpgi/document/{docNo}/actions | submit selected result |
 
 ## 7. API Contract
 
-### GET /api/v1/documents/{docNo}
+### GET /api/v1/sbpgi/document/{docNo}
 
 โหลด role profile P-03 สำหรับหน้า detail
 
@@ -261,7 +261,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | actionOptions[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | actionOptions[].requireComment | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/documents/{docNo}/actions
+### POST /api/v1/sbpgi/document/{docNo}/actions
 
 ตัวอย่าง positive-path จาก section 03; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม ≥ 100,000 บาท และจบที่ GM เมื่อ < 100,000 บาท (มติ 2026-08-18)
 
@@ -309,7 +309,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 | Path ไฟล์ | หน้าที่ |
 | --- | --- |
-| src/app/(main)/sbpgi/documents/[docNo]/page.tsx | route page — ใช้ร่วมกับหน้า detail — view ของ workflow section 03 |
+| src/app/(main)/sbpgi/document/[docNo]/page.tsx | route page — ใช้ร่วมกับหน้า detail — view ของ workflow section 03 |
 | src/components/sbpgi/document-detail/RoleView03.tsx | component — view เฉพาะ workflow section 03 (อ่าน visibleSections/editableSections จาก API) |
 | src/components/sbpgi/document-detail/ActionForm03.tsx | component — ฟอร์มผลการพิจารณา (result + comment) ของ section นี้ |
 | src/components/sbpgi/document-detail/DocumentSection.tsx | component ร่วม — render 1 section ตาม sectionKey (ประกาศครั้งเดียวที่ LLDD-FE-Document-Detail) |
@@ -378,15 +378,15 @@ import apiClient from '@/lib/apiClient';
 import type { ApiResponse } from '@/types/sbpgi/common';
 import type * as T from '@/types/sbpgi/document';
 
-/** GET /api/v1/documents/{docNo} — โหลด role profile P-03 สำหรับหน้า detail */
-export async function getDocumentsDetail(docNo: string): Promise<T.DocumentsDetailResponse> {
-  const { data } = await apiClient.get<ApiResponse<T.DocumentsDetailResponse>>(`/documents/${encodeURIComponent(docNo)}`);
+/** GET /api/v1/sbpgi/document/{docNo} — โหลด role profile P-03 สำหรับหน้า detail */
+export async function getSbpgiDocumentDetail(docNo: string): Promise<T.SbpgiDocumentDetailResponse> {
+  const { data } = await apiClient.get<ApiResponse<T.SbpgiDocumentDetailResponse>>(`/sbpgi/document/${encodeURIComponent(docNo)}`);
   return data.data;
 }
 
-/** POST /api/v1/documents/{docNo}/actions — ตัวอย่าง positive-path จาก section 03; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม ≥ 100,000 บาท และจบที่ GM เมื่อ < 100,000 บาท (มติ 2026-08-18) */
-export async function createDocumentsActions(docNo: string, body: T.CreateDocumentsActionsRequest): Promise<T.CreateDocumentsActionsResponse> {
-  const { data } = await apiClient.post<ApiResponse<T.CreateDocumentsActionsResponse>>(`/documents/${encodeURIComponent(docNo)}/actions`, body);
+/** POST /api/v1/sbpgi/document/{docNo}/actions — ตัวอย่าง positive-path จาก section 03; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม ≥ 100,000 บาท และจบที่ GM เมื่อ < 100,000 บาท (มติ 2026-08-18) */
+export async function createSbpgiDocumentActions(docNo: string, body: T.CreateSbpgiDocumentActionsRequest): Promise<T.CreateSbpgiDocumentActionsResponse> {
+  const { data } = await apiClient.post<ApiResponse<T.CreateSbpgiDocumentActionsResponse>>(`/sbpgi/document/${encodeURIComponent(docNo)}/actions`, body);
   return data.data;
 }
 
@@ -401,8 +401,8 @@ export async function createDocumentsActions(docNo: string, body: T.CreateDocume
 // src/types/sbpgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
 // วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
-/** GET /api/v1/documents/{docNo} — response */
-export interface DocumentsDetailResponse {
+/** GET /api/v1/sbpgi/document/{docNo} — response */
+export interface SbpgiDocumentDetailResponse {
   docNo: string;
   statusCode: string;
   viewerRbacRoleCode: string;
@@ -416,14 +416,14 @@ export interface DocumentsDetailResponse {
   }[];
 }
 
-/** POST /api/v1/documents/{docNo}/actions — request */
-export interface CreateDocumentsActionsRequest {
+/** POST /api/v1/sbpgi/document/{docNo}/actions — request */
+export interface CreateSbpgiDocumentActionsRequest {
   result: string;
   comment: string;
 }
 
-/** POST /api/v1/documents/{docNo}/actions — response */
-export interface CreateDocumentsActionsResponse {
+/** POST /api/v1/sbpgi/document/{docNo}/actions — response */
+export interface CreateSbpgiDocumentActionsResponse {
   statusCode: string;
   nextSection: string | null;
   message: string;
@@ -444,22 +444,22 @@ import type * as T from '@/types/sbpgi/document';
 
 export const documentKeys = {
   all: ['sbpgi', 'document'] as const,
-  documentsDetail: (docNo: string) => [...documentKeys.all, 'documentsDetail', docNo] as const,
+  sbpgiDocumentDetail: (docNo: string) => [...documentKeys.all, 'sbpgiDocumentDetail', docNo] as const,
 };
 
-export function useDocumentsDetailQuery(docNo: string) {
+export function useSbpgiDocumentDetailQuery(docNo: string) {
   return useQuery({
-    queryKey: documentKeys.documentsDetail(docNo),
-    queryFn: () => api.getDocumentsDetail(docNo),
+    queryKey: documentKeys.sbpgiDocumentDetail(docNo),
+    queryFn: () => api.getSbpgiDocumentDetail(docNo),
     enabled: !!docNo, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
     staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
   });
 }
 
-export function useCreateDocumentsActionsMutation(docNo: string) {
+export function useCreateSbpgiDocumentActionsMutation(docNo: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: T.CreateDocumentsActionsRequest) => api.createDocumentsActions(docNo, body),
+    mutationFn: (body: T.CreateSbpgiDocumentActionsRequest) => api.createSbpgiDocumentActions(docNo, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentKeys.all }); // reload list/detail/timeline
     },
@@ -470,7 +470,7 @@ export function useCreateDocumentsActionsMutation(docNo: string) {
 
 #### 8.6 ฟอร์มพิจารณา + validation — `src/components/sbpgi/document-detail/ActionForm03.tsx`
 
-หน้านี้**ไม่มีการค้นหา** — ฟอร์มเดียวของหน้าคือฟอร์มผลการพิจารณาที่ยิง `POST /api/v1/documents/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`
+หน้านี้**ไม่มีการค้นหา** — ฟอร์มเดียวของหน้าคือฟอร์มผลการพิจารณาที่ยิง `POST /api/v1/sbpgi/document/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`
 
 ```tsx
 'use client';
@@ -608,8 +608,8 @@ export default function ActionForm03({ options, onSubmit, onCancel, submitting }
 | business rule | logic | section ที่ hidden ต้องไม่ render |
 | business rule | logic | section ที่ read-only ต้องไม่มี editable control |
 | business rule | logic | action panel ตรงกับ actionOptions จาก API |
-| `GET /api/v1/documents/{docNo}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `POST /api/v1/documents/{docNo}/actions` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/sbpgi/document/{docNo}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `POST /api/v1/sbpgi/document/{docNo}/actions` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
 | component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
 | hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
 | error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |

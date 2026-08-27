@@ -8,9 +8,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | **11 ชั่วโมง** = implementation 8 + unit test 3 (30%) |
-| Owner | Peerakorn <Pete> Sakunkaewphithak |
+| Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | Watchdog เฝ้าระวัง ACK ค้าง: งาน safety net ตรวจ interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/interfaces/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน email-lib กลาง (sendEmail) |
+| Objective | Watchdog เฝ้าระวัง ACK ค้าง: งาน safety net ตรวจ interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/sbpgi/interface/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน email-lib กลาง (sendEmail) |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -154,6 +154,8 @@ export async function runLlddBeJob10Notifynoreceivedata(ctx, services) {
 | ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ interface_transactions |
 
 ## 7. API Contract
+
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
@@ -304,7 +306,7 @@ export class NotifyNoReceiveDataService {
     // TODO: implement
   }
 
-  // แสดงรายการใน /interfaces/pending-ack
+  // แสดงรายการใน /sbpgi/interface/pending-ack
   async step05Process(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -322,7 +324,7 @@ export class NotifyNoReceiveDataService {
 | 2 | process | อ่าน interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 3 | decision | พบรายการค้าง? | check03Condition() | [end] จบการทำงาน |
 | 4 | io | ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม | step04Notify() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 5 | process | แสดงรายการใน /interfaces/pending-ack | step05Process() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 5 | process | แสดงรายการใน /sbpgi/interface/pending-ack | step05Process() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | end | จบ | summarize() | - |
 
 ```ts
@@ -358,7 +360,7 @@ export class NotifyNoReceiveDataJob {
       }
       // ขั้นที่ 4: ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม · TODO: ผู้รับตาม backend config
       await this.service.step04Notify(state);
-      // ขั้นที่ 5: แสดงรายการใน /interfaces/pending-ack · TODO: POST /interfaces/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ
+      // ขั้นที่ 5: แสดงรายการใน /sbpgi/interface/pending-ack · TODO: POST /sbpgi/interface/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ
       await this.service.step05Process(state);
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
@@ -538,7 +540,7 @@ export class JobFailureNotifier {
 ##### 9.6.2 Checklist การ rerun
 
 - กติกา rerun ของ Job 10: รันซ้ำได้; ต้องไม่ส่งอีเมลซ้ำถ้ามี sent marker ในรอบเดียวกัน
-- ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: read-only; callback /interfaces/sta/ack เป็นผู้เขียน ACK หลัก
+- ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: read-only; callback /sbpgi/interface/sta/ack เป็นผู้เขียน ACK หลัก
 - ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: ห้ามกลับไปใช้ TIS-620/hardcoded recipient; Job 10 เป็น safety net ไม่ใช่ primary ACK path
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
 - สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=10 --period=<YYYYMM>`
@@ -553,7 +555,7 @@ export class JobFailureNotifier {
 | 2 | อ่าน interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold |
 | 3 | พบรายการค้าง? \| No: จบการทำงาน |
 | 4 | ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม (ผู้รับตาม backend config) |
-| 5 | แสดงรายการใน /interfaces/pending-ack (POST /interfaces/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ) |
+| 5 | แสดงรายการใน /sbpgi/interface/pending-ack (POST /sbpgi/interface/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ) |
 | 6 | จบ |
 
 ## 11. Acceptance Criteria

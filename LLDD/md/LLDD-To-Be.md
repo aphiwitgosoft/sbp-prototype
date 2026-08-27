@@ -2,33 +2,29 @@
 
 SBP Mall - ระบบประกันรายได้ | Low Level Design Document
 
-## 1. Purpose
+## 1. เอกสารนี้ตอบอะไร
 
-สอบทานย้อนกลับ (traceability) ระหว่าง **SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI (24/02/2026) หัวข้อ 1.9 To-Be Business Process** กับ**เอกสาร LLDD 38 ฉบับที่มีชั่วโมงทำงาน** (ไม่รวมเอกสารอ้างอิง LLDD-API · LLDD-Database และฉบับนี้) — ตอบว่า To-Be แต่ละข้อ **ใช้เอกสาร FE ฉบับไหน BE ฉบับไหน และกินเวลากี่ชั่วโมง**
+ตอบคำถามเดียว: **SDD สั่งให้ทำอะไรเพิ่ม · ใช้เวลากี่ชั่วโมง · ใครทำฝั่ง FE ใครทำฝั่ง BE · รายละเอียดอยู่ใน LLDD ฉบับไหน** — ใช้คู่กับ SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI (24/02/2026) หัวข้อ 1.9 To-Be Business Process
 
-ชั่วโมงในเอกสารนี้ = ชั่วโมงเดียวกับที่ประกาศในแต่ละฉบับ (implementation + unit test) แต่**แบ่งตามสัดส่วนงาน**เมื่อเอกสารหนึ่งรับใช้ To-Be มากกว่าหนึ่งข้อ · ผลรวมทุกข้อจึงเท่ากับยอดรวมของชุดส่งมอบพอดี ไม่มีการนับซ้ำ
+⚠️ **กติกาการนับเวลา (มติ 2026-08-25):** นับ**เฉพาะงานที่ To-Be เพิ่มเข้ามาใหม่ = 501 ชั่วโมง** เท่านั้น · งานฐานรากที่ต้องทำอยู่แล้วไม่ว่าจะมี To-Be หรือไม่ (323 ชั่วโมง — โครงฐานข้อมูล, pipeline FGI/FCS, สัญญากลาง API/FE, shell ของ portal, งานทดสอบ/ส่งมอบ) แยกไว้ท้ายเอกสารและ**ไม่นับรวมเป็นเวลาของ To-Be**
 
-## 2. Scope
+ชั่วโมงที่แสดงคือชั่วโมงเดียวกับที่ประกาศในแต่ละฉบับ (implementation + unit test) · เอกสารที่รับใช้ To-Be หลายข้อจะถูกแบ่งตามสัดส่วนในคอลัมน์ *สัดส่วนของฉบับ* จึงไม่มีการนับซ้ำ
 
-- ครอบคลุม To-Be 3 ข้อของ SDD (สไลด์ 43-62) + กลุ่มงานฐานรากที่ทุกข้อใช้ร่วมกัน
-- ไม่ใช่เอกสารออกแบบ — รายละเอียดการทำงานอยู่ในเอกสาร LLDD ที่อ้างถึงในแต่ละตาราง
-- สัดส่วนการแบ่งชั่วโมงเป็นค่าที่กำหนดไว้ใน TOBE_ALLOCATION ของ tools/build_lldd_documents.py (แก้ที่เดียว)
+## 2. สรุปงานที่ To-Be เพิ่มเข้ามา
 
-## 3. สรุปชั่วโมงต่อข้อ To-Be
-
-| รหัส | หัวข้อ To-Be (SDD) | ที่มา | FE (ชม.) | BE (ชม.) | รวม (ชม.) |
+| ข้อ | SDD สไลด์ | ทำอะไร | FE (ชม.) | BE (ชม.) | รวม (ชม.) |
 | --- | --- | --- | --- | --- | --- |
-| TB-1 | แก้ไขระบบการสร้างเอกสารชดเชยรายได้ | สไลด์ 43 · 46-51 | 88 | 236 | **324** |
-| TB-2 | ปรับสิทธิ์การตรวจสอบยอดชดเชยรายได้และกระบวนการทำงานของทีมส่งเสริม | สไลด์ 52-58 | 30 | 95 | **125** |
-| TB-3 | ยกเลิก Process บัญชี SBP ในการ Approve ค่าใช้จ่าย + เมนูรายงานใน SBP Mall | สไลด์ 59-62 | 25 | 27 | **52** |
-| TB-0 | งานฐานรากที่ To-Be ทุกข้อใช้ร่วมกัน (ไม่ได้ระบุเป็นข้อใน SDD) | — | 83 | 240 | **323** |
-|  | **รวมทั้งชุดส่งมอบ** |  | 226 | 598 | **824** |
+| TB-1 | สไลด์ 43 · 46-51 | แก้ไขระบบการสร้างเอกสารชดเชยรายได้ | 88 | 236 | **324** |
+| TB-2 | สไลด์ 52-58 | ปรับสิทธิ์การตรวจสอบยอดชดเชยรายได้และกระบวนการทำงานของทีมส่งเสริม | 30 | 95 | **125** |
+| TB-3 | สไลด์ 59-62 | ยกเลิก Process บัญชี SBP ในการ Approve ค่าใช้จ่าย + เมนูรายงานใน SBP Mall | 25 | 27 | **52** |
+|  |  | **รวมงานที่ To-Be เพิ่ม** | **143** | **358** | **501** |
+| TB-0 | — | *(ฐานราก — ไม่นับเป็นเวลาของ To-Be)* | *83* | *240* | *323* |
 
-## 4. TB-1 — แก้ไขระบบการสร้างเอกสารชดเชยรายได้
+## 3. TB-1 · SDD สไลด์ 43 · 46-51 — แก้ไขระบบการสร้างเอกสารชดเชยรายได้
 
-**ที่มาใน SDD:** สไลด์ 43 · 46-51 · **รวม 324 ชั่วโมง** (implementation 248 + unit test 76)
+**ใช้เวลา 324 ชั่วโมง** (FE 88 + BE 236)  ·  FE: **New** 53 ชม. · **lin** 35 ชม.   |  BE: **But** 90 ชม. · **Bank** 81 ชม. · **Pete** 34 ชม. · **Vava** 31 ชม.
 
-### 4.1 สิ่งที่ SDD ระบุไว้
+### 3.1 SDD สั่งให้ทำอะไร
 
 - Step 1.0 — เพิ่ม**หน้าจองานค้าง** แสดงร้านที่เข้าเงื่อนไขการเปิดกระทบ · เลือกงานของตนเอง · filter · checkbox เลือกหลายเอกสาร · popup ยืนยัน
 - Step 1.0 — เจ้าหน้าที่ SBP DSA **คีย์ข้อมูลร้านเปิดกระทบเอง** เพื่อให้ระบบคำนวณและ Adjust ยอดชดเชย
@@ -41,36 +37,29 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 - ยอดชดเชย 0: เดือน 1-3 คลิก หน่วยงานส่งเสริมธุรกิจ SBP · เดือน 4 คลิก หยุดชดเชยรายได้
 - สิทธิ์การมองเห็น — เจ้าหน้าที่/ฝ่าย SBP DSA ดูรายละเอียดได้ทุกสาขา ไม่จำกัดเฉพาะงานที่รับผิดชอบ
 
-### 4.2 Frontend
+### 3.2 ทำที่เอกสาร LLDD ฉบับไหน
 
-| เอกสาร LLDD | ผู้รับผิดชอบ | สัดส่วน | impl | unit test | รวม |
-| --- | --- | --- | --- | --- | --- |
-| `LLDD-FE-Create-Document` | New | เต็มฉบับ | 6 | 2 | **8** |
-| `LLDD-FE-Document-Detail` | New | 60% ของฉบับ | 36 | 9 | **45** |
-| `LLDD-FE-Document-Lists` | lin | เต็มฉบับ | 28 | 7 | **35** |
-| **รวม** |  |  | **70** | **18** | **88** |
+| เอกสาร LLDD | สาย | ผู้รับผิดชอบ | ชม. | สัดส่วนของฉบับ |
+| --- | --- | --- | --- | --- |
+| `LLDD-FE-Document-Detail` | FE | New | **45** | 60% ของฉบับ |
+| `LLDD-FE-Document-Lists` | FE | lin | **35** | เต็มฉบับ |
+| `LLDD-BE-API-Attachment-Sales-Timeline` | BE | Pete | **34** | เต็มฉบับ |
+| `LLDD-BE-API-Document-Create-Update` | BE | But | **32** | เต็มฉบับ |
+| `LLDD-BE-API-Document-Detail-Aggregate` | BE | But | **32** | เต็มฉบับ |
+| `LLDD-BE-Job-8b-StartInternalWorkflow` | BE | Bank | **29** | เต็มฉบับ |
+| `LLDD-BE-API-Document-List-Search` | BE | But | **26** | เต็มฉบับ |
+| `LLDD-BE-Job-8-CreateCompensationDocument` | BE | Bank | **24** | เต็มฉบับ |
+| `LLDD-BE-API-Workflow-Instances` | BE | Vava | **16** | 50% ของฉบับ |
+| `LLDD-BE-Job-9-SyncNewStoreToDocument` | BE | Bank | **15** | เต็มฉบับ |
+| `LLDD-BE-API-Document-Workflow-Actions` | BE | Vava | **15** | 40% ของฉบับ |
+| `LLDD-BE-Job-7-SyncCompetitorToDocument` | BE | Bank | **13** | เต็มฉบับ |
+| `LLDD-FE-Create-Document` | FE | New | **8** | เต็มฉบับ |
 
-### 4.3 Backend / Batch Job
+## 4. TB-2 · SDD สไลด์ 52-58 — ปรับสิทธิ์การตรวจสอบยอดชดเชยรายได้และกระบวนการทำงานของทีมส่งเสริม
 
-| เอกสาร LLDD | ผู้รับผิดชอบ | สัดส่วน | impl | unit test | รวม |
-| --- | --- | --- | --- | --- | --- |
-| `LLDD-BE-Job-7-SyncCompetitorToDocument` | Pete | เต็มฉบับ | 10 | 3 | **13** |
-| `LLDD-BE-Job-8-CreateCompensationDocument` | Bank | เต็มฉบับ | 18 | 6 | **24** |
-| `LLDD-BE-Job-8b-StartInternalWorkflow` | Vava | เต็มฉบับ | 22 | 7 | **29** |
-| `LLDD-BE-Job-9-SyncNewStoreToDocument` | Pete | เต็มฉบับ | 11 | 4 | **15** |
-| `LLDD-BE-API-Attachment-Sales-Timeline` | Pete | เต็มฉบับ | 26 | 8 | **34** |
-| `LLDD-BE-API-Document-Create-Update` | But | เต็มฉบับ | 24 | 8 | **32** |
-| `LLDD-BE-API-Document-Detail-Aggregate` | But | เต็มฉบับ | 24 | 8 | **32** |
-| `LLDD-BE-API-Document-List-Search` | But | เต็มฉบับ | 20 | 6 | **26** |
-| `LLDD-BE-API-Document-Workflow-Actions` | Vava | 40% ของฉบับ | 11 | 4 | **15** |
-| `LLDD-BE-API-Workflow-Instances` | Vava | 50% ของฉบับ | 12 | 4 | **16** |
-| **รวม** |  |  | **178** | **58** | **236** |
+**ใช้เวลา 125 ชั่วโมง** (FE 30 + BE 95)  ·  FE: **New** 30 ชม.   |  BE: **Vava** 71 ชม. · **Bank** 24 ชม.
 
-## 5. TB-2 — ปรับสิทธิ์การตรวจสอบยอดชดเชยรายได้และกระบวนการทำงานของทีมส่งเสริม
-
-**ที่มาใน SDD:** สไลด์ 52-58 · **รวม 125 ชั่วโมง** (implementation 107 + unit test 18)
-
-### 5.1 สิ่งที่ SDD ระบุไว้
+### 4.1 SDD สั่งให้ทำอะไร
 
 - Step 2.1 — ลำดับตรวจสอบใหม่: หน่วยงานส่งเสริม (ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ, เจ้าหน้าที่อาวุโส) → GM ส่งเสริม
 - เปลี่ยนชื่อปุ่ม **ฝ่ายส่งเสริมธุรกิจ SBP → หน่วยงานส่งเสริมธุรกิจ SBP** (มีผลถึงชื่อสถานะเอกสารด้วย)
@@ -79,88 +68,63 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 - **วงเงินอนุมัติ เกณฑ์เดียว 100,000 ต่อรายการ** — < 100,000 จบที่ GM · ≥ 100,000 ผ่าน GM แล้ว AVP อนุมัติ
 - **เห็นควรไม่ชดเชยจบทันที** ทั้งระดับหน่วยงานส่งเสริมและ GM (เลิกตีกลับให้ SBP DSA รับทราบก่อน)
 
-### 5.2 Frontend
+### 4.2 ทำที่เอกสาร LLDD ฉบับไหน
 
-| เอกสาร LLDD | ผู้รับผิดชอบ | สัดส่วน | impl | unit test | รวม |
-| --- | --- | --- | --- | --- | --- |
-| `LLDD-FE-Document-Detail` | New | 40% ของฉบับ | 24 | 6 | **30** |
-| **รวม** |  |  | **24** | **6** | **30** |
+| เอกสาร LLDD | สาย | ผู้รับผิดชอบ | ชม. | สัดส่วนของฉบับ |
+| --- | --- | --- | --- | --- |
+| `LLDD-FE-Document-Detail` | FE | New | **30** | 40% ของฉบับ |
+| `LLDD-BE-Workflow-Engine-Definition` | BE | Bank | **24** | เต็มฉบับ |
+| `LLDD-BE-API-Document-Workflow-Actions` | BE | Vava | **22** | 60% ของฉบับ |
+| `LLDD-BE-Integration-SBP-Platform` | BE | Vava | **20** | เต็มฉบับ |
+| `LLDD-BE-API-Workflow-Instances` | BE | Vava | **16** | 50% ของฉบับ |
+| `LLDD-BE-API-Lookup` | BE | Vava | **13** | เต็มฉบับ |
 
-### 5.3 Backend / Batch Job
+## 5. TB-3 · SDD สไลด์ 59-62 — ยกเลิก Process บัญชี SBP ในการ Approve ค่าใช้จ่าย + เมนูรายงานใน SBP Mall
 
-| เอกสาร LLDD | ผู้รับผิดชอบ | สัดส่วน | impl | unit test | รวม |
-| --- | --- | --- | --- | --- | --- |
-| `LLDD-BE-API-Document-Workflow-Actions` | Vava | 60% ของฉบับ | 17 | 5 | **22** |
-| `LLDD-BE-API-Lookup` | Vava | เต็มฉบับ | 10 | 3 | **13** |
-| `LLDD-BE-API-Workflow-Instances` | Vava | 50% ของฉบับ | 12 | 4 | **16** |
-| `LLDD-BE-Integration-SBP-Platform` | Vava | เต็มฉบับ | 20 | 0 | **20** |
-| `LLDD-BE-Workflow-Engine-Definition` | Vava | เต็มฉบับ | 24 | 0 | **24** |
-| **รวม** |  |  | **83** | **12** | **95** |
+**ใช้เวลา 52 ชั่วโมง** (FE 25 + BE 27)  ·  FE: **lin** 25 ชม.   |  BE: **Pete** 27 ชม.
 
-## 6. TB-3 — ยกเลิก Process บัญชี SBP ในการ Approve ค่าใช้จ่าย + เมนูรายงานใน SBP Mall
-
-**ที่มาใน SDD:** สไลด์ 59-62 · **รวม 52 ชั่วโมง** (implementation 41 + unit test 11)
-
-### 6.1 สิ่งที่ SDD ระบุไว้
+### 5.1 SDD สั่งให้ทำอะไร
 
 - ยกเลิกขั้นบัญชี Approve ยอดชดเชยรายได้ออกจาก workflow
 - Step 3 — สร้าง **เมนูใหม่ใน SBP Mall: รายงานตรวจสอบประกันรายได้** ให้ทีมบัญชีดึงข้อมูลไปใช้ต่อเอง
 - ตัวกรอง 7 ตัว — สถานะ (บังคับ) · รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ · Period Statement (ค.ศ.) · ประเภทร้าน (checkbox) · ภาค (checkbox เพิ่มอัตโนมัติเมื่อมีภาคใหม่) · ผลการพิจารณา (radio)
 - ปุ่ม ค้นหาข้อมูล · Export Excel · เคลียร์ค่าเริ่มต้น · Preview Report · Export CSV to Batch
 
-### 6.2 Frontend
+### 5.2 ทำที่เอกสาร LLDD ฉบับไหน
 
-| เอกสาร LLDD | ผู้รับผิดชอบ | สัดส่วน | impl | unit test | รวม |
-| --- | --- | --- | --- | --- | --- |
-| `LLDD-FE-Report` | New | เต็มฉบับ | 20 | 5 | **25** |
-| **รวม** |  |  | **20** | **5** | **25** |
+| เอกสาร LLDD | สาย | ผู้รับผิดชอบ | ชม. | สัดส่วนของฉบับ |
+| --- | --- | --- | --- | --- |
+| `LLDD-BE-API-Report-and-Master-Data` | BE | Pete | **27** | 70% ของฉบับ |
+| `LLDD-FE-Report` | FE | lin | **25** | เต็มฉบับ |
 
-### 6.3 Backend / Batch Job
+## 6. TB-0 · งานฐานราก — **ไม่นับเป็นเวลาของ To-Be**
 
-| เอกสาร LLDD | ผู้รับผิดชอบ | สัดส่วน | impl | unit test | รวม |
-| --- | --- | --- | --- | --- | --- |
-| `LLDD-BE-API-Report-and-Master-Data` | Pete | 70% ของฉบับ | 21 | 6 | **27** |
-| **รวม** |  |  | **21** | **6** | **27** |
-
-## 7. TB-0 — งานฐานรากที่ To-Be ทุกข้อใช้ร่วมกัน (ไม่ได้ระบุเป็นข้อใน SDD)
-
-**ที่มาใน SDD:** — · **รวม 323 ชั่วโมง** (implementation 275 + unit test 48)
-
-### 7.1 สิ่งที่ SDD ระบุไว้
+งานชุดนี้ (323 ชั่วโมง · FE 83 + BE 240) ต้องทำอยู่แล้วไม่ว่าจะมี To-Be หรือไม่ — SDD ไม่ได้ระบุเป็นข้อ และไม่ควรนับเป็นต้นทุนของการเปลี่ยนแปลงตาม To-Be · แสดงไว้เพื่อให้เห็นภาพรวมของชุดส่งมอบทั้งหมดเท่านั้น
 
 - โครงฐานข้อมูลเป้าหมาย 20 ตาราง + migration/cutover จากระบบเดิม
 - pipeline FGI/FCS ที่ป้อนข้อมูลให้ทุก To-Be (Job 2-6, Job 10 และงาน interface/อีเมล)
 - สัญญากลาง API/FE (envelope · error · auth · pagination) และ shell ของ portal
 - master ที่ SBPGI ดูแลเอง (ปัจจัยภายนอก · แบรนด์คู่แข่ง) และงานทดสอบ/ส่งมอบ
 
-### 7.2 Frontend
+| เอกสาร LLDD | สาย | ผู้รับผิดชอบ | ชม. | สัดส่วนของฉบับ |
+| --- | --- | --- | --- | --- |
+| `LLDD-BE-Data-Migration-Cutover` | BE | Bank | 43 | เต็มฉบับ |
+| `LLDD-FE-Foundation` | FE | lin | 35 | เต็มฉบับ |
+| `LLDD-BE-Job-6-ExportImpactStoreToFS` | BE | Bank | 34 | เต็มฉบับ |
+| `LLDD-BE-Database-Structure` | BE | Bank | 31 | เต็มฉบับ |
+| `LLDD-BE-Job-5-ImportImpactSaleFromIAS` | BE | Bank | 21 | เต็มฉบับ |
+| `LLDD-FE-Master-Data` | FE | New | 20 | เต็มฉบับ |
+| `LLDD-BE-Job-2-ImportImpactStore` | BE | Bank | 19 | เต็มฉบับ |
+| `LLDD-BE-Job-4-PrepareImpactStoreToIAS` | BE | Bank | 19 | เต็มฉบับ |
+| `LLDD-BE-Job-Batch-Email-SRM` | BE | Pete | 19 | เต็มฉบับ |
+| `LLDD-BE-API-Common-Contracts` | BE | But | 18 | เต็มฉบับ |
+| `LLDD-FE-Integration-Contracts` | FE | lin | 16 | เต็มฉบับ |
+| `LLDD-BE-Job-3-ImportImpactCompetitor` | BE | Bank | 13 | เต็มฉบับ |
+| `LLDD-BE-API-Report-and-Master-Data` | BE | Pete | 12 | 30% ของฉบับ |
+| `LLDD-FE-Testing-Delivery` | FE | lin | 12 | เต็มฉบับ |
+| `LLDD-BE-Job-10-NotifyNoReceiveData` | BE | Bank | 11 | เต็มฉบับ |
 
-| เอกสาร LLDD | ผู้รับผิดชอบ | สัดส่วน | impl | unit test | รวม |
-| --- | --- | --- | --- | --- | --- |
-| `LLDD-FE-Foundation` | lin | เต็มฉบับ | 28 | 7 | **35** |
-| `LLDD-FE-Integration-Contracts` | lin | เต็มฉบับ | 16 | 0 | **16** |
-| `LLDD-FE-Master-Data` | New | เต็มฉบับ | 16 | 4 | **20** |
-| `LLDD-FE-Testing-Delivery` | lin | เต็มฉบับ | 12 | 0 | **12** |
-| **รวม** |  |  | **72** | **11** | **83** |
-
-### 7.3 Backend / Batch Job
-
-| เอกสาร LLDD | ผู้รับผิดชอบ | สัดส่วน | impl | unit test | รวม |
-| --- | --- | --- | --- | --- | --- |
-| `LLDD-BE-Job-10-NotifyNoReceiveData` | Pete | เต็มฉบับ | 8 | 3 | **11** |
-| `LLDD-BE-Job-2-ImportImpactStore` | Bank | เต็มฉบับ | 14 | 5 | **19** |
-| `LLDD-BE-Job-3-ImportImpactCompetitor` | Bank | เต็มฉบับ | 10 | 3 | **13** |
-| `LLDD-BE-Job-4-PrepareImpactStoreToIAS` | Bank | เต็มฉบับ | 14 | 5 | **19** |
-| `LLDD-BE-Job-5-ImportImpactSaleFromIAS` | Pete | เต็มฉบับ | 16 | 5 | **21** |
-| `LLDD-BE-Job-6-ExportImpactStoreToFS` | Bank | เต็มฉบับ | 26 | 8 | **34** |
-| `LLDD-BE-API-Common-Contracts` | But | เต็มฉบับ | 18 | 0 | **18** |
-| `LLDD-BE-API-Report-and-Master-Data` | Pete | 30% ของฉบับ | 9 | 3 | **12** |
-| `LLDD-BE-Data-Migration-Cutover` | Bank | เต็มฉบับ | 43 | 0 | **43** |
-| `LLDD-BE-Database-Structure` | Bank | เต็มฉบับ | 31 | 0 | **31** |
-| `LLDD-BE-Job-Batch-Email-SRM` | Pete | เต็มฉบับ | 14 | 5 | **19** |
-| **รวม** |  |  | **203** | **37** | **240** |
-
-## 8. เอกสารที่รับใช้ To-Be มากกว่าหนึ่งข้อ
+## 7. เอกสารที่รับใช้ To-Be มากกว่าหนึ่งข้อ
 
 เอกสารเหล่านี้ถูกแบ่งชั่วโมง จึงต้องอ่านคู่กันเมื่อวางแผนคน — ถ้าเลื่อนข้อใดข้อหนึ่ง เอกสารที่แชร์กันจะกระทบทั้งสองข้อ
 
@@ -169,11 +133,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | `LLDD-FE-Document-Detail` | TB-1 60% · TB-2 40% | หน้าเดียวกันแต่คนละบทบาท — ฝั่ง DSA (คีย์งาน/ปรับยอด) เป็น TB-1 · ฝั่งส่งเสริม/GM/AVP (ปุ่มพิจารณา วงเงิน) เป็น TB-2 |
 | `LLDD-BE-API-Document-Workflow-Actions` | TB-1 40% · TB-2 60% | endpoint เดียวรับ 6-enum — เส้นทางของ DSA เป็น TB-1 · กติกาวงเงิน/ลำดับใหม่/เห็นควรไม่ชดเชยจบทันที เป็น TB-2 |
 | `LLDD-BE-API-Workflow-Instances` | TB-1 50% · TB-2 50% | เปิด instance ให้เอกสารใหม่ (TB-1) และลงทะเบียน version ที่ฝัง state/วงเงินใหม่ (TB-2) |
-| `LLDD-BE-API-Report-and-Master-Data` | TB-3 70% · TB-0 30% | เส้นรายงาน (TB-3) กับเส้น master ปัจจัยภายนอก/คู่แข่ง (TB-0) อยู่เอกสารเดียวกัน |
+| `LLDD-BE-API-Report-and-Master-Data` | TB-3 70% · TB-0 30% | เส้นรายงาน (TB-3) กับเส้น master ปัจจัยภายนอก/คู่แข่ง (TB-0 ฐานราก) อยู่เอกสารเดียวกัน |
 
-## 9. Related LLDD
+## 8. Related LLDD
 
-- รายละเอียดต่อหัวข้อ: เอกสาร LLDD ที่อ้างในตารางข้างต้น (`LLDD/md/FE`, `LLDD/md/BE`, `LLDD/md/BE/Jobs`)
-- ลำดับงานและ dependency: `LLDD-Main-Index-Phase4-4-3-SBP-Operating-Management` หัวข้อ Dependency
-- flow ปลายทางที่ To-Be ทั้ง 3 ข้อรวมกันแล้ว: `workflow.md` · `plan-flow.html`
-- SDD ต้นทาง: `SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI(2402026).pptx` · ฉบับแปลง `SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md`
+รายละเอียดการทำงานจริงอยู่ในเอกสารที่อ้างถึงข้างบน · ภาพรวมชุดส่งมอบดูที่ `LLDD/md/README.md` · สัญญา API ดูที่ `LLDD-API` · โครงฐานข้อมูลดูที่ `LLDD-Database`

@@ -48,7 +48,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Database Structu
 
 DDL เต็มอยู่ที่เอกสาร `LLDD-Database` หัวข้อ Executable DDL · เอกสารฉบับนี้เป็นเจ้าของ **สคริปต์ deploy จริง** และกติกาว่าอะไรสร้างได้/สร้างไม่ได้
 
-⚠️ **20 = จำนวนตารางในโครง ไม่ใช่จำนวนที่ต้อง CREATE** — `fcs_qssi_score` นับอยู่ในโครงโซน A แต่ใช้ตารางเดิมของ `sps_store` (23,958,780 แถว) จึง **ห้าม CREATE TABLE** ดูหัวข้อ 5.1.1 · จำนวนที่ต้อง CREATE จริงคือ **19 ตาราง** (20 ตารางในโครง ลบ fcs_qssi_score ที่ reuse) · สถานะ reuse ของ `fcs_qssi_score` ยังผูกกับข้อค้าง **DP-4** (จะแก้ตารางเดิมอย่างไร หรือจะสร้างตารางของ SBPGI เอง — ยังไม่ตัดสิน · `SBP/SBPGI-vs-existing-system.md หัวข้อ 4`)
+⚠️ **20 = จำนวนตารางในโครง ไม่ใช่จำนวนที่ต้อง CREATE** — `fcs_qssi_score` นับอยู่ในโครงโซน A แต่ใช้ตารางเดิมของ `sps_store` (23,958,780 แถว) จึง **ห้าม CREATE TABLE** ดูหัวข้อ 5.1.1 · จำนวนที่ต้อง CREATE จริงคือ **19 ตาราง** (20 ตารางในโครง ลบ fcs_qssi_score ที่ reuse) · สถานะ reuse ของ `fcs_qssi_score` ยังผูกกับข้อค้าง **DP-4 ✅ ปิดแล้ว 2026-08-24** — reuse ตารางเดิมแบบ **อ่านอย่างเดียว** ไม่มีการเขียนจากฝั่ง SBPGI จึงไม่ต้องแก้ constraint/index ของตารางเดิมและไม่ต้องขอ sign-off (`SBP/SBPGI-vs-existing-system.md หัวข้อ 4`)
 
 | โซน | จำนวน | ตาราง |
 | --- | --- | --- |
@@ -136,14 +136,14 @@ COMMIT;
 | DP-4 ✅ ปิดแล้ว 2026-08-24 · `fcs_qssi_score` reuse แบบอ่านอย่างเดียว | reuse ตารางเดิม 23,958,780 แถว — ระบบ SBP เดิมนำเข้าให้แล้วผ่าน `POST /performance/import-qssi` | สร้างตารางของ SBPGI เอง — ตกไป (จะมีข้อมูล QSSI สองชุด) | ✅ **reuse อ่านอย่างเดียว** — ตัด Job 1 (ImportQSSI) ทั้ง job · SBPGI ไม่เขียนตารางนี้ จึงไม่ต้อง backfill / SET NOT NULL / sign-off เจ้าของ `performance.service.ts` · ห้ามสร้างตารางชื่อ `fcs_qssi_scores` (พหูพจน์) |
 | DP-9 ✅ ตัดสินแล้ว 2026-08-10 = แยกตัดสิน (decisions → common_code · external_factors/competitors ยังเป็นตารางของ SBPGI) | ยัดลง `common_code` ของระบบเดิม | ตารางเล็กของ SBPGI ตามที่ DDL ปัจจุบันเขียนไว้ | ✅ ตัดสินแล้ว 2026-08-10 = แยกตัดสิน (`decisions` → `common_code` · `external_factors`/`competitors` ยังเป็นตารางของ SBPGI) |
 | DP-1 · `reference_id` ของ workflow | `doc_no` — ตกไป | **เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255)) แบบที่ cooperation-request/inform-evaluate ทำจริง | ✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม |
-| DP-7 · `consideration_logs` | ตาราง timeline เต็มของ SBPGI ตามที่ DDL ปัจจุบันเขียนไว้ | ตารางส่วนขยายบน `sps_store.workflow_history` ของ engine (engine เก็บ state transition แต่ไม่มี decision code / ไฟล์แนบ / ความเห็น) | ยังไม่ตัดสิน · กระทบ DDL ของตารางนี้และ response ของ `GET /documents/{docNo}/timeline` |
+| DP-7 ✅ ปิดแล้ว 2026-08-24 · `consideration_logs` | **เลือกข้อนี้ — ตารางของ SBPGI เอง** (ผูก `transaction_id` ของ engine) ตามที่ DDL ปัจจุบันเขียนไว้ | ตารางส่วนขยายบน `sps_store.workflow_history` ของ engine — ตกไป (engine ไม่มี decision code / ไฟล์แนบ / ความเห็น) | ✅ ปิดแล้ว 2026-08-24 · กระทบ DDL ของตารางนี้และ response ของ `GET /sbpgi/document/{docNo}/timeline` |
 | DP-12 · audit ของ master | เอากลับมาโดยใช้กลไกของระบบเดิม | ไม่มีเลยตามมติ 2026-08-07 (สถานะปัจจุบันของ DDL) | ยังไม่ตัดสิน |
 
 ### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | User action, route/query state, form values, and permission context for this feature. |
+| Input | ไม่มี endpoint ของตัวเอง — input คือ request ที่เอกสารอื่นส่งเข้ามา พร้อม user context จาก BFF header (ดู 5.1) และค่ากำหนดกลางที่อ่านจากระบบเดิม |
 | Progress | ยืนยันรายการ 20 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL; เขียน 01_schema.sql เรียงตาม dependency: โซน C master -> โซน A pipeline -> โซน B document; เขียน 02_index.sql แยกไฟล์ เพื่อให้ rerun/เพิ่ม index ภายหลังได้โดยไม่แตะ schema; เขียน 03_seed.sql เฉพาะ master ที่ระบบต้องมีตั้งแต่วันแรก |
 | Output | 20 target tables (โซน A/B/C) |
 
@@ -163,7 +163,7 @@ COMMIT;
 | 4 | เขียน 03_seed.sql เฉพาะ master ที่ระบบต้องมีตั้งแต่วันแรก | ทดสอบ insert store_code '00788' แล้วอ่านกลับได้ leading zero ครบ |
 | 5 | ตรวจว่าไม่มี CREATE TABLE ของตารางที่ระบบ SBP เดิมมีอยู่แล้ว | ทดสอบออกเลข doc_no พร้อมกัน 20 request ต้องไม่ซ้ำ |
 | 6 | รันบน environment ว่างแล้ว dump schema กลับมาเทียบกับ DDL ต้นฉบับ | grep หา CREATE TABLE ของตาราง reuse ต้องได้ 0 บรรทัด |
-| 7 | ส่งมอบ DDL ให้ Data-Migration-Cutover ใช้เป็นปลายทาง | รัน 01+02+03 บนฐานว่าง แล้ว dump schema เทียบกับต้นฉบับ |
+| 7 | ส่งมอบ DDL ให้ Data-Migration-Cutover ใช้เป็นปลายทาง | — (ยังไม่มี test เฉพาะขั้นนี้ · ครอบด้วย test รวมของเอกสารในหัวข้อ 11) |
 
 ## 6. Button / User Action Mapping
 
@@ -175,6 +175,8 @@ COMMIT;
 | Rollback | deploy script | psql -f 99_rollback.sql | DROP ย้อนลำดับ · ห้ามแตะตารางของระบบ SBP เดิม |
 
 ## 7. API Contract
+
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 

@@ -32,13 +32,13 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | FE | FE - Document Lists | **35** (impl 28 + test 7) | 4 | Chidchanok <lin> Saengamnat | LLDD-FE-Document-Lists |
 | FE | FE - Create Document | **8** (impl 6 + test 2) | 4 | Kittisak <New> Kaeowika | LLDD-FE-Create-Document |
 | FE | FE - Document Detail and Action | **75** (impl 60 + test 15) | 4 | Kittisak <New> Kaeowika | LLDD-FE-Document-Detail |
-| FE | FE - Status Summary Report | **25** (impl 20 + test 5) | 4 | Kittisak <New> Kaeowika | LLDD-FE-Report |
+| FE | FE - Status Summary Report | **25** (impl 20 + test 5) | 4 | Chidchanok <lin> Saengamnat | LLDD-FE-Report |
 | FE | FE - Master Data | **20** (impl 16 + test 4) | 4 | Kittisak <New> Kaeowika | LLDD-FE-Master-Data |
 | FE | FE - Testing and Delivery | 12 | 5 | Chidchanok <lin> Saengamnat | LLDD-FE-Testing-Delivery |
 | BE | BE - Database Structure and Deployment | 31 | 1 | Aphiwit <Bank> Khammoon | LLDD-BE-Database-Structure |
 | BE | BE - Data Migration and Cutover | 43 | 2 | Aphiwit <Bank> Khammoon | LLDD-BE-Data-Migration-Cutover |
 | BE | BE - Integration with SBP Platform | 20 | 1 | Tunyatorn <Vava> Kiatkongphongsa | LLDD-BE-Integration-SBP-Platform |
-| BE | BE - Workflow Engine Definition | 24 | 1 | Tunyatorn <Vava> Kiatkongphongsa | LLDD-BE-Workflow-Engine-Definition |
+| BE | BE - Workflow Engine Definition | 24 | 1 | Aphiwit <Bank> Khammoon | LLDD-BE-Workflow-Engine-Definition |
 | BE | BE - API Common Contracts | 18 | 2 | Butsaba <But> Podamrong | LLDD-BE-API-Common-Contracts |
 | BE | BE - API Document List and Search | **26** (impl 20 + test 6) | 3 | Butsaba <But> Podamrong | LLDD-BE-API-Document-List-Search |
 | BE | BE - API Document Create and Update | **32** (impl 24 + test 8) | 3 | Butsaba <But> Podamrong | LLDD-BE-API-Document-Create-Update |
@@ -56,12 +56,12 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 | Role | Owner | ชั่วโมง (impl + unit test) | Work Focus |
 | --- | --- | --- | --- |
-| FE | Kittisak <New> Kaeowika | **128** (impl 102 + test 26) | FE หน้าจอธุรกิจ (ไม่ทับกับงานระบบเดิมของ lin): Create Document -> Document Detail/Action (+ role pack 5 ฉบับ) -> Report -> Master Data |
-| FE | Chidchanok <lin> Saengamnat | **98** (impl 84 + test 14) | FE ที่ต่อกับระบบเดิม: Integration Contracts (auth/session/permission จาก BFF) -> Foundation (sidebar/header/menu gating ของ portal เดิม) -> Document Lists -> Testing/Delivery |
-| BE | Butsaba <But> Podamrong | **108** (impl 86 + test 22) | BE เอกสาร/สัญญากลางของ SBPGI เอง: Common Contracts -> List/Search -> Create/Update -> Detail Aggregate |
-| BE | Tunyatorn <Vava> Kiatkongphongsa | **155** (impl 128 + test 27) | BE ที่ต่อกับระบบเดิม (นิยามสัญญาให้ฝั่ง FE ใช้ต่อ): Integration with SBP Platform -> Workflow Engine Definition -> Workflow Actions -> Workflow Instances -> Lookup -> Job 8b |
-| BE | Peerakorn <Pete> Sakunkaewphithak | **152** (impl 115 + test 37) | BE support/interface (ย้ายจากสาย FE 2026-08-07): Attachment/Sales/Timeline -> Report and Master Data -> Batch/Email -> Job 5, 7, 9, 10 |
-| BE | Aphiwit <Bank> Khammoon | **183** (impl 156 + test 27) | BE data ownership: Database Structure -> Data Migration/Cutover -> Job 2, 3, 4, 6, 8 |
+| FE | Kittisak <New> Kaeowika | **103** (impl 82 + test 21) | FE หน้าจอเอกสาร (สายลึกที่สุดของ FE): Document Detail/Action (+ role pack 5 ฉบับ) -> Master Data -> Create Document |
+| FE | Chidchanok <lin> Saengamnat | **123** (impl 104 + test 19) | FE ที่ต่อกับระบบเดิม: Integration Contracts (auth/session/permission จาก BFF) -> Foundation (sidebar/header/menu gating ของ portal เดิม) -> Document Lists -> Report -> Testing/Delivery |
+| BE | Butsaba <But> Podamrong | **108** (impl 86 + test 22) | BE เอกสาร/สัญญากลางของ SBPGI เอง: Common Contracts -> List/Search -> Create/Update -> Detail Aggregate -> Job 8 -> Job 8b (ตัวเรียก initializeWorkflow ของ flow แรก) |
+| BE | Tunyatorn <Vava> Kiatkongphongsa | **102** (impl 82 + test 20) | BE ที่ต่อกับระบบเดิม + **เรียกใช้ engine**: Integration with SBP Platform -> Workflow Instances (initializeWorkflow) -> Workflow Actions (eventWorkflow = trigger event) -> Lookup -> Job 4, 6 |
+| BE | Peerakorn <Pete> Sakunkaewphithak | **92** (impl 70 + test 22) | BE support/interface (ย้ายจากสาย FE 2026-08-07): Batch/Email -> Attachment/Sales/Timeline -> Report and Master Data -> Job 5, 7, 9, 10 |
+| BE | Aphiwit <Bank> Khammoon | **296** (impl 247 + test 49) | Migration DB + นิยาม workflow (มติ 2026-08-25): Database Structure -> Data Migration/Cutover (ORA FCS_FRN ฝั่ง Java + MSSQL CPA_FRN_FGI ฝั่ง K2) -> Workflow Engine Definition (สร้างข้อมูลใน DB ว่ามีกี่ step แต่ละ step ทำอะไร) -> Job 2, 3 (นำเข้า ALLMAP · สายข้อมูลเดียวกัน) · **ไม่รวม initializeWorkflow และ trigger event** ซึ่งเป็นของ BE คนอื่น |
 
 ## 5. FE Summary
 
@@ -70,7 +70,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Integration Contracts | 16 | 2 | Shared API client contract, Auth/JWT consumption from platform reference, Error display and validation message mapping |
 | Application Foundation and Shared UI | 28 | 3 | Non-screen technical foundation, Route/module registry เฉพาะ SBP Mall, API client และ response typing |
 | Document Lists | 28 | 4 | Waiting list, Related document list, Search/filter/status filter |
-| Create Document | 6 | 4 | Create form shell, Tab: สร้างเอกสารทั่วไป, Tab: เอกสารจาก FS ผ่าน hidden iframe |
+| Create Document | 6 | 4 | 🔴 **มติ 2026-08-06 — หน้านี้ไม่มีฟอร์มและไม่มีแท็บฝั่ง SBP**, main card = iframe ของหน้าสร้างเอกสารระบบ FS ตรง ๆ (เหมือน `k2-create.html`), หมายเหตุ 4 ขั้นตอน (verbatim จากหน้าจอ K2 เดิม) อยู่ใต้ iframe นอกกรอบ |
 | Document Detail and Action | 60 | 4 | Document header, Store impact/new-store/factor sections, Role-based visible/editable sections |
 | Status Summary Report | 20 | 4 | Report filters (SDD slide 60 · 2026-08-06: สถานะ*\|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ\|ประเภทร้าน (รหัสจาก common_code · รหัสที่ 4 รอยืนยัน) · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว), Summary table (sortable 14 columns), ปุ่มออกผล 3 ตัว (Preview Report · Export Excel · Export CSV to Batch) |
 | Master Data | 16 | 4 | External factor master (SCR-09), Competitor brand master, CRUD modal |
@@ -94,8 +94,8 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- | --- | --- |
 | Database Structure and Deployment | 31 | 1 | DDL ครบ 20 ตารางของ target schema (โซน A 8 · โซน B 9 · โซน C 3), Index, unique/partial index, check constraint และ FK ที่ต้องมีก่อน SIT, Seed data ที่ต้องมีก่อนเปิดระบบ (external_factors · competitors) — decisions ไป seed ที่ common_code ของระบบเดิม (DP-9), สคริปต์ deploy/rollback ต่อ environment และลำดับการรันตาม dependency |
 | Data Migration and Cutover | 43 | 2 | Source-to-target mapping ระดับตาราง/คอลัมน์ (ORA FCS_FRN · MSSQL CPA_FRN_FGI -> 20 ตาราง), การแปลงคีย์: polymorphic TRANSACTION_PK -> typed FK · CompDocumentID -> doc_no · IMPACT_PROCESS_ID -> impact_process_id, แผน cutover เป็นรอบ (dry-run -> delta -> freeze -> final) และ rollback, Reconcile: นับแถว ยอดเงิน และ checksum ต่อโซน |
-| Integration with SBP Platform | 20 | 1 | ตัวตนผู้ใช้จาก BFF header (x-api-key, x-user-id, x-user-group-id, x-user-permissions), Response envelope ของ store-backend: {success, data} / {success:false, data:null, error:{code,message}}, ไฟล์แนบผ่าน service S3 เดิม (POST /statement/upload-file-aws · download-file-aws), อีเมลผ่าน @gosoft-sbp/email-lib + ตาราง email_template / email_sent |
-| Workflow Engine Definition | 24 | 1 | ลงทะเบียน workflow version ของ SBPGI 1 version (url_main + url_param_mapping), นิยาม state/status 5 ขั้น 06 -> 08 -> 01 -> 02 -> 03 และปลายทางจบ flow, นิยาม route ของทุกปุ่ม · การแตก route ตามวงเงินอนุมัติ เกณฑ์เดียว 100,000 เขียนเป็น**ตัวอย่างทางเลือก B เท่านั้น** — แหล่งเก็บวงเงินยังไม่ตัดสิน (มติเดิมคือ common_code · ดูข้อค้าง 5.6), สำรวจทางเลือกผู้อนุมัติ: workflow_group / workflow_group_map เทียบกับ addPreApprover รายคน — **ยังไม่ตัดสิน** (ดูข้อค้าง 5.6) |
+| Integration with SBP Platform | 20 | 1 | ตัวตนผู้ใช้จาก BFF header 6 ตัว (x-api-key · x-user-id · x-user-group-id · x-user-full-name · x-user-permissions · accept-language) — ดูค่าตัวอย่างจริงใน 5.1, Response envelope ของ store-backend: {success, data} / {success:false, data:null, error:{code,message}}, ไฟล์แนบผ่าน service S3 เดิม (POST /statement/upload-file-aws · download-file-aws), อีเมลผ่าน @gosoft-sbp/email-lib + ตาราง email_template / email_sent |
+| Workflow Engine Definition | 24 | 1 | ลงทะเบียน workflow version ของ SBPGI 1 version (url_main + url_param_mapping), **ผลลัพธ์ที่ส่งมอบคือ seed script/มัยเกรชันของข้อมูลนิยาม** ไม่ใช่โค้ดเรียก engine — ทีมอื่นเรียก engine ต่อจากนิยามชุดนี้, **จำนวน step ที่ต้องสร้าง = 6 state** — 5 ขั้นทำงาน (`06` รอฝ่าย SBP DSA → `08` รอเจ้าหน้าที่ SBP DSA → `01` รอหน่วยงานส่งเสริมธุรกิจ SBP → `02` รอ GM → `03` รอ AVP) + **1 state จบ** (`99` เสร็จสิ้นดำเนินการ) · `state_id` เป็น running ตาม version ตามกติกาของ engine (v1 → 10001+), **จำนวน route ที่ต้องสร้าง = 12 เส้น** ตาม Canonical Workflow Transition Matrix ใน `LLDD-BE-API-Document-Workflow-Actions` §5.1 (รวมเส้นข้ามขั้น 06→01 · เส้นจบทันทีเมื่อ เห็นควรไม่ชดเชย ที่ 01/02 · เส้นแตกตามวงเงิน 100,000 ที่ 02 และเส้นส่งกลับ) |
 | API Common Contracts | 18 | 2 | Base URL, content type, charset and request tracing, Auth/JWT platform validation and service-token exception, Standard success envelopes for list/detail/mutation, Standard error envelope and HTTP status mapping |
 | API Document List and Search | 20 | 3 | Inbox tasks API, Document search API, Pagination, Status/year filter |
 | API Document Create and Update | 24 | 3 | Create document, Duplicate guard, Running doc number, Partial update |
@@ -114,13 +114,13 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Job 2 ImportImpactStore | 14 | 3 | Aphiwit <Bank> Khammoon | LLDD-BE-Job-2-ImportImpactStore |
 | Job 3 ImportImpactCompetitor | 10 | 4 | Aphiwit <Bank> Khammoon | LLDD-BE-Job-3-ImportImpactCompetitor |
 | Job 4 PrepareImpactStoreToIAS | 14 | 4 | Aphiwit <Bank> Khammoon | LLDD-BE-Job-4-PrepareImpactStoreToIAS |
-| Job 5 ImportImpactSaleFromIAS | 16 | 5 | Peerakorn <Pete> Sakunkaewphithak | LLDD-BE-Job-5-ImportImpactSaleFromIAS |
+| Job 5 ImportImpactSaleFromIAS | 16 | 5 | Aphiwit <Bank> Khammoon | LLDD-BE-Job-5-ImportImpactSaleFromIAS |
 | Job 6 ExportImpactStoreToFS | 26 | 4 | Aphiwit <Bank> Khammoon | LLDD-BE-Job-6-ExportImpactStoreToFS |
-| Job 7 SyncCompetitorToDocument | 10 | 6 | Peerakorn <Pete> Sakunkaewphithak | LLDD-BE-Job-7-SyncCompetitorToDocument |
+| Job 7 SyncCompetitorToDocument | 10 | 6 | Aphiwit <Bank> Khammoon | LLDD-BE-Job-7-SyncCompetitorToDocument |
 | Job 8 CreateCompensationDocument | 18 | 5 | Aphiwit <Bank> Khammoon | LLDD-BE-Job-8-CreateCompensationDocument |
-| Job 8b StartInternalWorkflow | 22 | 6 | Tunyatorn <Vava> Kiatkongphongsa | LLDD-BE-Job-8b-StartInternalWorkflow |
-| Job 9 SyncNewStoreToDocument | 11 | 6 | Peerakorn <Pete> Sakunkaewphithak | LLDD-BE-Job-9-SyncNewStoreToDocument |
-| Job 10 NotifyNoReceiveData | 8 | 5 | Peerakorn <Pete> Sakunkaewphithak | LLDD-BE-Job-10-NotifyNoReceiveData |
+| Job 8b StartInternalWorkflow | 22 | 6 | Aphiwit <Bank> Khammoon | LLDD-BE-Job-8b-StartInternalWorkflow |
+| Job 9 SyncNewStoreToDocument | 11 | 6 | Aphiwit <Bank> Khammoon | LLDD-BE-Job-9-SyncNewStoreToDocument |
+| Job 10 NotifyNoReceiveData | 8 | 5 | Aphiwit <Bank> Khammoon | LLDD-BE-Job-10-NotifyNoReceiveData |
 
 ## 9. Dependency
 

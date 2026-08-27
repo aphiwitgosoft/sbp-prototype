@@ -84,7 +84,7 @@
           <!-- phase D -->
           <rect x="300" y="410" width="400" height="96" rx="12" fill="#faf7ff" stroke="#7c3aed" stroke-width="1.6"/>
           <text x="318" y="434" font-size="12.5" font-weight="700" fill="#6d28d9">เฟส D · เปิด Workflow / Statement</text>
-          <text x="318" y="456" font-size="11" fill="#45525f">Job 8b StartInternalWorkflow — Gen Flow Gate → POST /workflows/instances (W→Y/N)</text>
+          <text x="318" y="456" font-size="11" fill="#45525f">Job 8b StartInternalWorkflow — Gen Flow Gate → POST /sbpgi/workflow/instances (W→Y/N)</text>
           <text x="318" y="474" font-size="11" fill="#45525f">Job 6 → 10 mutations + เช็ค QSSI 6 หมวด → publish RabbitMQ ไป STA</text>
           <text x="318" y="494" font-size="9.5" fill="#8493a5">Job 6 ทุกวัน 17:00 · Job 8b trigger หลัง Job 8 สร้างเอกสารสำเร็จ</text>
 
@@ -131,7 +131,7 @@
           <line x1="700" y1="342" x2="778" y2="326" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
           <text x="706" y="326" font-size="9.5" fill="#5d6b7a">เขียน DB ตรง</text>
           <line x1="700" y1="440" x2="778" y2="416" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
-          <text x="706" y="424" font-size="9.5" fill="#5d6b7a">POST /workflows/instances</text>
+          <text x="706" y="424" font-size="9.5" fill="#5d6b7a">POST /sbpgi/workflow/instances</text>
           <line x1="700" y1="478" x2="778" y2="496" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
           <text x="706" y="502" font-size="9.5" fill="#5d6b7a">RabbitMQ (sta.compensation.result)</text>
           <line x1="778" y1="512" x2="700" y2="556" stroke="#8493a5" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#pa)"/>
@@ -142,7 +142,7 @@
         <p style="font-size:12.5px;color:var(--muted);margin:12px 2px 0;padding:10px 12px;border-left:4px solid #2f6fed;background:#f5f9ff;border-radius:8px;">
           <b>ชื่อตารางคะแนน QSSI = <code>fcs_qssi_score</code> (เอกพจน์)</b> — ยืนยันจากฐานข้อมูลจริง <code>SBP/db-schema-sps_store.md</code> (2026-08-10):
           ตารางนี้<b>มีอยู่แล้วใน schema <code>sps_store</code> จำนวน 23,958,780 แถว</b> พร้อม import pipeline ที่ทำงานอยู่ (<code>POST /performance/import-qssi</code> + staging <code>fcs_tmp_qssi_score</code>) →
-          <b>ห้ามสร้างตารางใหม่ ให้ reuse ของเดิม</b> · วิธีจัดการ constraint/index/คอลัมน์ที่ขาดของตารางเดิม <b>ยังไม่ตัดสิน</b> — ดู <b>DP-4</b> ใน <code>SBP/SBPGI-vs-existing-system.md</code> ·
+          <b>ห้ามสร้างตารางใหม่ ให้ reuse ของเดิม</b> · วิธีจัดการ constraint/index/คอลัมน์ที่ขาดของตารางเดิม <b>✅ DP-4 ปิดแล้ว 2026-08-24 — ไม่แก้ เพราะ SBPGI อ่านอย่างเดียว</b> ·
           หมายเหตุ: <code>fcs_qssi_score_bak_20260710</code> เป็น snapshot เก่า <b>ห้ามอ่าน ห้าม join</b>
         </p>
       </div>
@@ -181,7 +181,7 @@
               <tr><td class="mono">—</td><td>Job 8 → <b>compensation_documents</b></td><td class="mono">DB</td><td class="num">–</td><td>สร้างเอกสารในฐานข้อมูลเดียวกัน (ไม่มีไฟล์/SFTP)</td></tr>
               <tr><td class="mono">—</td><td>Job 7 → <b>document_competitors</b></td><td class="mono">DB</td><td class="num">–</td><td>คู่แข่งในเอกสาร · source_system = ALLMAP</td></tr>
               <tr><td class="mono">—</td><td>Job 9 → <b>document_new_stores</b></td><td class="mono">DB</td><td class="num">–</td><td>ร้านเปิดใหม่ในเอกสาร · %ชดเชยรวม 100%</td></tr>
-              <tr><td class="mono">POST /api/v1/workflows/instances</td><td>Job 8b → <b>Workflow Engine ภายใน</b></td><td class="mono">JSON / HTTP</td><td class="num">–</td><td>เปิด workflow ด้วย service token (@srm/glb-workflow)</td></tr>
+              <tr><td class="mono">POST /api/v1/sbpgi/workflow/instances</td><td>Job 8b → <b>Workflow Engine ภายใน</b></td><td class="mono">JSON / HTTP</td><td class="num">–</td><td>เปิด workflow ด้วย service token (@srm/glb-workflow)</td></tr>
               <tr><td class="mono">Email แจ้งเตือน</td><td>ทุก job → <b>email-lib กลาง</b> (<code>sendEmail</code>)</td><td class="mono">UTF-8</td><td class="num">–</td><td>ส่งผ่าน <code>@gosoft-sbp/email-lib</code> ของระบบ SBP เดิม · ผู้รับตาม config ต่อ job (เดิมแต่ละ job ต่อ SMTP เอง encoding TIS-620)</td></tr>
             </tbody>
           </table>

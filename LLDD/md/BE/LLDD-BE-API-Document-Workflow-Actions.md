@@ -65,8 +65,8 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 
 | ปุ่มที่กดที่ขั้น 06 | เดือนที่กด | เดือนถัดไป | ผู้ดำเนินการ (เจ้าของงาน) |
 | --- | --- | --- | --- |
-| เห็นควรไม่ชดเชยรายได้ | ปิดเอกสาร (99) และ GET /tasks ของ 06 ต้อง **ไม่คืน** เอกสารนี้ในเดือนนั้น | ระบบตั้งงานรอบเดือนถัดไปของร้านเดิมอัตโนมัติ | **คนเดิม** ที่พิจารณาเอกสารรอบก่อนในขั้นเดียวกัน |
-| หยุดชดเชยประกันรายได้ | ปิดเอกสาร (99) แต่ GET /tasks ของ 06 **ต้องคืนทันที** พร้อม stoppedReopenable=true | ไม่มีการตั้งงานอัตโนมัติ | ฝ่าย SBP DSA (06) |
+| เห็นควรไม่ชดเชยรายได้ | ปิดเอกสาร (99) และ GET /sbpgi/document/tasks ของ 06 ต้อง **ไม่คืน** เอกสารนี้ในเดือนนั้น | ระบบตั้งงานรอบเดือนถัดไปของร้านเดิมอัตโนมัติ | **คนเดิม** ที่พิจารณาเอกสารรอบก่อนในขั้นเดียวกัน |
+| หยุดชดเชยประกันรายได้ | ปิดเอกสาร (99) แต่ GET /sbpgi/document/tasks ของ 06 **ต้องคืนทันที** พร้อม stoppedReopenable=true | ไม่มีการตั้งงานอัตโนมัติ | ฝ่าย SBP DSA (06) |
 | เคสต่อเนื่อง (ไม่ใช่ปุ่ม — เงื่อนไขของงานรอบถัดไป) | ระบบสร้างงานให้เอง ไม่ต้องแจกงานด้วยมือ | เหมือนกันทุกเดือนที่ยังต่อเนื่อง | **คนเดิม** — เจ้าหน้าที่ SBP DSA รอบก่อนหน้า |
 
 **วิธี resolve เจ้าของงานคนเดิม** — ไม่มีคอลัมน์ assignee ในตารางของ SBPGI (ตาราง workflow_tasks ถูกตัดออกจากโครง 20 ตารางแล้ว) ผู้รับผิดชอบเป็นข้อมูลของ engine
@@ -107,7 +107,7 @@ LIMIT 1;
 
 | ข้อค้าง | ทางเลือก A | ทางเลือก B | สถานะ |
 | --- | --- | --- | --- |
-| DP-7 · แหล่งข้อมูลของ `GET /documents/{docNo}/timeline` | อ่าน `consideration_logs` ของ SBPGI เป็น timeline เต็ม (สถานะปัจจุบันของแบบ) | อ่าน `getHistory()` / `sps_store.workflow_history` ของ engine แล้ว join `consideration_logs` เป็นตารางส่วนขยาย (decision code · ไฟล์แนบ · ความเห็น ซึ่ง engine ไม่มี) | ยังไม่ตัดสิน · กระทบทั้ง DDL ของ `consideration_logs` และรูปแบบ response |
+| DP-7 ✅ ปิดแล้ว 2026-08-24 · แหล่งข้อมูลของ `GET /sbpgi/document/{docNo}/timeline` | **เลือกข้อนี้ — อ่าน `consideration_logs` ของ SBPGI เป็น timeline เต็ม** (ผูก `transaction_id` ของ engine) | อ่าน `getHistory()` / `sps_store.workflow_history` ของ engine แล้ว join — ตกไป · เป็นตารางส่วนขยาย (decision code · ไฟล์แนบ · ความเห็น ซึ่ง engine ไม่มี) | ยังไม่ตัดสิน · กระทบทั้ง DDL ของ `consideration_logs` และรูปแบบ response |
 | DP-1 · `referenceId` ที่ส่งเข้า engine | `doc_no` — ตกไป | **เลือก surrogate id** (`compensation_documents.id` · ส่งเป็น string เพราะ `reference_id` เป็น varchar(255)) แบบที่ cooperation-request / inform-evaluate ทำจริงทุกจุด | ✅ ปิดแล้ว 2026-08-17 — ยืนยันตามระบบเดิม |
 | DP-2 · `sps_store.workflow_transaction` ไม่มี PK/index | ขอ sign-off ให้ทีมเจ้าของ library เพิ่ม PK + UNIQUE + index | กันซ้ำและทำ index ที่ฝั่ง SBPGI | ยังไม่ตัดสิน 🔴 · ทุก action ต้อง seq-scan 19,283 แถว |
 | DP-5 ✅ ปิดแล้ว (แก้มติ 2026-08-14) — **workflow ให้เลข template · SBPGI เรียก lib ส่งเอง** | `SBP/TSM-SRM-LLDD SBP EMAIL1.0.xlsx` — lib เสร็จแล้ว รับ `{emailId, mailTo, mailCc, param, fileAttach, userId}` · input ของ `triggerEvent` ไม่มี `mailTo`/`param` engine จึงเรียกแทนไม่ได้ · บรรทัด 'เรียก function ส่งเมล์จาก lib .....' ยังเป็น placeholder | SBPGI อ่าน `workflow_route.email_id` → เรียก `sendEmail()` **นอก transaction** · ไม่มีตาราง `status_email_rules` | ปิดแล้ว |
@@ -116,7 +116,7 @@ LIMIT 1;
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | POST /api/v1/documents/{docNo}/actions; GET /api/v1/documents/{docNo}/timeline |
+| Input | POST /api/v1/sbpgi/document/{docNo}/actions; GET /api/v1/sbpgi/document/{docNo}/timeline |
 | Progress | Lock current action task; Validate owner and selected result against actionOptions; Apply server-side business rule; Update document/task |
 | Output | compensation_documents; consideration_logs |
 
@@ -124,8 +124,8 @@ LIMIT 1;
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| POST /api/v1/documents/{docNo}/actions | Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02 | Lock current action task | non-owner returns 403 |
-| GET /api/v1/documents/{docNo}/timeline | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline (Peerakorn)** · เอกสารนี้อ้างเพราะ action ที่ส่งผลพิจารณาเป็นตัวเขียน consideration_logs ที่ timeline อ่าน | Validate owner and selected result against actionOptions | missing result returns exact SRS message |
+| POST /api/v1/sbpgi/document/{docNo}/actions | Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02 | Lock current action task | non-owner returns 403 |
+| GET /api/v1/sbpgi/document/{docNo}/timeline | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline (Peerakorn)** · เอกสารนี้อ้างเพราะ action ที่ส่งผลพิจารณาเป็นตัวเขียน consideration_logs ที่ timeline อ่าน | Validate owner and selected result against actionOptions | missing result returns exact SRS message |
 
 ### 5.91 Backend Execution Sequence
 
@@ -136,7 +136,22 @@ LIMIT 1;
 | 3 | Apply server-side business rule | send back |
 | 4 | Update document/task | invalid result |
 | 5 | Insert consideration_logs | duplicate action |
-| 6 | Trigger email | submit compensate |
+| 6 | Trigger email | — (ยังไม่มี test เฉพาะขั้นนี้ · ครอบด้วย test รวมของเอกสารในหัวข้อ 11) |
+
+### 5.92 Workflow Trigger Event Contract
+
+งานชิ้นนี้ **ต้องเรียก workflow engine** ตามตารางด้านล่าง · ชื่อ function ยึด API 8 ตัวของ `@srm/glb-workflow` ตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — รายละเอียด signature และตารางที่ engine เขียน ดู **LLDD-BE-Workflow-Engine-Definition** หัวข้อ 5.3
+
+| จุดที่เรียก (call site) | Engine function | พารามิเตอร์หลัก | กติกา / transaction boundary |
+| --- | --- | --- | --- |
+| ก่อนแสดงปุ่ม / ก่อนรับ action | `getPermissionEvents` | versionId, referenceId, userData | ถ้า event ที่ส่งมาไม่อยู่ใน event[] ที่คืนมา ต้องตอบ 403 ห้ามเรียก eventWorkflow ต่อ |
+| กันกดซ้ำ / กันงานถูกคนอื่นเดินไปแล้ว | `getTransaction` | versionId, referenceId | เทียบ state ปัจจุบันกับ state ที่ FE ส่งมา ไม่ตรงตอบ 409 (optimistic guard) |
+| กดผลพิจารณา (trigger event) | `eventWorkflow` | versionId, referenceId, userId, event, eventParam (amount สำหรับ route 100,000) | 🔴 หัวใจของเอกสารนี้ — เขียน consideration_logs + แนบไฟล์ + เรียก eventWorkflow ใน transaction เดียว; engine fail ต้อง rollback ฝั่ง SBPGI ทั้งหมด |
+| ผูกผู้รับผิดชอบขั้นถัดไป | `addPreApprover` | versionId, referenceId, stateId, approver, seq | ใช้เมื่อ route ระบุตัวบุคคล (เช่น ตีกลับหาเจ้าของงานคนเดิม) — เรียกหลัง eventWorkflow สำเร็จ ใน transaction เดียวกัน |
+
+- 🔴 กติกาเหล็ก: ตาราง `sps_store.workflow_*` (13 ตาราง) เป็นของ lib — SBPGI **R เท่านั้น** ห้าม INSERT/UPDATE/DELETE ตรงในทุกกรณี
+- ทุกการเรียก engine ต้องผ่านตัวห่อกลาง `WorkflowGateway` ที่นิยามใน **LLDD-BE-API-Common-Contracts** (timeout · retry · map error เข้า envelope) ห้าม import lib ตรงจาก service
+- unit test ต้อง mock engine และครอบอย่างน้อย: เรียกสำเร็จ · engine โยน error แล้ว rollback ฝั่ง SBPGI ครบ · เรียกซ้ำด้วย referenceId เดิมไม่เกิดผลซ้ำ
 
 ## 6. Button / User Action Mapping
 
@@ -148,7 +163,7 @@ LIMIT 1;
 
 ## 7. API Contract
 
-### POST /api/v1/documents/{docNo}/actions
+### POST /api/v1/sbpgi/document/{docNo}/actions
 
 Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02
 
@@ -186,7 +201,7 @@ Document action API ตัวอย่างเมื่อ currentSection=01 �
 | nextSection | string | Yes | canonical code; do not replace with display label |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/documents/{docNo}/timeline
+### GET /api/v1/sbpgi/document/{docNo}/timeline
 
 **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline (Peerakorn)** · เอกสารนี้อ้างเพราะ action ที่ส่งผลพิจารณาเป็นตัวเขียน consideration_logs ที่ timeline อ่าน
 
@@ -269,13 +284,13 @@ import { SubmitActionBodyDto } from './dto/sbpgi-document-workflow-actions.dto';
 
 // LLDD BE - API Document Workflow Actions
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sbpgi/documents')
+@Controller('sbpgi/sbpgi/document')
 @UseGuards(HttpHeaderGuard)
 export class SbpgiDocumentWorkflowActionsController {
   constructor(private readonly service: SbpgiDocumentWorkflowActionsService) {}
 
-  // POST /api/v1/documents/{docNo}/actions — Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02
-  @Post(':docNo/actions')
+  // POST /api/v1/sbpgi/document/{docNo}/actions — Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02
+  @Post('document/:docNo/actions')
   submitAction(
     @Param('docNo') docNo: string,
     @Body() body: SubmitActionBodyDto,
@@ -285,8 +300,8 @@ export class SbpgiDocumentWorkflowActionsController {
     return this.service.submitAction(docNo, body, userId);
   }
 
-  // GET /api/v1/documents/{docNo}/timeline — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sa…
-  @Get(':docNo/timeline')
+  // GET /api/v1/sbpgi/document/{docNo}/timeline — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sa…
+  @Get('document/:docNo/timeline')
   getTimeline(@Param('docNo') docNo: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getTimeline(docNo, userId);
@@ -307,7 +322,7 @@ import {
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
 // property ที่ไม่ประกาศที่นี่จะถูก reject เป็น 400 อัตโนมัติ
 
-// body ของ POST /api/v1/documents/{docNo}/actions
+// body ของ POST /api/v1/sbpgi/document/{docNo}/actions
 export class SubmitActionBodyDto {
   /** ต้องเป็นค่าที่ API detail ส่งมาให้ผู้ใช้ในเอกสารนั้น */
   @IsNotEmpty()
@@ -344,7 +359,7 @@ export class SbpgiDocumentWorkflowActionsService {
     private readonly workflow: WorkflowService,
   ) {}
 
-  // POST /api/v1/documents/{docNo}/actions — Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02
+  // POST /api/v1/sbpgi/document/{docNo}/actions — Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02
   // mutation ต้องอยู่ใน transaction เดียว (ไม่มี audit ของ master แล้ว · 2026-08-07)
   async submitAction(docNo: string, body: SubmitActionBodyDto, userId: string) {
     const runner = this.dataSource.createQueryRunner();
@@ -374,11 +389,11 @@ export class SbpgiDocumentWorkflowActionsService {
     }
   }
 
-  // GET /api/v1/documents/{docNo}/timeline — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sa…
+  // GET /api/v1/sbpgi/document/{docNo}/timeline — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sa…
   async getTimeline(docNo: string, userId: string) {
     const page = 1;
     const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
-    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/documents/{docNo}/timeline')
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sbpgi/document/{docNo}/timeline')
     // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
     //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
     const rows = await this.dataSource.query(SBPGI_SQL.getTimeline, [
@@ -397,8 +412,8 @@ export class SbpgiDocumentWorkflowActionsService {
 
 | Endpoint | Use case ที่ต้องเรียก | เหตุผล |
 | --- | --- | --- |
-| POST /api/v1/documents/{docNo}/actions | getPermissionEvents() → eventWorkflow() | ตรวจสิทธิ์ event ของผู้ใช้ก่อนเดิน state และบันทึก history |
-| GET /api/v1/documents/{docNo}/timeline | getHistory() | timeline การเปลี่ยน state (fromState/toState/event/remark) |
+| POST /api/v1/sbpgi/document/{docNo}/actions | getPermissionEvents() → eventWorkflow() | ตรวจสิทธิ์ event ของผู้ใช้ก่อนเดิน state และบันทึก history |
+| GET /api/v1/sbpgi/document/{docNo}/timeline | getHistory() | timeline การเปลี่ยน state (fromState/toState/event/remark) |
 
 ```ts
 // src/modules/sbpgi-document-workflow-actions/sbpgi-document-workflow-actions.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
@@ -629,11 +644,11 @@ export class SbpgiDocumentWorkflowActionsBffService {
   }
 
   submitAction(docNo: string, body: any, user: any) {
-    return this.client.post(`/api/v1/documents/${docNo}/actions`, body, { headers: this.userHeaders(user) });
+    return this.client.post(`/api/v1/sbpgi/document/${docNo}/actions`, body, { headers: this.userHeaders(user) });
   }
 
   getTimeline(docNo: string, params: any, user: any) {
-    return this.client.get(`/api/v1/documents/${docNo}/timeline`, { params, headers: this.userHeaders(user) });
+    return this.client.get(`/api/v1/sbpgi/document/${docNo}/timeline`, { params, headers: this.userHeaders(user) });
   }
 }
 
@@ -647,14 +662,14 @@ import { AuthGuard } from '@nestjs/passport';
 export class SbpgiDocumentWorkflowActionsBffController {
   constructor(private readonly service: SbpgiDocumentWorkflowActionsBffService) {}
 
-  // proxy ของ POST /api/v1/documents/{docNo}/actions
-  @Post('documents/:docNo/actions')
+  // proxy ของ POST /api/v1/sbpgi/document/{docNo}/actions
+  @Post('sbpgi/document/:docNo/actions')
   submitAction(@Param('docNo') docNo: string, @Body() body: any, @Req() req: any) {
     return this.service.submitAction(docNo, body, req.user);
   }
 
-  // proxy ของ GET /api/v1/documents/{docNo}/timeline
-  @Get('documents/:docNo/timeline')
+  // proxy ของ GET /api/v1/sbpgi/document/{docNo}/timeline
+  @Get('sbpgi/document/:docNo/timeline')
   getTimeline(@Param('docNo') docNo: string, @Query() query: any, @Req() req: any) {
     return this.service.getTimeline(docNo, query, req.user);
   }
@@ -676,7 +691,7 @@ export class SbpgiDocumentWorkflowActionsBffController {
 
 #### 10.2 SQL จริงต่อ Endpoint
 
-**POST /api/v1/documents/{docNo}/actions** — Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02
+**POST /api/v1/sbpgi/document/{docNo}/actions** — Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -730,12 +745,12 @@ WHERE is_sent = 'N' AND sent_date >= :since
 ORDER BY sent_date DESC;
 ```
 
-**GET /api/v1/documents/{docNo}/timeline** — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline (Peerakorn)** · เอกสารนี้อ้…
+**GET /api/v1/sbpgi/document/{docNo}/timeline** — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline (Peerakorn)** · เอกสารนี้อ้…
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
--- ⚠️ DP-7 ยังไม่ตัดสิน: consideration_logs เป็น timeline เต็ม หรือเป็นตารางส่วนขยายบน sps_store.workflow_history
+-- ✅ DP-7 ปิดแล้ว 2026-08-24: consideration_logs เป็น timeline เต็มของ SBPGI (ตารางของเราเอง)
 --    ถ้าเลือกทางเลือก B ต้อง join getHistory() ของ engine เข้ามาด้วย (DP-1 กำหนดคีย์ที่ใช้ค้น)
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT section_code, consider_by, result, detail, action_datetime
@@ -798,8 +813,8 @@ ORDER BY action_datetime;
 | business rule | logic | invalid result for this role profile returns 422 |
 | business rule | logic | duplicate submit blocked by current open task lock |
 | business rule | logic | audit written in same transaction |
-| `POST /api/v1/documents/{docNo}/actions` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/documents/{docNo}/timeline` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `POST /api/v1/sbpgi/document/{docNo}/actions` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/document/{docNo}/timeline` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | `compensation_documents`, `consideration_logs` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 

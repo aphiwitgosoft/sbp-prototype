@@ -66,24 +66,24 @@ PROFILES: dict[str, dict[str, Any]] = {
         "kind": "list",
         "domain": "document",
         "routes": [
-            ("documents/waiting", "หน้ารายการเอกสารรอดำเนินการ (GET /tasks)"),
-            ("documents/related", "หน้าเอกสารที่เกี่ยวข้อง (GET /documents · ปี = required)"),
+            ("document/waiting", "หน้ารายการเอกสารรอดำเนินการ (GET /sbpgi/document/tasks)"),
+            ("document/related", "หน้าเอกสารที่เกี่ยวข้อง (GET /sbpgi/document · ปี = required)"),
         ],
     },
     "Create-Document": {
         "kind": "create",
         "domain": "document",
-        "routes": [("documents/create", "หน้าสร้างเอกสาร: tab ทั่วไป + tab เอกสารจาก FS (hidden iframe)")],
+        "routes": [("document/create", "หน้าสร้างเอกสาร: tab ทั่วไป + tab เอกสารจาก FS (hidden iframe)")],
     },
     "Document-Detail": {
         "kind": "detail",
         "domain": "document",
-        "routes": [("documents/[docNo]", "หน้ารายละเอียดเอกสาร + action panel ตาม role profile")],
+        "routes": [("document/[docNo]", "หน้ารายละเอียดเอกสาร + action panel ตาม role profile")],
     },
     "Report": {
         "kind": "report",
         "domain": "report",
-        "routes": [("reports/status-summary", "หน้ารายงานตรวจสอบประกันรายได้ (filter + ตารางผลลัพธ์ + Export Excel)")],
+        "routes": [("report/status-summary", "หน้ารายงานตรวจสอบประกันรายได้ (filter + ตารางผลลัพธ์ + Export Excel)")],
     },
     # 2026-08-05/06: หน้า "ผู้ปฏิบัติงาน" และ "สิทธิ์เมนู" ถูกตัดออกจากดีไซน์ถาวร
     # (ใช้ auth-backend ของระบบ SBP เดิมผ่านหน้า /setting/manage-user-rights และ
@@ -136,7 +136,7 @@ def _profile(topic: Any) -> dict[str, Any]:
             "kind": "role",
             "domain": "document",
             "role_code": role_code,
-            "routes": [("documents/[docNo]", f"ใช้ร่วมกับหน้า detail — view ของ workflow section {role_code}")],
+            "routes": [("document/[docNo]", f"ใช้ร่วมกับหน้า detail — view ของ workflow section {role_code}")],
             "key": key,
         }
     prof = dict(PROFILES.get(key) or {"kind": "list", "domain": _camel(key), "routes": [(key.lower(), getattr(topic, "title", key))]})
@@ -242,7 +242,7 @@ def _path_params(path: str) -> list[str]:
 
 
 def _ts_path(path: str) -> str:
-    """`/documents/{docNo}/actions` -> template literal ที่ encode path param แล้ว"""
+    """`/sbpgi/document/{docNo}/actions` -> template literal ที่ encode path param แล้ว"""
     params = _path_params(path)
     if not params:
         return f"'{path}'"
@@ -804,7 +804,7 @@ export default function {_pascal(route)}Page() {{
         first={{(query.page - 1) * query.size}}
         totalRecords={{data?.total ?? 0}}
         onPage={{(e) => setQuery((q) => ({{ ...q, page: (e.page ?? 0) + 1, size: e.rows ?? q.size }}))}}
-        onRowClick={{(e) => router.push(`{ROUTE_BASE}/documents/${{encodeURIComponent((e.data as {item}).docNo)}}`)}}
+        onRowClick={{(e) => router.push(`{ROUTE_BASE}/document/${{encodeURIComponent((e.data as {item}).docNo)}}`)}}
         emptyMessage="ไม่พบข้อมูล"{row_class}
       >
 {_columns_jsx(cols, missing=missing)}
@@ -894,7 +894,7 @@ import DocumentSection from '@/components/sbpgi/document-detail/DocumentSection'
 import ActionPanel from '@/components/sbpgi/document-detail/ActionPanel';
 import {{ {detail_hook}, {action_hook} }} from '@/hooks/sbpgi/{domain}.query';
 
-const PAGE_URL = '{ROUTE_BASE}/documents';
+const PAGE_URL = '{ROUTE_BASE}/document';
 
 export default function DocumentDetailPage() {{
   const params = useParams<{{ docNo: string }}>();
@@ -984,7 +984,7 @@ def _create_page(nx: dict[str, Any]) -> str:
 {tab_comment}
 //
 // ⚠️ มติ 2026-08-06: หน้านี้ **ไม่มีฟอร์มฝั่ง SBP** — main card คือ iframe ของหน้าสร้างเอกสาร
-//    ของระบบ FS ตรง ๆ (เหมือน k2-create.html) และ `POST /documents` เป็น pipeline/service-token
+//    ของระบบ FS ตรง ๆ (เหมือน k2-create.html) และ `POST /sbpgi/document` เป็น pipeline/service-token
 //    endpoint (Job 8) ไม่ใช่ฟอร์มที่ FE ยิงเอง
 // ⚠️ ห้ามอ่าน/เขียน DOM ข้าม iframe (`contentDocument`) — FS อยู่คนละ origin เบราว์เซอร์บล็อกทันที
 //    ช่องทางสื่อสารเดียวที่ใช้ได้คือ `postMessage` และต้องตรวจ `event.origin` ทุกครั้ง
@@ -1117,11 +1117,11 @@ import {{ {hook} }} from '@/hooks/sbpgi/lookup.query';
 
 /** route registry ของโมดูล — ใช้ประกอบลิงก์ภายใน ส่วนเมนู/สิทธิ์ยังมาจาก GET /menus เท่านั้น */
 export const SBPGI_ROUTES = {{
-  waiting: '{ROUTE_BASE}/documents/waiting',
-  related: '{ROUTE_BASE}/documents/related',
-  create: '{ROUTE_BASE}/documents/create',
-  detail: (docNo: string) => `{ROUTE_BASE}/documents/${{encodeURIComponent(docNo)}}`,
-  report: '{ROUTE_BASE}/reports/status-summary',
+  waiting: '{ROUTE_BASE}/document/waiting',
+  related: '{ROUTE_BASE}/document/related',
+  create: '{ROUTE_BASE}/document/create',
+  detail: (docNo: string) => `{ROUTE_BASE}/document/${{encodeURIComponent(docNo)}}`,
+  report: '{ROUTE_BASE}/report/status-summary',
 }} as const;
 
 export default function SbpgiLayout({{ children }}: {{ children: ReactNode }}) {{
@@ -1534,7 +1534,7 @@ def _query_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
 
 def _action_form(nx: dict[str, Any], comp: str) -> str:
     """ฟอร์มของหน้า Document Detail = ฟอร์ม "พิจารณา" (result + comment) ของ
-    `POST /documents/{docNo}/actions` เท่านั้น — ไม่ใช่ฟอร์มค้นหา และไม่ใช่ field ฝั่ง response
+    `POST /sbpgi/document/{docNo}/actions` เท่านั้น — ไม่ใช่ฟอร์มค้นหา และไม่ใช่ field ฝั่ง response
     """
     prof, apis = nx["prof"], nx["apis"]
     role_code = prof.get("role_code", "")
@@ -1702,7 +1702,7 @@ def _form_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
         return [
             h(3, f"{num} ฟอร์มพิจารณา + validation — `src/components/sbpgi/{folder}/{comp}.tsx`"),
             p("หน้านี้**ไม่มีการค้นหา** — ฟอร์มเดียวของหน้าคือฟอร์มผลการพิจารณาที่ยิง "
-              "`POST /api/v1/documents/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`"),
+              "`POST /api/v1/sbpgi/document/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`"),
             code(_action_form(nx, comp), "tsx"),
         ]
     fields = _form_fields(topic, prof, apis)

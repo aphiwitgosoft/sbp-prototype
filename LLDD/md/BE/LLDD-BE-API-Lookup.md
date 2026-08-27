@@ -44,17 +44,17 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/document-statuses; GET /api/v1/workflow-sections |
+| Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/sbpgi/lookup/document-statuses; GET /api/v1/sbpgi/lookup/workflow-sections |
 | Progress | Validate query; Read/write table by domain; Return standard envelope for list endpoints |
-| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Endpoint Implementation Contract
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
 | GET /store/search (ระบบ SBP เดิม) | ค้นหาร้านสำหรับ popup | Validate query | status label ต้องเป็น verbatim |
-| GET /api/v1/document-statuses | รายการสถานะเอกสาร verbatim | Read/write table by domain | permission mutation ต้อง audit |
-| GET /api/v1/workflow-sections | รายการ section 5 ขั้น | Return standard envelope for list endpoints | SBPGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14) |
+| GET /api/v1/sbpgi/lookup/document-statuses | รายการสถานะเอกสาร verbatim | Read/write table by domain | permission mutation ต้อง audit |
+| GET /api/v1/sbpgi/lookup/workflow-sections | รายการ section 5 ขั้น | Return standard envelope for list endpoints | SBPGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14) |
 
 ### 5.91 Backend Execution Sequence
 
@@ -116,7 +116,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | items[].storeCode | string | Yes | exactly 5 digits; preserve leading zero |
 | items[].storeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/document-statuses
+### GET /api/v1/sbpgi/lookup/document-statuses
 
 รายการสถานะเอกสาร verbatim
 
@@ -153,7 +153,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | items[].statusCode | string | Yes | canonical code; do not replace with display label |
 | items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/workflow-sections
+### GET /api/v1/sbpgi/lookup/workflow-sections
 
 รายการ section 5 ขั้น
 
@@ -242,23 +242,23 @@ import { SbpgiLookupService } from './sbpgi-lookup.service';
 
 // LLDD BE - API Lookup
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sbpgi')
+@Controller('sbpgi/sbpgi/lookup')
 @UseGuards(HttpHeaderGuard)
 export class SbpgiLookupController {
   constructor(private readonly service: SbpgiLookupService) {}
 
-  // GET /api/v1/document-statuses — รายการสถานะเอกสาร verbatim
-  @Get('document-statuses')
-  getDocumentStatuses(@UserId() userId: string) {
+  // GET /api/v1/sbpgi/lookup/document-statuses — รายการสถานะเอกสาร verbatim
+  @Get('lookup/document-statuses')
+  getSbpgiLookupDocumentStatuses(@UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getDocumentStatuses(userId);
+    return this.service.getSbpgiLookupDocumentStatuses(userId);
   }
 
-  // GET /api/v1/workflow-sections — รายการ section 5 ขั้น
-  @Get('workflow-sections')
-  getWorkflowSections(@UserId() userId: string) {
+  // GET /api/v1/sbpgi/lookup/workflow-sections — รายการ section 5 ขั้น
+  @Get('lookup/workflow-sections')
+  getSbpgiLookupWorkflowSections(@UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getWorkflowSections(userId);
+    return this.service.getSbpgiLookupWorkflowSections(userId);
   }
 }
 ```
@@ -305,14 +305,14 @@ export class SbpgiLookupService {
     private readonly workflow: WorkflowService,
   ) {}
 
-  // GET /api/v1/document-statuses — รายการสถานะเอกสาร verbatim
-  async getDocumentStatuses(userId: string) {
+  // GET /api/v1/sbpgi/lookup/document-statuses — รายการสถานะเอกสาร verbatim
+  async getSbpgiLookupDocumentStatuses(userId: string) {
     const page = 1;
     const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
-    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/document-statuses')
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sbpgi/lookup/document-statuses')
     // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
     //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
-    const rows = await this.dataSource.query(SBPGI_SQL.getDocumentStatuses, [
+    const rows = await this.dataSource.query(SBPGI_SQL.getSbpgiLookupDocumentStatuses, [
       // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
       userId, (page - 1) * size, size,
     ]);
@@ -320,11 +320,11 @@ export class SbpgiLookupService {
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/workflow-sections — รายการ section 5 ขั้น
-  async getWorkflowSections(userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/workflow-sections
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/workflow-sections')
-    throw new NotImplementedException('getWorkflowSections ยังไม่ implement');
+  // GET /api/v1/sbpgi/lookup/workflow-sections — รายการ section 5 ขั้น
+  async getSbpgiLookupWorkflowSections(userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/lookup/workflow-sections
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/lookup/workflow-sections')
+    throw new NotImplementedException('getSbpgiLookupWorkflowSections ยังไม่ implement');
   }
 }
 ```
@@ -507,12 +507,12 @@ export class SbpgiLookupBffService {
     };
   }
 
-  getDocumentStatuses(params: any, user: any) {
-    return this.client.get('/api/v1/document-statuses', { params, headers: this.userHeaders(user) });
+  getSbpgiLookupDocumentStatuses(params: any, user: any) {
+    return this.client.get('/api/v1/sbpgi/lookup/document-statuses', { params, headers: this.userHeaders(user) });
   }
 
-  getWorkflowSections(params: any, user: any) {
-    return this.client.get('/api/v1/workflow-sections', { params, headers: this.userHeaders(user) });
+  getSbpgiLookupWorkflowSections(params: any, user: any) {
+    return this.client.get('/api/v1/sbpgi/lookup/workflow-sections', { params, headers: this.userHeaders(user) });
   }
 }
 
@@ -526,16 +526,16 @@ import { AuthGuard } from '@nestjs/passport';
 export class SbpgiLookupBffController {
   constructor(private readonly service: SbpgiLookupBffService) {}
 
-  // proxy ของ GET /api/v1/document-statuses
-  @Get('document-statuses')
-  getDocumentStatuses(@Query() query: any, @Req() req: any) {
-    return this.service.getDocumentStatuses(query, req.user);
+  // proxy ของ GET /api/v1/sbpgi/lookup/document-statuses
+  @Get('sbpgi/lookup/document-statuses')
+  getSbpgiLookupDocumentStatuses(@Query() query: any, @Req() req: any) {
+    return this.service.getSbpgiLookupDocumentStatuses(query, req.user);
   }
 
-  // proxy ของ GET /api/v1/workflow-sections
-  @Get('workflow-sections')
-  getWorkflowSections(@Query() query: any, @Req() req: any) {
-    return this.service.getWorkflowSections(query, req.user);
+  // proxy ของ GET /api/v1/sbpgi/lookup/workflow-sections
+  @Get('sbpgi/lookup/workflow-sections')
+  getSbpgiLookupWorkflowSections(@Query() query: any, @Req() req: any) {
+    return this.service.getSbpgiLookupWorkflowSections(query, req.user);
   }
 }
 // TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
@@ -558,7 +558,7 @@ export class SbpgiLookupBffController {
 
 #### 10.2 SQL จริงต่อ Endpoint
 
-**GET /api/v1/document-statuses** — รายการสถานะเอกสาร verbatim
+**GET /api/v1/sbpgi/lookup/document-statuses** — รายการสถานะเอกสาร verbatim
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -570,7 +570,7 @@ WHERE version_id = :sbpgiVersionId
 ORDER BY seq;
 ```
 
-**GET /api/v1/workflow-sections** — รายการ section 5 ขั้น
+**GET /api/v1/sbpgi/lookup/workflow-sections** — รายการ section 5 ขั้น
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -637,8 +637,8 @@ ORDER BY sort_order;
 | business rule | logic | SBPGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14) |
 | business rule | logic | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
 | `GET /store/search (ระบบ SBP เดิม)` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/document-statuses` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/workflow-sections` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/lookup/document-statuses` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/lookup/workflow-sections` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | `email_sent (SBP เดิม)` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 

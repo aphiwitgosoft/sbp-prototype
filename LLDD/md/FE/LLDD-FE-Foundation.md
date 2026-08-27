@@ -46,9 +46,9 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Application Foun
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/document-statuses |
+| Input | GET /api/v1/sbpgi/lookup/document-statuses |
 | Progress | Initialize app config; Register SBP Mall routes; Create shared API client; Prepare constants/formatters |
-| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Application Foundation and Shared UI Component Contract
 
@@ -65,7 +65,7 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Application Foun
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
-| GET /api/v1/document-statuses | โหลดสถานะเอกสารสำหรับ dropdown/badge | Register module route (bootstrap) |
+| GET /api/v1/sbpgi/lookup/document-statuses | โหลดสถานะเอกสารสำหรับ dropdown/badge | Register module route (bootstrap) |
 
 ### 5.92 Application Foundation and Shared UI Interaction State Machine
 
@@ -93,7 +93,7 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Application Foun
 
 ## 7. API Contract
 
-### GET /api/v1/document-statuses
+### GET /api/v1/sbpgi/lookup/document-statuses
 
 โหลดสถานะเอกสารสำหรับ dropdown/badge
 
@@ -155,20 +155,20 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Application Foun
 // โมดูลนี้จึง "ห้าม" สร้าง QueryClient ใหม่ และ "ห้าม" สร้าง axios instance ของตัวเอง
 
 import { ReactNode } from 'react';
-import { useDocumentStatusesQuery } from '@/hooks/sbpgi/lookup.query';
+import { useSbpgiLookupDocumentStatusesQuery } from '@/hooks/sbpgi/lookup.query';
 
 /** route registry ของโมดูล — ใช้ประกอบลิงก์ภายใน ส่วนเมนู/สิทธิ์ยังมาจาก GET /menus เท่านั้น */
 export const SBPGI_ROUTES = {
-  waiting: '/sbpgi/documents/waiting',
-  related: '/sbpgi/documents/related',
-  create: '/sbpgi/documents/create',
-  detail: (docNo: string) => `/sbpgi/documents/${encodeURIComponent(docNo)}`,
-  report: '/sbpgi/reports/status-summary',
+  waiting: '/sbpgi/document/waiting',
+  related: '/sbpgi/document/related',
+  create: '/sbpgi/document/create',
+  detail: (docNo: string) => `/sbpgi/document/${encodeURIComponent(docNo)}`,
+  report: '/sbpgi/report/status-summary',
 } as const;
 
 export default function SbpgiLayout({ children }: { children: ReactNode }) {
   // prefetch lookup ที่ทุกหน้าในโมดูลใช้ร่วมกัน (master -> staleTime ยาว)
-  useDocumentStatusesQuery();
+  useSbpgiLookupDocumentStatusesQuery();
 
   // TODO: ใส่ ErrorBoundary ของโมดูล และ empty state เมื่อ permission ยังโหลดไม่เสร็จ
   return <div className="sbpgi-module">{children}</div>;
@@ -188,9 +188,9 @@ import apiClient from '@/lib/apiClient';
 import type { ApiResponse } from '@/types/sbpgi/common';
 import type * as T from '@/types/sbpgi/lookup';
 
-/** GET /api/v1/document-statuses — โหลดสถานะเอกสารสำหรับ dropdown/badge */
-export async function getDocumentStatuses(): Promise<T.DocumentStatusesResponse> {
-  const { data } = await apiClient.get<ApiResponse<T.DocumentStatusesResponse>>('/document-statuses');
+/** GET /api/v1/sbpgi/lookup/document-statuses — โหลดสถานะเอกสารสำหรับ dropdown/badge */
+export async function getSbpgiLookupDocumentStatuses(): Promise<T.SbpgiLookupDocumentStatusesResponse> {
+  const { data } = await apiClient.get<ApiResponse<T.SbpgiLookupDocumentStatusesResponse>>('/sbpgi/lookup/document-statuses');
   return data.data;
 }
 
@@ -205,12 +205,12 @@ export async function getDocumentStatuses(): Promise<T.DocumentStatusesResponse>
 // src/types/sbpgi/lookup.ts — ตรงกับตาราง API ในเอกสารนี้
 // วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
-/** GET /api/v1/document-statuses — 1 แถวในตาราง */
-export interface DocumentStatusesItem {
+/** GET /api/v1/sbpgi/lookup/document-statuses — 1 แถวในตาราง */
+export interface SbpgiLookupDocumentStatusesItem {
   code: string;
   label: string;
 }
-export interface DocumentStatusesResponse { items: DocumentStatusesItem[]; }
+export interface SbpgiLookupDocumentStatusesResponse { items: SbpgiLookupDocumentStatusesItem[]; }
 
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
@@ -227,13 +227,13 @@ import type * as T from '@/types/sbpgi/lookup';
 
 export const lookupKeys = {
   all: ['sbpgi', 'lookup'] as const,
-  documentStatuses: () => [...lookupKeys.all, 'documentStatuses'] as const,
+  sbpgiLookupDocumentStatuses: () => [...lookupKeys.all, 'sbpgiLookupDocumentStatuses'] as const,
 };
 
-export function useDocumentStatusesQuery() {
+export function useSbpgiLookupDocumentStatusesQuery() {
   return useQuery({
-    queryKey: lookupKeys.documentStatuses(),
-    queryFn: () => api.getDocumentStatuses(),
+    queryKey: lookupKeys.sbpgiLookupDocumentStatuses(),
+    queryFn: () => api.getSbpgiLookupDocumentStatuses(),
     staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
   });
 }
@@ -290,7 +290,7 @@ export function useDocumentStatusesQuery() {
 | business rule | logic | API error shape ใช้ร่วมกัน |
 | business rule | logic | ไม่มี dependency กับ Login/Auth ใหม่ |
 | business rule | logic | CSS responsive base พร้อม |
-| `GET /api/v1/document-statuses` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/sbpgi/lookup/document-statuses` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
 | component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
 | hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
 | error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |

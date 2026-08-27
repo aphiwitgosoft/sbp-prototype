@@ -59,7 +59,7 @@
           <tr><td><b>นำเข้าจากภายนอก</b></td><td class="mono">2 · 3</td><td>ดึงคู่ร้านกระทบและร้านคู่แข่งจาก <b>ALLMAP</b> (SQL Server) เข้า <code>fgi_impact_stores</code> · <code>fgi_impact_competitors</code></td></tr>
           <tr><td><b>แลกยอดขาย</b></td><td class="mono">4 · 5</td><td>ส่งรายการไป <b>IAS/MIS</b> เป็นไฟล์ <code>AMS06001O</code> แล้วรับยอดขายกลับเป็น <code>AMS06001I</code> → <code>sales_transactions</code> + คำนวณ growth</td></tr>
           <tr><td><b>สร้างเอกสาร</b></td><td class="mono">8 · 7 · 9</td><td><b>เขียนฐานข้อมูลตรง</b> — สร้าง <code>compensation_documents</code> แล้วเติม <code>document_competitors</code> · <code>document_new_stores</code> ผ่าน Document Service</td></tr>
-          <tr><td><b>เปิด workflow</b></td><td class="mono">8b</td><td>ตัดสินจุดเข้า flow จากประเภทเคส แล้วเรียก <code>POST /api/v1/workflows/instances</code> ของ <b>Workflow Engine ภายใน</b></td></tr>
+          <tr><td><b>เปิด workflow</b></td><td class="mono">8b</td><td>ตัดสินจุดเข้า flow จากประเภทเคส แล้วเรียก <code>POST /api/v1/sbpgi/workflow/instances</code> ของ <b>Workflow Engine ภายใน</b></td></tr>
           <tr><td><b>ส่งผล + เฝ้าระวัง</b></td><td class="mono">6 · 10</td><td>ส่งค่าชดเชยไป <b>STA</b> ด้วย <b>RabbitMQ message</b> (<code>sta.compensation.result</code>) และเฝ้าระวัง ACK ค้างเกิน 1 วันแล้วส่งอีเมลเตือน</td></tr>
         </tbody>
       </table></div>
@@ -391,7 +391,7 @@
         { k:'p', t:'insert outbox: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N (direction = OUT · status = READY)', d:'อยู่ใน transaction เดียวกับ 10 mutation — commit แล้วข้อมูลจะไม่หาย แม้ broker ล่ม' },
         { k:'io', tx:0, t:'publish ไป RabbitMQ exchange sbpgi.interface (routing sta.compensation.result)', d:'นอก DB transaction · persistent + publisher confirm + mandatory' },
         { k:'d', tx:0, t:'ได้ publisher confirm?', no:'คง outbox เป็น READY/FAILED_RETRY ให้ dispatcher ส่งซ้ำ — ไม่ rollback การ sync', noKind:'err', d:'เลี่ยง dual-write: การ sync สถานะกับการส่ง message แยก commit กัน · ส่งซ้ำได้เพราะ STA กันซ้ำด้วย message_id' },
-        { k:'p', tx:0, t:'update outbox: status READY → SENT (บันทึก sent_at)', d:'ACK เชิงธุรกิจมาทีหลังทาง POST /interfaces/sta/ack · Job 10 เฝ้าแถวที่ค้างไม่ ACK ≥ 1 วัน' },
+        { k:'p', tx:0, t:'update outbox: status READY → SENT (บันทึก sent_at)', d:'ACK เชิงธุรกิจมาทีหลังทาง POST /sbpgi/interface/sta/ack · Job 10 เฝ้าแถวที่ค้างไม่ ACK ≥ 1 วัน' },
         { k:'end', t:'จบ' }
       ],
       tables:[
@@ -475,7 +475,7 @@
         { k:'p', t:'generate doc_no YYYY/xxxxx', d:'running ต่อปี ค.ศ. (มติ 2026-08-06)' },
         { k:'p', t:'insert compensation_documents', d:'ผูก impact_process_id และสถานะเริ่มต้น' },
         { k:'p', t:'insert interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED', d:'ไม่สร้างไฟล์ BPM06001O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ' },
-        { k:'end', t:'จบ - workflow เปิดโดย Job 8b / POST /workflows/instances' }
+        { k:'end', t:'จบ - workflow เปิดโดย Job 8b / POST /sbpgi/workflow/instances' }
       ],
       tables:[
         ['document_running_numbers', 'R/W', 'ตัวนับเลขเอกสารรายปี — ออก doc_no YYYY/xxxxx (ค.ศ.)'],
@@ -503,10 +503,10 @@
       cron:'after-job-8',
       cronTh:'trigger หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ได้ตาม period',
       out:'sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SBPGI)',
-      desc:'คัดรายการที่ผ่าน Gen Flow Gate แล้วเรียก Workflow Engine ภายในผ่าน POST /api/v1/workflows/instances แทน K2 REST StartInstance; เกณฑ์ W/Y/N เดิมยังคงใช้สำหรับ reconcile',
+      desc:'คัดรายการที่ผ่าน Gen Flow Gate แล้วเรียก Workflow Engine ภายในผ่าน POST /api/v1/sbpgi/workflow/instances แทน K2 REST StartInstance; เกณฑ์ W/Y/N เดิมยังคงใช้สำหรับ reconcile',
       params:[
         ['Scheduler', 'หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ตาม period', 'text', 1, 'แยกเพื่อ rerun ได้อิสระ; Operations ตรวจ deployment schedule/queue เท่านั้น'],
-        ['Workflow API', 'POST /api/v1/workflows/instances', 'text', 0, 'internal service token; ไม่ใช่ K2 REST'],
+        ['Workflow API', 'POST /api/v1/sbpgi/workflow/instances', 'text', 0, 'internal service token; ไม่ใช่ K2 REST'],
         ['เกณฑ์ Growth Rate', 'growth_rate_diff <= -10', 'number', 0, 'คง business rule เดิม'],
         ['Branch Type ผ่าน Gate', 'FAM, FB1, FC1, FB2, FVB, FVC', 'text', 0, 'นอกเซ็ตหรือระยะทางเกินเกณฑ์ให้ตั้ง N'],
         ['เงื่อนไข Gate อื่น', 'workflow_generation_status=W · DV ไม่ว่าง · juristic ต่างกัน · sales_status in {Y,N}', 'text', 0, 'DV หาย, นิติบุคคลเดียวกัน หรือ growth ไม่ถึงเกณฑ์เป็น N; distance/juristic/growth/sales status ที่ยังไม่มีค่าเท่านั้นจึงคง W']
@@ -517,7 +517,7 @@
         { k:'d', t:'พบเงื่อนไขไม่ผ่านถาวร?', no:'ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ', d:'branch type, distance, missing DV, same juristic หรือ growth > -10 -> N' },
         { k:'d', t:'ข้อมูล Gate พร้อมครบ?', no:'distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W', d:'คง W เฉพาะข้อมูลต้นทางที่ยังรอเติมเพื่อให้ rerun ได้' },
         { k:'p', t:'ตัดสินจุดเข้า flow จากประเภทเคส', d:'อ่าน fgi_impact_processes.last_compensate_seq_no + flag_action และจำนวนงวดที่ COALESCE(adjust_amount, forecast_amount) = 0 จาก fgi_impact_compensations → เปิดที่ state 06 (เปิดเรื่องใหม่) · 08 (ชดเชยต่อเนื่อง) · 01 (ยอด 0 ไม่เกิน 3 เดือน) หรือปิดเอกสารเป็นหยุดชดเชย (ยอด 0 เดือนที่ 4) — ดู LLDD Job 8b ข้อ 4a' },
-        { k:'io', t:'POST /api/v1/workflows/instances', d:'service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST' },
+        { k:'io', t:'POST /api/v1/sbpgi/workflow/instances', d:'service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST' },
         { k:'p', t:'เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state ตามประเภทเคส)', d:'engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3' },
         { k:'p', t:'workflow_generation_status = Y', d:'เปิด workflow สำเร็จ' },
         { k:'io', t:'ส่งอีเมลสรุปราย DV ผ่าน email-lib กลาง (sendEmail)', d:'' },
@@ -595,7 +595,7 @@
       cron:'0 07 * * *',
       cronTh:'ทุกวัน 07:00',
       out:'อีเมลเตือน UTF-8 + pending ACK dashboard',
-      desc:'งาน safety net ตรวจ interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/interfaces/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน email-lib กลาง (sendEmail)',
+      desc:'งาน safety net ตรวจ interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/sbpgi/interface/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน email-lib กลาง (sendEmail)',
       params:[
         ['กำหนดการรัน (Cron)', '0 07 * * *', 'text', 1, 'ทุกวัน 07:00; เป็น safety net หลัง STA callback'],
         ['Pending threshold', '>= 1 วัน', 'number', 1, 'เตือนเมื่อยังไม่มี ACK หลังครบ threshold'],
@@ -607,7 +607,7 @@
         { k:'p', t:'อ่าน interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold', d:'' },
         { k:'d', t:'พบรายการค้าง?', no:'จบการทำงาน', noKind:'end', d:'' },
         { k:'io', t:'ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม', d:'ผู้รับตาม backend config' },
-        { k:'p', t:'แสดงรายการใน /interfaces/pending-ack', d:'POST /interfaces/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ' },
+        { k:'p', t:'แสดงรายการใน /sbpgi/interface/pending-ack', d:'POST /sbpgi/interface/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ' },
         { k:'end', t:'จบ' }
       ],
       tables:[
@@ -617,7 +617,7 @@
         ['(backend config)', 'R', 'ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env']
       ],
       rels:['interface_transactions คือตาราง tracking กลางของทุก interface — return_code = NULL หมายถึงยังไม่ได้รับ ACK จากปลายทาง', 'แถวที่เฝ้าดูถูกสร้างโดย Job 6 (COMPENSATE_INIT / APPROVE) และรอ ACK จากระบบ STA'],
-      meta:{ trans:'read-only; callback /interfaces/sta/ack เป็นผู้เขียน ACK หลัก', rerun:'รันซ้ำได้; ต้องไม่ส่งอีเมลซ้ำถ้ามี sent marker ในรอบเดียวกัน', mail:'email-lib (sendEmail · UTF-8)', risk:'ห้ามกลับไปใช้ TIS-620/hardcoded recipient; Job 10 เป็น safety net ไม่ใช่ primary ACK path' },
+      meta:{ trans:'read-only; callback /sbpgi/interface/sta/ack เป็นผู้เขียน ACK หลัก', rerun:'รันซ้ำได้; ต้องไม่ส่งอีเมลซ้ำถ้ามี sent marker ในรอบเดียวกัน', mail:'email-lib (sendEmail · UTF-8)', risk:'ห้ามกลับไปใช้ TIS-620/hardcoded recipient; Job 10 เป็น safety net ไม่ใช่ primary ACK path' },
       hist:[
         ['02/07/2026 07:00', '-', '-', 'อีเมลเตือน UTF-8 + pending ACK dashboard', 'ok', 'target design - DB/internal workflow']
       ],

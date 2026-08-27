@@ -83,16 +83,16 @@ BE เป็น source of truth ของ role profile แต่เอกสา�
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/documents/{docNo}; GET /api/v1/competitors |
+| Input | GET /api/v1/sbpgi/document/{docNo}; GET /api/v1/sbpgi/master/competitors |
 | Progress | Validate docNo; Load header; Load child sections; Compute role profile |
-| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Endpoint Implementation Contract
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| GET /api/v1/documents/{docNo} | Document aggregate API | Validate docNo | 404 when doc not found |
-| GET /api/v1/competitors | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data (Peerakorn)** · เอกสารนี้เป็นผู้ใช้: อ่าน master คู่แข่งมาทำ dropdown ในหน้าเอกสาร | Load header | role profile output matches FE Document Detail spec |
+| GET /api/v1/sbpgi/document/{docNo} | Document aggregate API | Validate docNo | 404 when doc not found |
+| GET /api/v1/sbpgi/master/competitors | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data (Peerakorn)** · เอกสารนี้เป็นผู้ใช้: อ่าน master คู่แข่งมาทำ dropdown ในหน้าเอกสาร | Load header | role profile output matches FE Document Detail spec |
 
 ### 5.91 Backend Execution Sequence
 
@@ -102,8 +102,21 @@ BE เป็น source of truth ของ role profile แต่เอกสา�
 | 2 | Load header | detail not found |
 | 3 | Load child sections | role profile output |
 | 4 | Compute role profile | empty child sections |
-| 5 | Map to FE response shape | detail success |
-| 6 | Return aggregate | detail not found |
+| 5 | Map to FE response shape | — (ยังไม่มี test เฉพาะขั้นนี้ · ครอบด้วย test รวมของเอกสารในหัวข้อ 11) |
+| 6 | Return aggregate | — (ยังไม่มี test เฉพาะขั้นนี้ · ครอบด้วย test รวมของเอกสารในหัวข้อ 11) |
+
+### 5.92 Workflow Trigger Event Contract
+
+งานชิ้นนี้ **ต้องเรียก workflow engine** ตามตารางด้านล่าง · ชื่อ function ยึด API 8 ตัวของ `@srm/glb-workflow` ตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — รายละเอียด signature และตารางที่ engine เขียน ดู **LLDD-BE-Workflow-Engine-Definition** หัวข้อ 5.3
+
+| จุดที่เรียก (call site) | Engine function | พารามิเตอร์หลัก | กติกา / transaction boundary |
+| --- | --- | --- | --- |
+| ประกอบหน้าเอกสาร | `getPermissionEvents` | versionId, referenceId, userData | คืน event[] เป็นปุ่ม และ display[] เป็น READ/WRITE ต่อ part — FE ห้ามคำนวณสิทธิ์เอง |
+| สถานะ + ผู้ถืองานปัจจุบัน | `getTransaction` | versionId, referenceId | ใช้เป็นค่าอ้างอิงให้ FE ส่งกลับมาตอนกดปุ่ม (optimistic guard) |
+
+- 🔴 กติกาเหล็ก: ตาราง `sps_store.workflow_*` (13 ตาราง) เป็นของ lib — SBPGI **R เท่านั้น** ห้าม INSERT/UPDATE/DELETE ตรงในทุกกรณี
+- ทุกการเรียก engine ต้องผ่านตัวห่อกลาง `WorkflowGateway` ที่นิยามใน **LLDD-BE-API-Common-Contracts** (timeout · retry · map error เข้า envelope) ห้าม import lib ตรงจาก service
+- unit test ต้อง mock engine และครอบอย่างน้อย: เรียกสำเร็จ · engine โยน error แล้ว rollback ฝั่ง SBPGI ครบ · เรียกซ้ำด้วย referenceId เดิมไม่เกิดผลซ้ำ
 
 ## 6. Button / User Action Mapping
 
@@ -114,7 +127,7 @@ BE เป็น source of truth ของ role profile แต่เอกสา�
 
 ## 7. API Contract
 
-### GET /api/v1/documents/{docNo}
+### GET /api/v1/sbpgi/document/{docNo}
 
 Document aggregate API
 
@@ -187,7 +200,7 @@ Document aggregate API
 | impactedStore.storeCode | string | Yes | exactly 5 digits; preserve leading zero |
 | newStores | array<object> | Yes | JSON array; element type shown in Type column |
 
-### GET /api/v1/competitors
+### GET /api/v1/sbpgi/master/competitors
 
 **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data (Peerakorn)** · เอกสารนี้เป็นผู้ใช้: อ่าน master คู่แข่งมาทำ dropdown ในหน้าเอกสาร
 
@@ -274,23 +287,26 @@ import { DocumentDetailAggregateQueryDto } from './dto/sbpgi-document-detail-agg
 
 // LLDD BE - API Document Detail Aggregate
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sbpgi')
+@Controller('sbpgi/sbpgi')
 @UseGuards(HttpHeaderGuard)
 export class SbpgiDocumentDetailAggregateController {
   constructor(private readonly service: SbpgiDocumentDetailAggregateService) {}
 
-  // GET /api/v1/documents/{docNo} — Document aggregate API
-  @Get('documents/:docNo')
-  getDocumentsByDocNo(@Param('docNo') docNo: string, @UserId() userId: string) {
+  // GET /api/v1/sbpgi/document/{docNo} — Document aggregate API
+  @Get('sbpgi/document/:docNo')
+  getSbpgiDocumentByDocNo(@Param('docNo') docNo: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getDocumentsByDocNo(docNo, userId);
+    return this.service.getSbpgiDocumentByDocNo(docNo, userId);
   }
 
-  // GET /api/v1/competitors — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Ma…
-  @Get('competitors')
-  getCompetitors(@Query() query: DocumentDetailAggregateQueryDto, @UserId() userId: string) {
+  // GET /api/v1/sbpgi/master/competitors — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Ma…
+  @Get('sbpgi/master/competitors')
+  getSbpgiMasterCompetitors(
+    @Query() query: DocumentDetailAggregateQueryDto,
+    @UserId() userId: string,
+  ) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getCompetitors(query, userId);
+    return this.service.getSbpgiMasterCompetitors(query, userId);
   }
 }
 ```
@@ -336,14 +352,14 @@ export class SbpgiDocumentDetailAggregateService {
     @Inject('DATA_SOURCE') private readonly dataSource: DataSource,
   ) {}
 
-  // GET /api/v1/documents/{docNo} — Document aggregate API
-  async getDocumentsByDocNo(docNo: string, userId: string) {
+  // GET /api/v1/sbpgi/document/{docNo} — Document aggregate API
+  async getSbpgiDocumentByDocNo(docNo: string, userId: string) {
     const page = 1;
     const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
-    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/documents/{docNo}')
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sbpgi/document/{docNo}')
     // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
     //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
-    const rows = await this.dataSource.query(SBPGI_SQL.getDocumentsByDocNo, [
+    const rows = await this.dataSource.query(SBPGI_SQL.getSbpgiDocumentByDocNo, [
       // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
       userId, (page - 1) * size, size,
     ]);
@@ -351,11 +367,11 @@ export class SbpgiDocumentDetailAggregateService {
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/competitors — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Ma…
-  async getCompetitors(query: DocumentDetailAggregateQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/competitors
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/competitors')
-    throw new NotImplementedException('getCompetitors ยังไม่ implement');
+  // GET /api/v1/sbpgi/master/competitors — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Ma…
+  async getSbpgiMasterCompetitors(query: DocumentDetailAggregateQueryDto, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/master/competitors
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/master/competitors')
+    throw new NotImplementedException('getSbpgiMasterCompetitors ยังไม่ implement');
   }
 }
 ```
@@ -555,12 +571,12 @@ export class SbpgiDocumentDetailAggregateBffService {
     };
   }
 
-  getDocumentsByDocNo(docNo: string, params: any, user: any) {
-    return this.client.get(`/api/v1/documents/${docNo}`, { params, headers: this.userHeaders(user) });
+  getSbpgiDocumentByDocNo(docNo: string, params: any, user: any) {
+    return this.client.get(`/api/v1/sbpgi/document/${docNo}`, { params, headers: this.userHeaders(user) });
   }
 
-  getCompetitors(params: any, user: any) {
-    return this.client.get('/api/v1/competitors', { params, headers: this.userHeaders(user) });
+  getSbpgiMasterCompetitors(params: any, user: any) {
+    return this.client.get('/api/v1/sbpgi/master/competitors', { params, headers: this.userHeaders(user) });
   }
 }
 
@@ -574,16 +590,16 @@ import { AuthGuard } from '@nestjs/passport';
 export class SbpgiDocumentDetailAggregateBffController {
   constructor(private readonly service: SbpgiDocumentDetailAggregateBffService) {}
 
-  // proxy ของ GET /api/v1/documents/{docNo}
-  @Get('documents/:docNo')
-  getDocumentsByDocNo(@Param('docNo') docNo: string, @Query() query: any, @Req() req: any) {
-    return this.service.getDocumentsByDocNo(docNo, query, req.user);
+  // proxy ของ GET /api/v1/sbpgi/document/{docNo}
+  @Get('sbpgi/document/:docNo')
+  getSbpgiDocumentByDocNo(@Param('docNo') docNo: string, @Query() query: any, @Req() req: any) {
+    return this.service.getSbpgiDocumentByDocNo(docNo, query, req.user);
   }
 
-  // proxy ของ GET /api/v1/competitors
-  @Get('competitors')
-  getCompetitors(@Query() query: any, @Req() req: any) {
-    return this.service.getCompetitors(query, req.user);
+  // proxy ของ GET /api/v1/sbpgi/master/competitors
+  @Get('sbpgi/master/competitors')
+  getSbpgiMasterCompetitors(@Query() query: any, @Req() req: any) {
+    return this.service.getSbpgiMasterCompetitors(query, req.user);
   }
 }
 // TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
@@ -605,7 +621,7 @@ export class SbpgiDocumentDetailAggregateBffController {
 
 #### 10.2 SQL จริงต่อ Endpoint
 
-**GET /api/v1/documents/{docNo}** — Document aggregate API
+**GET /api/v1/sbpgi/document/{docNo}** — Document aggregate API
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -619,7 +635,7 @@ SELECT * FROM document_attachments         WHERE doc_no = :docNo;
 SELECT * FROM consideration_logs           WHERE doc_no = :docNo ORDER BY action_datetime;
 ```
 
-**GET /api/v1/competitors** — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data (Peerakorn)** · เอกสารนี้เป็นผ…
+**GET /api/v1/sbpgi/master/competitors** — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data (Peerakorn)** · เอกสารนี้เป็นผ…
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -693,8 +709,8 @@ ORDER BY competitor_code;
 | business rule | logic | role profile output matches FE Document Detail spec |
 | business rule | logic | nullable section returns empty array |
 | business rule | logic | amount/date formatting source consistent |
-| `GET /api/v1/documents/{docNo}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/competitors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/document/{docNo}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/master/competitors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 
 - ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ

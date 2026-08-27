@@ -42,7 +42,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Common Contr
 | Base URL | /api/v1 | required | ทุก endpoint ใช้ prefix นี้ |
 | Content-Type | application/json; charset=utf-8 | required for JSON | multipart เฉพาะ attachments |
 | Authorization | Bearer <JWT> | required for user endpoints | validate signature/expiry/role; platform provides token |
-| X-Service-Token | opaque service token | required for internal workflow/batch callbacks | ใช้กับ /workflows/instances และ external callback ที่ไม่ใช่ user JWT |
+| X-Service-Token | opaque service token | required for internal workflow/batch callbacks | ใช้กับ /sbpgi/workflow/instances และ external callback ที่ไม่ใช่ user JWT |
 | X-Request-Id | uuid/string | optional but logged | ถ้าไม่ส่ง BE generate แล้วคืนใน log/trace |
 | ErrorEnvelope | {code,message} | message Thai verbatim | ห้ามเพิ่ม error shape อื่นใน endpoint รายตัว |
 | PageResponse<T> | {page,size,total,items} | page>=1 size<=100 | ใช้กับทุก GET list |
@@ -52,8 +52,45 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Common Contr
 | date/month | ISO-8601 ค.ศ. | YYYY-MM-DD / YYYY-MM | FE แสดง ค.ศ. เป็นค่าเริ่มต้น (buddhistEra=false) · แปลง พ.ศ. เฉพาะ component ที่เปิด flag |
 | amount/percent | number | 2 decimal | format display อยู่ FE; BE validate precision/range |
 | result | verbatim from actionOptions | required for /actions | ต้องเป็นค่าที่ BE ส่งมาใน role profile ของเอกสารนั้น |
-| ActionResponse | {statusCode,nextSection,message} | required for /actions | FE resolve label จาก /document-statuses; mutation response ไม่คืน label ไทยซ้ำ |
+| ActionResponse | {statusCode,nextSection,message} | required for /actions | FE resolve label จาก /sbpgi/lookup/document-statuses; mutation response ไม่คืน label ไทยซ้ำ |
 | reason | text | ไม่บังคับแล้ว (ยกเลิกระบบ audit ของ master 2026-08-07) | ไม่มีปลายทางเก็บ — ถ้าส่งมาให้ละเว้น |
+
+### 5.80 Namespace + กลุ่ม path ของงานประกันรายได้ (มติ 2026-08-25)
+
+SBPGI ไม่ได้แยก backend/พอร์ทัลใหม่ (มติ **DP-10** ให้อยู่ใน `srm-sps-spsap-store-backend` และโมดูลใน `srm-sps-spsap-web-frontend` เดิม) ทุกอย่างของงานประกันรายได้จึงอยู่ใต้ **ชื่อเดียวกันทั้ง 3 ชั้น** แล้วแตกเป็น **6 กลุ่มย่อยตามกลุ่มงาน** — ตรงกับ 6 กลุ่มใน `api.md` แบบ 1:1
+
+| ชั้น | รูปแบบ | ตัวอย่าง |
+| --- | --- | --- |
+| URL ของ API | `/api/v1/sbpgi/<กลุ่ม>/<resource>` | `/api/v1/sbpgi/document/{docNo}/actions` |
+| route ของหน้าจอ | `/sbpgi/<กลุ่ม>/<หน้า>` | `/sbpgi/document/waiting` · `/sbpgi/report/status-summary` |
+| โฟลเดอร์ไฟล์ | `**/sbpgi/*` | `src/app/(main)/sbpgi/*` · `src/services/sbpgi/*` · `src/types/sbpgi/*` |
+
+#### 6 กลุ่มย่อยใต้ `sbpgi`
+
+| กลุ่ม | prefix | เส้น | ครอบคลุมอะไร |
+| --- | --- | --- | --- |
+| งาน & เอกสารประกันรายได้ | `/sbpgi/document/*` | 11 | `/tasks` (กล่องงาน) · ค้นหา/สร้าง/แก้เอกสาร · `/{docNo}/actions` · `/timeline` · `/attachments` · `/sales` |
+| ข้อมูลอ้างอิง (Lookup) | `/sbpgi/lookup/*` | 2 | `/document-statuses` · `/workflow-sections` — อ่านอย่างเดียว ไม่มีหน้าจอดูแล |
+| Master Data | `/sbpgi/master/*` | 8 | `/factors` (CRUD 4) · `/competitors` (CRUD 4) — master ที่มีหน้าจอดูแลของตัวเอง |
+| รายงาน | `/sbpgi/report/*` | 2 | `/status-summary` · `/status-summary/export` |
+| Workflow ภายใน | `/sbpgi/workflow/*` | 3 | `/instances` · `/instances/{id}` · `/summary` |
+| Interface (tracking / ACK) | `/sbpgi/interface/*` | 3 | `/tracking` · `/pending-ack` · `/sta/ack` |
+
+**Batch job ไม่มีกลุ่ม path ของตัวเอง** — Jobs 2-10 + 8b รันด้วย cron/CLI ไม่ได้เปิด endpoint (กลุ่ม Batch Job Admin 6 เส้นถูกตัดทิ้ง 2026-08-06) · หน้าต่างที่มองเห็นผลของ job คือ **`/sbpgi/interface/*`** (tracking + ACK ของ `interface_transactions`) กับ application log เท่านั้น
+
+#### ทำไมต้องมี prefix (ไม่ใช่แค่ความสวยงาม)
+
+| ระบบเดิมมีอยู่แล้ว | ของ SBPGI ถ้าไม่ใส่ prefix | ผล |
+| --- | --- | --- |
+| `/document` · `/statement/...` | `/documents` | ชนเชิงความหมาย อ่าน routing แล้วสับสน |
+| `/report` · `/performance-report` · `/statement/report/ej` | `/reports/status-summary` | ชนเชิงความหมาย |
+| **`/interface/sta/upload-cmadd`** · `/interface/add` | **`/interfaces/sta/ack`** | 🔴 เกือบเหมือนกัน — เสี่ยงยิงผิดเส้นจริง |
+| `/common` · `/master` · `/store` | `/factors` `/competitors` `/document-statuses` | ปนกับ master ของโมดูลอื่น |
+
+- ฝั่ง NestJS: **`SbpgiModule` เดียว** ผูก prefix ที่ระดับโมดูล (`RouterModule.register([{ path: 'sbpgi', module: SbpgiModule }])`) แล้วแตกเป็น 6 controller ตามกลุ่ม (`DocumentController` `LookupController` `MasterController` `ReportController` `WorkflowController` `InterfaceController`) — **ห้ามเติม `sbpgi/` ในแต่ละ `@Controller()`**
+- ในกลุ่ม `document` ต้องประกาศ route คงที่ (`/tasks`) **ก่อน** route ที่มีพารามิเตอร์ (`/{docNo}`) และ `docNo` เป็น `YYYY/xxxxx` จึงต้อง `encodeURIComponent` ทุกครั้งที่ประกอบ URL
+- เส้นที่ **ไม่ใช่ของ SBPGI ห้ามใส่ prefix และห้ามแตะ** — `GET /store/search` · `GET /store/all-regions` · `GET /common/common-code` · `GET /menus` · `GET /groups/current-user/permissions` · `POST /statement/upload-file-aws` · `GET /api/workflow/pending` เป็นของระบบ SBP เดิม
+- BFF ส่งต่อทั้ง prefix (`/api/v1/sbpgi/*`) โดยไม่ตัดคำ · สิทธิ์เมนูผูกกับ URL ของ **หน้าจอ** (`/sbpgi/<กลุ่ม>/...`) ไม่ใช่ URL ของ API
 
 ### 5.1 Error and Popup Catalog
 
@@ -86,45 +123,57 @@ Matrix นี้เป็น baseline สำหรับ BE authorization guard;
 | Endpoint group | Endpoint pattern | Allowed roles / identity |
 | --- | --- | --- |
 | Current user/menu | ไม่ใช่ endpoint ของ SBPGI — FE เรียกของระบบเดิมผ่าน BFF: GET /auth/profile, GET /users/current, GET /menus, GET /groups/current-user/permissions | authenticated user |
-| Task inbox | GET /tasks | authenticated user with assigned task access |
-| Document read/list/timeline/sales | GET /documents*, GET /documents/{docNo}/timeline, GET /documents/{docNo}/sales | document participant or report/admin role explicitly granted |
-| Document create | POST /documents | 02 HQ, 03 User Admin, 01 Admin |
-| Document update/action/attachment upload | PUT /documents/{docNo}, POST /documents/{docNo}/actions, POST /documents/{docNo}/attachments | current action owner; admin override only with policy and audit reason |
-| Attachment download | GET /documents/{docNo}/attachments/{attachId}/download | same as document read; attachment belongs to doc and scanStatus=CLEAN |
-| Lookup | /document-statuses, /workflow-sections (ร้าน/ภาค/ประเภทสาขา ใช้ /store/* + /common/common-code ของระบบ SBP เดิม · 2026-08-06) | authenticated user with related menu access |
-| Master (SBPGI) | /factors*, /competitors* | admin/HQ ตามสิทธิ์เมนูที่มากับ header x-user-permissions |
+| Task inbox | GET /sbpgi/document/tasks | authenticated user with assigned task access |
+| Document read/list/timeline/sales | GET /sbpgi/document*, GET /sbpgi/document/{docNo}/timeline, GET /sbpgi/document/{docNo}/sales | document participant or report/admin role explicitly granted |
+| Document create | POST /sbpgi/document | 🔴 **service token / pipeline เท่านั้น** — มติ 2026-08-06 ตัดฟอร์มสร้างเอกสารใน FE ออกแล้ว (ต้นทางสร้างที่ระบบ FS แล้ว SBP Statement ส่งข้อมูลกลับ) · ห้ามระบุเป็นรหัสกลุ่มสิทธิ์ เพราะเลข 01/02/03 ชนกับ section_code ของ workflow |
+| Document update/action/attachment upload | PUT /sbpgi/document/{docNo}, POST /sbpgi/document/{docNo}/actions, POST /sbpgi/document/{docNo}/attachments | current action owner; admin override only with policy and audit reason |
+| Attachment download | GET /sbpgi/document/{docNo}/attachments/{attachId}/download | สิทธิ์เท่ากับอ่านเอกสาร + attachment ต้องเป็นของ docNo นั้น · ⚠️ เงื่อนไข `scan_status` ขึ้นกับนโยบาย AV ที่ยังไม่เคาะ (ดู `LLDD-BE-API-Attachment-Sales-Timeline` 5.1) — บังคับ CLEAN อย่างเดียวตอนนี้จะดาวน์โหลดไม่ได้เลย |
+| Lookup | /sbpgi/lookup/document-statuses, /sbpgi/lookup/workflow-sections (ร้าน/ภาค/ประเภทสาขา ใช้ /store/* + /common/common-code ของระบบ SBP เดิม · 2026-08-06) | authenticated user with related menu access |
+| Master (SBPGI) | /sbpgi/master/factors*, /sbpgi/master/competitors* | admin/HQ ตามสิทธิ์เมนูที่มากับ header x-user-permissions |
 | RBAC/ผู้ปฏิบัติงาน | ไม่ใช่ endpoint ของ SBPGI — ตัด /operators* /roles* /menus* /menu-permissions* /employees/search รวม 14 เส้น (2026-08-05) ใช้ auth-backend เดิม จัดการที่หน้า /setting/manage-user-rights | - |
-| Reports | /reports/status-summary* | admin/HQ/report roles and accounting service user |
-| Internal workflow/interface | /workflows/instances, /interfaces/* callback | service token or API key only |
+| Reports | /sbpgi/report/status-summary* | admin/HQ/report roles and accounting service user |
+| Internal workflow/interface | /sbpgi/workflow/instances · /sbpgi/interface/* (tracking · pending-ack · sta/ack callback) | service token หรือ API key เท่านั้น — ไม่ผ่านสิทธิ์เมนูของผู้ใช้ |
 
 ### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | ALL /api/v1/*; GET /api/v1/*; POST /api/v1/documents/{docNo}/actions |
-| Progress | Request enters logging middleware and request id is attached; Auth middleware validates JWT or service token by endpoint allowlist; RBAC guard checks role/menu/current workflow task owner; Validate params/query/body with shared schema conventions |
-| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
+| Input | ALL /api/v1/sbpgi/*; GET /api/v1/sbpgi/*; POST /api/v1/sbpgi/document/{docNo}/actions |
+| Progress | Request enters logging middleware and request id is attached; BffUserGuard ตรวจ x-api-key แล้ว map BFF header เป็น user context — 🔴 SBPGI ไม่ออก/ไม่ตรวจ JWT เอง (login อยู่ที่ Cognito ฝั่ง BFF) · เส้น service-token ใช้ API key แยก; RBAC guard checks role/menu/current workflow task owner; Validate params/query/body with shared schema conventions |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Endpoint Implementation Contract
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| ALL /api/v1/* | Standard error envelope | Request enters logging middleware and request id is attached | ทุก endpoint ต้องใช้ common contract นี้ |
-| GET /api/v1/* | Standard list envelope เมื่อ endpoint เป็นรายการ | Auth middleware validates JWT or service token by endpoint allowlist | ไม่มี endpoint คืน error shape อื่นนอกจาก `{code,message}` |
-| POST /api/v1/documents/{docNo}/actions | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Document-Workflow-Actions (Tunyatorn)** · ยกมาเป็นตัวอย่างสัญญา action กลางที่ทุกเส้นต้องยึด (ตัวอย่าง currentSection=01 จึงเปลี่ยนไป 02) | RBAC guard checks role/menu/current workflow task owner | 401/403/404/409/422/413/415 mapping คงที่และ test ได้ |
+| ALL /api/v1/sbpgi/* | Standard error envelope | Request enters logging middleware and request id is attached | ทุก endpoint ต้องใช้ common contract นี้ |
+| GET /api/v1/sbpgi/* | Standard list envelope เมื่อ endpoint เป็นรายการ | BffUserGuard ตรวจ x-api-key แล้ว map BFF header เป็น user context — 🔴 SBPGI ไม่ออก/ไม่ตรวจ JWT เอง (login อยู่ที่ Cognito ฝั่ง BFF) · เส้น service-token ใช้ API key แยก | ไม่มี endpoint คืน error shape อื่นนอกจาก `{code,message}` |
+| POST /api/v1/sbpgi/document/{docNo}/actions | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Document-Workflow-Actions (Tunyatorn)** · ยกมาเป็นตัวอย่างสัญญา action กลางที่ทุกเส้นต้องยึด (ตัวอย่าง currentSection=01 จึงเปลี่ยนไป 02) | RBAC guard checks role/menu/current workflow task owner | 401/403/404/409/422/413/415 mapping คงที่และ test ได้ |
 
 ### 5.91 Backend Execution Sequence
 
 | Step | Behavior specific to this LLDD | Failure/test evidence |
 | --- | --- | --- |
 | 1 | Request enters logging middleware and request id is attached | missing JWT 401 |
-| 2 | Auth middleware validates JWT or service token by endpoint allowlist | role forbidden 403 |
+| 2 | BffUserGuard ตรวจ x-api-key แล้ว map BFF header เป็น user context — 🔴 SBPGI ไม่ออก/ไม่ตรวจ JWT เอง (login อยู่ที่ Cognito ฝั่ง BFF) · เส้น service-token ใช้ API key แยก | role forbidden 403 |
 | 3 | RBAC guard checks role/menu/current workflow task owner | validation error 400 |
 | 4 | Validate params/query/body with shared schema conventions | not found 404 |
 | 5 | Service executes business rule and document action if relevant | duplicate conflict 409 |
 | 6 | Mutation writes domain row and audit/reason in the same transaction | list envelope |
 | 7 | Controller maps result to standard envelope or throws AppError | action transition envelope |
 | 8 | Error handler maps all failures to `{code,message}` only | audit reason required |
+
+### 5.92 Workflow Trigger Event Contract
+
+งานชิ้นนี้ **ต้องเรียก workflow engine** ตามตารางด้านล่าง · ชื่อ function ยึด API 8 ตัวของ `@srm/glb-workflow` ตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — รายละเอียด signature และตารางที่ engine เขียน ดู **LLDD-BE-Workflow-Engine-Definition** หัวข้อ 5.3
+
+| จุดที่เรียก (call site) | Engine function | พารามิเตอร์หลัก | กติกา / transaction boundary |
+| --- | --- | --- | --- |
+| ตัวห่อกลาง (WorkflowGateway) | ทั้ง 8 ตัวของ `@srm/glb-workflow` | userData มาจาก BFF header (`x-user-id`, `x-user-group-id`) | 🔴 งานของเอกสารนี้คือ **ทำตัวห่อกลางให้ทุกคนเรียก** — map error ของ engine เข้า envelope `{success:false, error:{code,message}}` และบังคับ timeout/retry ที่เดียว |
+
+- 🔴 กติกาเหล็ก: ตาราง `sps_store.workflow_*` (13 ตาราง) เป็นของ lib — SBPGI **R เท่านั้น** ห้าม INSERT/UPDATE/DELETE ตรงในทุกกรณี
+- ทุกการเรียก engine ต้องผ่านตัวห่อกลาง `WorkflowGateway` ที่นิยามใน **LLDD-BE-API-Common-Contracts** (timeout · retry · map error เข้า envelope) ห้าม import lib ตรงจาก service
+- unit test ต้อง mock engine และครอบอย่างน้อย: เรียกสำเร็จ · engine โยน error แล้ว rollback ฝั่ง SBPGI ครบ · เรียกซ้ำด้วย referenceId เดิมไม่เกิดผลซ้ำ
 
 ## 6. Button / User Action Mapping
 
@@ -140,7 +189,7 @@ Matrix นี้เป็น baseline สำหรับ BE authorization guard;
 
 ## 7. API Contract
 
-### ALL /api/v1/*
+### ALL /api/v1/sbpgi/*
 
 Standard error envelope
 
@@ -166,7 +215,7 @@ Standard error envelope
 | code | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/*
+### GET /api/v1/sbpgi/*
 
 Standard list envelope เมื่อ endpoint เป็นรายการ
 
@@ -206,7 +255,7 @@ Standard list envelope เมื่อ endpoint เป็นรายการ
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items | array<object> | Yes | JSON array; element type shown in Type column |
 
-### POST /api/v1/documents/{docNo}/actions
+### POST /api/v1/sbpgi/document/{docNo}/actions
 
 **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Document-Workflow-Actions (Tunyatorn)** · ยกมาเป็นตัวอย่างสัญญา action กลางที่ทุกเส้นต้องยึด (ตัวอย่าง currentSection=01 จึงเปลี่ยนไป 02)
 
@@ -254,9 +303,9 @@ Standard list envelope เมื่อ endpoint เป็นรายการ
 
 | Endpoint | จุดประสงค์ | implement ที่ไหน |
 | --- | --- | --- |
-| ALL /api/v1/* | Standard error envelope | contract กลาง/wildcard — ไม่ผูกกับ controller ใดเส้นเดียว |
-| GET /api/v1/* | Standard list envelope เมื่อ endpoint เป็นรายการ | contract กลาง/wildcard — ไม่ผูกกับ controller ใดเส้นเดียว |
-| POST /api/v1/documents/{docNo}/actions | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Doc… | **reference — implement ที่เอกสาร `LLDD-BE-API-Document-Workflow-Actions`** (1 เส้น = 1 เจ้าของ ไม่ประกาศ controller ซ้ำ ไม่งั้น NestJS จะ register ทับกันเงียบ ๆ) |
+| ALL /api/v1/sbpgi/* | Standard error envelope | contract กลาง/wildcard — ไม่ผูกกับ controller ใดเส้นเดียว |
+| GET /api/v1/sbpgi/* | Standard list envelope เมื่อ endpoint เป็นรายการ | contract กลาง/wildcard — ไม่ผูกกับ controller ใดเส้นเดียว |
+| POST /api/v1/sbpgi/document/{docNo}/actions | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Doc… | **reference — implement ที่เอกสาร `LLDD-BE-API-Document-Workflow-Actions`** (1 เส้น = 1 เจ้าของ ไม่ประกาศ controller ซ้ำ ไม่งั้น NestJS จะ register ทับกันเงียบ ๆ) |
 
 #### 8.2 สัญญากลางที่ต้องยึด
 
@@ -276,7 +325,7 @@ Standard list envelope เมื่อ endpoint เป็นรายการ
 | Step | Description |
 | --- | --- |
 | 1 | Request enters logging middleware and request id is attached |
-| 2 | Auth middleware validates JWT or service token by endpoint allowlist |
+| 2 | BffUserGuard ตรวจ x-api-key แล้ว map BFF header เป็น user context — 🔴 SBPGI ไม่ออก/ไม่ตรวจ JWT เอง (login อยู่ที่ Cognito ฝั่ง BFF) · เส้น service-token ใช้ API key แยก |
 | 3 | RBAC guard checks role/menu/current workflow task owner |
 | 4 | Validate params/query/body with shared schema conventions |
 | 5 | Service executes business rule and document action if relevant |

@@ -174,6 +174,8 @@ Job 8 ใช้ running number แบบ monotonic ต่อปี ค.ศ. ช�
 
 ## 7. API Contract
 
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
+
 ## 8. Reference DB Mapping (No Database Page Work)
 
 ส่วนนี้เป็นข้อมูลอ้างอิงสำหรับการ implement API/Job เท่านั้น ไม่ใช่งานสร้างหน้า Database, ไม่ใช่งานออกแบบ DB page และไม่ถูกนับเป็น deliverable แยกของ FE/BE
@@ -349,7 +351,7 @@ export class CreateCompensationDocumentService {
 | 4 | process | generate doc_no YYYY/xxxxx | step04Document() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 5 | process | insert compensation_documents | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | process | insert interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED | step06WriteFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 7 | end | จบ - workflow เปิดโดย Job 8b / POST /workflows/instances | summarize() | - |
+| 7 | end | จบ - workflow เปิดโดย Job 8b / POST /sbpgi/workflow/instances | summarize() | - |
 
 ```ts
 // src/batch/sbpgi/job-8-create-compensation-document/job-8-create-compensation-document.job.ts
@@ -589,7 +591,7 @@ export class JobFailureNotifier {
 | 4 | generate doc_no YYYY/xxxxx (running ต่อปี ค.ศ. (มติ 2026-08-06)) |
 | 5 | insert compensation_documents (ผูก impact_process_id และสถานะเริ่มต้น) |
 | 6 | insert interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED (ไม่สร้างไฟล์ BPM06001O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ) |
-| 7 | จบ - workflow เปิดโดย Job 8b / POST /workflows/instances |
+| 7 | จบ - workflow เปิดโดย Job 8b / POST /sbpgi/workflow/instances |
 
 ## 11. Acceptance Criteria
 

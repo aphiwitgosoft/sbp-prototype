@@ -10,20 +10,18 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **8 ชั่วโมง** = implementation 6 + unit test 2 (25%) |
 | Owner | Kittisak <New> Kaeowika |
 | Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
-| Objective | สร้างหน้าสร้างเอกสารประกันรายได้แบบ Manual และแบบเอกสารจาก FS โดยใช้ SBP mirror form sync เข้า hidden FS iframe |
+| Objective | หน้าสร้างเอกสารประกันรายได้ — **มติ 2026-08-06: ไม่มีฟอร์มฝั่ง SBP** main card เป็น iframe ของหน้าสร้างเอกสารระบบ FS ตรง ๆ + หมายเหตุ 4 ขั้นตอนใต้ iframe · `POST /sbpgi/document` เรียกโดย pipeline/service token |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
 ## 2. Screen / Functional Scope
 
-- Create form shell
-- Tab: สร้างเอกสารทั่วไป
-- Tab: เอกสารจาก FS ผ่าน hidden iframe
-- Store selector
-- Period/source fields
-- FS field discovery/mirror form
-- Validation
-- Draft/save/submit UI
+- 🔴 **มติ 2026-08-06 — หน้านี้ไม่มีฟอร์มและไม่มีแท็บฝั่ง SBP**
+- main card = iframe ของหน้าสร้างเอกสารระบบ FS ตรง ๆ (เหมือน `k2-create.html`)
+- หมายเหตุ 4 ขั้นตอน (verbatim จากหน้าจอ K2 เดิม) อยู่ใต้ iframe นอกกรอบ
+- `POST /sbpgi/document` เป็น pipeline/service-token ไม่ใช่ฟอร์ม FE — ต้นทางสร้างที่ FS แล้วรอ SBP Statement ส่งกลับ (~1 วัน)
+- การคีย์/ปรับข้อมูลร้านตาม SDD GI ทำที่หน้าเอกสาร (`PUT /sbpgi/document/{docNo}`) ไม่ใช่หน้านี้
+- ⚠️ หัวข้อ 5.1-5.6 (SBP mirror form + FS bridge) เป็นดีไซน์ก่อนมติ — เก็บไว้เป็นทางเลือกสำรอง **ไม่อยู่ในขอบเขต 8 ชม.**
 
 ## 3. Screenshot Reference
 
@@ -54,13 +52,15 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | roundNo | integer >= 1 | required/default 1 | ครั้งที่ของเอกสาร/งวดชดเชย |
 | reason | text | required for MANUAL/out-of-condition | เหตุผลการสร้างเอกสารนอกเงื่อนไข; trim ก่อนส่ง |
 
-### 5.1 Tab Structure
+🔴 **หัวข้อ 5.1-5.6 ต่อจากนี้เป็นดีไซน์ *ก่อน* มติ 2026-08-06 — ยังไม่อยู่ในขอบเขตที่ประเมินไว้ 8 ชั่วโมง** · ของจริงที่ต้องทำคือ **iframe ของหน้าสร้างเอกสารระบบ FS ตรง ๆ + หมายเหตุ 4 ขั้นตอนใต้ iframe** (ดูโครงไฟล์ในหัวข้อ 8) · เก็บ SBP mirror form + FS bridge ไว้เป็น **ทางเลือกสำรอง** เผื่อ FS ไม่ยอมให้ฝัง iframe หรือ origin ไม่ผ่าน — ถ้าจะทำจริงต้องตั้งงบใหม่ ไม่ใช่ 6 ชม. · error code `FS_BRIDGE_*` ใน `LLDD-BE-API-Common-Contracts` ผูกกับทางเลือกสำรองนี้เท่านั้น
+
+### 5.1 Tab Structure *(ทางเลือกสำรอง — ไม่อยู่ในขอบเขตปัจจุบัน)*
 
 หน้า Create Document ต้องมี tab แยกสำหรับสร้างเอกสารจาก FS โดย UI หลักยังเป็น form ของ SBP Mall แต่มี hidden iframe ของ FS เป็น source/submit target จริง
 
 | Tab | Purpose | Render behavior |
 | --- | --- | --- |
-| สร้างเอกสารทั่วไป | สร้างเอกสาร MANUAL/out-of-condition ผ่าน API ของ SBPGI | ใช้ form ปกติและ submit POST /api/v1/documents |
+| สร้างเอกสารทั่วไป | สร้างเอกสาร MANUAL/out-of-condition ผ่าน API ของ SBPGI | ใช้ form ปกติและ submit POST /api/v1/sbpgi/document |
 | เอกสารจาก FS | สร้างเอกสารโดยอ้าง field/form ของ FS เดิม | โหลด FS iframe แบบ hidden แล้วสร้าง SBP form mirror ตาม field ที่พบใน iframe |
 
 ### 5.2 FS iframe Integration Contract
@@ -190,29 +190,27 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /store/search (ระบบ SBP เดิม); POST /api/v1/documents |
+| Input | GET /store/search (ระบบ SBP เดิม); POST /api/v1/sbpgi/document |
 | Progress | User opens create page; Choose tab: สร้างเอกสารทั่วไป or เอกสารจาก FS; For FS tab load hidden iframe and discover fields; Render SBP mirror form from iframe field metadata |
-| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Create Document Component Contract
 
 | ID | Component / Scope | Single responsibility | Definition of done |
 | --- | --- | --- | --- |
-| C01 | Create form shell | เป็นเจ้าของ source/activeTab, draft state และ unsaved-change guard ของหน้า create | สลับ MANUAL/FS แล้ว field ที่ไม่เกี่ยวข้องไม่รั่วเข้า payload |
-| C02 | Tab: สร้างเอกสารทั่วไป | render manual form, store selectors, period, roundNo และ reason สำหรับเอกสารนอกเงื่อนไข | required/format ผ่านก่อน POST และ docNo จาก response ใช้เปิด detail |
-| C03 | Tab: เอกสารจาก FS ผ่าน hidden iframe | โหลด hidden FS iframe ด้วย config URL และจัด lifecycle timeout/origin/callback | iframe load/error/timeout มี state ชัดเจนและไม่ submit ก่อน bridge พร้อม |
-| C04 | Store selector | ค้นหา impacted/new store, คง leading zero และเติมชื่อ/ภาคจากรายการที่เลือก | เลือกผิด type ไม่ได้และ clear selection ล้าง dependent fields ครบ |
-| C05 | Period/source fields | normalize เดือน/ปีเป็น payload YYYY-MM ค.ศ. พร้อม source-specific validation | period/statementPeriod/roundNo ส่ง type และ format ตรง API |
-| C06 | FS field discovery/mirror form | สร้าง mirror field registry จาก FS metadata และ sync input/select/textarea เข้า iframe | ทุก field มี mapping/type/event และ missing mapping block submit ด้วย FS_FIELD_MAPPING_MISSING |
-| C07 | Validation | รวม client validation, API fieldErrors และ FS bridge errors ใต้ control ที่เกี่ยวข้อง | focus ไป error แรกและข้อความเดิมคงอยู่จนผู้ใช้แก้ field นั้น |
-| C08 | Draft/save/submit UI | แยก Save Draft, Submit MANUAL และ Submit FS พร้อม disable/confirm/dedup ระหว่าง request | double click ไม่สร้างซ้ำและ success/error แสดงผลตาม channel ที่ส่งจริง |
+| C01 | 🔴 **มติ 2026-08-06 — หน้านี้ไม่มีฟอร์มและไม่มีแท็บฝั่ง SBP** | หน้าเดียว ไม่มี state ของฟอร์ม — ถือแค่ config URL ของ FS และสถานะโหลด iframe | ไม่มี draft/unsaved-change guard เพราะไม่มีฟอร์มฝั่ง SBP |
+| C02 | main card = iframe ของหน้าสร้างเอกสารระบบ FS ตรง ๆ (เหมือน `k2-create.html`) | render กรอบ iframe ของหน้าสร้างเอกสารระบบ FS (สไตล์ `.fs-frame` เดียวกับ k2-document) | iframe load/error/timeout มี state ชัดเจนและมีข้อความบอกผู้ใช้เมื่อโหลดไม่ขึ้น |
+| C03 | หมายเหตุ 4 ขั้นตอน (verbatim จากหน้าจอ K2 เดิม) อยู่ใต้ iframe นอกกรอบ | render การ์ดหมายเหตุ 4 ขั้นตอน **verbatim จากหน้าจอ K2 เดิม** ใต้ iframe (นอกกรอบ) | ข้อความตรงต้นฉบับทุกตัวอักษร ห้าม paraphrase |
+| C04 | `POST /sbpgi/document` เป็น pipeline/service-token ไม่ใช่ฟอร์ม FE — ต้นทางสร้างที่ FS แล้วรอ SBP Statement ส่งกลับ (~1 วัน) | ลิงก์กลับไปหน้ารายการเอกสารและหน้าเอกสารเมื่อ SBP Statement ส่งข้อมูลกลับแล้ว (~1 วัน) | ผู้ใช้เข้าใจว่าเอกสารจะมาเองไม่ต้องกดสร้างซ้ำ |
+| C05 | การคีย์/ปรับข้อมูลร้านตาม SDD GI ทำที่หน้าเอกสาร (`PUT /sbpgi/document/{docNo}`) ไม่ใช่หน้านี้ | route guard/เมนูของหน้านี้มาจาก `GET /menus` ของระบบเดิม ไม่ hardcode | ผู้ใช้ที่ไม่มีสิทธิ์เมนูเข้าหน้านี้ไม่ได้ |
+| C06 | ⚠️ หัวข้อ 5.1-5.6 (SBP mirror form + FS bridge) เป็นดีไซน์ก่อนมติ — เก็บไว้เป็นทางเลือกสำรอง **ไม่อยู่ในขอบเขต 8 ชม.** | ⚠️ *(ทางเลือกสำรอง — ไม่อยู่ในขอบเขต 8 ชม.)* SBP mirror form + FS bridge ตามหัวข้อ 5.1-5.6 | ใช้เมื่อ FS ไม่ยอมให้ฝัง iframe หรือ origin ไม่ผ่าน — ต้องตั้งงบใหม่ก่อนทำ |
 
 ### 5.91 Create Document API Adapter Map
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
 | GET /store/search (ระบบ SBP เดิม) | ค้นหาร้านสำหรับ popup | Search store (แว่นขยาย) |
-| POST /api/v1/documents | สร้างเอกสาร | Save draft (ปุ่มบันทึก); Submit (ปุ่มส่งดำเนินการ) |
+| POST /api/v1/sbpgi/document | สร้างเอกสาร | Save draft (ปุ่มบันทึก); Submit (ปุ่มส่งดำเนินการ) |
 
 ### 5.92 Create Document Interaction State Machine
 
@@ -221,8 +219,8 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | Search store | แว่นขยาย | GET /store/search (ระบบ SBP เดิม) | เลือก impacted/new store |
 | Open FS tab | tab เอกสารจาก FS | Load hidden iframe from fsIframeUrl | discover FS fields and render SBP mirror form |
 | Change FS mirror value | input/select ใน SBP mirror form | iframe value sync service | ส่งค่าเข้า field ใน hidden iframe และ dispatch input/change |
-| Save draft | ปุ่มบันทึก | POST /api/v1/documents | สร้าง draft |
-| Submit | ปุ่มส่งดำเนินการ | POST /api/v1/documents | สร้างเอกสารและเริ่ม workflow |
+| Save draft | ปุ่มบันทึก | POST /api/v1/sbpgi/document | สร้าง draft |
+| Submit | ปุ่มส่งดำเนินการ | POST /api/v1/sbpgi/document | สร้างเอกสารและเริ่ม workflow |
 | Submit FS iframe | ปุ่มส่งใน tab เอกสารจาก FS | sync all mirror values + submit iframe form | submit form ของ FS ใน hidden iframe |
 
 ### 5.93 Create Document Feature Failure Checks
@@ -243,8 +241,8 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | Search store | แว่นขยาย | GET /store/search (ระบบ SBP เดิม) | เลือก impacted/new store |
 | Open FS tab | tab เอกสารจาก FS | Load hidden iframe from fsIframeUrl | discover FS fields and render SBP mirror form |
 | Change FS mirror value | input/select ใน SBP mirror form | iframe value sync service | ส่งค่าเข้า field ใน hidden iframe และ dispatch input/change |
-| Save draft | ปุ่มบันทึก | POST /api/v1/documents | สร้าง draft |
-| Submit | ปุ่มส่งดำเนินการ | POST /api/v1/documents | สร้างเอกสารและเริ่ม workflow |
+| Save draft | ปุ่มบันทึก | POST /api/v1/sbpgi/document | สร้าง draft |
+| Submit | ปุ่มส่งดำเนินการ | POST /api/v1/sbpgi/document | สร้างเอกสารและเริ่ม workflow |
 | Submit FS iframe | ปุ่มส่งใน tab เอกสารจาก FS | sync all mirror values + submit iframe form | submit form ของ FS ใน hidden iframe |
 
 ## 7. API Contract
@@ -292,7 +290,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | items[].storeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].regionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/documents
+### POST /api/v1/sbpgi/document
 
 สร้างเอกสาร
 
@@ -350,7 +348,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 | Path ไฟล์ | หน้าที่ |
 | --- | --- |
-| src/app/(main)/sbpgi/documents/create/page.tsx | route page — หน้าสร้างเอกสาร: tab ทั่วไป + tab เอกสารจาก FS (hidden iframe) |
+| src/app/(main)/sbpgi/document/create/page.tsx | route page — หน้าสร้างเอกสาร: tab ทั่วไป + tab เอกสารจาก FS (hidden iframe) |
 | (ไม่มี component ฟอร์ม) | หน้านี้เป็น iframe ของหน้าสร้างเอกสารระบบ FS ล้วน ๆ (มติ 2026-08-06) — ไม่มีฟอร์ม/ตารางฝั่ง SBP |
 | src/services/sbpgi/document.service.ts | service — เรียก BFF ผ่าน apiClient (GET, POST) |
 | src/hooks/sbpgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
@@ -361,11 +359,10 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 ```tsx
 'use client';
 // หน้าสร้างเอกสาร: tab ทั่วไป + tab เอกสารจาก FS (hidden iframe)
-//   Tab: สร้างเอกสารทั่วไป
-//   Tab: เอกสารจาก FS ผ่าน hidden iframe
+//   (scope ไม่ได้ระบุ tab)
 //
 // ⚠️ มติ 2026-08-06: หน้านี้ **ไม่มีฟอร์มฝั่ง SBP** — main card คือ iframe ของหน้าสร้างเอกสาร
-//    ของระบบ FS ตรง ๆ (เหมือน k2-create.html) และ `POST /documents` เป็น pipeline/service-token
+//    ของระบบ FS ตรง ๆ (เหมือน k2-create.html) และ `POST /sbpgi/document` เป็น pipeline/service-token
 //    endpoint (Job 8) ไม่ใช่ฟอร์มที่ FE ยิงเอง
 // ⚠️ ห้ามอ่าน/เขียน DOM ข้าม iframe (`contentDocument`) — FS อยู่คนละ origin เบราว์เซอร์บล็อกทันที
 //    ช่องทางสื่อสารเดียวที่ใช้ได้คือ `postMessage` และต้องตรวจ `event.origin` ทุกครั้ง
@@ -374,7 +371,7 @@ import { useEffect, useRef, useState } from 'react';
 import AccessDenied from '@/components/Permission/AccessDenied';
 import { permissionStore } from '@/stores/permissionStore';
 
-const PAGE_URL = '/sbpgi/documents/create';
+const PAGE_URL = '/sbpgi/document/create';
 // TODO: ตั้งใน .env.sbpm.<env> — ต้องเป็น origin ของ FS ที่ยืนยันกับทีม FS แล้ว
 const FS_IFRAME_URL = process.env.NEXT_PUBLIC_FS_CREATE_DOCUMENT_URL ?? '';
 const FS_ORIGIN = process.env.NEXT_PUBLIC_FS_ORIGIN ?? '';
@@ -435,9 +432,9 @@ export async function getStoreSearch(params: T.StoreSearchParams): Promise<T.Sto
   return data.data;
 }
 
-/** POST /api/v1/documents — สร้างเอกสาร */
-export async function createDocuments(body: T.CreateDocumentsRequest): Promise<T.CreateDocumentsResponse> {
-  const { data } = await apiClient.post<ApiResponse<T.CreateDocumentsResponse>>('/documents', body);
+/** POST /api/v1/sbpgi/document — สร้างเอกสาร */
+export async function createSbpgiDocument(body: T.CreateSbpgiDocumentRequest): Promise<T.CreateSbpgiDocumentResponse> {
+  const { data } = await apiClient.post<ApiResponse<T.CreateSbpgiDocumentResponse>>('/sbpgi/document', body);
   return data.data;
 }
 
@@ -466,8 +463,8 @@ export interface StoreSearchItem {
 }
 export interface StoreSearchResponse { items: StoreSearchItem[]; }
 
-/** POST /api/v1/documents — request */
-export interface CreateDocumentsRequest {
+/** POST /api/v1/sbpgi/document — request */
+export interface CreateSbpgiDocumentRequest {
   source: string;
   impactMonth: string;
   statementPeriod: string;
@@ -477,8 +474,8 @@ export interface CreateDocumentsRequest {
   reason: string;
 }
 
-/** POST /api/v1/documents — response */
-export interface CreateDocumentsResponse {
+/** POST /api/v1/sbpgi/document — response */
+export interface CreateSbpgiDocumentResponse {
   docNo: string;
   statusCode: string;
   message: string;
@@ -511,10 +508,10 @@ export function useStoreSearchQuery(params?: T.StoreSearchParams | null) {
   });
 }
 
-export function useCreateDocumentsMutation() {
+export function useCreateSbpgiDocumentMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: T.CreateDocumentsRequest) => api.createDocuments(body),
+    mutationFn: (body: T.CreateSbpgiDocumentRequest) => api.createSbpgiDocument(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentKeys.all }); // reload list/detail/timeline
     },
@@ -591,7 +588,7 @@ export function useCreateDocumentsMutation() {
 | business rule | logic | FS submit syncs all values before iframe submit |
 | business rule | logic | validation message ชัดเจน |
 | `GET /store/search (ระบบ SBP เดิม)` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `POST /api/v1/documents` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `POST /api/v1/sbpgi/document` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
 | component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
 | hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
 | error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |

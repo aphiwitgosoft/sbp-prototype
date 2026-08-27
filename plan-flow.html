@@ -195,7 +195,7 @@
         </div>
         <p style="font-size:12.5px;color:var(--muted);margin:12px 2px 0;">
           จุดเปลี่ยนสำคัญ: <b>ไม่มี BPM/K2 engine ภายนอกอีกต่อไป</b> — การเปิดและเดิน workflow ใช้ <b>@srm/glb-workflow</b> ซึ่งเป็น engine ที่ระบบ SBP ปัจจุบันใช้งานจริงอยู่แล้ว (ตัดสินใจ 2026-08-06 · ไม่เขียน engine เอง)
-          — Jobs 7/8/9 เขียนฐานข้อมูลตรงผ่าน Document Service และ Job 8b เปิด workflow ผ่าน <code>POST /workflows/instances</code> ส่วน interface กับระบบภายนอก (QSSI, ALLMAP, IAS, STA) ยังเป็นขอบเขตของทีมอื่น — QSSI/ALLMAP คงกลไกเดิม · IAS/MIS ย้ายไป <b>EAI S3</b> · STA ย้ายไป <b>RabbitMQ</b> (มติ 2026-08-24)
+          — Jobs 7/8/9 เขียนฐานข้อมูลตรงผ่าน Document Service และ Job 8b เปิด workflow ผ่าน <code>POST /sbpgi/workflow/instances</code> ส่วน interface กับระบบภายนอก (QSSI, ALLMAP, IAS, STA) ยังเป็นขอบเขตของทีมอื่น — QSSI/ALLMAP คงกลไกเดิม · IAS/MIS ย้ายไป <b>EAI S3</b> · STA ย้ายไป <b>RabbitMQ</b> (มติ 2026-08-24)
         </p>
         <div class="rule" style="margin:12px 2px 0;padding:12px 14px;border-left:4px solid #2f6fed;background:#f5f9ff;border-radius:8px;font-size:12.5px;color:#5d6b7a;">
           <b>ข้อเท็จจริงของ Workflow Engine จากฐานข้อมูลจริง (ยืนยัน 2026-08-10 · ที่มา <code>SBP/db-schema-sps_store.md</code> · <code>SBP/db-schema-sps_auth.md</code> · สรุปที่ <code>SBP/SBPGI-vs-existing-system.md</code> §3.1)</b>
@@ -209,7 +209,7 @@
           </ul>
         </div>
         <p style="font-size:12.5px;color:var(--muted);margin:8px 2px 0;">
-          สัญญากลางที่ผูกกับ workflow: ดู <code>LLDD-BE-API-Common-Contracts</code> และ <code>LLDD-FE-Integration-Contracts</code> ก่อน implement ทุกจุดที่เรียก workflow API — <code>POST /documents/{docNo}/actions</code> รับ <code>{result, comment}</code> และคืน <code>{nextSection, statusCode, status}</code>; <code>POST /workflows/instances</code> ใช้ service token และ Gen Flow Gate W/Y/N อยู่ที่ BE Workflow Engine
+          สัญญากลางที่ผูกกับ workflow: ดู <code>LLDD-BE-API-Common-Contracts</code> และ <code>LLDD-FE-Integration-Contracts</code> ก่อน implement ทุกจุดที่เรียก workflow API — <code>POST /sbpgi/document/{docNo}/actions</code> รับ <code>{result, comment}</code> และคืน <code>{nextSection, statusCode, status}</code>; <code>POST /sbpgi/workflow/instances</code> ใช้ service token และ Gen Flow Gate W/Y/N อยู่ที่ BE Workflow Engine
         </p>
       </div>
 
@@ -241,11 +241,11 @@
           <div class="flow-stage"><span>B</span> เชื่อม FGI/FCS เข้าสู่ระบบเอกสารและ Workflow</div>
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">5. สร้างเอกสารประกันรายได้อัตโนมัติ <span class="ref mix">FGI/FCS → K2</span> <span class="ref new">เปลี่ยนกลไก</span></div>
-            <div class="tl-meta">Jobs 7/8/9 เขียนฐานข้อมูลตรงผ่าน Document Service — สร้าง compensation_documents (เลขที่ YYYY/xxxxx) + document_new_stores + document_competitors ตรงใน DB โซนเดียวกัน — ไม่มีไฟล์ ไม่มี SFTP ภายใน · เพิ่มเส้นทาง manual: ผู้ใช้สร้างเอกสารเองผ่านหน้า "สร้างเอกสาร" (POST /documents) สำหรับเคสที่ batch ไม่ได้สร้าง (ขั้น 15 ของ Approve Flow เดิม)</div></div>
+            <div class="tl-meta">Jobs 7/8/9 เขียนฐานข้อมูลตรงผ่าน Document Service — สร้าง compensation_documents (เลขที่ YYYY/xxxxx) + document_new_stores + document_competitors ตรงใน DB โซนเดียวกัน — ไม่มีไฟล์ ไม่มี SFTP ภายใน · เพิ่มเส้นทาง manual: ผู้ใช้สร้างเอกสารเองผ่านหน้า "สร้างเอกสาร" (POST /sbpgi/document) สำหรับเคสที่ batch ไม่ได้สร้าง (ขั้น 15 ของ Approve Flow เดิม)</div></div>
 
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">6. เปิด Workflow ตาม Gen Flow Gate <span class="ref mix">FGI/FCS Job 8b → K2</span> <span class="ref new">เปลี่ยนกลไก</span></div>
-            <div class="tl-meta">เกณฑ์คงเดิมทุกข้อ: คู่ร้านผ่านกฎรัศมี ≤1 กม.(กทม./ปริมณฑล) หรือ ≤2 กม.(ต่างจังหวัด) · workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เรียก POST /workflows/instances ด้วย service token; ผ่าน gate ตั้ง Y; fail ถาวร (branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10) ตั้ง N; เฉพาะ distance/juristic/growth เป็น NULL หรือ sales_status ยังไม่พร้อมจึงคง W เพื่อ rerun</div></div>
+            <div class="tl-meta">เกณฑ์คงเดิมทุกข้อ: คู่ร้านผ่านกฎรัศมี ≤1 กม.(กทม./ปริมณฑล) หรือ ≤2 กม.(ต่างจังหวัด) · workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เรียก POST /sbpgi/workflow/instances ด้วย service token; ผ่าน gate ตั้ง Y; fail ถาวร (branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10) ตั้ง N; เฉพาะ distance/juristic/growth เป็น NULL หรือ sales_status ยังไม่พร้อมจึงคง W เพื่อ rerun</div></div>
 
           <div class="flow-stage"><span>C</span> ผู้ใช้ตรวจสอบและอนุมัติ · Section 06–03</div>
           <div class="tl-item"><span class="tl-dot"></span>
@@ -254,7 +254,7 @@
 
           <div class="tl-item active"><span class="tl-dot"></span>
             <div class="tl-t">7. ขั้น 1–2: ฝ่าย SBP DSA ตรวจสอบ + คำนวณเงินชดเชย <span class="ref k2">K2 · Section 06 → 08</span></div>
-            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · ส่งพิจารณาด้วย POST /documents/{docNo}/actions payload เดียว {result, comment}; result เป็น 6-enum verbatim · บันทึก consideration_logs + SBPGI เรียก sendEmail() ของ email-lib เอง โดยใช้เลข template จาก sps_store.workflow_route.email_id (ปิด DP-5 · 2026-08-14 · ไม่มีตาราง status_email_rules) · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
+            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · ส่งพิจารณาด้วย POST /sbpgi/document/{docNo}/actions payload เดียว {result, comment}; result เป็น 6-enum verbatim · บันทึก consideration_logs + SBPGI เรียก sendEmail() ของ email-lib เอง โดยใช้เลข template จาก sps_store.workflow_route.email_id (ปิด DP-5 · 2026-08-14 · ไม่มีตาราง status_email_rules) · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">8. ขั้น 3: หน่วยงานส่งเสริมธุรกิจฯ ปรับข้อมูล <span class="ref k2">K2 · Section 01</span></div>
@@ -275,7 +275,7 @@
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">12. เฝ้าระวัง ACK จาก STA <span class="ref fgi">FGI/FCS · Job 10</span> <span class="ref new">เพิ่ม callback</span></div>
-            <div class="tl-meta">เดิม: watchdog อ่าน tracking ทุก 07:00 แล้วส่งเมลเมื่อค้าง ≥ 1 วัน · ใหม่: เพิ่มเส้น POST /interfaces/sta/ack ให้ STA ยิงตอบกลับตรง — watchdog ยังคงไว้เป็น safety net</div></div>
+            <div class="tl-meta">เดิม: watchdog อ่าน tracking ทุก 07:00 แล้วส่งเมลเมื่อค้าง ≥ 1 วัน · ใหม่: เพิ่มเส้น POST /sbpgi/interface/sta/ack ให้ STA ยิงตอบกลับตรง — watchdog ยังคงไว้เป็น safety net</div></div>
 
         </div>
       </div>
@@ -343,7 +343,7 @@
                 <td>โซน B · ไม่แตะ FGI/FCS</td></tr>
               <tr><td>สร้างเอกสารแบบ manual</td>
                 <td class="int-old">ขั้น 15 (lane admin): กรอกข้อมูลร้านเปิดใหม่/ร้านถูกกระทบเอง เมื่อระบบคำนวณให้ไม่ได้</td>
-                <td class="int-new">สร้างข้อมูลต้นทางที่ระบบ FS → รอ SBP Statement ส่งกลับ (~1 วัน) → POST /documents ลงตารางชุดเดียวกับเส้นอัตโนมัติ · ไม่มีฟอร์มสร้างเอกสารใน FE (ตัดสินใจ 2026-08-06 — k2-create เหลือเป็นหน้าอธิบายกระบวนการ)</td>
+                <td class="int-new">สร้างข้อมูลต้นทางที่ระบบ FS → รอ SBP Statement ส่งกลับ (~1 วัน) → POST /sbpgi/document ลงตารางชุดเดียวกับเส้นอัตโนมัติ · ไม่มีฟอร์มสร้างเอกสารใน FE (ตัดสินใจ 2026-08-06 — k2-create เหลือเป็นหน้าอธิบายกระบวนการ)</td>
                 <td>โซน B · ไม่แตะ FGI/FCS</td></tr>
               <tr><td>เงื่อนไขร้านก่อน/หลัง 1/10/2014</td>
                 <td class="int-old">โน้ต 10.1–10.4 แยกจุดเริ่มเอกสารตามวันที่โอนร้านแฟรนไชส์ และกรณีไม่มีข้อมูลให้คำนวณ</td>

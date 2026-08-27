@@ -44,17 +44,54 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Integration Cont
 | date/month | ISO ค.ศ. YYYY-MM-DD / YYYY-MM | payload uses CE | แสดงผ่าน formatDateThai/formatMonthThai จุดเดียว — ค่าเริ่มต้นเป็น ค.ศ. |
 | docNo | YYYY/xxxxx ค.ศ. | do not split except route params | route ใช้ /documents/:year/:running แล้วประกอบ docNo |
 | result | verbatim from actionOptions | required before submit action | ส่งเป็น payload `{result, comment}` เท่านั้น |
-| ActionResponse | {statusCode,nextSection,message} | required after action | invalidate detail/timeline/tasks แล้ว resolve label จาก /document-statuses |
+| ActionResponse | {statusCode,nextSection,message} | required after action | invalidate detail/timeline/tasks แล้ว resolve label จาก /sbpgi/lookup/document-statuses |
 | MenuItem | {menuCode,label,route,group} | จาก GET /menus + GET /groups/current-user/permissions ของระบบเดิม (ผ่าน BFF) | sidebar filter ด้วย menuCode จาก API; ไม่ hardcode role |
 | canEditSections | string[] | from document detail | ใช้เปิด/ปิด section editor; FE ไม่คำนวณสิทธิ์เอง |
+
+### 5.80 Namespace + กลุ่ม path ของงานประกันรายได้ (มติ 2026-08-25)
+
+SBPGI ไม่ได้แยก backend/พอร์ทัลใหม่ (มติ **DP-10** ให้อยู่ใน `srm-sps-spsap-store-backend` และโมดูลใน `srm-sps-spsap-web-frontend` เดิม) ทุกอย่างของงานประกันรายได้จึงอยู่ใต้ **ชื่อเดียวกันทั้ง 3 ชั้น** แล้วแตกเป็น **6 กลุ่มย่อยตามกลุ่มงาน** — ตรงกับ 6 กลุ่มใน `api.md` แบบ 1:1
+
+| ชั้น | รูปแบบ | ตัวอย่าง |
+| --- | --- | --- |
+| URL ของ API | `/api/v1/sbpgi/<กลุ่ม>/<resource>` | `/api/v1/sbpgi/document/{docNo}/actions` |
+| route ของหน้าจอ | `/sbpgi/<กลุ่ม>/<หน้า>` | `/sbpgi/document/waiting` · `/sbpgi/report/status-summary` |
+| โฟลเดอร์ไฟล์ | `**/sbpgi/*` | `src/app/(main)/sbpgi/*` · `src/services/sbpgi/*` · `src/types/sbpgi/*` |
+
+#### 6 กลุ่มย่อยใต้ `sbpgi`
+
+| กลุ่ม | prefix | เส้น | ครอบคลุมอะไร |
+| --- | --- | --- | --- |
+| งาน & เอกสารประกันรายได้ | `/sbpgi/document/*` | 11 | `/tasks` (กล่องงาน) · ค้นหา/สร้าง/แก้เอกสาร · `/{docNo}/actions` · `/timeline` · `/attachments` · `/sales` |
+| ข้อมูลอ้างอิง (Lookup) | `/sbpgi/lookup/*` | 2 | `/document-statuses` · `/workflow-sections` — อ่านอย่างเดียว ไม่มีหน้าจอดูแล |
+| Master Data | `/sbpgi/master/*` | 8 | `/factors` (CRUD 4) · `/competitors` (CRUD 4) — master ที่มีหน้าจอดูแลของตัวเอง |
+| รายงาน | `/sbpgi/report/*` | 2 | `/status-summary` · `/status-summary/export` |
+| Workflow ภายใน | `/sbpgi/workflow/*` | 3 | `/instances` · `/instances/{id}` · `/summary` |
+| Interface (tracking / ACK) | `/sbpgi/interface/*` | 3 | `/tracking` · `/pending-ack` · `/sta/ack` |
+
+**Batch job ไม่มีกลุ่ม path ของตัวเอง** — Jobs 2-10 + 8b รันด้วย cron/CLI ไม่ได้เปิด endpoint (กลุ่ม Batch Job Admin 6 เส้นถูกตัดทิ้ง 2026-08-06) · หน้าต่างที่มองเห็นผลของ job คือ **`/sbpgi/interface/*`** (tracking + ACK ของ `interface_transactions`) กับ application log เท่านั้น
+
+#### ทำไมต้องมี prefix (ไม่ใช่แค่ความสวยงาม)
+
+| ระบบเดิมมีอยู่แล้ว | ของ SBPGI ถ้าไม่ใส่ prefix | ผล |
+| --- | --- | --- |
+| `/document` · `/statement/...` | `/documents` | ชนเชิงความหมาย อ่าน routing แล้วสับสน |
+| `/report` · `/performance-report` · `/statement/report/ej` | `/reports/status-summary` | ชนเชิงความหมาย |
+| **`/interface/sta/upload-cmadd`** · `/interface/add` | **`/interfaces/sta/ack`** | 🔴 เกือบเหมือนกัน — เสี่ยงยิงผิดเส้นจริง |
+| `/common` · `/master` · `/store` | `/factors` `/competitors` `/document-statuses` | ปนกับ master ของโมดูลอื่น |
+
+- ฝั่ง NestJS: **`SbpgiModule` เดียว** ผูก prefix ที่ระดับโมดูล (`RouterModule.register([{ path: 'sbpgi', module: SbpgiModule }])`) แล้วแตกเป็น 6 controller ตามกลุ่ม (`DocumentController` `LookupController` `MasterController` `ReportController` `WorkflowController` `InterfaceController`) — **ห้ามเติม `sbpgi/` ในแต่ละ `@Controller()`**
+- ในกลุ่ม `document` ต้องประกาศ route คงที่ (`/tasks`) **ก่อน** route ที่มีพารามิเตอร์ (`/{docNo}`) และ `docNo` เป็น `YYYY/xxxxx` จึงต้อง `encodeURIComponent` ทุกครั้งที่ประกอบ URL
+- เส้นที่ **ไม่ใช่ของ SBPGI ห้ามใส่ prefix และห้ามแตะ** — `GET /store/search` · `GET /store/all-regions` · `GET /common/common-code` · `GET /menus` · `GET /groups/current-user/permissions` · `POST /statement/upload-file-aws` · `GET /api/workflow/pending` เป็นของระบบ SBP เดิม
+- BFF ส่งต่อทั้ง prefix (`/api/v1/sbpgi/*`) โดยไม่ตัดคำ · สิทธิ์เมนูผูกกับ URL ของ **หน้าจอ** (`/sbpgi/<กลุ่ม>/...`) ไม่ใช่ URL ของ API
 
 ### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | ALL /api/v1/*; GET /api/v1/*?page=1&size=20; POST /api/v1/documents/{docNo}/actions |
+| Input | ALL /api/v1/sbpgi/*; GET /api/v1/sbpgi/*?page=1&size=20; POST /api/v1/sbpgi/document/{docNo}/actions |
 | Progress | Bootstrap env and API client; Login or restore session with refresh token; Load GET /auth/profile + GET /users/current + GET /menus + GET /groups/current-user/permissions (ทั้งหมดเป็นของระบบเดิมผ่าน BFF); Render routes/sidebar from menu contract |
-| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Integration Contracts Component Contract
 
@@ -72,9 +109,9 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Integration Cont
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
-| ALL /api/v1/* | Error contract กลางสำหรับ FE ทุกหน้า | Attach token (ทุก API call) |
-| GET /api/v1/*?page=1&size=20 | List/pagination contract กลาง | Refresh token (401 non-auth endpoint) |
-| POST /api/v1/documents/{docNo}/actions | Document action contract ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02; FE ห้ามส่งหรือคำนวณปลายทางเอง | Submit action (ปุ่มส่งดำเนินการ) |
+| ALL /api/v1/sbpgi/* | Error contract กลางสำหรับ FE ทุกหน้า | Attach token (ทุก API call) |
+| GET /api/v1/sbpgi/*?page=1&size=20 | List/pagination contract กลาง | Refresh token (401 non-auth endpoint) |
+| POST /api/v1/sbpgi/document/{docNo}/actions | Document action contract ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02; FE ห้ามส่งหรือคำนวณปลายทางเอง | Submit action (ปุ่มส่งดำเนินการ) |
 
 ### 5.92 Integration Contracts Interaction State Machine
 
@@ -84,7 +121,7 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Integration Cont
 | Refresh token | 401 non-auth endpoint | POST /api/v1/auth/refresh | single-flight แล้ว replay request เดิม |
 | Show API error | catch AxiosError | apiErrorMessage() | แสดงข้อความไทยจาก BE ตรง ๆ |
 | Render list | GET list endpoint | PageResponse<T> | DataTable/Pager ใช้ shape เดียวกัน |
-| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/documents/{docNo}/actions | ส่ง `{result, comment}` และ consume `{statusCode,nextSection,message}` |
+| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/sbpgi/document/{docNo}/actions | ส่ง `{result, comment}` และ consume `{statusCode,nextSection,message}` |
 | Gate route/menu | login/bootstrap | GET /menus + GET /groups/current-user/permissions (ระบบเดิม ผ่าน BFF) | สร้าง sidebar และ route guard จาก menuCode |
 
 ### 5.93 Integration Contracts Feature Failure Checks
@@ -106,12 +143,12 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Integration Cont
 | Refresh token | 401 non-auth endpoint | POST /api/v1/auth/refresh | single-flight แล้ว replay request เดิม |
 | Show API error | catch AxiosError | apiErrorMessage() | แสดงข้อความไทยจาก BE ตรง ๆ |
 | Render list | GET list endpoint | PageResponse<T> | DataTable/Pager ใช้ shape เดียวกัน |
-| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/documents/{docNo}/actions | ส่ง `{result, comment}` และ consume `{statusCode,nextSection,message}` |
+| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/sbpgi/document/{docNo}/actions | ส่ง `{result, comment}` และ consume `{statusCode,nextSection,message}` |
 | Gate route/menu | login/bootstrap | GET /menus + GET /groups/current-user/permissions (ระบบเดิม ผ่าน BFF) | สร้าง sidebar และ route guard จาก menuCode |
 
 ## 7. API Contract
 
-### ALL /api/v1/*
+### ALL /api/v1/sbpgi/*
 
 Error contract กลางสำหรับ FE ทุกหน้า
 
@@ -137,7 +174,7 @@ Error contract กลางสำหรับ FE ทุกหน้า
 | code | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/*?page=1&size=20
+### GET /api/v1/sbpgi/*?page=1&size=20
 
 List/pagination contract กลาง
 
@@ -177,7 +214,7 @@ List/pagination contract กลาง
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items | array<object> | Yes | JSON array; element type shown in Type column |
 
-### POST /api/v1/documents/{docNo}/actions
+### POST /api/v1/sbpgi/document/{docNo}/actions
 
 Document action contract ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02; FE ห้ามส่งหรือคำนวณปลายทางเอง
 
@@ -304,9 +341,9 @@ import apiClient from '@/lib/apiClient';
 import type { ApiResponse } from '@/types/sbpgi/common';
 import type * as T from '@/types/sbpgi/integration';
 
-/** POST /api/v1/documents/{docNo}/actions — Document action contract ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02; FE ห้ามส่งหรือคำนวณปลายทางเอง */
-export async function createDocumentsActions(docNo: string, body: T.CreateDocumentsActionsRequest): Promise<T.CreateDocumentsActionsResponse> {
-  const { data } = await apiClient.post<ApiResponse<T.CreateDocumentsActionsResponse>>(`/documents/${encodeURIComponent(docNo)}/actions`, body);
+/** POST /api/v1/sbpgi/document/{docNo}/actions — Document action contract ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02; FE ห้ามส่งหรือคำนวณปลายทางเอง */
+export async function createSbpgiDocumentActions(docNo: string, body: T.CreateSbpgiDocumentActionsRequest): Promise<T.CreateSbpgiDocumentActionsResponse> {
+  const { data } = await apiClient.post<ApiResponse<T.CreateSbpgiDocumentActionsResponse>>(`/sbpgi/document/${encodeURIComponent(docNo)}/actions`, body);
   return data.data;
 }
 
@@ -319,14 +356,14 @@ export async function createDocumentsActions(docNo: string, body: T.CreateDocume
 // src/types/sbpgi/integration.ts — ตรงกับตาราง API ในเอกสารนี้
 // วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
-/** POST /api/v1/documents/{docNo}/actions — request */
-export interface CreateDocumentsActionsRequest {
+/** POST /api/v1/sbpgi/document/{docNo}/actions — request */
+export interface CreateSbpgiDocumentActionsRequest {
   result: string;
   comment: string;
 }
 
-/** POST /api/v1/documents/{docNo}/actions — response */
-export interface CreateDocumentsActionsResponse {
+/** POST /api/v1/sbpgi/document/{docNo}/actions — response */
+export interface CreateSbpgiDocumentActionsResponse {
   statusCode: string;
   nextSection: string;
   message: string;
@@ -347,10 +384,10 @@ export const integrationKeys = {
   all: ['sbpgi', 'integration'] as const,
 };
 
-export function useCreateDocumentsActionsMutation(docNo: string) {
+export function useCreateSbpgiDocumentActionsMutation(docNo: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: T.CreateDocumentsActionsRequest) => api.createDocumentsActions(docNo, body),
+    mutationFn: (body: T.CreateSbpgiDocumentActionsRequest) => api.createSbpgiDocumentActions(docNo, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: integrationKeys.all }); // reload list/detail/timeline
     },

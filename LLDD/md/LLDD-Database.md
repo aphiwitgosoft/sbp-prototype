@@ -246,7 +246,7 @@ CREATE TABLE fgi_impact_competitors (
 --   มีข้อมูลจริง 23,958,780 แถว และมี import pipeline ทำงานอยู่
 --   (`POST /performance/import-qssi` · staging `fcs_tmp_qssi_score` · `performance.service.ts`)
 --   โครงคอลัมน์อ้างอิงด้านล่างเป็น target shape ที่ SBPGI ต้องการ — ต้องเทียบกับคอลัมน์จริงก่อน
---   ⚠️ ยังไม่ตัดสินว่าจะแก้ตารางเดิมอย่างไร (DP-4 · ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4)
+--   ✅ DP-4 ปิดแล้ว 2026-08-24: อ่านอย่างเดียว ไม่แก้ constraint/index ของตารางเดิม
 --   ห้ามใช้ชื่อพหูพจน์ `fcs_qssi_scores` ทุกกรณี
 -- target shape (reference only — ห้ามรันเป็น DDL):
 --   id BIGSERIAL PK · store_code VARCHAR(5) · category_code VARCHAR(30) · score_period CHAR(7)
@@ -483,7 +483,7 @@ RETURNING i.id, i.data_name, i.business_key;
 | --- | --- | --- |
 | Create document | docNo sequence lock (document_running_numbers) + compensation_documents + initializeWorkflow/addPreApprover ของ @srm/glb-workflow | any fail rollback all; no partial document · engine อยู่คนละ DataSource จึงต้องมี compensating action เมื่อ commit ฝั่งใดฝั่งหนึ่งไม่ผ่าน |
 | Submit action | ตรวจ current_approver จาก workflow_transaction + insert consideration_logs + eventWorkflow (เดิน state) + update compensation_documents | duplicate/current approver conflict returns 409 |
-| Auto-assign (SDD 46/48) | 06 เห็นควรไม่ชดเชย -> ปิดเอกสารและตั้งงานเดือนถัดไปให้เจ้าของงานคนเดิม ผ่าน addPreApprover · 06 หยุดชดเชยฯ -> เอกสารกลับเข้า GET /tasks ของ 06 ทันที (stoppedReopenable) | เดือนที่กดเห็นควรไม่ชดเชย ต้องไม่พบเอกสารใน GET /tasks ของ 06 · เดือนถัดไปต้องพบพร้อม assignee คนเดิม |
+| Auto-assign (SDD 46/48) | 06 เห็นควรไม่ชดเชย -> ปิดเอกสารและตั้งงานเดือนถัดไปให้เจ้าของงานคนเดิม ผ่าน addPreApprover · 06 หยุดชดเชยฯ -> เอกสารกลับเข้า GET /sbpgi/document/tasks ของ 06 ทันที (stoppedReopenable) | เดือนที่กดเห็นควรไม่ชดเชย ต้องไม่พบเอกสารใน GET /sbpgi/document/tasks ของ 06 · เดือนถัดไปต้องพบพร้อม assignee คนเดิม |
 | Attachment upload | metadata insert only after storage write and AV clean; objectKey never exposed | storage/scan fail leaves no CLEAN metadata |
 | Job 4 IAS request | durable file (fsync + atomic rename + checksum) ก่อน transaction W→P + outbox READY | file fail คง W; DB fail rollback W→P/outbox; S3 upload fail retry transaction เดิม |
 | Interface ACK/purge | ACK compare-and-set บน transaction เดิม; purge เฉพาะ terminal + purge_after + non-held | pending/failed/unacked/legal-hold ห้ามลบ |
@@ -529,8 +529,8 @@ RETURNING i.id, i.data_name, i.business_key;
 | LLDD-BE-Job-Batch-Email-SRM | (backend config: config file/env)(R), (application log แบบ structured)(W), interface_transactions(R/W), email_template (SBP)(R) |
 | LLDD-BE-Database-Structure | 20 target tables (โซน A/B/C)(W), workflow engine 13 ตาราง (sps_store)(R), fcs_qssi_score (sps_store)(R), mas_param / common_code / business_user / email_template (sps_store)(R) |
 | LLDD-BE-Data-Migration-Cutover | ORA FCS_FRN (FGI_IMPACT_* · FCS_QSSI_SCORE · FGI_CONFIRM_RECEIVE_DATA)(R), MSSQL CPA_FRN_FGI (CompensateFlow · CompensateHistory · ImpactProfile · ImpactCostDetail · RunningNumber)(R), 20 target tables (โซน A/B/C)(W), workflow_transaction / workflow_approver / workflow_history (sps_store)(W) |
-| LLDD-BE-Integration-SBP-Platform | mas_param (sps_store)(R), common_code / common_code_type (sps_store)(R), email_template (sps_store)(R), email_sent (sps_store)(W (โดย email-lib)) |
-| LLDD-BE-Workflow-Engine-Definition | workflow / workflow_version / workflow_state / workflow_status / workflow_event / workflow_route (sps_store)(R + W ครั้งเดียวตอน setup), workflow_group / workflow_group_map (sps_store)(R + W ครั้งเดียวตอน setup), workflow_transaction / workflow_history / workflow_approver (sps_store)(R (เขียนผ่าน lib เท่านั้น)), workflow_part / workflow_part_display (sps_store)(R + W ครั้งเดียวตอน setup) |
+| LLDD-BE-Integration-SBP-Platform | mas_param (sps_store)(R (+ W ครั้งเดียวตอน seed)), common_code / common_code_type (sps_store)(R (+ W ครั้งเดียวตอน seed)), email_template (sps_store)(R), email_sent (sps_store)(W (โดย email-lib)) |
+| LLDD-BE-Workflow-Engine-Definition | workflow (sps_store)(W ครั้งเดียวตอน setup), workflow_version (sps_store)(W ครั้งเดียวตอน setup), workflow_state (sps_store)(W ครั้งเดียวตอน setup), workflow_status (sps_store)(W ครั้งเดียวตอน setup) |
 | LLDD-BE-Job-2-ImportImpactStore | fgi_impact_stores(W) |
 | LLDD-BE-Job-3-ImportImpactCompetitor | fgi_impact_competitors(W) |
 | LLDD-BE-Job-4-PrepareImpactStoreToIAS | fgi_impact_stores(R/W), fgi_impact_sales_summaries(R/W), interface_transactions(W), (application log แบบ structured)(W) |

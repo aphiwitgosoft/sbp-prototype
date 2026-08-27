@@ -43,23 +43,23 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 | sourceSystem | enum | ALLMAP / USER | **B5** ที่มาของแถวร้านเปิดใหม่ — `ALLMAP` ระบบ default ให้อัตโนมัติ (Job 9) · `USER` เจ้าหน้าที่ SBP DSA คีย์เองจากเอกสารแจ้งของหน่วยงานส่งเสริม (ผัง To-Be · SDD สไลด์ 7) · ซ้ำ `(doc_no, new_store_code)` ให้คืน `409` |
 | date | DD/MM/YYYY | valid date | payload เป็น ISO ค.ศ. · FE แสดง ค.ศ. เป็นค่าเริ่มต้น (DatePicker buddhistEra=false) แสดง พ.ศ. เฉพาะจุดที่เปิด flag |
 | attachment | file | <= 5 MB | รองรับ vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv |
-| year | ค.ศ. YYYY | required for /documents | ไม่ระบุคืน 400 ตาม SRS · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. |
+| year | ค.ศ. YYYY | required for /sbpgi/document | ไม่ระบุคืน 400 ตาม SRS · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. |
 | page/size | integer | page>=1 size<=100 | pagination |
 
 ### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/tasks; GET /api/v1/documents |
+| Input | GET /api/v1/sbpgi/document/tasks; GET /api/v1/sbpgi/document |
 | Progress | Read JWT section/role; Validate year for documents; Build filter query; Join impacted_stores |
-| Output | Rendered UI state or normalized API response with status/message and audit-ready trace reference. |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Endpoint Implementation Contract
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| GET /api/v1/tasks | Inbox tasks API | Read JWT section/role | year missing fails for /documents |
-| GET /api/v1/documents | Document search API | Validate year for documents | leading zero storeCode preserved |
+| GET /api/v1/sbpgi/document/tasks | Inbox tasks API | Read JWT section/role | year missing fails for /sbpgi/document |
+| GET /api/v1/sbpgi/document | Document search API | Validate year for documents | leading zero storeCode preserved |
 
 ### 5.91 Backend Execution Sequence
 
@@ -69,7 +69,19 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 | 2 | Validate year for documents | documents missing year |
 | 3 | Build filter query | store search |
 | 4 | Join impacted_stores | empty result |
-| 5 | Return page result | tasks by section |
+| 5 | Return page result | — (ยังไม่มี test เฉพาะขั้นนี้ · ครอบด้วย test รวมของเอกสารในหัวข้อ 11) |
+
+### 5.92 Workflow Trigger Event Contract
+
+งานชิ้นนี้ **ต้องเรียก workflow engine** ตามตารางด้านล่าง · ชื่อ function ยึด API 8 ตัวของ `@srm/glb-workflow` ตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — รายละเอียด signature และตารางที่ engine เขียน ดู **LLDD-BE-Workflow-Engine-Definition** หัวข้อ 5.3
+
+| จุดที่เรียก (call site) | Engine function | พารามิเตอร์หลัก | กติกา / transaction boundary |
+| --- | --- | --- | --- |
+| กล่องงานรอดำเนินการ | `getPendingFlowByUser` | userData, versionId | เป็นแหล่งความจริงของรายการรอดำเนินการ · section 06 ต้อง union เอกสารที่จบด้วย หยุดชดเชยฯ (stoppedReopenable) เพิ่มเอง |
+
+- 🔴 กติกาเหล็ก: ตาราง `sps_store.workflow_*` (13 ตาราง) เป็นของ lib — SBPGI **R เท่านั้น** ห้าม INSERT/UPDATE/DELETE ตรงในทุกกรณี
+- ทุกการเรียก engine ต้องผ่านตัวห่อกลาง `WorkflowGateway` ที่นิยามใน **LLDD-BE-API-Common-Contracts** (timeout · retry · map error เข้า envelope) ห้าม import lib ตรงจาก service
+- unit test ต้อง mock engine และครอบอย่างน้อย: เรียกสำเร็จ · engine โยน error แล้ว rollback ฝั่ง SBPGI ครบ · เรียกซ้ำด้วย referenceId เดิมไม่เกิดผลซ้ำ
 
 ## 6. Button / User Action Mapping
 
@@ -80,7 +92,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 
 ## 7. API Contract
 
-### GET /api/v1/tasks
+### GET /api/v1/sbpgi/document/tasks
 
 Inbox tasks API
 
@@ -123,7 +135,7 @@ Inbox tasks API
 | items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | items[].waitingDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/documents
+### GET /api/v1/sbpgi/document
 
 Document search API
 
@@ -214,23 +226,23 @@ import { DocumentListSearchQueryDto } from './dto/sbpgi-document-list-search.dto
 
 // LLDD BE - API Document List and Search
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sbpgi')
+@Controller('sbpgi/sbpgi/document')
 @UseGuards(HttpHeaderGuard)
 export class SbpgiDocumentListSearchController {
   constructor(private readonly service: SbpgiDocumentListSearchService) {}
 
-  // GET /api/v1/tasks — Inbox tasks API
-  @Get('tasks')
-  getTasks(@Query() query: DocumentListSearchQueryDto, @UserId() userId: string) {
+  // GET /api/v1/sbpgi/document/tasks — Inbox tasks API
+  @Get('document/tasks')
+  getSbpgiDocumentTasks(@Query() query: DocumentListSearchQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getTasks(query, userId);
+    return this.service.getSbpgiDocumentTasks(query, userId);
   }
 
-  // GET /api/v1/documents — Document search API
-  @Get('documents')
-  getDocuments(@Query() query: DocumentListSearchQueryDto, @UserId() userId: string) {
+  // GET /api/v1/sbpgi/document — Document search API
+  @Get('document')
+  getSbpgiDocument(@Query() query: DocumentListSearchQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getDocuments(query, userId);
+    return this.service.getSbpgiDocument(query, userId);
   }
 }
 ```
@@ -312,14 +324,14 @@ export class SbpgiDocumentListSearchService {
     private readonly workflow: WorkflowService,
   ) {}
 
-  // GET /api/v1/tasks — Inbox tasks API
-  async getTasks(query: DocumentListSearchQueryDto, userId: string) {
+  // GET /api/v1/sbpgi/document/tasks — Inbox tasks API
+  async getSbpgiDocumentTasks(query: DocumentListSearchQueryDto, userId: string) {
     const page = Number(query.page ?? 1);
     const size = Math.min(Number(query.size ?? 20), 100);
-    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/tasks')
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sbpgi/document/tasks')
     // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
     //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
-    const rows = await this.dataSource.query(SBPGI_SQL.getTasks, [
+    const rows = await this.dataSource.query(SBPGI_SQL.getSbpgiDocumentTasks, [
       // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
       userId, (page - 1) * size, size,
     ]);
@@ -327,11 +339,11 @@ export class SbpgiDocumentListSearchService {
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/documents — Document search API
-  async getDocuments(query: DocumentListSearchQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/documents
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/documents')
-    throw new NotImplementedException('getDocuments ยังไม่ implement');
+  // GET /api/v1/sbpgi/document — Document search API
+  async getSbpgiDocument(query: DocumentListSearchQueryDto, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/document
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/document')
+    throw new NotImplementedException('getSbpgiDocument ยังไม่ implement');
   }
 }
 ```
@@ -342,7 +354,7 @@ export class SbpgiDocumentListSearchService {
 
 | Endpoint | Use case ที่ต้องเรียก | เหตุผล |
 | --- | --- | --- |
-| GET /api/v1/tasks | getPendingFlowByUser() | inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header |
+| GET /api/v1/sbpgi/document/tasks | getPendingFlowByUser() | inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header |
 
 ```ts
 // src/modules/sbpgi-document-list-search/sbpgi-document-list-search.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
@@ -560,12 +572,12 @@ export class SbpgiDocumentListSearchBffService {
     };
   }
 
-  getTasks(params: any, user: any) {
-    return this.client.get('/api/v1/tasks', { params, headers: this.userHeaders(user) });
+  getSbpgiDocumentTasks(params: any, user: any) {
+    return this.client.get('/api/v1/sbpgi/document/tasks', { params, headers: this.userHeaders(user) });
   }
 
-  getDocuments(params: any, user: any) {
-    return this.client.get('/api/v1/documents', { params, headers: this.userHeaders(user) });
+  getSbpgiDocument(params: any, user: any) {
+    return this.client.get('/api/v1/sbpgi/document', { params, headers: this.userHeaders(user) });
   }
 }
 
@@ -579,16 +591,16 @@ import { AuthGuard } from '@nestjs/passport';
 export class SbpgiDocumentListSearchBffController {
   constructor(private readonly service: SbpgiDocumentListSearchBffService) {}
 
-  // proxy ของ GET /api/v1/tasks
-  @Get('tasks')
-  getTasks(@Query() query: any, @Req() req: any) {
-    return this.service.getTasks(query, req.user);
+  // proxy ของ GET /api/v1/sbpgi/document/tasks
+  @Get('sbpgi/document/tasks')
+  getSbpgiDocumentTasks(@Query() query: any, @Req() req: any) {
+    return this.service.getSbpgiDocumentTasks(query, req.user);
   }
 
-  // proxy ของ GET /api/v1/documents
-  @Get('documents')
-  getDocuments(@Query() query: any, @Req() req: any) {
-    return this.service.getDocuments(query, req.user);
+  // proxy ของ GET /api/v1/sbpgi/document
+  @Get('sbpgi/document')
+  getSbpgiDocument(@Query() query: any, @Req() req: any) {
+    return this.service.getSbpgiDocument(query, req.user);
   }
 }
 // TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
@@ -609,7 +621,7 @@ export class SbpgiDocumentListSearchBffController {
 
 #### 10.2 SQL จริงต่อ Endpoint
 
-**GET /api/v1/tasks** — Inbox tasks API
+**GET /api/v1/sbpgi/document/tasks** — Inbox tasks API
 
 ```sql
 -- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:
@@ -646,7 +658,7 @@ ORDER BY w.update_date
 LIMIT :size OFFSET :offset;
 ```
 
-**GET /api/v1/documents** — Document search API
+**GET /api/v1/sbpgi/document** — Document search API
 
 ```sql
 -- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:
@@ -699,7 +711,7 @@ LIMIT :size OFFSET :offset;
 
 ## 12. Acceptance Criteria
 
-- year missing fails for /documents
+- year missing fails for /sbpgi/document
 - leading zero storeCode preserved
 - pagination returns total
 - status filter works
@@ -728,14 +740,14 @@ LIMIT :size OFFSET :offset;
 | `sourceSystem` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: ALLMAP / USER · รูปแบบ: enum |
 | `date` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: valid date · รูปแบบ: DD/MM/YYYY |
 | `attachment` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: <= 5 MB · รูปแบบ: file |
-| `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for /documents · รูปแบบ: ค.ศ. YYYY |
+| `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for /sbpgi/document · รูปแบบ: ค.ศ. YYYY |
 | `page/size` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: page>=1 size<=100 · รูปแบบ: integer |
-| business rule | logic | year missing fails for /documents |
+| business rule | logic | year missing fails for /sbpgi/document |
 | business rule | logic | leading zero storeCode preserved |
 | business rule | logic | pagination returns total |
 | business rule | logic | status filter works |
-| `GET /api/v1/tasks` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/documents` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/document/tasks` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/document` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 
 - ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ

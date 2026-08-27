@@ -76,7 +76,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Cre
 
 | Test | Expected result |
 | --- | --- |
-| ยิง POST /documents พร้อมกัน 20 request ในปีเดียวกัน | ได้ docNo ไม่ซ้ำ running เรียงตาม commit และไม่มี duplicate key error ที่หลุดเป็น 500 |
+| ยิง POST /sbpgi/document พร้อมกัน 20 request ในปีเดียวกัน | ได้ docNo ไม่ซ้ำ running เรียงตาม commit และไม่มี duplicate key error ที่หลุดเป็น 500 |
 | สร้าง duplicate business key | คืน 409 DUPLICATE_DOCUMENT และไม่ consume docNo ใหม่ถ้า duplicate ถูกพบก่อน lock sequence |
 | จำลอง error หลัง insert document ก่อนเปิด workflow | rollback แล้วไม่เหลือ compensation_documents/workflow_transaction/audit partial |
 | เปลี่ยนปี ค.ศ. | running เริ่มที่ 00001 ของปีใหม่ |
@@ -118,7 +118,7 @@ INSERT INTO compensation_documents (
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | POST /api/v1/documents; PUT /api/v1/documents/{docNo} |
+| Input | POST /api/v1/sbpgi/document; PUT /api/v1/sbpgi/document/{docNo} |
 | Progress | Validate required fields; Check duplicate store/month; Generate docNo; Insert compensation_documents |
 | Output | compensation_documents; workflow_transaction / workflow_approver (@srm/glb-workflow); document_new_stores |
 
@@ -126,8 +126,8 @@ INSERT INTO compensation_documents (
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| POST /api/v1/documents | Create document API | Validate required fields | duplicate business key returns 409 |
-| PUT /api/v1/documents/{docNo} | Update document partial sections | Check duplicate store/month | docNo format YYYY/xxxxx |
+| POST /api/v1/sbpgi/document | Create document API | Validate required fields | duplicate business key returns 409 |
+| PUT /api/v1/sbpgi/document/{docNo} | Update document partial sections | Check duplicate store/month | docNo format YYYY/xxxxx |
 
 ### 5.91 Backend Execution Sequence
 
@@ -137,8 +137,20 @@ INSERT INTO compensation_documents (
 | 2 | Check duplicate store/month | create duplicate |
 | 3 | Generate docNo | update allocation invalid |
 | 4 | Insert compensation_documents | permission denied section |
-| 5 | Open workflow task | create success |
-| 6 | Save section updates in transaction | create duplicate |
+| 5 | Open workflow task | — (ยังไม่มี test เฉพาะขั้นนี้ · ครอบด้วย test รวมของเอกสารในหัวข้อ 11) |
+| 6 | Save section updates in transaction | — (ยังไม่มี test เฉพาะขั้นนี้ · ครอบด้วย test รวมของเอกสารในหัวข้อ 11) |
+
+### 5.92 Workflow Trigger Event Contract
+
+งานชิ้นนี้ **ต้องเรียก workflow engine** ตามตารางด้านล่าง · ชื่อ function ยึด API 8 ตัวของ `@srm/glb-workflow` ตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — รายละเอียด signature และตารางที่ engine เขียน ดู **LLDD-BE-Workflow-Engine-Definition** หัวข้อ 5.3
+
+| จุดที่เรียก (call site) | Engine function | พารามิเตอร์หลัก | กติกา / transaction boundary |
+| --- | --- | --- | --- |
+| หลัง insert เอกสารสำเร็จ (Open first task) | `initializeWorkflow` แล้วต่อด้วย `addPreApprover` | versionId, userId, referenceId, stateId = `06` | อยู่ใน transaction boundary เดียวกับการสร้างเอกสาร — engine fail ต้อง rollback เอกสาร |
+
+- 🔴 กติกาเหล็ก: ตาราง `sps_store.workflow_*` (13 ตาราง) เป็นของ lib — SBPGI **R เท่านั้น** ห้าม INSERT/UPDATE/DELETE ตรงในทุกกรณี
+- ทุกการเรียก engine ต้องผ่านตัวห่อกลาง `WorkflowGateway` ที่นิยามใน **LLDD-BE-API-Common-Contracts** (timeout · retry · map error เข้า envelope) ห้าม import lib ตรงจาก service
+- unit test ต้อง mock engine และครอบอย่างน้อย: เรียกสำเร็จ · engine โยน error แล้ว rollback ฝั่ง SBPGI ครบ · เรียกซ้ำด้วย referenceId เดิมไม่เกิดผลซ้ำ
 
 ## 6. Button / User Action Mapping
 
@@ -149,7 +161,7 @@ INSERT INTO compensation_documents (
 
 ## 7. API Contract
 
-### POST /api/v1/documents
+### POST /api/v1/sbpgi/document
 
 Create document API
 
@@ -195,7 +207,7 @@ Create document API
 | docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | statusCode | string | Yes | canonical code; do not replace with display label |
 
-### PUT /api/v1/documents/{docNo}
+### PUT /api/v1/sbpgi/document/{docNo}
 
 Update document partial sections
 
@@ -286,31 +298,31 @@ import { Body, Controller, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { HttpHeaderGuard } from '../../guards/http-header.guard';
 import { UserId } from '../../common/decorators/user-id.decorator';
 import { SbpgiDocumentCreateUpdateService } from './sbpgi-document-create-update.service';
-import { CreateDocumentsBodyDto, UpdateDocumentsByDocNoBodyDto } from './dto/sbpgi-document-create-update.dto';
+import { CreateSbpgiDocumentBodyDto, UpdateSbpgiDocumentByDocNoBodyDto } from './dto/sbpgi-document-create-update.dto';
 
 // LLDD BE - API Document Create and Update
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sbpgi/documents')
+@Controller('sbpgi/sbpgi/document')
 @UseGuards(HttpHeaderGuard)
 export class SbpgiDocumentCreateUpdateController {
   constructor(private readonly service: SbpgiDocumentCreateUpdateService) {}
 
-  // POST /api/v1/documents — Create document API
-  @Post()
-  createDocuments(@Body() body: CreateDocumentsBodyDto, @UserId() userId: string) {
+  // POST /api/v1/sbpgi/document — Create document API
+  @Post('document')
+  createSbpgiDocument(@Body() body: CreateSbpgiDocumentBodyDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.createDocuments(body, userId);
+    return this.service.createSbpgiDocument(body, userId);
   }
 
-  // PUT /api/v1/documents/{docNo} — Update document partial sections
-  @Put(':docNo')
-  updateDocumentsByDocNo(
+  // PUT /api/v1/sbpgi/document/{docNo} — Update document partial sections
+  @Put('document/:docNo')
+  updateSbpgiDocumentByDocNo(
     @Param('docNo') docNo: string,
-    @Body() body: UpdateDocumentsByDocNoBodyDto,
+    @Body() body: UpdateSbpgiDocumentByDocNoBodyDto,
     @UserId() userId: string,
   ) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.updateDocumentsByDocNo(docNo, body, userId);
+    return this.service.updateSbpgiDocumentByDocNo(docNo, body, userId);
   }
 }
 ```
@@ -328,8 +340,8 @@ import {
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
 // property ที่ไม่ประกาศที่นี่จะถูก reject เป็น 400 อัตโนมัติ
 
-// body ของ POST /api/v1/documents
-export class CreateDocumentsBodyDto {
+// body ของ POST /api/v1/sbpgi/document
+export class CreateSbpgiDocumentBodyDto {
   @IsNotEmpty()
   @IsString()
   impactedStoreCode: string;
@@ -363,8 +375,8 @@ export class CreateDocumentsBodyDto {
 ```
 
 ```ts
-// body ของ PUT /api/v1/documents/{docNo}
-export class UpdateDocumentsByDocNoBodyDto {
+// body ของ PUT /api/v1/sbpgi/document/{docNo}
+export class UpdateSbpgiDocumentByDocNoBodyDto {
   @IsNotEmpty()
   @IsArray()
   @IsString({ each: true })
@@ -395,19 +407,19 @@ export class SbpgiDocumentCreateUpdateService {
     private readonly workflow: WorkflowService,
   ) {}
 
-  // POST /api/v1/documents — Create document API
+  // POST /api/v1/sbpgi/document — Create document API
   // mutation ต้องอยู่ใน transaction เดียว (ไม่มี audit ของ master แล้ว · 2026-08-07)
-  async createDocuments(body: CreateDocumentsBodyDto, userId: string) {
+  async createSbpgiDocument(body: CreateSbpgiDocumentBodyDto, userId: string) {
     const runner = this.dataSource.createQueryRunner();
     await runner.connect();
     await runner.startTransaction();
     try {
       // TODO: lock แถวเป้าหมายของ compensation_documents ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SBPGI_SQL.createDocumentsLock, [body.docNo]);
+      const [current] = await runner.query(SBPGI_SQL.createSbpgiDocumentLock, [body.docNo]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }
-      await runner.query(SBPGI_SQL.createDocuments, [/* TODO: ผูกค่าจาก body */]);
+      await runner.query(SBPGI_SQL.createSbpgiDocument, [/* TODO: ผูกค่าจาก body */]);
       await runner.commitTransaction();
       // ⚠️ workflow engine อยู่คนละ DataSource ('workflow-connection' ของ @srm/glb-workflow)
       //    จึง **atomic ร่วมกับ transaction ข้างบนไม่ได้** — ต้อง commit ฝั่ง SBPGI ให้เสร็จก่อน
@@ -425,11 +437,11 @@ export class SbpgiDocumentCreateUpdateService {
     }
   }
 
-  // PUT /api/v1/documents/{docNo} — Update document partial sections
-  async updateDocumentsByDocNo(docNo: string, body: UpdateDocumentsByDocNoBodyDto, userId: string) {
-    // TODO: implement ตาม business rule ของ PUT /api/v1/documents/{docNo}
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'PUT /api/v1/documents/{docNo}')
-    throw new NotImplementedException('updateDocumentsByDocNo ยังไม่ implement');
+  // PUT /api/v1/sbpgi/document/{docNo} — Update document partial sections
+  async updateSbpgiDocumentByDocNo(docNo: string, body: UpdateSbpgiDocumentByDocNoBodyDto, userId: string) {
+    // TODO: implement ตาม business rule ของ PUT /api/v1/sbpgi/document/{docNo}
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'PUT /api/v1/sbpgi/document/{docNo}')
+    throw new NotImplementedException('updateSbpgiDocumentByDocNo ยังไม่ implement');
   }
 }
 ```
@@ -655,12 +667,12 @@ export class SbpgiDocumentCreateUpdateBffService {
     };
   }
 
-  createDocuments(body: any, user: any) {
-    return this.client.post('/api/v1/documents', body, { headers: this.userHeaders(user) });
+  createSbpgiDocument(body: any, user: any) {
+    return this.client.post('/api/v1/sbpgi/document', body, { headers: this.userHeaders(user) });
   }
 
-  updateDocumentsByDocNo(docNo: string, body: any, user: any) {
-    return this.client.put(`/api/v1/documents/${docNo}`, body, { headers: this.userHeaders(user) });
+  updateSbpgiDocumentByDocNo(docNo: string, body: any, user: any) {
+    return this.client.put(`/api/v1/sbpgi/document/${docNo}`, body, { headers: this.userHeaders(user) });
   }
 }
 
@@ -674,16 +686,16 @@ import { AuthGuard } from '@nestjs/passport';
 export class SbpgiDocumentCreateUpdateBffController {
   constructor(private readonly service: SbpgiDocumentCreateUpdateBffService) {}
 
-  // proxy ของ POST /api/v1/documents
-  @Post('documents')
-  createDocuments(@Body() body: any, @Req() req: any) {
-    return this.service.createDocuments(body, req.user);
+  // proxy ของ POST /api/v1/sbpgi/document
+  @Post('sbpgi/document')
+  createSbpgiDocument(@Body() body: any, @Req() req: any) {
+    return this.service.createSbpgiDocument(body, req.user);
   }
 
-  // proxy ของ PUT /api/v1/documents/{docNo}
-  @Put('documents/:docNo')
-  updateDocumentsByDocNo(@Param('docNo') docNo: string, @Body() body: any, @Req() req: any) {
-    return this.service.updateDocumentsByDocNo(docNo, body, req.user);
+  // proxy ของ PUT /api/v1/sbpgi/document/{docNo}
+  @Put('sbpgi/document/:docNo')
+  updateSbpgiDocumentByDocNo(@Param('docNo') docNo: string, @Body() body: any, @Req() req: any) {
+    return this.service.updateSbpgiDocumentByDocNo(docNo, body, req.user);
   }
 }
 // TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
@@ -706,7 +718,7 @@ export class SbpgiDocumentCreateUpdateBffController {
 
 #### 10.2 SQL จริงต่อ Endpoint
 
-**POST /api/v1/documents** — Create document API
+**POST /api/v1/sbpgi/document** — Create document API
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -727,7 +739,7 @@ VALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :status
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 ```
 
-**PUT /api/v1/documents/{docNo}** — Update document partial sections
+**PUT /api/v1/sbpgi/document/{docNo}** — Update document partial sections
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -804,8 +816,8 @@ DELETE FROM document_external_factors WHERE doc_no = :docNo AND id NOT IN (:keep
 | business rule | logic | docNo format YYYY/xxxxx |
 | business rule | logic | compensatePercent sum=100 |
 | business rule | logic | requestId trace does not replace business duplicate guard |
-| `POST /api/v1/documents` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `PUT /api/v1/documents/{docNo}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `POST /api/v1/sbpgi/document` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `PUT /api/v1/sbpgi/document/{docNo}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | `compensation_documents`, `workflow_transaction / workflow_approver (@srm/glb-workflow)`, `document_new_stores` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 

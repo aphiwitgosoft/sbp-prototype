@@ -45,7 +45,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch and Em
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/interfaces/tracking; GET /api/v1/interfaces/pending-ack; POST /api/v1/interfaces/sta/ack |
+| Input | GET /api/v1/sbpgi/interface/tracking; GET /api/v1/sbpgi/interface/pending-ack; POST /api/v1/sbpgi/interface/sta/ack |
 | Progress | Receive request; Validate schema; Check idempotency; Process records |
 | Output | (application log แบบ structured); interface_transactions |
 
@@ -53,9 +53,9 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch and Em
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| GET /api/v1/interfaces/tracking | ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา | Receive request | job run guard prevents duplicate running job |
-| GET /api/v1/interfaces/pending-ack | รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน | Validate schema | email preview renders variables |
-| POST /api/v1/interfaces/sta/ack | STA ACK callback ให้ Job 10 เป็น safety net | Check idempotency | failed records include detail |
+| GET /api/v1/sbpgi/interface/tracking | ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา | Receive request | job run guard prevents duplicate running job |
+| GET /api/v1/sbpgi/interface/pending-ack | รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน | Validate schema | email preview renders variables |
+| POST /api/v1/sbpgi/interface/sta/ack | STA ACK callback ให้ Job 10 เป็น safety net | Check idempotency | failed records include detail |
 
 ### 5.91 Backend Execution Sequence
 
@@ -78,7 +78,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch and Em
 
 ## 7. API Contract
 
-### GET /api/v1/interfaces/tracking
+### GET /api/v1/sbpgi/interface/tracking
 
 ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
 
@@ -153,7 +153,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch and Em
 | items[].returnCode | string \| null | No | UTF-8; use value domain described by endpoint purpose |
 | items[].ageHours | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/interfaces/pending-ack
+### GET /api/v1/sbpgi/interface/pending-ack
 
 รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
 
@@ -218,7 +218,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job Batch and Em
 | items[].ageHours | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].returnCode | string \| null | No | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/interfaces/sta/ack
+### POST /api/v1/sbpgi/interface/sta/ack
 
 STA ACK callback ให้ Job 10 เป็น safety net
 
@@ -299,27 +299,27 @@ import { JobBatchEmailSRMQueryDto, ReceiveAckStaBodyDto } from './dto/sbpgi-job-
 
 // LLDD BE - Job Batch and Email Integration
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sbpgi/interfaces')
+@Controller('sbpgi/sbpgi/interface')
 @UseGuards(HttpHeaderGuard)
 export class SbpgiJobBatchEmailSRMController {
   constructor(private readonly service: SbpgiJobBatchEmailSRMService) {}
 
-  // GET /api/v1/interfaces/tracking — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
-  @Get('tracking')
-  getInterfacesTracking(@Query() query: JobBatchEmailSRMQueryDto, @UserId() userId: string) {
+  // GET /api/v1/sbpgi/interface/tracking — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
+  @Get('interface/tracking')
+  getSbpgiInterfaceTracking(@Query() query: JobBatchEmailSRMQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getInterfacesTracking(query, userId);
+    return this.service.getSbpgiInterfaceTracking(query, userId);
   }
 
-  // GET /api/v1/interfaces/pending-ack — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
-  @Get('pending-ack')
-  getInterfacesPendingAck(@Query() query: JobBatchEmailSRMQueryDto, @UserId() userId: string) {
+  // GET /api/v1/sbpgi/interface/pending-ack — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
+  @Get('interface/pending-ack')
+  getSbpgiInterfacePendingAck(@Query() query: JobBatchEmailSRMQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getInterfacesPendingAck(query, userId);
+    return this.service.getSbpgiInterfacePendingAck(query, userId);
   }
 
-  // POST /api/v1/interfaces/sta/ack — STA ACK callback ให้ Job 10 เป็น safety net
-  @Post('sta/ack')
+  // POST /api/v1/sbpgi/interface/sta/ack — STA ACK callback ให้ Job 10 เป็น safety net
+  @Post('interface/sta/ack')
   receiveAckSta(@Body() body: ReceiveAckStaBodyDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.receiveAckSta(body, userId);
@@ -378,7 +378,7 @@ export class JobBatchEmailSRMQueryDto {
 ```
 
 ```ts
-// body ของ POST /api/v1/interfaces/sta/ack
+// body ของ POST /api/v1/sbpgi/interface/sta/ack
 export class ReceiveAckStaBodyDto {
   /** integration log key */
   @IsNotEmpty()
@@ -414,14 +414,14 @@ export class SbpgiJobBatchEmailSRMService {
     @Inject('DATA_SOURCE') private readonly dataSource: DataSource,
   ) {}
 
-  // GET /api/v1/interfaces/tracking — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
-  async getInterfacesTracking(query: JobBatchEmailSRMQueryDto, userId: string) {
+  // GET /api/v1/sbpgi/interface/tracking — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
+  async getSbpgiInterfaceTracking(query: JobBatchEmailSRMQueryDto, userId: string) {
     const page = Number(query.page ?? 1);
     const size = Math.min(Number(query.size ?? 20), 100);
-    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/interfaces/tracking')
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sbpgi/interface/tracking')
     // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
     //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
-    const rows = await this.dataSource.query(SBPGI_SQL.getInterfacesTracking, [
+    const rows = await this.dataSource.query(SBPGI_SQL.getSbpgiInterfaceTracking, [
       // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
       userId, (page - 1) * size, size,
     ]);
@@ -429,14 +429,14 @@ export class SbpgiJobBatchEmailSRMService {
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/interfaces/pending-ack — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
-  async getInterfacesPendingAck(query: JobBatchEmailSRMQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/interfaces/pending-ack
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/interfaces/pending-ack')
-    throw new NotImplementedException('getInterfacesPendingAck ยังไม่ implement');
+  // GET /api/v1/sbpgi/interface/pending-ack — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
+  async getSbpgiInterfacePendingAck(query: JobBatchEmailSRMQueryDto, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/interface/pending-ack
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/interface/pending-ack')
+    throw new NotImplementedException('getSbpgiInterfacePendingAck ยังไม่ implement');
   }
 
-  // POST /api/v1/interfaces/sta/ack — STA ACK callback ให้ Job 10 เป็น safety net
+  // POST /api/v1/sbpgi/interface/sta/ack — STA ACK callback ให้ Job 10 เป็น safety net
   // mutation ต้องอยู่ใน transaction เดียว (ไม่มี audit ของ master แล้ว · 2026-08-07)
   async receiveAckSta(body: ReceiveAckStaBodyDto, userId: string) {
     const runner = this.dataSource.createQueryRunner();
@@ -625,16 +625,16 @@ export class SbpgiJobBatchEmailSRMBffService {
     };
   }
 
-  getInterfacesTracking(params: any, user: any) {
-    return this.client.get('/api/v1/interfaces/tracking', { params, headers: this.userHeaders(user) });
+  getSbpgiInterfaceTracking(params: any, user: any) {
+    return this.client.get('/api/v1/sbpgi/interface/tracking', { params, headers: this.userHeaders(user) });
   }
 
-  getInterfacesPendingAck(params: any, user: any) {
-    return this.client.get('/api/v1/interfaces/pending-ack', { params, headers: this.userHeaders(user) });
+  getSbpgiInterfacePendingAck(params: any, user: any) {
+    return this.client.get('/api/v1/sbpgi/interface/pending-ack', { params, headers: this.userHeaders(user) });
   }
 
   receiveAckSta(body: any, user: any) {
-    return this.client.post('/api/v1/interfaces/sta/ack', body, { headers: this.userHeaders(user) });
+    return this.client.post('/api/v1/sbpgi/interface/sta/ack', body, { headers: this.userHeaders(user) });
   }
 }
 
@@ -648,16 +648,16 @@ import { AuthGuard } from '@nestjs/passport';
 export class SbpgiJobBatchEmailSRMBffController {
   constructor(private readonly service: SbpgiJobBatchEmailSRMBffService) {}
 
-  // proxy ของ GET /api/v1/interfaces/tracking
-  @Get('interfaces/tracking')
-  getInterfacesTracking(@Query() query: any, @Req() req: any) {
-    return this.service.getInterfacesTracking(query, req.user);
+  // proxy ของ GET /api/v1/sbpgi/interface/tracking
+  @Get('sbpgi/interface/tracking')
+  getSbpgiInterfaceTracking(@Query() query: any, @Req() req: any) {
+    return this.service.getSbpgiInterfaceTracking(query, req.user);
   }
 
-  // proxy ของ GET /api/v1/interfaces/pending-ack
-  @Get('interfaces/pending-ack')
-  getInterfacesPendingAck(@Query() query: any, @Req() req: any) {
-    return this.service.getInterfacesPendingAck(query, req.user);
+  // proxy ของ GET /api/v1/sbpgi/interface/pending-ack
+  @Get('sbpgi/interface/pending-ack')
+  getSbpgiInterfacePendingAck(@Query() query: any, @Req() req: any) {
+    return this.service.getSbpgiInterfacePendingAck(query, req.user);
   }
 }
 // TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
@@ -675,7 +675,7 @@ export class SbpgiJobBatchEmailSRMBffController {
 
 #### 10.2 SQL จริงต่อ Endpoint
 
-**GET /api/v1/interfaces/tracking** — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
+**GET /api/v1/sbpgi/interface/tracking** — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -688,7 +688,7 @@ ORDER BY sent_at DESC
 LIMIT :size OFFSET :offset;
 ```
 
-**GET /api/v1/interfaces/pending-ack** — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
+**GET /api/v1/sbpgi/interface/pending-ack** — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -706,7 +706,7 @@ WHERE direction = 'OUT'
 ORDER BY sent_at;
 ```
 
-**POST /api/v1/interfaces/sta/ack** — STA ACK callback ให้ Job 10 เป็น safety net
+**POST /api/v1/sbpgi/interface/sta/ack** — STA ACK callback ให้ Job 10 เป็น safety net
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
@@ -770,9 +770,9 @@ WHERE id = :trackingId;
 | business rule | logic | email preview renders variables |
 | business rule | logic | failed records include detail |
 | business rule | logic | ไม่มี inbound endpoint ของ SRM แล้ว (ตัด 2026-08-07) — เอกสารต้องไม่อ้างถึงอีก |
-| `GET /api/v1/interfaces/tracking` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/interfaces/pending-ack` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `POST /api/v1/interfaces/sta/ack` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/interface/tracking` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sbpgi/interface/pending-ack` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `POST /api/v1/sbpgi/interface/sta/ack` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | `(application log แบบ structured)`, `interface_transactions`, `email_sent (SBP)` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 

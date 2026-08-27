@@ -5,6 +5,7 @@
 
 เชื่อม 3 ชั้นเข้าด้วยกัน คลิกข้ามกันได้:
     งาน (37 หัวข้อจาก LLDD 40 ฉบับ)  ->  API ที่งานนั้นเรียก  ->  ตาราง DB ที่ API นั้นแตะ
+พร้อมตาราง "กำลังคนเทียบกรอบเวลา" ที่คำนวณจากกติกาเวลาเดียวกับ LLDD (HOURS_PER_DAY / เป้า 4 สัปดาห์)
 
 ข้อมูลทั้งหมด derive จากแหล่งเดียวกับเอกสารส่งมอบ จึงไม่มีทางหลุดจากกัน:
   * งาน/ชั่วโมง/owner/scope/flow/acceptance/unit test -> tools/build_lldd_documents.py
@@ -233,7 +234,34 @@ def build_model() -> dict:
             if api["id"] not in tables[n]["usedByApi"]:
                 tables[n]["usedByApi"].append(api["id"])
 
-    return {"tasks": tasks, "apis": apis, "tables": tables}
+    # กติกาเวลา + ภาระงานต่อคน — ดึงจาก build_lldd_documents ตัวเดียวกับที่ LLDD ใช้ ไม่ hardcode
+    weeks = 4
+    ceiling = weeks * B.HOURS_PER_WEEK
+    load: dict[str, int] = {}
+    for t in billable:
+        load[t.owner] = load.get(t.owner, 0) + B.total_hours(t)
+    owners = [
+        {
+            "name": o,
+            "short": o.split("<")[1].split(">")[0] if "<" in o else o,
+            "hours": h,
+            "days": round(h / B.HOURS_PER_DAY, 1),
+            "weeks": round(h / B.HOURS_PER_WEEK, 2),
+            "over": max(0, h - ceiling),
+        }
+        for o, h in sorted(load.items(), key=lambda x: -x[1])
+    ]
+    meta = {
+        "hoursPerDay": B.HOURS_PER_DAY,
+        "daysPerWeek": B.WORKDAYS_PER_WEEK,
+        "hoursPerWeek": B.HOURS_PER_WEEK,
+        "targetWeeks": weeks,
+        "ceiling": ceiling,
+        "teamCapacity": ceiling * len(owners),
+        "totalHours": sum(load.values()),
+        "owners": owners,
+    }
+    return {"tasks": tasks, "apis": apis, "tables": tables, "meta": meta}
 
 
 def unit_test_cases(topic) -> list[list[str]]:
@@ -375,10 +403,33 @@ const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 const md = s => esc(s)
   .replace(/`([^`]+)`/g,'<code>$1</code>')
   .replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
-const T = DATA.tasks, A = DATA.apis, D = DATA.tables;
+const T = DATA.tasks, A = DATA.apis, D = DATA.tables, M = DATA.meta;
 const apiId = k => A[k] ? A[k].id : null;
 const byId = (obj,id) => Object.values(obj).find(x=>x.id===id);
 
+/* ตารางกำลังคน — ตัวเลขทั้งหมดมาจาก DATA.meta ซึ่ง derive จาก build_lldd_documents (HOURS_PER_DAY ฯลฯ)
+   จึงเปลี่ยนตามกติกาเวลาใน LLDD โดยอัตโนมัติ ไม่ต้องแก้หน้านี้ */
+function capacityCard(){
+  const over=M.owners.filter(o=>o.over>0);
+  const rows=M.owners.map(o=>{
+    const pct=Math.min(100, Math.round(o.hours/M.ceiling*100)), bad=o.over>0;
+    return `<tr><td><b>${esc(o.short)}</b></td>`+
+      `<td style="text-align:right">${o.hours}</td><td style="text-align:right">${o.days}</td><td style="text-align:right">${o.weeks}</td>`+
+      `<td style="min-width:170px"><div style="background:var(--bd);border-radius:4px;height:9px;overflow:hidden">`+
+      `<div style="width:${bad?100:pct}%;height:100%;background:${bad?'#e03e3e':'#0f7b6c'}"></div></div></td>`+
+      `<td>${bad?`<b style="color:#e03e3e">เกิน ${o.over} ชม.</b>`:`เหลือ ${M.ceiling-o.hours} ชม.`}</td></tr>`;
+  }).join('');
+  const warn = over.length
+    ? `<div class="note" style="border-left:3px solid #e03e3e">⚠️ <b>แผนยังไม่ลงตัว</b> — `+
+      over.map(o=>`<b>${esc(o.short)}</b> ${o.hours} ชม. (${o.weeks} สัปดาห์) เกินเพดาน ${o.over} ชม.`).join(' · ')+
+      ` · ดูทางเลือกในข้อ 1.0 ของ <code>DECISIONS-รอตัดสินใจ.md</code></div>`
+    : `<div class="note" style="border-left:3px solid #0f7b6c">✅ ทุกคนอยู่ในกรอบ ${M.targetWeeks} สัปดาห์</div>`;
+  return `<h2>กำลังคนเทียบกรอบเวลา</h2>
+  <p class="sub">กติกาเวลาจาก LLDD: <b>${M.targetWeeks} สัปดาห์ × ${M.daysPerWeek} วัน × ${M.hoursPerDay} ชม./วัน = ${M.ceiling} ชม./คน</b> ·
+  ทีม ${M.owners.length} คน = ${M.teamCapacity} ชม. เทียบงาน ${M.totalHours} ชม. (${Math.round(M.totalHours/M.teamCapacity*100)}% utilization)</p>
+  ${warn}
+  <table><thead><tr><th>คน</th><th style="text-align:right">ชม.</th><th style="text-align:right">วัน</th><th style="text-align:right">สัปดาห์</th><th>ภาระเทียบเพดาน</th><th>สถานะ</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
 function table(head, rows){
   if(!rows.length) return '<p class="empty">— ไม่มีข้อมูลในหัวข้อนี้ —</p>';
   return '<table><thead><tr>'+head.map(h=>'<th>'+esc(h)+'</th>').join('')+
@@ -413,6 +464,7 @@ function renderHome(){
   <b>งาน ${ts.length}</b> = การ์ดงานตั้งต้น + <b>${Object.values(T).filter(t=>t.included).length}</b> role pack ที่รวมอยู่ใน FE-Document-Detail = <b>${Object.values(T).length} หัวข้อ</b> · บวกเอกสารอ้างอิง 3 ฉบับ (LLDD-API / LLDD-Database / LLDD-To-Be ที่ไม่คิดชั่วโมงแยก) = <b>LLDD 40 ฉบับ</b> ที่ส่งมอบ &nbsp;·&nbsp;
   <b>API ${Object.values(A).filter(a=>a.kind==='own').length}</b> = ครบ 29 เส้นตาม <code>api.md</code> พอดี (ที่เห็นเพิ่มคือ ${Object.values(A).filter(a=>a.kind==='external').length} เส้นของระบบเดิม และ ${Object.values(A).filter(a=>a.kind==='contract').length} รายการ pseudo <code>/*</code> จากเอกสารสัญญากลาง ซึ่งไม่นับเป็น endpoint) &nbsp;·&nbsp;
   <b>ตาราง ${Object.values(D).filter(t=>!t.existing).length}</b> = จำนวน <code>CREATE TABLE</code> ใน DDL — <code>database.md</code> นับเป็น <b>20 ตาราง</b> เพราะรวม <code>fcs_qssi_score</code> ที่ reuse ของระบบเดิมแบบอ่านอย่างเดียว (หน้านี้จัดอยู่ในกลุ่มตารางระบบเดิม)</div>
+  ${capacityCard()}
   <div class="note"><b>อ่านยังไง:</b> เริ่มที่กลุ่มงานทางซ้าย → เปิดงานที่รับผิดชอบ → ในหน้างานจะมี <b>ขั้นตอนการทำงาน</b>, <b>เกณฑ์ตรวจรับ</b> และ <b>ขอบเขต unit test</b> ครบ ·
   ส่วน <b>API ที่ต้องต่อ</b> และ <b>ตารางที่แตะ</b> กดเข้าไปดูรายละเอียดต่อได้ทันที</div>
   <p style="margin:16px 0"><a class="pill" href="#/board" style="padding:8px 16px;font-size:14px">🗂 เปิด Kanban Board</a>
@@ -657,7 +709,7 @@ function wireBoard(){
 }
 
 /* ---------- Work Plan: งานเป็นแถว · สัปดาห์เป็นคอลัมน์ ---------- */
-const DAYS_PER_WEEK=5;   // 1 สัปดาห์ = 5 วันทำการ × 8 ชม. = 40 ชม. (กรอบใหม่ 2026-08-25)
+const DAYS_PER_WEEK=M.daysPerWeek;   // กติกาเวลามาจาก LLDD (build_lldd_documents) ไม่ฝังตายตัวในหน้านี้
 const weekOf=d=>Math.floor(d/DAYS_PER_WEEK);
 
 function renderPlan(){
@@ -681,7 +733,11 @@ function renderPlan(){
     if(groupByOwner&&t.ownerShort!==lastOwner){
       lastOwner=t.ownerShort;
       const mine=ts.filter(x=>x.ownerShort===lastOwner);
-      body+=`<tr class="grp"><td colspan="${weeks.length+1}">👤 ${esc(lastOwner)} — ${mine.length} งาน · ${mine.reduce((a,b)=>a+b.total,0)} ชม.</td></tr>`;
+      {const cap=M.owners.find(o=>o.short===lastOwner||o.name===lastOwner);
+        const tag=cap? (cap.over>0
+          ? ` · <b style="color:#e03e3e">${cap.weeks} สัปดาห์ — เกินเพดาน ${M.ceiling} ชม. อยู่ ${cap.over} ชม.</b>`
+          : ` · <b style="color:#0f7b6c">${cap.weeks} สัปดาห์ — อยู่ในกรอบ ${M.targetWeeks} สัปดาห์</b>`) : '';
+        body+=`<tr class="grp"><td colspan="${weeks.length+1}">👤 ${esc(lastOwner)} — ${mine.length} งาน · ${mine.reduce((a,b)=>a+b.total,0)} ชม.${tag}</td></tr>`;}
     }
     body+=`<tr><td class="tname"><a href="#/task/${t.id}">${esc(t.title)}</a>
       <div class="sm"><span class="tag ${t.track}">${t.track}</span><span>👤 ${esc(t.ownerShort)}</span>
@@ -698,12 +754,12 @@ function renderPlan(){
   const load=weeks.map(()=>0);
   all.forEach(t=>{ const dur=t.endDay-t.startDay+1, per=t.total/dur;
     for(let d=t.startDay;d<=t.endDay;d++) load[weekOf(d)]+=per; });
-  const foot='<tr><td class="tname"><b>ภาระงานรวม/สัปดาห์</b><div class="sm">6 คน × 40 ชม. = 240 ชม./สัปดาห์ · เป้าหมาย 4 สัปดาห์</div></td>'+
+  const foot='<tr><td class="tname"><b>ภาระงานรวม/สัปดาห์</b><div class="sm">${M.owners.length} คน × ${M.hoursPerWeek} ชม. = ${M.owners.length*M.hoursPerWeek} ชม./สัปดาห์ · เป้าหมาย ${M.targetWeeks} สัปดาห์ (${M.ceiling} ชม./คน)</div></td>'+
     weeks.map(w=>`<td class="wk"><b style="color:${load[w]>180?'var(--del)':'var(--muted)'}">${Math.round(load[w])}h</b></td>`).join('')+'</tr>';
 
   return `<h1>แผนงานรายสัปดาห์ (Work Plan)</h1>
   <p class="sub">ลำดับงานคำนวณจาก <b>dependency จริง</b> + คิวของเจ้าของงาน (หนึ่งคนทำได้ทีละฉบับ) ·
-  ความยาวแท่งมาจาก <b>ชั่วโมงรวม impl + unit test</b> ที่ 8 ชม./วัน · ไม่ผูกกับปฏิทินจริง จึงนับเป็น W1, W2, …</p>
+  ความยาวแท่งมาจาก <b>ชั่วโมงรวม impl + unit test</b> ที่ ${M.hoursPerDay} ชม./วัน · ไม่ผูกกับปฏิทินจริง จึงนับเป็น W1, W2, …</p>
   <div class="bar">
     <select id="fTrack"><option value="">ทุกสาย</option>${['FE','BE','Job'].map(k=>`<option value="${k}"${f.track===k?' selected':''}>${k}</option>`).join('')}</select>
     <select id="fOwner"><option value="">ทุกคน</option>${owners.map(o=>`<option${f.owner===o?' selected':''}>${esc(o)}</option>`).join('')}</select>

@@ -1,0 +1,383 @@
+Planner · SBP Mall · 37 การ์ด
+ป้ายที่ใช้ทั้งหมด 16 ป้าย (Planner จำกัด 25): Step 1, BE, DATABASE, 31+ hrs., WORKFLOW, BFF, 16-30 hrs., Step 2, API, FE, Step 3, 8-15 hrs., JOBS, Step 4, Step 5, Step 6
+
+ 1. [BE] Database Structure and Deployment
+    ผู้รับผิดชอบ : Bank · 31 ชม.
+    Labels      : Step 1 | BE | DATABASE | 31+ hrs.
+    Checklist   :
+       - เขียน DDL / migration script
+       - ตรวจ constraint + index + FK
+       - rollback / rerun script
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-Database-Structure.pdf
+
+ 2. [BE] Integration with SBP Platform
+    ผู้รับผิดชอบ : Vava · 20 ชม.
+    Labels      : Step 1 | BE | WORKFLOW | BFF | 16-30 hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - trigger event: เรียก engine ตามหัวข้อ Workflow Trigger Event Contract + mock ใน unit test
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-Integration-SBP-Platform.pdf
+
+ 3. [BE] Workflow Engine Definition
+    ผู้รับผิดชอบ : Bank · 24 ชม.
+    Labels      : Step 1 | BE | WORKFLOW | 16-30 hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-Workflow-Engine-Definition.pdf
+
+ 4. [BE] API Common Contracts
+    ผู้รับผิดชอบ : But · 18 ชม.
+    Labels      : Step 2 | BE | API | WORKFLOW | 16-30 hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - trigger event: เรียก engine ตามหัวข้อ Workflow Trigger Event Contract + mock ใน unit test
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-API-Common-Contracts.pdf
+
+ 5. [BE] Data Migration and Cutover
+    ผู้รับผิดชอบ : Bank · 43 ชม.
+    Labels      : Step 2 | BE | DATABASE | WORKFLOW | 31+ hrs.
+    Checklist   :
+       - เขียน DDL / migration script
+       - ตรวจ constraint + index + FK
+       - rollback / rerun script
+       - trigger event: เรียก engine ตามหัวข้อ Workflow Trigger Event Contract + mock ใน unit test
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-Data-Migration-Cutover.pdf
+
+ 6. [BE] Job Batch and Email Integration
+    ผู้รับผิดชอบ : Pete · 19 ชม.
+    Labels      : Step 2 | BE | 16-30 hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-Job-Batch-Email-SRM.pdf
+
+ 7. [FE] Integration Contracts
+    ผู้รับผิดชอบ : lin · 16 ชม.
+    Labels      : Step 2 | FE | BFF | 16-30 hrs.
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Integration-Contracts.pdf
+
+ 8. [BE] API Attachment Sales and Timeline
+    ผู้รับผิดชอบ : Pete · 34 ชม.
+    Labels      : Step 3 | BE | API | WORKFLOW | 31+ hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - trigger event: เรียก engine ตามหัวข้อ Workflow Trigger Event Contract + mock ใน unit test
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-API-Attachment-Sales-Timeline.pdf
+
+ 9. [BE] API Document Create and Update
+    ผู้รับผิดชอบ : But · 32 ชม.
+    Labels      : Step 3 | BE | API | WORKFLOW | 31+ hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - trigger event: เรียก engine ตามหัวข้อ Workflow Trigger Event Contract + mock ใน unit test
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-API-Document-Create-Update.pdf
+
+10. [BE] API Document Detail Aggregate
+    ผู้รับผิดชอบ : But · 32 ชม.
+    Labels      : Step 3 | BE | API | WORKFLOW | 31+ hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - trigger event: เรียก engine ตามหัวข้อ Workflow Trigger Event Contract + mock ใน unit test
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-API-Document-Detail-Aggregate.pdf
+
+11. [BE] API Document List and Search
+    ผู้รับผิดชอบ : But · 26 ชม.
+    Labels      : Step 3 | BE | API | WORKFLOW | 16-30 hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - trigger event: เรียก engine ตามหัวข้อ Workflow Trigger Event Contract + mock ใน unit test
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-API-Document-List-Search.pdf
+
+12. [BE] API Document Workflow Actions
+    ผู้รับผิดชอบ : Vava · 37 ชม.
+    Labels      : Step 3 | BE | API | WORKFLOW | 31+ hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - trigger event: เรียก engine ตามหัวข้อ Workflow Trigger Event Contract + mock ใน unit test
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-API-Document-Workflow-Actions.pdf
+
+13. [BE] API Lookup
+    ผู้รับผิดชอบ : Vava · 13 ชม.
+    Labels      : Step 3 | BE | API | 8-15 hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-API-Lookup.pdf
+
+14. [BE] API Report and Master Data
+    ผู้รับผิดชอบ : Pete · 39 ชม.
+    Labels      : Step 3 | BE | API | 31+ hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-API-Report-and-Master-Data.pdf
+
+15. [BE] Workflow Engine and API Workflow Instances
+    ผู้รับผิดชอบ : Vava · 32 ชม.
+    Labels      : Step 3 | BE | API | WORKFLOW | 31+ hrs.
+    Checklist   :
+       - controller + DTO/validation
+       - service + SQL ตาม DB Mapping
+       - error/response envelope
+       - trigger event: เรียก engine ตามหัวข้อ Workflow Trigger Event Contract + mock ใน unit test
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-API-Workflow-Instances.pdf
+
+16. [FE] Application Foundation and Shared UI
+    ผู้รับผิดชอบ : lin · 35 ชม.
+    Labels      : Step 3 | FE | 31+ hrs.
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Foundation.pdf
+
+17. [Job] Job 2 ImportImpactStore
+    ผู้รับผิดชอบ : Bank · 19 ชม.
+    Labels      : Step 3 | JOBS | 16-30 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.pdf
+
+18. [FE] Create Document
+    ผู้รับผิดชอบ : New · 8 ชม.
+    Labels      : Step 4 | FE | 8-15 hrs.
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Create-Document.pdf
+
+19. [FE] Document Detail and Action
+    ผู้รับผิดชอบ : New · 75 ชม.
+    Labels      : Step 4 | FE | 31+ hrs.
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Detail.pdf
+
+20. [FE] Document Lists
+    ผู้รับผิดชอบ : lin · 35 ชม.
+    Labels      : Step 4 | FE | 31+ hrs.
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Lists.pdf
+
+21. [FE] Master Data
+    ผู้รับผิดชอบ : New · 20 ชม.
+    Labels      : Step 4 | FE | 16-30 hrs.
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Master-Data.pdf
+
+22. [FE] Status Summary Report
+    ผู้รับผิดชอบ : lin · 25 ชม.
+    Labels      : Step 4 | FE | 16-30 hrs.
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Report.pdf
+
+23. [Job] Job 3 ImportImpactCompetitor
+    ผู้รับผิดชอบ : Bank · 13 ชม.
+    Labels      : Step 4 | JOBS | 8-15 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.pdf
+
+24. [Job] Job 4 PrepareImpactStoreToIAS
+    ผู้รับผิดชอบ : Bank · 19 ชม.
+    Labels      : Step 4 | JOBS | 16-30 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS.pdf
+
+25. [Job] Job 6 ExportImpactStoreToFS
+    ผู้รับผิดชอบ : Bank · 34 ชม.
+    Labels      : Step 4 | JOBS | 31+ hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.pdf
+
+26. [FE] Document Detail Role 01 Business Promotion
+    ผู้รับผิดชอบ : New · รวมใน [FE] Document Detail and Action
+    Labels      : Step 5 | FE
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Detail-Role-01-Business-Promotion.pdf
+
+27. [FE] Document Detail Role 02 GM Business Promotion
+    ผู้รับผิดชอบ : New · รวมใน [FE] Document Detail and Action
+    Labels      : Step 5 | FE
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Detail-Role-02-GM-Business-Promotion.pdf
+
+28. [FE] Document Detail Role 03 AVP SBP
+    ผู้รับผิดชอบ : New · รวมใน [FE] Document Detail and Action
+    Labels      : Step 5 | FE
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Detail-Role-03-AVP-SBP.pdf
+
+29. [FE] Document Detail Role 06 SBP DSA
+    ผู้รับผิดชอบ : New · รวมใน [FE] Document Detail and Action
+    Labels      : Step 5 | FE
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Detail-Role-06-SBP-DSA.pdf
+
+30. [FE] Document Detail Role 08 SBP DSA Officer
+    ผู้รับผิดชอบ : New · รวมใน [FE] Document Detail and Action
+    Labels      : Step 5 | FE
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Detail-Role-08-SBP-DSA-Officer.pdf
+
+31. [Job] Job 10 NotifyNoReceiveData
+    ผู้รับผิดชอบ : Bank · 11 ชม.
+    Labels      : Step 5 | JOBS | 8-15 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.pdf
+
+32. [Job] Job 5 ImportImpactSaleFromIAS
+    ผู้รับผิดชอบ : Bank · 21 ชม.
+    Labels      : Step 5 | JOBS | 16-30 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.pdf
+
+33. [Job] Job 8 CreateCompensationDocument
+    ผู้รับผิดชอบ : Bank · 24 ชม.
+    Labels      : Step 5 | JOBS | 16-30 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-8-CreateCompensationDocument.pdf
+
+34. [FE] Testing and Delivery
+    ผู้รับผิดชอบ : lin · 12 ชม.
+    Labels      : Step 6 | FE | 8-15 hrs.
+    Checklist   :
+       - ทำ form/UI ตาม LLDD
+       - ต่อ API + state
+       - validate + error state
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Testing-Delivery.pdf
+
+35. [Job] Job 7 SyncCompetitorToDocument
+    ผู้รับผิดชอบ : Bank · 13 ชม.
+    Labels      : Step 6 | JOBS | 8-15 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument.pdf
+
+36. [Job] Job 8b StartInternalWorkflow
+    ผู้รับผิดชอบ : Bank · 29 ชม.
+    Labels      : Step 6 | JOBS | WORKFLOW | 16-30 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - trigger event: เรียก engine ตามหัวข้อ Workflow Trigger Event Contract + mock ใน unit test
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.pdf
+
+37. [Job] Job 9 SyncNewStoreToDocument
+    ผู้รับผิดชอบ : Bank · 15 ชม.
+    Labels      : Step 6 | JOBS | 8-15 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument.pdf
+

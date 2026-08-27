@@ -8,9 +8,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | **29 ชั่วโมง** = implementation 22 + unit test 7 (30%) |
-| Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | เปิด Workflow ภายใน: คัดรายการที่ผ่าน Gen Flow Gate แล้วเรียก Workflow Engine ภายในผ่าน POST /api/v1/workflows/instances แทน K2 REST StartInstance; เกณฑ์ W/Y/N เดิมยังคงใช้สำหรับ reconcile |
+| Objective | เปิด Workflow ภายใน: คัดรายการที่ผ่าน Gen Flow Gate แล้วเรียก Workflow Engine ภายในผ่าน POST /api/v1/sbpgi/workflow/instances แทน K2 REST StartInstance; เกณฑ์ W/Y/N เดิมยังคงใช้สำหรับ reconcile |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -39,7 +39,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - Job 8b StartInte
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | Scheduler | หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ตาม period | แก้ไขได้ | แยกเพื่อ rerun ได้อิสระ; Operations ตรวจ deployment schedule/queue เท่านั้น |
-| Workflow API | POST /api/v1/workflows/instances | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | internal service token; ไม่ใช่ K2 REST |
+| Workflow API | POST /api/v1/sbpgi/workflow/instances | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | internal service token; ไม่ใช่ K2 REST |
 | เกณฑ์ Growth Rate | growth_rate_diff <= -10 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | คง business rule เดิม |
 | Branch Type ผ่าน Gate | FAM, FB1, FC1, FB2, FVB, FVC | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | นอกเซ็ตหรือระยะทางเกินเกณฑ์ให้ตั้ง N |
 | เงื่อนไข Gate อื่น | workflow_generation_status=W · DV ไม่ว่าง · juristic ต่างกัน · sales_status in {Y,N} | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | DV หาย, นิติบุคคลเดียวกัน หรือ growth ไม่ถึงเกณฑ์เป็น N; distance/juristic/growth/sales status ที่ยังไม่มีค่าเท่านั้นจึงคง W |
@@ -248,6 +248,21 @@ export async function runLlddBeJob8BStartinternalworkflow(ctx, services) {
 }
 ```
 
+### 5.95 Workflow Trigger Event Contract
+
+งานชิ้นนี้ **ต้องเรียก workflow engine** ตามตารางด้านล่าง · ชื่อ function ยึด API 8 ตัวของ `@srm/glb-workflow` ตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD-SBP-workflow-1.2.md` — รายละเอียด signature และตารางที่ engine เขียน ดู **LLDD-BE-Workflow-Engine-Definition** หัวข้อ 5.3
+
+| จุดที่เรียก (call site) | Engine function | พารามิเตอร์หลัก | กติกา / transaction boundary |
+| --- | --- | --- | --- |
+| หลังผ่าน gate (เฉพาะเคส Y) | `initializeWorkflow` | versionId, userId = `JOB-8B`, referenceId = `compensation_documents.id` | 🔴 หัวใจของ job นี้ · เรียกใน transaction เดียวกับ update `fgi_impact_processes.workflow_generation_status = 'Y'` |
+| เลือก state เริ่มต้นตามประเภทเคส | `addPreApprover` | stateId = `06` (เปิดเรื่องใหม่) / `08` (ชดเชยต่อเนื่อง) / `01` (ยอด 0 เดือน 1-3), approver, seq = 1 | เคสชดเชยต่อเนื่องต้องผูก **เจ้าหน้าที่ SBP DSA คนเดิม** — ดู 5.2 ของเอกสารนี้ |
+| ดันเอกสารไปยัง state เริ่มต้นที่ไม่ใช่ state แรก | `eventWorkflow` | versionId, referenceId, event ตามผัง To-Be 12/02/2026 | เคส 08 / 01 ต้องเดิน event จาก state แรกจริง ๆ ห้าม INSERT `workflow_transaction` ให้เริ่มที่ state กลาง |
+| rerun / กันเปิดซ้ำ | `initializeWorkflow` (idempotent) | referenceId เดิม | referenceId เดิมต้องไม่เกิด workflow_transaction ที่สอง · เคส N persist ถาวร เคส W คงเดิมเพื่อ rerun |
+
+- 🔴 กติกาเหล็ก: ตาราง `sps_store.workflow_*` (13 ตาราง) เป็นของ lib — SBPGI **R เท่านั้น** ห้าม INSERT/UPDATE/DELETE ตรงในทุกกรณี
+- ทุกการเรียก engine ต้องผ่านตัวห่อกลาง `WorkflowGateway` ที่นิยามใน **LLDD-BE-API-Common-Contracts** (timeout · retry · map error เข้า envelope) ห้าม import lib ตรงจาก service
+- unit test ต้อง mock engine และครอบอย่างน้อย: เรียกสำเร็จ · engine โยน error แล้ว rollback ฝั่ง SBPGI ครบ · เรียกซ้ำด้วย referenceId เดิมไม่เกิดผลซ้ำ
+
 ## 6. Button / User Action Mapping
 
 | Action | Trigger | API / Service | Expected Result |
@@ -258,6 +273,8 @@ export async function runLlddBeJob8BStartinternalworkflow(ctx, services) {
 | ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ interface_transactions |
 
 ## 7. API Contract
+
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
@@ -331,7 +348,7 @@ export class SbpgiJob8BConfig implements Job8BConfig {
   enabled = (process.env.SBPGI_JOB8B_ENABLED ?? 'true') === 'true';
   cron = process.env.SBPGI_JOB8B_CRON ?? 'after-job-8';
   scheduler = process.env.SBPGI_JOB8B_SCHEDULER ?? 'หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ตาม period'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  workflowApi = process.env.SBPGI_JOB8B_WORKFLOW_API ?? 'POST /api/v1/workflows/instances'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  workflowApi = process.env.SBPGI_JOB8B_WORKFLOW_API ?? 'POST /api/v1/sbpgi/workflow/instances'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   growthRate = process.env.SBPGI_JOB8B_GROWTH_RATE ?? 'growth_rate_diff <= -10'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   branchTypeGate = process.env.SBPGI_JOB8B_BRANCH_TYPE_GATE ?? 'FAM, FB1, FC1, FB2, FVB, FVC'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   gate = process.env.SBPGI_JOB8B_GATE ?? 'workflow_generation_status=W · DV ไม่ว่าง · juristic ต่างกัน · sales_status in {Y,N}'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
@@ -420,7 +437,7 @@ export class StartInternalWorkflowService {
     // TODO: implement
   }
 
-  // POST /api/v1/workflows/instances
+  // POST /api/v1/sbpgi/workflow/instances
   async step06Workflow(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -454,7 +471,7 @@ export class StartInternalWorkflowService {
 | 3 | decision | พบเงื่อนไขไม่ผ่านถาวร? | check03Condition() | [branch] ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ |
 | 4 | decision | ข้อมูล Gate พร้อมครบ? | check04Condition() | [branch] distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W |
 | 5 | process | ตัดสินจุดเข้า flow จากประเภทเคส | step05Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 6 | io | POST /api/v1/workflows/instances | step06Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 6 | io | POST /api/v1/sbpgi/workflow/instances | step06Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 7 | process | เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state ตามประเภทเคส) | step07Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 8 | process | workflow_generation_status = Y | step08Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 9 | io | ส่งอีเมลสรุปราย DV ผ่าน email-lib กลาง (sendEmail) | step09Notify() | throw JobFailedError เมื่อทำไม่สำเร็จ |
@@ -506,7 +523,7 @@ export class StartInternalWorkflowJob {
       await this.service.step05Read(state);
       // === transaction boundary === TODO: DB transaction ครอบ create instance/task + update W/Y/N
       await this.dataSource.transaction(async (manager: EntityManager) => {
-        // ขั้นที่ 6: POST /api/v1/workflows/instances · TODO: service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST
+        // ขั้นที่ 6: POST /api/v1/sbpgi/workflow/instances · TODO: service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST
         await this.service.step06Workflow(state, manager);
         // ขั้นที่ 7: เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state ตามประเภทเคส) · TODO: engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3
         await this.service.step07Insert(state, manager);
@@ -712,7 +729,7 @@ export class JobFailureNotifier {
 | 3 | พบเงื่อนไขไม่ผ่านถาวร? \| No: ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ (branch type, distance, missing DV, same juristic หรือ growth > -10 -> N) |
 | 4 | ข้อมูล Gate พร้อมครบ? \| No: distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W (คง W เฉพาะข้อมูลต้นทางที่ยังรอเติมเพื่อให้ rerun ได้) |
 | 5 | ตัดสินจุดเข้า flow จากประเภทเคส (อ่าน fgi_impact_processes.last_compensate_seq_no + flag_action และจำนวนงวดที่ COALESCE(adjust_amount, forecast_amount) = 0 จาก fgi_impact_compensations → เปิดที่ state 06 (เปิดเรื่องใหม่) · 08 (ชดเชยต่อเนื่อง) · 01 (ยอด 0 ไม่เกิน 3 เดือน) หรือปิดเอกสารเป็นหยุดชดเชย (ยอด 0 เดือนที่ 4) — ดู LLDD Job 8b ข้อ 4a) |
-| 6 | POST /api/v1/workflows/instances (service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST) |
+| 6 | POST /api/v1/sbpgi/workflow/instances (service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST) |
 | 7 | เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state ตามประเภทเคส) (engine เขียน workflow_transaction/workflow_approver เอง — SBPGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3) |
 | 8 | workflow_generation_status = Y (เปิด workflow สำเร็จ) |
 | 9 | ส่งอีเมลสรุปราย DV ผ่าน email-lib กลาง (sendEmail) |

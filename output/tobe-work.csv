@@ -1,0 +1,34 @@
+﻿SDD สไลด์,ข้อ,ทำอะไร,ใครทำ / กี่ชั่วโมง,รวม (ชม.),เอกสาร LLDD
+สไลด์ 43 · 46-51,TB-1.1,Step 1.0 — เพิ่มหน้าจองานค้าง แสดงร้านที่เข้าเงื่อนไขการเปิดกระทบ · เลือกงานของตนเอง · filter · checkbox เลือกหลายเอกสาร · popup ยืนยัน,BE(But) 9 ชม.  FE(lin) 12 ชม.,21,LLDD-BE-API-Document-List-Search · LLDD-FE-Document-Lists
+สไลด์ 43 · 46-51,TB-1.2,Step 1.0 — เจ้าหน้าที่ SBP DSA คีย์ข้อมูลร้านเปิดกระทบเอง เพื่อให้ระบบคำนวณและ Adjust ยอดชดเชย,BE(Pete) 17 ชม.  BE(But) 11 ชม.  FE(New) 11 ชม.,39,LLDD-BE-API-Attachment-Sales-Timeline · LLDD-BE-API-Document-Create-Update · LLDD-FE-Document-Detail
+สไลด์ 43 · 46-51,TB-1.3,Step 1.1 — ฝ่าย SBP DSA ตรวจสอบตัวเลข + ปุ่มพิจารณา 4 ปุ่ม (เห็นควรไม่ชดเชย · หยุดชดเชย · หน่วยงานส่งเสริมฯ SBP · เจ้าหน้าที่ SBP DSA),BE(Vava) 8 ชม.  FE(New) 11 ชม.,19,LLDD-BE-API-Document-Workflow-Actions · LLDD-FE-Document-Detail
+สไลด์ 43 · 46-51,TB-1.4,เปิดเรื่องซ้ำได้เองโดยไม่ต้องเปิด SR — สาขาที่เคยถูกปฏิเสธ/หยุดชดเชย เปิดใหม่ได้ในเดือนเดียวกันหรือเดือนถัดไป,BE(But) 11 ชม.  BE(Vava) 8 ชม.  FE(lin) 12 ชม.,31,LLDD-BE-API-Document-Create-Update · LLDD-BE-API-Workflow-Instances · LLDD-FE-Document-Lists
+สไลด์ 43 · 46-51,TB-1.5,auto-assign เจ้าของงานคนเดิม (สไลด์ 48) — (ก) เคสต่อเนื่อง ระบบส่งงานให้เจ้าหน้าที่ SBP DSA คนเดิม อัตโนมัติ · (ข) ฝ่าย SBP DSA คลิก เห็นควรไม่ชดเชย เอกสารจบและไม่แสดงในหน้ารอดำเนินการของ 06 ในเดือนนั้น แล้วเดือนถัดไประบบดึงเข้ามาใหม่พร้อมเจ้าของงานคนเดิม,BE(But) 9 ชม.  BE(Vava) 8 ชม.,17,LLDD-BE-API-Document-List-Search · LLDD-BE-API-Workflow-Instances
+สไลด์ 43 · 46-51,TB-1.6,หยุดชดเชยประกันรายได้ (สไลด์ 46 ข้อ 1.9) — เอกสารกลับมาแสดงในหน้ารอดำเนินการของ ฝ่าย SBP DSA (06) ทันทีในเดือนนั้น ให้พิจารณาคำขอชดเชยอีกครั้งได้เอง · เปิดเอกสารแล้วเห็นข้อมูลเดิมครบ + แผงพิจารณาชุดเดียวกับสถานะ รอฝ่าย SBP DSA ดำเนินการ · บทบาทอื่นไม่เห็น,BE(But) 8 ชม.  FE(lin) 11 ชม.  FE(New) 11 ชม.,30,LLDD-BE-API-Document-List-Search · LLDD-FE-Document-Detail · LLDD-FE-Document-Lists
+สไลด์ 43 · 46-51,TB-1.7,หลังพัฒนาไม่ต้องเปิด SR เพื่อลบข้อมูล (สไลด์ 46 · Note) — กระบวนการลบ/แก้ข้อมูลเอกสารที่เดิมต้องเปิด SR (มี log ที่ TransectionDeleteStore พร้อม SRNumber) ต้องทำได้ในระบบ · ยังไม่ระบุขอบเขต ต้องเคาะว่าอนุญาตให้ลบอะไรได้บ้างและใครลบได้,BE(But) 10 ชม.,10,LLDD-BE-API-Document-Create-Update
+สไลด์ 43 · 46-51,TB-1.8,แก้ไขครอบคลุมเอกสารทุก Type (สไลด์ 46 · Note) — การเปลี่ยนแปลงข้อ TB-1 มีผลกับเอกสารทุกประเภทร้าน ไม่จำกัดเฉพาะ Type ใด Type หนึ่ง,BE(But) 16 ชม.  FE(New) 12 ชม.,28,LLDD-BE-API-Document-Detail-Aggregate · LLDD-FE-Document-Detail
+สไลด์ 43 · 46-51,TB-1.9,ยอดชดเชย 0: เดือน 1-3 คลิก หน่วยงานส่งเสริมธุรกิจ SBP · เดือน 4 คลิก หยุดชดเชยรายได้,BE(Vava) 7 ชม.  FE(New) 8 ชม.,15,LLDD-BE-API-Document-Workflow-Actions · LLDD-FE-Create-Document
+สไลด์ 43 · 46-51,TB-1.10,สิทธิ์การมองเห็น — เจ้าหน้าที่/ฝ่าย SBP DSA ดูรายละเอียดได้ทุกสาขา ไม่จำกัดเฉพาะงานที่รับผิดชอบ,BE(Pete) 17 ชม.  BE(But) 16 ชม.,33,LLDD-BE-API-Attachment-Sales-Timeline · LLDD-BE-API-Document-Detail-Aggregate
+สไลด์ 43 · 46-51,TB-1 รวม,แก้ไขระบบการสร้างเอกสารชดเชยรายได้,FE 88 ชม.  BE 155 ชม.,243,
+สไลด์ 52-58,TB-2.1,"Step 2.1 — ลำดับตรวจสอบใหม่: หน่วยงานส่งเสริม (ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ, เจ้าหน้าที่อาวุโส) → GM ส่งเสริม",BE(Bank) 12 ชม.  BE(Vava) 8 ชม.,20,LLDD-BE-API-Workflow-Instances · LLDD-BE-Workflow-Engine-Definition
+สไลด์ 52-58,TB-2.2,เปลี่ยนชื่อปุ่ม ฝ่ายส่งเสริมธุรกิจ SBP → หน่วยงานส่งเสริมธุรกิจ SBP (มีผลถึงชื่อสถานะเอกสารด้วย),BE(Vava) 6 ชม.  FE(New) 15 ชม.,21,LLDD-BE-API-Lookup · LLDD-FE-Document-Detail
+สไลด์ 52-58,TB-2.3,เพิ่มสิทธิ์ เจ้าหน้าที่อาวุโส ให้ส่งต่อ Flow ให้ GM ส่งเสริมได้ (ระดับตำแหน่งอ้างจาก HR Connect),BE(Bank) 12 ชม.  BE(Vava) 10 ชม.,22,LLDD-BE-Integration-SBP-Platform · LLDD-BE-Workflow-Engine-Definition
+สไลด์ 52-58,TB-2.4,"map ตำแหน่ง HR → กล่องอนุมัติ: AVP = ผู้ช่วยกรรมการผู้จัดการ · GM = ผู้จัดการทั่วไป/รอง/ผู้ช่วย · หน่วยงานส่งเสริม = ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ, เจ้าหน้าที่อาวุโส",BE(Vava) 17 ชม.,17,LLDD-BE-API-Lookup · LLDD-BE-Integration-SBP-Platform
+สไลด์ 52-58,TB-2.5,"วงเงินอนุมัติ เกณฑ์เดียว 100,000 ต่อรายการ — < 100,000 จบที่ GM · ≥ 100,000 ผ่าน GM แล้ว AVP อนุมัติ",BE(Vava) 19 ชม.,19,LLDD-BE-API-Document-Workflow-Actions · LLDD-BE-API-Workflow-Instances
+สไลด์ 52-58,TB-2.6,เห็นควรไม่ชดเชยจบทันที ทั้งระดับหน่วยงานส่งเสริมและ GM (เลิกตีกลับให้ SBP DSA รับทราบก่อน),BE(Vava) 11 ชม.  FE(New) 15 ชม.,26,LLDD-BE-API-Document-Workflow-Actions · LLDD-FE-Document-Detail
+สไลด์ 52-58,TB-2 รวม,ปรับสิทธิ์การตรวจสอบยอดชดเชยรายได้และกระบวนการทำงานของทีมส่งเสริม,FE 30 ชม.  BE 95 ชม.,125,
+สไลด์ 59-62,TB-3.1,ยกเลิกขั้นบัญชี Approve ยอดชดเชยรายได้ออกจาก workflow,BE(Pete) 7 ชม.,7,LLDD-BE-API-Report-and-Master-Data
+สไลด์ 59-62,TB-3.2,Step 3 — สร้าง เมนูใหม่ใน SBP Mall: รายงานตรวจสอบประกันรายได้ ให้ทีมบัญชีดึงข้อมูลไปใช้ต่อเอง,BE(Pete) 7 ชม.  FE(lin) 8 ชม.,15,LLDD-BE-API-Report-and-Master-Data · LLDD-FE-Report
+สไลด์ 59-62,TB-3.3,ตัวกรอง 7 ตัว — สถานะ (บังคับ) · รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ · Period Statement (ค.ศ.) · ประเภทร้าน (checkbox) · ภาค (checkbox เพิ่มอัตโนมัติเมื่อมีภาคใหม่) · ผลการพิจารณา (radio),BE(Pete) 7 ชม.  FE(lin) 8 ชม.,15,LLDD-BE-API-Report-and-Master-Data · LLDD-FE-Report
+สไลด์ 59-62,TB-3.4,ปุ่ม ค้นหาข้อมูล · Export Excel · เคลียร์ค่าเริ่มต้น · Preview Report · Export CSV to Batch,BE(Pete) 6 ชม.  FE(lin) 9 ชม.,15,LLDD-BE-API-Report-and-Master-Data · LLDD-FE-Report
+สไลด์ 59-62,TB-3 รวม,ยกเลิก Process บัญชี SBP ในการ Approve ค่าใช้จ่าย + เมนูรายงานใน SBP Mall,FE 25 ชม.  BE 27 ชม.,52,
+,รวมทั้งหมด,งานที่ To-Be เพิ่ม (เฉพาะ FE + BE),FE 143 ชม.  BE 277 ชม.,420,
+,,,,,
+ตารางที่ 2,รวมแล้วใครทำ,ภาระงาน To-Be ต่อคน (เฉพาะงานที่ To-Be เพิ่ม · FE + BE),,,
+,Vava,สาย BE,BE(Vava) 102 ชม.,102,LLDD-BE-API-Document-Workflow-Actions · LLDD-BE-API-Lookup · LLDD-BE-API-Workflow-Instances · LLDD-BE-Integration-SBP-Platform
+,But,สาย BE,BE(But) 90 ชม.,90,LLDD-BE-API-Document-Create-Update · LLDD-BE-API-Document-Detail-Aggregate · LLDD-BE-API-Document-List-Search
+,New,สาย FE,FE(New) 83 ชม.,83,LLDD-FE-Create-Document · LLDD-FE-Document-Detail
+,Pete,สาย BE,BE(Pete) 61 ชม.,61,LLDD-BE-API-Attachment-Sales-Timeline · LLDD-BE-API-Report-and-Master-Data
+,lin,สาย FE,FE(lin) 60 ชม.,60,LLDD-FE-Document-Lists · LLDD-FE-Report
+,Bank,สาย BE,BE(Bank) 24 ชม.,24,LLDD-BE-Workflow-Engine-Definition
+,รวม,ทุกคนรวมกัน,FE 143 ชม.  BE 277 ชม.,420,
