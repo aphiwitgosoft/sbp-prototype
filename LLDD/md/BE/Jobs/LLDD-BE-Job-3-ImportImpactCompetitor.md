@@ -10,15 +10,28 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **13 ชั่วโมง** = implementation 10 + unit test 3 (30%) |
 | Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | นำเข้าร้านคู่แข่งจาก ALLMAP: นำข้อมูลร้านคู่แข่งรายงวดจากวิว COMPETITOR_IMPACT_VIEW **ของ ALLMAP (SQL Server GSMALLMAP — ระบบภายนอก คงกลไกเดิม)** เข้า fgi_impact_competitors ทีละ 10,000 แถว กันซ้ำระดับงวด (ถ้างวดมีข้อมูลแล้วจะข้ามทั้งงวด ไม่มี upsert) |
+| Objective | นำเข้าร้านคู่แข่งจาก ALLMAP: นำข้อมูลร้านคู่แข่งรายงวดจากวิว COMPETITOR_IMPACT_VIEW **ของ ALLMAP (SQL Server GSMALLMAP — ระบบภายนอก คงกลไกเดิม)** เข้า sgi_fgi_impact_competitors ทีละ 10,000 แถว กันซ้ำระดับงวด (ถ้างวดมีข้อมูลแล้วจะข้ามทั้งงวด ไม่มี upsert) |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
+
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| โครงสร้างข้อมูล | **LLDD-BE-Database-Structure** | DDL ของตารางที่หัวข้อ Reference DB Mapping อ้างถึง |
+| แพลตฟอร์มระบบเดิม | **LLDD-BE-Integration-SBP-Platform** | header จาก BFF (`x-api-key` / `x-user-*`) · การ reuse ตารางและ service ของระบบ SBP เดิม |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-API-Common-Contracts** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Database-Structure** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Job-2-ImportImpactStore** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
 
 ## 2. Screen / Functional Scope
 
 - Main class/script: th.co.gosoft.fgi.main.ImportImpactCompetitor / /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh
 - Phase: A
-- Output: fgi_impact_competitors
+- Output: sgi_fgi_impact_competitors
 - Estimate: 10 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
@@ -27,18 +40,28 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 1: Implementation flow reference: LLDD BE - Job 3 ImportImpactCompetitor](../../../assets/flows/BE-Job-3-ImportImpactCompetitor.png)
 
 _รูปที่ 1: Implementation flow reference: LLDD BE - Job 3 ImportImpactCompetitor_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 2: Sequence diagram: LLDD BE - Job 3 ImportImpactCompetitor](../../../assets/flows/BE-Job-3-ImportImpactCompetitor-sequence.png)
+
+_รูปที่ 2: Sequence diagram: LLDD BE - Job 3 ImportImpactCompetitor_
 
 ## 5. Field, Format, and Validation
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | กำหนดการรัน (Cron) | 0 07 7 * * | แก้ไขได้ | ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh; Operations ตรวจ deployment path และ owner permission ก่อนขึ้น production |
-| Argument (งวด) | 2569\|06 | แก้ไขได้ | รูปแบบ YYYY\|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ขัดกับกติกา ค.ศ. ทั้งระบบ ต้องยืนยันกับเจ้าของ ALLMAP |
+| Argument (งวด) | 2569\|06 | แก้ไขได้ | รูปแบบ YYYY\|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง |
 | Chunk Size | 10000 | แก้ไขได้ | จำนวนแถวต่อรอบ insert |
 | Source View | COMPETITOR_IMPACT_VIEW | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | SELECT DISTINCT / map คอลัมน์ NAMT -> NAME_TH, BRANCHT -> BRANCH_TH |
 
@@ -76,7 +99,7 @@ validate period, skip when period already exists, query competitor view, insert 
 | Legacy file | Line range | Responsibility to carry forward |
 | --- | --- | --- |
 | fcsJar/src/th/co/gosoft/fgi/main/ImportImpactCompetitor.java | 16-48 | Legacy main entrypoint and notification wrapper. |
-| fcsJar/src/th/co/gosoft/fgi/controller/ImportController.java | 483-598 | Validate params, skip duplicates, query source, chunk insert competitors. |
+| fcsJar/src/th/co/gosoft/fgi/controller/ImportController.java | 483-598 | Validate params, skip duplicates, query source, chunk insert sgi_competitors. |
 | fcsJar/src/th/co/gosoft/fgi/dao/jdbc/ImportJdbc.java | 200-241 | Count existing period, query COMPETITOR_IMPACT_VIEW, insert FGI_IMPACT_COMPETITOR. |
 
 Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft/java/SBP/fcsJar. Use these ranges to preserve business behavior while implementing the target Node job.
@@ -101,7 +124,7 @@ WHERE period_key = :period_key;
 #### Write / upsert query
 
 ```sql
-INSERT INTO fgi_impact_competitors
+INSERT INTO sgi_fgi_impact_competitors
     (impact_process_id, competitor_code, name_th, branch_th, opened_date, closed_date, period_key, updated_at)
 VALUES (:impact_process_id, :competitor_code, :name_th, :branch_th, :opened_date, :closed_date, :period_key, CURRENT_TIMESTAMP)
 ON CONFLICT (impact_process_id, competitor_code, period_key)
@@ -148,11 +171,11 @@ export async function runLlddBeJob3Importimpactcompetitor(ctx, services) {
 | รันตามตารางเวลา | CRON | scheduler → runner (job 3) | อ่าน cron/พารามิเตอร์จาก backend config |
 | รันนอกรอบ (manual/rerun) | CLI | CLI/ops runbook → runner (job 3) | guard ไม่ให้รันซ้อนด้วย distributed lock |
 | แก้พารามิเตอร์/เปิด-ปิด job | CONFIG | แก้ backend config แล้ว deploy | ไม่มี endpoint และไม่มีหน้าจอควบคุม — หน้า Flow Batch Job เป็น reference อย่างเดียว (2026-08-06) |
-| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ interface_transactions |
+| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ sgi_interface_transactions |
 
 ## 7. API Contract
 
-**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
@@ -160,32 +183,32 @@ export async function runLlddBeJob3Importimpactcompetitor(ctx, services) {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| fgi_impact_competitors | W | insert รายงวด (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP · ช่องทางต้นทาง ALM เก็บที่ fgi_impact_processes.datasource |
+| sgi_fgi_impact_competitors | W | insert รายงวด (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP · ช่องทางต้นทาง ALM เก็บที่ sgi_fgi_impact_processes.datasource |
 
 ## 9. Skeleton Code (Batch Job 3)
 
 #### 9.1 ผังไฟล์ที่ต้องสร้าง (Job 3)
 
-โครงไฟล์ของ Job 3 (th.co.gosoft.fgi.main.ImportImpactCompetitor เดิม) วางใต้ `src/batch/sbpgi/` ของ store-backend โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`
+โครงไฟล์ของ Job 3 (th.co.gosoft.fgi.main.ImportImpactCompetitor เดิม) วางใต้ `src/batch/sgi/` ของ store-backend โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`
 
 **หมายเหตุสำคัญ — `src/batch/*` ทั้งชุดเป็นของใหม่ที่ยังไม่มีใน store-backend**: ปัจจุบัน repo ไม่มีโฟลเดอร์ `src/batch` เลย และแม้จะติดตั้ง `@nestjs/schedule` ไว้แล้วก็ยัง**ไม่มี `@Cron`/`@Interval` แม้แต่จุดเดียว** ดังนั้น `runner.ts` / `scheduler.ts` / `cli.js` / `job-failure.notifier.ts` คือ **งานตั้งต้นของ Phase แรก** ที่ต้องสร้างเองทั้งหมด พร้อม register `ScheduleModule.forRoot()` ใน `app.module.ts` — ไม่ใช่ของเดิมที่ reuse ได้
 
 | Path | หน้าที่ |
 | --- | --- |
-| src/batch/sbpgi/job-3-import-impact-competitor/job-3-import-impact-competitor.job.ts | คลาส `ImportImpactCompetitorJob` — `run(ctx)` เรียงตาม flow ของ Job 3 ทีละขั้น, ครอบ transaction, จบด้วย structured log |
-| src/batch/sbpgi/job-3-import-impact-competitor/job-3-import-impact-competitor.service.ts | คลาส `ImportImpactCompetitorService` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE` |
-| src/batch/sbpgi/job-3-import-impact-competitor/job-3-import-impact-competitor.config.ts | คลาส `SbpgiJob3Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 4 ตัวของ Job 3 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
-| src/batch/sbpgi/job-3-import-impact-competitor/job-3-import-impact-competitor.module.ts | NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule` |
+| src/batch/sgi/job-3-import-impact-competitor/job-3-import-impact-competitor.job.ts | คลาส `ImportImpactCompetitorJob` — `run(ctx)` เรียงตาม flow ของ Job 3 ทีละขั้น, ครอบ transaction, จบด้วย structured log |
+| src/batch/sgi/job-3-import-impact-competitor/job-3-import-impact-competitor.service.ts | คลาส `ImportImpactCompetitorService` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE` |
+| src/batch/sgi/job-3-import-impact-competitor/job-3-import-impact-competitor.config.ts | คลาส `SgiJob3Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 4 ตัวของ Job 3 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
+| src/batch/sgi/job-3-import-impact-competitor/job-3-import-impact-competitor.module.ts | NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule` |
 | src/batch/runner.ts | ตัวรันกลาง: resolve job ตาม jobNo, กันรันซ้อนด้วย advisory lock, จับ error → แจ้งเตือน, เขียน structured log สรุป (ใช้ร่วมทั้ง 11 job) |
-| src/batch/scheduler.ts | ลงทะเบียน cron จาก config (`SBPGI_JOB3_CRON` = `0 07 7 * *`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook |
+| src/batch/scheduler.ts | ลงทะเบียน cron จาก config (`SGI_JOB3_CRON` = `0 07 7 * *`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook |
 | src/batch/job-failure.notifier.ts | ส่งอีเมลแจ้งผู้ดูแลเมื่อ job ล้มเหลว ผ่าน `EmailLibService` ของ `@gosoft-sbp/email-lib` (log ลง `email_sent` ให้อัตโนมัติ) |
 
 #### 9.2 Config Schema ของ Job 3 (backend config / env)
 
-cron ปัจจุบันของ Job 3 คือ `0 07 7 * *` (ทุกวันที่ 7 เวลา 07:00) — ประกาศเป็น `SBPGI_JOB3_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้
+cron ปัจจุบันของ Job 3 คือ `0 07 7 * *` (ทุกวันที่ 7 เวลา 07:00) — ประกาศเป็น `SGI_JOB3_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้
 
 ```ts
-// src/batch/sbpgi/job-3-import-impact-competitor/job-3-import-impact-competitor.config.ts
+// src/batch/sgi/job-3-import-impact-competitor/job-3-import-impact-competitor.config.ts
 // convention จริงของ store-backend คือคลาส config (`src/config/app.config.ts` ที่ export ผ่าน
 // `AppConfigModule` แบบ @Global แล้วอ่าน process.env ตรง ๆ) — โปรเจกต์นี้ **ไม่ได้ใช้ registerAs**
 // แม้แต่จุดเดียว จึงประกาศเป็นคลาสให้รีวิว/ทดสอบเหมือน config ตัวอื่น
@@ -200,7 +223,7 @@ export interface Job3Config {
   cron: string;
   /** กำหนดการรัน (Cron) — ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh; Operations ตรวจ deployment path และ owner permission ก่อนขึ้น production */
   cron: string;
-  /** Argument (งวด) — รูปแบบ YYYY|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ขัดกับกติกา ค.ศ. ทั้งระบบ ต้องยืนยันกับเจ้าของ ALLMAP */
+  /** Argument (งวด) — รูปแบบ YYYY|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง */
   argument: string;
   /** Chunk Size — จำนวนแถวต่อรอบ insert */
   chunkSize: number;
@@ -212,18 +235,18 @@ export interface Job3Config {
 }
 
 @Injectable()
-export class SbpgiJob3Config implements Job3Config {
+export class SgiJob3Config implements Job3Config {
   // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)
-  enabled = (process.env.SBPGI_JOB3_ENABLED ?? 'true') === 'true';
-  cron = process.env.SBPGI_JOB3_CRON ?? '0 07 7 * *';
-  cron = process.env.SBPGI_JOB3_CRON ?? '0 07 7 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  argument = process.env.SBPGI_JOB3_ARGUMENT ?? '2569|06'; // TODO: ปีเป็น พ.ศ. ตามวิว ALLMAP — ขัดกับกติกา ค.ศ. ทั้งระบบ ต้องยืนยันกับเจ้าของ ALLMAP (⚠️)
-  chunkSize = Number(process.env.SBPGI_JOB3_CHUNK_SIZE ?? 10000); // TODO: แก้ผ่าน env/config file แล้ว deploy
-  sourceView = process.env.SBPGI_JOB3_SOURCE_VIEW ?? 'COMPETITOR_IMPACT_VIEW'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  mailTo = process.env.SBPGI_JOB3_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: config mailTo / storeretention)
+  enabled = (process.env.SGI_JOB3_ENABLED ?? 'true') === 'true';
+  cron = process.env.SGI_JOB3_CRON ?? '0 07 7 * *';
+  cron = process.env.SGI_JOB3_CRON ?? '0 07 7 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
+  argument = process.env.SGI_JOB3_ARGUMENT ?? '2569|06'; // TODO: ปีเป็น พ.ศ. ตามวิว ALLMAP — ค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง (⚠️)
+  chunkSize = Number(process.env.SGI_JOB3_CHUNK_SIZE ?? 10000); // TODO: แก้ผ่าน env/config file แล้ว deploy
+  sourceView = process.env.SGI_JOB3_SOURCE_VIEW ?? 'COMPETITOR_IMPACT_VIEW'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  mailTo = process.env.SGI_JOB3_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: config mailTo / storeretention)
 }
 
-// TODO: เพิ่ม SbpgiJob3Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
+// TODO: เพิ่ม SgiJob3Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
 ```
 
 #### 9.3 Job Class — `run(ctx)` ของ Job 3 ทีละขั้นตามผัง
@@ -328,7 +351,7 @@ export class ImportImpactCompetitorService {
 | 7 | end | Commit / จบ | summarize() | - |
 
 ```ts
-// src/batch/sbpgi/job-3-import-impact-competitor/job-3-import-impact-competitor.job.ts
+// src/batch/sgi/job-3-import-impact-competitor/job-3-import-impact-competitor.job.ts
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { DataSource, EntityManager } from 'typeorm';
 import { ImportImpactCompetitorService, type JobState } from './job-3-import-impact-competitor.service';
@@ -368,7 +391,7 @@ export class ImportImpactCompetitorJob {
       }
       // === transaction boundary === TODO: หนึ่ง transaction + savepoint (insert เป็น chunk ละ 10,000)
       await this.dataSource.transaction(async (manager: EntityManager) => {
-        // ขั้นที่ 5: insert ทีละ 10,000 แถว (ผูก impact_process_id) · TODO: ช่องทางต้นทาง ALM เก็บที่ fgi_impact_processes.datasource — fgi_impact_competitors ไม่มีคอลัมน์นี้ · map คอลัมน์ NAMT → name_th และ BRANCHT → branch_th (NAMT/BRANCHT เป็นคอลัมน์ของวิวฝั่ง ALLMAP)
+        // ขั้นที่ 5: insert ทีละ 10,000 แถว (ผูก impact_process_id) · TODO: ช่องทางต้นทาง ALM เก็บที่ sgi_fgi_impact_processes.datasource — sgi_fgi_impact_competitors ไม่มีคอลัมน์นี้ · map คอลัมน์ NAMT → name_th และ BRANCHT → branch_th (NAMT/BRANCHT เป็นคอลัมน์ของวิวฝั่ง ALLMAP)
         await this.service.step05Insert(state, manager);
       });
       // ขั้นที่ 6 (decision): จำนวนที่ insert = จำนวนต้นทาง? · TODO: ตรวจ reconcile จำนวนแถวก่อน commit
@@ -388,7 +411,7 @@ export class ImportImpactCompetitorJob {
     // TODO: structured log บรรทัดเดียวจบ — ไม่มีตาราง job_run_histories แล้ว (2026-08-06)
     const summary = {
       event: 'job.finish', jobNo: '3', jobName: 'ImportImpactCompetitor', status,
-      period: state.period, output: 'fgi_impact_competitors',
+      period: state.period, output: 'sgi_fgi_impact_competitors',
       read: state.read, written: state.written, skipped: state.skipped,
       rejected: state.rejected, durationMs: Date.now() - startedAt,
     };
@@ -409,7 +432,7 @@ import type { DataSource } from 'typeorm';
 
 // TODO: ห้ามใช้แถวสถานะ RUNNING ในตารางเป็นตัวกัน (ไม่มีตาราง job_run_histories แล้ว)
 //       ใช้ PostgreSQL advisory lock ระดับ session แทน — ปลดอัตโนมัติเมื่อ connection หลุด
-export const SBPGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SBPGI
+export const SGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SGI
 export const JOB_LOCK_KEYS: Record<string, number> = { '3': 30 /* TODO: เพิ่มครบทั้ง 11 job */ };
 
 @Injectable()
@@ -426,7 +449,7 @@ export class BatchRunner {
     try {
       const [{ locked }] = await runner.query(
         'SELECT pg_try_advisory_lock($1, $2) AS locked',
-        [SBPGI_JOB_LOCK_CLASS_ID, objectId],
+        [SGI_JOB_LOCK_CLASS_ID, objectId],
       );
       if (!locked) {
         // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล
@@ -436,7 +459,7 @@ export class BatchRunner {
       return await fn();
     } finally {
       // TODO: ปลด lock ทุกกรณี แล้วคืน connection เข้า pool
-      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SBPGI_JOB_LOCK_CLASS_ID, objectId]);
+      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SGI_JOB_LOCK_CLASS_ID, objectId]);
       await runner.release();
     }
   }
@@ -449,19 +472,19 @@ repository ของ Job 3 ประกาศเป็น factory provider (`{pr
 
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
-| fgi_impact_competitors | W | insert รายงวด (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP · ช่องทางต้นทาง ALM เก็บที่ fgi_impact_processes.datasource | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_fgi_impact_competitors | W | insert รายงวด (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP · ช่องทางต้นทาง ALM เก็บที่ sgi_fgi_impact_processes.datasource | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 3 ImportImpactCompetitor — query หลักที่ต้อง implement
 -- TODO: ทุก statement รันผ่าน DATA_SOURCE (SELECT ไป slave, write ไป master) และ
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
--- [W] fgi_impact_competitors : insert รายงวด (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP · ช่องทางต้นทาง ALM เก็บที่ fgi_impact_processes.datasource
+-- [W] sgi_fgi_impact_competitors : insert รายงวด (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP · ช่องทางต้นทาง ALM เก็บที่ sgi_fgi_impact_processes.datasource
 -- TODO: เติมคอลัมน์ payload จริงจาก database.md
-INSERT INTO fgi_impact_competitors
+INSERT INTO sgi_fgi_impact_competitors
   (/* TODO: business key + payload + created_by, created_at */)
 VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
-ON CONFLICT (impact_process_id, competitor_code, period_key)   -- unique key จริงตาม DDL ของ fgi_impact_competitors (ห้ามเดา)
+ON CONFLICT (impact_process_id, competitor_code, period_key)   -- unique key จริงตาม DDL ของ sgi_fgi_impact_competitors (ห้ามเดา)
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
        updated_at = NOW(), updated_by = 'JOB3';
 ```
@@ -489,8 +512,8 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 3 เดิมคือ config mailTo / storeretention — ย้ายมาเป็น env SBPGI_JOB3_MAIL_TO
-    const recipients = (process.env.SBPGI_JOB3_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    // TODO: ผู้รับของ Job 3 เดิมคือ config mailTo / storeretention — ย้ายมาเป็น env SGI_JOB3_MAIL_TO
+    const recipients = (process.env.SGI_JOB3_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
       return;
@@ -498,14 +521,14 @@ export class JobFailureNotifier {
     try {
       await this.mailService.sendMail({
         // TODO: emailId = id ของ template EM-07 (แจ้ง error batch) ในตาราง email_template
-        emailId: Number(process.env.SBPGI_JOB_FAIL_EMAIL_TEMPLATE_ID),
+        emailId: Number(process.env.SGI_JOB_FAIL_EMAIL_TEMPLATE_ID),
         mailTo: recipients.join(','), // signature รับ string ไม่ใช่ string[]
         mailCc: '',
         param: {
           jobNo, jobName: 'ImportImpactCompetitor',
           jobTitle: 'นำเข้าร้านคู่แข่งจาก ALLMAP',
           period: ctx.period, triggeredBy: ctx.triggeredBy,
-          output: 'fgi_impact_competitors',
+          output: 'sgi_fgi_impact_competitors',
           errorMessage: error.message,
           rerunNote: 'ต้องลบข้อมูลงวดเองก่อน re-import แล้วตรวจจำนวนแถวเทียบต้นทาง',
         },
@@ -525,8 +548,8 @@ export class JobFailureNotifier {
 - ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: กันซ้ำระดับงวดเท่านั้น — ไม่ใช่ upsert (E15)
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
 - สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=3 --period=<YYYYMM>`
-- หลังรันซ้ำ ตรวจ output `fgi_impact_competitors` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
-- ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
+- หลังรันซ้ำ ตรวจ output `sgi_fgi_impact_competitors` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
+- ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 
 ## 10. Processing Flow
 
@@ -536,7 +559,7 @@ export class JobFailureNotifier {
 | 2 | เป็นงวดใหม่ (ยังไม่เคยนำเข้า)? \| No: ข้ามทั้งงวด — ไม่มี upsert ต้องลบงวดก่อนจึงนำเข้าใหม่ได้ (กันซ้ำระดับงวด (Errata E15)) |
 | 3 | SELECT DISTINCT จาก COMPETITOR_IMPACT_VIEW |
 | 4 | พบข้อมูลต้นทาง? \| No: จบการทำงาน |
-| 5 | insert ทีละ 10,000 แถว (ผูก impact_process_id) (ช่องทางต้นทาง ALM เก็บที่ fgi_impact_processes.datasource — fgi_impact_competitors ไม่มีคอลัมน์นี้ · map คอลัมน์ NAMT → name_th และ BRANCHT → branch_th (NAMT/BRANCHT เป็นคอลัมน์ของวิวฝั่ง ALLMAP)) |
+| 5 | insert ทีละ 10,000 แถว (ผูก impact_process_id) (ช่องทางต้นทาง ALM เก็บที่ sgi_fgi_impact_processes.datasource — sgi_fgi_impact_competitors ไม่มีคอลัมน์นี้ · map คอลัมน์ NAMT → name_th และ BRANCHT → branch_th (NAMT/BRANCHT เป็นคอลัมน์ของวิวฝั่ง ALLMAP)) |
 | 6 | จำนวนที่ insert = จำนวนต้นทาง? \| No: Rollback + ส่งเมลแจ้งล้มเหลว (ตรวจ reconcile จำนวนแถวก่อน commit) |
 | 7 | Commit / จบ |
 
@@ -572,7 +595,7 @@ export class JobFailureNotifier {
 | business rule | logic | ทุกรอบต้องเขียน application log แบบ structured (เวลา/แถว/ไฟล์/ผล) และ error ต้องส่ง EM-07 |
 | business rule | logic | DB/table mapping ใช้เป็น reference สำหรับ implement Job เท่านั้น ไม่ใช่งานสร้างหน้า Database |
 | business rule | logic | รองรับ rerun rule และ risk note ตาม runbook |
-| `fgi_impact_competitors` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| `sgi_fgi_impact_competitors` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | runner | idempotency | รันซ้ำด้วย fixture เดิมต้องไม่เกิดแถวซ้ำ (ON CONFLICT / business unique key ทำงาน) |
 | runner | lock | เรียกซ้อนขณะกำลังรัน ต้องถูกปฏิเสธด้วย advisory lock |
 

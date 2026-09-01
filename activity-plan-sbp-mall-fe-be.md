@@ -18,7 +18,7 @@
 
 
 วันที่จัดทำ: 2026-07-19  
-อ้างอิง: `estimate-sbpgi-project-hours.md`  
+อ้างอิง: `estimate-sgi-project-hours.md`  
 Scope: เฉพาะระบบประกันรายได้ (SBP Mall)  
 ไม่รวม: Login/Auth, Flow pages, Database design/pages, Plan pages/documents, data migration, production HA infrastructure, security pentest ภายนอก
 

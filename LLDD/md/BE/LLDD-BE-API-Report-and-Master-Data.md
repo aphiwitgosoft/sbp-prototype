@@ -10,9 +10,25 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **39 ชั่วโมง** = implementation 30 + unit test 9 (30%) |
 | Owner | Peerakorn <Pete> Sakunkaewphithak |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
-| Objective | ออกแบบ APIs สำหรับรายงานตรวจสอบประกันรายได้ และ Master Data ที่ SBPGI ดูแลเอง (ปัจจัยภายนอก + รายชื่อคู่แข่ง) |
+| Objective | ออกแบบ APIs สำหรับรายงานตรวจสอบประกันรายได้ และ Master Data ที่ SGI ดูแลเอง (ปัจจัยภายนอก + รายชื่อคู่แข่ง) |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
+
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| ใช้ endpoint ของ | **LLDD-BE-API-Document-Detail-Aggregate** | `GET /api/v1/sgi/master/competitors` |
+| ถูกเรียกจาก | **LLDD-BE-API-Document-Detail-Aggregate** | `GET /api/v1/sgi/master/competitors` |
+| ถูกเรียกจาก | **LLDD-FE-Master-Data** | `DELETE /api/v1/sgi/master/competitors/{code}` · `DELETE /api/v1/sgi/master/factors/{code}` · `GET /api/v1/sgi/master/competitors` · `GET /api/v1/sgi/master/factors` · `POST /api/v1/sgi/master/competitors` · `POST /api/v1/sgi/master/factors` · `PUT /api/v1/sgi/master/competitors/{code}` · `PUT /api/v1/sgi/master/factors/{code}` |
+| ถูกเรียกจาก | **LLDD-FE-Report** | `GET /api/v1/sgi/report/status-summary` · `GET /api/v1/sgi/report/status-summary/export` |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| โครงสร้างข้อมูล | **LLDD-BE-Database-Structure** | DDL ของตารางที่หัวข้อ Reference DB Mapping อ้างถึง |
+| แพลตฟอร์มระบบเดิม | **LLDD-BE-Integration-SBP-Platform** | header จาก BFF (`x-api-key` / `x-user-*`) · การ reuse ตารางและ service ของระบบ SBP เดิม |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-API-Common-Contracts** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Database-Structure** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
 
 ## 2. Screen / Functional Scope
 
@@ -25,11 +41,21 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 1: Implementation flow reference: LLDD BE - API Report and Master Data](../../assets/flows/BE-LLDD-BE-API-Report-and-Master-Data.png)
 
 _รูปที่ 1: Implementation flow reference: LLDD BE - API Report and Master Data_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 2: Sequence diagram: LLDD BE - API Report and Master Data](../../assets/flows/BE-LLDD-BE-API-Report-and-Master-Data-sequence.png)
+
+_รูปที่ 2: Sequence diagram: LLDD BE - API Report and Master Data_
 
 ## 5. Field, Format, and Validation
 
@@ -37,7 +63,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report and M
 | --- | --- | --- | --- |
 | year | ค.ศ. YYYY | required for report | return 400 if missing · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. |
 | status | statusCode string | required | 6 สถานะเอกสาร; verbatim จาก sps_store.workflow_status ของ @srm/glb-workflow |
-| result | APPROVE\|REJECT\|CANCELLED\|PENDING | optional for report (บังคับเฉพาะ status) | maps to consideration_logs.result_category ล่าสุด · CANCELLED = ยกเลิกโดยระบบ (เพิ่ม 2026-08-10) |
+| result | APPROVE\|REJECT\|CANCELLED\|PENDING | optional for report (บังคับเฉพาะ status) | maps to sgi_consideration_logs.result_category ล่าสุด · CANCELLED = ยกเลิกโดยระบบ (เพิ่ม 2026-08-10) |
 | region | array/string | optional | 13 region codes; multi-select |
 | storeType | array ของ BranchTypeFGIName | optional | **7 ค่า** `A B C D E PTT บริษัท` (ยืนยันจาก master `BranchTypeProfile` ของ `CPA_FRN_FGI` 2026-08-10) · multi-select · **ห้าม hardcode** ให้โหลดจาก `GET /common/common-code` ของระบบ SBP เดิม |
 | impactedStoreCode | string 5 digits | optional | คง leading zero |
@@ -49,24 +75,24 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report and M
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/sbpgi/report/status-summary; GET /api/v1/sbpgi/report/status-summary/export; GET /api/v1/sbpgi/master/factors |
+| Input | GET /api/v1/sgi/report/status-summary; GET /api/v1/sgi/report/status-summary/export; GET /api/v1/sgi/master/factors |
 | Progress | Validate filter; Build query; Apply pagination/export mode; Return rows or CSV |
-| Output | external_factors; competitors |
+| Output | sgi_external_factors; sgi_competitors |
 
 ### 5.90 Endpoint Implementation Contract
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| GET /api/v1/sbpgi/report/status-summary | รายงานตรวจสอบประกันรายได้ | Validate filter | missing year/status/result fails |
-| GET /api/v1/sbpgi/report/status-summary/export | Export Excel | Build query | export uses same filters as preview |
-| GET /api/v1/sbpgi/master/factors | อ่านปัจจัยภายนอก | Apply pagination/export mode | master edit requires reason |
-| POST /api/v1/sbpgi/master/factors | สร้างปัจจัยภายนอก | Return rows or CSV | config locked value cannot edit |
-| PUT /api/v1/sbpgi/master/factors/{code} | แก้ปัจจัยภายนอก | For mutations validate reason and write audit | missing year/status/result fails |
-| GET /api/v1/sbpgi/master/competitors | master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร้านคู่แข่งในหน้าเอกสารด้วย | Validate filter | export uses same filters as preview |
-| POST /api/v1/sbpgi/master/competitors | เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409 | Build query | master edit requires reason |
-| PUT /api/v1/sbpgi/master/competitors/{code} | แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก document_competitors | Apply pagination/export mode | config locked value cannot edit |
-| DELETE /api/v1/sbpgi/master/competitors/{code} | ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409 | Return rows or CSV | missing year/status/result fails |
-| DELETE /api/v1/sbpgi/master/factors/{code} | ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน | For mutations validate reason and write audit | export uses same filters as preview |
+| GET /api/v1/sgi/report/status-summary | รายงานตรวจสอบประกันรายได้ | Validate filter | missing year/status/result fails |
+| GET /api/v1/sgi/report/status-summary/export | Export Excel | Build query | export uses same filters as preview |
+| GET /api/v1/sgi/master/factors | อ่านปัจจัยภายนอก | Apply pagination/export mode | master edit requires reason |
+| POST /api/v1/sgi/master/factors | สร้างปัจจัยภายนอก | Return rows or CSV | config locked value cannot edit |
+| PUT /api/v1/sgi/master/factors/{code} | แก้ปัจจัยภายนอก | For mutations validate reason and write audit | missing year/status/result fails |
+| GET /api/v1/sgi/master/competitors | master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร้านคู่แข่งในหน้าเอกสารด้วย | Validate filter | export uses same filters as preview |
+| POST /api/v1/sgi/master/competitors | เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409 | Build query | master edit requires reason |
+| PUT /api/v1/sgi/master/competitors/{code} | แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก sgi_document_competitors | Apply pagination/export mode | config locked value cannot edit |
+| DELETE /api/v1/sgi/master/competitors/{code} | ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409 | Return rows or CSV | missing year/status/result fails |
+| DELETE /api/v1/sgi/master/factors/{code} | ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน | For mutations validate reason and write audit | export uses same filters as preview |
 
 ### 5.91 Backend Execution Sequence
 
@@ -88,7 +114,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report and M
 
 ## 7. API Contract
 
-### GET /api/v1/sbpgi/report/status-summary
+### GET /api/v1/sgi/report/status-summary
 
 รายงานตรวจสอบประกันรายได้
 
@@ -146,7 +172,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Report and M
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items | array<object> | Yes | JSON array; element type shown in Type column |
 
-### GET /api/v1/sbpgi/report/status-summary/export
+### GET /api/v1/sgi/report/status-summary/export
 
 Export Excel
 
@@ -194,7 +220,7 @@ Export Excel
 | --- | --- | --- | --- |
 | fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/sbpgi/master/factors
+### GET /api/v1/sgi/master/factors
 
 อ่านปัจจัยภายนอก
 
@@ -249,7 +275,7 @@ Export Excel
 | items[].description | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/sbpgi/master/factors
+### POST /api/v1/sgi/master/factors
 
 สร้างปัจจัยภายนอก
 
@@ -293,7 +319,7 @@ Export Excel
 | factorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### PUT /api/v1/sbpgi/master/factors/{code}
+### PUT /api/v1/sgi/master/factors/{code}
 
 แก้ปัจจัยภายนอก
 
@@ -335,7 +361,7 @@ Export Excel
 | factorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/sbpgi/master/competitors
+### GET /api/v1/sgi/master/competitors
 
 master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร้านคู่แข่งในหน้าเอกสารด้วย
 
@@ -380,7 +406,7 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 | items[].remark | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].isActive | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/sbpgi/master/competitors
+### POST /api/v1/sgi/master/competitors
 
 เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
 
@@ -420,9 +446,9 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 | code | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### PUT /api/v1/sbpgi/master/competitors/{code}
+### PUT /api/v1/sgi/master/competitors/{code}
 
-แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก document_competitors
+แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก sgi_document_competitors
 
 #### Request
 
@@ -458,7 +484,7 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 | --- | --- | --- | --- |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### DELETE /api/v1/sbpgi/master/competitors/{code}
+### DELETE /api/v1/sgi/master/competitors/{code}
 
 ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
 
@@ -488,7 +514,7 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 | --- | --- | --- | --- |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### DELETE /api/v1/sbpgi/master/factors/{code}
+### DELETE /api/v1/sgi/master/factors/{code}
 
 ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
 
@@ -528,14 +554,14 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| compensation_documents | R | แหล่งข้อมูลรายงานและ filter status/year |
-| compensation_histories | R | ยอดเงินชดเชยและงวด statement |
-| consideration_logs | R | ผลพิจารณาล่าสุด APPROVE/REJECT |
+| sgi_compensation_documents | R | แหล่งข้อมูลรายงานและ filter status/year |
+| sgi_compensation_histories | R | ยอดเงินชดเชยและงวด statement |
+| sgi_consideration_logs | R | ผลพิจารณาล่าสุด APPROVE/REJECT |
 | auth-backend group + scope (business_user_group) / prepared approver ของ @srm/glb-workflow | R | ผู้ปฏิบัติงาน — ตาราง operator_assignments ถูกตัด 2026-08-05 |
-| external_factors | R/W | master ปัจจัยภายนอก |
-| competitors | R/W | master แบรนด์คู่แข่ง 11 รายการ (code 01-11 · name_th · name_en · remark) — feed dropdown ร้านคู่แข่งของหน้าเอกสาร |
-| document_competitors | R | ตรวจว่าแบรนด์ถูกอ้างในเอกสารก่อนลบ (409) |
-| mas_param (SBP) | R | ค่ากำหนดกลางของระบบ SBP เดิม — **อ่านอย่างเดียว** (หน้า Global Config ของ SBPGI ถูกลบ 2026-08-06 · ระบบเดิมเป็นผู้แก้) |
+| sgi_external_factors | R/W | master ปัจจัยภายนอก |
+| sgi_competitors | R/W | master แบรนด์คู่แข่ง 11 รายการ (code 01-11 · name_th · name_en · remark) — feed dropdown ร้านคู่แข่งของหน้าเอกสาร |
+| sgi_document_competitors | R | ตรวจว่าแบรนด์ถูกอ้างในเอกสารก่อนลบ (409) |
+| mas_param (SBP) | R | ค่ากำหนดกลางของระบบ SBP เดิม — **อ่านอย่างเดียว** (หน้า Global Config ของ SGI ถูกลบ 2026-08-06 · ระบบเดิมเป็นผู้แก้) |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -545,137 +571,131 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 | Path | หน้าที่ |
 | --- | --- |
-| store-backend · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts | route ทั้งหมดของเอกสารนี้ (10 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
-| store-backend · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
-| store-backend · src/modules/sbpgi-report-and-master-data/dto/sbpgi-report-and-master-data.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
-| store-backend · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
-| store-backend · src/entitys/compensation-documents.entity.ts | entity ของ `compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
-| store-backend · src/entitys/compensation-histories.entity.ts | entity ของ `compensation_histories` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
-| store-backend · src/entitys/consideration-logs.entity.ts | entity ของ `consideration_logs` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
-| store-backend · src/providers/sbpgi/sbpgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
-| store-backend · sql/deploy-sbpgi-report-and-master-data.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
-| BFF · src/common/client-services/sbpgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
-| BFF · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts | route ฝั่ง BFF prefix `/bff/sbpgi/…` + `@UseGuards(AuthGuard('jwt'))` |
-| BFF · src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
+| store-backend · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.controller.ts | route ทั้งหมดของเอกสารนี้ (10 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
+| store-backend · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
+| store-backend · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-report-and-master-data/dto/sgi-report-and-master-data.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
+| store-backend · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
+| store-backend · src/entitys/sgi-compensation-documents.entity.ts | entity ของ `sgi_compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
+| store-backend · src/entitys/sgi-compensation-histories.entity.ts | entity ของ `sgi_compensation_histories` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/entitys/sgi-consideration-logs.entity.ts | entity ของ `sgi_consideration_logs` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
+| store-backend · src/providers/sgi/sgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
+| store-backend · sql/deploy-sgi-report-and-master-data.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
+| BFF · src/common/client-services/sgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
+| BFF · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.controller.ts | route ฝั่ง BFF prefix `/bff/sgi/…` + `@UseGuards(AuthGuard('jwt'))` |
+| BFF · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
 
 #### 9.2 Controller (store-backend)
 
 ```ts
-// src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts  (ส่วนที่ 1/3 — คลาสเดียวกัน)
+// src/modules/sgi-report-and-master-data/sgi-report-and-master-data.controller.ts  (ส่วนที่ 1/3 — คลาสเดียวกัน)
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { HttpHeaderGuard } from '../../guards/http-header.guard';
 import { UserId } from '../../common/decorators/user-id.decorator';
-import { SbpgiReportAndMasterDataService } from './sbpgi-report-and-master-data.service';
-import { ReportAndMasterDataQueryDto, CreateSbpgiMasterFactorsBodyDto } from './dto/sbpgi-report-and-master-data.dto';
+import { SgiReportAndMasterDataService } from './sgi-report-and-master-data.service';
+import { ReportAndMasterDataQueryDto, CreateSgiMasterFactorsBodyDto } from './dto/sgi-report-and-master-data.dto';
 
 // LLDD BE - API Report and Master Data
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sbpgi/sbpgi')
+@Controller('sgi/sgi')
 @UseGuards(HttpHeaderGuard)
-export class SbpgiReportAndMasterDataController {
-  constructor(private readonly service: SbpgiReportAndMasterDataService) {}
+export class SgiReportAndMasterDataController {
+  constructor(private readonly service: SgiReportAndMasterDataService) {}
 
-  // GET /api/v1/sbpgi/report/status-summary — รายงานตรวจสอบประกันรายได้
-  @Get('sbpgi/report/status-summary')
-  getSbpgiReportStatusSummary(
-    @Query() query: ReportAndMasterDataQueryDto,
-    @UserId() userId: string,
-  ) {
+  // GET /api/v1/sgi/report/status-summary — รายงานตรวจสอบประกันรายได้
+  @Get('sgi/report/status-summary')
+  getSgiReportStatusSummary(@Query() query: ReportAndMasterDataQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getSbpgiReportStatusSummary(query, userId);
+    return this.service.getSgiReportStatusSummary(query, userId);
   }
 
-  // GET /api/v1/sbpgi/report/status-summary/export — Export Excel
-  @Get('sbpgi/report/status-summary/export')
+  // GET /api/v1/sgi/report/status-summary/export — Export Excel
+  @Get('sgi/report/status-summary/export')
   exportStatusSummary(@Query() query: ReportAndMasterDataQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.exportStatusSummary(query, userId);
   }
 
-  // GET /api/v1/sbpgi/master/factors — อ่านปัจจัยภายนอก
-  @Get('sbpgi/master/factors')
-  getSbpgiMasterFactors(@Query() query: ReportAndMasterDataQueryDto, @UserId() userId: string) {
+  // GET /api/v1/sgi/master/factors — อ่านปัจจัยภายนอก
+  @Get('sgi/master/factors')
+  getSgiMasterFactors(@Query() query: ReportAndMasterDataQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getSbpgiMasterFactors(query, userId);
+    return this.service.getSgiMasterFactors(query, userId);
   }
 
-  // POST /api/v1/sbpgi/master/factors — สร้างปัจจัยภายนอก
-  @Post('sbpgi/master/factors')
-  createSbpgiMasterFactors(
-    @Body() body: CreateSbpgiMasterFactorsBodyDto,
-    @UserId() userId: string,
-  ) {
+  // POST /api/v1/sgi/master/factors — สร้างปัจจัยภายนอก
+  @Post('sgi/master/factors')
+  createSgiMasterFactors(@Body() body: CreateSgiMasterFactorsBodyDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.createSbpgiMasterFactors(body, userId);
+    return this.service.createSgiMasterFactors(body, userId);
   }
 ```
 
 ```ts
-// src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts  (ส่วนที่ 2/3 — คลาสเดียวกัน)
-// import เพิ่ม: UpdateSbpgiMasterFactorsByCodeBodyDto, CreateSbpgiMasterCompetitorsBodyDto
-// (method ต่อไปนี้อยู่ในคลาส SbpgiReportAndMasterDataController เดียวกับส่วนที่ 1)
+// src/modules/sgi-report-and-master-data/sgi-report-and-master-data.controller.ts  (ส่วนที่ 2/3 — คลาสเดียวกัน)
+// import เพิ่ม: UpdateSgiMasterFactorsByCodeBodyDto, CreateSgiMasterCompetitorsBodyDto
+// (method ต่อไปนี้อยู่ในคลาส SgiReportAndMasterDataController เดียวกับส่วนที่ 1)
 
-  // PUT /api/v1/sbpgi/master/factors/{code} — แก้ปัจจัยภายนอก
-  @Put('sbpgi/master/factors/:code')
-  updateSbpgiMasterFactorsByCode(
+  // PUT /api/v1/sgi/master/factors/{code} — แก้ปัจจัยภายนอก
+  @Put('sgi/master/factors/:code')
+  updateSgiMasterFactorsByCode(
     @Param('code') code: string,
-    @Body() body: UpdateSbpgiMasterFactorsByCodeBodyDto,
+    @Body() body: UpdateSgiMasterFactorsByCodeBodyDto,
     @UserId() userId: string,
   ) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.updateSbpgiMasterFactorsByCode(code, body, userId);
+    return this.service.updateSgiMasterFactorsByCode(code, body, userId);
   }
 
-  // GET /api/v1/sbpgi/master/competitors — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร…
-  @Get('sbpgi/master/competitors')
-  getSbpgiMasterCompetitors(@Query() query: ReportAndMasterDataQueryDto, @UserId() userId: string) {
+  // GET /api/v1/sgi/master/competitors — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร…
+  @Get('sgi/master/competitors')
+  getSgiMasterCompetitors(@Query() query: ReportAndMasterDataQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getSbpgiMasterCompetitors(query, userId);
+    return this.service.getSgiMasterCompetitors(query, userId);
   }
 
-  // POST /api/v1/sbpgi/master/competitors — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
-  @Post('sbpgi/master/competitors')
-  createSbpgiMasterCompetitors(
-    @Body() body: CreateSbpgiMasterCompetitorsBodyDto,
+  // POST /api/v1/sgi/master/competitors — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
+  @Post('sgi/master/competitors')
+  createSgiMasterCompetitors(
+    @Body() body: CreateSgiMasterCompetitorsBodyDto,
     @UserId() userId: string,
   ) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.createSbpgiMasterCompetitors(body, userId);
+    return this.service.createSgiMasterCompetitors(body, userId);
   }
 
-  // PUT /api/v1/sbpgi/master/competitors/{code} — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก document_competitors
-  @Put('sbpgi/master/competitors/:code')
-  updateSbpgiMasterCompetitorsByCode(
+  // PUT /api/v1/sgi/master/competitors/{code} — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก sgi_document_competitors
+  @Put('sgi/master/competitors/:code')
+  updateSgiMasterCompetitorsByCode(
     @Param('code') code: string,
     @Body() body: Record<string, unknown>,
     @UserId() userId: string,
   ) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.updateSbpgiMasterCompetitorsByCode(code, body, userId);
+    return this.service.updateSgiMasterCompetitorsByCode(code, body, userId);
   }
 ```
 
 ```ts
-// src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts  (ส่วนที่ 3/3 — คลาสเดียวกัน)
-// (method ต่อไปนี้อยู่ในคลาส SbpgiReportAndMasterDataController เดียวกับส่วนที่ 1)
+// src/modules/sgi-report-and-master-data/sgi-report-and-master-data.controller.ts  (ส่วนที่ 3/3 — คลาสเดียวกัน)
+// (method ต่อไปนี้อยู่ในคลาส SgiReportAndMasterDataController เดียวกับส่วนที่ 1)
 
-  // DELETE /api/v1/sbpgi/master/competitors/{code} — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
-  @Delete('sbpgi/master/competitors/:code')
-  removeSbpgiMasterCompetitorsByCode(@Param('code') code: string, @UserId() userId: string) {
+  // DELETE /api/v1/sgi/master/competitors/{code} — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
+  @Delete('sgi/master/competitors/:code')
+  removeSgiMasterCompetitorsByCode(@Param('code') code: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.removeSbpgiMasterCompetitorsByCode(code, userId);
+    return this.service.removeSgiMasterCompetitorsByCode(code, userId);
   }
 
-  // DELETE /api/v1/sbpgi/master/factors/{code} — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
-  @Delete('sbpgi/master/factors/:code')
-  removeSbpgiMasterFactorsByCode(
+  // DELETE /api/v1/sgi/master/factors/{code} — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
+  @Delete('sgi/master/factors/:code')
+  removeSgiMasterFactorsByCode(
     @Param('code') code: string,
     @Body() body: Record<string, unknown>,
     @UserId() userId: string,
   ) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.removeSbpgiMasterFactorsByCode(code, body, userId);
+    return this.service.removeSgiMasterFactorsByCode(code, body, userId);
   }
 }
 ```
@@ -683,7 +703,7 @@ export class SbpgiReportAndMasterDataController {
 #### 9.3 DTO + Validation
 
 ```ts
-// src/modules/sbpgi-report-and-master-data/dto/sbpgi-report-and-master-data.dto.ts
+// src/modules/sgi-report-and-master-data/dto/sgi-report-and-master-data.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
@@ -706,7 +726,7 @@ export class ReportAndMasterDataQueryDto {
   @IsString()
   status?: string;
 
-  /** maps to consideration_logs.result_category ล่าสุด · CANCELLED = ยกเลิกโดยระบบ (เพิ่ม 2026… */
+  /** maps to sgi_consideration_logs.result_category ล่าสุด · CANCELLED = ยกเลิกโดยระบบ (เพิ่ม … */
   @IsOptional()
   @IsString()
   @IsIn(['APPROVE', 'REJECT', 'CANCELLED', 'PENDING'])
@@ -735,8 +755,8 @@ export class ReportAndMasterDataQueryDto {
 ```
 
 ```ts
-// body ของ POST /api/v1/sbpgi/master/factors
-export class CreateSbpgiMasterFactorsBodyDto {
+// body ของ POST /api/v1/sgi/master/factors
+export class CreateSgiMasterFactorsBodyDto {
   @IsNotEmpty()
   @IsString()
   factorCode: string;
@@ -763,8 +783,8 @@ export class CreateSbpgiMasterFactorsBodyDto {
 ```
 
 ```ts
-// body ของ PUT /api/v1/sbpgi/master/factors/{code}
-export class UpdateSbpgiMasterFactorsByCodeBodyDto {
+// body ของ PUT /api/v1/sgi/master/factors/{code}
+export class UpdateSgiMasterFactorsByCodeBodyDto {
   @IsNotEmpty()
   @IsString()
   factorName: string;
@@ -787,8 +807,8 @@ export class UpdateSbpgiMasterFactorsByCodeBodyDto {
 ```
 
 ```ts
-// body ของ POST /api/v1/sbpgi/master/competitors
-export class CreateSbpgiMasterCompetitorsBodyDto {
+// body ของ POST /api/v1/sgi/master/competitors
+export class CreateSgiMasterCompetitorsBodyDto {
   @IsNotEmpty()
   @IsString()
   code: string;
@@ -806,7 +826,7 @@ export class CreateSbpgiMasterCompetitorsBodyDto {
   remark: string;
 }
 
-// TODO: สร้าง BodyDto ของ endpoint ที่เหลือด้วยรูปแบบเดียวกัน: PUT /api/v1/sbpgi/master/competitors/{code}, DELETE /api/v1/sbpgi/master/factors/{code}
+// TODO: สร้าง BodyDto ของ endpoint ที่เหลือด้วยรูปแบบเดียวกัน: PUT /api/v1/sgi/master/competitors/{code}, DELETE /api/v1/sgi/master/factors/{code}
 ```
 
 #### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
@@ -814,28 +834,28 @@ export class CreateSbpgiMasterCompetitorsBodyDto {
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
-// src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.service.ts
+// src/modules/sgi-report-and-master-data/sgi-report-and-master-data.service.ts
 import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { SBPGI_SQL } from './sbpgi-report-and-master-data.sql';
+import { SGI_SQL } from './sgi-report-and-master-data.sql';
 
 @Injectable()
-export class SbpgiReportAndMasterDataService {
-  private readonly logger = new Logger(SbpgiReportAndMasterDataService.name);
+export class SgiReportAndMasterDataService {
+  private readonly logger = new Logger(SgiReportAndMasterDataService.name);
 
   constructor(
     // DATA_SOURCE override query(): SELECT/WITH ไป slave pool, write ไป master
     @Inject('DATA_SOURCE') private readonly dataSource: DataSource,
   ) {}
 
-  // GET /api/v1/sbpgi/report/status-summary — รายงานตรวจสอบประกันรายได้
-  async getSbpgiReportStatusSummary(query: ReportAndMasterDataQueryDto, userId: string) {
+  // GET /api/v1/sgi/report/status-summary — รายงานตรวจสอบประกันรายได้
+  async getSgiReportStatusSummary(query: ReportAndMasterDataQueryDto, userId: string) {
     const page = Number(query.page ?? 1);
     const size = Math.min(Number(query.size ?? 20), 100);
-    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sbpgi/report/status-summary')
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sgi/report/status-summary')
     // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
     //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
-    const rows = await this.dataSource.query(SBPGI_SQL.getSbpgiReportStatusSummary, [
+    const rows = await this.dataSource.query(SGI_SQL.getSgiReportStatusSummary, [
       // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
       userId, (page - 1) * size, size,
     ]);
@@ -843,33 +863,33 @@ export class SbpgiReportAndMasterDataService {
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/sbpgi/report/status-summary/export — Export Excel
+  // GET /api/v1/sgi/report/status-summary/export — Export Excel
   async exportStatusSummary(query: ReportAndMasterDataQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/report/status-summary/export
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/report/status-summary/export')
+    // TODO: implement ตาม business rule ของ GET /api/v1/sgi/report/status-summary/export
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sgi/report/status-summary/export')
     throw new NotImplementedException('exportStatusSummary ยังไม่ implement');
   }
 
-  // GET /api/v1/sbpgi/master/factors — อ่านปัจจัยภายนอก
-  async getSbpgiMasterFactors(query: ReportAndMasterDataQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/master/factors
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/master/factors')
-    throw new NotImplementedException('getSbpgiMasterFactors ยังไม่ implement');
+  // GET /api/v1/sgi/master/factors — อ่านปัจจัยภายนอก
+  async getSgiMasterFactors(query: ReportAndMasterDataQueryDto, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/sgi/master/factors
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sgi/master/factors')
+    throw new NotImplementedException('getSgiMasterFactors ยังไม่ implement');
   }
 
-  // POST /api/v1/sbpgi/master/factors — สร้างปัจจัยภายนอก
+  // POST /api/v1/sgi/master/factors — สร้างปัจจัยภายนอก
   // mutation ต้องอยู่ใน transaction เดียว (ไม่มี audit ของ master แล้ว · 2026-08-07)
-  async createSbpgiMasterFactors(body: CreateSbpgiMasterFactorsBodyDto, userId: string) {
+  async createSgiMasterFactors(body: CreateSgiMasterFactorsBodyDto, userId: string) {
     const runner = this.dataSource.createQueryRunner();
     await runner.connect();
     await runner.startTransaction();
     try {
-      // TODO: lock แถวเป้าหมายของ external_factors ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SBPGI_SQL.createSbpgiMasterFactorsLock, [body.docNo]);
+      // TODO: lock แถวเป้าหมายของ sgi_external_factors ด้วย SELECT ... FOR UPDATE ก่อนเขียน
+      const [current] = await runner.query(SGI_SQL.createSgiMasterFactorsLock, [body.docNo]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }
-      await runner.query(SBPGI_SQL.createSbpgiMasterFactors, [/* TODO: ผูกค่าจาก body */]);
+      await runner.query(SGI_SQL.createSgiMasterFactors, [/* TODO: ผูกค่าจาก body */]);
       await runner.commitTransaction();
       return { message: 'saved' };
     } catch (error) {
@@ -881,46 +901,46 @@ export class SbpgiReportAndMasterDataService {
     }
   }
 
-  // PUT /api/v1/sbpgi/master/factors/{code} — แก้ปัจจัยภายนอก
-  async updateSbpgiMasterFactorsByCode(code: string, body: UpdateSbpgiMasterFactorsByCodeBodyDto, userId: string) {
-    // TODO: implement ตาม business rule ของ PUT /api/v1/sbpgi/master/factors/{code}
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'PUT /api/v1/sbpgi/master/factors/{code}')
-    throw new NotImplementedException('updateSbpgiMasterFactorsByCode ยังไม่ implement');
+  // PUT /api/v1/sgi/master/factors/{code} — แก้ปัจจัยภายนอก
+  async updateSgiMasterFactorsByCode(code: string, body: UpdateSgiMasterFactorsByCodeBodyDto, userId: string) {
+    // TODO: implement ตาม business rule ของ PUT /api/v1/sgi/master/factors/{code}
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'PUT /api/v1/sgi/master/factors/{code}')
+    throw new NotImplementedException('updateSgiMasterFactorsByCode ยังไม่ implement');
   }
 
-  // GET /api/v1/sbpgi/master/competitors — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร…
-  async getSbpgiMasterCompetitors(query: ReportAndMasterDataQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/master/competitors
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/master/competitors')
-    throw new NotImplementedException('getSbpgiMasterCompetitors ยังไม่ implement');
+  // GET /api/v1/sgi/master/competitors — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร…
+  async getSgiMasterCompetitors(query: ReportAndMasterDataQueryDto, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/sgi/master/competitors
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sgi/master/competitors')
+    throw new NotImplementedException('getSgiMasterCompetitors ยังไม่ implement');
   }
 
-  // POST /api/v1/sbpgi/master/competitors — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
-  async createSbpgiMasterCompetitors(body: CreateSbpgiMasterCompetitorsBodyDto, userId: string) {
-    // TODO: implement ตาม business rule ของ POST /api/v1/sbpgi/master/competitors
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'POST /api/v1/sbpgi/master/competitors')
-    throw new NotImplementedException('createSbpgiMasterCompetitors ยังไม่ implement');
+  // POST /api/v1/sgi/master/competitors — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
+  async createSgiMasterCompetitors(body: CreateSgiMasterCompetitorsBodyDto, userId: string) {
+    // TODO: implement ตาม business rule ของ POST /api/v1/sgi/master/competitors
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'POST /api/v1/sgi/master/competitors')
+    throw new NotImplementedException('createSgiMasterCompetitors ยังไม่ implement');
   }
 
-  // PUT /api/v1/sbpgi/master/competitors/{code} — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก document_competitors
-  async updateSbpgiMasterCompetitorsByCode(code: string, body: Record<string, unknown>, userId: string) {
-    // TODO: implement ตาม business rule ของ PUT /api/v1/sbpgi/master/competitors/{code}
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'PUT /api/v1/sbpgi/master/competitors/{code}')
-    throw new NotImplementedException('updateSbpgiMasterCompetitorsByCode ยังไม่ implement');
+  // PUT /api/v1/sgi/master/competitors/{code} — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก sgi_document_competitors
+  async updateSgiMasterCompetitorsByCode(code: string, body: Record<string, unknown>, userId: string) {
+    // TODO: implement ตาม business rule ของ PUT /api/v1/sgi/master/competitors/{code}
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'PUT /api/v1/sgi/master/competitors/{code}')
+    throw new NotImplementedException('updateSgiMasterCompetitorsByCode ยังไม่ implement');
   }
 
-  // DELETE /api/v1/sbpgi/master/competitors/{code} — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
-  async removeSbpgiMasterCompetitorsByCode(code: string, userId: string) {
-    // TODO: implement ตาม business rule ของ DELETE /api/v1/sbpgi/master/competitors/{code}
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'DELETE /api/v1/sbpgi/master/competitors/{code}')
-    throw new NotImplementedException('removeSbpgiMasterCompetitorsByCode ยังไม่ implement');
+  // DELETE /api/v1/sgi/master/competitors/{code} — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
+  async removeSgiMasterCompetitorsByCode(code: string, userId: string) {
+    // TODO: implement ตาม business rule ของ DELETE /api/v1/sgi/master/competitors/{code}
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'DELETE /api/v1/sgi/master/competitors/{code}')
+    throw new NotImplementedException('removeSgiMasterCompetitorsByCode ยังไม่ implement');
   }
 
-  // DELETE /api/v1/sbpgi/master/factors/{code} — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
-  async removeSbpgiMasterFactorsByCode(code: string, body: Record<string, unknown>, userId: string) {
-    // TODO: implement ตาม business rule ของ DELETE /api/v1/sbpgi/master/factors/{code}
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'DELETE /api/v1/sbpgi/master/factors/{code}')
-    throw new NotImplementedException('removeSbpgiMasterFactorsByCode ยังไม่ implement');
+  // DELETE /api/v1/sgi/master/factors/{code} — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
+  async removeSgiMasterFactorsByCode(code: string, body: Record<string, unknown>, userId: string) {
+    // TODO: implement ตาม business rule ของ DELETE /api/v1/sgi/master/factors/{code}
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'DELETE /api/v1/sgi/master/factors/{code}')
+    throw new NotImplementedException('removeSgiMasterFactorsByCode ยังไม่ implement');
   }
 }
 ```
@@ -928,10 +948,10 @@ export class SbpgiReportAndMasterDataService {
 #### 9.5 Entity (TypeORM)
 
 ```ts
-// src/entitys/compensation-documents.entity.ts
+// src/entitys/sgi-compensation-documents.entity.ts
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'compensation_documents', schema: process.env.DB_SCHEMA })
+@Entity({ name: 'sgi_compensation_documents', schema: process.env.DB_SCHEMA })
 export class CompensationDocument {
   @PrimaryColumn({ name: 'doc_no', type: 'varchar', length: 12 })
   docNo: string;
@@ -981,16 +1001,16 @@ export class CompensationDocument {
   @Column({ name: 'updated_at', type: 'timestamptz', nullable: true })
   updatedAt?: Date;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
+  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
   //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
 }
 ```
 
 ```ts
-// src/entitys/compensation-histories.entity.ts
+// src/entitys/sgi-compensation-histories.entity.ts
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'compensation_histories', schema: process.env.DB_SCHEMA })
+@Entity({ name: 'sgi_compensation_histories', schema: process.env.DB_SCHEMA })
 export class CompensationHistory {
   @PrimaryColumn({ name: 'id', type: 'bigint' })
   id: number;
@@ -1016,12 +1036,12 @@ export class CompensationHistory {
   @Column({ name: 'submit_status', type: 'char', length: 1, nullable: true })
   submitStatus?: string;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
+  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
   //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`consideration_logs`, `glb-workflow`, `external_factors`, `competitors`, `document_competitors`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`sgi_consideration_logs`, `glb-workflow`, `sgi_external_factors`, `sgi_competitors`, `sgi_document_competitors`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
@@ -1032,93 +1052,93 @@ export class CompensationHistory {
 #### 9.6 Repository Providers + Module wiring
 
 ```ts
-// src/providers/sbpgi/sbpgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
+// src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
 // convention ของโฟลเดอร์ providers คือ 1 ไฟล์ต่อโดเมน ตั้งชื่อตามโดเมน (business_user/business_user.ts,
 // common_code/common_code.ts …) ไม่ใช่ index.ts
 //
-// ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SBPGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ
+// ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ
 //    (ชื่อ const แยกต่อเอกสารไว้แล้วเพื่อไม่ให้ชนกัน)
 import { DataSource } from 'typeorm';
-import { CompensationDocument } from '../../entitys/compensation-documents.entity';
-import { CompensationHistory } from '../../entitys/compensation-histories.entity';
-import { ConsiderationLog } from '../../entitys/consideration-logs.entity';
+import { CompensationDocument } from '../../entitys/sgi-compensation-documents.entity';
+import { CompensationHistory } from '../../entitys/sgi-compensation-histories.entity';
+import { ConsiderationLog } from '../../entitys/sgi-consideration-logs.entity';
 
-export const sbpgiReportAndMasterDataProviders = [
+export const sgiReportAndMasterDataProviders = [
   {
-    provide: 'COMPENSATION_DOCUMENT_REPOSITORY',
+    provide: 'SGI_COMPENSATION_DOCUMENT_REPOSITORY',
     useFactory: (dataSource: DataSource) => dataSource.getRepository(CompensationDocument),
     inject: ['DATA_SOURCE'],
   },
   {
-    provide: 'COMPENSATION_HISTORIES_REPOSITORY',
+    provide: 'SGI_COMPENSATION_HISTORIES_REPOSITORY',
     useFactory: (dataSource: DataSource) => dataSource.getRepository(CompensationHistory),
     inject: ['DATA_SOURCE'],
   },
   {
-    provide: 'CONSIDERATION_LOG_REPOSITORY',
+    provide: 'SGI_CONSIDERATION_LOG_REPOSITORY',
     useFactory: (dataSource: DataSource) => dataSource.getRepository(ConsiderationLog),
     inject: ['DATA_SOURCE'],
   },
 ];
 
-// src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.module.ts
+// src/modules/sgi-report-and-master-data/sgi-report-and-master-data.module.ts
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { DatabaseModule } from '../../database/database.module';
 // UserContextMiddleware อ่าน header x-user-id แล้วเซ็ต request.userId ที่ @UserId() ใช้
 // — app.module.ts **ไม่ได้** apply แบบ global (มีแค่ HttpContext/LoggerContext) แต่ละโมดูลต้อง apply เอง
 // (ดู evaluation-process.module.ts / inform-evaluate.module.ts / cooperation-request.module.ts)
 import { UserContextMiddleware } from '../../common/middleware/user-context.middleware';
-import { sbpgiReportAndMasterDataProviders } from '../../providers/sbpgi/sbpgi';
-import { SbpgiReportAndMasterDataController } from './sbpgi-report-and-master-data.controller';
-import { SbpgiReportAndMasterDataService } from './sbpgi-report-and-master-data.service';
+import { sgiReportAndMasterDataProviders } from '../../providers/sgi/sgi';
+import { SgiReportAndMasterDataController } from './sgi-report-and-master-data.controller';
+import { SgiReportAndMasterDataService } from './sgi-report-and-master-data.service';
 
 @Module({
   imports: [DatabaseModule],
-  controllers: [SbpgiReportAndMasterDataController],
-  providers: [SbpgiReportAndMasterDataService, ...sbpgiReportAndMasterDataProviders],
-  exports: [SbpgiReportAndMasterDataService],
+  controllers: [SgiReportAndMasterDataController],
+  providers: [SgiReportAndMasterDataService, ...sgiReportAndMasterDataProviders],
+  exports: [SgiReportAndMasterDataService],
 })
-export class SbpgiReportAndMasterDataModule implements NestModule {
+export class SgiReportAndMasterDataModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // ถ้าไม่ apply ตรงนี้ userId จะเป็น undefined เงียบ ๆ ทุก endpoint
-    consumer.apply(UserContextMiddleware).forRoutes(SbpgiReportAndMasterDataController);
+    consumer.apply(UserContextMiddleware).forRoutes(SgiReportAndMasterDataController);
   }
 }
-// TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SBPGI ตัวอื่น
+// TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
 #### 9.7 BFF Proxy (module + controller + client service)
 
-BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sbpgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
+BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
 ```ts
-// src/common/client-services/sbpgi-client.service.ts
+// src/common/client-services/sgi-client.service.ts
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { BaseClientService } from './base-client.service';
 
 @Injectable()
-export class SbpgiClientService extends BaseClientService implements OnModuleInit {
-  protected logger: Logger = new Logger(SbpgiClientService.name);
+export class SgiClientService extends BaseClientService implements OnModuleInit {
+  protected logger: Logger = new Logger(SgiClientService.name);
 
   onModuleInit() {
-    // TODO: ถ้า deploy SBPGI แยก service ให้เพิ่ม API_SBPGI_BACKEND_* ใน AppConfigService
+    // TODO: ถ้า deploy SGI แยก service ให้เพิ่ม API_SGI_BACKEND_* ใน AppConfigService
     //       ตอนนี้ชี้ store backend ตัวเดียวกับ StoreClientService
     this.defaultHeaders[this.config.api.store.key.name] = this.config.api.store.key.value;
     this.baseUrl = this.config.api.store.url;
   }
 }
 // BaseClientService แกะ { success, data } ให้แล้ว — service ฝั่ง BFF จึงได้ data ตรง ๆ
-// TODO: เพิ่ม SbpgiClientService ใน providers/exports ของ ClientServiceModule (@Global)
+// TODO: เพิ่ม SgiClientService ใน providers/exports ของ ClientServiceModule (@Global)
 ```
 
 ```ts
-// src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.service.ts (BFF)
+// src/modules/sgi-report-and-master-data/sgi-report-and-master-data.service.ts (BFF)
 import { Injectable } from '@nestjs/common';
-import { SbpgiClientService } from '@common/client-services/sbpgi-client.service';
+import { SgiClientService } from '@common/client-services/sgi-client.service';
 
 @Injectable()
-export class SbpgiReportAndMasterDataBffService {
-  constructor(private readonly client: SbpgiClientService) {}
+export class SgiReportAndMasterDataBffService {
+  constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
   private userHeaders(user: any) {
@@ -1129,42 +1149,42 @@ export class SbpgiReportAndMasterDataBffService {
     };
   }
 
-  getSbpgiReportStatusSummary(params: any, user: any) {
-    return this.client.get('/api/v1/sbpgi/report/status-summary', { params, headers: this.userHeaders(user) });
+  getSgiReportStatusSummary(params: any, user: any) {
+    return this.client.get('/api/v1/sgi/report/status-summary', { params, headers: this.userHeaders(user) });
   }
 
   exportStatusSummary(params: any, user: any) {
-    return this.client.get('/api/v1/sbpgi/report/status-summary/export', { params, headers: this.userHeaders(user) });
+    return this.client.get('/api/v1/sgi/report/status-summary/export', { params, headers: this.userHeaders(user) });
   }
 
-  getSbpgiMasterFactors(params: any, user: any) {
-    return this.client.get('/api/v1/sbpgi/master/factors', { params, headers: this.userHeaders(user) });
+  getSgiMasterFactors(params: any, user: any) {
+    return this.client.get('/api/v1/sgi/master/factors', { params, headers: this.userHeaders(user) });
   }
 }
 
-// ---------- src/modules/sbpgi-report-and-master-data/sbpgi-report-and-master-data.controller.ts (BFF) ----------
+// ---------- src/modules/sgi-report-and-master-data/sgi-report-and-master-data.controller.ts (BFF) ----------
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sbpgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sbpgi/report-and-master-data')
+// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
+@Controller('bff/sgi/report-and-master-data')
 @UseGuards(AuthGuard('jwt'))
-export class SbpgiReportAndMasterDataBffController {
-  constructor(private readonly service: SbpgiReportAndMasterDataBffService) {}
+export class SgiReportAndMasterDataBffController {
+  constructor(private readonly service: SgiReportAndMasterDataBffService) {}
 
-  // proxy ของ GET /api/v1/sbpgi/report/status-summary
-  @Get('sbpgi/report/status-summary')
-  getSbpgiReportStatusSummary(@Query() query: any, @Req() req: any) {
-    return this.service.getSbpgiReportStatusSummary(query, req.user);
+  // proxy ของ GET /api/v1/sgi/report/status-summary
+  @Get('sgi/report/status-summary')
+  getSgiReportStatusSummary(@Query() query: any, @Req() req: any) {
+    return this.service.getSgiReportStatusSummary(query, req.user);
   }
 
-  // proxy ของ GET /api/v1/sbpgi/report/status-summary/export
-  @Get('sbpgi/report/status-summary/export')
+  // proxy ของ GET /api/v1/sgi/report/status-summary/export
+  @Get('sgi/report/status-summary/export')
   exportStatusSummary(@Query() query: any, @Req() req: any) {
     return this.service.exportStatusSummary(query, req.user);
   }
 }
-// TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
+// TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SgiClientService ใน ClientServiceModule (@Global)
 ```
 
 ## 10. Database SQL
@@ -1173,18 +1193,18 @@ export class SbpgiReportAndMasterDataBffController {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| compensation_documents | R | แหล่งข้อมูลรายงานและ filter status/year |
-| compensation_histories | R | ยอดเงินชดเชยและงวด statement |
-| consideration_logs | R | ผลพิจารณาล่าสุด APPROVE/REJECT |
+| sgi_compensation_documents | R | แหล่งข้อมูลรายงานและ filter status/year |
+| sgi_compensation_histories | R | ยอดเงินชดเชยและงวด statement |
+| sgi_consideration_logs | R | ผลพิจารณาล่าสุด APPROVE/REJECT |
 | glb-workflow | R | ผู้ปฏิบัติงาน — ตาราง operator_assignments ถูกตัด 2026-08-05 |
-| external_factors | R/W | master ปัจจัยภายนอก |
-| competitors | R/W | master แบรนด์คู่แข่ง 11 รายการ (code 01-11 · name_th · name_en · remark) — feed dropdown ร้านคู่แข่งของหน้าเอกสาร |
-| document_competitors | R | ตรวจว่าแบรนด์ถูกอ้างในเอกสารก่อนลบ (409) |
+| sgi_external_factors | R/W | master ปัจจัยภายนอก |
+| sgi_competitors | R/W | master แบรนด์คู่แข่ง 11 รายการ (code 01-11 · name_th · name_en · remark) — feed dropdown ร้านคู่แข่งของหน้าเอกสาร |
+| sgi_document_competitors | R | ตรวจว่าแบรนด์ถูกอ้างในเอกสารก่อนลบ (409) |
 | mas_param | R | ใช้ของระบบเดิม: mas_param (store-backend) |
 
 #### 10.2 SQL จริงต่อ Endpoint
 
-**GET /api/v1/sbpgi/report/status-summary** — รายงานตรวจสอบประกันรายได้
+**GET /api/v1/sgi/report/status-summary** — รายงานตรวจสอบประกันรายได้
 
 ```sql
 -- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:
@@ -1192,21 +1212,21 @@ export class SbpgiReportAndMasterDataBffController {
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- 14 คอลัมน์ตาม SDD สไลด์ 60 ; ต้องระบุ :year และ :status เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว
--- ⚠️ ตาราง stores ของ SBPGI ถูกตัด 2026-08-06 — ใช้ store ของระบบ SBP เดิม (sps_store 19,402 แถว): คีย์ store_id · ภาค zone_cd
+-- ⚠️ ตาราง stores ของ SGI ถูกตัด 2026-08-06 — ใช้ store ของระบบ SBP เดิม (sps_store 19,402 แถว): คีย์ store_id · ภาค zone_cd
 SELECT si.store_id   AS impacted_store_code, si.store_name   AS impacted_store_name,
        si.zone_cd  AS impacted_region,     si.store_type   AS impacted_store_type,
        pr.impact_month, pr.impact_year, d.statement_date,   -- statement_date = ค.ศ. (คอลัมน์ใหม่คู่กับ statement_id)
        ns.store_id   AS new_store_code,      ns.store_name  AS new_store_name,
        ns.zone_cd  AS new_region,          ns.store_type  AS new_store_type,
        h.compensate_amount, d.loop_no AS round_no, d.created_at AS created_date, d.doc_no
-FROM compensation_documents d
-JOIN fgi_impact_processes pr ON pr.id = d.impact_process_id
+FROM sgi_compensation_documents d
+JOIN sgi_fgi_impact_processes pr ON pr.id = d.impact_process_id
 JOIN store si                ON si.store_id = d.impacted_store_code
-LEFT JOIN compensation_histories h ON h.ref_doc_no = d.doc_no
-LEFT JOIN document_new_stores dns  ON dns.doc_no = d.doc_no
+LEFT JOIN sgi_compensation_histories h ON h.ref_doc_no = d.doc_no
+LEFT JOIN sgi_document_new_stores dns  ON dns.doc_no = d.doc_no
 LEFT JOIN store ns                 ON ns.store_id = dns.new_store_code
 LEFT JOIN LATERAL (
-  SELECT result_category FROM consideration_logs
+  SELECT result_category FROM sgi_consideration_logs
   WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1
 ) cl ON TRUE
 WHERE d.year = :year
@@ -1221,109 +1241,109 @@ ORDER BY d.doc_no
 LIMIT :size OFFSET :offset;
 ```
 
-**GET /api/v1/sbpgi/report/status-summary/export** — Export Excel
+**GET /api/v1/sgi/report/status-summary/export** — Export Excel
 
 ```sql
 -- เงื่อนไขเดียวกับ status-summary ทุกตัว แล้ว stream 14 คอลัมน์เดิมออกเป็นไฟล์ .xlsx (Export Excel)
--- ใช้ SELECT ชุดเดียวกับ GET /sbpgi/report/status-summary แต่ไม่ตัดหน้า (ไม่มี LIMIT/OFFSET)
+-- ใช้ SELECT ชุดเดียวกับ GET /sgi/report/status-summary แต่ไม่ตัดหน้า (ไม่มี LIMIT/OFFSET)
 ORDER BY d.doc_no;
 ```
 
-**GET /api/v1/sbpgi/master/factors** — อ่านปัจจัยภายนอก
+**GET /api/v1/sgi/master/factors** — อ่านปัจจัยภายนอก
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 SELECT factor_code, factor_name, factor_remark
-FROM external_factors
+FROM sgi_external_factors
 WHERE :q IS NULL OR factor_name LIKE :q
 ORDER BY factor_code;
 ```
 
-**POST /api/v1/sbpgi/master/factors** — สร้างปัจจัยภายนอก
+**POST /api/v1/sgi/master/factors** — สร้างปัจจัยภายนอก
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- factor_code ห้ามซ้ำ (ไม่งั้น 409)
-INSERT INTO external_factors (factor_code, factor_name, factor_remark)
+INSERT INTO sgi_external_factors (factor_code, factor_name, factor_remark)
 VALUES (:factorCode, :factorName, :factorRemark);
 ```
 
-**PUT /api/v1/sbpgi/master/factors/{code}** — แก้ปัจจัยภายนอก
+**PUT /api/v1/sgi/master/factors/{code}** — แก้ปัจจัยภายนอก
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- ไม่มี audit/เหตุผลแล้ว (ยกเลิก audit_logs 2026-08-07)
-UPDATE external_factors SET factor_name = :factorName, factor_remark = :factorRemark
+UPDATE sgi_external_factors SET factor_name = :factorName, factor_remark = :factorRemark
 WHERE factor_code = :code;
 ```
 
-**GET /api/v1/sbpgi/master/competitors** — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร้านคู่แข่งในหน้าเอกสารด้วย
+**GET /api/v1/sgi/master/competitors** — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร้านคู่แข่งในหน้าเอกสารด้วย
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) · ระบบเดิมเก็บชื่อไทยและอังกฤษ
 SELECT competitor_code, name_th, name_en, remark, is_active
-FROM competitors
+FROM sgi_competitors
 WHERE (:q IS NULL OR name_th LIKE :q OR name_en LIKE :q)
 ORDER BY competitor_code;
 ```
 
-**POST /api/v1/sbpgi/master/competitors** — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
+**POST /api/v1/sgi/master/competitors** — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- competitor_code ห้ามซ้ำ (ไม่งั้น 409) · ชื่อไทยและอังกฤษบังคับทั้งคู่
-INSERT INTO competitors (competitor_code, name_th, name_en, remark, is_active)
+INSERT INTO sgi_competitors (competitor_code, name_th, name_en, remark, is_active)
 VALUES (:code, :nameTh, :nameEn, :remark, TRUE);
 ```
 
-**PUT /api/v1/sbpgi/master/competitors/{code}** — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก document_competitors
+**PUT /api/v1/sgi/master/competitors/{code}** — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก sgi_document_competitors
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
--- ห้ามแก้ competitor_code (เป็น PK และถูกอ้างจาก document_competitors)
-UPDATE competitors
+-- ห้ามแก้ competitor_code (เป็น PK และถูกอ้างจาก sgi_document_competitors)
+UPDATE sgi_competitors
    SET name_th = :nameTh, name_en = :nameEn, remark = :remark, is_active = :isActive,
        updated_at = CURRENT_TIMESTAMP
  WHERE competitor_code = :code;
 ```
 
-**DELETE /api/v1/sbpgi/master/competitors/{code}** — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
+**DELETE /api/v1/sgi/master/competitors/{code}** — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- ตรวจไม่ถูกอ้างในเอกสารก่อนลบ (ไม่งั้น 409)
-SELECT 1 FROM document_competitors WHERE competitor_code = :code;
+SELECT 1 FROM sgi_document_competitors WHERE competitor_code = :code;
 
-DELETE FROM competitors WHERE competitor_code = :code;
+DELETE FROM sgi_competitors WHERE competitor_code = :code;
 ```
 
-**DELETE /api/v1/sbpgi/master/factors/{code}** — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
+**DELETE /api/v1/sgi/master/factors/{code}** — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
 -- ตรวจไม่ถูกอ้างในเอกสารก่อนลบ (ไม่งั้น 409)
-SELECT 1 FROM document_external_factors WHERE factor_code = :code;
+SELECT 1 FROM sgi_document_external_factors WHERE factor_code = :code;
 
-DELETE FROM external_factors WHERE factor_code = :code;
+DELETE FROM sgi_external_factors WHERE factor_code = :code;
 ```
 
 #### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
 
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |
-| compensation_histories | CREATE INDEX idx_compensation_histories_ref_doc_no ON compensation_histories (ref_doc_no); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
-| compensation_documents | CREATE INDEX idx_compensation_documents_year_status_code_impacted_store_code ON compensation_documents (year, status_code, impacted_store_code); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
+| sgi_compensation_histories | CREATE INDEX idx_sgi_compensation_histories_ref_doc_no ON sgi_compensation_histories (ref_doc_no); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
+| sgi_compensation_documents | CREATE INDEX idx_sgi_compensation_documents_year_status_code_impacted_store_ ON sgi_compensation_documents (year, status_code, impacted_store_code); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
 
-ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sbpgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่
+ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่
 
 ## 11. Processing Flow
 
@@ -1369,17 +1389,17 @@ DELETE FROM external_factors WHERE factor_code = :code;
 | business rule | logic | export uses same filters as preview |
 | business rule | logic | master edit requires reason |
 | business rule | logic | config locked value cannot edit |
-| `GET /api/v1/sbpgi/report/status-summary` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/sbpgi/report/status-summary/export` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/sbpgi/master/factors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `POST /api/v1/sbpgi/master/factors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `PUT /api/v1/sbpgi/master/factors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/sbpgi/master/competitors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `POST /api/v1/sbpgi/master/competitors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `PUT /api/v1/sbpgi/master/competitors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `DELETE /api/v1/sbpgi/master/competitors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `DELETE /api/v1/sbpgi/master/factors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `external_factors`, `competitors` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| `GET /api/v1/sgi/report/status-summary` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sgi/report/status-summary/export` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sgi/master/factors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `POST /api/v1/sgi/master/factors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `PUT /api/v1/sgi/master/factors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sgi/master/competitors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `POST /api/v1/sgi/master/competitors` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `PUT /api/v1/sgi/master/competitors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `DELETE /api/v1/sgi/master/competitors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `DELETE /api/v1/sgi/master/factors/{code}` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `sgi_external_factors`, `sgi_competitors` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 
 - ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ

@@ -74,7 +74,7 @@
     // { key:'k2-permissions', label:'สิทธิ์การเข้าถึงเมนู',  href:'k2-permissions.html', icon:I.lock,   group:'ระบบประกันรายได้ (SBP Mall)' },
     // กลุ่มผู้ดูแลระบบ (Admin) ไม่มีเมนูเหลือแล้ว (2026-08-06):
     // - ตั้งค่าระบบ (Global Config) และ Email Template ลบทั้งฟีเจอร์ — ค่ากำหนดกลางและ template อีเมล
-    //   บริหารจัดการที่ระบบ SBP เดิม (mas_param / email_template) ไม่มีหน้าจอ/endpoint ใน SBPGI
+    //   บริหารจัดการที่ระบบ SBP เดิม (mas_param / email_template) ไม่มีหน้าจอ/endpoint ใน SGI
     // - Batch Job ย้ายไปกลุ่ม Flow และเหลือแค่ Flowchart + Database ที่ใช้ (ดูรายการกลุ่ม Flow ด้านล่าง)
     { key:'flow-fgi',    label:'Flow FGI/FCS',             href:'flow-fgi.html',     icon:I.flow,      group:'Flow' },
     { key:'k2-flow',     label:'Flow K2',                  href:'k2-flow.html',      icon:I.route,     group:'Flow' },
@@ -526,7 +526,7 @@
       { key: 'position', label: 'ชื่อตำแหน่ง (section_code)', col: 'ชื่อตำแหน่ง', type: 'select', options: ['ฝ่าย SBP DSA', 'เจ้าหน้าที่ SBP DSA', 'ส่งเสริมธุรกิจพันธมิตรฯ', 'GM ส่งเสริมธุรกิจฯ', 'ผู้บริหารสำนักบริหาร SBP (AVP)'] },
       { key: 'zone', label: 'ภาคที่รับผิดชอบ (zone_code)', col: 'ภาคที่รับผิดชอบ', type: 'select', options: ['BE', 'BS', 'NEU', 'REU', 'RSU', 'BG', 'BW', 'RC', 'RN', 'BN', 'NEL', 'REL', 'RSL', '-'] }
     ],
-    /* master ปัจจัยภายนอก — จัดการที่หน้า k2-factors.html (ตาราง external_factors)
+    /* master ปัจจัยภายนอก — จัดการที่หน้า k2-factors.html (ตาราง sgi_external_factors)
        เพิ่ม/แก้ที่นั่นแล้ว dropdown "ปัจจัยอื่นๆ" ในหน้าเอกสารต้องเปลี่ยนตาม */
     FACTOR_MASTER: ['F001 · ร้านคู่แข่งเปิดใหม่', 'F002 · ห้างค้าปลีกขนาดใหญ่',
       'F003 · การก่อสร้าง / ปิดถนน', 'F004 · ทำเล/สถานีเปลี่ยน'],
@@ -536,7 +536,7 @@
       { key: 'remark', label: 'รายละเอียดเพิ่มเติม (factor_remark)', col: 'รายละเอียดเพิ่มเติม', wide: true }
     ],
     /* master รายชื่อคู่แข่ง — จัดการที่หน้า k2-competitors.html (ตรงตาม K2 เดิม 11 รายการ)
-       เพิ่ม/แก้ที่นั่นแล้ว dropdown ในหน้าเอกสารต้องเปลี่ยนตาม (ระบบจริงอ่านจากตาราง competitors) */
+       เพิ่ม/แก้ที่นั่นแล้ว dropdown ในหน้าเอกสารต้องเปลี่ยนตาม (ระบบจริงอ่านจากตาราง sgi_competitors) */
     COMPETITOR_MASTER: ['01 · โลตัสเอ็กซ์เพรส (Lotus Express)', '02 · มินิบิ๊กซี (Mini Big C)', '03 · ท็อปส์เดลี่ (Tops Daily)',
       '04 · แฟมิลี่มาร์ท (Family Mart)', '05 · จิฟฟี่ (Jiffy)', '06 · ซี.เจ. เอ็กซ์เพรส (CJ Express)',
       '07 · แม็กซ์แวลูทันใจ (Max Valu)', '08 · ซุปเปอร์ชีป (Super Cheap)', '09 · ลอว์สัน 108 (Lawson 108)',
@@ -582,7 +582,7 @@
     var base = (ent && SCHEMAS[ent]) ? SCHEMAS[ent].map(function (f) { var o = {}; for (var k in f) o[k] = f[k]; return o; })
       : meta.headers.map(function (h) { return { key: 'c' + h.idx, label: h.label, col: h.label, type: h.status ? 'status' : 'text' }; });
     base.forEach(function (f) {
-      // dropdown ที่อ้าง master list (competitors / external_factors) — ดึงรายการจริงมาใช้ ณ เวลาเปิด modal
+      // dropdown ที่อ้าง master list (sgi_competitors / sgi_external_factors) — ดึงรายการจริงมาใช้ ณ เวลาเปิด modal
       if (f.optionsFrom && SCHEMAS[f.optionsFrom]) f.options = SCHEMAS[f.optionsFrom].slice();
       f.colIdx = -1;
       if (f.col) for (var i = 0; i < meta.headers.length; i++) {

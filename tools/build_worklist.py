@@ -143,7 +143,7 @@ def canonical_endpoints() -> set[str]:
 
 
 def api_kind(key: str, canon: set[str]) -> str:
-    """own = 29 เส้นของ SBPGI · external = API ของระบบ SBP เดิม · contract = pseudo (/*) ในเอกสารสัญญากลาง"""
+    """own = 29 เส้นของ SGI · external = API ของระบบ SBP เดิม · contract = pseudo (/*) ในเอกสารสัญญากลาง"""
     if "/*" in key:
         return "contract"
     if key in canon:
@@ -451,16 +451,16 @@ function renderHome(){
   const ts=Object.values(T).filter(t=>!t.included);
   const sum=k=>ts.reduce((a,b)=>a+b[k],0);
   const grp=k=>ts.filter(t=>t.track===k);
-  return `<h1>Worklist — ระบบประกันรายได้ (SBPGI)</h1>
+  return `<h1>Worklist — ระบบประกันรายได้ (SGI)</h1>
   <p class="sub">หน้าจัดการงานที่ประกอบจากเอกสาร LLDD ชุดเดียวกับที่ส่งมอบ — คลิกงานเพื่อดูวิธีทำ คลิก API เพื่อดูสัญญาและ SQL คลิกตารางเพื่อดูโครงสร้าง</p>
   <div class="kpi">
     <div><b>${ts.length}</b><small>งานทั้งหมด</small></div>
     <div><b>${grp('FE').length}</b><small>Frontend</small></div>
     <div><b>${grp('BE').length}</b><small>Backend</small></div>
     <div><b>${grp('Job').length}</b><small>Batch Job</small></div>
-    <div><b>${Object.values(A).filter(a=>a.kind==='own').length}</b><small>API ของ SBPGI</small></div>
+    <div><b>${Object.values(A).filter(a=>a.kind==='own').length}</b><small>API ของ SGI</small></div>
     <div><b>${Object.values(A).filter(a=>a.kind==='external').length}</b><small>API ระบบเดิม</small></div>
-    <div><b>${Object.values(D).filter(t=>!t.existing).length}</b><small>ตาราง SBPGI</small></div>
+    <div><b>${Object.values(D).filter(t=>!t.existing).length}</b><small>ตาราง SGI</small></div>
     <div><b>${Object.values(D).filter(t=>t.existing).length}</b><small>ตารางระบบเดิม</small></div>
     <div><b>${sum('total')}</b><small>ชั่วโมงรวม</small></div>
   </div>
@@ -531,7 +531,7 @@ function renderApi(id){
   return `<div class="crumb"><a href="#/">Worklist</a> / API / ${esc(a.path)}</div>
   <h1><span class="m ${a.method}">${a.method}</span> <span class="mono" style="font-size:23px">${esc(a.path)}</span></h1>
   <p class="sub">${md(a.purpose)}</p>
-  ${a.kind==='external'?'<div class="note">🔗 <b>เส้นนี้เป็น API ของระบบ SBP เดิม</b> — SBPGI เรียกใช้ ไม่ได้สร้างเอง จึงไม่นับใน 29 เส้นของโครงการ</div>':''}
+  ${a.kind==='external'?'<div class="note">🔗 <b>เส้นนี้เป็น API ของระบบ SBP เดิม</b> — SGI เรียกใช้ ไม่ได้สร้างเอง จึงไม่นับใน 29 เส้นของโครงการ</div>':''}
   ${a.kind==='contract'?'<div class="note">📄 <b>ไม่ใช่ endpoint จริง</b> — เป็นสัญญากลางที่บังคับใช้กับ <i>ทุกเส้น</i> (envelope · error · auth · pagination) จึงเขียนเป็น <code>/*</code></div>':''}
   <h2>1. งานที่เรียกเส้นนี้</h2>${a.tasks.map(taskPill).join(' ')||'<p class="empty">—</p>'}
   <h2>2. Request</h2><pre>${esc(JSON.stringify(a.request,null,2))}</pre>
@@ -547,7 +547,7 @@ function renderDb(name){
   return `<div class="crumb"><a href="#/">Worklist</a> / Database / ${esc(name)}</div>
   <h1 class="mono">🗄 ${esc(name)}</h1>
   <p class="sub">${t.columns.length} คอลัมน์ · ${t.constraints.length} constraint</p>
-  ${t.existing?'<div class="note">🔗 <b>ตารางของระบบ SBP เดิม</b> (schema <code>sps_store</code>) — SBPGI <b>ห้าม CREATE และห้ามแก้โครงสร้าง</b> · คอลัมน์ที่แสดงมาจาก dump ฐานข้อมูลจริง</div>':''}
+  ${t.existing?'<div class="note">🔗 <b>ตารางของระบบ SBP เดิม</b> (schema <code>sps_store</code>) — SGI <b>ห้าม CREATE และห้ามแก้โครงสร้าง</b> · คอลัมน์ที่แสดงมาจาก dump ฐานข้อมูลจริง</div>':''}
   <h2>1. คอลัมน์</h2>
   ${table(['คอลัมน์','ชนิด','บังคับ','FK','หมายเหตุ'], t.columns.map(c=>[
     '<span class="mono">'+esc(c.name)+'</span>'+(c.pk?' 🔑':''),
@@ -573,10 +573,10 @@ function buildNav(){
     out+=g(label, ts.filter(t=>t.track===k).map(t=>link('#/task/'+t.id, ic, t.title, t.included?'incl.':t.total+'h')));
   });
   const apiLink=k=>link('#/api/'+A[k].id,'<span class="m '+A[k].method+'" style="font-size:9.5px;padding:1px 4px">'+A[k].method+'</span>',A[k].path);
-  out+=g('API ของ SBPGI', Object.keys(A).filter(k=>A[k].kind==='own').sort().map(apiLink));
+  out+=g('API ของ SGI', Object.keys(A).filter(k=>A[k].kind==='own').sort().map(apiLink));
   out+=g('API ระบบเดิม (reuse)', Object.keys(A).filter(k=>A[k].kind==='external').sort().map(apiLink));
   // kind='contract' เป็น pseudo endpoint (/*) ของเอกสารสัญญากลาง ไม่ใช่เส้นจริง จึงไม่ขึ้นเมนู
-  out+=g('Database (SBPGI)', Object.keys(D).filter(n=>!D[n].existing).sort().map(n=>link('#/db/'+n,'🗄',n)));
+  out+=g('Database (SGI)', Object.keys(D).filter(n=>!D[n].existing).sort().map(n=>link('#/db/'+n,'🗄',n)));
   out+=g('Database ระบบเดิม (reuse)', Object.keys(D).filter(n=>D[n].existing).sort().map(n=>link('#/db/'+n,'🗄',n)));
   return out;
 }
@@ -584,7 +584,11 @@ function buildNav(){
 /* ---------- Kanban board (สถานะเก็บใน localStorage ของเครื่องผู้ใช้) ---------- */
 const COLS=[['todo','ยังไม่เริ่ม','#9b9a97'],['doing','กำลังทำ','#2383e2'],
             ['review','รอรีวิว','#d9730d'],['blocked','ติดปัญหา','#e03e3e'],['done','เสร็จแล้ว','#0f7b6c']];
-const BK='sbpgi.worklist.board.v1', FK='sbpgi.worklist.filter.v1';
+const BK='sgi.worklist.board.v1', FK='sgi.worklist.filter.v1';
+/* ย้ายชื่อคีย์ sbpgi.* -> sgi.* (2026-09-01) — ยกของเดิมมาให้ครั้งเดียว กระดานที่คนลากไว้จะไม่หาย */
+[[BK,'sbpgi.worklist.board.v1'],[FK,'sbpgi.worklist.filter.v1']].forEach(([nk,ok])=>{
+  try{ if(localStorage.getItem(nk)===null){ const v=localStorage.getItem(ok); if(v!==null) localStorage.setItem(nk,v); } }catch(e){}
+});
 const BOARD_FILE='worklist-board.json';   // baseline ที่ commit ขึ้น git ได้
 const ORDER=Object.keys(T).sort();        // ลำดับคงที่ ใช้เข้ารหัสสถานะลง URL
 const CODE=COLS.map(c=>c[0]);
@@ -820,13 +824,13 @@ def render(model: dict) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Worklist — ระบบประกันรายได้ SBPGI</title>
+<title>Worklist — ระบบประกันรายได้ SGI</title>
 <style>{CSS}</style>
 </head>
 <body>
 <div class="wrap">
   <aside class="side">
-    <div class="brand"><span class="dot">SB</span><span>SBPGI Worklist</span></div>
+    <div class="brand"><span class="dot">SB</span><span>SGI Worklist</span></div>
     <!-- หน้านี้อยู่ในเมนูกลุ่ม Plan ของ sbp.js แต่เป็น standalone (มี sidebar ของตัวเอง) จึงต้องมีทางกลับเอง -->
     <a class="back" href="k2-list-waiting.html">← กลับระบบประกันรายได้</a>
     <div style="padding:0 10px"><input class="search" placeholder="ค้นหางาน / API / ตาราง…"></div>
@@ -851,8 +855,8 @@ def main() -> None:
     _new = sum(1 for t in model["tables"].values() if not t.get("existing"))
     _old = len(model["tables"]) - _new
     print(f"worklist.html · งาน {len(model['tasks'])} หัวข้อ (LLDD 40 ฉบับ) · "
-          f"API {_own} ของ SBPGI + {_ext} ระบบเดิม + {_ctr} pseudo · "
-          f"ตาราง {_new} SBPGI + {_old} ระบบเดิม · {out.stat().st_size//1024} KB")
+          f"API {_own} ของ SGI + {_ext} ระบบเดิม + {_ctr} pseudo · "
+          f"ตาราง {_new} SGI + {_old} ระบบเดิม · {out.stat().st_size//1024} KB")
 
 
 if __name__ == "__main__":

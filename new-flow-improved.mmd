@@ -39,7 +39,7 @@ sequenceDiagram
         participant AllMap
     end
     box rgb(214,245,235) ระบบประกันรายได้ SBP GI
-        participant SBPGI
+        participant SGI
     end
     box rgb(255,237,213) MIS ยอดขาย
         participant MIS
@@ -51,32 +51,32 @@ sequenceDiagram
         participant SAP
     end
 
-    AllMap->>SBPGI: ส่งข้อมูลร้านค้าที่ได้รับผลกระทบ
+    AllMap->>SGI: ส่งข้อมูลร้านค้าที่ได้รับผลกระทบ
 
     opt กรณีร้านค้าได้รับผลกระทบ แต่ไม่ได้ส่งข้อมูลสาขามาให้คำนวณ และต้องการชดเชยย้อนหลัง
         Note over STA,SAP: API Endpoint /fgiService/updateCompensateFromFS
-        STA->>SBPGI: ส่งข้อมูลร้านค้าที่ได้รับผลกระทบ (API)
-        activate SBPGI
-        SBPGI->>SBPGI: นำเข้าข้อมูล เพื่อใช้ในการประมวลผล
-        SBPGI-->>STA: return Success
-        deactivate SBPGI
+        STA->>SGI: ส่งข้อมูลร้านค้าที่ได้รับผลกระทบ (API)
+        activate SGI
+        SGI->>SGI: นำเข้าข้อมูล เพื่อใช้ในการประมวลผล
+        SGI-->>STA: return Success
+        deactivate SGI
     end
 
-    Note over SBPGI: Job FGI_ExportImpactStoreToAMS<br/>At 16:00 on every day-of-month from 7 through 16
+    Note over SGI: Job FGI_ExportImpactStoreToAMS<br/>At 16:00 on every day-of-month from 7 through 16
     Note over MIS: Filename AMS060010_
-    SBPGI->>MIS: วางไฟล์ข้อมูลร้านค้าที่ได้รับผลกระทบ
+    SGI->>MIS: วางไฟล์ข้อมูลร้านค้าที่ได้รับผลกระทบ
     MIS->>MIS: ดึงไฟล์ข้อมูลร้านค้าที่ได้รับผลกระทบ
     MIS->>MIS: ประมวลผล
 
-    Note over AllMap,SBPGI: Filename AMS06001I_
-    MIS->>SBPGI: วางไฟล์ยอดขายของร้านค้าที่ได้รับผลกระทบ
-    Note over SBPGI,MIS: Job FGI_ImportImpactStoreSale.sh<br/>At 16:30 on every day-of-month from 7 through 16<br/>Filename AMS06001I_
-    SBPGI->>SBPGI: นำเข้าข้อมูลยอดการขายจาก MIS
+    Note over AllMap,SGI: Filename AMS06001I_
+    MIS->>SGI: วางไฟล์ยอดขายของร้านค้าที่ได้รับผลกระทบ
+    Note over SGI,MIS: Job FGI_ImportImpactStoreSale.sh<br/>At 16:30 on every day-of-month from 7 through 16<br/>Filename AMS06001I_
+    SGI->>SGI: นำเข้าข้อมูลยอดการขายจาก MIS
 
-    Note over SBPGI,MIS: Job FGI_ExportImpactStoreToSTA.sh<br/>At 17:00 on every day
+    Note over SGI,MIS: Job FGI_ExportImpactStoreToSTA.sh<br/>At 17:00 on every day
     Note over STA: Filename FRBC0001_
-    SBPGI->>STA: ประมวลผลวางไฟล์ข้อมูลร้านค้าที่ได้รับผลกระทบ
-    SBPGI->>SBPGI: บันทึกข้อมูลส่งออกของร้านค้าที่ได้รับผลกระทบ (STA)
+    SGI->>STA: ประมวลผลวางไฟล์ข้อมูลร้านค้าที่ได้รับผลกระทบ
+    SGI->>SGI: บันทึกข้อมูลส่งออกของร้านค้าที่ได้รับผลกระทบ (STA)
     STA->>STA: ประมวลผลข้อมูลจากไฟล์ FRBC0001_
 
     alt กรณีอนุมัติชดเชยประกันรายได้ (Approve = A)
@@ -89,20 +89,20 @@ sequenceDiagram
         STA->>STA: ตั้ง Flow ร้านค้าที่ได้รับผลกระทบ
     end
 
-    Note over AllMap,SBPGI: Filename RT040035, RT040078
-    STA->>SBPGI: วางไฟล์ยอดชดเชยประกันรายได้
-    Note over SBPGI,MIS: API Endpoint /fgiService/updateCompensateFromFS<br/>ยอดเท่ากับศูนย์ = Z<br/>ยอดไม่เท่ากับศูนย์ = w
-    STA->>SBPGI: ส่งข้อมูล ยอดเงินประกันรายได้
-    activate SBPGI
-    SBPGI->>SBPGI: อัพเดทข้อมูลร้านค้าที่ได้รับผลกระทบ
-    SBPGI-->>STA: return Success
-    deactivate SBPGI
+    Note over AllMap,SGI: Filename RT040035, RT040078
+    STA->>SGI: วางไฟล์ยอดชดเชยประกันรายได้
+    Note over SGI,MIS: API Endpoint /fgiService/updateCompensateFromFS<br/>ยอดเท่ากับศูนย์ = Z<br/>ยอดไม่เท่ากับศูนย์ = w
+    STA->>SGI: ส่งข้อมูล ยอดเงินประกันรายได้
+    activate SGI
+    SGI->>SGI: อัพเดทข้อมูลร้านค้าที่ได้รับผลกระทบ
+    SGI-->>STA: return Success
+    deactivate SGI
 
-    SBPGI->>SBPGI: (K2) นำเข้าข้อมูลร้านค้าที่ได้รับผลกระทบ
-    Note over AllMap,SBPGI: API Endpoint /fgiService/confirmDataFromBPM
-    SBPGI->>SBPGI: (K2) ตอบกลับ ได้รับข้อมูลจากระบบประกันรายได้<br/>และอัพเดทสถานะการตอบกลับข้อมูล
+    SGI->>SGI: (K2) นำเข้าข้อมูลร้านค้าที่ได้รับผลกระทบ
+    Note over AllMap,SGI: API Endpoint /fgiService/confirmDataFromBPM
+    SGI->>SGI: (K2) ตอบกลับ ได้รับข้อมูลจากระบบประกันรายได้<br/>และอัพเดทสถานะการตอบกลับข้อมูล
 
     opt กรณีมีการ Adjust เงินชดเชยประกันรายได้
-        STA->>SBPGI: ส่งข้อมูล Adjust เงินชดเชยประกันรายได้
-        SBPGI->>SBPGI: อัพเดทข้อมูล Adjust
+        STA->>SGI: ส่งข้อมูล Adjust เงินชดเชยประกันรายได้
+        SGI->>SGI: อัพเดทข้อมูล Adjust
     end

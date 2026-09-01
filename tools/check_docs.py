@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""ชุดตรวจความถูกต้องของเอกสาร SBPGI — รันก่อนส่งมอบทุกครั้ง
+"""ชุดตรวจความถูกต้องของเอกสาร SGI — รันก่อนส่งมอบทุกครั้ง
 
     python3 tools/check_docs.py
 
 ตรวจ 2 ฝั่ง:
-  A. ฝั่ง SBPGI เอง  — จำนวนตาราง · FK · ลิงก์ · ตาราง markdown · จำนวนเอกสาร
+  A. ฝั่ง SGI เอง  — จำนวนตาราง · FK · ลิงก์ · ตาราง markdown · จำนวนเอกสาร
   B. ฝั่งระบบเดิม    — ตาราง/คอลัมน์ของ sps_store ที่เราอ้าง ต้องมีจริง ·
                        ชื่อ function ของ @srm/glb-workflow ต้องอยู่ใน API 8 ตัว ·
                        ชื่อคอลัมน์ของ email-lib ต้องเป็นชื่อ production
@@ -76,7 +76,7 @@ for line in io.open("SBP/db-schema-sps_store.md", encoding="utf-8"):
 
 EXISTING_TABLES = set(schema)
 
-# ---------------------------------------------------------------- A. ฝั่ง SBPGI
+# ---------------------------------------------------------------- A. ฝั่ง SGI
 ddl = read("LLDD/md/LLDD-Database.md")
 created = set(re.findall(r"CREATE TABLE (?:IF NOT EXISTS )?([a-z_0-9]+)", ddl))
 check(f"ตารางในขอบเขต = {CANON_TABLES} (CREATE + fcs_qssi_score ที่ reuse)",
@@ -190,17 +190,17 @@ _eps = re.findall(r"m:\s*'(GET|POST|PUT|PATCH|DELETE)'[^}]*?p:\s*'([^']+)'", _pl
 check(f"endpoint ที่ยังใช้งานใน plan-api.html = {CANON_ENDPOINTS}",
       [] if len(_eps) == CANON_ENDPOINTS else [f"นับได้ {len(_eps)}"])
 
-# ทุกเส้นของ SBPGI ต้องอยู่ใต้ namespace /api/v1/sbpgi/ (มติ 2026-08-25)
-# เหตุผล: SBPGI อยู่ใน store-backend ตัวเดิมที่มี /document /report /interface/... อยู่ก่อนแล้ว
-check("endpoint ของ SBPGI ที่ไม่ได้อยู่ใต้ /api/v1/sbpgi/",
-      [f"{m} {pth}" for m, pth in _eps if not pth.startswith("/api/v1/sbpgi/")])
+# ทุกเส้นของ SGI ต้องอยู่ใต้ namespace /api/v1/sgi/ (มติ 2026-08-25)
+# เหตุผล: SGI อยู่ใน store-backend ตัวเดิมที่มี /document /report /interface/... อยู่ก่อนแล้ว
+check("endpoint ของ SGI ที่ไม่ได้อยู่ใต้ /api/v1/sgi/",
+      [f"{m} {pth}" for m, pth in _eps if not pth.startswith("/api/v1/sgi/")])
 
 # ต้องอยู่ในกลุ่มใดกลุ่มหนึ่งใน 6 กลุ่ม (ตรงกับ 6 กลุ่มใน api.md แบบ 1:1)
-SBPGI_GROUPS = ("document", "lookup", "master", "report", "workflow", "interface")
-check(f"endpoint ที่ไม่ได้อยู่ใน 6 กลุ่มของ sbpgi ({'/'.join(SBPGI_GROUPS)})",
+SGI_GROUPS = ("document", "lookup", "master", "report", "workflow", "interface")
+check(f"endpoint ที่ไม่ได้อยู่ใน 6 กลุ่มของ sgi ({'/'.join(SGI_GROUPS)})",
       [f"{m} {pth}" for m, pth in _eps
-       if pth.startswith("/api/v1/sbpgi/")
-       and pth[len("/api/v1/sbpgi/"):].split("/")[0] not in SBPGI_GROUPS])
+       if pth.startswith("/api/v1/sgi/")
+       and pth[len("/api/v1/sgi/"):].split("/")[0] not in SGI_GROUPS])
 
 # api.md เขียนแบบรวมแถวได้ (GET/POST/PUT/DELETE | /a · /a/{id}) — ขยายแล้วต้องได้เท่ากัน
 _api = read("api.md")
@@ -214,7 +214,7 @@ for _line in _scope.split("\n"):
     if not _line.startswith("|"):
         continue
     _cells = _line.split("|")
-    # แบบ A (ชัดเจน): VERB `path` เขียนติดกัน — ใช้ได้ทุกคอลัมน์ เช่น "GET `/sbpgi/master/factors` · POST `/sbpgi/master/factors`"
+    # แบบ A (ชัดเจน): VERB `path` เขียนติดกัน — ใช้ได้ทุกคอลัมน์ เช่น "GET `/sgi/master/factors` · POST `/sgi/master/factors`"
     _explicit = re.findall(r"\b(GET|POST|PUT|PATCH|DELETE)\s+`(/[^`]+)`", _line)
     if _explicit:
         _pairs |= set(_explicit)
@@ -258,7 +258,7 @@ CUT_FEATURES = {
     "job_run_histories": "Batch Job Admin (ตัด 2026-08-06)",
     "audit_logs": "ระบบ audit ของ master (ยกเลิก 2026-08-07)",
     "status_email_rules": "ตารางกฎอีเมล (ตัด 2026-08-14)",
-    "workflow_tasks": "ตาราง workflow ของ SBPGI (ตัด 2026-08-06)",
+    "workflow_tasks": "ตาราง workflow ของ SGI (ตัด 2026-08-06)",
 }
 _okctx = re.compile(r"ตัด|ยกเลิก|ลบ|ไม่สร้าง|ไม่มี|❌|~~|ถูกเอาออก|แทนด้วย|เดิม|removed|dropped")
 cut_bad = []
@@ -523,7 +523,7 @@ if os.path.exists(_wl):
                 if _n.startswith("workflow") and re.fullmatch(r"\s*W\s*", str(_r[1])):
                     wl_bad.append(
                         f"{_t['file']} :: {_r[0]} ป้าย R/W = 'W' เปล่า — ต้องเป็น 'W (ผ่าน lib)' "
-                        "เพราะ SBPGI ห้าม INSERT/UPDATE ตาราง engine ตรง"
+                        "เพราะ SGI ห้าม INSERT/UPDATE ตาราง engine ตรง"
                     )
 
 check("worklist.html ไม่ตรงกับ LLDD (trigger event / ลำดับขั้น)", wl_bad)

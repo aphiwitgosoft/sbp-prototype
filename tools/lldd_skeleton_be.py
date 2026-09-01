@@ -21,7 +21,7 @@ BFF (NestJS ไม่มี DB)
   * ``src/modules/<feature>/`` + client service ที่ต่อจาก ``BaseClientService``
     (ตั้ง ``baseUrl``/``defaultHeaders`` ตอน ``onModuleInit``)
   * ResponseInterceptor ห่อเป็น ``{success, data, requestId}``
-  * SBPGI รับ identity ผ่าน header ``x-api-key`` / ``x-user-id`` / ``x-user-group-id`` /
+  * SGI รับ identity ผ่าน header ``x-api-key`` / ``x-user-id`` / ``x-user-group-id`` /
     ``x-user-permissions``
 """
 
@@ -57,12 +57,12 @@ def code(text: str, lang: str = "") -> dict[str, Any]:
 
 
 # --------------------------------------------------------------------------------------
-# ตารางที่ "ไม่ใช่ของ SBPGI" — ใช้ของระบบ SBP เดิม/workflow engine จึงไม่สร้าง entity
+# ตารางที่ "ไม่ใช่ของ SGI" — ใช้ของระบบ SBP เดิม/workflow engine จึงไม่สร้าง entity
 # (ตามการตัดสินใจ 2026-08-05 และ 2026-08-06 ใน database.md)
 # --------------------------------------------------------------------------------------
 REUSED_TABLES: dict[str, str] = {
-    # มติ DP-9 (2026-08-10): decisions ย้ายไป common_code ของระบบเดิม (code_type = SBPGI_DECISION)
-    "decisions": "common_code (code_type = SBPGI_DECISION)",
+    # มติ DP-9 (2026-08-10): decisions ย้ายไป common_code ของระบบเดิม (code_type = SGI_DECISION)
+    "decisions": "common_code (code_type = SGI_DECISION)",
     "stores": "store / mas_store / sevenshop (store-backend)",
     "zones": "mas_zone (store-backend)",
     "branch_types": "common_code (store-backend)",
@@ -102,9 +102,9 @@ CUT_PREFIXES: tuple[tuple[str, str], ...] = (
 # (เอกสารที่ไม่ใช่เจ้าของจะ generate เป็น "หมายเหตุอ้างอิง" แทน @Get/@Post ซ้ำ)
 # --------------------------------------------------------------------------------------
 ENDPOINT_OWNER: dict[str, str] = {
-    "GET /api/v1/sbpgi/document/tasks": "LLDD-BE-API-Document-List-Search",
-    "POST /api/v1/sbpgi/document/{docNo}/actions": "LLDD-BE-API-Document-Workflow-Actions",
-    "GET /api/v1/sbpgi/document/{docNo}/timeline": "LLDD-BE-API-Document-Workflow-Actions",
+    "GET /api/v1/sgi/document/tasks": "LLDD-BE-API-Document-List-Search",
+    "POST /api/v1/sgi/document/{docNo}/actions": "LLDD-BE-API-Document-Workflow-Actions",
+    "GET /api/v1/sgi/document/{docNo}/timeline": "LLDD-BE-API-Document-Workflow-Actions",
 }
 
 # --------------------------------------------------------------------------------------
@@ -115,7 +115,7 @@ CUT_TABLE_REPLACEMENT: dict[str, str] = {
     "workflow_tasks": "workflow_approver / workflow_history (@srm/glb-workflow) ผ่าน getPendingFlowByUser()/eventWorkflow()",
     "workflow_sections": "workflow_state / route (@srm/glb-workflow)",
     "document_statuses": "workflow_status (@srm/glb-workflow)",
-    "stores": "store / mas_store / sevenshop (store-backend) หรือ impacted_stores ของ SBPGI",
+    "stores": "store / mas_store / sevenshop (store-backend) หรือ sgi_impacted_stores ของ SGI",
     "zones": "mas_zone (store-backend)",
     "employees": "business_user (store-backend)",
     "system_configs": "mas_param (store-backend)",
@@ -147,11 +147,11 @@ def _cut_reason(path: str) -> str:
 
 
 # --------------------------------------------------------------------------------------
-# คอลัมน์อ้างอิงของตาราง SBPGI (สรุปจาก database.md — Canonical Column Contract)
+# คอลัมน์อ้างอิงของตาราง SGI (สรุปจาก database.md — Canonical Column Contract)
 #   table -> (ClassName, [(column, tsType, columnOptions, isPk)])
 # --------------------------------------------------------------------------------------
 COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
-    "compensation_documents": (
+    "sgi_compensation_documents": (
         "CompensationDocument",
         [
             ("doc_no", "string", "type: 'varchar', length: 12", True),
@@ -172,7 +172,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("updated_at", "Date", "type: 'timestamptz', nullable: true", False),
         ],
     ),
-    "document_new_stores": (
+    "sgi_document_new_stores": (
         "DocumentNewStore",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -184,7 +184,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("open_date", "Date", "type: 'date', nullable: true", False),
         ],
     ),
-    "document_competitors": (
+    "sgi_document_competitors": (
         "DocumentCompetitor",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -198,7 +198,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("source_system", "string", "type: 'varchar', length: 10", False),
         ],
     ),
-    "document_external_factors": (
+    "sgi_document_external_factors": (
         "DocumentExternalFactor",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -209,7 +209,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("remark", "string", "type: 'text', nullable: true", False),
         ],
     ),
-    "document_attachments": (
+    "sgi_document_attachments": (
         "DocumentAttachment",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -226,7 +226,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("uploaded_at", "Date", "type: 'timestamptz'", False),
         ],
     ),
-    "consideration_logs": (
+    "sgi_consideration_logs": (
         "ConsiderationLog",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -240,7 +240,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("action_datetime", "Date", "type: 'timestamptz'", False),
         ],
     ),
-    "compensation_histories": (
+    "sgi_compensation_histories": (
         "CompensationHistory",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -253,7 +253,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("submit_status", "string", "type: 'char', length: 1, nullable: true", False),
         ],
     ),
-    "fgi_impact_processes": (
+    "sgi_fgi_impact_processes": (
         "FgiImpactProcess",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -266,7 +266,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("created_at", "Date", "type: 'timestamptz', nullable: true", False),
         ],
     ),
-    "fgi_impact_stores": (
+    "sgi_fgi_impact_stores": (
         "FgiImpactStore",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -279,7 +279,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("period_month", "number", "type: 'int'", False),
         ],
     ),
-    "fgi_impact_sales_summaries": (
+    "sgi_fgi_impact_sales_summaries": (
         "FgiImpactSalesSummary",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -290,7 +290,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("period_month", "number", "type: 'int'", False),
         ],
     ),
-    "fgi_impact_competitors": (
+    "sgi_fgi_impact_competitors": (
         "FgiImpactCompetitor",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -301,7 +301,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("open_date", "Date", "type: 'date', nullable: true", False),
         ],
     ),
-    "sales_transactions": (
+    "sgi_sales_transactions": (
         "SalesTransaction",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -313,7 +313,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("is_outlier", "boolean", "type: 'boolean', default: false", False),
         ],
     ),
-    "interface_transactions": (
+    "sgi_interface_transactions": (
         "InterfaceTransaction",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -330,7 +330,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("return_code", "string", "type: 'varchar', length: 10, nullable: true", False),
         ],
     ),
-    "external_factors": (
+    "sgi_external_factors": (
         "ExternalFactor",
         [
             ("factor_code", "string", "type: 'varchar', length: 20", True),
@@ -339,7 +339,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("is_active", "boolean", "type: 'boolean', default: true", False),
         ],
     ),
-    "impacted_stores": (
+    "sgi_impacted_stores": (
         "ImpactedStore",
         [
             ("store_code", "string", "type: 'char', length: 5", True),
@@ -351,7 +351,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("is_active", "boolean", "type: 'boolean', default: true", False),
         ],
     ),
-    "competitors": (
+    "sgi_competitors": (
         "Competitor",
         [
             ("competitor_code", "string", "type: 'varchar', length: 2", True),
@@ -360,7 +360,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("is_active", "boolean", "type: 'boolean', default: true", False),
         ],
     ),
-    "document_cost_details": (
+    "sgi_document_cost_details": (
         "DocumentCostDetail",
         [
             ("id", "number", "type: 'bigint'", True),
@@ -372,7 +372,7 @@ COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
             ("cost_amount", "string", "type: 'numeric', precision: 15, scale: 2, nullable: true", False),
         ],
     ),
-    "document_running_numbers": (
+    "sgi_document_running_numbers": (
         "DocumentRunningNumber",
         [
             ("year", "number", "type: 'int'", True),
@@ -462,7 +462,7 @@ def _clip(text: str, width: int = 78) -> str:
 # --------------------------------------------------------------------------------------
 def _feature(topic: Any) -> tuple[str, str]:
     """คืน (slug, PascalName) จาก topic.file เช่น BE/LLDD-BE-API-Document-List-Search."""
-    raw = str(getattr(topic, "file", "") or "sbpgi-feature")
+    raw = str(getattr(topic, "file", "") or "sgi-feature")
     name = raw.split("/")[-1]
     for prefix in ("LLDD-BE-API-", "LLDD-BE-", "LLDD-"):
         if name.startswith(prefix):
@@ -572,7 +572,7 @@ def _assign_handlers(endpoints: list[_Endpoint]) -> None:
 # store-backend **ไม่มี global prefix** (main.ts คอมเมนต์ `app.setGlobalPrefix("api")` ทิ้งไว้)
 # และ controller ตัวอื่นใช้ base เป็นชื่อโดเมนล้วน ('store', 'statement', 'common', 'master')
 # ส่วน '/api/v1' เป็น prefix ของ **BFF** (NEXT_PUBLIC_BFF_API_URL=.../api/v1) — คนละชั้นกัน
-BACKEND_PREFIX = "sbpgi"
+BACKEND_PREFIX = "sgi"
 
 
 def _strip_api_prefix(segments: list[str]) -> list[str]:
@@ -583,7 +583,7 @@ def _strip_api_prefix(segments: list[str]) -> list[str]:
 
 
 def _controller_base(endpoints: list[_Endpoint]) -> str:
-    """base path ร่วมของ controller ฝั่ง store-backend (prefix `sbpgi/…` ไม่ใช่ `api/v1/…`)."""
+    """base path ร่วมของ controller ฝั่ง store-backend (prefix `sgi/…` ไม่ใช่ `api/v1/…`)."""
     if not endpoints:
         return BACKEND_PREFIX
     common = _strip_api_prefix(endpoints[0].segments)
@@ -611,7 +611,7 @@ def _relative_route(ep: _Endpoint, base: str) -> str:
 # db tables
 # --------------------------------------------------------------------------------------
 def _split_tables(topic: Any) -> tuple[list[tuple[str, str, str]], list[tuple[str, str, str]]]:
-    """คืน (own, reused) โดย own = ตารางที่ SBPGI ต้องสร้าง entity เอง."""
+    """คืน (own, reused) โดย own = ตารางที่ SGI ต้องสร้าง entity เอง."""
     own: list[tuple[str, str, str]] = []
     reused: list[tuple[str, str, str]] = []
     seen: set[str] = set()
@@ -646,17 +646,17 @@ def _workflow_plan(topic: Any, endpoints: list[_Endpoint], reused: list[tuple[st
         label = f"{ep.method} {ep.path}"
         if path.endswith("/actions") and ep.method == "POST":
             plan.append([label, "getPermissionEvents() → eventWorkflow()", "ตรวจสิทธิ์ event ของผู้ใช้ก่อนเดิน state และบันทึก history"])
-        elif "/sbpgi/workflow/instances" in path and ep.method == "POST":
+        elif "/sgi/workflow/instances" in path and ep.method == "POST":
             plan.append([label, "initializeWorkflow() → addPreApprover()", "เปิด transaction ใหม่ (referenceId = docNo) แล้วผูกผู้อนุมัติ state 06"])
-        elif "/sbpgi/workflow/instances" in path:
+        elif "/sgi/workflow/instances" in path:
             plan.append([label, "getTransaction()", "อ่าน currentState ของ instance ตาม referenceId"])
         elif path.endswith("/timeline"):
             plan.append([label, "getHistory()", "timeline การเปลี่ยน state (fromState/toState/event/remark)"])
-        # ⚠️ ห้ามใช้ substring "pending" — จะไปโดน /sbpgi/interface/pending-ack ซึ่งเป็น watchdog ACK ของ STA
-        #    (อ่าน interface_transactions) ไม่ใช่ inbox ของ workflow engine
-        elif path.rstrip("/").endswith("/sbpgi/document/tasks"):
+        # ⚠️ ห้ามใช้ substring "pending" — จะไปโดน /sgi/interface/pending-ack ซึ่งเป็น watchdog ACK ของ STA
+        #    (อ่าน sgi_interface_transactions) ไม่ใช่ inbox ของ workflow engine
+        elif path.rstrip("/").endswith("/sgi/document/tasks"):
             plan.append([label, "getPendingFlowByUser()", "inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header"])
-        elif "/sbpgi/workflow/summary" in path:
+        elif "/sgi/workflow/summary" in path:
             plan.append([label, "getPendingFlowByUser() (aggregate)", "นับงานค้างต่อ state แล้วรวมกับ workflow_generation_status W/Y/N"])
     if not plan and any(t[0].lower().startswith(_WORKFLOW_PREFIX) for t in reused):
         plan.append(["(อ่านสถานะประกอบ)", "getTransaction()", "อ่านสถานะปัจจุบันของเอกสารเพื่อประกอบ response"])
@@ -792,7 +792,7 @@ def _dto_class(class_name: str, source: dict[str, Any], skip: set[str], fields: 
 
 
 _DTO_IMPORTS = [
-    "// src/modules/sbpgi-<feature>/dto/sbpgi-<feature>.dto.ts",
+    "// src/modules/sgi-<feature>/dto/sgi-<feature>.dto.ts",
     "import { Type } from 'class-transformer';",
     "import {",
     "  IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,",
@@ -910,31 +910,31 @@ def _controller_code(topic: Any, slug: str, pascal: str, base: str, dto: dict[st
     dto_names = list(dict.fromkeys(dto_names))
 
     head_note = f"  (ส่วนที่ {part}/{total_parts} — คลาสเดียวกัน)" if total_parts > 1 else ""
-    lines = [f"// src/modules/sbpgi-{slug}/sbpgi-{slug}.controller.ts" + head_note]
+    lines = [f"// src/modules/sgi-{slug}/sgi-{slug}.controller.ts" + head_note]
     if part == 1:
         lines += [
             "import { " + ", ".join(ordered) + " } from '@nestjs/common';",
             "import { HttpHeaderGuard } from '../../guards/http-header.guard';",
             "import { UserId } from '../../common/decorators/user-id.decorator';",
-            f"import {{ Sbpgi{pascal}Service }} from './sbpgi-{slug}.service';",
+            f"import {{ Sgi{pascal}Service }} from './sgi-{slug}.service';",
         ]
         if dto_names:
-            lines.append("import { " + ", ".join(dto_names) + " } from './dto/sbpgi-" + slug + ".dto';")
+            lines.append("import { " + ", ".join(dto_names) + " } from './dto/sgi-" + slug + ".dto';")
         lines += [
             "",
             f"// {getattr(topic, 'title', '')}",
             "// BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้",
             f"@Controller('{base}')",
             "@UseGuards(HttpHeaderGuard)",
-            f"export class Sbpgi{pascal}Controller {{",
-            f"  constructor(private readonly service: Sbpgi{pascal}Service) {{}}",
+            f"export class Sgi{pascal}Controller {{",
+            f"  constructor(private readonly service: Sgi{pascal}Service) {{}}",
             "",
         ]
     else:
         extra = [x for x in dto_names if x not in (seen_dtos or set())]
         if extra:
             lines.append("// import เพิ่ม: " + ", ".join(extra))
-        lines.append(f"// (method ต่อไปนี้อยู่ในคลาส Sbpgi{pascal}Controller เดียวกับส่วนที่ 1)")
+        lines.append(f"// (method ต่อไปนี้อยู่ในคลาส Sgi{pascal}Controller เดียวกับส่วนที่ 1)")
         lines.append("")
     if seen_dtos is not None:
         seen_dtos.update(dto_names)
@@ -974,27 +974,27 @@ def _service_code(topic: Any, endpoints: list[_Endpoint], own: list[tuple[str, s
     """
     read_ep = next((e for e in endpoints if e.method == "GET"), None)
     write_ep = next((e for e in endpoints if e.method in {"POST", "PUT", "PATCH", "DELETE"}), None)
-    main_table = own[0][0] if own else "compensation_documents"
+    main_table = own[0][0] if own else "sgi_compensation_documents"
     write_table = next((t[0] for t in own if str(t[1]).upper() in {"W", "R/W"}), main_table)
     uses_wf = bool(wf_plan)
 
     lines = [
-        f"// src/modules/sbpgi-{slug}/sbpgi-{slug}.service.ts",
+        f"// src/modules/sgi-{slug}/sgi-{slug}.service.ts",
         "import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';",
         "import { DataSource } from 'typeorm';",
     ]
     if uses_wf:
         lines.append("import { WorkflowService } from '../workflow/workflow.service';")
     lines += [
-        f"import {{ SBPGI_SQL }} from './sbpgi-{slug}.sql';",
+        f"import {{ SGI_SQL }} from './sgi-{slug}.sql';",
         "",
         "@Injectable()",
-        f"export class Sbpgi{pascal}Service {{",
-        f"  private readonly logger = new Logger(Sbpgi{pascal}Service.name);",
+        f"export class Sgi{pascal}Service {{",
+        f"  private readonly logger = new Logger(Sgi{pascal}Service.name);",
     ]
     if uses_wf:
         lines.append("  // versionId ของ workflow ประกันรายได้ (ตั้งใน env เหมือน COOPERATION_WORKFLOW_VERSION_ID)")
-        lines.append("  private readonly versionId = Number(process.env.SBPGI_WORKFLOW_VERSION_ID);")
+        lines.append("  private readonly versionId = Number(process.env.SGI_WORKFLOW_VERSION_ID);")
     lines.append("")
     lines.append("  constructor(")
     lines.append("    // DATA_SOURCE override query(): SELECT/WITH ไป slave pool, write ไป master")
@@ -1030,7 +1030,7 @@ def _service_code(topic: Any, endpoints: list[_Endpoint], own: list[tuple[str, s
                 f"    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ '{ep.method} {ep.path}')",
                 "    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()",
                 "    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน",
-                f"    const rows = await this.dataSource.query(SBPGI_SQL.{ep.handler}, [",
+                f"    const rows = await this.dataSource.query(SGI_SQL.{ep.handler}, [",
                 "      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง",
                 "      userId, (page - 1) * size, size,",
                 "    ]);",
@@ -1050,21 +1050,21 @@ def _service_code(topic: Any, endpoints: list[_Endpoint], own: list[tuple[str, s
                 "    await runner.startTransaction();",
                 "    try {",
                 f"      // TODO: lock แถวเป้าหมายของ {write_table} ด้วย SELECT ... FOR UPDATE ก่อนเขียน",
-                f"      const [current] = await runner.query(SBPGI_SQL.{ep.handler}Lock, [{first_key}]);",
+                f"      const [current] = await runner.query(SGI_SQL.{ep.handler}Lock, [{first_key}]);",
                 "      if (!current) {",
                 "        throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');",
                 "      }",
-                f"      await runner.query(SBPGI_SQL.{ep.handler}, [/* TODO: ผูกค่าจาก body */]);",
+                f"      await runner.query(SGI_SQL.{ep.handler}, [/* TODO: ผูกค่าจาก body */]);",
                 "      await runner.commitTransaction();",
             ]
             if uses_wf:
                 lines += [
                     "      // ⚠️ workflow engine อยู่คนละ DataSource ('workflow-connection' ของ @srm/glb-workflow)",
-                    "      //    จึง **atomic ร่วมกับ transaction ข้างบนไม่ได้** — ต้อง commit ฝั่ง SBPGI ให้เสร็จก่อน",
+                    "      //    จึง **atomic ร่วมกับ transaction ข้างบนไม่ได้** — ต้อง commit ฝั่ง SGI ให้เสร็จก่อน",
                     "      //    แล้วค่อย eventWorkflow (idempotency key = referenceId = docNo)",
                     "      // TODO: เรียก workflow use case ตามตารางหัวข้อ Workflow ด้านล่าง + retry",
                     "      // TODO: ถ้า eventWorkflow ล้มเหลว ต้องมี compensating action และบันทึกผลลง",
-                    "      //       consideration_logs เพื่อให้ job reconcile ตามเก็บได้",
+                    "      //       sgi_consideration_logs เพื่อให้ job reconcile ตามเก็บได้",
                 ]
             lines += [
                 "      return { message: 'saved' };",
@@ -1097,7 +1097,7 @@ def _service_code(topic: Any, endpoints: list[_Endpoint], own: list[tuple[str, s
 def _workflow_code(slug: str, pascal: str, wf_plan: list[list[str]]) -> str:
     kinds = " ".join(row[1] for row in wf_plan)
     lines = [
-        f"// src/modules/sbpgi-{slug}/sbpgi-{slug}.workflow.ts (หรือรวมไว้ใน service เดียวกัน)",
+        f"// src/modules/sgi-{slug}/sgi-{slug}.workflow.ts (หรือรวมไว้ใน service เดียวกัน)",
         "// WorkflowService = wrapper ของ @srm/glb-workflow ที่ store-backend มีอยู่แล้ว",
         "// (DataSource แยกชื่อ 'workflow-connection', ทุก use case ห่อด้วย TypeOrmUnitOfWork)",
         "",
@@ -1147,14 +1147,14 @@ def _workflow_code(slug: str, pascal: str, wf_plan: list[list[str]]) -> str:
             "    userData: { userId: Number(userId), groupId: Number(groupId) },",
             "    versionId: this.versionId,",
             "  });",
-            "  // TODO: join referenceId (= doc_no) กลับไปที่ compensation_documents เพื่อเติมข้อมูลเอกสาร",
+            "  // TODO: join referenceId (= doc_no) กลับไปที่ sgi_compensation_documents เพื่อเติมข้อมูลเอกสาร",
             "",
         ]
     if "getHistory" in kinds:
         lines += [
             "  // timeline การเปลี่ยน state",
             "  const history = await this.workflow.getHistory({ versionId: this.versionId, referenceId: docNo });",
-            "  // TODO: merge กับ consideration_logs (engine history ไม่มี decision_code/ไฟล์แนบ)",
+            "  // TODO: merge กับ sgi_consideration_logs (engine history ไม่มี decision_code/ไฟล์แนบ)",
             "",
         ]
     if "getTransaction" in kinds:
@@ -1194,7 +1194,7 @@ def _entity_code(tname: str) -> str:
             optional = "?" if "nullable: true" in opts else ""
             lines.append(f"  {_camel(col)}{optional}: {ts};")
             lines.append("")
-        lines.append("  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge")
+        lines.append("  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge")
         lines.append("  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)")
     lines.append("}")
     return "\n".join(lines)
@@ -1203,7 +1203,7 @@ def _entity_code(tname: str) -> str:
 def _providers_module_code(own: list[tuple[str, str, str]], slug: str, pascal: str, uses_wf: bool) -> str:
     entities = [t[0] for t in own][:3]
     if not entities:
-        entities = ["compensation_documents"]
+        entities = ["sgi_compensation_documents"]
     imports = "\n".join(
         f"import {{ {_entity_class(t)} }} from '../../entitys/{t.replace('_', '-')}.entity';" for t in entities
     )
@@ -1217,13 +1217,13 @@ def _providers_module_code(own: list[tuple[str, str, str]], slug: str, pascal: s
             "    inject: ['DATA_SOURCE'],",
             "  },",
         ]
-    provider_const = f"sbpgi{pascal}Providers"
+    provider_const = f"sgi{pascal}Providers"
     lines = [
-        "// src/providers/sbpgi/sbpgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)",
+        "// src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)",
         "// convention ของโฟลเดอร์ providers คือ 1 ไฟล์ต่อโดเมน ตั้งชื่อตามโดเมน (business_user/business_user.ts,",
         "// common_code/common_code.ts …) ไม่ใช่ index.ts",
         "//",
-        "// ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SBPGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ",
+        "// ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ",
         "//    (ชื่อ const แยกต่อเอกสารไว้แล้วเพื่อไม่ให้ชนกัน)",
         "import { DataSource } from 'typeorm';",
         imports,
@@ -1232,7 +1232,7 @@ def _providers_module_code(own: list[tuple[str, str, str]], slug: str, pascal: s
         *provider_rows,
         "];",
         "",
-        f"// src/modules/sbpgi-{slug}/sbpgi-{slug}.module.ts",
+        f"// src/modules/sgi-{slug}/sgi-{slug}.module.ts",
         "import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';",
         "import { DatabaseModule } from '../../database/database.module';",
         "// UserContextMiddleware อ่าน header x-user-id แล้วเซ็ต request.userId ที่ @UserId() ใช้",
@@ -1243,23 +1243,23 @@ def _providers_module_code(own: list[tuple[str, str, str]], slug: str, pascal: s
     if uses_wf:
         lines.append("import { WorkflowModule } from '../workflow/workflow.module';")
     lines += [
-        f"import {{ {provider_const} }} from '../../providers/sbpgi/sbpgi';",
-        f"import {{ Sbpgi{pascal}Controller }} from './sbpgi-{slug}.controller';",
-        f"import {{ Sbpgi{pascal}Service }} from './sbpgi-{slug}.service';",
+        f"import {{ {provider_const} }} from '../../providers/sgi/sgi';",
+        f"import {{ Sgi{pascal}Controller }} from './sgi-{slug}.controller';",
+        f"import {{ Sgi{pascal}Service }} from './sgi-{slug}.service';",
         "",
         "@Module({",
         "  imports: [DatabaseModule" + (", WorkflowModule" if uses_wf else "") + "],",
-        f"  controllers: [Sbpgi{pascal}Controller],",
-        f"  providers: [Sbpgi{pascal}Service, ...{provider_const}],",
-        f"  exports: [Sbpgi{pascal}Service],",
+        f"  controllers: [Sgi{pascal}Controller],",
+        f"  providers: [Sgi{pascal}Service, ...{provider_const}],",
+        f"  exports: [Sgi{pascal}Service],",
         "})",
-        f"export class Sbpgi{pascal}Module implements NestModule {{",
+        f"export class Sgi{pascal}Module implements NestModule {{",
         "  configure(consumer: MiddlewareConsumer) {",
         "    // ถ้าไม่ apply ตรงนี้ userId จะเป็น undefined เงียบ ๆ ทุก endpoint",
-        f"    consumer.apply(UserContextMiddleware).forRoutes(Sbpgi{pascal}Controller);",
+        f"    consumer.apply(UserContextMiddleware).forRoutes(Sgi{pascal}Controller);",
         "  }",
         "}",
-        "// TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SBPGI ตัวอื่น",
+        "// TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น",
     ]
     return "\n".join(lines)
 
@@ -1269,36 +1269,36 @@ def _providers_module_code(own: list[tuple[str, str, str]], slug: str, pascal: s
 # --------------------------------------------------------------------------------------
 def _bff_client_code() -> str:
     return "\n".join([
-        "// src/common/client-services/sbpgi-client.service.ts",
+        "// src/common/client-services/sgi-client.service.ts",
         "import { Injectable, Logger, OnModuleInit } from '@nestjs/common';",
         "import { BaseClientService } from './base-client.service';",
         "",
         "@Injectable()",
-        "export class SbpgiClientService extends BaseClientService implements OnModuleInit {",
-        "  protected logger: Logger = new Logger(SbpgiClientService.name);",
+        "export class SgiClientService extends BaseClientService implements OnModuleInit {",
+        "  protected logger: Logger = new Logger(SgiClientService.name);",
         "",
         "  onModuleInit() {",
-        "    // TODO: ถ้า deploy SBPGI แยก service ให้เพิ่ม API_SBPGI_BACKEND_* ใน AppConfigService",
+        "    // TODO: ถ้า deploy SGI แยก service ให้เพิ่ม API_SGI_BACKEND_* ใน AppConfigService",
         "    //       ตอนนี้ชี้ store backend ตัวเดียวกับ StoreClientService",
         "    this.defaultHeaders[this.config.api.store.key.name] = this.config.api.store.key.value;",
         "    this.baseUrl = this.config.api.store.url;",
         "  }",
         "}",
         "// BaseClientService แกะ { success, data } ให้แล้ว — service ฝั่ง BFF จึงได้ data ตรง ๆ",
-        "// TODO: เพิ่ม SbpgiClientService ใน providers/exports ของ ClientServiceModule (@Global)",
+        "// TODO: เพิ่ม SgiClientService ใน providers/exports ของ ClientServiceModule (@Global)",
     ])
 
 
 def _bff_code(endpoints: list[_Endpoint], slug: str, pascal: str) -> str:
     sample = endpoints[:3]
     lines = [
-        f"// src/modules/sbpgi-{slug}/sbpgi-{slug}.service.ts (BFF)",
+        f"// src/modules/sgi-{slug}/sgi-{slug}.service.ts (BFF)",
         "import { Injectable } from '@nestjs/common';",
-        "import { SbpgiClientService } from '@common/client-services/sbpgi-client.service';",
+        "import { SgiClientService } from '@common/client-services/sgi-client.service';",
         "",
         "@Injectable()",
-        f"export class Sbpgi{pascal}BffService {{",
-        "  constructor(private readonly client: SbpgiClientService) {}",
+        f"export class Sgi{pascal}BffService {{",
+        "  constructor(private readonly client: SgiClientService) {}",
         "",
         "  // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward",
         "  private userHeaders(user: any) {",
@@ -1331,15 +1331,15 @@ def _bff_code(endpoints: list[_Endpoint], slug: str, pascal: str) -> str:
     lines += [
         "}",
         "",
-        f"// ---------- src/modules/sbpgi-{slug}/sbpgi-{slug}.controller.ts (BFF) ----------",
+        f"// ---------- src/modules/sgi-{slug}/sgi-{slug}.controller.ts (BFF) ----------",
         "import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';",
         "import { AuthGuard } from '@nestjs/passport';",
         "",
-        "// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sbpgi/...' (ห้ามปนกับแบบไม่มี /bff)",
-        f"@Controller('bff/sbpgi/{slug}')",
+        "// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)",
+        f"@Controller('bff/sgi/{slug}')",
         "@UseGuards(AuthGuard('jwt'))",
-        f"export class Sbpgi{pascal}BffController {{",
-        f"  constructor(private readonly service: Sbpgi{pascal}BffService) {{}}",
+        f"export class Sgi{pascal}BffController {{",
+        f"  constructor(private readonly service: Sgi{pascal}BffService) {{}}",
     ]
     for ep in sample[:2]:
         deco = ep.method.capitalize() if ep.method != "DELETE" else "Delete"
@@ -1364,7 +1364,7 @@ def _bff_code(endpoints: list[_Endpoint], slug: str, pascal: str) -> str:
         ]
     lines += [
         "}",
-        "// TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)",
+        "// TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SgiClientService ใน ClientServiceModule (@Global)",
     ]
     return "\n".join(lines)
 
@@ -1463,23 +1463,23 @@ def _index_proposals(sqls: list[str], own_names: set[str]) -> list[list[str]]:
 
 def _fallback_index_proposals(own: list[tuple[str, str, str]]) -> list[list[str]]:
     presets = {
-        "compensation_documents": "CREATE UNIQUE INDEX uk_compensation_documents_business ON compensation_documents (impacted_store_code, account_year, account_month, round_no);",
-        "consideration_logs": "CREATE INDEX idx_consideration_logs_doc_no ON consideration_logs (doc_no, action_datetime DESC);",
-        "document_attachments": "CREATE INDEX idx_document_attachments_doc_no ON document_attachments (doc_no, section_code);",
-        "document_new_stores": "CREATE INDEX idx_document_new_stores_doc_no ON document_new_stores (doc_no);",
-        "document_competitors": "CREATE INDEX idx_document_competitors_doc_no ON document_competitors (doc_no, source_system);",
-        "document_external_factors": "CREATE INDEX idx_document_external_factors_doc_no ON document_external_factors (doc_no);",
-        "sales_transactions": "CREATE INDEX idx_sales_transactions_summary ON sales_transactions (sales_summary_id, window_no, txn_date);",
-        "fgi_impact_processes": "CREATE INDEX idx_fgi_impact_processes_gate ON fgi_impact_processes (workflow_generation_status, period_year, period_month);",
-        "interface_transactions": "CREATE INDEX idx_interface_transactions_pending ON interface_transactions (data_name, status, sent_at);",
-        "compensation_histories": "CREATE INDEX idx_compensation_histories_store ON compensation_histories (store_code, compensate_year, compensate_month);",
-        "fgi_impact_sales_summaries": "CREATE INDEX idx_fgi_impact_sales_summaries_process ON fgi_impact_sales_summaries (impact_process_id);",
+        "sgi_compensation_documents": "CREATE UNIQUE INDEX uk_compensation_documents_business ON sgi_compensation_documents (impacted_store_code, account_year, account_month, round_no);",
+        "sgi_consideration_logs": "CREATE INDEX idx_consideration_logs_doc_no ON sgi_consideration_logs (doc_no, action_datetime DESC);",
+        "sgi_document_attachments": "CREATE INDEX idx_document_attachments_doc_no ON sgi_document_attachments (doc_no, section_code);",
+        "sgi_document_new_stores": "CREATE INDEX idx_document_new_stores_doc_no ON sgi_document_new_stores (doc_no);",
+        "sgi_document_competitors": "CREATE INDEX idx_document_competitors_doc_no ON sgi_document_competitors (doc_no, source_system);",
+        "sgi_document_external_factors": "CREATE INDEX idx_document_external_factors_doc_no ON sgi_document_external_factors (doc_no);",
+        "sgi_sales_transactions": "CREATE INDEX idx_sales_transactions_summary ON sgi_sales_transactions (sales_summary_id, window_no, txn_date);",
+        "sgi_fgi_impact_processes": "CREATE INDEX idx_fgi_impact_processes_gate ON sgi_fgi_impact_processes (workflow_generation_status, period_year, period_month);",
+        "sgi_interface_transactions": "CREATE INDEX idx_interface_transactions_pending ON sgi_interface_transactions (data_name, status, sent_at);",
+        "sgi_compensation_histories": "CREATE INDEX idx_compensation_histories_store ON sgi_compensation_histories (store_code, compensate_year, compensate_month);",
+        "sgi_fgi_impact_sales_summaries": "CREATE INDEX idx_fgi_impact_sales_summaries_process ON sgi_fgi_impact_sales_summaries (impact_process_id);",
     }
     rows: list[list[str]] = []
     for tname, _rw, _usage in own:
         ddl = presets.get(tname)
         if ddl:
-            rows.append([tname, ddl, "ข้อเสนอ — อนุมานจากเงื่อนไข query ที่เอกสารนี้ระบุ ต้องยืนยันกับ DBA ก่อนใช้จริง"])
+            rows.append([tname, ddl, "อนุมานจากเงื่อนไข query ที่เอกสารนี้ระบุ — สร้างพร้อมสคริปต์ deploy ของ SGI"])
     return rows
 
 
@@ -1534,7 +1534,7 @@ def be_skeleton_blocks(topic: Any, ctx: Any = None) -> list[dict[str, Any]]:
             "// src/common/interceptors/response.interceptor.ts (มีอยู่แล้ว — ห้ามห่อซ้ำใน service)\n"
             "// success : { success: true, data }\n"
             "// error   : { success: false, data: null, error: { code, message } }\n"
-            "// TODO: endpoint ของ SBPGI ทุกเส้นต้องคืน error message ภาษาไทย verbatim ตาม SRS ผ่าน HttpException เท่านั้น",
+            "// TODO: endpoint ของ SGI ทุกเส้นต้องคืน error message ภาษาไทย verbatim ตาม SRS ผ่าน HttpException เท่านั้น",
             "ts",
         ))
         blocks.append(h(2, f"{sec_sql} Database SQL"))
@@ -1542,34 +1542,34 @@ def be_skeleton_blocks(topic: Any, ctx: Any = None) -> list[dict[str, Any]]:
         return blocks
 
     file_rows: list[list[str]] = [
-        [f"store-backend · src/modules/sbpgi-{slug}/sbpgi-{slug}.controller.ts",
+        [f"store-backend · src/modules/sgi-{slug}/sgi-{slug}.controller.ts",
          f"route ทั้งหมดของเอกสารนี้ ({len(endpoints)} เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()`"],
-        [f"store-backend · src/modules/sbpgi-{slug}/sbpgi-{slug}.service.ts",
+        [f"store-backend · src/modules/sgi-{slug}/sgi-{slug}.service.ts",
          "business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction"],
-        [f"store-backend · src/modules/sbpgi-{slug}/sbpgi-{slug}.sql.ts",
+        [f"store-backend · src/modules/sgi-{slug}/sgi-{slug}.sql.ts",
          f"เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ {sec_sql}) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย"],
-        [f"store-backend · src/modules/sbpgi-{slug}/dto/sbpgi-{slug}.dto.ts",
+        [f"store-backend · src/modules/sgi-{slug}/dto/sgi-{slug}.dto.ts",
          "DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้"],
-        [f"store-backend · src/modules/sbpgi-{slug}/sbpgi-{slug}.module.ts",
+        [f"store-backend · src/modules/sgi-{slug}/sgi-{slug}.module.ts",
          "ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts`"],
     ]
     for tname, _rw, _usage in own[:3]:
         shared = " — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ**" \
-            if tname in {"compensation_documents", "consideration_logs", "document_attachments"} else ""
+            if tname in {"sgi_compensation_documents", "sgi_consideration_logs", "sgi_document_attachments"} else ""
         file_rows.append([
             f"store-backend · src/entitys/{tname.replace('_', '-')}.entity.ts",
             f"entity ของ `{tname}` (`@Entity({{schema: process.env.DB_SCHEMA}})`, ไม่ประกาศ relation){shared}",
         ])
-    file_rows.append(["store-backend · src/providers/sbpgi/sbpgi.ts",
+    file_rows.append(["store-backend · src/providers/sgi/sgi.ts",
                       "repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — "
                       "**ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ**"])
-    file_rows.append(["store-backend · sql/deploy-sbpgi-" + slug + ".sql",
+    file_rows.append(["store-backend · sql/deploy-sgi-" + slug + ".sql",
                       "DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก)"])
-    file_rows.append(["BFF · src/common/client-services/sbpgi-client.service.ts",
+    file_rows.append(["BFF · src/common/client-services/sgi-client.service.ts",
                       "client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit`"])
-    file_rows.append([f"BFF · src/modules/sbpgi-{slug}/sbpgi-{slug}.controller.ts",
-                      "route ฝั่ง BFF prefix `/bff/sbpgi/…` + `@UseGuards(AuthGuard('jwt'))`"])
-    file_rows.append([f"BFF · src/modules/sbpgi-{slug}/sbpgi-{slug}.service.ts",
+    file_rows.append([f"BFF · src/modules/sgi-{slug}/sgi-{slug}.controller.ts",
+                      "route ฝั่ง BFF prefix `/bff/sgi/…` + `@UseGuards(AuthGuard('jwt'))`"])
+    file_rows.append([f"BFF · src/modules/sgi-{slug}/sgi-{slug}.service.ts",
                       "แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend"])
     blocks.append(h(3, f"{sec_code}.1 ผังไฟล์ที่ต้องสร้าง"))
     blocks.append(table(["Path", "หน้าที่"], file_rows))
@@ -1599,7 +1599,7 @@ def be_skeleton_blocks(topic: Any, ctx: Any = None) -> list[dict[str, Any]]:
             "// src/common/interceptors/response.interceptor.ts (มีอยู่แล้ว — ห้ามห่อซ้ำใน service)\n"
             "// success : { success: true, data }\n"
             "// error   : { success: false, data: null, error: { code, message } }\n"
-            "// TODO: endpoint ของ SBPGI ทุกเส้นต้องคืน error message ภาษาไทย verbatim ตาม SRS ผ่าน HttpException เท่านั้น",
+            "// TODO: endpoint ของ SGI ทุกเส้นต้องคืน error message ภาษาไทย verbatim ตาม SRS ผ่าน HttpException เท่านั้น",
             "ts",
         ))
 
@@ -1622,7 +1622,7 @@ def be_skeleton_blocks(topic: Any, ctx: Any = None) -> list[dict[str, Any]]:
         blocks.append(h(3, f"{sec_code}.{idx} Workflow (`@srm/glb-workflow`)"))
         idx += 1
         blocks.append(p(
-            "✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)"
+            "✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ยืนยันแล้ว 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)"
         ))
         blocks.append(table(["Endpoint", "Use case ที่ต้องเรียก", "เหตุผล"], wf_plan))
         blocks.append(code(_workflow_code(slug, pascal, wf_plan), "ts"))
@@ -1649,7 +1649,7 @@ def be_skeleton_blocks(topic: Any, ctx: Any = None) -> list[dict[str, Any]]:
     blocks.append(h(3, f"{sec_code}.{idx} BFF Proxy (module + controller + client service)"))
     idx += 1
     blocks.append(p("BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด "
-                    "และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sbpgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` "
+                    "และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` "
                     "เหมือนโมดูลเดิม"))
     blocks.append(code(_bff_client_code(), "ts"))
     blocks.append(code(_bff_code(endpoints, slug, pascal), "ts"))
@@ -1689,7 +1689,7 @@ def be_skeleton_blocks(topic: Any, ctx: Any = None) -> list[dict[str, Any]]:
     if proposals:
         blocks.append(table(["Table", "DDL ที่เสนอ", "ที่มา / หมายเหตุ"], proposals))
         blocks.append(p("ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง "
-                        "และรวมเข้าไฟล์ `sql/deploy-sbpgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) "
+                        "และรวมเข้าไฟล์ `sql/deploy-sgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) "
                         "ตาม pattern ที่ทีมใช้อยู่"))
     else:
         blocks.append(p("ยังไม่มีข้อมูลเงื่อนไข query พอจะเสนอ index — รอ SQL ต่อ endpoint ครบก่อน"))

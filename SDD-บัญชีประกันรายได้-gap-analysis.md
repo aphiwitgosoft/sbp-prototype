@@ -1,4 +1,4 @@
-# Gap Analysis: SDD ↔ Prototype — ระบบประกันรายได้ (SBPGI)
+# Gap Analysis: SDD ↔ Prototype — ระบบประกันรายได้ (SGI)
 
 > เอกสารนี้ตอบคำถามเดียว: **"สิ่งที่ SDD สั่งไว้ ระบบเรามีครบหรือยัง — ถ้าไม่ครบ ขาดอะไร และต้องตัดสินใจอะไรก่อน"**
 > ชื่อไฟล์ยังเป็น `SDD-บัญชีประกันรายได้-gap-analysis.md` ตามเดิม แต่**ขอบเขตครอบ SDD ทั้ง 2 ฉบับแล้ว** ไม่ใช่เฉพาะฝั่งบัญชี
@@ -54,12 +54,12 @@
 
 | # | ข้อกำหนดใน SDD | สถานะ | หลักฐาน / หมายเหตุ |
 |---|---|---|---|
-| 1.1 | เจ้าหน้าที่ SBP DSA **กรอกข้อมูลร้านเปิดกระทบเพื่อคำนวณยอด** (เชิงรุก/เชิงรับ) | 🔵 **ต่างโดยตั้งใจ** | มติผู้ใช้: `k2-create.html` **ไม่มีฟอร์ม** — ต้นทางสร้างที่ **FS** แล้วรอ **SBP Statement** ส่งกลับ (~1 วัน) · การคีย์/ปรับข้อมูลร้านทำในหน้าเอกสาร (`PUT /sbpgi/document/{docNo}`) · **ต้อง sign-off (ดูข้อ 6.2)** |
-| 1.2 | เจ้าหน้าที่ **เลือกงานของตนเอง** จากระบบ | ✅ | `k2-list-waiting.html` = หน้าแรกของระบบ · `GET /sbpgi/document/tasks` |
-| 1.3 | หยุดชดเชยแล้ว **สร้างเอกสารใหม่ได้เดือนเดียวกัน/ถัดไป** (เลิกเปิด SR) | ✅ | `POST /sbpgi/document` คืน 409 **เฉพาะเอกสาร active** · SQL ใช้ `status_code <> :statusDone` · partial unique index ใน|
+| 1.1 | เจ้าหน้าที่ SBP DSA **กรอกข้อมูลร้านเปิดกระทบเพื่อคำนวณยอด** (เชิงรุก/เชิงรับ) | 🔵 **ต่างโดยตั้งใจ** | มติผู้ใช้: `k2-create.html` **ไม่มีฟอร์ม** — ต้นทางสร้างที่ **FS** แล้วรอ **SBP Statement** ส่งกลับ (~1 วัน) · การคีย์/ปรับข้อมูลร้านทำในหน้าเอกสาร (`PUT /sgi/document/{docNo}`) · **ต้อง sign-off (ดูข้อ 6.2)** |
+| 1.2 | เจ้าหน้าที่ **เลือกงานของตนเอง** จากระบบ | ✅ | `k2-list-waiting.html` = หน้าแรกของระบบ · `GET /sgi/document/tasks` |
+| 1.3 | หยุดชดเชยแล้ว **สร้างเอกสารใหม่ได้เดือนเดียวกัน/ถัดไป** (เลิกเปิด SR) | ✅ | `POST /sgi/document` คืน 409 **เฉพาะเอกสาร active** · SQL ใช้ `status_code <> :statusDone` · partial unique index ใน|
 | 1.4 | เห็นควรไม่ชดเชย → เดือนถัดไปเข้าหน้างานค้าง **พร้อมเจ้าของงานคนเดิม** | ✅ | สไลด์ 46 · 48 · 64 · UI: คอลัมน์ **"ผู้ดำเนินการ (เจ้าของงาน)"** + ชิป **"ต่อเนื่อง"** (ผูกกับครั้งที่ ≥ 2 · เจ้าของงานคงที่ต่อร้าน) |
 | 1.5 | **ยอดชดเชย 0**: เดือน 1–3 ส่งต่อ 01 · เดือนที่ 4 หยุดชดเชย | ✅ | สไลด์ 51 · `k2-document.html` แผงพิจารณาขั้น 06 แสดงกติกาเสมอ · ยอด = 0 → ไฮไลต์ตัวเลือกที่ต้องกดตามครั้งที่ |
-| 1.6 | **สิทธิ์การมองเห็น** — DSA เห็นทุกสาขา · ส่งเสริม/บัญชีตามสิทธิ์เดิม | ✅ | `workflow.md` · `api.md` (กฎของ `GET /sbpgi/document/tasks`) |
+| 1.6 | **สิทธิ์การมองเห็น** — DSA เห็นทุกสาขา · ส่งเสริม/บัญชีตามสิทธิ์เดิม | ✅ | `workflow.md` · `api.md` (กฎของ `GET /sgi/document/tasks`) |
 | 1.7 | หน้างานค้าง: **filter เอกสารได้** | ✅ | แผงกรอง (ปี/เดือน/สถานะ/ภาค 13/ประเภท/ช่วงยอด/ช่วงวัน) |
 | 1.8 | หน้างานค้าง: **checkbox เลือกหลายเอกสาร + popup ยืนยัน** | ❌ | สไลด์ 48 · ไม่มีคอลัมน์ checkbox และ bulk action ทั้งสองหน้า → **งาน P1** |
 | 1.9 | พนักงานลาออก → ยังต้องเปิด SR แก้ชื่อผู้ดำเนินการ | ✅ | บันทึกเป็นข้อจำกัดที่รับมาใน `workflow.md` |
@@ -71,7 +71,7 @@
 | 2.1 | เปลี่ยนคำเรียก **"ฝ่ายส่งเสริม" → "หน่วยงานส่งเสริมธุรกิจ" ทุกจุด** | ✅ | rename 61 จุดใน 16 ไฟล์ · **รวมชื่อสถานะเอกสาร** → `รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ` (ดูข้อ 6.4) |
 | 2.2 | เพิ่มบทบาท **เจ้าหน้าที่อาวุโส (Senior Officer)** ที่ขั้น 01 + ส่งต่อ GM ได้ | ✅ | `k2-flow.html` (การ์ด · stepper · BPMN · swimlane · 2 ตาราง) · `k2-document.html` · `workflow.md` · `domain.md` · LLDD Role-01 |
 | 2.3 | **เห็นควรไม่ชดเชยที่ 01/02 จบทันที** (ไม่ตีกลับเป็นทอด ๆ) | ✅ | `workflow.md` ตาราง transition · `workflow_status_document.md` · `k2-flow.html` · logic ใน `k2-document.html` |
-| 2.4 | **วงเงินเกณฑ์เดียว 100,000** (มติประชุม 2026-08-18 — แทนเกณฑ์ 50,000 / 300,000 ของ SDD GI) | ✅ | ทุก HTML + living docs · เก็บที่ **`common_code`** ของระบบเดิม (`code_type = SBPGI_APPROVE_LIMIT` · `THRESHOLD = 100000`) — **ไม่ใช่ `system_configs`** ซึ่งถูกตัดออกจากโครงไปแล้ว · `workflow_route.condition_json` แตกสองเส้น `< 100000` / `>= 100000` |
+| 2.4 | **วงเงินเกณฑ์เดียว 100,000** (มติประชุม 2026-08-18 — แทนเกณฑ์ 50,000 / 300,000 ของ SDD GI) | ✅ | ทุก HTML + living docs · เก็บที่ **`common_code`** ของระบบเดิม (`code_type = SGI_APPROVE_LIMIT` · `THRESHOLD = 100000`) — **ไม่ใช่ `system_configs`** ซึ่งถูกตัดออกจากโครงไปแล้ว · `workflow_route.condition_json` แตกสองเส้น `< 100000` / `>= 100000` |
 | 2.5 | **ผู้รักษาการเป็นผู้อนุมัติไม่ได้** (ยึดตำแหน่งจาก HR Connect) | ✅ | `workflow.md` · `CLAUDE.md` · เป็นเหตุผลของ `approver_snapshot` |
 
 ## 5. SDD GI ข้อ 3 + SDD v7.5 — ยกเลิก process บัญชี และหน้ารายงาน (สไลด์ 59–62, 66)
@@ -132,7 +132,7 @@
 - **ยกเลิกหน้า Overview/Dashboard** → หน้าแรกคือ **เอกสาร → รอดำเนินการ** (`index.html` เหลือ redirect stub)
 - **ลบหน้าข้อมูลผิดปกติ / แจกงาน** (ไฟล์ + 2 endpoint) — เหลือเป็น **ธงแถวแดง** ในหน้ารายการอย่างเดียว (ถอด stat card ออกเมื่อ 2026-08-06 · ไม่ทำตัวกรองทดแทน)
 - **RBAC + ผู้ปฏิบัติงาน ใช้ระบบ SBP เดิม** (auth-backend/ABS) — ตัด 5 ตาราง + 18 endpoint · ถอดหน้า `k2-permissions` / `k2-operators`
-- **เทียบ DB เดิมของ K2** (`script_TB_DB_CPA_FRN_FGI_20260722.sql`) → เพิ่ม 5 ตาราง (`zones`, `branch_types`, `decisions`, `document_running_numbers`, `document_cost_details`) + คอลัมน์ `approve_limit_amount`, `round_no`/`loop_no`, `allmap_url`, `statement_id`, `approver_snapshot` → รวม 34 ตาราง / 47 endpoint · **แล้วตัดอีก 10 ตาราง / 3 endpoint เมื่อ 2026-08-06 (รอบ 2) เพราะระบบ SBP ปัจจุบันมีอยู่แล้ว → เหลือ 24 ตาราง / 47 endpoint** · **แล้วลบอีก 2 ตาราง / 16 endpoint เมื่อ 2026-08-06 (ลบหน้า Global Config + Email Template ทั้งฟีเจอร์ 10 เส้น และตัด 2 tab ควบคุมของหน้า Batch Job ทำให้ตัด 6 เส้น + `job_configs`/`job_run_histories`) → เหลือ 22 ตาราง / 31 endpoint** · แล้วตัด `audit_logs` + `GET /audit-logs` เมื่อ 2026-08-07 → **ตัวเลขปัจจุบัน 20 ตาราง / 29 endpoint 6 กลุ่ม** (Lookup 2 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3)
+- **เทียบ DB เดิมของ K2** (`script_TB_DB_CPA_FRN_FGI_20260722.sql`) → เพิ่ม 5 ตาราง (`zones`, `branch_types`, `decisions`, `sgi_document_running_numbers`, `sgi_document_cost_details`) + คอลัมน์ `approve_limit_amount`, `round_no`/`loop_no`, `allmap_url`, `statement_id`, `approver_snapshot` → รวม 34 ตาราง / 47 endpoint · **แล้วตัดอีก 10 ตาราง / 3 endpoint เมื่อ 2026-08-06 (รอบ 2) เพราะระบบ SBP ปัจจุบันมีอยู่แล้ว → เหลือ 24 ตาราง / 47 endpoint** · **แล้วลบอีก 2 ตาราง / 16 endpoint เมื่อ 2026-08-06 (ลบหน้า Global Config + Email Template ทั้งฟีเจอร์ 10 เส้น และตัด 2 tab ควบคุมของหน้า Batch Job ทำให้ตัด 6 เส้น + `job_configs`/`job_run_histories`) → เหลือ 22 ตาราง / 31 endpoint** · แล้วตัด `audit_logs` + `GET /audit-logs` เมื่อ 2026-08-07 → **ตัวเลขปัจจุบัน 20 ตาราง / 29 endpoint 6 กลุ่ม** (Lookup 2 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3)
 - **เป้าหมาย FE/BE** = โมดูลใน `srm-sps-spsap-web-frontend` (portal `sbpm`, Next.js) และ NestJS + TypeORM ตาม `srm-sps-spsap-store-backend` · โฟลเดอร์ `react-app/` ถูกลบ (กู้จาก git `003b661`)
 - ย้าย **ตั้งค่าระบบ / Batch Job / Email Template** ไปกลุ่มเมนู **ผู้ดูแลระบบ (Admin)** · เมนู **สร้างเอกสาร** อยู่บนสุดของกลุ่มระบบประกันรายได้
 
@@ -149,9 +149,9 @@
 | L | ⚠️ `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index เลย** ทั้งที่มี 19,283 แถว (ตัวเดียวกันใน `sps_auth` มี PK) | **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library** · ยังไม่ตัดสิน → **DP-2** |
 | M | ✅ **ชื่อ function ของ engine — ปิดแล้ว 2026-08-14 (ยึด LLDD ของ lib):** API จริง 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` = `initializeWorkflow`/`eventWorkflow`/`getPermissionEvents`/`getHistory`/`getTransaction`/`getPendingFlowByUser`/`getWorkflowsByUser`/`addPreApprover` | *Trigger Event* = ชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` · `*UseCase` = wrapper ของ store-backend | 
 | N | `workflow_part` + `workflow_part_display` ของ engine คุม **READ/WRITE รายส่วนของหน้าจอต่อ state** ทับซ้อนกับ `data-editrole`/`.edit-only` ที่ prototype ทำเอง | **ข้อค้างตัดสินใจ ยังไม่เปลี่ยนดีไซน์** (บันทึกไว้ที่|
-| O | **`fcs_qssi_score` (เอกพจน์) มีอยู่จริงแล้ว 23,958,780 แถว** ใน `sps_store` พร้อม import pipeline ที่ทำงานอยู่ (`POST /performance/import-qssi` + staging `fcs_tmp_qssi_score`) · โครงเดิม `store_id`/`category`/`month`/`year` nullable ทั้ง 4 และไม่มี UK | **ห้ามสร้างตารางใหม่ ให้ reuse** · **✅ DP-4 ปิดแล้ว 2026-08-24** — ไม่เพิ่ม constraint/index บนตารางเดิม เพราะ SBPGI อ่านอย่างเดียว (ตัด Job 1 ImportQSSI) |
+| O | **`fcs_qssi_score` (เอกพจน์) มีอยู่จริงแล้ว 23,958,780 แถว** ใน `sps_store` พร้อม import pipeline ที่ทำงานอยู่ (`POST /performance/import-qssi` + staging `fcs_tmp_qssi_score`) · โครงเดิม `store_id`/`category`/`month`/`year` nullable ทั้ง 4 และไม่มี UK | **ห้ามสร้างตารางใหม่ ให้ reuse** · **✅ DP-4 ปิดแล้ว 2026-08-24** — ไม่เพิ่ม constraint/index บนตารางเดิม เพราะ SGI อ่านอย่างเดียว (ตัด Job 1 ImportQSSI) |
 | P | **แกนธุรกิจประกันรายได้ไม่มีในระบบเดิมเลย** — ค้น 276 ตาราง / 4,396 คอลัมน์ ด้วย impact · compensat · guarantee · income · competitor · growth · outlier · distance · radius · latitude · longitude · window_no → **0 hit ทุกคำ** | ยืนยันว่าโซน A และแกนเอกสารโซน B **ต้องสร้างเอง** |
-| Q | `fcs_monthly_sales` เป็น**ยอดขายรายเดือน** (711,384 แถว · key `store_id`+`year`+`month`) | **ใช้แทน `sales_transactions` (รายวัน 4 หน้าต่าง × 15 วัน) ไม่ได้** — ย้อนกลับเป็นรายวันไม่ได้ · ใช้ cross-check ได้ |
+| Q | `fcs_monthly_sales` เป็น**ยอดขายรายเดือน** (711,384 แถว · key `store_id`+`year`+`month`) | **ใช้แทน `sgi_sales_transactions` (รายวัน 4 หน้าต่าง × 15 วัน) ไม่ได้** — ย้อนกลับเป็นรายวันไม่ได้ · ใช้ cross-check ได้ |
 | R | แก้ความเข้าใจผิดเดิม 2 จุด: (ก) `upload_general` **ไม่ได้ติด FK `job_id`** (`job_id`/`audit_log_id` nullable ทั้งคู่) — เหตุผลจริงที่ต้องมีตารางเองคือขาด `file_size`/`content_type`/`section_code`/`upload_status`/`purge_flag` · (ข) **มีที่เก็บ CC ของอีเมลอยู่แล้ว 3 ที่**: `email_sent.mail_cc` · `fcs_reminder_log.reminder_cc` · `fml_email_account` | ปรับเหตุผลประกอบใน `database.md` (ไฟล์นั้นไม่อยู่ในขอบเขตการแก้ครั้งนี้) |
 | S | ปริมาณจริงของตาราง reuse: `mas_param` 93,752 · `common_code` 2,609 · `common_code_type` 376 · `email_template` 85 · `email_sent` 5,214 · `business_user` 12,752 · `mas_store` 19,647 · `store` 19,402 | ใช้ประกอบการประเมินผลกระทบตอน reuse |
 

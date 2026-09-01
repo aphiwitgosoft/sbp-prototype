@@ -3,7 +3,7 @@
 
 แหล่งที่อ่าน
   1. SBP/db-schema-sps_store.md · SBP/db-schema-sps_auth.md   (dump ฐานข้อมูลจริง 07/08/2026)
-  2. LLDD/md/LLDD-Database.md หัวข้อ 5 (Executable DDL)        (โครง SBPGI 20 ตาราง)
+  2. LLDD/md/LLDD-Database.md หัวข้อ 5 (Executable DDL)        (โครง SGI 20 ตาราง)
 
 ใช้โดย tools/build_er_diagram.py — ไม่แก้ไฟล์ต้นทาง อ่านอย่างเดียว
 """
@@ -31,7 +31,7 @@ class Column:
 
 @dataclass
 class Table:
-    schema: str            # sbpgi | sps_store | sps_auth
+    schema: str            # sgi | sps_store | sps_auth
     name: str
     columns: list[Column] = field(default_factory=list)
     pk: list[str] = field(default_factory=list)
@@ -57,7 +57,7 @@ class Table:
 
 _H3 = re.compile(r"^### (\S+)\s*$")
 _ROWS = re.compile(r"ประมาณ ([\d,\-]+) แถว")
-_USED = re.compile(r"^\*\*ใช้ใน SBPGI:\*\* (.+?)(?: · ประมาณ [\d,\-]+ แถว)?$")
+_USED = re.compile(r"^\*\*ใช้ใน SGI:\*\* (.+?)(?: · ประมาณ [\d,\-]+ แถว)?$")
 _COL = re.compile(
     r"^\|\s*(\d+)\s*\|\s*`([^`]+)`\s*(🔑)?\s*\|\s*([^|]+?)\s*\|\s*([YN])\s*\|\s*(.*?)\s*\|$"
 )
@@ -146,20 +146,20 @@ def _short_type(t: str) -> str:
     return t
 
 
-# ------------------------------------------------------------------- ddl (sbpgi)
+# ------------------------------------------------------------------- ddl (sgi)
 
 _CREATE = re.compile(r"CREATE TABLE (\w+)\s*\((.*?)\n\);", re.S)
 
 
-def parse_sbpgi_ddl(path: Path) -> dict[str, Table]:
-    """แยก CREATE TABLE ของโครง SBPGI จาก LLDD-Database.md หัวข้อ 5 (DDL ที่รันได้จริง)"""
+def parse_sgi_ddl(path: Path) -> dict[str, Table]:
+    """แยก CREATE TABLE ของโครง SGI จาก LLDD-Database.md หัวข้อ 5 (DDL ที่รันได้จริง)"""
     text = path.read_text(encoding="utf-8")
     body = text.split("## 5. Executable DDL", 1)[1].split("## 6. Index", 1)[0]
     tables: dict[str, Table] = {}
 
     for m in _CREATE.finditer(body):
         name, inner = m.group(1), m.group(2)
-        t = Table(schema="sbpgi", name=name)
+        t = Table(schema="sgi", name=name)
         for stmt in _split_ddl(inner):
             _apply_ddl_stmt(t, stmt)
         tables[name] = t
@@ -261,7 +261,7 @@ def _apply_ddl_stmt(t: Table, stmt: str) -> None:
 
 def load_all() -> dict[str, dict[str, Table]]:
     return {
-        "sbpgi": parse_sbpgi_ddl(ROOT / "LLDD/md/LLDD-Database.md"),
+        "sgi": parse_sgi_ddl(ROOT / "LLDD/md/LLDD-Database.md"),
         "sps_store": parse_schema_dump(ROOT / "SBP/db-schema-sps_store.md", "sps_store"),
         "sps_auth": parse_schema_dump(ROOT / "SBP/db-schema-sps_auth.md", "sps_auth"),
     }
@@ -273,8 +273,8 @@ if __name__ == "__main__":
         cols = sum(len(t.columns) for t in tabs.values())
         fks = sum(len(t.fks) for t in tabs.values())
         print(f"{schema:10s} tables={len(tabs):4d} columns={cols:5d} fk={fks:3d}")
-    sbpgi = all_t["sbpgi"]
-    print("\nSBPGI tables:", ", ".join(sorted(sbpgi)))
-    for n in ("compensation_documents", "interface_transactions"):
-        t = sbpgi[n]
+    sgi = all_t["sgi"]
+    print("\nSGI tables:", ", ".join(sorted(sgi)))
+    for n in ("sgi_compensation_documents", "sgi_interface_transactions"):
+        t = sgi[n]
         print(f"\n{n}: pk={t.pk} cols={len(t.columns)} fks={t.fks} uniques={t.uniques}")

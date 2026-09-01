@@ -62,9 +62,9 @@
           <!-- phase A -->
           <rect x="300" y="46" width="400" height="112" rx="12" fill="#f5f9ff" stroke="#2f6fed" stroke-width="1.6"/>
           <text x="318" y="70" font-size="12.5" font-weight="700" fill="#1d4ed8">เฟส A · นำเข้า Master</text>
-          <text x="318" y="92" font-size="11" fill="#45525f">fcs_qssi_score — ระบบ SBP เดิมนำเข้าให้ (SBPGI อ่านอย่างเดียว)</text>
-          <text x="318" y="110" font-size="11" fill="#45525f">Job 2 ImportImpactStore → fgi_impact_stores (กฎ DENY / ON_PROCESS)</text>
-          <text x="318" y="128" font-size="11" fill="#45525f">Job 3 ImportImpactCompetitor → fgi_impact_competitors (กันซ้ำระดับงวด)</text>
+          <text x="318" y="92" font-size="11" fill="#45525f">fcs_qssi_score — ระบบ SBP เดิมนำเข้าให้ (SGI อ่านอย่างเดียว)</text>
+          <text x="318" y="110" font-size="11" fill="#45525f">Job 2 ImportImpactStore → sgi_fgi_impact_stores (กฎ DENY / ON_PROCESS)</text>
+          <text x="318" y="128" font-size="11" fill="#45525f">Job 3 ImportImpactCompetitor → sgi_fgi_impact_competitors (กันซ้ำระดับงวด)</text>
           <text x="318" y="148" font-size="9.5" fill="#8493a5">รายเดือน · และทุกวันที่ 7 เวลา 07:00</text>
 
           <!-- phase B -->
@@ -77,14 +77,14 @@
           <!-- phase C -->
           <rect x="300" y="294" width="400" height="96" rx="12" fill="#fffaf0" stroke="#f59e0b" stroke-width="1.6"/>
           <text x="318" y="318" font-size="12.5" font-weight="700" fill="#b45309">เฟส C · บันทึกเข้าเอกสาร (เขียน DB ตรง)</text>
-          <text x="318" y="340" font-size="11" fill="#45525f">Job 8 → compensation_documents · Job 7 → document_competitors</text>
-          <text x="318" y="358" font-size="11" fill="#45525f">Job 9 → document_new_stores · tracking direction = INTERNAL</text>
+          <text x="318" y="340" font-size="11" fill="#45525f">Job 8 → sgi_compensation_documents · Job 7 → sgi_document_competitors</text>
+          <text x="318" y="358" font-size="11" fill="#45525f">Job 9 → sgi_document_new_stores · tracking direction = INTERNAL</text>
           <text x="318" y="378" font-size="9.5" fill="#8493a5">ทุกวันที่ 7–31 เวลา 17:30 · Job 8 ห้ามเรียก workflow เอง</text>
 
           <!-- phase D -->
           <rect x="300" y="410" width="400" height="96" rx="12" fill="#faf7ff" stroke="#7c3aed" stroke-width="1.6"/>
           <text x="318" y="434" font-size="12.5" font-weight="700" fill="#6d28d9">เฟส D · เปิด Workflow / Statement</text>
-          <text x="318" y="456" font-size="11" fill="#45525f">Job 8b StartInternalWorkflow — Gen Flow Gate → POST /sbpgi/workflow/instances (W→Y/N)</text>
+          <text x="318" y="456" font-size="11" fill="#45525f">Job 8b StartInternalWorkflow — Gen Flow Gate → POST /sgi/workflow/instances (W→Y/N)</text>
           <text x="318" y="474" font-size="11" fill="#45525f">Job 6 → 10 mutations + เช็ค QSSI 6 หมวด → publish RabbitMQ ไป STA</text>
           <text x="318" y="494" font-size="9.5" fill="#8493a5">Job 6 ทุกวัน 17:00 · Job 8b trigger หลัง Job 8 สร้างเอกสารสำเร็จ</text>
 
@@ -131,7 +131,7 @@
           <line x1="700" y1="342" x2="778" y2="326" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
           <text x="706" y="326" font-size="9.5" fill="#5d6b7a">เขียน DB ตรง</text>
           <line x1="700" y1="440" x2="778" y2="416" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
-          <text x="706" y="424" font-size="9.5" fill="#5d6b7a">POST /sbpgi/workflow/instances</text>
+          <text x="706" y="424" font-size="9.5" fill="#5d6b7a">POST /sgi/workflow/instances</text>
           <line x1="700" y1="478" x2="778" y2="496" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
           <text x="706" y="502" font-size="9.5" fill="#5d6b7a">RabbitMQ (sta.compensation.result)</text>
           <line x1="778" y1="512" x2="700" y2="556" stroke="#8493a5" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#pa)"/>
@@ -142,7 +142,7 @@
         <p style="font-size:12.5px;color:var(--muted);margin:12px 2px 0;padding:10px 12px;border-left:4px solid #2f6fed;background:#f5f9ff;border-radius:8px;">
           <b>ชื่อตารางคะแนน QSSI = <code>fcs_qssi_score</code> (เอกพจน์)</b> — ยืนยันจากฐานข้อมูลจริง <code>SBP/db-schema-sps_store.md</code> (2026-08-10):
           ตารางนี้<b>มีอยู่แล้วใน schema <code>sps_store</code> จำนวน 23,958,780 แถว</b> พร้อม import pipeline ที่ทำงานอยู่ (<code>POST /performance/import-qssi</code> + staging <code>fcs_tmp_qssi_score</code>) →
-          <b>ห้ามสร้างตารางใหม่ ให้ reuse ของเดิม</b> · วิธีจัดการ constraint/index/คอลัมน์ที่ขาดของตารางเดิม <b>✅ DP-4 ปิดแล้ว 2026-08-24 — ไม่แก้ เพราะ SBPGI อ่านอย่างเดียว</b> ·
+          <b>ห้ามสร้างตารางใหม่ ให้ reuse ของเดิม</b> · วิธีจัดการ constraint/index/คอลัมน์ที่ขาดของตารางเดิม <b>✅ DP-4 ปิดแล้ว 2026-08-24 — ไม่แก้ เพราะ SGI อ่านอย่างเดียว</b> ·
           หมายเหตุ: <code>fcs_qssi_score_bak_20260710</code> เป็น snapshot เก่า <b>ห้ามอ่าน ห้าม join</b>
         </p>
       </div>
@@ -154,7 +154,7 @@
           <table class="data">
             <thead><tr><th>เวลา</th><th>Cron</th><th>Job</th><th>งาน</th></tr></thead>
             <tbody>
-              <tr><td>ต้นเดือน (รายเดือน)</td><td class="mono">Monthly</td><td class="mono">— (ระบบ SBP เดิม)</td><td>นำเข้าคะแนน QSSI 4 ไฟล์ · <b>ตัดออกจากขอบเขต SBPGI 2026-08-24</b> — ระบบเดิมทำให้แล้ว (temp table ใช้ร่วม)</td></tr>
+              <tr><td>ต้นเดือน (รายเดือน)</td><td class="mono">Monthly</td><td class="mono">— (ระบบ SBP เดิม)</td><td>นำเข้าคะแนน QSSI 4 ไฟล์ · <b>ตัดออกจากขอบเขต SGI 2026-08-24</b> — ระบบเดิมทำให้แล้ว (temp table ใช้ร่วม)</td></tr>
               <tr><td>วันที่ 7 · 07:00</td><td class="mono">0 07 7 * *</td><td class="mono">Jobs 2, 3</td><td>นำเข้าคู่ร้านกระทบ + คู่แข่งจาก ALLMAP</td></tr>
               <tr><td>วันที่ 7–16 · 16:00</td><td class="mono">0 16 7-16 * *</td><td class="mono">Job 4</td><td>วางไฟล์คำขอยอดขาย AMS06001O บน EAI S3 ให้ IAS/MIS</td></tr>
               <tr><td>วันที่ 7–16 · 16:30</td><td class="mono">30 16 7-16 * *</td><td class="mono">Job 5</td><td>ดึงไฟล์ตอบกลับจาก EAI S3 + คำนวณ Growth (30 นาทีหลัง Job 4)</td></tr>
@@ -178,17 +178,17 @@
               <tr><td class="mono">AMS06001O_yyyyMMddHHmm.txt</td><td>Job 4 → <b>EAI S3</b> → IAS/MIS</td><td class="mono">UTF-8</td><td class="num">1 record</td><td>คำขอยอดขาย (รหัสร้านถูกกระทบ | วันเปิดร้านใหม่)</td></tr>
               <tr><td class="mono">AMS06001I_yyyyMMddHHmm.txt</td><td>IAS/MIS → <b>EAI S3</b> → Job 5</td><td class="mono">WINDOWS-874</td><td class="num">4</td><td>ยอดขายรายวันตอบกลับ</td></tr>
               <tr><td class="mono">sta.compensation.result</td><td>Job 6 → <b>RabbitMQ</b> → STA</td><td class="mono">JSON UTF-8 (วันที่ พ.ศ.)</td><td class="num">14</td><td>ค่าชดเชย + QSSI (สถานะ Z → S เฉพาะใน payload) · เดิมเป็นไฟล์ <code>FRBC0001</code> ผ่าน SFTP — เปลี่ยน 2026-08-24</td></tr>
-              <tr><td class="mono">—</td><td>Job 8 → <b>compensation_documents</b></td><td class="mono">DB</td><td class="num">–</td><td>สร้างเอกสารในฐานข้อมูลเดียวกัน (ไม่มีไฟล์/SFTP)</td></tr>
-              <tr><td class="mono">—</td><td>Job 7 → <b>document_competitors</b></td><td class="mono">DB</td><td class="num">–</td><td>คู่แข่งในเอกสาร · source_system = ALLMAP</td></tr>
-              <tr><td class="mono">—</td><td>Job 9 → <b>document_new_stores</b></td><td class="mono">DB</td><td class="num">–</td><td>ร้านเปิดใหม่ในเอกสาร · %ชดเชยรวม 100%</td></tr>
-              <tr><td class="mono">POST /api/v1/sbpgi/workflow/instances</td><td>Job 8b → <b>Workflow Engine ภายใน</b></td><td class="mono">JSON / HTTP</td><td class="num">–</td><td>เปิด workflow ด้วย service token (@srm/glb-workflow)</td></tr>
+              <tr><td class="mono">—</td><td>Job 8 → <b>sgi_compensation_documents</b></td><td class="mono">DB</td><td class="num">–</td><td>สร้างเอกสารในฐานข้อมูลเดียวกัน (ไม่มีไฟล์/SFTP)</td></tr>
+              <tr><td class="mono">—</td><td>Job 7 → <b>sgi_document_competitors</b></td><td class="mono">DB</td><td class="num">–</td><td>คู่แข่งในเอกสาร · source_system = ALLMAP</td></tr>
+              <tr><td class="mono">—</td><td>Job 9 → <b>sgi_document_new_stores</b></td><td class="mono">DB</td><td class="num">–</td><td>ร้านเปิดใหม่ในเอกสาร · %ชดเชยรวม 100%</td></tr>
+              <tr><td class="mono">POST /api/v1/sgi/workflow/instances</td><td>Job 8b → <b>Workflow Engine ภายใน</b></td><td class="mono">JSON / HTTP</td><td class="num">–</td><td>เปิด workflow ด้วย service token (@srm/glb-workflow)</td></tr>
               <tr><td class="mono">Email แจ้งเตือน</td><td>ทุก job → <b>email-lib กลาง</b> (<code>sendEmail</code>)</td><td class="mono">UTF-8</td><td class="num">–</td><td>ส่งผ่าน <code>@gosoft-sbp/email-lib</code> ของระบบ SBP เดิม · ผู้รับตาม config ต่อ job (เดิมแต่ละ job ต่อ SMTP เอง encoding TIS-620)</td></tr>
             </tbody>
           </table>
         </div>
         <p style="font-size:12.5px;color:var(--muted);margin:12px 2px 0;">
-          สถานะข้อมูลหลักที่ไหลผ่าน pipeline: <b>sales_request_status</b> W → P → Y/N (คู่ร้าน/ยอดขาย · <code>fgi_impact_stores</code>) · <b>workflow_generation_status</b> W → Y/N (เปิด workflow · <code>fgi_impact_processes</code>) ·
-          <b>compensate_status</b> I/C/A/N/S/Z (ค่าชดเชย · <code>fgi_impact_compensations</code>) — โครงสร้างตารางรวมดูหน้า <a href="plan-database.html" style="color:#2f6fed;font-weight:600;">DB รวม (ระบบใหม่)</a>
+          สถานะข้อมูลหลักที่ไหลผ่าน pipeline: <b>sales_request_status</b> W → P → Y/N (คู่ร้าน/ยอดขาย · <code>sgi_fgi_impact_stores</code>) · <b>workflow_generation_status</b> W → Y/N (เปิด workflow · <code>sgi_fgi_impact_processes</code>) ·
+          <b>compensate_status</b> I/C/A/N/S/Z (ค่าชดเชย · <code>sgi_fgi_impact_compensations</code>) — โครงสร้างตารางรวมดูหน้า <a href="plan-database.html" style="color:#2f6fed;font-weight:600;">DB รวม (ระบบใหม่)</a>
         </p>
       </div>
 

@@ -99,12 +99,12 @@
     "out": "modal-add-competitor-master.png",
     "title": "Modal เพิ่มรายชื่อคู่แข่ง (master)",
     "w": 628,
-    "h": 629
+    "h": 543
   },
   {
     "out": "modal-add-factor-master.png",
     "title": "Modal เพิ่มปัจจัยภายนอก (master)",
     "w": 628,
-    "h": 543
+    "h": 458
   }
 ]

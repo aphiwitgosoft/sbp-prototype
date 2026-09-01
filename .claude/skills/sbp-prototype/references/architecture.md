@@ -59,7 +59,7 @@ Entry แบบมี `children: [{key,label,href}]` (ไม่มี href บ�
 | | `k2-report.html` | รายงานสรุปสถานะ — **ตัวกรอง 7 ตัว / ผลลัพธ์ 14 คอลัมน์ ตาม SDD สไลด์ 60** (SRS 3.1.7 · ปรับ 2026-08-06) |
 | | `k2-factors.html` | master ปัจจัยภายนอก (3.1.9) |
 | | ~~`k2-operators.html`~~ / ~~`k2-permissions.html`~~ | **ถอดจาก sidebar 2026-08-05** — ผู้ปฏิบัติงาน (3.1.8) + สิทธิ์เมนู (3.1.1) ใช้ระบบ SBP เดิม (auth-backend) · ไฟล์เก็บไว้อ้างอิง |
-| ~~Admin~~ | ~~`system-config.html`~~ / ~~`email-template.html`~~ | **ลบไฟล์ทิ้งทั้งฟีเจอร์ 2026-08-06** พร้อม endpoint 10 เส้น (`/configs*` · `/email-templates*`) และ `SCHEMAS.config` — ค่ากำหนดกลาง/template อีเมลอยู่ที่ระบบ SBP เดิม (`mas_param` / `email_template`) SBPGI แค่อ่าน · อีเมลยังส่งผ่าน `@gosoft-sbp/email-lib` |
+| ~~Admin~~ | ~~`system-config.html`~~ / ~~`email-template.html`~~ | **ลบไฟล์ทิ้งทั้งฟีเจอร์ 2026-08-06** พร้อม endpoint 10 เส้น (`/configs*` · `/email-templates*`) และ `SCHEMAS.config` — ค่ากำหนดกลาง/template อีเมลอยู่ที่ระบบ SBP เดิม (`mas_param` / `email_template`) SGI แค่อ่าน · อีเมลยังส่งผ่าน `@gosoft-sbp/email-lib` |
 | | | **กลุ่ม ผู้ดูแลระบบ (Admin) ไม่มีเมนูเหลือแล้ว** |
 | Flow | `flow-fgi.html` / `k2-flow.html` / `plan-flow.html` | FGI/FCS pipeline / K2 approval BPMN / flow รวมระบบใหม่ (คู่ของ workflow.md) |
 | | `job-batch.html` — **Flow Batch Job** | **ย้ายจากกลุ่ม Admin มากลุ่ม Flow 2026-08-06 และเหลือ 2 แท็บ: `Flowchart การทำงาน` + `Database ที่ใช้`** (ตัดแบบฟอร์มพารามิเตอร์ · ประวัติการรัน · ปุ่มสั่งรัน/เปิด-ปิด · stat cards · กราฟ · การ์ด audit ออก) — เอกสารอ้างอิงผู้พัฒนา ไม่ใช่หน้าจอควบคุม · endpoint 6 เส้น (`/jobs*`) + ตาราง `job_configs`/`job_run_histories` ถูกลบจากแบบ · batch job ยังรันปกติ พารามิเตอร์อยู่ใน backend config |
@@ -72,7 +72,7 @@ Entry แบบมี `children: [{key,label,href}]` (ไม่มี href บ�
 
 หน้าจอ Email Template (8 การ์ด EM-01–08 + WYSIWYG editor ในตัว) และหน้า ตั้งค่าระบบ (Global Config) **ถูกลบออกจากโปรเจกต์** พร้อม endpoint 10 เส้น, `SCHEMAS.config` ใน `sbp.js` และเอกสาร LLDD-FE-Email-Template
 
-- ค่ากำหนดกลางอยู่ในตาราง **`mas_param`** และ template อีเมลอยู่ในตาราง **`email_template`** ของระบบ SBP เดิม ซึ่งมีหน้าจอบริหารจัดการของตัวเองอยู่แล้ว — SBPGI **อ่านอย่างเดียว**
+- ค่ากำหนดกลางอยู่ในตาราง **`mas_param`** และ template อีเมลอยู่ในตาราง **`email_template`** ของระบบ SBP เดิม ซึ่งมีหน้าจอบริหารจัดการของตัวเองอยู่แล้ว — SGI **อ่านอย่างเดียว**
 - อีเมลตามสถานะยังส่งเหมือนเดิมผ่าน `@gosoft-sbp/email-lib` (log ลง `email_sent`) · ตารางสถานะ × action × ผู้รับ × อีเมล ดู `workflow_status_document.md`
 - ถ้าต้องกลับมาดูของเดิม: กู้จาก git history (commit ก่อน 2026-08-06)
 

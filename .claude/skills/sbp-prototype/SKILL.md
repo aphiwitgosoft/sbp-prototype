@@ -1,13 +1,13 @@
 ---
 name: sbp-prototype
-description: องค์ความรู้โปรเจกต์ sbp-prototype — ระบบประกันรายได้ K2/SBPGI (7-Eleven Store Partner income guarantee) ใช้เมื่อทำงานกับหน้า HTML prototype, sbp.js, การออกแบบ database/workflow/API, email template, สิทธิ์ role, batch jobs หรือเอกสาร SRS ในโปรเจกต์นี้ ครอบคลุมกติกาธุรกิจที่ห้ามเปลี่ยน ลำดับเอกสารอ้างอิง และ playbook งานที่ทำบ่อย
+description: องค์ความรู้โปรเจกต์ sbp-prototype — ระบบประกันรายได้ K2/SGI (7-Eleven Store Partner income guarantee) ใช้เมื่อทำงานกับหน้า HTML prototype, sbp.js, การออกแบบ database/workflow/API, email template, สิทธิ์ role, batch jobs หรือเอกสาร SRS ในโปรเจกต์นี้ ครอบคลุมกติกาธุรกิจที่ห้ามเปลี่ยน ลำดับเอกสารอ้างอิง และ playbook งานที่ทำบ่อย
 ---
 
-# SBP Prototype — ระบบประกันรายได้ (K2 → SBPGI)
+# SBP Prototype — ระบบประกันรายได้ (K2 → SGI)
 
 Prototype HTML แบบ click-through ภาษาไทยของระบบชดเชยรายได้ให้ร้าน 7-Eleven Store Partner (SP)
 ที่ยอดขายตกเมื่อมีสาขาใหม่เปิดในรัศมีกระทบ (1 กม. กทม./ปริมณฑล · 2 กม. ต่างจังหวัด)
-ระบบใหม่ชื่อ **SBPGI** รวม EAI + K2 เข้าเป็นระบบเดียว ฐานข้อมูลเดียว
+ระบบใหม่ชื่อ **SGI** รวม EAI + K2 เข้าเป็นระบบเดียว ฐานข้อมูลเดียว
 
 ไม่มี build/lint/test — เปิดด้วย `open index.html` หรือ `python3 -m http.server` (ทั้งคู่เด้งไปหน้าแรกจริงคือ `k2-list-waiting.html` — `index.html` เหลือเป็น redirect stub)
 Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย่างต้องทำงาน offline ห้ามเพิ่ม CDN/library**
@@ -48,9 +48,9 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 **แก้เรื่อง API** — อ่าน `api.md` → แก้ `api.md` + `plan-api.html` คู่กัน → ถ้ากระทบตาราง/flow แก้ `database.md`/`workflow.md` ด้วย
 โครง modal ต่อ endpoint ใน `plan-api.html`: Flow อธิบาย**นอกแท็บ** · แท็บ 1 Request/Response · แท็บ 2 Database + SQL (ตัวอย่าง SQL ต่อเส้นใน `SQL_BY_PATH` keyed `'METHOD path'` ครบทุกเส้น) · แท็บ 3 Flowchart **เฉพาะ 3 เส้นซับซ้อน** (spec ใน `FLOWCHART_BY_PATH` เรนเดอร์ด้วย `renderFlow()` inline SVG) — ดูรายละเอียดใน [references/architecture.md](references/architecture.md) §plan-api
 
-**แก้ email template / ค่ากำหนดกลาง** — **ไม่มีหน้าจอใน SBPGI แล้ว (ลบทั้งฟีเจอร์ 2026-08-06)** · template 8 ฉบับ (EM-01–08) อยู่ในตาราง `email_template` และค่ากำหนดกลางอยู่ใน `mas_param` ของ**ระบบ SBP เดิม** ซึ่งมีหน้าจอบริหารจัดการอยู่แล้ว · SBPGI อ่านอย่างเดียวแล้วส่งผ่าน `@gosoft-sbp/email-lib` (log ลง `email_sent`)
+**แก้ email template / ค่ากำหนดกลาง** — **ไม่มีหน้าจอใน SGI แล้ว (ลบทั้งฟีเจอร์ 2026-08-06)** · template 8 ฉบับ (EM-01–08) อยู่ในตาราง `email_template` และค่ากำหนดกลางอยู่ใน `mas_param` ของ**ระบบ SBP เดิม** ซึ่งมีหน้าจอบริหารจัดการอยู่แล้ว · SGI อ่านอย่างเดียวแล้วส่งผ่าน `@gosoft-sbp/email-lib` (log ลง `email_sent`)
 
-**แก้สิทธิ์/role** — **ตัดสินใจ 2026-08-05: ใช้ระบบ SBP เดิม** (auth-backend/ABS: groups/menus/permissions ต่อ URL · จัดการผ่านหน้า `/setting/manage-user-rights` ของ FE เดิม) — SBPGI ไม่มีตาราง `roles`/`menus`/`menu_permissions`/`user_accounts`/`operator_assignments` และไม่มีหน้า/เมนู `k2-permissions.html` · `k2-operators.html` แล้ว (ไฟล์เก็บไว้อ้างอิง · 8 role ดูตารางใน [references/domain.md](references/domain.md) — map เป็น group ของระบบเดิม)
+**แก้สิทธิ์/role** — **ตัดสินใจ 2026-08-05: ใช้ระบบ SBP เดิม** (auth-backend/ABS: groups/menus/permissions ต่อ URL · จัดการผ่านหน้า `/setting/manage-user-rights` ของ FE เดิม) — SGI ไม่มีตาราง `roles`/`menus`/`menu_permissions`/`user_accounts`/`operator_assignments` และไม่มีหน้า/เมนู `k2-permissions.html` · `k2-operators.html` แล้ว (ไฟล์เก็บไว้อ้างอิง · 8 role ดูตารางใน [references/domain.md](references/domain.md) — map เป็น group ของระบบเดิม)
 
 **หน้าที่ตัดออกถาวร 2026-08-06** — (1) **Overview** (`index.html`) เหลือเป็น redirect stub · หน้าแรกคือ `k2-list-waiting.html` (ค่าคุมอยู่ที่ `HOME_KEY`/`HOME_HREF` ใน sbp.js) (2) **ข้อมูลผิดปกติ / แจกงาน** — **ลบไฟล์ `k2-list-abnormal.html` ทิ้งแล้ว** พร้อมเมนูใน MODULES และกลุ่ม API 2 เส้นใน plan-api.html · ข้อมูลผิดปกติเหลือเป็นธงแถวแดง + stat card "ยอดขายไม่ครบ 60 วัน" ในหน้ารอดำเนินการ/ที่เกี่ยวข้อง
 

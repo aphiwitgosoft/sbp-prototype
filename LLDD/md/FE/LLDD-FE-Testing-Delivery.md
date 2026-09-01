@@ -13,6 +13,27 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Document type | FE verification and release handover specification; not an application screen |
 | Objective | กำหนด regression, responsive pass, API payload adjustment และ delivery note สำหรับ FE |
 
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| สัญญากลาง | **LLDD-FE-Integration-Contracts** | API client · auth header · error mapping · RBAC/menu gating ฝั่ง FE |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Create-Document** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Document-Detail** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Document-Detail-Role-01-Business-Promotion** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Document-Detail-Role-02-GM-Business-Promotion** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Document-Detail-Role-03-AVP-SBP** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Document-Detail-Role-06-SBP-DSA** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Document-Detail-Role-08-SBP-DSA-Officer** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Document-Lists** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Foundation** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Integration-Contracts** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Master-Data** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Report** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+
 ## 2. Delivery Scope
 
 - Regression suites for Dashboard, document lists/create/detail/actions, report, master/config, batch monitor and email template
@@ -74,5 +95,5 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | 3 | request/response schema mismatch ต้องเป็นศูนย์ |
 | 4 | Critical/High defects ต้องปิด |
 | 5 | report preview/export parity |
-| 6 | action transition 06→08→01→02→03→99 |
+| 6 | action transition 06→08→06→01→02→03→99 |
 | 7 | delivery evidence ไม่มี token/secret |

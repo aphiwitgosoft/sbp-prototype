@@ -14,6 +14,21 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| ถูกเรียกจาก | **LLDD-FE-Create-Document** | `GET /store/search (ระบบ SBP เดิม)` |
+| ถูกเรียกจาก | **LLDD-FE-Foundation** | `GET /api/v1/sgi/lookup/document-statuses` |
+| ถูกเรียกจาก | **LLDD-FE-Report** | `GET /store/search (ระบบ SBP เดิม)` |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| โครงสร้างข้อมูล | **LLDD-BE-Database-Structure** | DDL ของตารางที่หัวข้อ Reference DB Mapping อ้างถึง |
+| แพลตฟอร์มระบบเดิม | **LLDD-BE-Integration-SBP-Platform** | header จาก BFF (`x-api-key` / `x-user-*`) · การ reuse ตารางและ service ของระบบ SBP เดิม |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-API-Common-Contracts** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Database-Structure** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+
 ## 2. Screen / Functional Scope
 
 - Lookup APIs
@@ -23,20 +38,30 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup](../../assets/flows/BE-LLDD-BE-API-Lookup.png)
 
 _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 2: Sequence diagram: LLDD BE - API Lookup](../../assets/flows/BE-LLDD-BE-API-Lookup-sequence.png)
+
+_รูปที่ 2: Sequence diagram: LLDD BE - API Lookup_
+
 ## 5. Field, Format, and Validation
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| q | string | optional | ใช้ค้นหา ร้าน (store/mas_store ระบบเดิม) · พนักงาน (business_user ระบบเดิม) · คู่แข่ง (competitors ของ SBPGI) |
+| q | string | optional | ใช้ค้นหา ร้าน (store/mas_store ระบบเดิม) · พนักงาน (business_user ระบบเดิม) · คู่แข่ง (sgi_competitors ของ SGI) |
 | type | impacted\|new | required for /store/search (ระบบ SBP เดิม) | เลือกแหล่งร้านถูกกระทบ/ร้านเปิดใหม่ |
-| roleCode | 00-10 | required for permission | group ของ auth-backend (ระบบเดิม) — SBPGI ไม่มีตาราง roles |
-| menuCode | string | required for permission | menu ของ auth-backend (ระบบเดิม) — SBPGI ไม่มีตาราง menus |
+| roleCode | 00-10 | required for permission | group ของ auth-backend (ระบบเดิม) — SGI ไม่มีตาราง roles |
+| menuCode | string | required for permission | menu ของ auth-backend (ระบบเดิม) — SGI ไม่มีตาราง menus |
 | templateCode | EM-01..EM-08 | required | email template key |
 | reason | text | ไม่บังคับแล้ว | ไม่มีปลายทางเก็บ (ยกเลิกระบบ audit ของ master 2026-08-07) |
 
@@ -44,17 +69,17 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/sbpgi/lookup/document-statuses; GET /api/v1/sbpgi/lookup/workflow-sections |
+| Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/sgi/lookup/document-statuses; GET /api/v1/sgi/lookup/workflow-sections |
 | Progress | Validate query; Read/write table by domain; Return standard envelope for list endpoints |
-| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / sgi_consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Endpoint Implementation Contract
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
 | GET /store/search (ระบบ SBP เดิม) | ค้นหาร้านสำหรับ popup | Validate query | status label ต้องเป็น verbatim |
-| GET /api/v1/sbpgi/lookup/document-statuses | รายการสถานะเอกสาร verbatim | Read/write table by domain | permission mutation ต้อง audit |
-| GET /api/v1/sbpgi/lookup/workflow-sections | รายการ section 5 ขั้น | Return standard envelope for list endpoints | SBPGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14) |
+| GET /api/v1/sgi/lookup/document-statuses | รายการสถานะเอกสาร verbatim | Read/write table by domain | permission mutation ต้อง audit |
+| GET /api/v1/sgi/lookup/workflow-sections | รายการ section 5 ขั้น | Return standard envelope for list endpoints | SGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14) |
 
 ### 5.91 Backend Execution Sequence
 
@@ -69,7 +94,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
 | Store lookup | GET | lookup.service.searchStores | return impacted/new stores |
-| Employee lookup | GET | employee backend เดิมของระบบ SBP (ไม่ใช่ endpoint ของ SBPGI) | return business_user for operator popup |
+| Employee lookup | GET | employee backend เดิมของระบบ SBP (ไม่ใช่ endpoint ของ SGI) | return business_user for operator popup |
 | Permission save | PUT | rbac.service.saveMenuPermission | update can_access and audit |
 | Email template save/reset | PUT/POST | notificationTemplate.service | update/reset template and audit |
 
@@ -116,7 +141,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | items[].storeCode | string | Yes | exactly 5 digits; preserve leading zero |
 | items[].storeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/sbpgi/lookup/document-statuses
+### GET /api/v1/sgi/lookup/document-statuses
 
 รายการสถานะเอกสาร verbatim
 
@@ -153,7 +178,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 | items[].statusCode | string | Yes | canonical code; do not replace with display label |
 | items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/sbpgi/lookup/workflow-sections
+### GET /api/v1/sgi/lookup/workflow-sections
 
 รายการ section 5 ขั้น
 
@@ -196,12 +221,12 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| impacted_stores (SBPGI) / store · mas_store · sevenshop (SBP เดิม) | R | store picker — SBPGI ไม่มีตาราง stores ของตัวเอง |
-| workflow_status / workflow_state (@srm/glb-workflow · sps_store) | R | lookup สถานะ verbatim และ 5 ขั้น 06/08/01/02/03 — ไม่สร้างตารางของ SBPGI เอง |
-| business_user (SBP เดิม) | R | popup ค้นหาพนักงาน — SBPGI ไม่มีตาราง employees |
-| auth-backend groups / menus / permissions (ระบบเดิม) | R | RBAC/menu matrix — จัดการที่หน้า /setting/manage-user-rights เดิม · SBPGI อ่านผ่าน header x-user-permissions เท่านั้น ไม่มีตารางของตัวเอง |
-| email_template (SBP เดิม) | R | template — SBPGI อ่านผ่าน lib เท่านั้น ไม่แก้ของระบบเดิม |
-| email_sent (SBP เดิม) | W (โดย email-lib) | log การส่ง — SBPGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง (DP-5 · 2026-08-14) · ⚠️ คอลัมน์ผู้ส่งคือ send_by ไม่ใช่ sent_by |
+| sgi_impacted_stores (SGI) / store · mas_store · sevenshop (SBP เดิม) | R | store picker — SGI ไม่มีตาราง stores ของตัวเอง |
+| workflow_status / workflow_state (@srm/glb-workflow · sps_store) | R | lookup สถานะ verbatim และ 5 ขั้น 06/08/01/02/03 — ไม่สร้างตารางของ SGI เอง |
+| business_user (SBP เดิม) | R | popup ค้นหาพนักงาน — SGI ไม่มีตาราง employees |
+| auth-backend groups / menus / permissions (ระบบเดิม) | R | RBAC/menu matrix — จัดการที่หน้า /setting/manage-user-rights เดิม · SGI อ่านผ่าน header x-user-permissions เท่านั้น ไม่มีตารางของตัวเอง |
+| email_template (SBP เดิม) | R | template — SGI อ่านผ่าน lib เท่านั้น ไม่แก้ของระบบเดิม |
+| email_sent (SBP เดิม) | W (โดย email-lib) | log การส่ง — SGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง (DP-5 · 2026-08-14) · ⚠️ คอลัมน์ผู้ส่งคือ send_by ไม่ใช่ sent_by |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -211,19 +236,19 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 
 | Path | หน้าที่ |
 | --- | --- |
-| store-backend · src/modules/sbpgi-lookup/sbpgi-lookup.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
-| store-backend · src/modules/sbpgi-lookup/sbpgi-lookup.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sbpgi-lookup/sbpgi-lookup.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
-| store-backend · src/modules/sbpgi-lookup/dto/sbpgi-lookup.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
-| store-backend · src/modules/sbpgi-lookup/sbpgi-lookup.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
-| store-backend · src/entitys/impacted-stores.entity.ts | entity ของ `impacted_stores` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/modules/sgi-lookup/sgi-lookup.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
+| store-backend · src/modules/sgi-lookup/sgi-lookup.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
+| store-backend · src/modules/sgi-lookup/sgi-lookup.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-lookup/dto/sgi-lookup.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
+| store-backend · src/modules/sgi-lookup/sgi-lookup.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
+| store-backend · src/entitys/sgi-impacted-stores.entity.ts | entity ของ `sgi_impacted_stores` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/entitys/business-user.entity.ts | entity ของ `business_user` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/entitys/permissions.entity.ts | entity ของ `permissions` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
-| store-backend · src/providers/sbpgi/sbpgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
-| store-backend · sql/deploy-sbpgi-lookup.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
-| BFF · src/common/client-services/sbpgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
-| BFF · src/modules/sbpgi-lookup/sbpgi-lookup.controller.ts | route ฝั่ง BFF prefix `/bff/sbpgi/…` + `@UseGuards(AuthGuard('jwt'))` |
-| BFF · src/modules/sbpgi-lookup/sbpgi-lookup.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
+| store-backend · src/providers/sgi/sgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
+| store-backend · sql/deploy-sgi-lookup.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
+| BFF · src/common/client-services/sgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
+| BFF · src/modules/sgi-lookup/sgi-lookup.controller.ts | route ฝั่ง BFF prefix `/bff/sgi/…` + `@UseGuards(AuthGuard('jwt'))` |
+| BFF · src/modules/sgi-lookup/sgi-lookup.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
 
 เส้นที่ไม่ต้อง implement ใหม่ในเอกสารนี้:
 
@@ -234,31 +259,31 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Lookup_
 #### 9.2 Controller (store-backend)
 
 ```ts
-// src/modules/sbpgi-lookup/sbpgi-lookup.controller.ts
+// src/modules/sgi-lookup/sgi-lookup.controller.ts
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { HttpHeaderGuard } from '../../guards/http-header.guard';
 import { UserId } from '../../common/decorators/user-id.decorator';
-import { SbpgiLookupService } from './sbpgi-lookup.service';
+import { SgiLookupService } from './sgi-lookup.service';
 
 // LLDD BE - API Lookup
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sbpgi/sbpgi/lookup')
+@Controller('sgi/sgi/lookup')
 @UseGuards(HttpHeaderGuard)
-export class SbpgiLookupController {
-  constructor(private readonly service: SbpgiLookupService) {}
+export class SgiLookupController {
+  constructor(private readonly service: SgiLookupService) {}
 
-  // GET /api/v1/sbpgi/lookup/document-statuses — รายการสถานะเอกสาร verbatim
+  // GET /api/v1/sgi/lookup/document-statuses — รายการสถานะเอกสาร verbatim
   @Get('lookup/document-statuses')
-  getSbpgiLookupDocumentStatuses(@UserId() userId: string) {
+  getSgiLookupDocumentStatuses(@UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getSbpgiLookupDocumentStatuses(userId);
+    return this.service.getSgiLookupDocumentStatuses(userId);
   }
 
-  // GET /api/v1/sbpgi/lookup/workflow-sections — รายการ section 5 ขั้น
+  // GET /api/v1/sgi/lookup/workflow-sections — รายการ section 5 ขั้น
   @Get('lookup/workflow-sections')
-  getSbpgiLookupWorkflowSections(@UserId() userId: string) {
+  getSgiLookupWorkflowSections(@UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getSbpgiLookupWorkflowSections(userId);
+    return this.service.getSgiLookupWorkflowSections(userId);
   }
 }
 ```
@@ -266,7 +291,7 @@ export class SbpgiLookupController {
 #### 9.3 DTO + Validation
 
 ```ts
-// src/modules/sbpgi-lookup/dto/sbpgi-lookup.dto.ts
+// src/modules/sgi-lookup/dto/sgi-lookup.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
@@ -287,17 +312,17 @@ export class LookupRequestDto {
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
-// src/modules/sbpgi-lookup/sbpgi-lookup.service.ts
+// src/modules/sgi-lookup/sgi-lookup.service.ts
 import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { WorkflowService } from '../workflow/workflow.service';
-import { SBPGI_SQL } from './sbpgi-lookup.sql';
+import { SGI_SQL } from './sgi-lookup.sql';
 
 @Injectable()
-export class SbpgiLookupService {
-  private readonly logger = new Logger(SbpgiLookupService.name);
+export class SgiLookupService {
+  private readonly logger = new Logger(SgiLookupService.name);
   // versionId ของ workflow ประกันรายได้ (ตั้งใน env เหมือน COOPERATION_WORKFLOW_VERSION_ID)
-  private readonly versionId = Number(process.env.SBPGI_WORKFLOW_VERSION_ID);
+  private readonly versionId = Number(process.env.SGI_WORKFLOW_VERSION_ID);
 
   constructor(
     // DATA_SOURCE override query(): SELECT/WITH ไป slave pool, write ไป master
@@ -305,14 +330,14 @@ export class SbpgiLookupService {
     private readonly workflow: WorkflowService,
   ) {}
 
-  // GET /api/v1/sbpgi/lookup/document-statuses — รายการสถานะเอกสาร verbatim
-  async getSbpgiLookupDocumentStatuses(userId: string) {
+  // GET /api/v1/sgi/lookup/document-statuses — รายการสถานะเอกสาร verbatim
+  async getSgiLookupDocumentStatuses(userId: string) {
     const page = 1;
     const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
-    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sbpgi/lookup/document-statuses')
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sgi/lookup/document-statuses')
     // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
     //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
-    const rows = await this.dataSource.query(SBPGI_SQL.getSbpgiLookupDocumentStatuses, [
+    const rows = await this.dataSource.query(SGI_SQL.getSgiLookupDocumentStatuses, [
       // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
       userId, (page - 1) * size, size,
     ]);
@@ -320,25 +345,25 @@ export class SbpgiLookupService {
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/sbpgi/lookup/workflow-sections — รายการ section 5 ขั้น
-  async getSbpgiLookupWorkflowSections(userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/lookup/workflow-sections
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/lookup/workflow-sections')
-    throw new NotImplementedException('getSbpgiLookupWorkflowSections ยังไม่ implement');
+  // GET /api/v1/sgi/lookup/workflow-sections — รายการ section 5 ขั้น
+  async getSgiLookupWorkflowSections(userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/sgi/lookup/workflow-sections
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sgi/lookup/workflow-sections')
+    throw new NotImplementedException('getSgiLookupWorkflowSections ยังไม่ implement');
   }
 }
 ```
 
 #### 9.5 Workflow (`@srm/glb-workflow`)
 
-✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
+✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ยืนยันแล้ว 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
 | Endpoint | Use case ที่ต้องเรียก | เหตุผล |
 | --- | --- | --- |
 | (อ่านสถานะประกอบ) | getTransaction() | อ่านสถานะปัจจุบันของเอกสารเพื่อประกอบ response |
 
 ```ts
-// src/modules/sbpgi-lookup/sbpgi-lookup.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
+// src/modules/sgi-lookup/sgi-lookup.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
 // WorkflowService = wrapper ของ @srm/glb-workflow ที่ store-backend มีอยู่แล้ว
 // (DataSource แยกชื่อ 'workflow-connection', ทุก use case ห่อด้วย TypeOrmUnitOfWork)
 
@@ -350,10 +375,10 @@ export class SbpgiLookupService {
 #### 9.6 Entity (TypeORM)
 
 ```ts
-// src/entitys/impacted-stores.entity.ts
+// src/entitys/sgi-impacted-stores.entity.ts
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'impacted_stores', schema: process.env.DB_SCHEMA })
+@Entity({ name: 'sgi_impacted_stores', schema: process.env.DB_SCHEMA })
 export class ImpactedStore {
   @PrimaryColumn({ name: 'store_code', type: 'char', length: 5 })
   storeCode: string;
@@ -376,7 +401,7 @@ export class ImpactedStore {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
+  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
   //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
 }
 ```
@@ -409,20 +434,20 @@ export class BusinessUser {
 #### 9.7 Repository Providers + Module wiring
 
 ```ts
-// src/providers/sbpgi/sbpgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
+// src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
 // convention ของโฟลเดอร์ providers คือ 1 ไฟล์ต่อโดเมน ตั้งชื่อตามโดเมน (business_user/business_user.ts,
 // common_code/common_code.ts …) ไม่ใช่ index.ts
 //
-// ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SBPGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ
+// ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ
 //    (ชื่อ const แยกต่อเอกสารไว้แล้วเพื่อไม่ให้ชนกัน)
 import { DataSource } from 'typeorm';
-import { ImpactedStore } from '../../entitys/impacted-stores.entity';
+import { ImpactedStore } from '../../entitys/sgi-impacted-stores.entity';
 import { BusinessUser } from '../../entitys/business-user.entity';
 import { Permission } from '../../entitys/permissions.entity';
 
-export const sbpgiLookupProviders = [
+export const sgiLookupProviders = [
   {
-    provide: 'IMPACTED_STORE_REPOSITORY',
+    provide: 'SGI_IMPACTED_STORE_REPOSITORY',
     useFactory: (dataSource: DataSource) => dataSource.getRepository(ImpactedStore),
     inject: ['DATA_SOURCE'],
   },
@@ -438,7 +463,7 @@ export const sbpgiLookupProviders = [
   },
 ];
 
-// src/modules/sbpgi-lookup/sbpgi-lookup.module.ts
+// src/modules/sgi-lookup/sgi-lookup.module.ts
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { DatabaseModule } from '../../database/database.module';
 // UserContextMiddleware อ่าน header x-user-id แล้วเซ็ต request.userId ที่ @UserId() ใช้
@@ -446,57 +471,57 @@ import { DatabaseModule } from '../../database/database.module';
 // (ดู evaluation-process.module.ts / inform-evaluate.module.ts / cooperation-request.module.ts)
 import { UserContextMiddleware } from '../../common/middleware/user-context.middleware';
 import { WorkflowModule } from '../workflow/workflow.module';
-import { sbpgiLookupProviders } from '../../providers/sbpgi/sbpgi';
-import { SbpgiLookupController } from './sbpgi-lookup.controller';
-import { SbpgiLookupService } from './sbpgi-lookup.service';
+import { sgiLookupProviders } from '../../providers/sgi/sgi';
+import { SgiLookupController } from './sgi-lookup.controller';
+import { SgiLookupService } from './sgi-lookup.service';
 
 @Module({
   imports: [DatabaseModule, WorkflowModule],
-  controllers: [SbpgiLookupController],
-  providers: [SbpgiLookupService, ...sbpgiLookupProviders],
-  exports: [SbpgiLookupService],
+  controllers: [SgiLookupController],
+  providers: [SgiLookupService, ...sgiLookupProviders],
+  exports: [SgiLookupService],
 })
-export class SbpgiLookupModule implements NestModule {
+export class SgiLookupModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // ถ้าไม่ apply ตรงนี้ userId จะเป็น undefined เงียบ ๆ ทุก endpoint
-    consumer.apply(UserContextMiddleware).forRoutes(SbpgiLookupController);
+    consumer.apply(UserContextMiddleware).forRoutes(SgiLookupController);
   }
 }
-// TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SBPGI ตัวอื่น
+// TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
 #### 9.8 BFF Proxy (module + controller + client service)
 
-BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sbpgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
+BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
 ```ts
-// src/common/client-services/sbpgi-client.service.ts
+// src/common/client-services/sgi-client.service.ts
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { BaseClientService } from './base-client.service';
 
 @Injectable()
-export class SbpgiClientService extends BaseClientService implements OnModuleInit {
-  protected logger: Logger = new Logger(SbpgiClientService.name);
+export class SgiClientService extends BaseClientService implements OnModuleInit {
+  protected logger: Logger = new Logger(SgiClientService.name);
 
   onModuleInit() {
-    // TODO: ถ้า deploy SBPGI แยก service ให้เพิ่ม API_SBPGI_BACKEND_* ใน AppConfigService
+    // TODO: ถ้า deploy SGI แยก service ให้เพิ่ม API_SGI_BACKEND_* ใน AppConfigService
     //       ตอนนี้ชี้ store backend ตัวเดียวกับ StoreClientService
     this.defaultHeaders[this.config.api.store.key.name] = this.config.api.store.key.value;
     this.baseUrl = this.config.api.store.url;
   }
 }
 // BaseClientService แกะ { success, data } ให้แล้ว — service ฝั่ง BFF จึงได้ data ตรง ๆ
-// TODO: เพิ่ม SbpgiClientService ใน providers/exports ของ ClientServiceModule (@Global)
+// TODO: เพิ่ม SgiClientService ใน providers/exports ของ ClientServiceModule (@Global)
 ```
 
 ```ts
-// src/modules/sbpgi-lookup/sbpgi-lookup.service.ts (BFF)
+// src/modules/sgi-lookup/sgi-lookup.service.ts (BFF)
 import { Injectable } from '@nestjs/common';
-import { SbpgiClientService } from '@common/client-services/sbpgi-client.service';
+import { SgiClientService } from '@common/client-services/sgi-client.service';
 
 @Injectable()
-export class SbpgiLookupBffService {
-  constructor(private readonly client: SbpgiClientService) {}
+export class SgiLookupBffService {
+  constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
   private userHeaders(user: any) {
@@ -507,38 +532,38 @@ export class SbpgiLookupBffService {
     };
   }
 
-  getSbpgiLookupDocumentStatuses(params: any, user: any) {
-    return this.client.get('/api/v1/sbpgi/lookup/document-statuses', { params, headers: this.userHeaders(user) });
+  getSgiLookupDocumentStatuses(params: any, user: any) {
+    return this.client.get('/api/v1/sgi/lookup/document-statuses', { params, headers: this.userHeaders(user) });
   }
 
-  getSbpgiLookupWorkflowSections(params: any, user: any) {
-    return this.client.get('/api/v1/sbpgi/lookup/workflow-sections', { params, headers: this.userHeaders(user) });
+  getSgiLookupWorkflowSections(params: any, user: any) {
+    return this.client.get('/api/v1/sgi/lookup/workflow-sections', { params, headers: this.userHeaders(user) });
   }
 }
 
-// ---------- src/modules/sbpgi-lookup/sbpgi-lookup.controller.ts (BFF) ----------
+// ---------- src/modules/sgi-lookup/sgi-lookup.controller.ts (BFF) ----------
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sbpgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sbpgi/lookup')
+// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
+@Controller('bff/sgi/lookup')
 @UseGuards(AuthGuard('jwt'))
-export class SbpgiLookupBffController {
-  constructor(private readonly service: SbpgiLookupBffService) {}
+export class SgiLookupBffController {
+  constructor(private readonly service: SgiLookupBffService) {}
 
-  // proxy ของ GET /api/v1/sbpgi/lookup/document-statuses
-  @Get('sbpgi/lookup/document-statuses')
-  getSbpgiLookupDocumentStatuses(@Query() query: any, @Req() req: any) {
-    return this.service.getSbpgiLookupDocumentStatuses(query, req.user);
+  // proxy ของ GET /api/v1/sgi/lookup/document-statuses
+  @Get('sgi/lookup/document-statuses')
+  getSgiLookupDocumentStatuses(@Query() query: any, @Req() req: any) {
+    return this.service.getSgiLookupDocumentStatuses(query, req.user);
   }
 
-  // proxy ของ GET /api/v1/sbpgi/lookup/workflow-sections
-  @Get('sbpgi/lookup/workflow-sections')
-  getSbpgiLookupWorkflowSections(@Query() query: any, @Req() req: any) {
-    return this.service.getSbpgiLookupWorkflowSections(query, req.user);
+  // proxy ของ GET /api/v1/sgi/lookup/workflow-sections
+  @Get('sgi/lookup/workflow-sections')
+  getSgiLookupWorkflowSections(@Query() query: any, @Req() req: any) {
+    return this.service.getSgiLookupWorkflowSections(query, req.user);
   }
 }
-// TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
+// TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SgiClientService ใน ClientServiceModule (@Global)
 ```
 
 ## 10. Database SQL
@@ -547,10 +572,10 @@ export class SbpgiLookupBffController {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| impacted_stores | R | store picker — SBPGI ไม่มีตาราง stores ของตัวเอง |
-| business_user | R | popup ค้นหาพนักงาน — SBPGI ไม่มีตาราง employees |
-| permissions | R | RBAC/menu matrix — จัดการที่หน้า /setting/manage-user-rights เดิม · SBPGI อ่านผ่าน header x-user-permissions เท่านั้น ไม่มีตารางของตัวเอง |
-| email_sent | W (โดย email-lib) | log การส่ง — SBPGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง (DP-5 · 2026-08-14) · ⚠️ คอลัมน์ผู้ส่งคือ send_by ไม่ใช่ sent_by |
+| sgi_impacted_stores | R | store picker — SGI ไม่มีตาราง stores ของตัวเอง |
+| business_user | R | popup ค้นหาพนักงาน — SGI ไม่มีตาราง employees |
+| permissions | R | RBAC/menu matrix — จัดการที่หน้า /setting/manage-user-rights เดิม · SGI อ่านผ่าน header x-user-permissions เท่านั้น ไม่มีตารางของตัวเอง |
+| email_sent | W (โดย email-lib) | log การส่ง — SGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง (DP-5 · 2026-08-14) · ⚠️ คอลัมน์ผู้ส่งคือ send_by ไม่ใช่ sent_by |
 | workflow_status | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_state | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | menus | R | ใช้ของระบบเดิม: auth-backend menus |
@@ -558,24 +583,24 @@ export class SbpgiLookupBffController {
 
 #### 10.2 SQL จริงต่อ Endpoint
 
-**GET /api/v1/sbpgi/lookup/document-statuses** — รายการสถานะเอกสาร verbatim
+**GET /api/v1/sgi/lookup/document-statuses** — รายการสถานะเอกสาร verbatim
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
--- ตาราง document_statuses ของ SBPGI ถูกตัดแล้ว — อ่านจาก workflow_status ของ engine กลาง
+-- ตาราง document_statuses ของ SGI ถูกตัดแล้ว — อ่านจาก workflow_status ของ engine กลาง
 SELECT status_id AS status_code, status_name, seq AS sort_order
 FROM sps_store.workflow_status
-WHERE version_id = :sbpgiVersionId
+WHERE version_id = :sgiVersionId
 ORDER BY seq;
 ```
 
-**GET /api/v1/sbpgi/lookup/workflow-sections** — รายการ section 5 ขั้น
+**GET /api/v1/sgi/lookup/workflow-sections** — รายการ section 5 ขั้น
 
 ```sql
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
--- ตาราง workflow_sections ของ SBPGI ถูกตัดแล้ว — อ่าน state จาก engine กลาง และวงเงินจาก common_code ของระบบเดิม
+-- ตาราง workflow_sections ของ SGI ถูกตัดแล้ว — อ่าน state จาก engine กลาง และวงเงินจาก common_code ของระบบเดิม
 -- (approve_limit_amount = SectionLimitCost ของ K2 เดิม · เกณฑ์เดียว 100,000 ตามมติ 2026-08-18 — เป็น data ไม่ hardcode · ขั้น 03 เป็น null = ไม่มีเพดาน)
 -- ⚠️ sps_store.workflow_state ไม่มีคอลัมน์ลำดับ (มีแค่ version_id · state_id · state_name · create_date)
 --    ลำดับขั้นต้องเอาจาก workflow_route.seq · วงเงินจับคู่ด้วย common_code.code_value (ไม่มี code_id)
@@ -584,8 +609,8 @@ SELECT s.state_id AS section_code, s.state_name AS section_name,
        CAST(c.other_value AS NUMERIC) AS approve_limit_amount
 FROM sps_store.workflow_state s
 LEFT JOIN sps_store.workflow_route r ON r.version_id = s.version_id AND r.from_state_id = s.state_id
-LEFT JOIN common_code c ON c.code_type = 'SBPGI_APPROVE_LIMIT' AND c.code_value = s.state_id
-WHERE s.version_id = :sbpgiVersionId
+LEFT JOIN common_code c ON c.code_type = 'SGI_APPROVE_LIMIT' AND c.code_value = s.state_id
+WHERE s.version_id = :sgiVersionId
 GROUP BY s.state_id, s.state_name, c.other_value
 ORDER BY sort_order;
 ```
@@ -606,7 +631,7 @@ ORDER BY sort_order;
 
 - status label ต้องเป็น verbatim
 - permission mutation ต้อง audit
-- SBPGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14)
+- SGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14)
 - Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้
 
 ## 13. Developer Test Checklist
@@ -634,11 +659,11 @@ ORDER BY sort_order;
 | `reason` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: ไม่บังคับแล้ว · รูปแบบ: text |
 | business rule | logic | status label ต้องเป็น verbatim |
 | business rule | logic | permission mutation ต้อง audit |
-| business rule | logic | SBPGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14) |
+| business rule | logic | SGI เรียก email-lib ส่งอีเมลเอง โดยใช้เลข template จาก workflow_route.email_id (ปิด DP-5 · 2026-08-14) |
 | business rule | logic | Auth Group 1 เป็น platform/external reference ไม่ใช่งาน implement ใน LLDD นี้ |
 | `GET /store/search (ระบบ SBP เดิม)` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/sbpgi/lookup/document-statuses` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/sbpgi/lookup/workflow-sections` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sgi/lookup/document-statuses` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sgi/lookup/workflow-sections` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | `email_sent (SBP เดิม)` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 

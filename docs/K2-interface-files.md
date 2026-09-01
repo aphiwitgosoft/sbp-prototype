@@ -16,7 +16,7 @@
 | ปี/วันที่ | **ค.ศ.** ทั้งหมด — `dd/MM/yyyy` และ `dd/MM/yyyy HH:mm:ss` |
 
 ⚠️ **ชุดตัวอย่างมี `BPM06002O_` ซ้ำ 2 ไฟล์ (20:01:48 และ 20:02:42) เนื้อหาเหมือนกันทุก byte** — ยืนยันว่าการนำเข้าต้องมี
-**idempotency/dedup** (ระบบใหม่ใช้ `interface_transactions` + business key แทนการเชื่อชื่อไฟล์)
+**idempotency/dedup** (ระบบใหม่ใช้ `sgi_interface_transactions` + business key แทนการเชื่อชื่อไฟล์)
 
 ---
 
@@ -25,21 +25,21 @@
 | # | ตัวอย่าง | ความหมาย | ปลายทางในระบบใหม่ |
 |---|---|---|---|
 | 0 | `3213` | running/seq ของรายการ export | — (ใช้ `impact_process_id`) |
-| 1 | `00724` | รหัสร้านถูกกระทบ | `compensation_documents.impacted_store_code` |
+| 1 | `00724` | รหัสร้านถูกกระทบ | `sgi_compensation_documents.impacted_store_code` |
 | 2 | `ซอยมหาดไทย` | ชื่อร้านถูกกระทบ | `stores.store_name` (หรือ snapshot) |
 | 3 | `04/07/1997` | วันที่เปิดร้านถูกกระทบ | `stores.open_date` |
 | 4 | `BE` | ภาค | `stores.region_code` |
 | 5 | `FAM` | ประเภทสาขา (รหัส FGI) | `branch_types.branch_type_code` |
-| 6 | `285` | รหัสนิติบุคคล | `impacted_stores.juristic_id` |
-| 7 | `หจก.ตรีคุณประภา` | ชื่อนิติบุคคล | `impacted_stores.juristic_name` |
-| 8 | `สุเมธ ตรีคุณประภา` | ชื่อเจ้าของร้าน/ผู้รับสิทธิ์ | `impacted_stores.franchisee_name` |
-| 9 | `https://7portal.cpall.co.th/som/allmap/linkBpm?radius=1.036&storeCodeI=…&storeCodeN=…&period=…` | **ลิงก์แผนที่ AllMap** (รหัสร้านและงวดเข้ารหัส base64) | `compensation_documents.allmap_url` |
-| 10 | `https://franchisemall.cpall.co.th/franchise/frFMLWeb/…` | **ลิงก์เอกสาร SBP Statement** | `compensation_documents.statement_id` → ปุ่ม “เปิดเอกสาร Statement” |
+| 6 | `285` | รหัสนิติบุคคล | `sgi_impacted_stores.juristic_id` |
+| 7 | `หจก.ตรีคุณประภา` | ชื่อนิติบุคคล | `sgi_impacted_stores.juristic_name` |
+| 8 | `สุเมธ ตรีคุณประภา` | ชื่อเจ้าของร้าน/ผู้รับสิทธิ์ | `sgi_impacted_stores.franchisee_name` |
+| 9 | `https://7portal.cpall.co.th/som/allmap/linkBpm?radius=1.036&storeCodeI=…&storeCodeN=…&period=…` | **ลิงก์แผนที่ AllMap** (รหัสร้านและงวดเข้ารหัส base64) | `sgi_compensation_documents.allmap_url` |
+| 10 | `https://franchisemall.cpall.co.th/franchise/frFMLWeb/…` | **ลิงก์เอกสาร SBP Statement** | `sgi_compensation_documents.statement_id` → ปุ่ม “เปิดเอกสาร Statement” |
 | 11 | `01` | ครั้งที่/ลำดับการชดเชย | `round_no` |
 | 12–13 | `2017` · `05` | ปี (ค.ศ.) · เดือนที่ถูกกระทบ | `impact_month` |
 | 14–15 | `1` · `1` | รอบ / ครั้งที่ (loop) | `round_no` / `loop_no` |
-| 16 | `-0.86` | growth rate diff (%) | `fgi_impact_sales_summaries.growth_rate_diff` |
-| 17 | `9691.88` | จำนวนเงินที่ชดเชย | `compensation_documents.total_compensation_amount` |
+| 16 | `-0.86` | growth rate diff (%) | `sgi_fgi_impact_sales_summaries.growth_rate_diff` |
+| 17 | `9691.88` | จำนวนเงินที่ชดเชย | `sgi_compensation_documents.total_compensation_amount` |
 | 18 | *(ว่าง)* | สำรอง | — |
 | 19 | `I` | action flag (I = insert) | — (ระบบใหม่ใช้ upsert ตาม business key) |
 | 20–23 | `FRBC0001` · `09/06/2017 18:41:40` × 2 | create by/date · update by/date | คอลัมน์ audit |
@@ -56,15 +56,15 @@
 |---|---|---|---|
 | 0 | `148` | seq | — |
 | 1 | `00724` | รหัสร้านถูกกระทบ | FK → เอกสาร |
-| 2–3 | `1.04` · `กิโลเมตร` | **รัศมีเกณฑ์** + หน่วย | `fgi_impact_stores.radius` / `radius_unit` |
-| 4 | `0.48` | **ระยะห่างตามจริง** | `document_new_stores.distance_km` |
-| 5–7 | `11610` · `ลาดพร้าว 126` · `11/05/2017` | รหัส/ชื่อ/วันที่เปิด ร้านใหม่ | `document_new_stores.new_store_code` … |
+| 2–3 | `1.04` · `กิโลเมตร` | **รัศมีเกณฑ์** + หน่วย | `sgi_fgi_impact_stores.radius` / `radius_unit` |
+| 4 | `0.48` | **ระยะห่างตามจริง** | `sgi_document_new_stores.distance_km` |
+| 5–7 | `11610` · `ลาดพร้าว 126` · `11/05/2017` | รหัส/ชื่อ/วันที่เปิด ร้านใหม่ | `sgi_document_new_stores.new_store_code` … |
 | 8 | *(ว่าง)* | วันที่ปิดร้านใหม่ | `close_date` |
 | 9–10 | `BE` · `B` | ภาค · **ประเภทร้าน 1 ตัวอักษร** | ยืนยันชุด **A/B/C/E** |
 | 11–13 | *(ว่าง)* | สำรอง | — |
 | 14–15 | `2017` · `05` | ปี (ค.ศ.) · เดือน | งวด |
-| 16 | `9691.88` | **เงินชดเชยของร้านใหม่รายนี้** | `document_new_stores.compensate_amount` |
-| 17 | `100.00` | **%ชดเชย** | `document_new_stores.compensate_percent` |
+| 16 | `9691.88` | **เงินชดเชยของร้านใหม่รายนี้** | `sgi_document_new_stores.compensate_amount` |
+| 17 | `100.00` | **%ชดเชย** | `sgi_document_new_stores.compensate_percent` |
 | 18–19 | *(ว่าง)* | สำรอง | — |
 | 20–23 | `FRBC0001` + เวลา × 2 | audit | — |
 
@@ -77,9 +77,9 @@
 |---|---|---|---|
 | 0 | `71` | seq | — |
 | 1 | `00044` | รหัสร้านถูกกระทบ | FK → เอกสาร |
-| 2 | `4832` / `TD58_08` / `LS3550` | **รหัสคู่แข่งจาก ALLMAP** (ตัวเลขหรือตัวอักษรผสม) | `document_competitors.competitor_code` |
+| 2 | `4832` / `TD58_08` / `LS3550` | **รหัสคู่แข่งจาก ALLMAP** (ตัวเลขหรือตัวอักษรผสม) | `sgi_document_competitors.competitor_code` |
 | 3–4 | `แฟมิลี่มาร์ท` · `Family Mart` | **ชื่อคู่แข่ง ไทย + อังกฤษ** | `competitors.name_th` / `name_en` |
-| 5 | `ตลาดศรีวานิช` | **ชื่อสาขาของคู่แข่ง** | `document_competitors.branch_name` |
+| 5 | `ตลาดศรีวานิช` | **ชื่อสาขาของคู่แข่ง** | `sgi_document_competitors.branch_name` |
 | 6–7 | `BN` · `01`–`07` | zone · **subzone** | `zone_code` / `subzone_code` |
 | 8–9 | *(ว่าง)* / `19/08/2015` | วันที่เปิด · วันที่ปิด ของคู่แข่ง | `open_date` / `close_date` |
 | 10–11 | `05` · `2017` | เดือน · ปี (ค.ศ.) | งวด |
@@ -89,8 +89,8 @@
 ท็อปส์เดลี่ (37) · จิฟฟี่ (18) · ลอว์สัน 108 (15) · แม็กซ์แวลูทันใจ (20) — ทั้งหมดอยู่ใน master 11 รายการของหน้า
 `k2-competitors.html` ✅
 
-> ⚠️ **แยกให้ชัด 2 ระดับ:** `competitors` = **master แบรนด์** (รหัส 01–11 · จัดการที่หน้ากำหนดรายชื่อคู่แข่ง) ·
-> `document_competitors` = **รายสาขาของคู่แข่ง** ที่ pipeline นำเข้า (รหัสจาก ALLMAP + ชื่อสาขา) — คนละรหัสกัน
+> ⚠️ **แยกให้ชัด 2 ระดับ:** `sgi_competitors` = **master แบรนด์** (รหัส 01–11 · จัดการที่หน้ากำหนดรายชื่อคู่แข่ง) ·
+> `sgi_document_competitors` = **รายสาขาของคู่แข่ง** ที่ pipeline นำเข้า (รหัสจาก ALLMAP + ชื่อสาขา) — คนละรหัสกัน
 
 ---
 

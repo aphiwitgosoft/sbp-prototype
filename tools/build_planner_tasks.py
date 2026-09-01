@@ -88,6 +88,8 @@ def short_owner(owner: str) -> str:
     return owner.split()[0]
 
 
+# ป้ายชั่วโมงต้องอ่านเป็นตัวเลขเสมอ — role pack ก็มีชั่วโมงจริงของตัวเอง (13 ชม.)
+# เพียงแต่ยอดรวมไปนับที่ [FE] Document Detail and Action จึงไม่บวกซ้ำในคอลัมน์ Hours
 def size_label(hours: int) -> str:
     if hours <= 15:
         return "8-15 hrs."
@@ -138,8 +140,8 @@ def main() -> None:
         step = steps.get(topic.file, 1)
         track = "Job" if B.is_job_doc(topic.file) else topic.track
         labels = [f"Step {step}"] + track_labels(topic, doc_key)
-        if not included:
-            labels.append(size_label(hours))
+        # ป้ายใช้ชั่วโมงจริงของเอกสารเสมอ (ไม่ใช่ 0 ของ role pack) จะได้เป็นตัวเลขที่ถูกต้อง
+        labels.append(size_label(B.total_hours(topic)))
         checklist = list(CHECKLISTS["DB" if doc_key in DATABASE_DOCS else track])
         if calls_workflow(doc_key):
             checklist.insert(-1, WORKFLOW_CHECK_ITEM)
@@ -147,7 +149,7 @@ def main() -> None:
             "Bucket": "To do",
             "Task name": f"[{track}] {card_title(topic.title)}",
             "Assigned to": short_owner(topic.owner),
-            "Hours": "incl." if included else hours,
+            "Hours": f"{B.total_hours(topic)} (incl.)" if included else hours,
             "Step": step,
             "Track": track,
             "Labels": " | ".join(labels),
@@ -176,7 +178,11 @@ def main() -> None:
         for index, row in enumerate(rows, start=1):
             fh.write(f"{index:>2}. {row['Task name']}\n")
             hrs = row["Hours"]
-            hrs_txt = "รวมใน [FE] Document Detail and Action" if hrs == "incl." else f"{hrs} ชม."
+            hrs_txt = (
+                f"{hrs.split()[0]} \u0e0a\u0e21. (\u0e23\u0e27\u0e21\u0e43\u0e19 [FE] Document Detail and Action)"
+                if isinstance(hrs, str) and hrs.endswith("(incl.)")
+                else f"{hrs} \u0e0a\u0e21."
+            )
             fh.write(f"    ผู้รับผิดชอบ : {row['Assigned to']} · {hrs_txt}\n")
             fh.write(f"    Labels      : {row['Labels']}\n")
             fh.write("    Checklist   :\n")

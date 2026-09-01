@@ -53,7 +53,7 @@ def code(text: str, lang: str = "ts") -> dict[str, Any]:
 # profile ต่อเอกสาร
 # ---------------------------------------------------------------------------
 
-ROUTE_BASE = "/sbpgi"
+ROUTE_BASE = "/sgi"
 
 PROFILES: dict[str, dict[str, Any]] = {
     # domain = "integration" (ไม่ใช่ "common") เพื่อไม่ให้บล็อก types เขียนทับไฟล์ common.ts
@@ -66,8 +66,8 @@ PROFILES: dict[str, dict[str, Any]] = {
         "kind": "list",
         "domain": "document",
         "routes": [
-            ("document/waiting", "หน้ารายการเอกสารรอดำเนินการ (GET /sbpgi/document/tasks)"),
-            ("document/related", "หน้าเอกสารที่เกี่ยวข้อง (GET /sbpgi/document · ปี = required)"),
+            ("document/waiting", "หน้ารายการเอกสารรอดำเนินการ (GET /sgi/document/tasks)"),
+            ("document/related", "หน้าเอกสารที่เกี่ยวข้อง (GET /sgi/document · ปี = required)"),
         ],
     },
     "Create-Document": {
@@ -119,7 +119,7 @@ def _base_key(topic: Any) -> str:
 
 def _pascal(text: str) -> str:
     parts = [x for x in re.split(r"[^A-Za-z0-9]+", text) if x]
-    return "".join(x[:1].upper() + x[1:] for x in parts) or "Sbpgi"
+    return "".join(x[:1].upper() + x[1:] for x in parts) or "Sgi"
 
 
 def _camel(text: str) -> str:
@@ -188,7 +188,7 @@ def _shared_note(domain: str, filename: str) -> str:
     if domain not in SHARED_DOMAINS:
         return ""
     return (
-        f"⚠️ `{filename}` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain "
+        f"⚠️ `{filename}` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain "
         f"`{domain}` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม "
         "ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ"
     )
@@ -242,7 +242,7 @@ def _path_params(path: str) -> list[str]:
 
 
 def _ts_path(path: str) -> str:
-    """`/sbpgi/document/{docNo}/actions` -> template literal ที่ encode path param แล้ว"""
+    """`/sgi/document/{docNo}/actions` -> template literal ที่ encode path param แล้ว"""
     params = _path_params(path)
     if not params:
         return f"'{path}'"
@@ -648,61 +648,61 @@ def _file_plan_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
     prof, apis = nx["prof"], nx["apis"]
     domain, kind = prof["domain"], prof["kind"]
     rows: list[list[str]] = [
-        [f"src/app/(main)/sbpgi/{route}/page.tsx", f"route page — {purpose}"]
+        [f"src/app/(main)/sgi/{route}/page.tsx", f"route page — {purpose}"]
         for route, purpose in prof.get("routes", [])
     ]
     if kind == "role":
         rows += [
-            [f"src/components/sbpgi/document-detail/RoleView{prof['role_code']}.tsx",
+            [f"src/components/sgi/document-detail/RoleView{prof['role_code']}.tsx",
              f"component — view เฉพาะ workflow section {prof['role_code']} (อ่าน visibleSections/editableSections จาก API)"],
-            [f"src/components/sbpgi/document-detail/ActionForm{prof['role_code']}.tsx",
+            [f"src/components/sgi/document-detail/ActionForm{prof['role_code']}.tsx",
              "component — ฟอร์มผลการพิจารณา (result + comment) ของ section นี้"],
-            ["src/components/sbpgi/document-detail/DocumentSection.tsx",
+            ["src/components/sgi/document-detail/DocumentSection.tsx",
              "component ร่วม — render 1 section ตาม sectionKey (ประกาศครั้งเดียวที่ LLDD-FE-Document-Detail)"],
-            ["src/components/sbpgi/document-detail/ActionPanel.tsx",
+            ["src/components/sgi/document-detail/ActionPanel.tsx",
              "component ร่วม — กล่อง action ของหน้า detail (ประกาศครั้งเดียวที่ LLDD-FE-Document-Detail)"],
         ]
     elif kind == "detail":
         rows += [
-            ["src/components/sbpgi/document-detail/DocumentSection.tsx", "component — render 1 section ตาม sectionKey + editable"],
-            ["src/components/sbpgi/document-detail/ActionPanel.tsx", "component — radio ผลการพิจารณา + comment + ปุ่มยืนยัน"],
+            ["src/components/sgi/document-detail/DocumentSection.tsx", "component — render 1 section ตาม sectionKey + editable"],
+            ["src/components/sgi/document-detail/ActionPanel.tsx", "component — radio ผลการพิจารณา + comment + ปุ่มยืนยัน"],
         ]
     elif kind == "create":
         rows.append(["(ไม่มี component ฟอร์ม)",
                      "หน้านี้เป็น iframe ของหน้าสร้างเอกสารระบบ FS ล้วน ๆ (มติ 2026-08-06) — ไม่มีฟอร์ม/ตารางฝั่ง SBP"])
     elif kind == "contracts":
         rows += [
-            ["src/types/sbpgi/common.ts", "types — ApiResponse / PageResponse / ApiError กลางของโมดูล"],
-            ["src/lib/sbpgi/apiError.ts", "helper — แปลง AxiosError เป็นข้อความไทยจาก BE (ไม่ paraphrase)"],
-            ["src/utils/sbpgi/format.ts", "helper — formatMonthThai / formatAmount / docNo (ค.ศ. ทั้งหมด · ไม่แปลง พ.ศ.)"],
+            ["src/types/sgi/common.ts", "types — ApiResponse / PageResponse / ApiError กลางของโมดูล"],
+            ["src/lib/sgi/apiError.ts", "helper — แปลง AxiosError เป็นข้อความไทยจาก BE (ไม่ paraphrase)"],
+            ["src/utils/sgi/format.ts", "helper — formatMonthThai / formatAmount / docNo (ค.ศ. ทั้งหมด · ไม่แปลง พ.ศ.)"],
         ]
     elif kind == "foundation":
         rows += [
-            ["src/app/(main)/sbpgi/layout.tsx", "layout ของโมดูล + prefetch lookup (ไม่สร้าง QueryClient ใหม่)"],
-            ["src/constants/sbpgi/routes.ts", "route registry ของโมดูล (ใช้ร่วมกับ url ที่มาจาก GET /menus)"],
+            ["src/app/(main)/sgi/layout.tsx", "layout ของโมดูล + prefetch lookup (ไม่สร้าง QueryClient ใหม่)"],
+            ["src/constants/sgi/routes.ts", "route registry ของโมดูล (ใช้ร่วมกับ url ที่มาจาก GET /menus)"],
         ]
     elif kind == "testing":
         rows += [
-            ["src/app/(main)/sbpgi/_test/renderWithProviders.tsx", "test util — ครอบ QueryClientProvider + mock permissionStore"],
-            ["src/app/(main)/sbpgi/**/__tests__/*.test.tsx", "jest + @testing-library/react ต่อหน้า"],
-            ["src/services/sbpgi/__tests__/*.service.test.ts", "unit test ของ service ด้วย axios-mock-adapter"],
+            ["src/app/(main)/sgi/_test/renderWithProviders.tsx", "test util — ครอบ QueryClientProvider + mock permissionStore"],
+            ["src/app/(main)/sgi/**/__tests__/*.test.tsx", "jest + @testing-library/react ต่อหน้า"],
+            ["src/services/sgi/__tests__/*.service.test.ts", "unit test ของ service ด้วย axios-mock-adapter"],
         ]
     else:
         comp = _pascal(prof["key"])
         folder = prof["key"].lower()
         # เฉพาะไฟล์ที่ page.tsx import จริงเท่านั้น — ตารางผลลัพธ์ render inline ด้วย <Table> กลาง
-        rows.append([f"src/components/sbpgi/{folder}/{comp}Form.tsx",
+        rows.append([f"src/components/sgi/{folder}/{comp}Form.tsx",
                      "component — ฟอร์ม/ฟิลเตอร์ (react-hook-form + yup + FormInputControl)"])
     if apis and kind != "testing":
         methods = ", ".join(sorted({str(a.method).upper() for a in apis}))
         rows += [
-            [f"src/services/sbpgi/{domain}.service.ts", f"service — เรียก BFF ผ่าน apiClient ({methods})"],
-            [f"src/hooks/sbpgi/{domain}.query.ts", "hook — query key factory + useQuery/useMutation + invalidate"],
-            [f"src/types/sbpgi/{domain}.ts", "types — request/response ตาม API contract ของเอกสารนี้"],
+            [f"src/services/sgi/{domain}.service.ts", f"service — เรียก BFF ผ่าน apiClient ({methods})"],
+            [f"src/hooks/sgi/{domain}.query.ts", "hook — query key factory + useQuery/useMutation + invalidate"],
+            [f"src/types/sgi/{domain}.ts", "types — request/response ตาม API contract ของเอกสารนี้"],
         ]
     return [
         h(3, f"{num} ผังไฟล์ที่ต้องสร้าง"),
-        p("โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SBPGI อยู่ใต้ `src/app/(main)/sbpgi/*` และ import ผ่าน alias `@/*` ทุกจุด"),
+        p("โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด"),
         table(["Path ไฟล์", "หน้าที่"], rows),
     ]
 
@@ -776,9 +776,9 @@ def _list_page(nx: dict[str, Any]) -> str:
         if red_flag else ""
     )
     return f"""{_page_head(route, purpose, router=True)}
-import {{ apiErrorMessage }} from '@/lib/sbpgi/apiError';
-import {{ {hook} }} from '@/hooks/sbpgi/{domain}.query';
-import type {{ {item} }} from '@/types/sbpgi/{domain}';
+import {{ apiErrorMessage }} from '@/lib/sgi/apiError';
+import {{ {hook} }} from '@/hooks/sgi/{domain}.query';
+import type {{ {item} }} from '@/types/sgi/{domain}';
 
 const PAGE_URL = '{ROUTE_BASE}/{route}';
 
@@ -829,9 +829,9 @@ def _report_page(nx: dict[str, Any]) -> str:
     form_comp = _pascal(prof["key"]) + "Form"
     domain = prof["domain"]
     return f"""{_page_head(route, purpose)}
-import {{ {hook}, {export_hook} }} from '@/hooks/sbpgi/{domain}.query';
-import type {{ {params_type}, {item} }} from '@/types/sbpgi/{domain}';
-import {form_comp} from '@/components/sbpgi/{prof['key'].lower()}/{form_comp}';
+import {{ {hook}, {export_hook} }} from '@/hooks/sgi/{domain}.query';
+import type {{ {params_type}, {item} }} from '@/types/sgi/{domain}';
+import {form_comp} from '@/components/sgi/{prof['key'].lower()}/{form_comp}';
 
 const PAGE_URL = '{ROUTE_BASE}/{route}';
 
@@ -890,9 +890,9 @@ def _detail_page(nx: dict[str, Any]) -> str:
 import {{ useParams }} from 'next/navigation';
 import AccessDenied from '@/components/Permission/AccessDenied';
 import {{ permissionStore }} from '@/stores/permissionStore';
-import DocumentSection from '@/components/sbpgi/document-detail/DocumentSection';
-import ActionPanel from '@/components/sbpgi/document-detail/ActionPanel';
-import {{ {detail_hook}, {action_hook} }} from '@/hooks/sbpgi/{domain}.query';
+import DocumentSection from '@/components/sgi/document-detail/DocumentSection';
+import ActionPanel from '@/components/sgi/document-detail/ActionPanel';
+import {{ {detail_hook}, {action_hook} }} from '@/hooks/sgi/{domain}.query';
 
 const PAGE_URL = '{ROUTE_BASE}/document';
 
@@ -944,9 +944,9 @@ def _role_component(nx: dict[str, Any]) -> str:
 // actionOptions ที่ API ส่งให้ role นี้ (ยัง render จาก doc.actionOptions ห้าม hardcode ใน component):
 {opt_lines}
 
-import DocumentSection from '@/components/sbpgi/document-detail/DocumentSection';
-import ActionPanel from '@/components/sbpgi/document-detail/ActionPanel';
-import type {{ DocumentsDetailResponse }} from '@/types/sbpgi/document';
+import DocumentSection from '@/components/sgi/document-detail/DocumentSection';
+import ActionPanel from '@/components/sgi/document-detail/ActionPanel';
+import type {{ DocumentsDetailResponse }} from '@/types/sgi/document';
 
 interface Props {{
   doc: DocumentsDetailResponse;
@@ -984,7 +984,7 @@ def _create_page(nx: dict[str, Any]) -> str:
 {tab_comment}
 //
 // ⚠️ มติ 2026-08-06: หน้านี้ **ไม่มีฟอร์มฝั่ง SBP** — main card คือ iframe ของหน้าสร้างเอกสาร
-//    ของระบบ FS ตรง ๆ (เหมือน k2-create.html) และ `POST /sbpgi/document` เป็น pipeline/service-token
+//    ของระบบ FS ตรง ๆ (เหมือน k2-create.html) และ `POST /sgi/document` เป็น pipeline/service-token
 //    endpoint (Job 8) ไม่ใช่ฟอร์มที่ FE ยิงเอง
 // ⚠️ ห้ามอ่าน/เขียน DOM ข้าม iframe (`contentDocument`) — FS อยู่คนละ origin เบราว์เซอร์บล็อกทันที
 //    ช่องทางสื่อสารเดียวที่ใช้ได้คือ `postMessage` และต้องตรวจ `event.origin` ทุกครั้ง
@@ -1049,8 +1049,8 @@ def _master_page(nx: dict[str, Any]) -> str:
 // ConfirmDialog เป็น named export (index.ts = `export * from './confirm-dialog'`) และ prop ยืนยัน
 // ของ PrimeReact คือ accept/reject — ไม่มี onConfirm; helper confirmDialog() คือรูปแบบที่ทีมใช้จริง
 import {{ ConfirmDialog, confirmDialog }} from '@/components/ConfirmDialog';
-import {{ {list_hook}, {save_hook} }} from '@/hooks/sbpgi/{domain}.query';
-import type {{ {item} }} from '@/types/sbpgi/{domain}';
+import {{ {list_hook}, {save_hook} }} from '@/hooks/sgi/{domain}.query';
+import type {{ {item} }} from '@/types/sgi/{domain}';
 
 const PAGE_URL = '{ROUTE_BASE}/{route}';
 
@@ -1108,15 +1108,15 @@ def _foundation_module(nx: dict[str, Any]) -> str:
     status_api = _pick(names, "GET", contains="status")
     hook = status_api["query_hook"] if status_api else "useDocumentStatusesQuery"
     return f"""'use client';
-// src/app/(main)/sbpgi/layout.tsx — โครง layout ของโมดูล SBPGI
+// src/app/(main)/sgi/layout.tsx — โครง layout ของโมดูล SGI
 // (main)/layout.tsx เดิมมี AppHeader / AppSider / LottieLoader / QueryClientProvider อยู่แล้ว
 // โมดูลนี้จึง "ห้าม" สร้าง QueryClient ใหม่ และ "ห้าม" สร้าง axios instance ของตัวเอง
 
 import {{ ReactNode }} from 'react';
-import {{ {hook} }} from '@/hooks/sbpgi/lookup.query';
+import {{ {hook} }} from '@/hooks/sgi/lookup.query';
 
 /** route registry ของโมดูล — ใช้ประกอบลิงก์ภายใน ส่วนเมนู/สิทธิ์ยังมาจาก GET /menus เท่านั้น */
-export const SBPGI_ROUTES = {{
+export const SGI_ROUTES = {{
   waiting: '{ROUTE_BASE}/document/waiting',
   related: '{ROUTE_BASE}/document/related',
   create: '{ROUTE_BASE}/document/create',
@@ -1124,17 +1124,17 @@ export const SBPGI_ROUTES = {{
   report: '{ROUTE_BASE}/report/status-summary',
 }} as const;
 
-export default function SbpgiLayout({{ children }}: {{ children: ReactNode }}) {{
+export default function SgiLayout({{ children }}: {{ children: ReactNode }}) {{
   // prefetch lookup ที่ทุกหน้าในโมดูลใช้ร่วมกัน (master -> staleTime ยาว)
   {hook}();
 
   // TODO: ใส่ ErrorBoundary ของโมดูล และ empty state เมื่อ permission ยังโหลดไม่เสร็จ
-  return <div className="sbpgi-module">{{children}}</div>;
+  return <div className="sgi-module">{{children}}</div>;
 }}"""
 
 
 def _contracts_module(nx: dict[str, Any]) -> str:
-    return """// src/types/sbpgi/common.ts — สัญญากลางที่ทุกหน้าในโมดูล SBPGI ใช้ร่วมกัน
+    return """// src/types/sgi/common.ts — สัญญากลางที่ทุกหน้าในโมดูล SGI ใช้ร่วมกัน
 // envelope ต้องตรงกับ store-backend: { success, data } / { success:false, data:null, error:{code,message} }
 
 export interface ApiError {
@@ -1168,7 +1168,7 @@ export interface ActionResponse {
 }
 
 // ---------------------------------------------------------------------------
-// src/lib/sbpgi/apiError.ts
+// src/lib/sgi/apiError.ts
 // ---------------------------------------------------------------------------
 import { AxiosError } from 'axios';
 
@@ -1179,7 +1179,7 @@ export function apiErrorMessage(error: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
-// src/utils/sbpgi/format.ts — formatter กลางจุดเดียว · ค.ศ. ทั้ง payload และ display (มติ 2026-08-06)
+// src/utils/sgi/format.ts — formatter กลางจุดเดียว · ค.ศ. ทั้ง payload และ display (มติ 2026-08-06)
 // ---------------------------------------------------------------------------
 export const formatMonthThai = (isoMonth: string): string => {
   const [year, month] = isoMonth.split('-');
@@ -1196,7 +1196,7 @@ def _testing_module(nx: dict[str, Any]) -> str:
     topic = nx["topic"]
     tests = [str(t) for t in (getattr(topic, "tests", None) or [])][:4]
     cases = "\n".join(f"  it.todo('{t}');" for t in tests) or "  it.todo('เพิ่ม test case ตาม test list ของเอกสาร');"
-    return f"""// src/app/(main)/sbpgi/_test/renderWithProviders.tsx
+    return f"""// src/app/(main)/sgi/_test/renderWithProviders.tsx
 // jest 30 (next/jest, jsdom) + @testing-library/react + axios-mock-adapter ตาม setup เดิมของ portal
 
 import {{ ReactElement, ReactNode }} from 'react';
@@ -1225,7 +1225,7 @@ export function renderWithProviders(ui: ReactElement, allowedUrls: string[] = []
 import MockAdapter from 'axios-mock-adapter';
 import apiClient from '@/lib/apiClient';
 
-describe('SBPGI screen', () => {{
+describe('SGI screen', () => {{
   const mock = new MockAdapter(apiClient);
   afterEach(() => mock.reset());
 
@@ -1261,7 +1261,7 @@ PAGE_TITLES = {
     "create": "page.tsx — หน้าสร้างเอกสาร (iframe ของหน้า FS + postMessage)",
     "master": "page.tsx — หน้า master (ตาราง + modal CRUD + reason/audit)",
     "role": "RoleView component — view เฉพาะบทบาทของหน้า Document Detail",
-    "foundation": "layout.tsx + route registry ของโมดูล SBPGI",
+    "foundation": "layout.tsx + route registry ของโมดูล SGI",
     "contracts": "types/helper กลาง (envelope, error message, formatter)",
     "testing": "test harness + ตัวอย่าง test ต่อหน้า",
 }
@@ -1285,13 +1285,13 @@ def _service_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
         return []
     domain = prof["domain"]
     lines = [
-        f"// src/services/sbpgi/{domain}.service.ts",
+        f"// src/services/sgi/{domain}.service.ts",
         "// apiClient = axios instance กลาง (baseURL = bffUrl ซึ่งรวม /api/v1 แล้ว, withCredentials, refresh-token interceptor, global loading)",
         "// ห้ามสร้าง axios instance ใหม่ และห้าม set Authorization header เอง — session อยู่ใน httpOnly cookie ของ BFF",
         "",
         "import apiClient from '@/lib/apiClient';",
         "__ENVELOPE_IMPORT__",
-        f"import type * as T from '@/types/sbpgi/{domain}';",
+        f"import type * as T from '@/types/sgi/{domain}';",
         "",
     ]
     for n in names.values():
@@ -1342,11 +1342,11 @@ def _service_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
     if "PageResponse<" in text:
         imports.append("PageResponse")
     envelope = (
-        f"import type {{ {', '.join(imports)} }} from '@/types/sbpgi/common';" if imports else ""
+        f"import type {{ {', '.join(imports)} }} from '@/types/sgi/common';" if imports else ""
     )
     text = text.replace("__ENVELOPE_IMPORT__\n", envelope + "\n" if envelope else "")
-    blocks = [h(3, f"{num} service — `src/services/sbpgi/{domain}.service.ts`")]
-    note = _shared_note(domain, f"src/services/sbpgi/{domain}.service.ts")
+    blocks = [h(3, f"{num} service — `src/services/sgi/{domain}.service.ts`")]
+    note = _shared_note(domain, f"src/services/sgi/{domain}.service.ts")
     if note:
         blocks.append(p(note))
     blocks.append(code(text, "ts"))
@@ -1364,7 +1364,7 @@ def _types_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
         return []
     domain = prof["domain"]
     lines = [
-        f"// src/types/sbpgi/{domain}.ts — ตรงกับตาราง API ในเอกสารนี้",
+        f"// src/types/sgi/{domain}.ts — ตรงกับตาราง API ในเอกสารนี้",
         "// วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)",
         "",
         "__ENVELOPE_IMPORT__",
@@ -1421,10 +1421,10 @@ def _types_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
                 lines.append(f"export type {name} = Record<string, unknown>;")
     lines.append("// TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE")
     text = "\n".join(lines)
-    envelope = "import type { PageResponse } from '@/types/sbpgi/common';" if "PageResponse<" in text else ""
+    envelope = "import type { PageResponse } from '@/types/sgi/common';" if "PageResponse<" in text else ""
     text = text.replace("__ENVELOPE_IMPORT__\n\n", envelope + "\n\n" if envelope else "")
-    blocks = [h(3, f"{num} types — `src/types/sbpgi/{domain}.ts`")]
-    note = _shared_note(domain, f"src/types/sbpgi/{domain}.ts")
+    blocks = [h(3, f"{num} types — `src/types/sgi/{domain}.ts`")]
+    note = _shared_note(domain, f"src/types/sgi/{domain}.ts")
     if note:
         blocks.append(p(note))
     blocks.append(code(text, "ts"))
@@ -1450,17 +1450,17 @@ def _query_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
         rq_imports.append("useQueryClient")
     rq_imports = sorted(set(rq_imports))
     lines = [
-        f"// src/hooks/sbpgi/{domain}.query.ts",
+        f"// src/hooks/sgi/{domain}.query.ts",
         "import { " + ", ".join(rq_imports) + " } from '@tanstack/react-query';",
     ]
     if downloads:
         lines.append("import { saveAs } from 'file-saver';")
     lines += [
-        f"import * as api from '@/services/sbpgi/{domain}.service';",
-        f"import type * as T from '@/types/sbpgi/{domain}';",
+        f"import * as api from '@/services/sgi/{domain}.service';",
+        f"import type * as T from '@/types/sgi/{domain}';",
         "",
         f"export const {domain}Keys = {{",
-        f"  all: ['sbpgi', '{domain}'] as const,",
+        f"  all: ['sgi', '{domain}'] as const,",
     ]
     for n in gets:
         args = ", ".join(list(n["path_params"]) + (["params"] if n["body_keys"] else []))
@@ -1519,8 +1519,8 @@ def _query_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
         ]
         lines.append("// TODO: ยังขาดอีก %d เส้น เขียน hook ด้วยรูปแบบเดียวกัน: %s"
                      % (len(rest_names), ", ".join(rest_names)))
-    blocks = [h(3, f"{num} react-query keys + hooks — `src/hooks/sbpgi/{domain}.query.ts`")]
-    note = _shared_note(domain, f"src/hooks/sbpgi/{domain}.query.ts")
+    blocks = [h(3, f"{num} react-query keys + hooks — `src/hooks/sgi/{domain}.query.ts`")]
+    note = _shared_note(domain, f"src/hooks/sgi/{domain}.query.ts")
     if note:
         blocks.append(p(note))
     blocks.append(code("\n".join(lines), "ts"))
@@ -1534,7 +1534,7 @@ def _query_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
 
 def _action_form(nx: dict[str, Any], comp: str) -> str:
     """ฟอร์มของหน้า Document Detail = ฟอร์ม "พิจารณา" (result + comment) ของ
-    `POST /sbpgi/document/{docNo}/actions` เท่านั้น — ไม่ใช่ฟอร์มค้นหา และไม่ใช่ field ฝั่ง response
+    `POST /sgi/document/{docNo}/actions` เท่านั้น — ไม่ใช่ฟอร์มค้นหา และไม่ใช่ field ฝั่ง response
     """
     prof, apis = nx["prof"], nx["apis"]
     role_code = prof.get("role_code", "")
@@ -1562,7 +1562,7 @@ import {{ yupResolver }} from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import {{ RadioButtonGroup }} from '@/components/Form';
 import {{ InputTextarea }} from '@/components/Form/InputText/inputtextArea';
-import type {{ DocumentActionRequest }} from '@/types/sbpgi/common';
+import type {{ DocumentActionRequest }} from '@/types/sgi/common';
 
 interface ActionOption {{ value: string; label: string; requireComment?: boolean }}
 
@@ -1700,9 +1700,9 @@ def _form_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
         comp = f"ActionForm{prof.get('role_code', '')}" if prof["kind"] == "role" else "ActionPanel"
         folder = "document-detail"
         return [
-            h(3, f"{num} ฟอร์มพิจารณา + validation — `src/components/sbpgi/{folder}/{comp}.tsx`"),
+            h(3, f"{num} ฟอร์มพิจารณา + validation — `src/components/sgi/{folder}/{comp}.tsx`"),
             p("หน้านี้**ไม่มีการค้นหา** — ฟอร์มเดียวของหน้าคือฟอร์มผลการพิจารณาที่ยิง "
-              "`POST /api/v1/sbpgi/document/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`"),
+              "`POST /api/v1/sgi/document/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`"),
             code(_action_form(nx, comp), "tsx"),
         ]
     fields = _form_fields(topic, prof, apis)
@@ -1710,7 +1710,7 @@ def _form_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
         return []
     comp = _pascal(prof["key"]) + "Form"
     folder = prof["key"].lower()
-    return [h(3, f"{num} ฟอร์ม + validation — `src/components/sbpgi/{folder}/{comp}.tsx`"),
+    return [h(3, f"{num} ฟอร์ม + validation — `src/components/sgi/{folder}/{comp}.tsx`"),
             code(_search_form(nx, comp, fields), "tsx")]
 
 

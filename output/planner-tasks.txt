@@ -261,8 +261,8 @@ Planner · SBP Mall · 37 การ์ด
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.pdf
 
 26. [FE] Document Detail Role 01 Business Promotion
-    ผู้รับผิดชอบ : New · รวมใน [FE] Document Detail and Action
-    Labels      : Step 5 | FE
+    ผู้รับผิดชอบ : New · 13 ชม. (รวมใน [FE] Document Detail and Action)
+    Labels      : Step 5 | FE | 8-15 hrs.
     Checklist   :
        - ทำ form/UI ตาม LLDD
        - ต่อ API + state
@@ -271,8 +271,8 @@ Planner · SBP Mall · 37 การ์ด
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Detail-Role-01-Business-Promotion.pdf
 
 27. [FE] Document Detail Role 02 GM Business Promotion
-    ผู้รับผิดชอบ : New · รวมใน [FE] Document Detail and Action
-    Labels      : Step 5 | FE
+    ผู้รับผิดชอบ : New · 13 ชม. (รวมใน [FE] Document Detail and Action)
+    Labels      : Step 5 | FE | 8-15 hrs.
     Checklist   :
        - ทำ form/UI ตาม LLDD
        - ต่อ API + state
@@ -281,8 +281,8 @@ Planner · SBP Mall · 37 การ์ด
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Detail-Role-02-GM-Business-Promotion.pdf
 
 28. [FE] Document Detail Role 03 AVP SBP
-    ผู้รับผิดชอบ : New · รวมใน [FE] Document Detail and Action
-    Labels      : Step 5 | FE
+    ผู้รับผิดชอบ : New · 13 ชม. (รวมใน [FE] Document Detail and Action)
+    Labels      : Step 5 | FE | 8-15 hrs.
     Checklist   :
        - ทำ form/UI ตาม LLDD
        - ต่อ API + state
@@ -291,8 +291,8 @@ Planner · SBP Mall · 37 การ์ด
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Detail-Role-03-AVP-SBP.pdf
 
 29. [FE] Document Detail Role 06 SBP DSA
-    ผู้รับผิดชอบ : New · รวมใน [FE] Document Detail and Action
-    Labels      : Step 5 | FE
+    ผู้รับผิดชอบ : New · 13 ชม. (รวมใน [FE] Document Detail and Action)
+    Labels      : Step 5 | FE | 8-15 hrs.
     Checklist   :
        - ทำ form/UI ตาม LLDD
        - ต่อ API + state
@@ -301,8 +301,8 @@ Planner · SBP Mall · 37 การ์ด
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Detail-Role-06-SBP-DSA.pdf
 
 30. [FE] Document Detail Role 08 SBP DSA Officer
-    ผู้รับผิดชอบ : New · รวมใน [FE] Document Detail and Action
-    Labels      : Step 5 | FE
+    ผู้รับผิดชอบ : New · 13 ชม. (รวมใน [FE] Document Detail and Action)
+    Labels      : Step 5 | FE | 8-15 hrs.
     Checklist   :
        - ทำ form/UI ตาม LLDD
        - ต่อ API + state

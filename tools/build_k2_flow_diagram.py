@@ -162,12 +162,12 @@ def diagram_swimlane() -> str:
     b += path(f"M620,{cy1+30} L620,{cy2-46}", VIOLET, "arv")                # ① → 06
     b += tag(632, cy2-58, "① เปิดเรื่องใหม่ → เริ่มที่ 06", VIOLET)
     b += path(f"M745,{cy1} L1240,{cy1} L1240,{cy3-41}", VIOLET, "arv")      # ② → 08 (รางอยู่ขวาของข้อความเส้นข้ามขั้น)
-    b += tag(760, cy1-14, "② ชดเชยต่อเนื่อง · ระบบ Auto Approve → เข้า 08 (ข้ามขั้น 06)", VIOLET)
-    # ③ ≤3 เดือน → 01 — ต้องเข้าคนละจุดกับเส้น 08→01 (x=1140) ไม่งั้นหัวลูกศรถูกทับหาย
-    b += path(f"M620,{cy1-30} L620,{cy1-56} L1560,{cy1-56} L1560,{cy4-88} "
-              f"L1225,{cy4-88} L1225,{cy4-48}", VIOLET, "arv")
-    b += tag(1237, cy4-58, "③ เข้าขั้น 01 อัตโนมัติ", VIOLET)
-    b += tag(1085, cy1-64, "③ ยอดชดเชย 0 ติดกัน ≤ 3 เดือน → เข้าขั้น 01 อัตโนมัติ (ข้ามทั้ง 06 และ 08)",
+    b += tag(760, cy1-14, "② ต่อเนื่อง · ยอดชดเชย > 0 · ระบบ Auto Approve → เข้า 08 (ข้ามขั้น 06)", VIOLET)
+    # ③ ≤3 เดือน → 08 (มติ 2026-09-01 · เดิมเข้า 01) — เข้าขอบ "ขวา" ของกล่อง 08
+    # คนละจุดกับ ② ที่เข้าขอบบน (x=1240) หัวลูกศรจึงไม่ทับกัน
+    b += path(f"M620,{cy1-30} L620,{cy1-56} L1560,{cy1-56} L1560,{cy3} L1282,{cy3}", VIOLET, "arv")
+    b += tag(1294, cy3-11, "③ เข้าขั้น 08 อัตโนมัติ", VIOLET)
+    b += tag(1085, cy1-64, "③ ยอดชดเชย 0 ติดกัน ≤ 3 เดือน → เข้าขั้น 08 อัตโนมัติ (ข้ามขั้น 06)",
              VIOLET, "middle", 11.5)   # baseline เหนือเส้นแนวนอนที่ cy1-56
     b += path(f"M730,{cy2} L765,{cy2}")                                     # 06 → decision
     # 06 → 08 เข้าขอบซ้ายเหนือกึ่งกลาง 18px — ต้องแยกระดับจากเส้น "08 ส่งกลับ → 06" ที่ออกขอบเดียวกัน
@@ -178,8 +178,10 @@ def diagram_swimlane() -> str:
     b += path(f"M955,{cy2} L975,{cy2} L975,{cy4} L1010,{cy4}", BLUE, "arb")   # 06 → 01 ข้ามขั้น
     b += tag(986, cy2-18, "ส่งหน่วยงานส่งเสริมธุรกิจ SBP", BLUE)
     b += tag(986, cy2-3, "(ข้ามขั้น 08 — ทราบยอดจาก 08 แล้ว)", BLUE)
-    b += path(f"M1140,{cy3+41} L1140,{cy4-48}")                             # 08 → 01
-    b += tag(1152, cy3+58, "คำนวณเงินชดเชยเรียบร้อย")
+    # มติ 2026-09-01 — ขั้น 08 คำนวณเสร็จ "ส่งยอดกลับ 06" ไม่ส่งต่อ 01 เอง
+    # ใช้รางเดินหน้า x=390 (อยู่ระหว่างรางส่งกลับ RL=320 กับขอบซ้ายกล่อง 06 ที่ 470)
+    b += path(f"M1010,{cy3+18} L390,{cy3+18} L390,{cy2+30} L470,{cy2+30}", MUTE, "arg")
+    b += tag(402, cy3+8, "คำนวณเงินชดเชยเรียบร้อย → ส่งยอดกลับ 06 (ปุ่มเดียวของขั้น 08)")
     b += path(f"M1270,{cy4} L1324,{cy4}")                                   # 01 → decision
     b += path(f"M1420,{cy4+52} L1420,{cy5-42}")                             # 01 → 02
     b += tag(1432, cy4+84, "เห็นควรชดเชย")
@@ -207,34 +209,30 @@ def diagram_swimlane() -> str:
     RL = 320
     # รางรวมกลับ 06 (ซ้ายสุด) — วิ่งขึ้นจากจุดต่ำสุดของรางเข้ากล่อง 06
     b += path(f"M{RL},{cy4+32} L{RL},{cy2} L470,{cy2}", AMBER, "ara", dash="7 5")
-    # 08 ส่งกลับ — ออกขอบซ้ายใต้กึ่งกลาง 18px (คนละระดับกับเส้นเดินหน้า 06 → 08 ที่เข้าขอบเดียวกัน)
-    b += path(f"M1010,{cy3+18} L{RL},{cy3+18}", AMBER, None, dash="7 5")
-    b += tag(RL+14, cy3+8, "08 ส่งกลับ → 06", "#b45309")
+    # ขั้น 08 ไม่มีปุ่มส่งกลับแล้ว (มติ 2026-09-01) — ปุ่มเดียวที่เหลือก็เดินกลับ 06 อยู่แล้ว
     b += path(f"M1010,{cy4+32} L{RL},{cy4+32}", AMBER, None, dash="7 5")
     b += tag(RL+14, cy4+22, "01 ส่งกลับ → 06", "#b45309")
-    # เข้าขอบล่างของกล่อง 01 (รางแนวตั้งต้องอยู่นอกกล่อง ไม่งั้นเส้นทะลุกลางกล่อง)
-    b += path(f"M1295,{cy5} L1060,{cy5} L1060,{cy4+48}", AMBER, "ara", dash="7 5")
-    b += tag(1072, cy5-10, "02 ส่งกลับ → 01", "#b45309")
-    # เข้าขอบล่างของกล่อง 02 พอดี (cy5+42) — เดิมจบที่ cy5+46 ซึ่งเลยขอบกล่องไป 4px หัวลูกศรจึงลอยนอกกล่อง
-    b += path(f"M1540,{cy6} L1420,{cy6} L1420,{cy5+42}", AMBER, "ara", dash="7 5")
-    b += tag(1432, cy6-10, "AVP ส่งกลับ → 02", "#b45309")
+    # มติ 2026-09-01 — GM ส่งกลับ 06 (เดิมส่งกลับ 01) จึงเข้ารางรวมซ้ายเส้นเดียวกับขั้นอื่น
+    b += path(f"M1295,{cy5} L{RL},{cy5}", AMBER, None, dash="7 5")
+    b += tag(RL+14, cy5-10, "02 ส่งกลับ → 06", "#b45309")
+    # มติ 2026-09-01 — AVP ส่งกลับ 06 (เดิม 02) ใช้เส้นเดียวกับ "เห็นควรไม่ชดเชย" ด้านล่าง
     b += path(f"M1540,{cy6+26} L1370,{cy6+26} L1370,{cy6+56} L{RL},{cy6+56} L{RL},{cy4+32}",
               AMBER, None, dash="7 5")
-    b += tag(1000, cy6+48, "AVP เห็นควรไม่ชดเชย → กลับ 06", "#b45309", "middle")
+    b += tag(1000, cy6+48, "AVP เห็นควรไม่ชดเชย / ส่งกลับ → กลับ 06", "#b45309", "middle")
 
     # ── หมายเหตุ + legend ──
     b += f'<rect x="{CX0}" y="1225" width="1180" height="86" rx="10" fill="#faf8ff" stroke="#ddd3fb"/>'
     b += txt(CX0+18, 1250, "กติกาที่ผูกกับปุ่มของขั้น 06 (SDD สไลด์ 46 · 48)", 12.5, "#5b21b6", "start", "700")
     b += txt(CX0+18, 1270, "• หยุดชดเชยประกันรายได้ → เอกสารจบ แต่ กลับมาแสดงในหน้ารอดำเนินการของ 06 ทันทีในเดือนนั้น เพื่อเปิดพิจารณาใหม่ได้เอง (ไม่ต้องเปิด SR)", 11.5, "#4c3a86", "start")
     b += txt(CX0+18, 1288, "• เห็นควรไม่ชดเชยรายได้ → เอกสารจบและ ไม่แสดง ในเดือนนั้น แล้วเดือนถัดไประบบดึงร้านเข้ามาใหม่อัตโนมัติ พร้อมเจ้าของงานคนเดิม", 11.5, "#4c3a86", "start")
-    b += txt(CX0+18, 1306, "• เคสต่อเนื่อง → ระบบส่งงานให้เจ้าหน้าที่ SBP DSA คนเดิมอัตโนมัติ · resolve จาก consideration_logs ของรอบก่อน แล้วผูกด้วย addPreApprover()", 11.5, "#4c3a86", "start")
+    b += txt(CX0+18, 1306, "• เคสต่อเนื่อง → ระบบส่งงานให้เจ้าหน้าที่ SBP DSA คนเดิมอัตโนมัติ · resolve จาก sgi_consideration_logs ของรอบก่อน แล้วผูกด้วย addPreApprover()", 11.5, "#4c3a86", "start")
     b += legend(1430, 1252, [
         ("box", BLUE, "ขั้นตอนที่คนดำเนินการ"), ("dia", AMBER, "จุดตัดสินใจ"),
         ("box", VIOLET, "ระบบทำอัตโนมัติ"), ("line", MUTE, "เดินหน้า"),
         ("dash", AMBER, "ส่งกลับ"), ("dash", RED, "จบกระบวนการ"),
     ], cols=2, colw=250)
-    return svg(W, H, b, "Flow K2 — Workflow อนุมัติประกันรายได้ (SBPGI)",
-               "5 ขั้น 06→08→01→02→03 · 6 สถานะ · 3 จุดเข้าตามประเภทเคส · เกณฑ์วงเงินเดียว 100,000 (มติ 2026-08-18)")
+    return svg(W, H, b, "Flow K2 — Workflow อนุมัติประกันรายได้ (SGI)",
+               "5 ขั้น 06→08→06→01→02→03 · 6 สถานะ · 3 จุดเข้าตามประเภทเคส · เกณฑ์วงเงินเดียว 100,000 · ส่งกลับทุกขั้น → 06 (มติ 2026-09-01)")
 
 
 # ═══════════════════════════ 2 · จุดเข้า flow ตามประเภทเคส ═══════════════════════════
@@ -247,24 +245,24 @@ def diagram_gate() -> str:
     b += path("M582,200 L620,200", MUTE, None)          # stub กลาง (สีเดียว)
 
     rows = [
-        (VIOLET, 112, "② ชดเชยต่อเนื่อง",
-         "last_compensate_seq_no > 1   AND   flag_action = 'Y'",
-         "จาก fgi_impact_processes (hub รอบชดเชยของร้าน · โซน A)",
+        (VIOLET, 112, "② ต่อเนื่อง · ยอด > 0",
+         "last_compensate_seq_no > 1   AND   flag_action = 'Y'   AND   ยอด > 0",
+         "COALESCE(adjust_amount, forecast_amount) > 0 · จาก sgi_fgi_impact_processes + sgi_fgi_impact_compensations",
          "ระบบ Auto Approve การเปิดเรื่อง — ข้ามขั้น 06",
          "08", "เจ้าหน้าที่ SBP DSA", "รอเจ้าหน้าที่ SBP DSA ดำเนินการ", BLUE, "arv"),
         (MUTE, 285, "① เปิดเรื่องใหม่",
          "last_compensate_seq_no = 1   (รอบใหม่ · last_compensate_seq +1)",
-         "จาก fgi_impact_processes (hub รอบชดเชยของร้าน · โซน A)",
+         "จาก sgi_fgi_impact_processes (hub รอบชดเชยของร้าน · โซน A)",
          "— ไม่มี auto · เดินตาม flow เดิม",
          "06", "ฝ่าย SBP DSA", "รอฝ่าย SBP DSA ดำเนินการ", BLUE, "arg"),
         (VIOLET, 452, "③ ยอด 0 · ≤ 3 เดือน",
          "COALESCE(adjust_amount, forecast_amount) = 0   งวดที่ 1–3",
-         "จาก fgi_impact_compensations (ยอดชดเชยรายงวด · โซน A)",
-         "Auto ส่งต่อ — ข้ามทั้งขั้น 06 และ 08",
-         "01", "หน่วยงานส่งเสริมธุรกิจฯ", "รอหน่วยงานส่งเสริมธุรกิจ SBP", BLUE, "arv"),
-        (RED, 608, "③ ยอด 0 · เดือนที่ 4",
+         "จาก sgi_fgi_impact_compensations (ยอดชดเชยรายงวด · โซน A)",
+         "Auto ส่งต่อ — ข้ามขั้น 06 (มติ 2026-09-01 · เดิมเข้า 01)",
+         "08", "เจ้าหน้าที่ SBP DSA", "รอเจ้าหน้าที่ SBP DSA ดำเนินการ", BLUE, "arv"),
+        (RED, 608, "④ ยอด 0 · เดือนที่ 4",
          "COALESCE(adjust_amount, forecast_amount) = 0   งวดที่ 4 ขึ้นไป",
-         "จาก fgi_impact_compensations (ยอดชดเชยรายงวด · โซน A)",
+         "จาก sgi_fgi_impact_compensations (ยอดชดเชยรายงวด · โซน A)",
          "Auto หยุดชดเชยประกันรายได้ — ปิดเอกสารทันที",
          "—", "จบทันที", "เสร็จสิ้นดำเนินการ (หยุดชดเชยฯ)", RED, "arr"),
     ]
@@ -278,19 +276,19 @@ def diagram_gate() -> str:
         else:
             b += box(1570, y, 300, 74, tcol, actor, [status], badge=code, rx=10)
 
-    # ── ที่มาของข้อมูลที่ใช้ตัดสิน (ระบบเดิม Oracle → ตารางของ SBPGI) ─────────────────────
+    # ── ที่มาของข้อมูลที่ใช้ตัดสิน (ระบบเดิม Oracle → ตารางของ SGI) ─────────────────────
     ty = 678
     b += f'<rect x="60" y="{ty}" width="1640" height="196" rx="12" fill="#faf8ff" stroke="#ddd3fb"/>'
     b += txt(80, ty + 26, "ที่มาของข้อมูลที่ใช้ตัดสินจุดเข้า — ทุกค่ามาจากโซน A (FGI/FCS) ที่ batch เขียนไว้ก่อนเปิดเอกสาร", 13.5, "#4c3a86", "start", "700")
-    cols = [(80, "ค่าที่ใช้ในเงื่อนไข"), (390, "ระบบเดิม (Oracle FCS_FRN)"), (940, "ตาราง SBPGI"), (1270, "คอลัมน์ · ชนิด"), (1560, "เขียนโดย")]
+    cols = [(80, "ค่าที่ใช้ในเงื่อนไข"), (390, "ระบบเดิม (Oracle FCS_FRN)"), (940, "ตาราง SGI"), (1270, "คอลัมน์ · ชนิด"), (1560, "เขียนโดย")]
     for cx, ch in cols:
         b += txt(cx, ty + 52, ch, 11.5, "#7b6aa8", "start", "700")
     b += f'<line x1="76" y1="{ty + 60}" x2="1684" y2="{ty + 60}" stroke="#ddd3fb"/>'
     src = [
-        ("LAST_COMPENSATE_SEQ_NO", "FGI_IMPACT_STORE_ON_PROCESS .LAST_COMPENSATE_SEQ_NO", "fgi_impact_processes", "last_compensate_seq_no · INTEGER", "Job 2 (ImportJdbc)"),
-        ("FLAG_ACTION", "FGI_IMPACT_STORE_ON_PROCESS .FLAG_ACTION  (Y/W/N)", "fgi_impact_processes", "flag_action · CHAR(1)", "Job 2 · ปิดรอบโดย Job 6"),
-        ("forecast", "FGI_IMPACT_STORE_COMPENSATE .COMPENSATE_FORECAST", "fgi_impact_compensations", "forecast_amount · NUMERIC(14,2)", "Job 5 (IAS/MIS)"),
-        ("adjust", "FGI_IMPACT_STORE_COMPENSATE .COMPENSATE_ADJUST", "fgi_impact_compensations", "adjust_amount · NUMERIC(14,2)", "จนท. SBP DSA คีย์"),
+        ("LAST_COMPENSATE_SEQ_NO", "FGI_IMPACT_STORE_ON_PROCESS .LAST_COMPENSATE_SEQ_NO", "sgi_fgi_impact_processes", "last_compensate_seq_no · INTEGER", "Job 2 (ImportJdbc)"),
+        ("FLAG_ACTION", "FGI_IMPACT_STORE_ON_PROCESS .FLAG_ACTION  (Y/W/N)", "sgi_fgi_impact_processes", "flag_action · CHAR(1)", "Job 2 · ปิดรอบโดย Job 6"),
+        ("forecast", "FGI_IMPACT_STORE_COMPENSATE .COMPENSATE_FORECAST", "sgi_fgi_impact_compensations", "forecast_amount · NUMERIC(14,2)", "Job 5 (IAS/MIS)"),
+        ("adjust", "FGI_IMPACT_STORE_COMPENSATE .COMPENSATE_ADJUST", "sgi_fgi_impact_compensations", "adjust_amount · NUMERIC(14,2)", "จนท. SBP DSA คีย์"),
     ]
     for k, (val, ora, tbl, col, who) in enumerate(src):
         ry = ty + 82 + k * 26
@@ -299,7 +297,7 @@ def diagram_gate() -> str:
         b += txt(940, ry, tbl, 11.5, VIOLET, "start", "600")
         b += txt(1270, ry, col, 11.5, "#1f2937", "start")
         b += txt(1560, ry, who, 11.5, "#64748b", "start")
-    b += txt(80, ty + 186, "ยอดที่ใช้จริง = COALESCE(adjust_amount, forecast_amount)  ·  ทุกเส้นทางอัตโนมัติต้องบันทึกลง consideration_logs ด้วยผู้ดำเนินการ SYSTEM เพื่อไม่ให้ timeline ขาดช่วง  ·  ⚠ ทั้ง 2 ตารางเป็น gap F8/F1 ที่เพิ่งรับเข้าโครง — ต้อง migrate ก่อนจึง implement ได้จริง",
+    b += txt(80, ty + 186, "ยอดที่ใช้จริง = COALESCE(adjust_amount, forecast_amount)  ·  ทุกเส้นทางอัตโนมัติต้องบันทึกลง sgi_consideration_logs ด้วยผู้ดำเนินการ SYSTEM เพื่อไม่ให้ timeline ขาดช่วง  ·  ⚠ ทั้ง 2 ตารางเป็น gap F8/F1 ที่เพิ่งรับเข้าโครง — ต้อง migrate ก่อนจึง implement ได้จริง",
               11.5, "#4c3a86", "start")
     return svg(W, H, b, "จุดเข้า flow ตามประเภทเคส (To-Be)",
                "ผัง To-Be 12/02/2026 · เอกสารไม่ได้เริ่มที่ขั้น 06 เสมอไป — มีเพียงเคส ① เท่านั้นที่เริ่มที่ 06")
@@ -335,9 +333,9 @@ def diagram_reopen() -> str:
              ["ร้านเดิม · เจ้าของงานคนเดิม"], badge="06")
 
     # กล่องอธิบายวิธี resolve
-    b += box(940, 545, 840, 150, VIOLET, "วิธี resolve “เจ้าของงานคนเดิม” (ไม่มีคอลัมน์ assignee ในตารางของ SBPGI)",
+    b += box(940, 545, 840, 150, VIOLET, "วิธี resolve “เจ้าของงานคนเดิม” (ไม่มีคอลัมน์ assignee ในตารางของ SGI)",
              ["1 · หาเอกสารรอบก่อนหน้าของร้านเดียวกัน (impacted_store_code เดิม · round_no/loop_no ก่อนหน้า)",
-              "2 · อ่าน consideration_logs แถวล่าสุดที่ section_code = ขั้นที่จะมอบหมาย  →  consider_by",
+              "2 · อ่าน sgi_consideration_logs แถวล่าสุดที่ section_code = ขั้นที่จะมอบหมาย  →  consider_by",
               "3 · ผูกด้วย addPreApprover(versionId, referenceId, stateId, approver, seq) ของ @srm/glb-workflow",
               "4 · Fallback: รอบก่อนไม่เคยผ่านขั้นนั้น / พนักงานลาออก → มอบหมายตาม group ของ auth-backend",
               "5 · พนักงานลาออกยังต้องเปิด SR เพื่อแก้ชื่อผู้ดำเนินการ (SDD สไลด์ 48)"], rx=12)
@@ -361,18 +359,18 @@ def diagram_states() -> str:
     b += path("M1435,190 L1545,190")
     for a, bb in ((455, 170), (740, 170), (1025, 740), (1310, 1025)):
         b += path(f"M{a},231 L{a},278 L{bb},278 L{bb},231", AMBER, "ara", dash="6 5")
-    b += tag(330, 296, "08 / 01 ส่งกลับ → 06", "#b45309", "middle")
-    b += tag(884, 296, "02 ส่งกลับ → 01", "#b45309", "middle")
-    b += tag(1168, 296, "AVP ส่งกลับ → 02", "#b45309", "middle")
+    b += tag(330, 296, "08 คำนวณเสร็จ / 01 ส่งกลับ → 06", "#b45309", "middle")
+    b += tag(884, 296, "02 ส่งกลับ → 06", "#b45309", "middle")
+    b += tag(1168, 296, "AVP ส่งกลับ → 06", "#b45309", "middle")
     for x in (170, 740, 1025):
         b += path(f"M{x},149 L{x},108 L1660,108 L1660,157", RED, "arr", dash="7 5")
     b += tag(900, 100, "เห็นควรไม่ชดเชย (06 · 01 · 02) และ หยุดชดเชยประกันรายได้ (06) → เสร็จสิ้นทันที  ·  02 ยอด < 100,000 อนุมัติแล้วจบที่ GM",
              RED, "middle", 11.5, "#ffffff")
     b += f'<rect x="60" y="340" width="1720" height="106" rx="10" fill="#f8fafc" stroke="{LINE}"/>'
     b += txt(78, 366, "อีเมลแจ้งเตือน และข้อควรระวัง", 12.5, INK, "start", "700")
-    b += txt(78, 388, "• เปลี่ยนสถานะ → SBPGI เรียก sendEmail() ของ email-lib เอง โดยใช้เลข template จาก sps_store.workflow_route.email_id (ปิด DP-5 · ไม่มีตาราง status_email_rules)", 11.5, "#475569", "start")
+    b += txt(78, 388, "• เปลี่ยนสถานะ → SGI เรียก sendEmail() ของ email-lib เอง โดยใช้เลข template จาก sps_store.workflow_route.email_id (ปิด DP-5 · ไม่มีตาราง status_email_rules)", 11.5, "#475569", "start")
     b += txt(78, 408, "• เตือนงานค้างทุกวันจันทร์ 10:00 น. · escalation เมื่อค้างครบ 30 / 45 / 60 วัน → หัวหน้า Section (เลข template เก็บที่ mas_param)", 11.5, "#475569", "start")
-    b += txt(78, 428, "• สถานะเอกสารมี 6 ค่าเท่านั้น — “หยุดชดเชยประกันรายได้” เป็น ผลการพิจารณา ไม่ใช่สถานะที่ 7 (คัดจาก consideration_logs · FE แสดงเป็นชิป ↺ หยุดชดเชยฯ)", 11.5, "#475569", "start")
+    b += txt(78, 428, "• สถานะเอกสารมี 6 ค่าเท่านั้น — “หยุดชดเชยประกันรายได้” เป็น ผลการพิจารณา ไม่ใช่สถานะที่ 7 (คัดจาก sgi_consideration_logs · FE แสดงเป็นชิป ↺ หยุดชดเชยฯ)", 11.5, "#475569", "start")
     return svg(W, H, b, "สถานะเอกสาร 6 ค่า และเส้นทางเปลี่ยนสถานะ",
                "ตัดสถานะบัญชี 04 / 05 ตาม SDD v7.5 · inbox ของแต่ละบทบาท = สถานะ “รอ<บทบาทตัวเอง>ดำเนินการ” ค่าเดียว")
 
@@ -380,7 +378,7 @@ def diagram_states() -> str:
 # ═══════════════════════════ main ═══════════════════════════
 DIAGRAMS = [
     ("01-swimlane",  1960, 1330, "Swimlane หลัก — Workflow 5 ขั้น",
-     "ภาพรวมทั้งกระบวนการ: จุดเข้าตามประเภทเคส → 06 → 08 → 01 → 02 → 03 → จบ · เส้นส่งกลับ · ปลายทางบัญชี/SAP"),
+     "ภาพรวมทั้งกระบวนการ: จุดเข้าตามประเภทเคส → 06 → 08 → 06 → 01 → 02 → 03 → จบ · เส้นส่งกลับ (ทุกขั้นกลับ 06) · ปลายทางบัญชี/SAP"),
     ("02-entry-gate", 1760, 700, "จุดเข้า flow ตามประเภทเคส",
      "เอกสารเริ่มที่ขั้นไหน ขึ้นกับว่าเป็นเคสเปิดเรื่องใหม่ / ต่อเนื่อง / ยอดชดเชยเป็น 0"),
     ("03-reopen",     1420, 690, "หยุดชดเชย vs เห็นควรไม่ชดเชย",
@@ -446,7 +444,7 @@ def build():
  code{{background:#f1f5f9;padding:1px 6px;border-radius:5px;font-size:12px}}
 </style></head><body>
 <header>
-  <h1>Flow K2 — ชุดแผนภาพ Workflow อนุมัติประกันรายได้ (SBPGI)</h1>
+  <h1>Flow K2 — ชุดแผนภาพ Workflow อนุมัติประกันรายได้ (SGI)</h1>
   <p>สร้างจาก <code>k2-flow.html</code> · <code>workflow.md</code> · <code>workflow_status_document.md</code> —
      แยกเป็น 4 แผนภาพตามประเด็น เพื่อให้อ่านง่ายกว่ารวมไว้รูปเดียว<br>
      regenerate: <code>python3 tools/build_k2_flow_diagram.py</code> · ห้ามแก้ไฟล์ใน <code>output/</code> ด้วยมือ</p>
@@ -455,7 +453,7 @@ def build():
 <main>
 {cards}</main>
 <footer>
-  <b>กติกาที่แผนภาพชุดนี้สะท้อน</b> — workflow 5 ขั้น <code>06 → 08 → 01 → 02 → 03</code> · สถานะเอกสาร 6 ค่า (ตัดขั้นบัญชี 04/05 ตาม SDD v7.5) ·
+  <b>กติกาที่แผนภาพชุดนี้สะท้อน</b> — workflow 5 ขั้น <code>06 → 08 → 06 → 01 → 02 → 03</code> (มติ 2026-09-01 — ขั้น 08 คำนวณเสร็จส่งยอดกลับ 06 · ปุ่มส่งกลับทุกขั้นชี้ 06) · สถานะเอกสาร 6 ค่า (ตัดขั้นบัญชี 04/05 ตาม SDD v7.5) ·
   วงเงินเกณฑ์เดียว <b>100,000</b> บาท/รายการ (มติประชุม 2026-08-18 — &lt; 100,000 จบที่ GM · ≥ 100,000 ส่ง AVP) ·
   เห็นควรไม่ชดเชยที่ขั้น 01/02 จบทันที · 3 จุดเข้าตามประเภทเคส (ผัง To-Be 12/02/2026) ·
   auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48)

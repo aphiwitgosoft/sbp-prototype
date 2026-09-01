@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""แบบจำลอง ER ฉบับสมบูรณ์ของ SBPGI — กลุ่ม / ตารางที่แสดง / ความสัมพันธ์ข้ามระบบ
+"""แบบจำลอง ER ฉบับสมบูรณ์ของ SGI — กลุ่ม / ตารางที่แสดง / ความสัมพันธ์ข้ามระบบ
 
 ที่มาของข้อมูลแต่ละส่วน
   - โครงสร้างตาราง            : tools/er_sources.py (อ่านจาก LLDD-Database.md + SBP/db-schema-*.md)
@@ -21,48 +21,48 @@ from __future__ import annotations
 GROUPS = [
     {
         "key": "A",
-        "schema": "sbpgi",
+        "schema": "sgi",
         "title": "โซน A · FGI/FCS Impact Pipeline",
-        "subtitle": "ตารางใหม่ของ SBPGI — ค้นฐานจริง 276 ตารางแล้วไม่มีของเดิมให้ reuse",
+        "subtitle": "ตารางใหม่ของ SGI — ค้นฐานจริง 276 ตารางแล้วไม่มีของเดิมให้ reuse",
         "color": "#0e7c6b",
         "tint": "#e6f6f2",
         "cell": (0, 0),
         "columns": [
-            ["fgi_impact_processes", "fgi_impact_compensations", "fgi_impact_stores", "fgi_impact_sales_summaries", "sales_transactions"],
-            ["fgi_impact_competitors", "fcs_qssi_score", "interface_transactions"],
+            ["sgi_fgi_impact_processes", "sgi_fgi_impact_compensations", "sgi_fgi_impact_stores", "sgi_fgi_impact_sales_summaries", "sgi_sales_transactions"],
+            ["sgi_fgi_impact_competitors", "fcs_qssi_score", "sgi_interface_transactions"],
         ],
     },
     {
         "key": "B",
-        "schema": "sbpgi",
+        "schema": "sgi",
         "title": "โซน B · K2 เอกสารประกันรายได้",
         "subtitle": "แกนเอกสาร + ประวัติ — workflow ใช้ engine กลาง ไม่สร้างตารางเอง",
         "color": "#2f6fed",
         "tint": "#e8effd",
         "cell": (0, 1),
         "columns": [
-            ["compensation_documents", "document_running_numbers", "document_new_stores"],
-            ["document_cost_details", "document_competitors", "document_external_factors"],
-            ["consideration_logs", "document_attachments", "compensation_histories"],
+            ["sgi_compensation_documents", "sgi_document_running_numbers", "sgi_document_new_stores"],
+            ["sgi_document_cost_details", "sgi_document_competitors", "sgi_document_external_factors"],
+            ["sgi_consideration_logs", "sgi_document_attachments", "sgi_compensation_histories"],
         ],
     },
     {
         "key": "C",
-        "schema": "sbpgi",
-        "title": "โซน C · Master ที่ SBPGI เป็นเจ้าของ",
+        "schema": "sgi",
+        "title": "โซน C · Master ที่ SGI เป็นเจ้าของ",
         "subtitle": "3 ตาราง — ที่เหลือใช้ master ของระบบ SBP เดิม",
         "color": "#7c3aed",
         "tint": "#f1ebfe",
         "cell": (1, 0),
         "columns": [
-            ["impacted_stores", "competitors", "external_factors"],
+            ["sgi_impacted_stores", "sgi_competitors", "sgi_external_factors"],
         ],
     },
     {
         "key": "E",
         "schema": "sps_store",
         "title": "Workflow Engine · @srm/glb-workflow",
-        "subtitle": "13 ตารางใน schema sps_store · library กลาง — SBPGI ขอ version ใหม่ 1 ตัว ห้ามสร้างตารางเอง/ห้ามแก้ DDL",
+        "subtitle": "13 ตารางใน schema sps_store · library กลาง — SGI ขอ version ใหม่ 1 ตัว ห้ามสร้างตารางเอง/ห้ามแก้ DDL",
         "color": "#b45309",
         "tint": "#fdf1e0",
         "cell": (1, 1),
@@ -77,7 +77,7 @@ GROUPS = [
         "key": "P",
         "schema": "sps_store",
         "title": "SBP Platform · schema sps_store",
-        "subtitle": "198 ตาราง — แสดง 24 ตารางที่ SBPGI ใช้ · ระบบเดิมเป็นเจ้าของ SBPGI อ่าน/เรียก API เท่านั้น เพิ่มคอลัมน์ต้อง sign-off",
+        "subtitle": "198 ตาราง — แสดง 24 ตารางที่ SGI ใช้ · ระบบเดิมเป็นเจ้าของ SGI อ่าน/เรียก API เท่านั้น เพิ่มคอลัมน์ต้อง sign-off",
         "color": "#166534",
         "tint": "#e7f4ec",
         "cell": (2, 0),
@@ -97,7 +97,7 @@ GROUPS = [
         "key": "I",
         "schema": "sps_auth",
         "title": "Auth Backend · schema sps_auth",
-        "subtitle": "78 ตาราง — แสดง 10 ตาราง · ตัวตน/สิทธิ์เมนู\nSBPGI รับผ่าน header ของ BFF ไม่ query ตรง",
+        "subtitle": "78 ตาราง — แสดง 10 ตาราง · ตัวตน/สิทธิ์เมนู\nSGI รับผ่าน header ของ BFF ไม่ query ตรง",
         "color": "#9f1239",
         "tint": "#fdeaef",
         "cell": (1, 2),
@@ -110,8 +110,8 @@ GROUPS = [
 ]
 
 # ------------------------------------------------- คอลัมน์ที่แสดงของตารางระบบเดิม
-# ตาราง SBPGI + engine แสดง "ทุกคอลัมน์" · ตารางแพลตฟอร์มที่กว้างมาก (สูงสุด 86 คอลัมน์)
-# แสดงเฉพาะคอลัมน์คีย์/คอลัมน์ที่ SBPGI ใช้จริง แล้วบอกจำนวนที่ซ่อนไว้ท้ายกล่อง
+# ตาราง SGI + engine แสดง "ทุกคอลัมน์" · ตารางแพลตฟอร์มที่กว้างมาก (สูงสุด 86 คอลัมน์)
+# แสดงเฉพาะคอลัมน์คีย์/คอลัมน์ที่ SGI ใช้จริง แล้วบอกจำนวนที่ซ่อนไว้ท้ายกล่อง
 
 KEY_COLS: dict[str, list[str]] = {
     "sps_store.store": [
@@ -216,7 +216,7 @@ CROSS: list[tuple] = [
     ("sps_store.workflow_route", "group_id", "sps_store.workflow_group", "group_id", "logical", "N:1",
      "กลุ่มผู้อนุมัติของ route", "db-schema-sps_store.md §workflow_route", "confirmed"),
     ("sps_store.workflow_route", "email_id", "sps_store.email_template", "email_template_id", "logical", "N:1",
-     "เลข template ของ workflow — SBPGI อ่านค่านี้ไปเรียก sendEmail() ของ email-lib เอง (ปิด DP-5 · 14/08/2026)",
+     "เลข template ของ workflow — SGI อ่านค่านี้ไปเรียก sendEmail() ของ email-lib เอง (ปิด DP-5 · 14/08/2026)",
      "database.md §ปิด DP-5 · db-schema-sps_store.md §workflow_route", "confirmed"),
     ("sps_store.workflow_group_map", "group_id", "sps_store.workflow_group", "group_id", "logical", "N:1",
      "map กลุ่ม → ตาราง/คอลัมน์จริง", "db-schema-sps_store.md §workflow_group_map", "confirmed"),
@@ -247,77 +247,77 @@ CROSS: list[tuple] = [
     ("sps_store.workflow_part_display", "group_id", "sps_store.workflow_group", "group_id", "logical", "N:1",
      "แสดงผลต่อกลุ่ม", "db-schema-sps_store.md §workflow_part_display", "confirmed"),
 
-    # ---------- SBPGI ↔ workflow engine ----------
-    ("sbpgi.compensation_documents", "id", "sps_store.workflow_transaction", "reference_id", "api", "1:1",
+    # ---------- SGI ↔ workflow engine ----------
+    ("sgi.sgi_compensation_documents", "id", "sps_store.workflow_transaction", "reference_id", "api", "1:1",
      "referenceId = surrogate id (มติ DP-1 = B)", "database.md §กุญแจเชื่อมข้ามระบบ ข้อ 4", "confirmed"),
-    ("sbpgi.compensation_documents", "status_code", "sps_store.workflow_status", "status_id", "logical", "N:1",
+    ("sgi.sgi_compensation_documents", "status_code", "sps_store.workflow_status", "status_id", "logical", "N:1",
      "สถานะเอกสาร 6 ค่า = status ของ engine", "LLDD-Database.md §5.3 · database.md", "confirmed"),
-    ("sbpgi.compensation_documents", "current_section_code", "sps_store.workflow_state", "state_id", "logical", "N:1",
+    ("sgi.sgi_compensation_documents", "current_section_code", "sps_store.workflow_state", "state_id", "logical", "N:1",
      "ขั้น 06/08/01/02/03 = state ของ engine", "LLDD-Database.md §5.3", "confirmed"),
-    ("sbpgi.consideration_logs", "section_code", "sps_store.workflow_state", "state_id", "logical", "N:1",
+    ("sgi.sgi_consideration_logs", "section_code", "sps_store.workflow_state", "state_id", "logical", "N:1",
      "ขั้นที่พิจารณา", "LLDD-Database.md §5.3", "confirmed"),
-    ("sbpgi.consideration_logs", "id", "sps_store.workflow_history", "history_id", "logical", "1:1",
+    ("sgi.sgi_consideration_logs", "id", "sps_store.workflow_history", "history_id", "logical", "1:1",
      "ส่วนขยาย timeline (engine ไม่มีรหัสผลพิจารณา/ไฟล์แนบ)", "database.md §ตารางที่คล้ายแต่ไม่ใช่", "undecided · DP-7"),
-    ("sbpgi.document_attachments", "section_code", "sps_store.workflow_state", "state_id", "logical", "N:1",
+    ("sgi.sgi_document_attachments", "section_code", "sps_store.workflow_state", "state_id", "logical", "N:1",
      "ไฟล์แนบแยกตามขั้น", "LLDD-Database.md §5.3", "confirmed"),
 
-    # ---------- SBPGI ↔ master ร้าน ----------
-    ("sbpgi.impacted_stores", "store_code", "sps_store.store", "store_id", "logical", "1:1",
+    # ---------- SGI ↔ master ร้าน ----------
+    ("sgi.sgi_impacted_stores", "store_code", "sps_store.store", "store_id", "logical", "1:1",
      "ร้าน SP · snapshot บางส่วน (มติ DP-3)", "database.md §โซน C · DP-3", "confirmed"),
-    ("sbpgi.impacted_stores", "store_code", "sps_store.mas_store", "branch_id", "logical", "1:1",
+    ("sgi.sgi_impacted_stores", "store_code", "sps_store.mas_store", "branch_id", "logical", "1:1",
      "master สาขา", "database.md §ตารางที่ตัดออกรอบ 2", "confirmed"),
-    ("sbpgi.impacted_stores", "store_code", "sps_store.sevenshop", "branch_id", "logical", "1:1",
+    ("sgi.sgi_impacted_stores", "store_code", "sps_store.sevenshop", "branch_id", "logical", "1:1",
      "renovate start/end date อ่านจากที่นี่ (ข้อ F5)", "database.md §F5", "confirmed"),
-    ("sbpgi.impacted_stores", "store_code", "sps_store.fr_store", "store_id", "logical", "1:N",
+    ("sgi.sgi_impacted_stores", "store_code", "sps_store.fr_store", "store_id", "logical", "1:N",
      "สัญญา/นิติบุคคลของร้าน SP", "SBPGI-vs-existing-system.md §3", "confirmed"),
-    ("sbpgi.impacted_stores", "opt_dv_user_id", "sps_store.business_user", "user_id", "logical", "N:1",
+    ("sgi.sgi_impacted_stores", "opt_dv_user_id", "sps_store.business_user", "user_id", "logical", "N:1",
      "DV/ผู้ดูแลร้าน", "LLDD-Database.md §5.1 (คอมเมนต์ไม่ใส่ FK)", "confirmed"),
-    ("sbpgi.fgi_impact_stores", "new_store_code", "sps_store.store", "store_id", "logical", "N:1",
+    ("sgi.sgi_fgi_impact_stores", "new_store_code", "sps_store.store", "store_id", "logical", "N:1",
      "ร้านเปิดใหม่ · master ของระบบเดิม", "LLDD-Database.md §5.2", "confirmed"),
-    ("sbpgi.document_new_stores", "new_store_code", "sps_store.store", "store_id", "logical", "N:1",
+    ("sgi.sgi_document_new_stores", "new_store_code", "sps_store.store", "store_id", "logical", "N:1",
      "ร้านเปิดใหม่ในเอกสาร", "LLDD-Database.md §5.3", "confirmed"),
-    ("sbpgi.document_cost_details", "new_store_code", "sps_store.store", "store_id", "logical", "N:1",
+    ("sgi.sgi_document_cost_details", "new_store_code", "sps_store.store", "store_id", "logical", "N:1",
      "ยอดชดเชยรายเดือนต่อร้านใหม่", "LLDD-Database.md §5.3", "confirmed"),
-    ("sbpgi.compensation_histories", "store_code", "sps_store.store", "store_id", "logical", "N:1",
+    ("sgi.sgi_compensation_histories", "store_code", "sps_store.store", "store_id", "logical", "N:1",
      "ประวัติชดเชยรายร้าน", "LLDD-Database.md §5.3", "confirmed"),
-    ("sbpgi.compensation_histories", "compensate_amount", "sps_store.fr_store_insure", "money_support", "logical", "N:1",
-     "ตัวเลขเงินประกันรายได้ — SBPGI เป็นต้นทางหรือคีย์มือ", "database.md §โซน B · DP-11", "undecided · DP-11"),
+    ("sgi.sgi_compensation_histories", "compensate_amount", "sps_store.fr_store_insure", "money_support", "logical", "N:1",
+     "ตัวเลขเงินประกันรายได้ — SGI เป็นต้นทางหรือคีย์มือ", "database.md §โซน B · DP-11", "undecided · DP-11"),
 
-    # ---------- SBPGI ↔ ผู้ใช้ / lookup / config ----------
-    ("sbpgi.compensation_documents", "created_by", "sps_store.business_user", "user_id", "logical", "N:1",
+    # ---------- SGI ↔ ผู้ใช้ / lookup / config ----------
+    ("sgi.sgi_compensation_documents", "created_by", "sps_store.business_user", "user_id", "logical", "N:1",
      "ผู้สร้างเอกสาร", "LLDD-Database.md §5.3", "confirmed"),
-    ("sbpgi.compensation_documents", "approver_snapshot", "sps_store.business_user", "user_id", "snapshot", "N:1",
+    ("sgi.sgi_compensation_documents", "approver_snapshot", "sps_store.business_user", "user_id", "snapshot", "N:1",
      "FC/Section/GM/AVP ณ เวลาเปิดเอกสาร (ตำแหน่งเปลี่ยนได้)", "database.md §โซน B", "confirmed"),
-    ("sbpgi.consideration_logs", "consider_by", "sps_store.business_user", "user_id", "logical", "N:1",
+    ("sgi.sgi_consideration_logs", "consider_by", "sps_store.business_user", "user_id", "logical", "N:1",
      "ผู้พิจารณา", "LLDD-Database.md §5.3", "confirmed"),
-    ("sbpgi.document_attachments", "uploaded_by", "sps_store.business_user", "user_id", "logical", "N:1",
+    ("sgi.sgi_document_attachments", "uploaded_by", "sps_store.business_user", "user_id", "logical", "N:1",
      "ผู้แนบไฟล์", "LLDD-Database.md §5.3", "confirmed"),
-    ("sbpgi.compensation_documents", "statement_id", "sps_store.fml_sbp_stmt", "document_id", "logical", "N:1",
+    ("sgi.sgi_compensation_documents", "statement_id", "sps_store.fml_sbp_stmt", "document_id", "logical", "N:1",
      "โยงกลับ SBP Statement ต้นทาง (CompStatementID)", "database.md §โซน B · §ขอบเขต", "confirmed"),
-    ("sbpgi.compensation_documents", "impacted_store_code", "sps_store.statement", "store_id", "logical", "N:1",
+    ("sgi.sgi_compensation_documents", "impacted_store_code", "sps_store.statement", "store_id", "logical", "N:1",
      "ใบแจ้งยอดของร้าน/งวด — Period Statement ของรายงาน (SDD สไลด์ 60)", "database.md §โซน B", "proposed"),
-    ("sbpgi.fcs_qssi_score", "store_id", "sps_store.store", "store_id", "logical", "N:1",
+    ("sgi.fcs_qssi_score", "store_id", "sps_store.store", "store_id", "logical", "N:1",
      "คะแนน QSSI ต่อร้าน 23.9 ล้านแถว", "db-schema-sps_store.md §fcs_qssi_score", "confirmed"),
-    ("sbpgi.fgi_impact_processes", "impacted_store_code", "sps_store.fcs_monthly_sales", "store_id", "logical", "N:1",
-     "cross-check ยอดรวมรายเดือน (แทน sales_transactions รายวันไม่ได้)", "database.md §ผลการเทียบ ข้อ 5", "confirmed"),
-    ("sbpgi.document_attachments", "object_key", "sps_store.upload_general", "key", "api", "N:1",
+    ("sgi.sgi_fgi_impact_processes", "impacted_store_code", "sps_store.fcs_monthly_sales", "store_id", "logical", "N:1",
+     "cross-check ยอดรวมรายเดือน (แทน sgi_sales_transactions รายวันไม่ได้)", "database.md §ผลการเทียบ ข้อ 5", "confirmed"),
+    ("sgi.sgi_document_attachments", "object_key", "sps_store.upload_general", "key", "api", "N:1",
      "ใช้ service S3 ของระบบเดิม (upload/download-file-aws)", "database.md §ตารางที่คล้ายแต่ไม่ใช่ · DP-8", "undecided · DP-8"),
-    ("sbpgi.interface_transactions", "correlation_id", "sps_store.integration_log", "service", "api", "1:N",
+    ("sgi.sgi_interface_transactions", "correlation_id", "sps_store.integration_log", "service", "api", "1:N",
      "payload ราย call แทนตาราง FGI_WS_LOG (ข้อ F6) — ยังไม่มีคอลัมน์คีย์เชื่อมกลับ", "database.md §F6", "proposed"),
 
     # ---------- lookup กลาง (common_code / mas_param / mas_zone) ----------
-    ("sbpgi.consideration_logs", "result", "sps_store.common_code", "code_value", "logical", "N:1",
-     "ผลพิจารณา — code_type=SBPGI_DECISION (มติ DP-9)", "database.md §มติ DP-9 · การ map decisions", "confirmed"),
-    ("sbpgi.compensation_documents", "total_compensation_amount", "sps_store.common_code", "code_value", "logical", "N:1",
-     "วงเงินอนุมัติ SBPGI_APPROVE_LIMIT (เกณฑ์เดียว 100,000)", "database.md §ตารางที่ตัดออกรอบ 2 · SDD GI", "confirmed"),
-    ("sbpgi.compensation_documents", "(BE service)", "sps_store.mas_param", "param_name", "api", "N:1",
-     "ค่ากำหนดกลาง — SBPGI อ่านอย่างเดียว ไม่มีหน้าจอแก้", "database.md §ตารางที่ตัดออกรอบ 2", "confirmed"),
+    ("sgi.sgi_consideration_logs", "result", "sps_store.common_code", "code_value", "logical", "N:1",
+     "ผลพิจารณา — code_type=SGI_DECISION (มติ DP-9)", "database.md §มติ DP-9 · การ map decisions", "confirmed"),
+    ("sgi.sgi_compensation_documents", "total_compensation_amount", "sps_store.common_code", "code_value", "logical", "N:1",
+     "วงเงินอนุมัติ SGI_APPROVE_LIMIT (เกณฑ์เดียว 100,000)", "database.md §ตารางที่ตัดออกรอบ 2 · SDD GI", "confirmed"),
+    ("sgi.sgi_compensation_documents", "(BE service)", "sps_store.mas_param", "param_name", "api", "N:1",
+     "ค่ากำหนดกลาง — SGI อ่านอย่างเดียว ไม่มีหน้าจอแก้", "database.md §ตารางที่ตัดออกรอบ 2", "confirmed"),
 
-    ("sbpgi.document_running_numbers", "year", "sbpgi.compensation_documents", "year", "logical", "1:N",
+    ("sgi.sgi_document_running_numbers", "year", "sgi.sgi_compensation_documents", "year", "logical", "1:N",
      "ออกเลข YYYY/xxxxx แบบ atomic ต่อปี ค.ศ.", "LLDD-Database.md §5.3 · database.md §Canonical", "confirmed"),
-    ("sbpgi.fgi_impact_competitors", "competitor_code", "sbpgi.document_competitors", "source_system", "logical", "1:N",
+    ("sgi.sgi_fgi_impact_competitors", "competitor_code", "sgi.sgi_document_competitors", "source_system", "logical", "1:N",
      "นำเข้าเป็นแถว source_system=ALLMAP (แยกจาก USER ที่ผู้ใช้เพิ่มเอง)", "database.md §กุญแจเชื่อมข้ามระบบ ข้อ 5", "confirmed"),
-    ("sbpgi.fgi_impact_stores", "new_store_code", "sbpgi.document_new_stores", "new_store_code", "logical", "1:1",
+    ("sgi.sgi_fgi_impact_stores", "new_store_code", "sgi.sgi_document_new_stores", "new_store_code", "logical", "1:1",
      "คู่ร้านจาก pipeline → ร้านใหม่ในเอกสาร", "database.md §Data Dictionary", "confirmed"),
 
     # ---------- ภายในระบบเดิม (sps_store) ----------
@@ -379,7 +379,7 @@ CROSS: list[tuple] = [
      "สัญญาร้าน (สำเนาฝั่ง auth)", "db-schema-sps_auth.md §fr_store", "proposed"),
     ("sps_auth.business_user", "user_id", "sps_store.business_user", "user_id", "logical", "1:1",
      "ตารางชื่อเดียวกันคนละ schema (22,057 vs 12,752 แถว)", "db-schema ทั้งสองไฟล์", "confirmed"),
-    ("sbpgi.compensation_documents", "created_by", "sps_auth.users", "username", "api", "N:1",
+    ("sgi.sgi_compensation_documents", "created_by", "sps_auth.users", "username", "api", "N:1",
      "ตัวตนมาทาง header x-user-id ของ BFF ไม่ query ตรง", "database.md §ตารางที่ตัดออก 2026-08-05", "confirmed"),
     ("sps_auth.users", "username", "sps_store.business_user", "user_name", "logical", "1:1",
      "บัญชี Cognito ↔ ผู้ใช้ระบบเดิม", "SBPGI-vs-existing-system.md", "proposed"),
@@ -432,12 +432,12 @@ CROSS: list[tuple] = [
 
     # ---------- ข้ามสกีมา sps_auth ↔ sps_store ----------
     ("sps_auth.mas_store", "branch_id", "sps_store.store", "store_id", "logical", "1:1",
-     "รหัสร้านเดียวกันทั้งสองสกีมา — SBPGI ใช้ฝั่ง sps_store", "db-schema ทั้งสองไฟล์", "confirmed"),
+     "รหัสร้านเดียวกันทั้งสองสกีมา — SGI ใช้ฝั่ง sps_store", "db-schema ทั้งสองไฟล์", "confirmed"),
     ("sps_auth.mas_store", "branch_id", "sps_store.mas_store", "branch_id", "logical", "1:1",
      "mas_store สองสำเนา 31 คอลัมน์เท่ากัน (18,790 vs 19,647 แถว)", "db-schema ทั้งสองไฟล์", "confirmed"),
 
-    # ---------- SBPGI → master ร้าน (หน้าเอกสารดึงชื่อร้าน/ภาค/ประเภทสาขา) ----------
-    ("sbpgi.compensation_documents", "impacted_store_code", "sps_store.store", "store_id", "logical", "N:1",
+    # ---------- SGI → master ร้าน (หน้าเอกสารดึงชื่อร้าน/ภาค/ประเภทสาขา) ----------
+    ("sgi.sgi_compensation_documents", "impacted_store_code", "sps_store.store", "store_id", "logical", "N:1",
      "ชื่อร้าน · ภาค (zone_cd) · ประเภทสาขา บนหน้าเอกสาร/รายงาน", "LLDD-BE-API-Document-Detail-Aggregate.md", "confirmed"),
 ]
 
@@ -447,11 +447,11 @@ WARNINGS = [
     ("sps_store.workflow_transaction", "ไม่มี PK และไม่มี index เลย ทั้งที่มี 19,283 แถว — DP-2 ยังไม่ตัดสิน"),
     ("sps_store.fcs_qssi_score", "23.9 ล้านแถว · ห้าม CREATE ใหม่ · ห้ามใช้ชื่อพหูพจน์ · DP-4"),
     ("sps_store.common_code", "ไม่มี PK/unique — กันรหัสซ้ำที่ระดับแอป"),
-    ("sbpgi.compensation_documents", "PK = id (surrogate) · doc_no เป็น UNIQUE · referenceId = id (DP-1 = B)"),
+    ("sgi.sgi_compensation_documents", "PK = id (surrogate) · doc_no เป็น UNIQUE · referenceId = id (DP-1 = B)"),
 ]
 
 FORBIDDEN = [
-    "sps_auth.workflow_* — engine คนละเวอร์ชันกับ sps_store (workflow_state คนละจำนวนคอลัมน์) ห้าม SBPGI เขียนลง",
+    "sps_auth.workflow_* — engine คนละเวอร์ชันกับ sps_store (workflow_state คนละจำนวนคอลัมน์) ห้าม SGI เขียนลง",
     "sps_store.wf_* — engine เก่าอีกชุดใน schema เดียวกับตัวจริง (wf_transaction 53,186 · wf_approve 155,740 · wf_email_template 118) ห้ามใช้",
     "store_old · store_organize_old · juristic_backup · fml_cooperation_topic_backup · mas_tmp_store · fes_*_bak_20260710 · sps_auth.user_groups_old — ห้าม join",
     "fcs_qssi_score_bak_20260710 (18,577,924 แถว) — snapshot ก่อน rework · fcs_tmp_qssi_score โครงคนละชุด",
@@ -463,46 +463,46 @@ FORBIDDEN = [
 
 NOTES = [
     ("มติที่ตรึงโครงนี้ไว้แล้ว", [
-        "DP-1 (10/08/2026) = ทางเลือก B — compensation_documents ใช้ surrogate PK `id`",
+        "DP-1 (10/08/2026) = ทางเลือก B — sgi_compensation_documents ใช้ surrogate PK `id`",
         "   · `doc_no` เป็น UNIQUE (business key) · referenceId ที่ส่งให้ engine = `id`",
-        "DP-3 = ผสม — impacted_stores เป็น snapshot เฉพาะร้านที่เคยเข้ารอบชดเชย",
+        "DP-3 = ผสม — sgi_impacted_stores เป็น snapshot เฉพาะร้านที่เคยเข้ารอบชดเชย",
         "   ไม่ sync ทั้ง master 11,583 แถว (v_fr_store_active ตัดร้านที่ยกเลิกออก)",
-        "DP-9 = แยกตัดสิน — `decisions` ตัดทิ้ง ใช้ common_code (SBPGI_DECISION)",
-        "   · external_factors + competitors ยังเป็นตารางของ SBPGI เพราะมีหน้าจอ CRUD",
+        "DP-9 = แยกตัดสิน — `decisions` ตัดทิ้ง ใช้ common_code (SGI_DECISION)",
+        "   · sgi_external_factors + sgi_competitors ยังเป็นตารางของ SGI เพราะมีหน้าจอ CRUD",
         "05/08/2026 — RBAC/ผู้ปฏิบัติงานใช้ของระบบเดิม (ตัด 5 ตาราง)",
         "06/08/2026 — ตัด 10 ตารางที่ระบบ SBP เดิมมีอยู่แล้ว + ตัดกลุ่ม batch 2 ตาราง",
-        "07/08/2026 — ยกเลิก audit_logs → ย้าย marker ไป interface_transactions",
-        "DP-5 (แก้มติ 14/08/2026) ปิดแล้ว — workflow ให้เลข template · SBPGI เรียก lib ส่งเอง · ตัด status_email_rules",
+        "07/08/2026 — ยกเลิก audit_logs → ย้าย marker ไป sgi_interface_transactions",
+        "DP-5 (แก้มติ 14/08/2026) ปิดแล้ว — workflow ให้เลข template · SGI เรียก lib ส่งเอง · ตัด status_email_rules",
         "   อ่าน workflow_route.email_id → sendEmail() ของ email-lib → lib เขียน email_sent ของระบบเดิมให้เอง",
         "   → โครงเหลือ 20 ตาราง (โซน A 8 · B 9 · C 3)",
     ]),
     ("ข้อค้างที่ยังไม่ตัดสิน — กระทบรูปนี้โดยตรง", [
         "DP-2  workflow_transaction ไม่มี PK/index ทั้งที่มี 19,283 แถว (ตารางของ library)",
         "DP-4  fcs_qssi_score — 4 คอลัมน์คีย์เป็น nullable · จะแก้ตารางเดิมอย่างไร",
-        "DP-6  interface_transactions — ออกแบบใหม่ หรือลอกแพตเทิร์น statement_summary",
-        "DP-7  consideration_logs — timeline เต็ม หรือส่วนขยายบน workflow_history",
-        "DP-8  document_attachments — ตารางของเราเอง หรือต่อยอด upload_general",
-        "DP-11 ตัวเลขเงินประกันรายได้ — SBPGI เป็นต้นทาง หรือ fr_store_insure คีย์มือ",
+        "DP-6  sgi_interface_transactions — ออกแบบใหม่ หรือลอกแพตเทิร์น statement_summary",
+        "DP-7  sgi_consideration_logs — timeline เต็ม หรือส่วนขยายบน workflow_history",
+        "DP-8  sgi_document_attachments — ตารางของเราเอง หรือต่อยอด upload_general",
+        "DP-11 ตัวเลขเงินประกันรายได้ — SGI เป็นต้นทาง หรือ fr_store_insure คีย์มือ",
         "DP-12 audit ของ master จะเอากลับมาด้วยกลไกของระบบเดิมหรือไม่",
         "(ปิดแล้ว 14/08/2026) ชื่อ function ของ engine ยึดชีต Detail ของ LLDD lib — 8 ตัว initializeWorkflow/eventWorkflow/",
         "   getPermissionEvents/getHistory/getTransaction/getPendingFlowByUser/getWorkflowsByUser/addPreApprover",
     ]),
     ("อ่านรูปนี้อย่างไร", [
-        "กล่องสีเข้ม = ตารางในโครง SBPGI (20 ตาราง) · กล่องเขียว/แดง = ตารางของระบบเดิม",
-        "ตาราง SBPGI และ workflow engine แสดง 'ทุกคอลัมน์' ตาม DDL/ฐานจริง",
-        "ตารางแพลตฟอร์มที่กว้างมาก (สูงสุด 86 คอลัมน์) แสดงเฉพาะคอลัมน์ที่ SBPGI ใช้",
+        "กล่องสีเข้ม = ตารางในโครง SGI (20 ตาราง) · กล่องเขียว/แดง = ตารางของระบบเดิม",
+        "ตาราง SGI และ workflow engine แสดง 'ทุกคอลัมน์' ตาม DDL/ฐานจริง",
+        "ตารางแพลตฟอร์มที่กว้างมาก (สูงสุด 86 คอลัมน์) แสดงเฉพาะคอลัมน์ที่ SGI ใช้",
         "   แล้วบอกจำนวนที่เหลือไว้ท้ายกล่อง — ดูครบทุกคอลัมน์ได้ในไฟล์ .html",
         "ที่มา: LLDD/md/LLDD-Database.md §5 (DDL) · SBP/db-schema-sps_store.md",
         "   · SBP/db-schema-sps_auth.md (ดึงฐานจริง 07/08/2026) · database.md",
         "สร้างใหม่ด้วย: python3 tools/build_er_diagram.py",
     ]),
     ("กุญแจเชื่อมข้ามระบบ (Cross-System Keys)", [
-        "1  impacted_stores.store_code = fgi_impact_stores.impacted_store_code (รหัส 5 หลัก)",
-        "2  *.impact_process_id → fgi_impact_processes.id (hub ของหนึ่งรอบชดเชย)",
-        "3  compensation_documents.impact_process_id → 1 รอบ : 1 เอกสาร (UNIQUE)",
-        "4  workflow_transaction.reference_id → compensation_documents.id",
-        "5  document_competitors.source_system = ALLMAP แยกจากที่ผู้ใช้เพิ่มเอง (USER)",
-        "6  compensation_histories.submit_account_month → งวดที่ Job 6 ส่งไป STA (RabbitMQ)",
-        "7  interface_transactions ใช้ typed FK 3 คอลัมน์แทน polymorphic key เดิม",
+        "1  sgi_impacted_stores.store_code = sgi_fgi_impact_stores.impacted_store_code (รหัส 5 หลัก)",
+        "2  *.impact_process_id → sgi_fgi_impact_processes.id (hub ของหนึ่งรอบชดเชย)",
+        "3  sgi_compensation_documents.impact_process_id → 1 รอบ : 1 เอกสาร (UNIQUE)",
+        "4  workflow_transaction.reference_id → sgi_compensation_documents.id",
+        "5  sgi_document_competitors.source_system = ALLMAP แยกจากที่ผู้ใช้เพิ่มเอง (USER)",
+        "6  sgi_compensation_histories.submit_account_month → งวดที่ Job 6 ส่งไป STA (RabbitMQ)",
+        "7  sgi_interface_transactions ใช้ typed FK 3 คอลัมน์แทน polymorphic key เดิม",
     ]),
 ]

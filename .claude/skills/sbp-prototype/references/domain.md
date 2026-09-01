@@ -6,7 +6,7 @@
 ## ภาพรวมธุรกิจ
 
 ชดเชยรายได้ให้ร้าน 7-Eleven **Store Partner (SP)** ที่ยอดขายตกเพราะมี 7-Eleven สาขาใหม่เปิดในรัศมีกระทบ
-**1 กม.** (กทม.+ปริมณฑล) / **2 กม.** (ต่างจังหวัด) · "K2" = แพลตฟอร์ม BPM เดิม · ระบบใหม่ = **SBPGI** (รวม EAI + K2 เข้าระบบเดียว)
+**1 กม.** (กทม.+ปริมณฑล) / **2 กม.** (ต่างจังหวัด) · "K2" = แพลตฟอร์ม BPM เดิม · ระบบใหม่ = **SGI** (รวม EAI + K2 เข้าระบบเดียว)
 
 ## ค่าคงที่ธุรกิจ (ห้ามเปลี่ยนโดยไม่มี business sign-off)
 
@@ -24,15 +24,20 @@
 
 > ไฟล์ SDD v7.5 (`08102025 …pdf`) **ถูกลบออกจาก repo 2026-08-06** — ข้อกำหนดถูกรวมเข้าการออกแบบปัจจุบันแล้ว · SDD ที่ยึดเป็นหลักตอนนี้คือ **SDD GI** (`SDD-GI-Compensation/`)
 
-**06 → 08 → 01 → 02 → 03**
+**06 → 08 → 06 → 01 → 02 → 03** (มติ 2026-09-01 — ขั้น 08 คำนวณเสร็จ **ส่งยอดกลับ 06** ให้เป็นผู้ส่งต่อ · ลำดับกลั่นกรองยังเป็น 5 ขั้นเท่าเดิม)
+
+> **มติ 2026-09-01 — ปลายทางการส่งงาน 3 ข้อ** (วงเงิน 100,000 และลำดับขั้นไม่เปลี่ยน)
+> 1. **เคสต่อเนื่อง** — ยอด **> 0** → เข้า **08** · ยอด **= 0 ติดกัน ≤ 3 เดือน** → เข้า **08** เหมือนกัน (ไม่มีป้ายกำกับบนหน้าจอ) · ยอด 0 **> 3 เดือน** → **หยุดชดเชยประกันรายได้** (เดิมยอด 0 เดือน 1–3 วิ่งเข้า 01)
+> 2. **ขั้น 08 เหลือปุ่มเดียว** — "คำนวณเงินชดเชยเรียบร้อย" แล้วส่งกลับ **06** (ปุ่ม "ส่งกลับฝ่าย SBP DSA" เดิมถูกตัด เพราะปลายทางซ้ำกัน)
+> 3. **ปุ่มส่งกลับกติกาเดียวทั้งระบบ** — ทุกขั้นส่งกลับมาที่ **06** เสมอ (GM เดิม → 01 · AVP เดิม → 02)
 
 | Section | ตำแหน่ง | บทบาทหลัก |
 |---|---|---|
 | 06 | ฝ่าย SBP DSA (Manager Franchise) | จุดเริ่ม · ไม่ชดเชย/หยุดชดเชย = จบ · ส่งต่อได้หลายทาง |
-| 08 | เจ้าหน้าที่ SBP DSA (Officer Franchise) | มี view **คำนวณเงินชดเชย** (เฉพาะขั้นนี้) |
+| 08 | เจ้าหน้าที่ SBP DSA (Officer Franchise) | มี view **คำนวณเงินชดเชย** (เฉพาะขั้นนี้) · **ปุ่มเดียว** "คำนวณเงินชดเชยเรียบร้อย" → ส่งยอดกลับ **06** (มติ 2026-09-01) |
 | 01 | หน่วยงานส่งเสริมธุรกิจฯ (SDD GI: เดิม "ฝ่ายส่งเสริม" · ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ + **เจ้าหน้าที่อาวุโส** + เจ้าหน้าที่ · ยกเว้น GM) | แก้ร้านเปิดใหม่/คู่แข่ง/ปัจจัยภายนอกได้ (%รวม = 100%) · เห็นควรไม่ชดเชย = จบทันที |
-| 02 | GM ส่งเสริมธุรกิจฯ (GM OPT) | แยกเส้นตามวงเงินเกณฑ์เดียว · **< 100,000 อนุมัติ = จบ workflow** · เห็นควรไม่ชดเชย = จบทันที |
-| 03 | ผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) | เฉพาะยอด ≥ 100,000 · อนุมัติ = **จบ workflow** (รอ confirm) |
+| 02 | GM ส่งเสริมธุรกิจฯ (GM OPT) | แยกเส้นตามวงเงินเกณฑ์เดียว · **< 100,000 อนุมัติ = จบ workflow** · เห็นควรไม่ชดเชย = จบทันที · **ส่งกลับ → 06** (มติ 2026-09-01 · เดิม 01) |
+| 03 | ผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) | เฉพาะยอด ≥ 100,000 · อนุมัติ = **จบ workflow** (รอ confirm) · **ส่งกลับ → 06** (มติ 2026-09-01 · เดิม 02) |
 
 ขั้นบัญชี 04 (ฝ่ายบัญชี SBP) / 05 (บัญชีปฏิบัติการภาค) **ถูกตัดตาม SDD v7.5** — บัญชีตรวจสอบผ่านรายงาน SBP Mall (Preview + Export CSV to Batch) แล้วกระทบยอด SAP นอกระบบ
 
@@ -66,11 +71,11 @@ inbox ของแต่ละ role = เอกสารสถานะ "รอ\
 - รหัสปัจจัยภายนอกห้ามซ้ำ
 - ~~สถานะแจกงานของหน้าข้อมูลผิดปกติ~~ — หน้าจอถูกลบทิ้ง 2026-08-06 · ข้อมูลผิดปกติเหลือเป็นธงแถวแดง (`salesDataDays < 60`) + stat card ในหน้ารอดำเนินการ
 
-## Email Templates (8 ฉบับ — **ไม่มีหน้าจอใน SBPGI แล้ว 2026-08-06**)
+## Email Templates (8 ฉบับ — **ไม่มีหน้าจอใน SGI แล้ว 2026-08-06**)
 
-**ไม่มีตาราง `status_email_rules`** (ปิด DP-5 · 2026-08-14) — **workflow ให้เลข template** ผ่าน `sps_store.workflow_route.email_id` แล้ว **SBPGI เรียก `sendEmail()` ของ email-lib เอง** พร้อม `mailTo`/`mailCc`/`param` · `mailTo` = ผู้อนุมัติถัดไปที่ engine resolve แล้ว → `business_user.email` · `mailCc` = `fml_email_account` (มี `template_id`) · เมลที่ไม่ใช่ transition (reminder/escalation/batch) เก็บเลข template ที่ `mas_param` · **เนื้อหา/ถ้อยคำเป็นข้อเสนอระบบใหม่ beyond SRS** · UTF-8 (แทน TIS-620) และ lib เขียน log ลง `email_sent` ให้เอง · ⚠️ คอลัมน์จริงคือ `email_sent.send_by` ไม่ใช่ `sent_by` · สัญญาเต็มดู `api.md` §อีเมล
+**ไม่มีตาราง `status_email_rules`** (ปิด DP-5 · 2026-08-14) — **workflow ให้เลข template** ผ่าน `sps_store.workflow_route.email_id` แล้ว **SGI เรียก `sendEmail()` ของ email-lib เอง** พร้อม `mailTo`/`mailCc`/`param` · `mailTo` = ผู้อนุมัติถัดไปที่ engine resolve แล้ว → `business_user.email` · `mailCc` = `fml_email_account` (มี `template_id`) · เมลที่ไม่ใช่ transition (reminder/escalation/batch) เก็บเลข template ที่ `mas_param` · **เนื้อหา/ถ้อยคำเป็นข้อเสนอระบบใหม่ beyond SRS** · UTF-8 (แทน TIS-620) และ lib เขียน log ลง `email_sent` ให้เอง · ⚠️ คอลัมน์จริงคือ `email_sent.send_by` ไม่ใช่ `sent_by` · สัญญาเต็มดู `api.md` §อีเมล
 
-> หน้าจอ `email-template.html` ถูกลบทั้งฟีเจอร์ — template ทั้ง 8 ฉบับเก็บอยู่ในตาราง `email_template` ของระบบ SBP เดิม (`subject_format`/`body_format`) การแก้ถ้อยคำทำที่ระบบเดิม · SBPGI อ่านอย่างเดียว
+> หน้าจอ `email-template.html` ถูกลบทั้งฟีเจอร์ — template ทั้ง 8 ฉบับเก็บอยู่ในตาราง `email_template` ของระบบ SBP เดิม (`subject_format`/`body_format`) การแก้ถ้อยคำทำที่ระบบเดิม · SGI อ่านอย่างเดียว
 
 | Code | ส่งเมื่อ | ผู้รับ |
 |---|---|---|
@@ -85,9 +90,9 @@ inbox ของแต่ละ role = เอกสารสถานะ "รอ\
 
 EM-04/05 รับพฤติกรรมมาจาก Approve Flow เดิม (จุด 10.1, 20.2, 20.3, 30.1, 70.1, 80.1, 110.2)
 
-## ระบบใหม่ SBPGI — จุดยึดสั้น ๆ (รายละเอียด = living docs)
+## ระบบใหม่ SGI — จุดยึดสั้น ๆ (รายละเอียด = living docs)
 
-- **รวม EAI + K2 เข้า SBPGI**: ตัดไฟล์ภายใน `BPM06001O_/2O_/3O_` (Jobs 7/8/9) และ K2 REST StartInstance (Job 8b) → Document Service เขียน DB ตรง + Workflow Engine ภายใน
+- **รวม EAI + K2 เข้า SGI**: ตัดไฟล์ภายใน `BPM06001O_/2O_/3O_` (Jobs 7/8/9) และ K2 REST StartInstance (Job 8b) → Document Service เขียน DB ตรง + Workflow Engine ภายใน
 - Interface ภายนอก **ยังเป็นระบบของทีมอื่น** แต่ช่องทางเปลี่ยนบางส่วน (มติ 2026-08-24): ~~QSSI (SFTP)~~ **ตัด Job 1 — อ่าน `fcs_qssi_score` ที่ระบบ SBP เดิมนำเข้าให้** · ALLMAP (SQL Server) · IAS/MIS (ไฟล์ AMS06001O/I ผ่าน **EAI S3** แทน SFTP) · STA (**RabbitMQ `sta.compensation.result`** แทนไฟล์ FRBC0001 + SFTP · ACK ผ่าน `POST /interfaces/sta/ack`) · SMTP
 - Workflow engine `@srm/glb-workflow` มี **API 8 ตัว** (ชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx`): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` (= หน้ารอดำเนินการ) · `getWorkflowsByUser` (= หน้าที่เกี่ยวข้อง) · `addPreApprover` — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` ไม่ใช่ชื่อ API
 - Flow 12 ขั้น 4 Stage (A รับข้อมูล Jobs 2–5 · B สร้างเอกสาร+เปิด workflow · C พิจารณา 5 ขั้น · D ส่งออก+watchdog Jobs 6/10) → `workflow.md`

@@ -10,15 +10,28 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **24 ชั่วโมง** = implementation 18 + unit test 6 (30%) |
 | Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | สร้างเอกสารประกันรายได้อัตโนมัติ: สร้าง compensation_documents จาก impact profile และข้อมูลชดเชยในฐานข้อมูลเดียวกัน แทนการเขียนไฟล์ BPM06001O และ SFTP ไป compensateflow; ไม่เรียก workflow โดยตรง |
+| Objective | สร้างเอกสารประกันรายได้อัตโนมัติ: สร้าง sgi_compensation_documents จาก impact profile และข้อมูลชดเชยในฐานข้อมูลเดียวกัน แทนการเขียนไฟล์ BPM06001O และ SFTP ไป compensateflow; ไม่เรียก workflow โดยตรง |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
+
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| โครงสร้างข้อมูล | **LLDD-BE-Database-Structure** | DDL ของตารางที่หัวข้อ Reference DB Mapping อ้างถึง |
+| แพลตฟอร์มระบบเดิม | **LLDD-BE-Integration-SBP-Platform** | header จาก BFF (`x-api-key` / `x-user-*`) · การ reuse ตารางและ service ของระบบ SBP เดิม |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-API-Common-Contracts** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Database-Structure** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Job-6-ExportImpactStoreToFS** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
 
 ## 2. Screen / Functional Scope
 
 - Main class/script: document.service.createFromImpact / (internal scheduler / service)
 - Phase: C
-- Output: compensation_documents (DB)
+- Output: sgi_compensation_documents (DB)
 - Estimate: 18 ชั่วโมง
 - พารามิเตอร์/cron อ่านจาก backend config (config file/env) — ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
 - Runbook, rerun rule, risk และ history ตามเอกสาร Batch v4.0 · ผลการรันเขียน application log แบบ structured
@@ -27,18 +40,28 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 1: Implementation flow reference: LLDD BE - Job 8 CreateCompensationDocument](../../../assets/flows/BE-Job-8-CreateCompensationDocument.png)
 
 _รูปที่ 1: Implementation flow reference: LLDD BE - Job 8 CreateCompensationDocument_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 2: Sequence diagram: LLDD BE - Job 8 CreateCompensationDocument](../../../assets/flows/BE-Job-8-CreateCompensationDocument-sequence.png)
+
+_รูปที่ 2: Sequence diagram: LLDD BE - Job 8 CreateCompensationDocument_
 
 ## 5. Field, Format, and Validation
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | กำหนดการรัน (Cron) | 30 17 7-31 * * | แก้ไขได้ | ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน |
-| Target table | compensation_documents | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | สร้าง doc_no YYYY/xxxxx และผูก impact_process_id |
+| Target table | sgi_compensation_documents | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | สร้าง doc_no YYYY/xxxxx และผูก impact_process_id |
 | เงื่อนไขเลือกข้อมูล | สถานะ I + forecast + ยังไม่สร้างเอกสาร | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | Gen Flow Gate อยู่ที่ Job 8b / Workflow Engine |
 | ข้อห้ามเชิงสถาปัตยกรรม | ห้ามสร้างไฟล์ BPM06001O, ห้าม SFTP, ห้ามเรียก K2 REST | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ใช้ Document Service + DB transaction เท่านั้น |
 
@@ -95,8 +118,8 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 ```sql
 SELECT p.id AS impact_process_id, p.impacted_store_code, p.impact_month,
        SUM(COALESCE(s.adjust_compensation_amount, s.forecast_compensation_amount, 0)) AS total_compensation_amount
-FROM fgi_impact_processes p
-JOIN fgi_impact_stores s ON s.impact_process_id = p.id
+FROM sgi_fgi_impact_processes p
+JOIN sgi_fgi_impact_stores s ON s.impact_process_id = p.id
 WHERE p.process_status = 'READY_DOCUMENT'
 GROUP BY p.id, p.impacted_store_code, p.impact_month;
 ```
@@ -104,20 +127,20 @@ GROUP BY p.id, p.impacted_store_code, p.impact_month;
 #### Write / upsert query
 
 ```sql
-INSERT INTO compensation_documents
+INSERT INTO sgi_compensation_documents
     (doc_no, year, running_no, impact_process_id, impacted_store_code, impact_month,
      source, status_code, current_section_code, total_compensation_amount, created_by)
 VALUES (:doc_no, :year, :running_no, :impact_process_id, :impacted_store_code, :impact_month,
         'FS', '06', '06', :total_compensation_amount, 'JOB-8')
 ON CONFLICT (impact_process_id) DO NOTHING;
 
-INSERT INTO interface_transactions
+INSERT INTO sgi_interface_transactions
     (run_id, data_name, direction, status, impact_process_id, doc_no,
      business_key, period_key, outbox_status, purge_after, completed_at)
 SELECT :run_id, 'DOCUMENT_CREATE', 'INTERNAL', 'COMPLETED', d.impact_process_id, d.doc_no,
        CAST(d.impact_process_id AS VARCHAR), d.impact_month, 'COMPLETED',
        CURRENT_TIMESTAMP + INTERVAL '365 days', CURRENT_TIMESTAMP
-FROM compensation_documents d
+FROM sgi_compensation_documents d
 WHERE d.impact_process_id = :impact_process_id
 ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;
 ```
@@ -159,7 +182,7 @@ Job 8 ใช้ running number แบบ monotonic ต่อปี ค.ศ. ช�
 | --- | --- | --- |
 | Rerun พบ impact_process_id เดิมก่อนจองเลข | คืน/ข้ามด้วย doc_no เดิมโดยไม่จอง running_no เพิ่มเมื่อ fast lookup พบข้อมูลแล้ว | duplicateExistingCount + existingDocNo |
 | Concurrent worker ชน ON CONFLICT หลังจองเลข | ยอมให้ running_no ที่จองแล้วกลายเป็น gap; ห้ามลด sequence และห้ามนำเลขกลับมาใช้ | numberGapCount + conflictedImpactProcessId |
-| Conflict path | อ่าน compensation_documents ด้วย impact_process_id แล้วใช้ d.doc_no เดิมสำหรับ tracking/reconcile | tracking.doc_no ตรงกับเอกสารที่ commit อยู่จริง |
+| Conflict path | อ่าน sgi_compensation_documents ด้วย impact_process_id แล้วใช้ d.doc_no เดิมสำหรับ tracking/reconcile | tracking.doc_no ตรงกับเอกสารที่ commit อยู่จริง |
 | New document path | insert document และ tracking (direction=INTERNAL) ใน transaction เดียว | createdCount และ trackingCount เพิ่มเท่ากัน |
 | Audit/runbook | อธิบายว่าเลขอาจไม่ต่อเนื่องแต่ต้องไม่ซ้ำและตรวจสอบย้อนกลับได้ | ไม่มีขั้นตอน manual reuse หรือ renumber |
 
@@ -170,11 +193,11 @@ Job 8 ใช้ running number แบบ monotonic ต่อปี ค.ศ. ช�
 | รันตามตารางเวลา | CRON | scheduler → runner (job 8) | อ่าน cron/พารามิเตอร์จาก backend config |
 | รันนอกรอบ (manual/rerun) | CLI | CLI/ops runbook → runner (job 8) | guard ไม่ให้รันซ้อนด้วย distributed lock |
 | แก้พารามิเตอร์/เปิด-ปิด job | CONFIG | แก้ backend config แล้ว deploy | ไม่มี endpoint และไม่มีหน้าจอควบคุม — หน้า Flow Batch Job เป็น reference อย่างเดียว (2026-08-06) |
-| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ interface_transactions |
+| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ sgi_interface_transactions |
 
 ## 7. API Contract
 
-**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
@@ -182,36 +205,36 @@ Job 8 ใช้ running number แบบ monotonic ต่อปี ค.ศ. ช�
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| document_running_numbers | R/W | ตัวนับเลขเอกสารรายปี — ออก doc_no YYYY/xxxxx (ค.ศ.) |
-| fgi_impact_stores | R/W | อ่าน candidate และอัปเดตสถานะสร้างเอกสาร |
-| fgi_impact_processes | R | hub รอบชดเชย |
-| compensation_documents | W | สร้างหัวเอกสารแทนไฟล์ BPM06001O |
-| interface_transactions | W | tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง) |
+| sgi_document_running_numbers | R/W | ตัวนับเลขเอกสารรายปี — ออก doc_no YYYY/xxxxx (ค.ศ.) |
+| sgi_fgi_impact_stores | R/W | อ่าน candidate และอัปเดตสถานะสร้างเอกสาร |
+| sgi_fgi_impact_processes | R | hub รอบชดเชย |
+| sgi_compensation_documents | W | สร้างหัวเอกสารแทนไฟล์ BPM06001O |
+| sgi_interface_transactions | W | tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง) |
 
 ## 9. Skeleton Code (Batch Job 8)
 
 #### 9.1 ผังไฟล์ที่ต้องสร้าง (Job 8)
 
-โครงไฟล์ของ Job 8 (document.service.createFromImpact เดิม) วางใต้ `src/batch/sbpgi/` ของ store-backend โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`
+โครงไฟล์ของ Job 8 (document.service.createFromImpact เดิม) วางใต้ `src/batch/sgi/` ของ store-backend โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`
 
 **หมายเหตุสำคัญ — `src/batch/*` ทั้งชุดเป็นของใหม่ที่ยังไม่มีใน store-backend**: ปัจจุบัน repo ไม่มีโฟลเดอร์ `src/batch` เลย และแม้จะติดตั้ง `@nestjs/schedule` ไว้แล้วก็ยัง**ไม่มี `@Cron`/`@Interval` แม้แต่จุดเดียว** ดังนั้น `runner.ts` / `scheduler.ts` / `cli.js` / `job-failure.notifier.ts` คือ **งานตั้งต้นของ Phase แรก** ที่ต้องสร้างเองทั้งหมด พร้อม register `ScheduleModule.forRoot()` ใน `app.module.ts` — ไม่ใช่ของเดิมที่ reuse ได้
 
 | Path | หน้าที่ |
 | --- | --- |
-| src/batch/sbpgi/job-8-create-compensation-document/job-8-create-compensation-document.job.ts | คลาส `CreateCompensationDocumentJob` — `run(ctx)` เรียงตาม flow ของ Job 8 ทีละขั้น, ครอบ transaction, จบด้วย structured log |
-| src/batch/sbpgi/job-8-create-compensation-document/job-8-create-compensation-document.service.ts | คลาส `CreateCompensationDocumentService` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE` |
-| src/batch/sbpgi/job-8-create-compensation-document/job-8-create-compensation-document.config.ts | คลาส `SbpgiJob8Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 4 ตัวของ Job 8 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
-| src/batch/sbpgi/job-8-create-compensation-document/job-8-create-compensation-document.module.ts | NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule` |
+| src/batch/sgi/job-8-create-compensation-document/job-8-create-compensation-document.job.ts | คลาส `CreateCompensationDocumentJob` — `run(ctx)` เรียงตาม flow ของ Job 8 ทีละขั้น, ครอบ transaction, จบด้วย structured log |
+| src/batch/sgi/job-8-create-compensation-document/job-8-create-compensation-document.service.ts | คลาส `CreateCompensationDocumentService` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE` |
+| src/batch/sgi/job-8-create-compensation-document/job-8-create-compensation-document.config.ts | คลาส `SgiJob8Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 4 ตัวของ Job 8 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
+| src/batch/sgi/job-8-create-compensation-document/job-8-create-compensation-document.module.ts | NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule` |
 | src/batch/runner.ts | ตัวรันกลาง: resolve job ตาม jobNo, กันรันซ้อนด้วย advisory lock, จับ error → แจ้งเตือน, เขียน structured log สรุป (ใช้ร่วมทั้ง 11 job) |
-| src/batch/scheduler.ts | ลงทะเบียน cron จาก config (`SBPGI_JOB8_CRON` = `30 17 7-31 * *`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook |
+| src/batch/scheduler.ts | ลงทะเบียน cron จาก config (`SGI_JOB8_CRON` = `30 17 7-31 * *`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook |
 | src/batch/job-failure.notifier.ts | ส่งอีเมลแจ้งผู้ดูแลเมื่อ job ล้มเหลว ผ่าน `EmailLibService` ของ `@gosoft-sbp/email-lib` (log ลง `email_sent` ให้อัตโนมัติ) |
 
 #### 9.2 Config Schema ของ Job 8 (backend config / env)
 
-cron ปัจจุบันของ Job 8 คือ `30 17 7-31 * *` (วันที่ 7–31 เวลา 17:30) — ประกาศเป็น `SBPGI_JOB8_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้
+cron ปัจจุบันของ Job 8 คือ `30 17 7-31 * *` (วันที่ 7–31 เวลา 17:30) — ประกาศเป็น `SGI_JOB8_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้
 
 ```ts
-// src/batch/sbpgi/job-8-create-compensation-document/job-8-create-compensation-document.config.ts
+// src/batch/sgi/job-8-create-compensation-document/job-8-create-compensation-document.config.ts
 // convention จริงของ store-backend คือคลาส config (`src/config/app.config.ts` ที่ export ผ่าน
 // `AppConfigModule` แบบ @Global แล้วอ่าน process.env ตรง ๆ) — โปรเจกต์นี้ **ไม่ได้ใช้ registerAs**
 // แม้แต่จุดเดียว จึงประกาศเป็นคลาสให้รีวิว/ทดสอบเหมือน config ตัวอื่น
@@ -238,18 +261,18 @@ export interface Job8Config {
 }
 
 @Injectable()
-export class SbpgiJob8Config implements Job8Config {
+export class SgiJob8Config implements Job8Config {
   // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)
-  enabled = (process.env.SBPGI_JOB8_ENABLED ?? 'true') === 'true';
-  cron = process.env.SBPGI_JOB8_CRON ?? '30 17 7-31 * *';
-  cron = process.env.SBPGI_JOB8_CRON ?? '30 17 7-31 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  targetTable = process.env.SBPGI_JOB8_TARGET_TABLE ?? 'compensation_documents'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  condition = process.env.SBPGI_JOB8_CONDITION ?? 'สถานะ I + forecast + ยังไม่สร้างเอกสาร'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  param4 = process.env.SBPGI_JOB8_PARAM4 ?? 'ห้ามสร้างไฟล์ BPM06001O, ห้าม SFTP, ห้ามเรียก K2 REST'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  mailTo = process.env.SBPGI_JOB8_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: email-lib กลาง (sendEmail) แจ้ง error/pending ตาม config)
+  enabled = (process.env.SGI_JOB8_ENABLED ?? 'true') === 'true';
+  cron = process.env.SGI_JOB8_CRON ?? '30 17 7-31 * *';
+  cron = process.env.SGI_JOB8_CRON ?? '30 17 7-31 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
+  targetTable = process.env.SGI_JOB8_TARGET_TABLE ?? 'sgi_compensation_documents'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  condition = process.env.SGI_JOB8_CONDITION ?? 'สถานะ I + forecast + ยังไม่สร้างเอกสาร'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  param4 = process.env.SGI_JOB8_PARAM4 ?? 'ห้ามสร้างไฟล์ BPM06001O, ห้าม SFTP, ห้ามเรียก K2 REST'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  mailTo = process.env.SGI_JOB8_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: email-lib กลาง (sendEmail) แจ้ง error/pending ตาม config)
 }
 
-// TODO: เพิ่ม SbpgiJob8Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
+// TODO: เพิ่ม SgiJob8Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
 ```
 
 #### 9.3 Job Class — `run(ctx)` ของ Job 8 ทีละขั้นตามผัง
@@ -326,12 +349,12 @@ export class CreateCompensationDocumentService {
     // TODO: implement
   }
 
-  // insert compensation_documents
+  // insert sgi_compensation_documents
   async step05Insert(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
-  // insert interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED
+  // insert sgi_interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED
   async step06WriteFile(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -349,12 +372,12 @@ export class CreateCompensationDocumentService {
 | 2 | process | query impact profile สถานะ I + forecast + ยังไม่สร้างเอกสาร | step02Document() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 3 | decision | ข้อมูลผู้อนุมัติ/ร้าน/ยอดชดเชยครบ? | check03Condition() | [err] บันทึก reject reason / ไม่สร้างเอกสาร |
 | 4 | process | generate doc_no YYYY/xxxxx | step04Document() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 5 | process | insert compensation_documents | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 6 | process | insert interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED | step06WriteFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 7 | end | จบ - workflow เปิดโดย Job 8b / POST /sbpgi/workflow/instances | summarize() | - |
+| 5 | process | insert sgi_compensation_documents | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 6 | process | insert sgi_interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED | step06WriteFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 7 | end | จบ - workflow เปิดโดย Job 8b / POST /sgi/workflow/instances | summarize() | - |
 
 ```ts
-// src/batch/sbpgi/job-8-create-compensation-document/job-8-create-compensation-document.job.ts
+// src/batch/sgi/job-8-create-compensation-document/job-8-create-compensation-document.job.ts
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { DataSource, EntityManager } from 'typeorm';
 import { CreateCompensationDocumentService, type JobState } from './job-8-create-compensation-document.service';
@@ -386,9 +409,9 @@ export class CreateCompensationDocumentJob {
         if (!ok03) throw new JobFailedError('JOB8_STEP03', 'บันทึก reject reason / ไม่สร้างเอกสาร');
         // ขั้นที่ 4: generate doc_no YYYY/xxxxx · TODO: running ต่อปี ค.ศ. (มติ 2026-08-06)
         await this.service.step04Document(state, manager);
-        // ขั้นที่ 5: insert compensation_documents · TODO: ผูก impact_process_id และสถานะเริ่มต้น
+        // ขั้นที่ 5: insert sgi_compensation_documents · TODO: ผูก impact_process_id และสถานะเริ่มต้น
         await this.service.step05Insert(state, manager);
-        // ขั้นที่ 6: insert interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED · TODO: ไม่สร้างไฟล์ BPM06001O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ
+        // ขั้นที่ 6: insert sgi_interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED · TODO: ไม่สร้างไฟล์ BPM06001O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ
         await this.service.step06WriteFile(state, manager);
       });
       return this.summarize(state, 'SUCCESS', startedAt);
@@ -405,7 +428,7 @@ export class CreateCompensationDocumentJob {
     // TODO: structured log บรรทัดเดียวจบ — ไม่มีตาราง job_run_histories แล้ว (2026-08-06)
     const summary = {
       event: 'job.finish', jobNo: '8', jobName: 'CreateCompensationDocument', status,
-      period: state.period, output: 'compensation_documents (DB)',
+      period: state.period, output: 'sgi_compensation_documents (DB)',
       read: state.read, written: state.written, skipped: state.skipped,
       rejected: state.rejected, durationMs: Date.now() - startedAt,
     };
@@ -426,7 +449,7 @@ import type { DataSource } from 'typeorm';
 
 // TODO: ห้ามใช้แถวสถานะ RUNNING ในตารางเป็นตัวกัน (ไม่มีตาราง job_run_histories แล้ว)
 //       ใช้ PostgreSQL advisory lock ระดับ session แทน — ปลดอัตโนมัติเมื่อ connection หลุด
-export const SBPGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SBPGI
+export const SGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SGI
 export const JOB_LOCK_KEYS: Record<string, number> = { '8': 80 /* TODO: เพิ่มครบทั้ง 11 job */ };
 
 @Injectable()
@@ -443,7 +466,7 @@ export class BatchRunner {
     try {
       const [{ locked }] = await runner.query(
         'SELECT pg_try_advisory_lock($1, $2) AS locked',
-        [SBPGI_JOB_LOCK_CLASS_ID, objectId],
+        [SGI_JOB_LOCK_CLASS_ID, objectId],
       );
       if (!locked) {
         // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล
@@ -453,7 +476,7 @@ export class BatchRunner {
       return await fn();
     } finally {
       // TODO: ปลด lock ทุกกรณี แล้วคืน connection เข้า pool
-      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SBPGI_JOB_LOCK_CLASS_ID, objectId]);
+      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SGI_JOB_LOCK_CLASS_ID, objectId]);
       await runner.release();
     }
   }
@@ -466,55 +489,55 @@ repository ของ Job 8 ประกาศเป็น factory provider (`{pr
 
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
-| document_running_numbers | R/W | ตัวนับเลขเอกสารรายปี — ออก doc_no YYYY/xxxxx (ค.ศ.) | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| fgi_impact_stores | R/W | อ่าน candidate และอัปเดตสถานะสร้างเอกสาร | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| fgi_impact_processes | R | hub รอบชดเชย | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| compensation_documents | W | สร้างหัวเอกสารแทนไฟล์ BPM06001O | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| interface_transactions | W | tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง) | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_document_running_numbers | R/W | ตัวนับเลขเอกสารรายปี — ออก doc_no YYYY/xxxxx (ค.ศ.) | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_fgi_impact_stores | R/W | อ่าน candidate และอัปเดตสถานะสร้างเอกสาร | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_fgi_impact_processes | R | hub รอบชดเชย | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_compensation_documents | W | สร้างหัวเอกสารแทนไฟล์ BPM06001O | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_interface_transactions | W | tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง) | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 8 CreateCompensationDocument — query หลักที่ต้อง implement
 -- TODO: ทุก statement รันผ่าน DATA_SOURCE (SELECT ไป slave, write ไป master) และ
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
--- [R/W] document_running_numbers : ตัวนับเลขเอกสารรายปี — ออก doc_no YYYY/xxxxx (ค.ศ.)
+-- [R/W] sgi_document_running_numbers : ตัวนับเลขเอกสารรายปี — ออก doc_no YYYY/xxxxx (ค.ศ.)
 -- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
 SELECT /* TODO: PK + คอลัมน์ที่ต้องใช้ */
-  FROM document_running_numbers
+  FROM sgi_document_running_numbers
  WHERE /* TODO: เงื่อนไขงวด/สถานะที่ job นี้คัดแถว */ 1 = 1
    FOR UPDATE SKIP LOCKED;
 
-UPDATE document_running_numbers
+UPDATE sgi_document_running_numbers
    SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
        updated_at = NOW(), updated_by = 'JOB8'
  WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
 
--- [R/W] fgi_impact_stores : อ่าน candidate และอัปเดตสถานะสร้างเอกสาร
+-- [R/W] sgi_fgi_impact_stores : อ่าน candidate และอัปเดตสถานะสร้างเอกสาร
 -- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
 SELECT /* TODO: PK + คอลัมน์ที่ต้องใช้ */
-  FROM fgi_impact_stores
+  FROM sgi_fgi_impact_stores
  WHERE impact_year = $1 AND impact_month = $2  -- TODO: ยืนยันชื่อคอลัมน์งวดกับ database.md
    FOR UPDATE SKIP LOCKED;
 
-UPDATE fgi_impact_stores
+UPDATE sgi_fgi_impact_stores
    SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
        updated_at = NOW(), updated_by = 'JOB8'
  WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
 
--- [R] fgi_impact_processes : hub รอบชดเชย
+-- [R] sgi_fgi_impact_processes : hub รอบชดเชย
 -- TODO: เติมเฉพาะคอลัมน์ที่ job ใช้จริง (ห้าม SELECT *) และตรวจว่ามี index รองรับ WHERE นี้
 SELECT /* TODO: columns */
-  FROM fgi_impact_processes
+  FROM sgi_fgi_impact_processes
  WHERE impact_year = $1 AND impact_month = $2  -- TODO: ยืนยันชื่อคอลัมน์งวดกับ database.md
  ORDER BY /* TODO: คีย์ที่ทำให้ลำดับคงที่ */
  LIMIT $3 OFFSET $4;  -- TODO: อ่านเป็น chunk กัน memory บวม
 
--- [W] compensation_documents : สร้างหัวเอกสารแทนไฟล์ BPM06001O
+-- [W] sgi_compensation_documents : สร้างหัวเอกสารแทนไฟล์ BPM06001O
 -- TODO: เติมคอลัมน์ payload จริงจาก database.md
-INSERT INTO compensation_documents
+INSERT INTO sgi_compensation_documents
   (/* TODO: business key + payload + created_by, created_at */)
 VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
-ON CONFLICT (source, impacted_store_code, impact_month, new_store_code, round_no)   -- unique key จริงตาม DDL ของ compensation_documents (ห้ามเดา)
+ON CONFLICT (source, impacted_store_code, impact_month, new_store_code, round_no)   -- unique key จริงตาม DDL ของ sgi_compensation_documents (ห้ามเดา)
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
        updated_at = NOW(), updated_by = 'JOB8';
 ```
@@ -542,8 +565,8 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 8 เดิมคือ email-lib กลาง (sendEmail) แจ้ง error/pending ตาม config — ย้ายมาเป็น env SBPGI_JOB8_MAIL_TO
-    const recipients = (process.env.SBPGI_JOB8_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    // TODO: ผู้รับของ Job 8 เดิมคือ email-lib กลาง (sendEmail) แจ้ง error/pending ตาม config — ย้ายมาเป็น env SGI_JOB8_MAIL_TO
+    const recipients = (process.env.SGI_JOB8_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
       return;
@@ -551,14 +574,14 @@ export class JobFailureNotifier {
     try {
       await this.mailService.sendMail({
         // TODO: emailId = id ของ template EM-07 (แจ้ง error batch) ในตาราง email_template
-        emailId: Number(process.env.SBPGI_JOB_FAIL_EMAIL_TEMPLATE_ID),
+        emailId: Number(process.env.SGI_JOB_FAIL_EMAIL_TEMPLATE_ID),
         mailTo: recipients.join(','), // signature รับ string ไม่ใช่ string[]
         mailCc: '',
         param: {
           jobNo, jobName: 'CreateCompensationDocument',
           jobTitle: 'สร้างเอกสารประกันรายได้อัตโนมัติ',
           period: ctx.period, triggeredBy: ctx.triggeredBy,
-          output: 'compensation_documents (DB)',
+          output: 'sgi_compensation_documents (DB)',
           errorMessage: error.message,
           rerunNote: 'idempotent ด้วย impact_process_id; เจอ doc เดิมให้ skip และคืนสถานะ already_created',
         },
@@ -578,8 +601,8 @@ export class JobFailureNotifier {
 - ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: ห้ามนำ logic SFTP compensateflow หรือ K2 StartInstance กลับมาใช้ใน target design
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
 - สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=8 --period=<YYYYMM>`
-- หลังรันซ้ำ ตรวจ output `compensation_documents (DB)` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
-- ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
+- หลังรันซ้ำ ตรวจ output `sgi_compensation_documents (DB)` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
+- ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 
 ## 10. Processing Flow
 
@@ -589,9 +612,9 @@ export class JobFailureNotifier {
 | 2 | query impact profile สถานะ I + forecast + ยังไม่สร้างเอกสาร (ใช้ impact_process_id เป็น idempotency key) |
 | 3 | ข้อมูลผู้อนุมัติ/ร้าน/ยอดชดเชยครบ? \| No: บันทึก reject reason / ไม่สร้างเอกสาร |
 | 4 | generate doc_no YYYY/xxxxx (running ต่อปี ค.ศ. (มติ 2026-08-06)) |
-| 5 | insert compensation_documents (ผูก impact_process_id และสถานะเริ่มต้น) |
-| 6 | insert interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED (ไม่สร้างไฟล์ BPM06001O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ) |
-| 7 | จบ - workflow เปิดโดย Job 8b / POST /sbpgi/workflow/instances |
+| 5 | insert sgi_compensation_documents (ผูก impact_process_id และสถานะเริ่มต้น) |
+| 6 | insert sgi_interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED (ไม่สร้างไฟล์ BPM06001O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ) |
+| 7 | จบ - workflow เปิดโดย Job 8b / POST /sgi/workflow/instances |
 
 ## 11. Acceptance Criteria
 
@@ -626,7 +649,7 @@ export class JobFailureNotifier {
 | business rule | logic | ทุกรอบต้องเขียน application log แบบ structured (เวลา/แถว/ไฟล์/ผล) และ error ต้องส่ง EM-07 |
 | business rule | logic | DB/table mapping ใช้เป็น reference สำหรับ implement Job เท่านั้น ไม่ใช่งานสร้างหน้า Database |
 | business rule | logic | รองรับ rerun rule และ risk note ตาม runbook |
-| `document_running_numbers`, `fgi_impact_stores`, `compensation_documents` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| `sgi_document_running_numbers`, `sgi_fgi_impact_stores`, `sgi_compensation_documents` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | runner | idempotency | รันซ้ำด้วย fixture เดิมต้องไม่เกิดแถวซ้ำ (ON CONFLICT / business unique key ทำงาน) |
 | runner | lock | เรียกซ้อนขณะกำลังรัน ต้องถูกปฏิเสธด้วย advisory lock |
 

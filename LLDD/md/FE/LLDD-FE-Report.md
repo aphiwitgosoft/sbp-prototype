@@ -14,9 +14,21 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| ใช้ endpoint ของ | **LLDD-BE-API-Lookup** | `GET /store/search (ระบบ SBP เดิม)` |
+| ใช้ endpoint ของ | **LLDD-BE-API-Report-and-Master-Data** | `GET /api/v1/sgi/report/status-summary` · `GET /api/v1/sgi/report/status-summary/export` |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| สัญญากลาง | **LLDD-FE-Integration-Contracts** | API client · auth header · error mapping · RBAC/menu gating ฝั่ง FE |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Foundation** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+
 ## 2. Screen / Functional Scope
 
-- Report filters (SDD slide 60 · 2026-08-06: สถานะ*|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ|ประเภทร้าน (รหัสจาก common_code · รหัสที่ 4 รอยืนยัน) · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว)
+- Report filters (SDD slide 60 · 2026-08-06: สถานะ*|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ|ประเภทร้าน (รหัสจาก common_code · ห้าม hardcode) · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว)
 - Summary table (sortable 14 columns)
 - ปุ่มออกผล 3 ตัว (Preview Report · Export Excel · Export CSV to Batch)
 - Sample data verification
@@ -31,11 +43,21 @@ _รูปที่ 1: Screenshot: k2-report-01.png_
 
 _รูปที่ 2: Screenshot: k2-report-02.png_
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary Report](../../assets/flows/FE-LLDD-FE-Report.png)
 
 _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary Report_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 4: Sequence diagram: LLDD FE - Status Summary Report](../../assets/flows/FE-LLDD-FE-Report-sequence.png)
+
+_รูปที่ 4: Sequence diagram: LLDD FE - Status Summary Report_
 
 ## 5. Field, Format, and Validation
 
@@ -47,7 +69,7 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 | impactMonthFrom | YYYY-MM | optional; month picker | ส่งและแสดงเป็น ค.ศ. เช่น 2026-05 |
 | impactMonthTo | YYYY-MM | optional; month picker; must be >= from | ถ้า from > to ให้แสดง validation ก่อน call API |
 | storeTypes | array ของ BranchTypeFGIName | optional multi select | **ยืนยันจาก master จริงแล้ว (`ข้อมูล Master K2.xlsx` · ชีต `BranchTypeProfile` จาก `CPA_FRN_FGI`)**: ค่าที่ใช้คือคอลัมน์ `BranchTypeFGIName` มี **7 ค่าไม่ซ้ำ** — `A` (A-Mo) · `B` (B(1)) · `C` (C และ C(Retire CPALL)) · `D` (Type D — เดิมเรียก BGC) · `E` (B(2)) · `PTT` · `บริษัท` (Corporate) · ⚠️ **D กับ E เป็นคนละประเภทและมีจริงทั้งคู่** — เอกสารรุ่นก่อนที่แสดงเพียง 4 ตัวเลือก (A/B/C/E หรือ A/B/C/D) **ผิด** ทั้ง SDD สไลด์ 60 (แสดงบางส่วน) และ SRS (เขียน “พนักงาน” ซึ่ง**ไม่มีใน master**) · ยังคง**ห้าม hardcode** — โหลดจาก `GET /common/common-code` ของระบบ SBP เดิม แล้วใช้ 7 ค่านี้เป็น expected set ตอนทดสอบ |
-| status | statusCode string | required single select | บังคับเลือก 1 สถานะก่อน Preview/Export; options มาจาก sps_store.workflow_status ของ @srm/glb-workflow (ตาราง document_statuses ของ SBPGI ถูกตัดแล้ว) |
+| status | statusCode string | required single select | บังคับเลือก 1 สถานะก่อน Preview/Export; options มาจาก sps_store.workflow_status ของ @srm/glb-workflow (ตาราง document_statuses ของ SGI ถูกตัดแล้ว) |
 | resultCategory | APPROVE\|REJECT\|CANCELLED\|PENDING | optional radio (status เท่านั้นที่บังคับ) | **4 ค่า** — APPROVE=ประกันรายได้ · REJECT=ไม่ประกันรายได้ · **CANCELLED=ยกเลิกโดยระบบ (เพิ่ม 2026-08-10)** · PENDING/ไม่มีค่า=ยังไม่มีผล · CANCELLED มาจาก master จริง `DecisionProfile` decision 14 `CancelBySystem` (`DecisionResultName` = ยกเลิกโดยระบบ) ซึ่ง SDD สไลด์ 60 ไม่ได้แสดงไว้ |
 | regions | array ของ ZoneName | optional multi select | **ยืนยันจาก master จริงแล้ว (`ข้อมูล Master K2.xlsx` · ชีต `ZoneProfile`)**: **13 ภาค** — BN(10) · BW(20) · BE(30) · BG(40) · BS(70) · REU(81) · NEU(82) · RSU(83) · RSL(84) · RN(85) · RC(86) · REL(90) · NEL(92) (ตัวเลขในวงเล็บคือ `ZoneCode`) — ตรงกับรายการที่ prototype ใช้ **ครบทั้ง 13 ค่า** · รายการ 8 ค่าใน SRS (BE/BN/BS/BW/RC/RE/RN/RS) เป็นของเก่า **ไม่ต้องใช้** · ยังคง**ห้าม hardcode** — โหลดจาก `GET /store/all-regions` ของระบบ SBP เดิม |
 | statementPeriodFrom | YYYY-MM | optional month picker | Period Statement From; ส่ง ค.ศ. format YYYY-MM |
@@ -74,15 +96,15 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/sbpgi/report/status-summary; GET /api/v1/sbpgi/report/status-summary/export |
+| Input | GET /store/search (ระบบ SBP เดิม); GET /api/v1/sgi/report/status-summary; GET /api/v1/sgi/report/status-summary/export |
 | Progress | เปิดหน้า Report; โหลด reference status/region/store type ถ้ามี API (ภาคใหม่แสดง checkbox อัตโนมัติ); ผู้ใช้ระบุ filter 7 ตัวตาม SDD สไลด์ 60; Validate status (required) · คู่รหัสร้านถูกกระทบ-เปิดกระทบ · Period Statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ |
-| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / sgi_consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Status Summary Report Component Contract
 
 | ID | Component / Scope | Single responsibility | Definition of done |
 | --- | --- | --- | --- |
-| C01 | Report filters (SDD slide 60 · 2026-08-06: สถานะ*\|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ\|ประเภทร้าน (รหัสจาก common_code · รหัสที่ 4 รอยืนยัน) · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว) | จัดการ filter 7 ตัวตาม SDD สไลด์ 60 (status, impacted/new store code, store type, period statement, region, result) พร้อม dependency validation | status required, คู่รหัสร้านต้องมาด้วยกัน, period statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ และช่วง from-to ตรวจผ่านก่อนค้นหา/Export |
+| C01 | Report filters (SDD slide 60 · 2026-08-06: สถานะ*\|รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ\|ประเภทร้าน (รหัสจาก common_code · ห้าม hardcode) · Period Statement From-To (date, ค.ศ.) เต็มแถว · ภาคเต็มแถว · ผลการพิจารณาเต็มแถว) | จัดการ filter 7 ตัวตาม SDD สไลด์ 60 (status, impacted/new store code, store type, period statement, region, result) พร้อม dependency validation | status required, คู่รหัสร้านต้องมาด้วยกัน, period statement บังคับเมื่อสถานะ = เสร็จสิ้นดำเนินการ และช่วง from-to ตรวจผ่านก่อนค้นหา/Export |
 | C02 | Summary table (sortable 14 columns) | map response เป็น summary line และตาราง 14 คอลัมน์ (SDD สไลด์ 60) ด้วย formatter กลาง | คอลัมน์/ยอดรวม/วันที่ (ค.ศ.)/leading zero ตรง response และข้อมูลยอดขายผิดปกติใช้ salesDataDays |
 | C03 | ปุ่มออกผล 3 ตัว (Preview Report · Export Excel · Export CSV to Batch) | ส่ง filter snapshot ล่าสุดไป export endpoint และจัดการ download/error state · SDD GI สไลด์ 62 กำหนดปุ่มออกผล 3 ตัว — Preview Report (ดูตัวอย่างก่อนออกไฟล์) · Export Excel (ทีมบัญชีเทียบ SAP) · Export CSV to Batch (ส่งเข้าคิว batch ประมวลผลต่อ) | ทั้งสามปุ่มใช้เงื่อนไขค้นหาชุดเดียวกับตารางผลลัพธ์ และชื่อไฟล์/content type ตรง response (.xlsx สำหรับ Excel · .csv สำหรับ CSV to Batch) |
 | C04 | Sample data verification | รองรับ fixture สำหรับ 0 แถว, หลาย region/type, เกิน threshold และยอดขายไม่ครบ 60 วัน | sample verification ครอบคลุม table/export parity 14 คอลัมน์ โดยไม่ฝังข้อมูลทดสอบใน production |
@@ -92,18 +114,18 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
 | GET /store/search (ระบบ SBP เดิม) | Popup เลือกร้านที่ถูกกระทบ | เปิด popup ร้าน (ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ) |
-| GET /api/v1/sbpgi/report/status-summary | ค้นหาข้อมูลรายงานตรวจสอบประกันรายได้ (14 คอลัมน์ · SDD สไลด์ 60) | ค้นหาข้อมูล (ปุ่ม ค้นหาข้อมูล); Export Excel (ปุ่ม Export Excel ท้าย filter) |
-| GET /api/v1/sbpgi/report/status-summary/export | Export Excel ด้วย filter เดียวกับการค้นหา | Export Excel (ปุ่ม Export Excel ท้าย filter) |
+| GET /api/v1/sgi/report/status-summary | ค้นหาข้อมูลรายงานตรวจสอบประกันรายได้ (14 คอลัมน์ · SDD สไลด์ 60) | ค้นหาข้อมูล (ปุ่ม ค้นหาข้อมูล); Export Excel (ปุ่ม Export Excel ท้าย filter) |
+| GET /api/v1/sgi/report/status-summary/export | Export Excel ด้วย filter เดียวกับการค้นหา | Export Excel (ปุ่ม Export Excel ท้าย filter) |
 
 ### 5.92 Status Summary Report Interaction State Machine
 
 | Action | Trigger | API / State transition | Expected visible result |
 | --- | --- | --- | --- |
 | เปิด popup ร้าน | ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ | GET /store/search (ระบบ SBP เดิม) | เลือก store แล้วเติม storeCode/storeName |
-| ค้นหาข้อมูล | ปุ่ม ค้นหาข้อมูล | GET /api/v1/sbpgi/report/status-summary | validate status (required) และคู่รหัสร้าน แล้ว render summary line + table 14 columns |
+| ค้นหาข้อมูล | ปุ่ม ค้นหาข้อมูล | GET /api/v1/sgi/report/status-summary | validate status (required) และคู่รหัสร้าน แล้ว render summary line + table 14 columns |
 | เคลียร์ค่าเริ่มใหม่ | ปุ่มเคลียร์ค่าเริ่มใหม่ | client state | reset filter, summary, table และ error message |
-| Export Excel | ปุ่ม Export Excel ท้าย filter | GET /api/v1/sbpgi/report/status-summary/export | ส่ง filter ชุดเดียวกับการค้นหา แล้วดาวน์โหลดไฟล์ .xlsx 14 คอลัมน์ |
-| Open detail | คลิกเลขที่เอกสารหรือ row | navigate /sbpgi/document/{docNo} หรือ preview modal | เปิดเอกสารที่เกี่ยวข้อง |
+| Export Excel | ปุ่ม Export Excel ท้าย filter | GET /api/v1/sgi/report/status-summary/export | ส่ง filter ชุดเดียวกับการค้นหา แล้วดาวน์โหลดไฟล์ .xlsx 14 คอลัมน์ |
+| Open detail | คลิกเลขที่เอกสารหรือ row | navigate /sgi/document/{docNo} หรือ preview modal | เปิดเอกสารที่เกี่ยวข้อง |
 
 ### 5.93 Status Summary Report Feature Failure Checks
 
@@ -121,10 +143,10 @@ _รูปที่ 3: Implementation flow reference: LLDD FE - Status Summary R
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
 | เปิด popup ร้าน | ปุ่มแว่นขยายข้างรหัสร้านที่ถูกกระทบ | GET /store/search (ระบบ SBP เดิม) | เลือก store แล้วเติม storeCode/storeName |
-| ค้นหาข้อมูล | ปุ่ม ค้นหาข้อมูล | GET /api/v1/sbpgi/report/status-summary | validate status (required) และคู่รหัสร้าน แล้ว render summary line + table 14 columns |
+| ค้นหาข้อมูล | ปุ่ม ค้นหาข้อมูล | GET /api/v1/sgi/report/status-summary | validate status (required) และคู่รหัสร้าน แล้ว render summary line + table 14 columns |
 | เคลียร์ค่าเริ่มใหม่ | ปุ่มเคลียร์ค่าเริ่มใหม่ | client state | reset filter, summary, table และ error message |
-| Export Excel | ปุ่ม Export Excel ท้าย filter | GET /api/v1/sbpgi/report/status-summary/export | ส่ง filter ชุดเดียวกับการค้นหา แล้วดาวน์โหลดไฟล์ .xlsx 14 คอลัมน์ |
-| Open detail | คลิกเลขที่เอกสารหรือ row | navigate /sbpgi/document/{docNo} หรือ preview modal | เปิดเอกสารที่เกี่ยวข้อง |
+| Export Excel | ปุ่ม Export Excel ท้าย filter | GET /api/v1/sgi/report/status-summary/export | ส่ง filter ชุดเดียวกับการค้นหา แล้วดาวน์โหลดไฟล์ .xlsx 14 คอลัมน์ |
+| Open detail | คลิกเลขที่เอกสารหรือ row | navigate /sgi/document/{docNo} หรือ preview modal | เปิดเอกสารที่เกี่ยวข้อง |
 
 ## 7. API Contract
 
@@ -173,7 +195,7 @@ Popup เลือกร้านที่ถูกกระทบ
 | items[].region | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].storeType | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/sbpgi/report/status-summary
+### GET /api/v1/sgi/report/status-summary
 
 ค้นหาข้อมูลรายงานตรวจสอบประกันรายได้ (14 คอลัมน์ · SDD สไลด์ 60)
 
@@ -277,7 +299,7 @@ Popup เลือกร้านที่ถูกกระทบ
 | items[].createdDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
 | items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 
-### GET /api/v1/sbpgi/report/status-summary/export
+### GET /api/v1/sgi/report/status-summary/export
 
 Export Excel ด้วย filter เดียวกับการค้นหา
 
@@ -319,22 +341,22 @@ Export Excel ด้วย filter เดียวกับการค้นห�
 
 #### 8.1 ผังไฟล์ที่ต้องสร้าง
 
-โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SBPGI อยู่ใต้ `src/app/(main)/sbpgi/*` และ import ผ่าน alias `@/*` ทุกจุด
+โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด
 
 | Path ไฟล์ | หน้าที่ |
 | --- | --- |
-| src/app/(main)/sbpgi/report/status-summary/page.tsx | route page — หน้ารายงานตรวจสอบประกันรายได้ (filter + ตารางผลลัพธ์ + Export Excel) |
-| src/components/sbpgi/report/ReportForm.tsx | component — ฟอร์ม/ฟิลเตอร์ (react-hook-form + yup + FormInputControl) |
-| src/services/sbpgi/report.service.ts | service — เรียก BFF ผ่าน apiClient (GET) |
-| src/hooks/sbpgi/report.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
-| src/types/sbpgi/report.ts | types — request/response ตาม API contract ของเอกสารนี้ |
+| src/app/(main)/sgi/report/status-summary/page.tsx | route page — หน้ารายงานตรวจสอบประกันรายได้ (filter + ตารางผลลัพธ์ + Export Excel) |
+| src/components/sgi/report/ReportForm.tsx | component — ฟอร์ม/ฟิลเตอร์ (react-hook-form + yup + FormInputControl) |
+| src/services/sgi/report.service.ts | service — เรียก BFF ผ่าน apiClient (GET) |
+| src/hooks/sgi/report.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
+| src/types/sgi/report.ts | types — request/response ตาม API contract ของเอกสารนี้ |
 
 #### 8.2 page.tsx — หน้ารายงาน (filter ที่กดค้นหาแล้วค่อยยิง + Export Excel)
 
 ```tsx
 'use client';
 // หน้ารายงานตรวจสอบประกันรายได้ (filter + ตารางผลลัพธ์ + Export Excel)
-// route: /sbpgi/report/status-summary  ·  ต้องมี record ใน GET /menus และสิทธิ์ใน GET /groups/current-user/permissions
+// route: /sgi/report/status-summary  ·  ต้องมี record ใน GET /menus และสิทธิ์ใน GET /groups/current-user/permissions
 
 import { useState } from 'react';
 // Table/Column import จาก barrel `@/components/Table` เท่านั้น (table.tsx เป็น named export
@@ -343,18 +365,18 @@ import { Column, Table } from '@/components/Table';
 import AccessDenied from '@/components/Permission/AccessDenied';
 // permissionStore เป็น named export ของ Zustand store (ไม่มี symbol ชื่อ usePermissionStore ในโปรเจกต์)
 import { permissionStore } from '@/stores/permissionStore';
-import { useSbpgiReportStatusSummaryQuery, useSbpgiReportStatusSummaryExportDownload } from '@/hooks/sbpgi/report.query';
-import type { SbpgiReportStatusSummaryParams, SbpgiReportStatusSummaryItem } from '@/types/sbpgi/report';
-import ReportForm from '@/components/sbpgi/report/ReportForm';
+import { useSgiReportStatusSummaryQuery, useSgiReportStatusSummaryExportDownload } from '@/hooks/sgi/report.query';
+import type { SgiReportStatusSummaryParams, SgiReportStatusSummaryItem } from '@/types/sgi/report';
+import ReportForm from '@/components/sgi/report/ReportForm';
 
-const PAGE_URL = '/sbpgi/report/status-summary';
+const PAGE_URL = '/sgi/report/status-summary';
 
 export default function ReportStatusSummaryPage() {
   const { hasPermission, isPermissionLoaded } = permissionStore();
   // ยิง API เฉพาะตอนกด "ค้นหาข้อมูล" -> ก่อนหน้านั้น submitted = null และ query ถูก disable
-  const [submitted, setSubmitted] = useState<SbpgiReportStatusSummaryParams | null>(null);
-  const { data, isFetching } = useSbpgiReportStatusSummaryQuery(submitted);
-  const exportExcel = useSbpgiReportStatusSummaryExportDownload();
+  const [submitted, setSubmitted] = useState<SgiReportStatusSummaryParams | null>(null);
+  const { data, isFetching } = useSgiReportStatusSummaryQuery(submitted);
+  const exportExcel = useSgiReportStatusSummaryExportDownload();
 
   const canExport = hasPermission(PAGE_URL, 'canExport');
   // รอ permission โหลดเสร็จก่อน ไม่งั้นจะเห็น AccessDenied แว่บหนึ่งทุกครั้งที่เข้าหน้า
@@ -399,16 +421,16 @@ export default function ReportStatusSummaryPage() {
 }
 ```
 
-#### 8.3 service — `src/services/sbpgi/report.service.ts`
+#### 8.3 service — `src/services/sgi/report.service.ts`
 
 ```ts
-// src/services/sbpgi/report.service.ts
+// src/services/sgi/report.service.ts
 // apiClient = axios instance กลาง (baseURL = bffUrl ซึ่งรวม /api/v1 แล้ว, withCredentials, refresh-token interceptor, global loading)
 // ห้ามสร้าง axios instance ใหม่ และห้าม set Authorization header เอง — session อยู่ใน httpOnly cookie ของ BFF
 
 import apiClient from '@/lib/apiClient';
-import type { ApiResponse, PageResponse } from '@/types/sbpgi/common';
-import type * as T from '@/types/sbpgi/report';
+import type { ApiResponse, PageResponse } from '@/types/sgi/common';
+import type * as T from '@/types/sgi/report';
 
 /** GET /store/search (ระบบ SBP เดิม) — Popup เลือกร้านที่ถูกกระทบ */
 export async function getStoreSearch(params: T.StoreSearchParams): Promise<T.StoreSearchResponse> {
@@ -416,28 +438,28 @@ export async function getStoreSearch(params: T.StoreSearchParams): Promise<T.Sto
   return data.data;
 }
 
-/** GET /api/v1/sbpgi/report/status-summary — ค้นหาข้อมูลรายงานตรวจสอบประกันรายได้ (14 คอลัมน์ · SDD สไลด์ 60) */
-export async function getSbpgiReportStatusSummary(params: T.SbpgiReportStatusSummaryParams): Promise<PageResponse<T.SbpgiReportStatusSummaryItem>> {
-  const { data } = await apiClient.get<ApiResponse<PageResponse<T.SbpgiReportStatusSummaryItem>>>('/sbpgi/report/status-summary', { params });
+/** GET /api/v1/sgi/report/status-summary — ค้นหาข้อมูลรายงานตรวจสอบประกันรายได้ (14 คอลัมน์ · SDD สไลด์ 60) */
+export async function getSgiReportStatusSummary(params: T.SgiReportStatusSummaryParams): Promise<PageResponse<T.SgiReportStatusSummaryItem>> {
+  const { data } = await apiClient.get<ApiResponse<PageResponse<T.SgiReportStatusSummaryItem>>>('/sgi/report/status-summary', { params });
   return data.data;
 }
 
-/** GET /api/v1/sbpgi/report/status-summary/export — Export Excel ด้วย filter เดียวกับการค้นหา */
-export async function getSbpgiReportStatusSummaryExport(params: T.SbpgiReportStatusSummaryParams): Promise<Blob> {
-  const { data } = await apiClient.get<Blob>('/sbpgi/report/status-summary/export', { params, responseType: 'blob' });
+/** GET /api/v1/sgi/report/status-summary/export — Export Excel ด้วย filter เดียวกับการค้นหา */
+export async function getSgiReportStatusSummaryExport(params: T.SgiReportStatusSummaryParams): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>('/sgi/report/status-summary/export', { params, responseType: 'blob' });
   return data; // TODO: ตั้งชื่อไฟล์จาก content-disposition แล้วบันทึกด้วย file-saver
 }
 
 // TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
 ```
 
-#### 8.4 types — `src/types/sbpgi/report.ts`
+#### 8.4 types — `src/types/sgi/report.ts`
 
 ```ts
-// src/types/sbpgi/report.ts — ตรงกับตาราง API ในเอกสารนี้
+// src/types/sgi/report.ts — ตรงกับตาราง API ในเอกสารนี้
 // วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
-import type { PageResponse } from '@/types/sbpgi/common';
+import type { PageResponse } from '@/types/sgi/common';
 
 /** GET /store/search (ระบบ SBP เดิม) — request */
 export interface StoreSearchParams {
@@ -454,8 +476,8 @@ export interface StoreSearchItem {
 }
 export interface StoreSearchResponse { items: StoreSearchItem[]; }
 
-/** GET /api/v1/sbpgi/report/status-summary — request */
-export interface SbpgiReportStatusSummaryParams {
+/** GET /api/v1/sgi/report/status-summary — request */
+export interface SgiReportStatusSummaryParams {
   status?: string;
   impactedStoreCode?: string;
   newStoreCode?: string;
@@ -468,8 +490,8 @@ export interface SbpgiReportStatusSummaryParams {
   size?: number;
 }
 
-/** GET /api/v1/sbpgi/report/status-summary — 1 แถวในตาราง */
-export interface SbpgiReportStatusSummaryItem {
+/** GET /api/v1/sgi/report/status-summary — 1 แถวในตาราง */
+export interface SgiReportStatusSummaryItem {
   impactedStoreCode: string;
   impactedStoreName: string;
   impactedRegion: string;
@@ -485,24 +507,24 @@ export interface SbpgiReportStatusSummaryItem {
   createdDate: string;
   docNo: string;
 }
-export type SbpgiReportStatusSummaryListResponse = PageResponse<SbpgiReportStatusSummaryItem>;
+export type SgiReportStatusSummaryListResponse = PageResponse<SgiReportStatusSummaryItem>;
 
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
-#### 8.5 react-query keys + hooks — `src/hooks/sbpgi/report.query.ts`
+#### 8.5 react-query keys + hooks — `src/hooks/sgi/report.query.ts`
 
 ```ts
-// src/hooks/sbpgi/report.query.ts
+// src/hooks/sgi/report.query.ts
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { saveAs } from 'file-saver';
-import * as api from '@/services/sbpgi/report.service';
-import type * as T from '@/types/sbpgi/report';
+import * as api from '@/services/sgi/report.service';
+import type * as T from '@/types/sgi/report';
 
 export const reportKeys = {
-  all: ['sbpgi', 'report'] as const,
+  all: ['sgi', 'report'] as const,
   storeSearch: (params?: T.StoreSearchParams | null) => [...reportKeys.all, 'storeSearch', params] as const,
-  sbpgiReportStatusSummary: (params?: T.SbpgiReportStatusSummaryParams | null) => [...reportKeys.all, 'sbpgiReportStatusSummary', params] as const,
+  sgiReportStatusSummary: (params?: T.SgiReportStatusSummaryParams | null) => [...reportKeys.all, 'sgiReportStatusSummary', params] as const,
 };
 
 export function useStoreSearchQuery(params?: T.StoreSearchParams | null) {
@@ -514,25 +536,25 @@ export function useStoreSearchQuery(params?: T.StoreSearchParams | null) {
   });
 }
 
-export function useSbpgiReportStatusSummaryQuery(params?: T.SbpgiReportStatusSummaryParams | null) {
+export function useSgiReportStatusSummaryQuery(params?: T.SgiReportStatusSummaryParams | null) {
   return useQuery({
-    queryKey: reportKeys.sbpgiReportStatusSummary(params),
-    queryFn: () => api.getSbpgiReportStatusSummary(params!),
+    queryKey: reportKeys.sgiReportStatusSummary(params),
+    queryFn: () => api.getSgiReportStatusSummary(params!),
     enabled: !!params, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
     staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
   });
 }
 
-export function useSbpgiReportStatusSummaryExportDownload() {
+export function useSgiReportStatusSummaryExportDownload() {
   return useMutation({
-    // filter ชุดเดียวกับการค้นหาล่าสุด -> input type = params ของ GET /sbpgi/report/status-summary
-    mutationFn: (params: T.SbpgiReportStatusSummaryParams) => api.getSbpgiReportStatusSummaryExport(params),
+    // filter ชุดเดียวกับการค้นหาล่าสุด -> input type = params ของ GET /sgi/report/status-summary
+    mutationFn: (params: T.SgiReportStatusSummaryParams) => api.getSgiReportStatusSummaryExport(params),
     onSuccess: (blob) => saveAs(blob, 'export.xlsx'), // TODO: อ่านชื่อไฟล์จาก content-disposition
   });
 }
 ```
 
-#### 8.6 ฟอร์ม + validation — `src/components/sbpgi/report/ReportForm.tsx`
+#### 8.6 ฟอร์ม + validation — `src/components/sgi/report/ReportForm.tsx`
 
 ```tsx
 'use client';
@@ -669,8 +691,8 @@ export default function ReportForm({ defaultValues, onSubmit }: {
 | business rule | logic | แถวข้อมูลยอดขายไม่ครบ 60 วันใช้ class flag-red โดยอิง derived.salesDataDays < 60 |
 | business rule | logic | export ใช้ filter เดียวกับการค้นหาล่าสุด |
 | `GET /store/search (ระบบ SBP เดิม)` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `GET /api/v1/sbpgi/report/status-summary` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `GET /api/v1/sbpgi/report/status-summary/export` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/sgi/report/status-summary` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/sgi/report/status-summary/export` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
 | component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
 | hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
 | error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |

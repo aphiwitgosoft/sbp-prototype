@@ -1,4 +1,4 @@
-# Workflow / Flow — FGI/FCS + K2 (ระบบใหม่ SBPGI)
+# Workflow / Flow — FGI/FCS + K2 (ระบบใหม่ SGI)
 
 > **เอกสารมีชีวิต (living doc)** — สรุป flow การทำงานต้นทางถึงปลายทางของระบบใหม่ เทียบกับระบบเดิม
 > **แหล่งอ้างอิงหลัก:** `plan-flow.html` (หน้า Flow FGI/FCS + K2) · `old-flow.png` (sequence diagram ระบบเดิม) · `new-flow.png` (sequence diagram ระบบใหม่) · `Flow ประกันรายได้.png` (BPMN approve flow ระบบเดิม)
@@ -8,28 +8,28 @@
 
 ## แนวคิดหลักของระบบใหม่
 
-**รวม EAI และ K2 เข้าเป็นส่วนหนึ่งของ SBPGI** — งาน FGI/FCS batch ทำงานร่วมกับงานเอกสาร/workflow ของ K2 ในระบบเดียว **โดยไม่ผ่าน EAI อีกต่อไป**
+**รวม EAI และ K2 เข้าเป็นส่วนหนึ่งของ SGI** — งาน FGI/FCS batch ทำงานร่วมกับงานเอกสาร/workflow ของ K2 ในระบบเดียว **โดยไม่ผ่าน EAI อีกต่อไป**
 
 เปรียบเทียบ lane ใน sequence diagram:
 
 | | Lanes |
 |---|---|
-| **ระบบเดิม** (`old-flow.png`) | AllMap · SBPGI · MIS · **EAI** · STA · SAP · **K2** (7 lanes) |
-| **ระบบใหม่** (`new-flow.png`) | AllMap · SBPGI · MIS · STA · SAP (5 lanes) |
+| **ระบบเดิม** (`old-flow.png`) | AllMap · SGI · MIS · **EAI** · STA · SAP · **K2** (7 lanes) |
+| **ระบบใหม่** (`new-flow.png`) | AllMap · SGI · MIS · STA · SAP (5 lanes) |
 
 สิ่งที่หายไปจากภาพระบบใหม่:
 - **par block "Job Export data"** ทั้งก้อน — Jobs `FGI_ExportImpactStoreToBPM.sh` / `FGI_ExportNewStoreToBPM.sh` / `FGI_ExportCompetitorToBPM.sh` (17:30 วันที่ 7–31) ที่วางไฟล์ `BPM06001O_` / `BPM06002O_` / `BPM06003O_` ให้ EAI → **ตัดทิ้ง** · **โครงสร้างไฟล์ทั้ง 3 ตัว (48/24/14 ฟิลด์) ถอดไว้ที่ [`docs/K2-interface-files.md`](docs/K2-interface-files.md)** — ใช้ตรวจว่าการเขียน DB ตรงครอบคลุมทุกฟิลด์ที่ K2 เคยได้รับ (จุดที่ยังขาดคือบล็อกผู้อนุมัติ **DV** · ข้อ F3)
-- **lane K2** — ขั้น "ดึงข้อมูลจากไฟล์", "นำเข้าข้อมูลร้านค้าที่ได้รับผลกระทบ" และการยิง `/fgiService/confirmDataFromBPM` กลับมา → กลายเป็น **self-step ภายใน SBPGI** (ในภาพใหม่ label ขึ้นต้นด้วย "(K2)")
+- **lane K2** — ขั้น "ดึงข้อมูลจากไฟล์", "นำเข้าข้อมูลร้านค้าที่ได้รับผลกระทบ" และการยิง `/fgiService/confirmDataFromBPM` กลับมา → กลายเป็น **self-step ภายใน SGI** (ในภาพใหม่ label ขึ้นต้นด้วย "(K2)")
 
 สิ่งที่**คงเดิม**ในทั้งสองภาพ (interface กับระบบภายนอกของทีมอื่น):
-- AllMap → SBPGI: ส่งข้อมูลร้านค้าที่ได้รับผลกระทบ
-- opt: STA → SBPGI ผ่าน API `/fgiService/updateCompensateFromFS` (กรณีร้านได้รับผลกระทบแต่ไม่ได้ส่งข้อมูลสาขามาให้คำนวณ และต้องชดเชยย้อนหลัง)
-- SBPGI ↔ MIS: ไฟล์ `AMS06001O_` (Job FGI_ExportImpactStoreToAMS, 16:00 วันที่ 7–16) / `AMS06001I_` (Job FGI_ImportImpactStoreSale.sh, 16:30 วันที่ 7–16)
-- SBPGI → STA: ส่งค่าชดเชย (Job FGI_ExportImpactStoreToSTA.sh, 17:00 ทุกวัน) — **เปลี่ยนช่องทางเป็น RabbitMQ message `sta.compensation.result` แทนไฟล์ `FRBC0001_` + SFTP (มติ 2026-08-24)** · เนื้อข้อมูลยังเป็นสัญญาเดิม 14 ฟิลด์
+- AllMap → SGI: ส่งข้อมูลร้านค้าที่ได้รับผลกระทบ
+- opt: STA → SGI ผ่าน API `/fgiService/updateCompensateFromFS` (กรณีร้านได้รับผลกระทบแต่ไม่ได้ส่งข้อมูลสาขามาให้คำนวณ และต้องชดเชยย้อนหลัง)
+- SGI ↔ MIS: ไฟล์ `AMS06001O_` (Job FGI_ExportImpactStoreToAMS, 16:00 วันที่ 7–16) / `AMS06001I_` (Job FGI_ImportImpactStoreSale.sh, 16:30 วันที่ 7–16)
+- SGI → STA: ส่งค่าชดเชย (Job FGI_ExportImpactStoreToSTA.sh, 17:00 ทุกวัน) — **เปลี่ยนช่องทางเป็น RabbitMQ message `sta.compensation.result` แทนไฟล์ `FRBC0001_` + SFTP (มติ 2026-08-24)** · เนื้อข้อมูลยังเป็นสัญญาเดิม 14 ฟิลด์
 - STA alt 3 กรณี: **Approve = A** → ตรวจสอบยอดอนุมัติ + บันทึกบัญชีไป SAP · **Stop Flow = S** · **Initial = I** → ตั้ง Flow + วางไฟล์ `RT040035`, `RT040078` + API `updateCompensateFromFS` (ยอดศูนย์ = Z, ยอดไม่เท่ากับศูนย์ = W)
-- opt Adjust: STA → SBPGI ส่งข้อมูล Adjust เงินชดเชยประกันรายได้
+- opt Adjust: STA → SGI ส่งข้อมูล Adjust เงินชดเชยประกันรายได้
 
-> **หมายเหตุ:** ในภาพ new-flow ยังคงเห็น `/fgiService/confirmDataFromBPM` เป็นขั้นภายใน SBPGI — เมื่อไม่มีการส่งไฟล์ข้ามระบบแล้ว ขั้นนี้เหลือความหมายเป็นการอัปเดตสถานะ "รับข้อมูลเข้าระบบเอกสารแล้ว" ภายใน ไม่ใช่ API ข้ามระบบอีกต่อไป
+> **หมายเหตุ:** ในภาพ new-flow ยังคงเห็น `/fgiService/confirmDataFromBPM` เป็นขั้นภายใน SGI — เมื่อไม่มีการส่งไฟล์ข้ามระบบแล้ว ขั้นนี้เหลือความหมายเป็นการอัปเดตสถานะ "รับข้อมูลเข้าระบบเอกสารแล้ว" ภายใน ไม่ใช่ API ข้ามระบบอีกต่อไป
 
 ## สถาปัตยกรรมใหม่ — แยก Frontend / Backend
 
@@ -38,7 +38,7 @@ Frontend (Web SPA — ใช้หน้าจอ prototype ชุดนี้�
         │  REST API /api/v1 · JSON · 29 เส้น 6 กลุ่ม (ดู plan-api.html) — ผ่าน BFF ของระบบ SBP เดิม
         ▼
 Backend Services
-  ├─ Auth & RBAC — ใช้ระบบ SBP เดิม (Cognito + BFF + auth-backend/ABS · ตัดสินใจ 2026-08-05) ไม่สร้างใน SBPGI
+  ├─ Auth & RBAC — ใช้ระบบ SBP เดิม (Cognito + BFF + auth-backend/ABS · ตัดสินใจ 2026-08-05) ไม่สร้างใน SGI
   ├─ Document & Compensation (K2 · SRS 3.1.6)  เอกสาร YYYY/xxxxx · คำนวณชดเชย · แนบไฟล์
   ├─ Workflow Engine (@srm/glb-workflow ของระบบ SBP เดิม · **13 ตาราง · schema `sps_store`** · ตัดสินใจ 2026-08-06)  5 ขั้น 06→08→01→02→03 · วงเงิน เกณฑ์เดียว 100,000 (SDD GI 24/02/2026) — แทน K2 REST (Job 8b) · **ตัดขั้นบัญชี 04/05 ตาม SDD v7.5**
   ├─ Batch Scheduler         (FGI/FCS)         Jobs 2–10 + 8b · คง cron เดิม · พารามิเตอร์แก้ได้ · กันรันซ้อน
@@ -54,7 +54,7 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 
 **จุดเปลี่ยนสำคัญ:** ไม่มี BPM/K2 engine ภายนอกอีกต่อไป — การเปิดและเดิน workflow ทำโดย Workflow Engine ใน Backend เอง (แทนไฟล์ BPM06001O/2O/3O + K2 REST StartInstance ของ Jobs 8/8b/9) · interface กับระบบภายนอก (QSSI, ALLMAP, IAS, STA) คงกลไกไฟล์/SFTP เดิมเพราะเป็นระบบของทีมอื่น
 
-**สัญญากลางที่ผูกกับ workflow:** ดู `LLDD/md/BE/LLDD-BE-API-Common-Contracts.md` และ `LLDD/md/FE/LLDD-FE-Integration-Contracts.md` ก่อน implement ทุกจุดที่เรียก workflow API — `/sbpgi/document/{docNo}/actions` รับ `{result, comment}` โดย result เป็น 6-enum ไทย verbatim และคืน `{statusCode, nextSection, message}`; positive path คือ `06→08→01→02→03→99` โดย `99` = เสร็จสิ้นและ `nextSection=null` (Section 02 ยอด < 100,000 จบที่ 99 — SDD GI); `/sbpgi/workflow/instances` ใช้ service token และ Gen Flow Gate W/Y/N เป็นเจ้าของโดย BE Workflow Engine
+**สัญญากลางที่ผูกกับ workflow:** ดู `LLDD/md/BE/LLDD-BE-API-Common-Contracts.md` และ `LLDD/md/FE/LLDD-FE-Integration-Contracts.md` ก่อน implement ทุกจุดที่เรียก workflow API — `/sgi/document/{docNo}/actions` รับ `{result, comment}` โดย result เป็น **7-enum** ไทย verbatim และคืน `{statusCode, nextSection, message}`; positive path คือ **`06→08→06→01→02→03→99`** (มติ 2026-09-01 — ขั้น 08 คำนวณเสร็จส่งกลับ 06) โดย `99` = เสร็จสิ้นและ `nextSection=null` (Section 02 ยอด < 100,000 จบที่ 99 — SDD GI); `/sgi/workflow/instances` ใช้ service token และ Gen Flow Gate W/Y/N เป็นเจ้าของโดย BE Workflow Engine
 
 ### ข้อเท็จจริงของ Workflow Engine จากฐานข้อมูลจริง (ยืนยัน 2026-08-10)
 
@@ -62,28 +62,28 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 
 - **engine มี 13 ตาราง ไม่ใช่ 10** — `workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_transaction` · `workflow_history` · `workflow_approver` · `workflow_part` · `workflow_part_display`
 - **engine ตัวจริงอยู่ schema `sps_store` ไม่ใช่ `sps_auth`** — ทั้งสอง schema มีครบ 13 ตารางชื่อเดียวกันแต่คนละชุด/คนละเวอร์ชัน (`workflow_state` ของ `sps_auth` 3 คอลัมน์ / ของ `sps_store` 4 คอลัมน์) · ปริมาณจริงฝั่ง `sps_store`: `workflow_transaction` 19,283 แถว · `workflow_history` 38,010 · `workflow_approver` 96,542 · ฝั่ง `sps_auth` เป็นชุดของ auth-backend (`workflow_transaction` 55 · `route` 41 · `state` 10) — **ทุกจุดที่อ้าง engine ต้องระบุ schema `sps_store` เสมอ**
-- **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:** `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index ใด ๆ** ทั้งที่มี 19,283 แถว (ตารางชื่อเดียวกันใน `sps_auth` มี PK ปกติ) → ทุก action ต้อง seq-scan · เป็นข้อเท็จจริงจาก schema dump ไม่ใช่ข้อเสนอ · **ยังไม่ตัดสิน**ว่าจะขอ sign-off เพิ่ม index หรือกันซ้ำที่ฝั่ง SBPGI — ดู DP-2 ใน `SBP/SBPGI-vs-existing-system.md`
-- **✅ ชื่อ function ของ engine — ยึดตาม LLDD ของ lib (ปิดข้อค้าง 2026-08-14):** API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง) — `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ที่เคยนับเป็น "ชุด B/C" ไม่ใช่ชื่อ API: *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` ในชีต "2" · `TriggerEventUseCase`/`AddPreparedApproverUseCase`/`GetPendingFlowUseCase` เป็น UseCase class ที่ store-backend ห่อไว้ใช้เอง · รายละเอียดพารามิเตอร์ดู [`api.md`](api.md) หัวข้อ Workflow Engine · 🎯 `getPendingFlowByUser` = หน้า **รอดำเนินการ** และ `getWorkflowsByUser` = หน้า **ที่เกี่ยวข้อง** พอดี ไม่ต้องเขียน query งานค้างเอง
-- **`workflow_part` / `workflow_part_display` คุม READ/WRITE รายส่วนของหน้าจอต่อ state** ซึ่ง**ทับซ้อน**กับกลไก `data-editrole` / `.edit-only` ที่ prototype ทำเอง — **บันทึกเป็นข้อสังเกต ยังไม่ตัดสิน** ว่าจะย้ายไปใช้ของ engine หรือคงกลไกของ SBPGI (ดู `SBP/SBPGI-vs-existing-system.md`)
+- **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:** `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index ใด ๆ** ทั้งที่มี 19,283 แถว (ตารางชื่อเดียวกันใน `sps_auth` มี PK ปกติ) → ทุก action ต้อง seq-scan · เป็นข้อเท็จจริงจาก schema dump ไม่ใช่ข้อเสนอ · **ยังไม่ตัดสิน**ว่าจะขอ sign-off เพิ่ม index หรือกันซ้ำที่ฝั่ง SGI — ดู DP-2 ใน `SBP/SBPGI-vs-existing-system.md`
+- **✅ ชื่อ function ของ engine — ยึดตาม LLDD ของ lib (ยืนยันแล้ว 2026-08-14):** API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง) — `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ที่เคยนับเป็น "ชุด B/C" ไม่ใช่ชื่อ API: *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` ในชีต "2" · `TriggerEventUseCase`/`AddPreparedApproverUseCase`/`GetPendingFlowUseCase` เป็น UseCase class ที่ store-backend ห่อไว้ใช้เอง · รายละเอียดพารามิเตอร์ดู [`api.md`](api.md) หัวข้อ Workflow Engine · 🎯 `getPendingFlowByUser` = หน้า **รอดำเนินการ** และ `getWorkflowsByUser` = หน้า **ที่เกี่ยวข้อง** พอดี ไม่ต้องเขียน query งานค้างเอง
+- **`workflow_part` / `workflow_part_display` คุม READ/WRITE รายส่วนของหน้าจอต่อ state** ซึ่ง**ทับซ้อน**กับกลไก `data-editrole` / `.edit-only` ที่ prototype ทำเอง — **บันทึกเป็นข้อสังเกต ยังไม่ตัดสิน** ว่าจะย้ายไปใช้ของ engine หรือคงกลไกของ SGI (ดู `SBP/SBPGI-vs-existing-system.md`)
 
 ## Flow ต้นทางถึงปลายทาง (12 ขั้น · เดือนละ 1 รอบใหญ่)
 
 ### Stage A — รับและวิเคราะห์ข้อมูลผลกระทบ · Jobs 2–5
 
-1. **คะแนน QSSI รายเดือน — ❌ ไม่อยู่ในขอบเขต SBPGI แล้ว (ตัด Job 1 ImportQSSI · 2026-08-24)** — ระบบ SBP เดิมนำเข้าข้อมูลนี้ลง **`sps_store.fcs_qssi_score`** ให้อยู่แล้วผ่าน `POST /performance/import-qssi` (staging `fcs_tmp_qssi_score` · 23,958,780 แถว) → **SBPGI แค่ `SELECT` อ่านตารางนั้น** ไม่ต้องสร้าง job นำเข้าเอง ไม่ต้อง migrate และ**ไม่ต้องแตะ constraint/index ของตารางเดิม** (ปิดข้อค้าง **DP-4** ไปด้วย — ไม่ต้องขอ sign-off เจ้าของ `performance.service.ts` เพราะไม่มีการเขียนจากฝั่งเรา) · ผู้ใช้ข้อมูลคือ **Job 6** ที่ตรวจความครบของคะแนน 6 หมวดก่อนปล่อยสถานะ INIT
-2. **นำเข้าคู่ร้านถูกกระทบ + ร้านคู่แข่ง** (FGI/FCS · Jobs 2–3) — ทุกวันที่ 7 เวลา 07:00 จาก ALLMAP (SQL Server) → `fgi_impact_stores` (กฎ DENY/ON_PROCESS → W/N/P) และ `fgi_impact_competitors`
+1. **คะแนน QSSI รายเดือน — ❌ ไม่อยู่ในขอบเขต SGI แล้ว (ตัด Job 1 ImportQSSI · 2026-08-24)** — ระบบ SBP เดิมนำเข้าข้อมูลนี้ลง **`sps_store.fcs_qssi_score`** ให้อยู่แล้วผ่าน `POST /performance/import-qssi` (staging `fcs_tmp_qssi_score` · 23,958,780 แถว) → **SGI แค่ `SELECT` อ่านตารางนั้น** ไม่ต้องสร้าง job นำเข้าเอง ไม่ต้อง migrate และ**ไม่ต้องแตะ constraint/index ของตารางเดิม** (ปิดข้อค้าง **DP-4** ไปด้วย — ไม่ต้องขอ sign-off เจ้าของ `performance.service.ts` เพราะไม่มีการเขียนจากฝั่งเรา) · ผู้ใช้ข้อมูลคือ **Job 6** ที่ตรวจความครบของคะแนน 6 หมวดก่อนปล่อยสถานะ INIT
+2. **นำเข้าคู่ร้านถูกกระทบ + ร้านคู่แข่ง** (FGI/FCS · Jobs 2–3) — ทุกวันที่ 7 เวลา 07:00 จาก ALLMAP (SQL Server) → `sgi_fgi_impact_stores` (กฎ DENY/ON_PROCESS → W/N/P) และ `sgi_fgi_impact_competitors`
 3. **ขอยอดขายรายวันจาก IAS** (FGI/FCS · Job 4) — วันที่ 7–16 เวลา 16:00 · เงื่อนไขอายุร้าน 12 เดือน 15 วัน / +16 วัน → ไฟล์ `AMS06001O` **วางบน EAI S3 (prefix ขาออก)** ให้ IAS/MIS มาดึง (มติ 2026-08-24 — แทน SFTP ตรง) · ระบบใหม่ครอบด้วย transaction (แก้ P0 auto-commit)
-4. **รับยอดขาย + คำนวณ Growth Rate** (FGI/FCS · Job 5) — 16:30 รับ `AMS06001I` → `sales_transactions` → คำนวณ sales_diff 4 หน้าต่าง × 15 วัน (outlier |sales_diff| ≥ 50) → `sales_status` Y/N · ระบบใหม่เพิ่ม review case เมื่อ growth_rate_diff เป็น NULL (แก้ P1 auto-accept)
+4. **รับยอดขาย + คำนวณ Growth Rate** (FGI/FCS · Job 5) — 16:30 รับ `AMS06001I` → `sgi_sales_transactions` → คำนวณ sales_diff 4 หน้าต่าง × 15 วัน (outlier |sales_diff| ≥ 50) → `sales_status` Y/N · ระบบใหม่เพิ่ม review case เมื่อ growth_rate_diff เป็น NULL (แก้ P1 auto-accept)
 
 ### Stage B — เชื่อม FGI/FCS เข้าสู่ระบบเอกสารและ Workflow (จุดที่เปลี่ยนกลไก)
 
-5. **สร้างเอกสารประกันรายได้อัตโนมัติ** (FGI/FCS → K2 · **เปลี่ยนกลไก**) — เดิม: Jobs 7/8/9 เขียนไฟล์ BPM06003O/BPM06001O/BPM06002O ส่ง SFTP ผ่าน EAI ให้ BPM · ใหม่: **Document Service สร้าง `compensation_documents` (เลขที่ YYYY/xxxxx) + `document_new_stores` + `document_competitors` ตรงใน DB โซนเดียวกัน — ไม่มีไฟล์ ไม่มี SFTP ภายใน**
-6. **เปิด Workflow ตาม Gen Flow Gate** (FGI/FCS Job 8b → K2 · **เปลี่ยนกลไก**) — เกณฑ์คงเดิมทุกข้อ: คู่ร้านผ่านกฎรัศมี ≤1 กม.(กทม./ปริมณฑล) หรือ ≤2 กม.(ต่างจังหวัด) · workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เดิมยิง K2 REST StartInstance / ใหม่เรียก `POST /sbpgi/workflow/instances` ภายในด้วย service token; ผ่าน gate ตั้ง Y; fail ถาวร (branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10) ตั้ง N; เฉพาะ distance/juristic/growth เป็น NULL หรือ sales_status ยังไม่พร้อมจึงคง W เพื่อ rerun
+5. **สร้างเอกสารประกันรายได้อัตโนมัติ** (FGI/FCS → K2 · **เปลี่ยนกลไก**) — เดิม: Jobs 7/8/9 เขียนไฟล์ BPM06003O/BPM06001O/BPM06002O ส่ง SFTP ผ่าน EAI ให้ BPM · ใหม่: **Document Service สร้าง `sgi_compensation_documents` (เลขที่ YYYY/xxxxx) + `sgi_document_new_stores` + `sgi_document_competitors` ตรงใน DB โซนเดียวกัน — ไม่มีไฟล์ ไม่มี SFTP ภายใน**
+6. **เปิด Workflow ตาม Gen Flow Gate** (FGI/FCS Job 8b → K2 · **เปลี่ยนกลไก**) — เกณฑ์คงเดิมทุกข้อ: คู่ร้านผ่านกฎรัศมี ≤1 กม.(กทม./ปริมณฑล) หรือ ≤2 กม.(ต่างจังหวัด) · workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เดิมยิง K2 REST StartInstance / ใหม่เรียก `POST /sgi/workflow/instances` ภายในด้วย service token; ผ่าน gate ตั้ง Y; fail ถาวร (branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10) ตั้ง N; เฉพาะ distance/juristic/growth เป็น NULL หรือ sales_status ยังไม่พร้อมจึงคง W เพื่อ rerun
 
 ### Stage C — ผู้ใช้ตรวจสอบและอนุมัติ · Section 06–03 (workflow 5 ขั้นของ K2)
 
-7. **ขั้น 1–2: ฝ่าย SBP DSA ตรวจสอบ + คำนวณเงินชดเชย** (K2 · Section 06 → 08) — ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · เปิดเอกสารด้วย `GET /sbpgi/document/{docNo}` และดูยอดขายย้อนหลังเพิ่มเติม (4 หน้าต่าง × 15 วัน) ผ่าน `GET /sbpgi/document/{docNo}/sales` หรือลิงก์ออก QlikView BI (**หน้าเอกสารไม่มีกราฟแล้ว ตัดสินใจ 2026-08-06**) · ส่งพิจารณาด้วย `POST /sbpgi/document/{docNo}/actions` payload เดียว `{result, comment}` โดย `result` เป็น 6-enum verbatim: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / **ส่งหน่วยงานส่งเสริมธุรกิจ SBP** (SDD GI เปลี่ยนชื่อจาก "ส่งฝ่ายส่งเสริมธุรกิจ SBP") / ส่งเจ้าหน้าที่ SBP DSA / ส่งกลับ · บันทึก `consideration_logs` + อีเมลตาม `status_email_rules` · กรณีไม่ชดเชย/หยุดชดเชย ดูกติกาเปิดเรื่องซ้ำ (SDD GI) ใต้ตาราง transition
-8. **ขั้น 3: หน่วยงานส่งเสริมธุรกิจฯ ปรับข้อมูล** (K2 · Section 01 · **SDD GI เพิ่มบทบาทเจ้าหน้าที่อาวุโส (Senior Officer)** ให้เข้าใช้งานขั้นนี้ได้ร่วมกับผู้จัดการฝ่าย/ผู้เชี่ยวชาญเดิม และส่งต่อ flow ให้ GM ส่งเสริมได้ — ระดับตำแหน่งอ้างข้อมูล HR · ยกเว้น GM ส่งเสริมซึ่งเป็นขั้น 02 — ทำหน้าที่กลั่นกรองก่อนส่ง GM) — แก้ไขร้านเปิดใหม่ / ร้านคู่แข่ง (เลือกจาก master `GET /sbpgi/master/competitors`) / ปัจจัยภายนอก (`GET /sbpgi/master/factors`) (**%ชดเชยรวมต้อง = 100%**) บันทึกด้วย `PUT /sbpgi/document/{docNo}` — ส่วนคู่แข่ง/ปัจจัยเป็น **บันทึกทันทีจาก modal รายรายการ** (ไม่มีปุ่มบันทึกระดับการ์ด · ตัดสินใจ 2026-08-06) แล้วส่งพิจารณาต่อ หรือส่งกลับ (back-flow) · เห็นควรไม่ชดเชยที่ขั้นนี้ = จบกระบวนการทันที (SDD GI)
+7. **ขั้น 1–2: ฝ่าย SBP DSA ตรวจสอบ + คำนวณเงินชดเชย** (K2 · Section **06 → 08 → 06** · มติ 2026-09-01 — เจ้าหน้าที่ 08 คำนวณเสร็จแล้ว**ส่งยอดกลับ 06** ให้เป็นผู้ส่งต่อ ไม่ส่ง 01 เอง) — ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · เปิดเอกสารด้วย `GET /sgi/document/{docNo}` และดูยอดขายย้อนหลังเพิ่มเติม (4 หน้าต่าง × 15 วัน) ผ่าน `GET /sgi/document/{docNo}/sales` หรือลิงก์ออก QlikView BI (**หน้าเอกสารไม่มีกราฟแล้ว ตัดสินใจ 2026-08-06**) · ส่งพิจารณาด้วย `POST /sgi/document/{docNo}/actions` payload เดียว `{result, comment}` โดย `result` เป็น **7-enum** verbatim: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / **ส่งหน่วยงานส่งเสริมธุรกิจ SBP** (SDD GI เปลี่ยนชื่อจาก "ส่งฝ่ายส่งเสริมธุรกิจ SBP") / ส่งเจ้าหน้าที่ SBP DSA / **คำนวณเงินชดเชยเรียบร้อย** (ปุ่มเดียวของขั้น 08 · เพิ่มเป็นค่าที่ 7 เมื่อ 2026-09-01 เพราะขั้น 08 ส่งกลับ 06 แล้ว จะ map เป็น "ส่งกลับ" ไม่ได้ — คนละความหมาย) / ส่งกลับ (= **ส่งกลับฝ่าย SBP DSA** ทุกขั้น) · บันทึก `sgi_consideration_logs` + อีเมลตาม `status_email_rules` · กรณีไม่ชดเชย/หยุดชดเชย ดูกติกาเปิดเรื่องซ้ำ (SDD GI) ใต้ตาราง transition
+8. **ขั้น 3: หน่วยงานส่งเสริมธุรกิจฯ ปรับข้อมูล** (K2 · Section 01 · **SDD GI เพิ่มบทบาทเจ้าหน้าที่อาวุโส (Senior Officer)** ให้เข้าใช้งานขั้นนี้ได้ร่วมกับผู้จัดการฝ่าย/ผู้เชี่ยวชาญเดิม และส่งต่อ flow ให้ GM ส่งเสริมได้ — ระดับตำแหน่งอ้างข้อมูล HR · ยกเว้น GM ส่งเสริมซึ่งเป็นขั้น 02 — ทำหน้าที่กลั่นกรองก่อนส่ง GM) — แก้ไขร้านเปิดใหม่ / ร้านคู่แข่ง (เลือกจาก master `GET /sgi/master/competitors`) / ปัจจัยภายนอก (`GET /sgi/master/factors`) (**%ชดเชยรวมต้อง = 100%**) บันทึกด้วย `PUT /sgi/document/{docNo}` — ส่วนคู่แข่ง/ปัจจัยเป็น **บันทึกทันทีจาก modal รายรายการ** (ไม่มีปุ่มบันทึกระดับการ์ด · ตัดสินใจ 2026-08-06) แล้วส่งพิจารณาต่อ หรือส่งกลับ (back-flow) · เห็นควรไม่ชดเชยที่ขั้นนี้ = จบกระบวนการทันที (SDD GI)
 9. **ขั้น 4–5: GM → AVP ตามวงเงิน** (K2 · Section 02 → 03 · **เกณฑ์เดียว 100,000 ตามมติประชุม 2026-08-18** (ยกเลิกแนวคิด 50,000/300,000 ของ SDD GI)) — **ยอดชดเชย < 100,000 บาท จบที่ GM (02) · ยอด ≥ 100,000 บาท ต้องผ่าน AVP สำนัก SBPM (03) แล้วจบงาน** (ลำดับกลั่นกรอง: หน่วยงานส่งเสริม → GM → AVP) · **ไม่มีเพดานบนแล้ว** — ทุกยอดตั้งแต่ 100,000 ขึ้นไปจบที่ AVP (ข้อค้างเดิม "ยอดเกิน 300,000 ไม่ระบุเส้นทาง" ปิดไปพร้อมมติ 2026-08-18 ที่ยกเลิกเกณฑ์ 50,000/300,000) · ไม่มีขั้นบัญชีในระบบแล้ว (ตัด 04/05 ตาม SDD v7.5) · เดิมใช้เกณฑ์เดียว 100,000
 10. **บัญชี: ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี — ทำนอก workflow ผ่านหน้ารายงาน** (SDD v7.5 · **เปลี่ยนกระบวนการ**) — ยกเลิกหน้าจอ Approve ของบัญชีทั้งใน K2 และ SBP Mall และ**ยกเลิกสถานะบัญชีในเอกสารทั้ง 2 ค่า** ("รอฝ่ายบัญชี SBP" / "รอบัญชีปฏิบัติการภาค") · เมื่อเอกสาร "เสร็จสิ้นดำเนินการ" แล้ว ทีมบัญชีเปิด **รายงานตรวจสอบประกันรายได้ (SBP Mall)** → **ค้นหาข้อมูล** (สถานะเป็นฟิลด์บังคับ · Period Statement เป็นช่วงวัน/เดือน/ปี ค.ศ. บังคับเมื่อเลือก "เสร็จสิ้นดำเนินการ") ดูยอดชดเชยรายสาขาใน 14 คอลัมน์ → **Export Excel** → นำไปจัดเก็บสร้างรายการบันทึกบัญชีและกระทบยอดกับ SAP (`FBL3H`) และ Post (`SAPPOST`) เอง · **กรณี SBP ผิดแต่ SAP ถูก** → เปิด SR ให้ทีมดูแล SBP แก้รายครั้ง (ข้อเสนอ: Auto Update จาก SAP · BSR = Out of Scope)
 
@@ -95,21 +95,21 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 
 ### Stage D — ส่งผลออกและเฝ้าระวัง ACK · Jobs 6 และ 10
 
-11. **ส่งผลชดเชยเข้า Statement** (FGI/FCS · Job 6) — ทุกวัน 17:00 · sync สถานะ 10 ขั้น → ตรวจ QSSI ครบ 6 หมวด (8,9,12,1,10,16) → เขียน **outbox** `interface_transactions` (direction `OUT` · status `READY`) ใน transaction เดียวกับ sync → **publish RabbitMQ** `sta.compensation.result` (JSON UTF-8 · 14 ฟิลด์ตามสัญญา `FRBC0001` เดิม · วันที่ยังเป็น พ.ศ.) → update `READY → SENT` (มติ 2026-08-24 เลิกใช้ไฟล์ + SFTP) · publish ล้มเหลว **ไม่ rollback การ sync** — แถวค้าง `READY/FAILED_RETRY` ให้ dispatcher ส่งซ้ำ (กัน dual-write แบบเดียวกับ Job 4) · ระบบใหม่แก้บั๊ก purge tracking (E20) — ฝั่ง STA: Approve=A → บันทึกบัญชี SAP · Stop Flow=S · Initial=I → ตั้ง Flow + ไฟล์ RT040035/RT040078 กลับมา
-12. **เฝ้าระวัง ACK จาก STA** (FGI/FCS · Job 10 · **เพิ่ม callback**) — เดิม: watchdog อ่าน tracking ทุก 07:00 แล้วส่งเมลเมื่อค้าง ≥ 1 วัน · ใหม่: เพิ่ม `POST /sbpgi/interface/sta/ack` ให้ STA ยิงตอบกลับตรง — watchdog คงไว้เป็น safety net
+11. **ส่งผลชดเชยเข้า Statement** (FGI/FCS · Job 6) — ทุกวัน 17:00 · sync สถานะ 10 ขั้น → ตรวจ QSSI ครบ 6 หมวด (8,9,12,1,10,16) → เขียน **outbox** `sgi_interface_transactions` (direction `OUT` · status `READY`) ใน transaction เดียวกับ sync → **publish RabbitMQ** `sta.compensation.result` (JSON UTF-8 · 14 ฟิลด์ตามสัญญา `FRBC0001` เดิม · วันที่ยังเป็น พ.ศ.) → update `READY → SENT` (มติ 2026-08-24 เลิกใช้ไฟล์ + SFTP) · publish ล้มเหลว **ไม่ rollback การ sync** — แถวค้าง `READY/FAILED_RETRY` ให้ dispatcher ส่งซ้ำ (กัน dual-write แบบเดียวกับ Job 4) · ระบบใหม่แก้บั๊ก purge tracking (E20) — ฝั่ง STA: Approve=A → บันทึกบัญชี SAP · Stop Flow=S · Initial=I → ตั้ง Flow + ไฟล์ RT040035/RT040078 กลับมา
+12. **เฝ้าระวัง ACK จาก STA** (FGI/FCS · Job 10 · **เพิ่ม callback**) — เดิม: watchdog อ่าน tracking ทุก 07:00 แล้วส่งเมลเมื่อค้าง ≥ 1 วัน · ใหม่: เพิ่ม `POST /sgi/interface/sta/ack` ให้ STA ยิงตอบกลับตรง — watchdog คงไว้เป็น safety net
 
 ## Migration Map — จุดเชื่อมต่อที่เปลี่ยนจากระบบเดิม
 
 | จุดเชื่อมต่อ | กลไกเดิม | กลไกใหม่ |
 |---|---|---|
-| ส่งข้อมูลชดเชย/ร้านใหม่/คู่แข่ง เข้าระบบเอกสาร | ไฟล์ BPM06001O (48 ฟิลด์) / BPM06002O / BPM06003O ผ่าน SFTP + EAI ไป BPM (Jobs 7, 8, 9) | Document Service เขียน DB ตรง (compensation_documents / document_new_stores / document_competitors) — **ตัดไฟล์ SFTP และ EAI ภายในทิ้ง** |
-| เปิด Workflow | Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded — P0) | **`@srm/glb-workflow`** ของระบบ SBP เดิม (13 ตาราง · schema `sps_store`) เรียกผ่าน `POST /sbpgi/workflow/instances` · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ · **✅ ชื่อ function ยืนยันแล้ว 2026-08-14** — API 8 ตัว (`initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover`) ตามชีต `Detail` ของ LLDD ฝั่ง lib เอง · **✅ DP-1 ปิดแล้ว 2026-08-17** — `referenceId` = `compensation_documents.id` (surrogate · ส่งเป็น string) |
-| รับ ACK ผลประมวลจาก STA | รอ STA อัปเดต return_code ใน tracking · Job 10 ตรวจทุกเช้า | เพิ่ม POST /sbpgi/interface/sta/ack (API key) · Job 10 คงไว้เป็น safety net |
-| ตาราง tracking interface | FGI_CONFIRM_RECEIVE_DATA — polymorphic FK + บั๊ก purge (E20) | interface_transactions — typed FK + purge ทำงานจริง |
+| ส่งข้อมูลชดเชย/ร้านใหม่/คู่แข่ง เข้าระบบเอกสาร | ไฟล์ BPM06001O (48 ฟิลด์) / BPM06002O / BPM06003O ผ่าน SFTP + EAI ไป BPM (Jobs 7, 8, 9) | Document Service เขียน DB ตรง (sgi_compensation_documents / sgi_document_new_stores / sgi_document_competitors) — **ตัดไฟล์ SFTP และ EAI ภายในทิ้ง** |
+| เปิด Workflow | Job 8b ยิง K2 REST StartInstance (HTTP + Basic Auth hardcoded — P0) | **`@srm/glb-workflow`** ของระบบ SBP เดิม (13 ตาราง · schema `sps_store`) เรียกผ่าน `POST /sgi/workflow/instances` · Gen Flow Gate W/Y/N คงเกณฑ์เดิมทุกข้อ · **✅ ชื่อ function ยืนยันแล้ว 2026-08-14** — API 8 ตัว (`initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover`) ตามชีต `Detail` ของ LLDD ฝั่ง lib เอง · **✅ DP-1 ปิดแล้ว 2026-08-17** — `referenceId` = `sgi_compensation_documents.id` (surrogate · ส่งเป็น string) |
+| รับ ACK ผลประมวลจาก STA | รอ STA อัปเดต return_code ใน tracking · Job 10 ตรวจทุกเช้า | เพิ่ม POST /sgi/interface/sta/ack (API key) · Job 10 คงไว้เป็น safety net |
+| ตาราง tracking interface | FGI_CONFIRM_RECEIVE_DATA — polymorphic FK + บั๊ก purge (E20) | sgi_interface_transactions — typed FK + purge ทำงานจริง |
 | อีเมลแจ้งเตือน | แต่ละ job ต่อ SMTP เอง · TIS-620 · ผู้รับ hardcoded บางจุด (template 34) | เรียก `sendEmail()` ของ email-lib กลาง (`@gosoft-sbp/email-lib`) · UTF-8 · เลข template ของ workflow มาจาก `workflow_route.email_id` · ของ batch/reminder เก็บใน `mas_param` |
 | Interface ภายนอก ALLMAP / IAS-MIS / STA | SFTP + ไฟล์ตาม encoding เฉพาะ (WINDOWS-874 / UTF-8 / พ.ศ.) | **ALLMAP คงเดิม** (SQL Server ของทีมอื่น) — ย้าย credential ไป Secret Manager · **IAS/MIS เปลี่ยนเป็นวาง/ดึงไฟล์บน EAI S3** · **STA เปลี่ยนเป็น publish RabbitMQ** `sta.compensation.result` (ทั้งคู่ มติ 2026-08-24) จึงไม่เหลือ SFTP ในระบบใหม่ |
-| สิทธิ์ผู้ใช้และเมนู | ตารางสิทธิ์ 8 role ใน SRS (จัดการในระบบ BPM เดิม) | **ใช้ระบบ SBP เดิม** — auth-backend (ABS): groups/menus/permissions ต่อ URL · จัดการผ่านหน้า `/setting/manage-user-rights` ที่มีอยู่แล้ว · 8 role map เป็น group · ไม่สร้างหน้า/ตารางใน SBPGI (ตัดสินใจ 2026-08-05) |
-| กำหนดผู้ปฏิบัติงาน (SRS 3.1.8) | หน้าจอ + ตารางผู้ปฏิบัติงานต่อ section/พื้นที่ในระบบ BPM เดิม | **ใช้ระบบ SBP เดิม** — group + scope ของ auth-backend · ผูกผู้อนุมัติรายเอกสารด้วย prepared approvers ของ workflow engine เดิม (`@srm/glb-workflow`) · ไม่สร้างหน้า/ตารางใน SBPGI |
+| สิทธิ์ผู้ใช้และเมนู | ตารางสิทธิ์ 8 role ใน SRS (จัดการในระบบ BPM เดิม) | **ใช้ระบบ SBP เดิม** — auth-backend (ABS): groups/menus/permissions ต่อ URL · จัดการผ่านหน้า `/setting/manage-user-rights` ที่มีอยู่แล้ว · 8 role map เป็น group · ไม่สร้างหน้า/ตารางใน SGI (ตัดสินใจ 2026-08-05) |
+| กำหนดผู้ปฏิบัติงาน (SRS 3.1.8) | หน้าจอ + ตารางผู้ปฏิบัติงานต่อ section/พื้นที่ในระบบ BPM เดิม | **ใช้ระบบ SBP เดิม** — group + scope ของ auth-backend · ผูกผู้อนุมัติรายเอกสารด้วย prepared approvers ของ workflow engine เดิม (`@srm/glb-workflow`) · ไม่สร้างหน้า/ตารางใน SGI |
 
 ## สถานะเอกสารและเส้นทางพิจารณา (ตาม SRS 3.1.6 + workflow_status_document.md)
 
@@ -124,7 +124,7 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 5. รอผู้บริหารสำนักบริหาร SBP ดำเนินการ (03)
 6. เสร็จสิ้นดำเนินการ
 
-> FE โหลดรายการสถานะ 6 ค่านี้และ Section 5 ขั้น (06/08/01/02/03) สำหรับ dropdown ตัวกรองในหน้าค้นหาเอกสาร/รายงานผ่านกลุ่ม Lookup: `GET /sbpgi/lookup/document-statuses` และ `GET /sbpgi/lookup/workflow-sections`
+> FE โหลดรายการสถานะ 6 ค่านี้และ Section 5 ขั้น (06/08/01/02/03) สำหรับ dropdown ตัวกรองในหน้าค้นหาเอกสาร/รายงานผ่านกลุ่ม Lookup: `GET /sgi/lookup/document-statuses` และ `GET /sgi/lookup/workflow-sections`
 
 > ### 🔴 มติประชุม 2026-08-18 — กลับไปใช้วงเงินเกณฑ์เดียว 100,000 (override SDD GI สไลด์ 53 ข้อ 2.1 / สไลด์ 55)
 >
@@ -137,28 +137,27 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 >
 > ⚠️ **เส้นแบ่งอยู่ที่ `>= 100,000`** — ยอด 100,000 พอดี **ส่ง AVP** (ไม่ใช่จบที่ GM) ต่างจาก SRS ฉบับเก่าที่เขียน "≤ 100,000 จบที่ GM"
 >
-> **ที่เก็บค่า:** `common_code` (`code_type = SBPGI_APPROVE_LIMIT`) — เป็น data ไม่ hardcode · `workflow_route` แตกสองเส้นด้วย `condition_json`:
+> **ที่เก็บค่า:** `common_code` (`code_type = SGI_APPROVE_LIMIT`) — เป็น data ไม่ hardcode · `workflow_route` แตกสองเส้นด้วย `condition_json`:
 > `{"field":"amount","operator":"<","value":100000}` → จบ · `{"field":"amount","operator":">=","value":100000}` → AVP
 
-**ตารางเส้นทางพิจารณา (transition)** — อีเมล TO = ผู้ดำเนินการลำดับถัดไปที่ engine resolve แล้ว · ✅ **ปิด DP-5 (2026-08-14)**: workflow ให้ **เลข template** (`sps_store.workflow_route.email_id` ของ route ที่เพิ่งเดิน) แล้ว **SBPGI เรียก `sendEmail()` ของ email-lib เอง** พร้อม `mailTo`/`mailCc`/`param` — ไม่มีตาราง `status_email_rules` · สัญญาเต็มดู [`database.md`](database.md) §ปิด DP-5:
+**ตารางเส้นทางพิจารณา (transition)** — อีเมล TO = ผู้ดำเนินการลำดับถัดไปที่ engine resolve แล้ว · ✅ **ปิด DP-5 (2026-08-14)**: workflow ให้ **เลข template** (`sps_store.workflow_route.email_id` ของ route ที่เพิ่งเดิน) แล้ว **SGI เรียก `sendEmail()` ของ email-lib เอง** พร้อม `mailTo`/`mailCc`/`param` — ไม่มีตาราง `status_email_rules` · สัญญาเต็มดู [`database.md`](database.md) §ปิด DP-5:
 
 | Section | ตัวเลือกพิจารณา | สถานะถัดไป |
 |---|---|---|
 | 06 ฝ่าย SBP DSA | เห็นควรไม่ชดเชย · หยุดชดเชยประกันรายได้ | เสร็จสิ้นดำเนินการ |
 | | ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI: เปลี่ยนชื่อปุ่มจาก "ส่งฝ่ายส่งเสริมธุรกิจ SBP") — **เส้นทางข้ามขั้น 08** | รอ 01 |
 | | ส่งเจ้าหน้าที่ SBP DSA — เส้นทางปกติ (ให้คำนวณยอดก่อน) | รอ 08 |
-| 08 เจ้าหน้าที่ SBP DSA | คำนวณเงินชดเชยเรียบร้อย | รอ 01 |
-| | ส่งกลับฝ่าย SBP DSA | รอ 06 |
+| 08 เจ้าหน้าที่ SBP DSA | คำนวณเงินชดเชยเรียบร้อย — **ปุ่มเดียวของขั้นนี้** (มติ 2026-09-01) | **รอ 06** (ส่งยอดกลับให้ฝ่าย SBP DSA ตัดสินใจส่งต่อ — ไม่ส่ง 01 เอง) |
 | 01 หน่วยงานส่งเสริมธุรกิจ SBP (SDD GI: เดิม "ฝ่ายส่งเสริม" — ขยายสิทธิ์เป็นเจ้าหน้าที่อาวุโสขึ้นไป ยกเว้น GM · ตำแหน่งตาม HR) | เห็นควรชดเชย | รอ 02 |
 | | เห็นควรไม่ชดเชย | **เสร็จสิ้นดำเนินการ (ไม่อนุมัติในเดือนนั้น · SDD GI — เดิมตีกลับให้ 06 รับทราบ)** |
 | | ส่งกลับ | รอ 06 |
 | 02 GM ส่งเสริมธุรกิจ SBP | เห็นควรชดเชย **< 100,000** | **เสร็จสิ้นดำเนินการ** (จบที่ GM — เกณฑ์เดียว 100,000 · มติ 2026-08-18 · ไม่มีขั้นบัญชี) |
 | | เห็นควรชดเชย **≥ 100,000** | รอ 03 (AVP สำนัก SBPM) |
 | | เห็นควรไม่ชดเชย | **เสร็จสิ้นดำเนินการ (ไม่อนุมัติในเดือนนั้น · SDD GI — เดิมตีกลับเป็นทอด ๆ)** |
-| | ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP | รอ 01 |
+| | **ส่งกลับฝ่าย SBP DSA** (มติ 2026-09-01 — เดิม "ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP" → รอ 01) | **รอ 06** |
 | 03 ผู้บริหารสำนักบริหาร SBP (AVP) | เห็นควรชดเชย | **เสร็จสิ้นดำเนินการ** (จบที่ AVP · รับทุกยอดตั้งแต่ 100,000/รายการ) |
 | | เห็นควรไม่ชดเชย | รอ 06 (คงเดิม — SDD GI ไม่ได้ระบุขั้น AVP · รอ confirm) |
-| | ส่งกลับ GM ส่งเสริมฯ | รอ 02 |
+| | **ส่งกลับฝ่าย SBP DSA** (มติ 2026-09-01 — เดิม "ส่งกลับ GM ส่งเสริมฯ" → รอ 02) | **รอ 06** |
 
 > **ตัดขั้นบัญชี 04/05 ตาม SDD v7.5** — เดิมผลอนุมัติจะส่งต่อ "รอ 04 ฝ่ายบัญชี SBP → รอ 05 บัญชีปฏิบัติการภาค → เสร็จสิ้น" · ตอนนี้เอกสารจบที่ GM (< 100,000) หรือ AVP (≥ 100,000) ทันที · ทีมบัญชีตรวจสอบยอดผ่านรายงาน SBP Mall + กระทบ SAP นอก workflow (ดูขั้น 10) · ทางเลือกเดิม "06 → ส่งฝ่ายบัญชี SBP (ข้ามได้)" ถูกยกเลิกไปด้วย
 >
@@ -171,29 +170,45 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 | เคส | เงื่อนไขข้อมูลที่ใช้ตัดสิน | ระบบทำอะไรให้ | จุดเข้า flow | สถานะเอกสารแรก |
 |---|---|---|---|---|
 | **① เปิดเรื่องใหม่** | `LAST_COMPENSATE_SEQ_NO = 1` (รอบใหม่ · `LAST_COMPENSATE_SEQ` เพิ่งขึ้น +1) | — ไม่มี auto | **06** ฝ่าย SBP DSA | รอฝ่าย SBP DSA ดำเนินการ |
-| **② ชดเชยต่อเนื่อง** | `LAST_COMPENSATE_SEQ_NO > 1` และ `FLAG_ACTION = 'Y'` | **Auto Approve** การเปิดเรื่อง — **ข้ามขั้น 06** | **08** เจ้าหน้าที่ SBP DSA | รอเจ้าหน้าที่ SBP DSA ดำเนินการ |
-| **③ ยอดชดเชย = 0 ติดกัน ≤ 3 เดือน** | `COALESCE(adjust, forecast) = 0` ติดกันงวดที่ **1–3** | **Auto** ส่งต่อ — **ข้ามทั้ง 06 และ 08** | **01** หน่วยงานส่งเสริมธุรกิจฯ | รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ |
-| **③ ยอดชดเชย = 0 ติดกัน > 3 เดือน** (เดือนที่ 4) | `COALESCE(adjust, forecast) = 0` ติดกันงวดที่ **4 ขึ้นไป** | **Auto หยุดชดเชยประกันรายได้** — ปิดเอกสารทันที | — ไม่เข้า flow พิจารณา | เสร็จสิ้นดำเนินการ (หยุดชดเชยฯ) |
+| **② ต่อเนื่อง · ยอดชดเชย > 0** | `LAST_COMPENSATE_SEQ_NO > 1` และ `FLAG_ACTION = 'Y'` และ `COALESCE(adjust, forecast) > 0` | **Auto Approve** การเปิดเรื่อง — **ข้ามขั้น 06** | **08** เจ้าหน้าที่ SBP DSA | รอเจ้าหน้าที่ SBP DSA ดำเนินการ |
+| **③ ต่อเนื่อง · ยอดชดเชย = 0 ติดกัน ≤ 3 เดือน** | `COALESCE(adjust, forecast) = 0` ติดกันงวดที่ **1–3** | **Auto** ส่งต่อ — **ข้ามขั้น 06** | **08** เจ้าหน้าที่ SBP DSA | รอเจ้าหน้าที่ SBP DSA ดำเนินการ |
+| **④ ต่อเนื่อง · ยอดชดเชย = 0 ติดกัน > 3 เดือน** (เดือนที่ 4) | `COALESCE(adjust, forecast) = 0` ติดกันงวดที่ **4 ขึ้นไป** | **Auto หยุดชดเชยประกันรายได้** — ปิดเอกสารทันที | — ไม่เข้า flow พิจารณา | เสร็จสิ้นดำเนินการ (หยุดชดเชยฯ) |
 
-- ทั้ง 3 เส้นทางอัตโนมัติต้อง**บันทึกลง `consideration_logs` เหมือนการพิจารณาปกติ** โดยผู้ดำเนินการเป็น **`SYSTEM`** เพื่อไม่ให้ timeline ของเอกสารขาดช่วง
+- ทั้ง 3 เส้นทางอัตโนมัติต้อง**บันทึกลง `sgi_consideration_logs` เหมือนการพิจารณาปกติ** โดยผู้ดำเนินการเป็น **`SYSTEM`** เพื่อไม่ให้ timeline ของเอกสารขาดช่วง
 - เคสต่อเนื่อง / เห็นควรไม่ชดเชย ระบบยัง **auto-assign เจ้าของงานคนเดิม** (เจ้าหน้าที่ SBP DSA) ตาม SDD GI สไลด์ 48
-- กติกา "ยอด 0 เดือน 1–3 ส่งต่อ 01 · เดือนที่ 4 หยุดชดเชย" เดิมเป็น**ปุ่มที่คนต้องกดเองที่ขั้น 06** (SDD GI สไลด์ 51) — To-Be เปลี่ยนเป็น**ระบบทำให้อัตโนมัติ**
-- ⚠️ **ข้อมูลที่ต้องเติมก่อน implement ได้จริง** — ตรรกะนี้ระบบเดิม (Oracle) คำนวณไว้แล้วใน `FGI_IMPACT_STORE_ON_PROCESS` / `FGI_IMPACT_STORE_COMPENSATE` แต่ target schema ยังขนคอลัมน์มาไม่ครบ: `fgi_impact_processes` ขาด `last_compensate_seq` · `last_compensate_seq_no` · `start/end_compensate_month/year` · `flag_action` · `datasource` (gap **F8**) และยังไม่มีตาราง `fgi_impact_compensations` (ยอดรายงวด forecast/adjust) จึงนับ "ยอด 0 ติดกันกี่เดือน" ไม่ได้ (gap **F1**) — ดู [`database.md`](database.md)
+- **ไม่มีป้าย/ชิปกำกับประเภทเคสบนหน้าจอ** (มติ 2026-09-01) — เคสต่อเนื่องทั้งยอด > 0 และยอด 0 (≤ 3 เดือน) เข้าที่ **08 เหมือนกัน** และทำงานเหมือนกันทุกอย่าง จึงไม่ต้องแยกป้ายให้ผู้ใช้ · ร่องรอยว่าเอกสารเข้า flow ทางไหนดูได้จากแถว `SYSTEM` ใน `sgi_consideration_logs` ตาม bullet ด้านบน
+- กติกา "ยอด 0 เดือน 1–3 · เดือนที่ 4 หยุดชดเชย" เดิมเป็น**ปุ่มที่คนต้องกดเองที่ขั้น 06** (SDD GI สไลด์ 51) — To-Be เปลี่ยนเป็น**ระบบทำให้อัตโนมัติ** · **มติ 2026-09-01 เปลี่ยนปลายทางของเดือน 1–3 จาก `01` เป็น `08`** เพราะยอด 0 ยังต้องให้เจ้าหน้าที่ SBP DSA ตรวจ/คำนวณยืนยันก่อน ไม่ควรวิ่งเข้าหน่วยงานส่งเสริมฯ ตรง ๆ — ปุ่มที่บังคับเลือกในขั้น 06 เมื่อยอดเป็น 0 จึงเปลี่ยนจาก "ส่งหน่วยงานส่งเสริมธุรกิจ SBP" เป็น **"ส่งเจ้าหน้าที่ SBP DSA"** ตามไปด้วย
+- ⚠️ **ข้อมูลที่ต้องเติมก่อน implement ได้จริง** — ตรรกะนี้ระบบเดิม (Oracle) คำนวณไว้แล้วใน `FGI_IMPACT_STORE_ON_PROCESS` / `FGI_IMPACT_STORE_COMPENSATE` แต่ target schema ยังขนคอลัมน์มาไม่ครบ: `sgi_fgi_impact_processes` ขาด `last_compensate_seq` · `last_compensate_seq_no` · `start/end_compensate_month/year` · `flag_action` · `datasource` (gap **F8**) และยังไม่มีตาราง `sgi_fgi_impact_compensations` (ยอดรายงวด forecast/adjust) จึงนับ "ยอด 0 ติดกันกี่เดือน" ไม่ได้ (gap **F1**) — ดู [`database.md`](database.md)
 
 **เส้นทางส่งข้ามขั้น 06 → 01 (ไม่ผ่าน 08) — อธิบายละเอียด:**
 
+> 🔴 **มติ 2026-09-01 — ขั้น 08 ส่งงานกลับที่ 06 เสมอ ไม่ส่งต่อ 01 เอง**
+> เจ้าหน้าที่ SBP DSA (08) มีหน้าที่ **คำนวณยอดอย่างเดียว** เมื่อคำนวณเสร็จต้องส่งยอดกลับให้ **ฝ่าย SBP DSA (06)** เป็นผู้ตัดสินใจส่งต่อ · ขั้น 08 จึงเหลือ **ปุ่มเดียว** คือ "คำนวณเงินชดเชยเรียบร้อย" (ปุ่ม "ส่งกลับฝ่าย SBP DSA" เดิมถูกตัด เพราะปุ่มเดียวที่เหลือก็กลับ 06 อยู่แล้ว)
+> **เส้นทางปกติจึงเป็น `06 → 08 → 06 → 01`** (เดิม `06 → 08 → 01`) — ขั้น 01 ยังรับงานจาก 06 ทางเดียวเหมือนเดิม
+
 ขั้น 06 มีทางเลือกส่งต่อ 2 ทาง ต่างกันที่ **"ทราบยอดเงินชดเชยแล้วหรือยัง"** ไม่ใช่การข้ามการอนุมัติ · เกณฑ์นี้อ้างจาก **SDD สไลด์ 21** ที่อธิบายปุ่มไว้ว่า *“ส่งต่อ Flow **หลังทราบยอดเงินชดเชยรายได้จากเจ้าหน้าที่ SBP DSA ดำเนินการ**”*:
 
-| ประเด็น | เส้นทางปกติ `06 → 08 → 01` | เส้นทางข้ามขั้น `06 → 01` |
+| ประเด็น | เส้นทางปกติ `06 → 08 → 06 → 01` | เส้นทางข้ามขั้น `06 → 01` |
 |---|---|---|
 | ปุ่มที่กดในขั้น 06 | ส่งเจ้าหน้าที่ SBP DSA | **ส่งหน่วยงานส่งเสริมธุรกิจ SBP** |
 | ใช้เมื่อ | ยังไม่ทราบยอดเงินชดเชย — ต้องมอบหมายให้เจ้าหน้าที่คำนวณก่อน | **ทราบยอดเงินชดเชยจากเจ้าหน้าที่ SBP DSA แล้ว** — ตาม SDD สไลด์ 21: *“ปุ่ม ฝ่ายส่งเสริมธุรกิจ SBP : ส่งต่อ Flow หลังทราบยอดเงินชดเชยรายได้จากเจ้าหน้าที่ SBP DSA ดำเนินการ”* |
-| สถานะถัดไป | `รอเจ้าหน้าที่ SBP DSA ดำเนินการ` (08) แล้วจึงเป็น `รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ` (01) | **`รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ` (01) ทันที** — เอกสารไม่เคยผ่านสถานะของขั้น 08 |
-| view "คำนวณเงินชดเชย" | เปิดให้แก้ที่ขั้น 08 (มีเฉพาะขั้นนี้) | **ไม่ถูกเปิดในรอบนั้น** — ยอดที่ส่งต่อคือยอดที่ทราบอยู่แล้ว |
-| อีเมล | ถึงเจ้าหน้าที่ SBP DSA ก่อน แล้วค่อยถึงหน่วยงานส่งเสริมฯ | ถึง **หน่วยงานส่งเสริมธุรกิจ SBP** โดยตรง — `mailTo` = ผู้อนุมัติถัดไปที่ engine resolve ให้ |
-| การส่งกลับ | 08 ส่งกลับ 06 ได้ · 01 ส่งกลับ 06 ได้ | 01 ส่งกลับมาที่ **06** (ไม่ใช่ 08) เพราะเอกสารไม่เคยอยู่ที่ 08 |
+| สถานะถัดไป | `รอเจ้าหน้าที่ SBP DSA ดำเนินการ` (08) → เมื่อคำนวณเสร็จ **กลับเป็น `รอฝ่าย SBP DSA ดำเนินการ` (06)** → 06 กดส่งต่อจึงเป็น `รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ` (01) | **`รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ` (01) ทันที** — เอกสารไม่เคยผ่านสถานะของขั้น 08 |
+| view "คำนวณเงินชดเชย" | เปิดให้แก้ที่ขั้น 08 (มีเฉพาะขั้นนี้) · รอบที่กลับมาที่ 06 เป็น **อ่านอย่างเดียว** | **ไม่ถูกเปิดในรอบนั้น** — ยอดที่ส่งต่อคือยอดที่ทราบอยู่แล้ว |
+| อีเมล | ถึงเจ้าหน้าที่ SBP DSA ก่อน → **กลับมาถึงฝ่าย SBP DSA** เมื่อคำนวณเสร็จ → แล้วค่อยถึงหน่วยงานส่งเสริมฯ | ถึง **หน่วยงานส่งเสริมธุรกิจ SBP** โดยตรง — `mailTo` = ผู้อนุมัติถัดไปที่ engine resolve ให้ |
+| การส่งกลับ | ทุกขั้นส่งกลับมาที่ **06 เสมอ** (มติ 2026-09-01) | 01 ส่งกลับมาที่ **06** เหมือนกัน |
 
-> **ไม่ได้ข้ามการอนุมัติใด ๆ** — ขั้นอนุมัติเงิน (02 GM · 03 AVP ตามวงเงิน) ยังต้องผ่านครบเหมือนเดิม ที่ข้ามคือขั้น**คำนวณยอด**เท่านั้น · ผลต่อ API: `POST /sbpgi/document/{docNo}/actions` ที่ section 06 ด้วย `result = "ส่งหน่วยงานส่งเสริมธุรกิจ SBP"` จะคืน `nextSection = "01"` (ไม่ใช่ `"08"`)
+> **ไม่ได้ข้ามการอนุมัติใด ๆ** — ขั้นอนุมัติเงิน (02 GM · 03 AVP ตามวงเงิน) ยังต้องผ่านครบเหมือนเดิม ที่ข้ามคือขั้น**คำนวณยอด**เท่านั้น · ผลต่อ API: `POST /sgi/document/{docNo}/actions` ที่ section 06 ด้วย `result = "ส่งหน่วยงานส่งเสริมธุรกิจ SBP"` จะคืน `nextSection = "01"` (ไม่ใช่ `"08"`) · ที่ section 08 ด้วย `result = "คำนวณเงินชดเชยเรียบร้อย"` จะคืน `nextSection = "06"` (มติ 2026-09-01 — เดิมคืน `"01"`)
+
+**ปุ่มส่งกลับ — กติกาเดียวทั้งระบบ (มติ 2026-09-01):**
+
+ทุกขั้นที่มีปุ่มส่งกลับ **ส่งกลับมาที่ `06` ฝ่าย SBP DSA เสมอ** เพราะ 06 เป็นเจ้าของเรื่องและเป็นจุดเดียวที่รู้ภาพรวมของเอกสารทั้งใบ — เดิม GM ส่งกลับ 01 และ AVP ส่งกลับ 02 ซึ่งทำให้เอกสารเด้งเป็นทอด ๆ และหาเจ้าของงานยาก:
+
+| ขั้น | ปุ่มส่งกลับ (เดิม → ปลายทางเดิม) | **ปุ่มส่งกลับ (ใหม่) → ปลายทางใหม่** |
+|---|---|---|
+| 08 เจ้าหน้าที่ SBP DSA | ส่งกลับฝ่าย SBP DSA → 06 | **ตัดปุ่มทิ้ง** — ปุ่มเดียวที่เหลือ ("คำนวณเงินชดเชยเรียบร้อย") กลับ 06 อยู่แล้ว |
+| 01 หน่วยงานส่งเสริมธุรกิจ SBP | ส่งกลับ → 06 | **ส่งกลับฝ่าย SBP DSA → 06** (คงเดิม) |
+| 02 GM ส่งเสริมธุรกิจ SBP | ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP → **01** | **ส่งกลับฝ่าย SBP DSA → 06** |
+| 03 ผู้บริหารสำนักบริหาร SBP (AVP) | ส่งกลับ GM ส่งเสริมฯ → **02** | **ส่งกลับฝ่าย SBP DSA → 06** |
 
 **ผู้ใช้งานต่อกล่องอนุมัติ (SDD GI 24/02/2026 — ตำแหน่งตามข้อมูล HR Connect):**
 
@@ -207,12 +222,12 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 
 **กติกาเปิดเรื่องซ้ำและงานค้าง (SDD GI 24/02/2026 — แก้ปัญหาต้องเปิด SR ~20,000 บาท/เดือน):**
 
-- **หยุดชดเชยรายได้แล้วเปิดใหม่ได้เอง** — เจ้าหน้าที่ SBP DSA เลือกงานจากระบบหรือคีย์ข้อมูลร้าน สร้างเอกสารใหม่ได้ทั้งรอบเดือนเดียวกันหรือเดือนถัดไป โดยไม่ต้องเปิด SR · กฎกันซ้ำของ `POST /sbpgi/document` ผ่อนเป็น: ห้ามซ้ำเฉพาะกรณีมีเอกสาร**ยังไม่จบ (active)** ของร้าน+เดือนนั้น — เอกสารเดิมที่จบด้วย "หยุดชดเชย/เห็นควรไม่ชดเชย" เปิดเรื่องใหม่ทับได้
+- **หยุดชดเชยรายได้แล้วเปิดใหม่ได้เอง** — เจ้าหน้าที่ SBP DSA เลือกงานจากระบบหรือคีย์ข้อมูลร้าน สร้างเอกสารใหม่ได้ทั้งรอบเดือนเดียวกันหรือเดือนถัดไป โดยไม่ต้องเปิด SR · กฎกันซ้ำของ `POST /sgi/document` ผ่อนเป็น: ห้ามซ้ำเฉพาะกรณีมีเอกสาร**ยังไม่จบ (active)** ของร้าน+เดือนนั้น — เอกสารเดิมที่จบด้วย "หยุดชดเชย/เห็นควรไม่ชดเชย" เปิดเรื่องใหม่ทับได้
 - **เอกสารที่หยุดชดเชยฯ กลับเข้าหน้ารอดำเนินการของ 06 (SDD สไลด์ 46 ข้อ 1.9 · ปรับ 2026-08-20)** — เอกสารที่จบด้วยผลการพิจารณา **"หยุดชดเชยประกันรายได้"** ต้องกลับมาแสดงใน **หน้ารอดำเนินการ / ที่เกี่ยวข้อง** โดยมีเพียง **ฝ่าย SBP DSA (section 06)** ที่เห็น เพื่อ**พิจารณาคำขอชดเชยรายได้อีกครั้งได้เอง** (ไม่ต้องเปิด SR)
-  - **ไม่ใช่สถานะที่ 7** — สถานะเอกสารยังเป็น `เสร็จสิ้นดำเนินการ` ตามชุดสถานะ 6 ค่า สิ่งที่ใช้คัดคือ **ผลการพิจารณาสุดท้าย** ใน `consideration_logs`
+  - **ไม่ใช่สถานะที่ 7** — สถานะเอกสารยังเป็น `เสร็จสิ้นดำเนินการ` ตามชุดสถานะ 6 ค่า สิ่งที่ใช้คัดคือ **ผลการพิจารณาสุดท้าย** ใน `sgi_consideration_logs`
   - FE แสดงเป็นป้ายสถานะ **`เสร็จสิ้นดำเนินการ หยุดชดเชย`** (สีแดง) และเปิดเอกสารด้วยโหมด "เปิดพิจารณาใหม่" (prototype ใช้ `k2-document.html?stopped=1`)
   - เปิดเอกสารแล้วต้องเห็น **ข้อมูลเอกสารเดิมครบทุกส่วน** + ประวัติการพิจารณาของรอบก่อนหน้า (แถว "หยุดชดเชยประกันรายได้ (รอบก่อนหน้า)") + แผง **พิจารณา (ส่งดำเนินการ)** ที่มี**ตัวเลือกชุดเดียวกับสถานะ `รอฝ่าย SBP DSA ดำเนินการ`** ทุกข้อ
-  - ผลต่อ API: `GET /sbpgi/document/tasks` ของ section 06 คืน 2 ชุด union กัน + flag `stoppedReopenable` — ดู [`api.md`](api.md)
+  - ผลต่อ API: `GET /sgi/document/tasks` ของ section 06 คืน 2 ชุด union กัน + flag `stoppedReopenable` — ดู [`api.md`](api.md)
 - **เห็นควรไม่ชดเชย (ฝ่าย SBP DSA)** — เอกสาร**จบทันทีในเดือนนั้น** · ระบบดึงร้านเข้าหน้ารอดำเนินการ**รอบเดือนถัดไป**อัตโนมัติ พร้อม**เจ้าของงานคนเดิม**
 - **บทบาท 06 เห็น 3 กลุ่มในหน้ารายการ (มติ 2026-08-24)** — หน้ารอดำเนินการ/ที่เกี่ยวข้องของ **ฝ่าย SBP DSA (section 06)** รวม 3 กลุ่มไว้ในหน้าเดียว บทบาทอื่น (08/01/02/03) เห็นเฉพาะ inbox ของตัวเอง
 
@@ -222,14 +237,14 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
   | 2 | ป้าย `เสร็จสิ้นดำเนินการ หยุดชดเชย` (แดง) |  | SDD สไลด์ 46 ข้อ 1.9 — เปิดพิจารณาใหม่ได้เอง |
   | 3 | ป้าย `เสร็จสิ้นดำเนินการ ไม่ชดเชย` (เทาสเลต) |  | **มติ 2026-08-24** — ให้ 06 ตามงานที่ตัวเองปฏิเสธไว้ได้ในหน้าเดียว |
 
-  - **ไม่ใช่สถานะที่ 7/8** — ทั้งกลุ่ม 2 และ 3 สถานะจริงในฐานข้อมูลยังเป็น `เสร็จสิ้นดำเนินการ` ค่าเดียวตามชุดสถานะ 6 ค่า · ส่วนที่ต่อท้ายป้ายคือ**ผลการพิจารณาสุดท้าย** จาก `consideration_logs` และทั้งสามป้ายใช้ **bg คนละสี** (อำพัน / แดง / เทาสเลต) เพื่อให้แยกออกในตารางเดียว
+  - **ไม่ใช่สถานะที่ 7/8** — ทั้งกลุ่ม 2 และ 3 สถานะจริงในฐานข้อมูลยังเป็น `เสร็จสิ้นดำเนินการ` ค่าเดียวตามชุดสถานะ 6 ค่า · ส่วนที่ต่อท้ายป้ายคือ**ผลการพิจารณาสุดท้าย** จาก `sgi_consideration_logs` และทั้งสามป้ายใช้ **bg คนละสี** (อำพัน / แดง / เทาสเลต) เพื่อให้แยกออกในตารางเดียว
   - ⚠️ **กลุ่ม 3 กว้างกว่าตัวอักษรของ SDD** — สไลด์ 46/64 เขียนว่าเอกสารที่ "เห็นควรไม่ชดเชยรายได้" ไม่แสดงในเดือนที่กด และระบบดึงร้านเข้า**หน้าจองานค้างของเจ้าหน้าที่ SBP DSA ในรอบเดือนถัดไป** · · มติให้คงแถวเดิมไว้ในลิสต์ของ 06 เพิ่มด้วย — **กลไกรอบถัดไปไม่เปลี่ยน** (ยังดึงร้านเข้ามาใหม่เป็น**เอกสารใบใหม่**พร้อมเจ้าของงานคนเดิม)
 
 **B5 · กรณีมีร้านอื่นเปิดกระทบเพิ่มจากร้านเดิม (ผัง To-Be · lane ทีมวิเคราะห์ข้อมูล · SDD สไลด์ 7):**
 
 ร้านถูกกระทบหนึ่งร้านอาจโดนร้านใหม่เปิดกระทบ**มากกว่าหนึ่งร้าน** และร้านที่สองอาจมาทีหลัง — ผังระบุ 2 ทางที่ร้านเพิ่มเข้ามาในเอกสาร
 
-| ทาง | ใครเป็นคนใส่ | ต้นทาง | `document_new_stores.source_system` |
+| ทาง | ใครเป็นคนใส่ | ต้นทาง | `sgi_document_new_stores.source_system` |
 |---|---|---|---|
 | **1** | ไม่มีคน — **ระบบ default ให้อัตโนมัติ** | ALLMAP (Job 2/3 → Job 9 sync เข้าเอกสาร) | **`ALLMAP`** |
 | **2** | **เจ้าหน้าที่ SBP DSA คีย์เอง** (ผังเรียก "ฝ่ายวิเคราะห์ข้อมูล SBP") | เอกสารแจ้งจากหน่วยงานส่งเสริม (SDD สไลด์ 7 — ส่งเสริมกรอกแบบฟอร์มแจ้งมีร้านเปิดกระทบ) | **`USER`** |
@@ -238,8 +253,8 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 
 - กติกา **%ชดเชยรวมต่อเอกสาร = 100%** ยังบังคับเหมือนเดิม → เพิ่มร้านเข้ามา 1 ร้านแล้วไม่แก้ %เดิม จะรวมเกิน 100% ทันที
 - **เงินชดเชยต่อร้านเปิดใหม่ = ยอดชดเชยของร้านถูกกระทบ × %ชดเชย** — คำนวณและปัดเศษที่ **BE** (FE ห้ามคำนวณเอง)
-- FE บันทึกผ่าน `PUT /sbpgi/document/{docNo}` ส่วน `newStores` · กันซ้ำด้วย `UNIQUE (doc_no, new_store_code)` ที่ระดับ DB
-- แถวที่คีย์เองแยกออกจากแถวที่ระบบดึงมาได้ด้วย `source_system` — แพตเทิร์นเดียวกับ `document_competitors` (`ALLMAP` vs `USER`)
+- FE บันทึกผ่าน `PUT /sgi/document/{docNo}` ส่วน `newStores` · กันซ้ำด้วย `UNIQUE (doc_no, new_store_code)` ที่ระดับ DB
+- แถวที่คีย์เองแยกออกจากแถวที่ระบบดึงมาได้ด้วย `source_system` — แพตเทิร์นเดียวกับ `sgi_document_competitors` (`ALLMAP` vs `USER`)
 
 > ⏳ **สิ่งที่ผัง/SDD ไม่ได้ระบุ — ยังไม่ตัดสิน:** เพิ่มร้านตอนเอกสาร**เดินไปถึงขั้นอนุมัติแล้ว** ต้องตีกลับให้พิจารณาใหม่หรือไม่ · ปัจจุบันเอกสารเราให้แก้ส่วนร้านเปิดใหม่ได้เฉพาะขั้นที่มีสิทธิ์แก้ (`.edit-only`) ตามบทบาท ซึ่งครอบเคสนี้อยู่แล้วโดยปริยาย
 
@@ -258,7 +273,7 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 
 **ช่องทางต้นทางของเคส — 3 แหล่ง (SDD สไลด์ 17 · 47 · 49 · รหัสตั้งใหม่ 2026-08-24):**
 
-เอกสารเข้าระบบได้ 3 ทาง เก็บที่ `fgi_impact_processes.datasource` — **แหล่งที่มาเป็นตัวกำหนดว่าใครคีย์ข้อมูล** ไม่ได้เปลี่ยนเส้นทาง workflow
+เอกสารเข้าระบบได้ 3 ทาง เก็บที่ `sgi_fgi_impact_processes.datasource` — **แหล่งที่มาเป็นตัวกำหนดว่าใครคีย์ข้อมูล** ไม่ได้เปลี่ยนเส้นทาง workflow
 
 | รหัส | ช่องทาง | ใครเริ่ม | จนท. SBP DSA (08) ทำอะไร |
 |---|---|---|---|
@@ -288,8 +303,8 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 | **รอพิจารณารอบเดือนถัดไป** — รอบนี้ยังไม่ควรชดเชย แต่ร้านยังอยู่ในเงื่อนไขกระทบ | **เห็นควรไม่ชดเชยรายได้** | จบรอบนี้ · ระบบดึงร้านกลับเข้ามาใหม่**เดือนถัดไป** พร้อมเจ้าของงานคนเดิม | — |
 | **ไม่อนุมัติถาวร** — ร้านไม่เข้าเงื่อนไขชดเชยอีกต่อไป | **หยุดชดเชยประกันรายได้** | จบกระบวนการ · ไม่ดึงกลับอัตโนมัติ (06 เปิดพิจารณาใหม่เองได้) | **`เนื่องจาก Location ที่ไม่เหมาะสม`** |
 
-- **บันทึกเหตุผลทุกครั้ง** ลง `consideration_logs.detail` (ช่องความเห็นในแผงพิจารณา) — ผังกำกับเหตุผลไว้กับปุ่ม `หยุดชดเชยประกันรายได้` โดยเฉพาะ
-- ⏳ **ยังไม่ทำ `reason_code`** — ตอนนี้ใช้ข้อความอิสระ · ถ้าภายหลังต้องการรายงานแยกตามเหตุผล ค่อยเพิ่ม `code_type = SBPGI_REJECT_REASON` ใน `common_code` แล้วผูกกับ `consideration_logs` (ไม่ต้องแก้ DDL เพราะเก็บที่ระบบเดิม)
+- **บันทึกเหตุผลทุกครั้ง** ลง `sgi_consideration_logs.detail` (ช่องความเห็นในแผงพิจารณา) — ผังกำกับเหตุผลไว้กับปุ่ม `หยุดชดเชยประกันรายได้` โดยเฉพาะ
+- ⏳ **ยังไม่ทำ `reason_code`** — ตอนนี้ใช้ข้อความอิสระ · ถ้าภายหลังต้องการรายงานแยกตามเหตุผล ค่อยเพิ่ม `code_type = SGI_REJECT_REASON` ใน `common_code` แล้วผูกกับ `sgi_consideration_logs` (ไม่ต้องแก้ DDL เพราะเก็บที่ระบบเดิม)
 
 > ⚠️ **เห็นควรไม่ชดเชย ≠ หยุดชดเชย** — สองปุ่มนี้จบเอกสารเหมือนกัน และ (ตามมติ 2026-08-24) แถวเดิมคงอยู่ในหน้ารายการของ 06 เหมือนกัน สิ่งที่**ต่างกันจริง**คือรอบถัดไป:
 > **หยุดชดเชยฯ = 06 เปิดพิจารณาใบเดิมใหม่ได้เอง**ในเดือนเดียวกัน (`?stopped=1`) · **เห็นควรไม่ชดเชย = ระบบดึงร้านเข้ามาเป็นงานใบใหม่ในเดือนถัดไป** พร้อมเจ้าของงานคนเดิม
@@ -297,8 +312,8 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 **วิธี resolve "เจ้าของงานคนเดิม" (กลไกเทคนิค · ตัดสิน 2026-08-20):**
 
 1. หา**เอกสารรอบก่อนหน้า**ของร้านเดียวกัน (`impacted_store_code` เดิม · `round_no`/`loop_no` ก่อนหน้า)
-2. อ่าน `consideration_logs` แถวล่าสุดของเอกสารนั้นที่ `section_code` = ขั้นที่ต้องการมอบหมาย → ได้ **`consider_by`** (คอลัมน์ผู้ดำเนินการ · อ้าง `business_user` ของระบบเดิม)
-3. ส่งให้ engine ผูกเป็นผู้รับผิดชอบขั้นนั้นด้วย **`addPreApprover(versionId, referenceId, stateId, approver, seq)`** ของ `@srm/glb-workflow` — **ไม่มีคอลัมน์ assignee ในตารางของ SBPGI** (ตาราง `workflow_tasks` ถูกตัดออกจากโครงแล้ว)
+2. อ่าน `sgi_consideration_logs` แถวล่าสุดของเอกสารนั้นที่ `section_code` = ขั้นที่ต้องการมอบหมาย → ได้ **`consider_by`** (คอลัมน์ผู้ดำเนินการ · อ้าง `business_user` ของระบบเดิม)
+3. ส่งให้ engine ผูกเป็นผู้รับผิดชอบขั้นนั้นด้วย **`addPreApprover(versionId, referenceId, stateId, approver, seq)`** ของ `@srm/glb-workflow` — **ไม่มีคอลัมน์ assignee ในตารางของ SGI** (ตาราง `workflow_tasks` ถูกตัดออกจากโครงแล้ว)
 4. **Fallback** — ถ้ารอบก่อนไม่เคยผ่านขั้นนั้น หรือพนักงานคนเดิมลาออก/ไม่อยู่ในกลุ่มแล้ว → กลับไปใช้การมอบหมายตาม **group ของ auth-backend** ตามปกติ
 5. **พนักงานลาออก** ยังต้องเปิด SR เพื่อแก้ชื่อผู้ดำเนินการ (ข้อจำกัดที่ SDD สไลด์ 48 ระบุไว้ · ไม่ได้แก้ในเฟสนี้)
 - **หน้างานค้าง (Step 1.0 To-Be)** — แสดงร้านที่เข้าเงื่อนไขเปิดกระทบให้เจ้าหน้าที่เลือกงาน/ปรับยอดของตนเอง · เคสต่อเนื่อง auto-assign คนเดิม · filter เอกสารได้ · checkbox เลือกดำเนินการหลายเอกสาร + popup ยืนยัน · กรณีพนักงานลาออกยังต้องเปิด SR แก้ชื่อผู้ดำเนินการ
@@ -326,9 +341,9 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 
 แผนภาพ BPMN "A-Document Approve Flow ประกันรายได้" ของระบบเดิม (8 lanes: admin, ฝ่าย OPT, GM OPT, บัญชี, บัญชีปฏิบัติการภาค, ฝ่าย บชฟ, เจ้าหน้าที่ บชฟ, GM ส่งเสริม) เป็น flow อนุมัติรุ่นก่อน SRS v3.1 — เรื่อง role/ลำดับขั้นให้ยึด workflow 5 ขั้น (06→08→01→02→03 · ตัดบัญชี 04/05 ตาม SDD v7.5) แต่มี 4 พฤติกรรมที่รับเข้าระบบใหม่ **ทั้งหมดอยู่ฝั่งเอกสาร/Workflow (โซน B/C) ไม่กระทบ FGI/FCS pipeline (Jobs 2–10 + 8b) และ interface ภายนอก**:
 
-1. **อีเมลเตือนงานค้างรายสัปดาห์** — flow เดิมส่งเตือนผู้ดำเนินการทุกวันจันทร์ 10:00 แทบทุกขั้น (จุด 10.1, 20.2, 30.1, 70.1, 80.1, 110.2) → ระบบใหม่: เพิ่ม reminder job รายสัปดาห์ที่เรียก `sendEmail()` ของ email-lib กลาง อ่านงานค้างจาก **`@srm/glb-workflow`** (`getPendingFlowByUser()` ของ `@srm/glb-workflow` · อ่านตาราง `sps_store.workflow_transaction`/`workflow_approver` ของระบบ SBP เดิม) ผู้รับ = เจ้าของงานค้างที่ resolve ได้ (`business_user.email`) · **เมลกลุ่มนี้ไม่ใช่ transition จึงไม่มี route ให้แขวน `email_id`** — เก็บเลข template ไว้ที่ `mas_param` แล้ว SBPGI เรียก `sendEmail()` เอง (ปลดล็อกโดยมติ DP-5 · 2026-08-14) · รอบเวลาแก้ได้ใน config
+1. **อีเมลเตือนงานค้างรายสัปดาห์** — flow เดิมส่งเตือนผู้ดำเนินการทุกวันจันทร์ 10:00 แทบทุกขั้น (จุด 10.1, 20.2, 30.1, 70.1, 80.1, 110.2) → ระบบใหม่: เพิ่ม reminder job รายสัปดาห์ที่เรียก `sendEmail()` ของ email-lib กลาง อ่านงานค้างจาก **`@srm/glb-workflow`** (`getPendingFlowByUser()` ของ `@srm/glb-workflow` · อ่านตาราง `sps_store.workflow_transaction`/`workflow_approver` ของระบบ SBP เดิม) ผู้รับ = เจ้าของงานค้างที่ resolve ได้ (`business_user.email`) · **เมลกลุ่มนี้ไม่ใช่ transition จึงไม่มี route ให้แขวน `email_id`** — เก็บเลข template ไว้ที่ `mas_param` แล้ว SGI เรียก `sendEmail()` เอง (ปลดล็อกโดยมติ DP-5 · 2026-08-14) · รอบเวลาแก้ได้ใน config
 2. **Escalation งานค้าง 30/45/60 วัน** — flow เดิมส่งต่อ GM OPT เมื่อครบ 30/45/60 วัน (จุด 20.3) → ระบบใหม่: Workflow Engine ตรวจอายุงานค้าง (`waitingDate` ที่ `getPendingFlowByUser()` คืนมา) แล้วแจ้ง/ส่งต่อหัวหน้า Section ตามเกณฑ์ (ค่ากำหนดแก้ได้)
-3. **สร้างเอกสารนอกเงื่อนไข** — ขั้น 15 ของ flow เดิม (กรอกข้อมูลร้านเอง เมื่อระบบคำนวณให้ไม่ได้) → ระบบใหม่ (**ตัดสินใจ 2026-08-06**): **ไม่มีฟอร์มสร้างเอกสารใน FE** — ผู้ใช้สร้างข้อมูลต้นทางที่ระบบ **Finance & Account Unit (FS)** แล้วรอ **SBP Statement** ประมวลผลส่งข้อมูลกลับ (~1 วัน) ระบบจึงสร้างเอกสารผ่าน `POST /sbpgi/document` ลงตารางชุดเดียวกับเส้นอัตโนมัติ · หน้า `k2-create.html` เหลือเป็นหน้าอธิบายกระบวนการ (เฉพาะผู้มีสิทธิ์เข้าถึง) · การคีย์/ปรับข้อมูลร้านและยอดชดเชยตาม SDD GI ทำในหน้าเอกสาร ไม่ใช่หน้าสร้าง
+3. **สร้างเอกสารนอกเงื่อนไข** — ขั้น 15 ของ flow เดิม (กรอกข้อมูลร้านเอง เมื่อระบบคำนวณให้ไม่ได้) → ระบบใหม่ (**ตัดสินใจ 2026-08-06**): **ไม่มีฟอร์มสร้างเอกสารใน FE** — ผู้ใช้สร้างข้อมูลต้นทางที่ระบบ **Finance & Account Unit (FS)** แล้วรอ **SBP Statement** ประมวลผลส่งข้อมูลกลับ (~1 วัน) ระบบจึงสร้างเอกสารผ่าน `POST /sgi/document` ลงตารางชุดเดียวกับเส้นอัตโนมัติ · หน้า `k2-create.html` เหลือเป็นหน้าอธิบายกระบวนการ (เฉพาะผู้มีสิทธิ์เข้าถึง) · การคีย์/ปรับข้อมูลร้านและยอดชดเชยตาม SDD GI ทำในหน้าเอกสาร ไม่ใช่หน้าสร้าง
 4. **เงื่อนไขร้านก่อน/หลัง 1/10/2014** — โน้ต 10.1–10.4 แยกจุดเริ่มเอกสารตามวันที่โอนร้านแฟรนไชส์ → ระบบใหม่: ถ้ายืนยันตาม SRS จะเป็นกฎ routing ตอนเปิด instance ใน Workflow Engine — **เกณฑ์ Gen Flow Gate ฝั่ง batch คงเดิมทุกข้อ · สถานะ: รอ verify กับ SRS v3.1**
 
 สิ่งที่อยู่ในภาพแต่**ไม่รับเข้า**: โครง role 8 lanes (ถูกแทนด้วย 5 ขั้น section_code · ตัดบัญชี 04/05 ตาม SDD v7.5 · SRS v3.1 ซึ่งใหม่กว่า และภาพนี้ยังไม่มีกฎวงเงิน GM/AVP / lane SBP DSA)
@@ -344,12 +359,12 @@ Database รวม — โซน A (FGI/FCS) · B (K2) · C (Shared)   → ด�
 - %ชดเชยรวมต่อเอกสาร = 100%
 - **ข้อยกเว้น:** ไฟล์ที่รับจาก IAS (`AMS06001I_`) ยังเป็น **พ.ศ. + windows-874** ตามสัญญาปลายทางเดิม — แปลงตอนอ่านไฟล์เท่านั้น · ส่วน message ที่ส่ง STA เป็น **JSON UTF-8** (ไม่มี windows-874 แล้วเพราะไม่ใช่ไฟล์) แต่ **ฟิลด์วันที่ยังเป็น พ.ศ.** ตามสัญญา 14 ฟิลด์เดิม — รอยืนยันกับทีม STA ว่าเปลี่ยนเป็น ISO ค.ศ. ได้หรือไม่
 - เลขเอกสาร YYYY/xxxxx (**ปี ค.ศ.** — ยึดตามระบบ K2 เดิมที่ออกเลขเป็น ค.ศ. เช่น `2026/01870` และตรงกับระบบ SBP ปัจจุบันที่เก็บ/ส่งเป็น ค.ศ. เสมอ · ตัดสินใจ 2026-08-06)
-- workflow 5 ขั้น: 06 → 08 → 01 → 02 → 03 (**ตัดขั้นบัญชี 04/05 ตาม SDD v7.5** — บัญชีตรวจสอบผ่านรายงาน SBP Mall นอก workflow)
+- workflow 5 ขั้น: 06 → 08 → 01 → 02 → 03 (**ตัดขั้นบัญชี 04/05 ตาม SDD v7.5** — บัญชีตรวจสอบผ่านรายงาน SBP Mall นอก workflow) · **จำนวนขั้นและลำดับกลั่นกรองไม่เปลี่ยน** — มติ 2026-09-01 เปลี่ยนเฉพาะ *ปลายทางของการส่งงาน*: 08 ส่งยอดกลับ 06 (positive path เป็น `06→08→06→01→02→03`) และปุ่มส่งกลับทุกขั้นชี้ 06 เสมอ
 
 ## เอกสารที่เกี่ยวข้อง
 
 - โครงสร้างตารางที่ flow นี้ใช้: [database.md](database.md) · `plan-database.html`
-- API ทุกเส้น: [api.md](api.md) · `plan-api.html` (**29 เส้น 6 กลุ่ม** — Lookup 2 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 — กลุ่ม Auth/RBAC และเส้นผู้ปฏิบัติงาน/สิทธิ์เมนูถูกตัดไปใช้ระบบเดิม · กลุ่ม **Lookup** เหลือ 3 เส้น (`/sbpgi/lookup/document-statuses` · `/sbpgi/lookup/workflow-sections` · `/decisions` — `/stores/search` `/zones` `/branch-types` ตัดไปใช้ของระบบ SBP เดิม) และ `GET /sbpgi/document/{docNo}/sales` ที่เพิ่มให้ครบตามหน้าจอ · แต่ละเส้นมีแท็บ Request/Response + Database (พร้อมตัวอย่าง SQL) และ 4 เส้นที่ซับซ้อนมีแท็บ Flowchart · กลุ่มข้อมูลผิดปกติ 2 เส้นยกเลิกและลบทิ้งถาวร 2026-08-06)
-- Email template ทุกจุดส่งใน flow: ตาราง **`email_template`** ของระบบ SBP เดิม (8 templates: EM-01–03 เปลี่ยนสถานะ/จบงาน/ส่งกลับ · EM-04–05 เตือนงานค้างรายสัปดาห์/escalation 30-45-60 วัน · EM-06–08 ฝั่ง batch: สรุปเปิด workflow ราย DV, job error, watchdog ACK — ผู้รับ TO/CC ตาม SRS 3.1.5) · การส่งใช้ `@gosoft-sbp/email-lib` และ log ลง `email_sent` · **หน้าจอ Email Template ของ SBPGI ถูกลบทั้งฟีเจอร์ 2026-08-06** (พร้อม endpoint 5 เส้น) — การแก้ subject/body ทำที่ระบบ SBP เดิม · ตารางสถานะ × action × ผู้รับ ดู `workflow_status_document.md`
+- API ทุกเส้น: [api.md](api.md) · `plan-api.html` (**29 เส้น 6 กลุ่ม** — Lookup 2 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 — กลุ่ม Auth/RBAC และเส้นผู้ปฏิบัติงาน/สิทธิ์เมนูถูกตัดไปใช้ระบบเดิม · กลุ่ม **Lookup** เหลือ 3 เส้น (`/sgi/lookup/document-statuses` · `/sgi/lookup/workflow-sections` · `/decisions` — `/stores/search` `/zones` `/branch-types` ตัดไปใช้ของระบบ SBP เดิม) และ `GET /sgi/document/{docNo}/sales` ที่เพิ่มให้ครบตามหน้าจอ · แต่ละเส้นมีแท็บ Request/Response + Database (พร้อมตัวอย่าง SQL) และ 4 เส้นที่ซับซ้อนมีแท็บ Flowchart · กลุ่มข้อมูลผิดปกติ 2 เส้นยกเลิกและลบทิ้งถาวร 2026-08-06)
+- Email template ทุกจุดส่งใน flow: ตาราง **`email_template`** ของระบบ SBP เดิม (8 templates: EM-01–03 เปลี่ยนสถานะ/จบงาน/ส่งกลับ · EM-04–05 เตือนงานค้างรายสัปดาห์/escalation 30-45-60 วัน · EM-06–08 ฝั่ง batch: สรุปเปิด workflow ราย DV, job error, watchdog ACK — ผู้รับ TO/CC ตาม SRS 3.1.5) · การส่งใช้ `@gosoft-sbp/email-lib` และ log ลง `email_sent` · **หน้าจอ Email Template ของ SGI ถูกลบทั้งฟีเจอร์ 2026-08-06** (พร้อม endpoint 5 เส้น) — การแก้ subject/body ทำที่ระบบ SBP เดิม · ตารางสถานะ × action × ผู้รับ ดู `workflow_status_document.md`
 - Flow ต้นฉบับแยกระบบ: `flow-fgi.html` (FGI/FCS pipeline) · `k2-flow.html` (K2 approval BPMN) · `job-batch.html` (Flow Batch Job — flowchart ต่อ job + ตารางฐานข้อมูลที่ใช้)
-- Sequence diagram: `old-flow.png` (เดิม, มี EAI + K2) · `new-flow.png` (ใหม่, รวมเข้า SBPGI แล้ว)
+- Sequence diagram: `old-flow.png` (เดิม, มี EAI + K2) · `new-flow.png` (ใหม่, รวมเข้า SGI แล้ว)

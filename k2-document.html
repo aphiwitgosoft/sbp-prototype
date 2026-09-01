@@ -62,7 +62,7 @@
           <div class="dm"><span class="k">ชื่อร้านถูกกระทบ</span><span class="v">รัตนอุทิศ ซ.13</span></div>
           <div class="dm"><span class="k">ภาค</span><span class="v">BN</span></div>
           <div class="dm"><span class="k">ประเภทร้าน</span><span class="v">SBP Type B</span></div>
-          <!-- ช่องทางต้นทางของเคส (SDD GI สไลด์ 17 · fgi_impact_processes.datasource)
+          <!-- ช่องทางต้นทางของเคส (SDD GI สไลด์ 17 · sgi_fgi_impact_processes.datasource)
                ALM/STA = ระบบส่งงานมาให้เลือก · PRO/REA = เจ้าของงานคีย์เอง (สไลด์ 47 · 49) -->
           <div class="dm"><span class="k">ช่องทางต้นทาง</span><span class="v" title="ALM = ระบบดึงจาก ALLMAP · STA = ระบบดึงจาก Franchise Statement · PRO = เชิงรุก (ประชุมพิจารณา) · REA = เชิงรับ (รับแจ้งจากหน่วยงานอื่น)">ALM · จากระบบ (ALLMAP)</span></div>
           <div class="dm"><span class="k">เจ้าของร้าน</span><span class="v">บ.เอกธานี เมโมเรียล จำกัด</span></div>
@@ -71,9 +71,9 @@
           <div class="dm"><span class="k">ผู้ดำเนินการ</span><span class="v" id="docHandlers" title="รายชื่อสะสมของทุกคนที่เคยดำเนินการกับเอกสารนี้ (เรียงตามลำดับขั้น) — เปลี่ยนตามบทบาทที่เลือกในแถบด้านบน">—</span></div>
           <div class="dm"><span class="k">ยอดขายที่ลดลง</span><span class="v num" style="color:#c0392b;">12.45%</span></div>
           <div class="dm"><span class="k">จำนวนเงินที่ชดเชย (ล่าสุด)</span><span class="v num" style="color:#16a34a;">48,200.00 ฿</span></div>
-          <div class="dm"><span class="k">เอกสาร Statement</span><span class="v"><a href="#" data-ack="เปิดเอกสาร SBP Statement (PDF) ในแท็บใหม่" title="ลิงก์จาก compensation_documents.statement_id → SBP Statement (ตรงกับปุ่ม &quot;คลิกเปิดเอกสาร Statement&quot; ของ K2 เดิม)" style="display:inline-flex;align-items:center;gap:6px;color:#c0392b;text-decoration:none;font-weight:600;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M9 13h6M9 17h4"/></svg> SBP_Statement.pdf</a></span></div>
+          <div class="dm"><span class="k">เอกสาร Statement</span><span class="v"><a href="#" data-ack="เปิดเอกสาร SBP Statement (PDF) ในแท็บใหม่" title="ลิงก์จาก sgi_compensation_documents.statement_id → SBP Statement (ตรงกับปุ่ม &quot;คลิกเปิดเอกสาร Statement&quot; ของ K2 เดิม)" style="display:inline-flex;align-items:center;gap:6px;color:#c0392b;text-decoration:none;font-weight:600;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M9 13h6M9 17h4"/></svg> SBP_Statement.pdf</a></span></div>
         </div>
-        <div style="margin-top:12px;"><button class="btn btn-soft btn-sm" data-ack="เปิดแดชบอร์ดยอดขาย QlikView (bidashboard.cpall.co.th) ในแท็บใหม่" title="K2 เดิมลิงก์ออกไปแดชบอร์ด QlikView BI (bidashboard.cpall.co.th/qlikview/FormLogin.htm) · ระบบใหม่เรียก GET /sbpgi/document/{docNo}/sales ควบคู่กับลิงก์ BI"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg> ข้อมูลยอดขายเพิ่มเติม (QlikView BI)</button><span style="margin-left:10px;font-size:11.5px;color:var(--muted);">ลิงก์ภายนอก: <code>bidashboard.cpall.co.th/qlikview</code> (ตามระบบ K2 เดิม)</span></div>
+        <div style="margin-top:12px;"><button class="btn btn-soft btn-sm" data-ack="เปิดแดชบอร์ดยอดขาย QlikView (bidashboard.cpall.co.th) ในแท็บใหม่" title="K2 เดิมลิงก์ออกไปแดชบอร์ด QlikView BI (bidashboard.cpall.co.th/qlikview/FormLogin.htm) · ระบบใหม่เรียก GET /sgi/document/{docNo}/sales ควบคู่กับลิงก์ BI"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg> ข้อมูลยอดขายเพิ่มเติม (QlikView BI)</button><span style="margin-left:10px;font-size:11.5px;color:var(--muted);">ลิงก์ภายนอก: <code>bidashboard.cpall.co.th/qlikview</code> (ตามระบบ K2 เดิม)</span></div>
       </div>
 
       <!-- แผนที่ AllMap — เต็มความกว้าง -->
@@ -172,7 +172,7 @@
             <tr><td class="col-chk"><input type="checkbox" class="cbx"></td><td>06 · ซี.เจ. เอ็กซ์เพรส (CJ Express)</td><td class="num">05/01/2024</td><td>เปิดหัวซอยเดียวกัน</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
           </tbody>
         </table></div>
-        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">ตัวเลือก “ร้านคู่แข่ง” ใน modal เพิ่ม/แก้ไข อ่านจาก master <a href="k2-competitors.html">กำหนดรายชื่อคู่แข่ง</a> (ตาราง <code>competitors</code> · รหัส · ชื่อไทย (ชื่ออังกฤษ)) — <b>ร้านคู่แข่ง</b> และ <b>วันที่เปิดกระทบ</b> เป็น require field</p>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">ตัวเลือก “ร้านคู่แข่ง” ใน modal เพิ่ม/แก้ไข อ่านจาก master <a href="k2-competitors.html">กำหนดรายชื่อคู่แข่ง</a> (ตาราง <code>sgi_competitors</code> · รหัส · ชื่อไทย (ชื่ออังกฤษ)) — <b>ร้านคู่แข่ง</b> และ <b>วันที่เปิดกระทบ</b> เป็น require field</p>
       </div>
 
       <!-- ส่วน ปัจจัยอื่นๆ -->
@@ -195,7 +195,7 @@
             <tr><td class="col-chk"><input type="checkbox" class="cbx"></td><td>F003 · การก่อสร้าง / ปิดถนน</td><td class="num">01/05/2026</td><td class="num">31/07/2026</td><td>ก่อสร้างสะพานกลับรถ กระทบการเข้าถึง</td><td class="col-action edit-only" hidden><button class="icon-btn icon-edit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button class="icon-btn icon-del"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td></tr>
           </tbody>
         </table></div>
-        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">ตัวเลือก “ปัจจัยภายนอก” ใน modal เพิ่ม/แก้ไข อ่านจาก master <a href="k2-factors.html">กำหนดปัจจัยภายนอก</a> (ตาราง <code>external_factors</code> · รหัสปัจจัย · ชื่อปัจจัย) — <b>ปัจจัยภายนอก</b> และ <b>วันที่เริ่มต้น</b> เป็น require field · วันที่สิ้นสุดต้องเท่ากับหรือมากกว่าวันที่เริ่มต้น</p>
+        <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">ตัวเลือก “ปัจจัยภายนอก” ใน modal เพิ่ม/แก้ไข อ่านจาก master <a href="k2-factors.html">กำหนดปัจจัยภายนอก</a> (ตาราง <code>sgi_external_factors</code> · รหัสปัจจัย · ชื่อปัจจัย) — <b>ปัจจัยภายนอก</b> และ <b>วันที่เริ่มต้น</b> เป็น require field · วันที่สิ้นสุดต้องเท่ากับหรือมากกว่าวันที่เริ่มต้น</p>
       </div>
 
       <!-- ส่วน เอกสารแนบทั้งหมด -->
@@ -270,7 +270,7 @@
           <b>เลือกปุ่มปฏิเสธตัวไหน (ผัง To-Be — <code>เงื่อนไขการไม่อนุมัติ</code>)</b> — เกณฑ์คือ <b>“เคสนี้ยังมีโอกาสได้ชดเชยรอบหน้าไหม”</b>
           <br>· <b>รอพิจารณารอบเดือนถัดไป</b> (ร้านยังอยู่ในเงื่อนไขกระทบ) → กด <b>“เห็นควรไม่ชดเชย”</b>
           &nbsp;·&nbsp; <b>ไม่อนุมัติถาวร</b> (ร้านไม่เข้าเงื่อนไขอีกต่อไป เช่น <b>Location ที่ไม่เหมาะสม</b>) → กด <b>“หยุดชดเชยประกันรายได้”</b>
-          <br>ทั้งสองกรณี<b>ต้องระบุเหตุผลในช่องความเห็น</b> (บันทึกลง <code>consideration_logs.detail</code>)
+          <br>ทั้งสองกรณี<b>ต้องระบุเหตุผลในช่องความเห็น</b> (บันทึกลง <code>sgi_consideration_logs.detail</code>)
           <br><br><b>กติกาเจ้าของงานหลังกดปุ่ม (SDD สไลด์ 46 · 48)</b> — <b>“เห็นควรไม่ชดเชยรายได้”</b> เอกสารจบและ<b>ไม่แสดง</b>ในหน้ารอดำเนินการของฝ่าย SBP DSA ในเดือนนี้ แต่<b>เดือนถัดไป</b>ระบบจะดึงร้านเข้ามาใหม่พร้อม<b>เจ้าของงานคนเดิม</b> ·
           <b>“หยุดชดเชยประกันรายได้”</b> เอกสาร<b>แสดงทันทีในเดือนนี้</b>ให้ฝ่าย SBP DSA เปิดพิจารณาใหม่ได้เอง · <b>เคสต่อเนื่อง</b> ระบบส่งงานให้เจ้าหน้าที่ SBP DSA คนเดิมอัตโนมัติ
         </p>
@@ -425,7 +425,7 @@
   .rb-close:hover{background:#f3f6fb; color:#2b3440; border-color:#c9d3df;}
   /* ตัวเลือกที่กติกายอดชดเชย 0 บังคับให้เลือก (SDD GI) */
   .dec-opt-pick{border-color:#d68a10!important; background:#fff8ec!important; box-shadow:0 0 0 3px rgba(214,138,16,.10);}
-  </style>
+    </style>
 
   <script src="assets/sbp.js"></script>
   <script>
@@ -435,11 +435,12 @@
       { key:'sbpdsa-mgr', role:'ฝ่าย SBP DSA (Manager Franchise · section_code 06)', status:'รอฝ่าย SBP DSA ดำเนินการ', pill:'wait', edit:[], opts:[
         { label:'เห็นควรไม่ชดเชย', note:'เอกสารเสร็จสิ้น', req:true },
         { label:'หยุดชดเชยประกันรายได้', note:'เอกสารเสร็จสิ้น', zero:'stop' },
-        { label:'ส่งหน่วยงานส่งเสริมธุรกิจ SBP', zero:'forward' },
-        { label:'ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ' } ] },
+        { label:'ส่งหน่วยงานส่งเสริมธุรกิจ SBP' },
+        { label:'ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ', zero:'forward' } ] },
+      /* มติ 2026-09-01 — ขั้น 08 เหลือปุ่มเดียว: คำนวณเสร็จแล้วส่งยอดกลับ 06 ให้เป็นผู้ส่งต่อ
+         ปุ่ม 'ส่งกลับฝ่าย SBP DSA' เดิมถูกตัดเพราะปลายทางซ้ำกับปุ่มที่เหลือ */
       { key:'sbpdsa-officer', role:'เจ้าหน้าที่ SBP DSA (Officer Franchise · section_code 08)', status:'รอเจ้าหน้าที่ SBP DSA ดำเนินการ', pill:'violet', edit:['sec-calc'], opts:[
-        { label:'คำนวณเงินชดเชยเรียบร้อย → ส่งหน่วยงานส่งเสริมธุรกิจฯ' },
-        { label:'ส่งกลับฝ่าย SBP DSA' } ] },
+        { label:'คำนวณเงินชดเชยเรียบร้อย → ส่งยอดกลับ ฝ่าย SBP DSA' } ] },
       { key:'opt-mgr', role:'หน่วยงานส่งเสริมธุรกิจฯ (ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ + เจ้าหน้าที่อาวุโส · section_code 01)', status:'รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ', pill:'info', edit:['sec-newstore','sec-competitor','sec-factor'], opts:[
         { label:'เห็นควรชดเชย → GM ส่งเสริมธุรกิจฯ' },
         { label:'เห็นควรไม่ชดเชย → ฝ่าย SBP DSA', req:true },
@@ -447,11 +448,11 @@
       { key:'opt-gm', role:'GM ส่งเสริมธุรกิจฯ (GM OPT · section_code 02)', status:'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ', pill:'info', edit:[], money:true, opts:[
         { label:'เห็นควรชดเชย', money:'approve' },
         { label:'เห็นควรไม่ชดเชย', money:'reject' },
-        { label:'ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP' } ] },
+        { label:'ส่งกลับ ฝ่าย SBP DSA' } ] },   /* มติ 2026-09-01 — เดิม 'ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP' (→ 01) */
       { key:'avp', role:'ผู้บริหารสำนักบริหาร SBP (AVP OPT · section_code 03)', status:'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill:'info', edit:[], opts:[
         { label:'เห็นควรชดเชย → เสร็จสิ้นดำเนินการ', end:true },
         { label:'เห็นควรไม่ชดเชย → รอฝ่าย SBP DSA' },
-        { label:'ส่งกลับ GM ส่งเสริมธุรกิจฯ' } ] }
+        { label:'ส่งกลับ ฝ่าย SBP DSA' } ] }   /* มติ 2026-09-01 — เดิม 'ส่งกลับ GM ส่งเสริมธุรกิจฯ' (→ 02) */
       /* ตัดบทบาทบัญชี 04/05 ตาม SDD v7.5 — บัญชีตรวจผ่านรายงาน SBP Mall นอก workflow */
     ];
 
@@ -461,7 +462,7 @@
       { name:'Somchai Jaidee',        position:'ฝ่าย SBP DSA',                 result:'ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ',
         detail:'ตรวจสอบเอกสารและข้อมูลร้านครบถ้วน ส่งให้เจ้าหน้าที่คำนวณเงินชดเชย',
         datetime:'12/06/2026 09.20.33 น.', files:['map_allmap.pdf'] },
-      { name:'Nattapong Wongsa',      position:'เจ้าหน้าที่ SBP DSA',           result:'คำนวณเงินชดเชยเรียบร้อย → ส่งหน่วยงานส่งเสริมธุรกิจฯ',
+      { name:'Nattapong Wongsa',      position:'เจ้าหน้าที่ SBP DSA',           result:'คำนวณเงินชดเชยเรียบร้อย → ส่งยอดกลับ ฝ่าย SBP DSA',
         detail:'คำนวณผ่านระบบ FS · ยอดชดเชยรวม 48,200.00 บาท (ร้านใหม่ 2 ร้าน · 60% + 40%)',
         datetime:'13/06/2026 14.05.11 น.', files:['fs_calculation.xlsx','impact_report.pdf'] },
       { name:'Chantaporn Banchuen',   position:'หน่วยงานส่งเสริมธุรกิจ SBP',    result:'เห็นควรชดเชย → GM ส่งเสริมธุรกิจฯ',
@@ -577,8 +578,8 @@
       /* ตัวเลือกพิจารณา */
       var box = $('decisionOptions'); box.innerHTML = '';
       var total = money();
-      /* กติกายอดชดเชย 0 (SDD GI สไลด์ 51) — ใช้เฉพาะขั้น 06 ฝ่าย SBP DSA
-         เดือนที่ 1–3 ที่ยอดเป็น 0 → ส่งหน่วยงานส่งเสริมธุรกิจ SBP · ครบเดือนที่ 4 → หยุดชดเชยรายได้ */
+      /* กติกายอดชดเชย 0 (SDD GI สไลด์ 51 · ปลายทางปรับตามมติ 2026-09-01) — ใช้เฉพาะขั้น 06 ฝ่าย SBP DSA
+         เดือนที่ 1–3 ที่ยอดเป็น 0 → ส่งเจ้าหน้าที่ SBP DSA (เดิมส่งหน่วยงานส่งเสริมธุรกิจ SBP) · ครบเดือนที่ 4 → หยุดชดเชยรายได้ */
       var LOOP_NO = parseInt((document.querySelector('.page-sub') || {}).textContent
                       ? ((document.querySelector('.page-sub').textContent.match(/ครั้งที่\s*(\d+)/) || [])[1] || '1') : '1', 10);
       var zeroCase = (r.key === 'sbpdsa-mgr' && total === 0);
@@ -594,7 +595,7 @@
         var pick = zeroCase && o.zero === zeroPick;
         if (pick) note = (note ? note + ' · ' : '') +
           (zeroPick === 'stop' ? 'ยอดชดเชย 0 ครบเดือนที่ 4 → ต้องเลือกข้อนี้ (SDD GI)'
-                               : 'ยอดชดเชย 0 เดือนที่ ' + LOOP_NO + ' (1–3) → ต้องเลือกข้อนี้ (SDD GI)');
+                               : 'ยอดชดเชย 0 เดือนที่ ' + LOOP_NO + ' (1–3) → ต้องเลือกข้อนี้ (มติ 2026-09-01)');
         var lab = document.createElement('label');
         lab.className = 'dec-opt' + (pick ? ' dec-opt-pick' : '');
         lab.innerHTML = '<input type="radio" name="route" data-req="'+(o.req?1:0)+'" style="margin-top:3px;"> <span>'+o.label+(note?' <small>('+note+')</small>':'')+'</span>';
@@ -611,8 +612,8 @@
         zeroNote.innerHTML = zeroCase
           ? '<b>ยอดชดเชยเป็น 0 · ครั้งที่ ' + LOOP_NO + '</b> — ' + (zeroPick === 'stop'
               ? 'ครบเดือนที่ 4 แล้ว ต้องเลือก “หยุดชดเชยประกันรายได้”'
-              : 'อยู่ในเดือนที่ 1–3 ต้องเลือก “ส่งหน่วยงานส่งเสริมธุรกิจ SBP”') + ' (SDD GI สไลด์ 51)'
-          : 'กติกายอดชดเชย 0 (SDD GI): เดือนที่ 1–3 → ส่งหน่วยงานส่งเสริมธุรกิจ SBP · ครบเดือนที่ 4 → หยุดชดเชยรายได้ · เอกสารนี้ยอด ' + fmt(total) + ' บาท จึงยังไม่เข้าเงื่อนไข';
+              : 'อยู่ในเดือนที่ 1–3 ต้องเลือก “ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ”') + ' (SDD GI สไลด์ 51 · ปลายทางตามมติ 2026-09-01)'
+          : 'กติกายอดชดเชย 0: เดือนที่ 1–3 → ส่งเจ้าหน้าที่ SBP DSA (มติ 2026-09-01 · เดิมส่งหน่วยงานส่งเสริมธุรกิจ SBP) · ครบเดือนที่ 4 → หยุดชดเชยรายได้ · เอกสารนี้ยอด ' + fmt(total) + ' บาท จึงยังไม่เข้าเงื่อนไข';
       }
       $('decHint').textContent = r.role.split(' (')[0];
 

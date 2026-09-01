@@ -10,9 +10,22 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **11 ชั่วโมง** = implementation 8 + unit test 3 (30%) |
 | Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | Watchdog เฝ้าระวัง ACK ค้าง: งาน safety net ตรวจ interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/sbpgi/interface/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน email-lib กลาง (sendEmail) |
+| Objective | Watchdog เฝ้าระวัง ACK ค้าง: งาน safety net ตรวจ sgi_interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/sgi/interface/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน email-lib กลาง (sendEmail) |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
+
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| โครงสร้างข้อมูล | **LLDD-BE-Database-Structure** | DDL ของตารางที่หัวข้อ Reference DB Mapping อ้างถึง |
+| แพลตฟอร์มระบบเดิม | **LLDD-BE-Integration-SBP-Platform** | header จาก BFF (`x-api-key` / `x-user-*`) · การ reuse ตารางและ service ของระบบ SBP เดิม |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-API-Common-Contracts** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Database-Structure** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Job-6-ExportImpactStoreToFS** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
 
 ## 2. Screen / Functional Scope
 
@@ -27,11 +40,21 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 1: Implementation flow reference: LLDD BE - Job 10 NotifyNoReceiveData](../../../assets/flows/BE-Job-10-NotifyNoReceiveData.png)
 
 _รูปที่ 1: Implementation flow reference: LLDD BE - Job 10 NotifyNoReceiveData_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 2: Sequence diagram: LLDD BE - Job 10 NotifyNoReceiveData](../../../assets/flows/BE-Job-10-NotifyNoReceiveData-sequence.png)
+
+_รูปที่ 2: Sequence diagram: LLDD BE - Job 10 NotifyNoReceiveData_
 
 ## 5. Field, Format, and Validation
 
@@ -67,9 +90,9 @@ query missing receive data, group by data_name/direction (To-Be — เดิม
 | --- | --- | --- |
 | Input identity | FGI_CONFIRM_RECEIVE_DATA rows without return_code after the waiting threshold. | snapshot input file/business key/period in run record |
 | Output identity | Notification sent for overdue receive confirmations; run status records grouped counts or no-data success. | reconcile input, success, reject and skipped counts |
-| Dedup proof | คอลัมน์ last_ack_notified_on บน interface_transactions เป็น marker ต่อรายการต่อวัน; rerun วันเดียวกันไม่ส่งอีเมลซ้ำ (ย้ายมาจาก audit_logs ที่ถูกยกเลิก 2026-08-07) | rerun fixture produces no duplicate target business key |
+| Dedup proof | คอลัมน์ last_ack_notified_on บน sgi_interface_transactions เป็น marker ต่อรายการต่อวัน; rerun วันเดียวกันไม่ส่งอีเมลซ้ำ (ย้ายมาจาก audit_logs ที่ถูกยกเลิก 2026-08-07) | rerun fixture produces no duplicate target business key |
 | Transaction proof | อ่าน pending แบบ read-only; reserve notification marker ก่อนส่ง; ส่งล้มเหลว mark FAILED และ retry ด้วย marker เดิม | injected failure leaves no partial committed state outside documented boundary |
-| Security proof | SBPGI เรียก sendEmail() ของ email-lib เอง (ปิด DP-5 · 2026-08-14) — เลข template มาจาก workflow_route.email_id · credential SMTP/SES และตาราง email_template/email_sent เป็นของระบบ SBP เดิม | config/log/error contains no plaintext secret |
+| Security proof | SGI เรียก sendEmail() ของ email-lib เอง (ปิด DP-5 · 2026-08-14) — เลข template มาจาก workflow_route.email_id · credential SMTP/SES และตาราง email_template/email_sent เป็นของระบบ SBP เดิม | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
 
@@ -86,15 +109,15 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | Contract | Target implementation |
 | --- | --- |
 | Repository | pendingAckRepository |
-| Idempotency / dedup | คอลัมน์ last_ack_notified_on บน interface_transactions เป็น marker ต่อรายการต่อวัน; rerun วันเดียวกันไม่ส่งอีเมลซ้ำ (ย้ายมาจาก audit_logs ที่ถูกยกเลิก 2026-08-07) |
+| Idempotency / dedup | คอลัมน์ last_ack_notified_on บน sgi_interface_transactions เป็น marker ต่อรายการต่อวัน; rerun วันเดียวกันไม่ส่งอีเมลซ้ำ (ย้ายมาจาก audit_logs ที่ถูกยกเลิก 2026-08-07) |
 | Transaction boundary | อ่าน pending แบบ read-only; reserve notification marker ก่อนส่ง; ส่งล้มเหลว mark FAILED และ retry ด้วย marker เดิม |
-| Security | SBPGI เรียก sendEmail() ของ email-lib เอง (ปิด DP-5 · 2026-08-14) — เลข template มาจาก workflow_route.email_id · credential SMTP/SES และตาราง email_template/email_sent เป็นของระบบ SBP เดิม |
+| Security | SGI เรียก sendEmail() ของ email-lib เอง (ปิด DP-5 · 2026-08-14) — เลข template มาจาก workflow_route.email_id · credential SMTP/SES และตาราง email_template/email_sent เป็นของระบบ SBP เดิม |
 
 #### Input / candidate query
 
 ```sql
 SELECT id, data_name, business_key, file_name, sent_at
-FROM interface_transactions
+FROM sgi_interface_transactions
 WHERE direction = 'OUT'
   AND status = 'SENT'
   AND acked_at IS NULL
@@ -106,9 +129,9 @@ ORDER BY sent_at;
 #### Write / upsert query
 
 ```sql
--- ยกเลิกตาราง audit_logs แล้ว (2026-08-07) — marker กันส่งซ้ำย้ายมาไว้บน interface_transactions เอง
--- คอลัมน์ last_ack_notified_on DATE มีอยู่ใน DDL ของ interface_transactions แล้ว (ดู LLDD-Database 5.x)
-UPDATE interface_transactions
+-- ยกเลิกตาราง audit_logs แล้ว (2026-08-07) — marker กันส่งซ้ำย้ายมาไว้บน sgi_interface_transactions เอง
+-- คอลัมน์ last_ack_notified_on DATE มีอยู่ใน DDL ของ sgi_interface_transactions แล้ว (ดู LLDD-Database 5.x)
+UPDATE sgi_interface_transactions
    SET last_ack_notified_on = CURRENT_DATE
  WHERE id = ANY(:transaction_ids)
    AND (last_ack_notified_on IS NULL OR last_ack_notified_on < CURRENT_DATE)
@@ -151,11 +174,11 @@ export async function runLlddBeJob10Notifynoreceivedata(ctx, services) {
 | รันตามตารางเวลา | CRON | scheduler → runner (job 10) | อ่าน cron/พารามิเตอร์จาก backend config |
 | รันนอกรอบ (manual/rerun) | CLI | CLI/ops runbook → runner (job 10) | guard ไม่ให้รันซ้อนด้วย distributed lock |
 | แก้พารามิเตอร์/เปิด-ปิด job | CONFIG | แก้ backend config แล้ว deploy | ไม่มี endpoint และไม่มีหน้าจอควบคุม — หน้า Flow Batch Job เป็น reference อย่างเดียว (2026-08-06) |
-| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ interface_transactions |
+| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ sgi_interface_transactions |
 
 ## 7. API Contract
 
-**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
@@ -163,35 +186,35 @@ export async function runLlddBeJob10Notifynoreceivedata(ctx, services) {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| interface_transactions | R | pending ACK จาก STA และสถานะล่าสุด |
+| sgi_interface_transactions | R | pending ACK จาก STA และสถานะล่าสุด |
 | email_template (ระบบ SBP เดิม) | R | template EM-08 watchdog ACK — อ่านอย่างเดียว |
-| email_sent (ระบบ SBP เดิม) | W (โดย @gosoft-sbp/email-lib) | lib เขียน log ให้เอง · SBPGI ไม่ INSERT เอง |
+| email_sent (ระบบ SBP เดิม) | W (โดย @gosoft-sbp/email-lib) | lib เขียน log ให้เอง · SGI ไม่ INSERT เอง |
 | (backend config) | R | ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env |
 
 ## 9. Skeleton Code (Batch Job 10)
 
 #### 9.1 ผังไฟล์ที่ต้องสร้าง (Job 10)
 
-โครงไฟล์ของ Job 10 (fgi.main.NotifyNoReceiveData เดิม) วางใต้ `src/batch/sbpgi/` ของ store-backend โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`
+โครงไฟล์ของ Job 10 (fgi.main.NotifyNoReceiveData เดิม) วางใต้ `src/batch/sgi/` ของ store-backend โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`
 
 **หมายเหตุสำคัญ — `src/batch/*` ทั้งชุดเป็นของใหม่ที่ยังไม่มีใน store-backend**: ปัจจุบัน repo ไม่มีโฟลเดอร์ `src/batch` เลย และแม้จะติดตั้ง `@nestjs/schedule` ไว้แล้วก็ยัง**ไม่มี `@Cron`/`@Interval` แม้แต่จุดเดียว** ดังนั้น `runner.ts` / `scheduler.ts` / `cli.js` / `job-failure.notifier.ts` คือ **งานตั้งต้นของ Phase แรก** ที่ต้องสร้างเองทั้งหมด พร้อม register `ScheduleModule.forRoot()` ใน `app.module.ts` — ไม่ใช่ของเดิมที่ reuse ได้
 
 | Path | หน้าที่ |
 | --- | --- |
-| src/batch/sbpgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.job.ts | คลาส `NotifyNoReceiveDataJob` — `run(ctx)` เรียงตาม flow ของ Job 10 ทีละขั้น, ครอบ transaction, จบด้วย structured log |
-| src/batch/sbpgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.service.ts | คลาส `NotifyNoReceiveDataService` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE` |
-| src/batch/sbpgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.config.ts | คลาส `SbpgiJob10Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 4 ตัวของ Job 10 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
-| src/batch/sbpgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.module.ts | NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule` |
+| src/batch/sgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.job.ts | คลาส `NotifyNoReceiveDataJob` — `run(ctx)` เรียงตาม flow ของ Job 10 ทีละขั้น, ครอบ transaction, จบด้วย structured log |
+| src/batch/sgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.service.ts | คลาส `NotifyNoReceiveDataService` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE` |
+| src/batch/sgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.config.ts | คลาส `SgiJob10Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 4 ตัวของ Job 10 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
+| src/batch/sgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.module.ts | NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule` |
 | src/batch/runner.ts | ตัวรันกลาง: resolve job ตาม jobNo, กันรันซ้อนด้วย advisory lock, จับ error → แจ้งเตือน, เขียน structured log สรุป (ใช้ร่วมทั้ง 11 job) |
-| src/batch/scheduler.ts | ลงทะเบียน cron จาก config (`SBPGI_JOB10_CRON` = `0 07 * * *`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook |
+| src/batch/scheduler.ts | ลงทะเบียน cron จาก config (`SGI_JOB10_CRON` = `0 07 * * *`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook |
 | src/batch/job-failure.notifier.ts | ส่งอีเมลแจ้งผู้ดูแลเมื่อ job ล้มเหลว ผ่าน `EmailLibService` ของ `@gosoft-sbp/email-lib` (log ลง `email_sent` ให้อัตโนมัติ) |
 
 #### 9.2 Config Schema ของ Job 10 (backend config / env)
 
-cron ปัจจุบันของ Job 10 คือ `0 07 * * *` (ทุกวัน 07:00) — ประกาศเป็น `SBPGI_JOB10_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้
+cron ปัจจุบันของ Job 10 คือ `0 07 * * *` (ทุกวัน 07:00) — ประกาศเป็น `SGI_JOB10_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้
 
 ```ts
-// src/batch/sbpgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.config.ts
+// src/batch/sgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.config.ts
 // convention จริงของ store-backend คือคลาส config (`src/config/app.config.ts` ที่ export ผ่าน
 // `AppConfigModule` แบบ @Global แล้วอ่าน process.env ตรง ๆ) — โปรเจกต์นี้ **ไม่ได้ใช้ registerAs**
 // แม้แต่จุดเดียว จึงประกาศเป็นคลาสให้รีวิว/ทดสอบเหมือน config ตัวอื่น
@@ -218,18 +241,18 @@ export interface Job10Config {
 }
 
 @Injectable()
-export class SbpgiJob10Config implements Job10Config {
+export class SgiJob10Config implements Job10Config {
   // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)
-  enabled = (process.env.SBPGI_JOB10_ENABLED ?? 'true') === 'true';
-  cron = process.env.SBPGI_JOB10_CRON ?? '0 07 * * *';
-  cron = process.env.SBPGI_JOB10_CRON ?? '0 07 * * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  pendingThreshold = process.env.SBPGI_JOB10_PENDING_THRESHOLD ?? '>= 1 วัน'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  param3 = process.env.SBPGI_JOB10_PARAM3 ?? 'direction = OUT · data_name = COMPENSATE_INIT_I, COMPENSATE_APPROVE_I'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  encoding = process.env.SBPGI_JOB10_ENCODING ?? 'UTF-8'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  mailTo = process.env.SBPGI_JOB10_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: email-lib (sendEmail · UTF-8))
+  enabled = (process.env.SGI_JOB10_ENABLED ?? 'true') === 'true';
+  cron = process.env.SGI_JOB10_CRON ?? '0 07 * * *';
+  cron = process.env.SGI_JOB10_CRON ?? '0 07 * * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
+  pendingThreshold = process.env.SGI_JOB10_PENDING_THRESHOLD ?? '>= 1 วัน'; // TODO: แก้ผ่าน env/config file แล้ว deploy
+  param3 = process.env.SGI_JOB10_PARAM3 ?? 'direction = OUT · data_name = COMPENSATE_INIT_I, COMPENSATE_APPROVE_I'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  encoding = process.env.SGI_JOB10_ENCODING ?? 'UTF-8'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  mailTo = process.env.SGI_JOB10_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: email-lib (sendEmail · UTF-8))
 }
 
-// TODO: เพิ่ม SbpgiJob10Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
+// TODO: เพิ่ม SgiJob10Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
 ```
 
 #### 9.3 Job Class — `run(ctx)` ของ Job 10 ทีละขั้นตามผัง
@@ -291,7 +314,7 @@ export class NotifyNoReceiveDataService {
     return { period: ctx.period, read: 0, written: 0, skipped: 0, rejected: 0 };
   }
 
-  // อ่าน interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold
+  // อ่าน sgi_interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold
   async step02Read(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -306,7 +329,7 @@ export class NotifyNoReceiveDataService {
     // TODO: implement
   }
 
-  // แสดงรายการใน /sbpgi/interface/pending-ack
+  // แสดงรายการใน /sgi/interface/pending-ack
   async step05Process(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -321,14 +344,14 @@ export class NotifyNoReceiveDataService {
 | ลำดับ | ชนิด | ขั้นตอนจากผัง | Method ที่ต้อง implement | เส้นทาง NO / error |
 | --- | --- | --- | --- | --- |
 | 1 | start | เริ่ม | createState() | - |
-| 2 | process | อ่าน interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 2 | process | อ่าน sgi_interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 3 | decision | พบรายการค้าง? | check03Condition() | [end] จบการทำงาน |
 | 4 | io | ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม | step04Notify() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 5 | process | แสดงรายการใน /sbpgi/interface/pending-ack | step05Process() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 5 | process | แสดงรายการใน /sgi/interface/pending-ack | step05Process() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | end | จบ | summarize() | - |
 
 ```ts
-// src/batch/sbpgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.job.ts
+// src/batch/sgi/job-10-notify-no-receive-data/job-10-notify-no-receive-data.job.ts
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { DataSource, EntityManager } from 'typeorm';
 import { NotifyNoReceiveDataService, type JobState } from './job-10-notify-no-receive-data.service';
@@ -351,7 +374,7 @@ export class NotifyNoReceiveDataJob {
     // TODO: state ถือ counter (read/written/skipped/rejected) และค่าจาก job10Config
     const state = this.service.createState(ctx);
     try {
-      // ขั้นที่ 2: อ่าน interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold
+      // ขั้นที่ 2: อ่าน sgi_interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold
       await this.service.step02Read(state);
       // ขั้นที่ 3 (decision): พบรายการค้าง?
       const ok03 = await this.service.check03Condition(state);
@@ -360,7 +383,7 @@ export class NotifyNoReceiveDataJob {
       }
       // ขั้นที่ 4: ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม · TODO: ผู้รับตาม backend config
       await this.service.step04Notify(state);
-      // ขั้นที่ 5: แสดงรายการใน /sbpgi/interface/pending-ack · TODO: POST /sbpgi/interface/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ
+      // ขั้นที่ 5: แสดงรายการใน /sgi/interface/pending-ack · TODO: POST /sgi/interface/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ
       await this.service.step05Process(state);
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
@@ -397,7 +420,7 @@ import type { DataSource } from 'typeorm';
 
 // TODO: ห้ามใช้แถวสถานะ RUNNING ในตารางเป็นตัวกัน (ไม่มีตาราง job_run_histories แล้ว)
 //       ใช้ PostgreSQL advisory lock ระดับ session แทน — ปลดอัตโนมัติเมื่อ connection หลุด
-export const SBPGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SBPGI
+export const SGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SGI
 export const JOB_LOCK_KEYS: Record<string, number> = { '10': 100 /* TODO: เพิ่มครบทั้ง 11 job */ };
 
 @Injectable()
@@ -414,7 +437,7 @@ export class BatchRunner {
     try {
       const [{ locked }] = await runner.query(
         'SELECT pg_try_advisory_lock($1, $2) AS locked',
-        [SBPGI_JOB_LOCK_CLASS_ID, objectId],
+        [SGI_JOB_LOCK_CLASS_ID, objectId],
       );
       if (!locked) {
         // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล
@@ -424,7 +447,7 @@ export class BatchRunner {
       return await fn();
     } finally {
       // TODO: ปลด lock ทุกกรณี แล้วคืน connection เข้า pool
-      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SBPGI_JOB_LOCK_CLASS_ID, objectId]);
+      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SGI_JOB_LOCK_CLASS_ID, objectId]);
       await runner.release();
     }
   }
@@ -437,9 +460,9 @@ repository ของ Job 10 ประกาศเป็น factory provider (`{p
 
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
-| interface_transactions | R | pending ACK จาก STA และสถานะล่าสุด | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_interface_transactions | R | pending ACK จาก STA และสถานะล่าสุด | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | email_template (ระบบ SBP เดิม) | R | template EM-08 watchdog ACK — อ่านอย่างเดียว | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| email_sent (ระบบ SBP เดิม) | W (โดย @gosoft-sbp/email-lib) | lib เขียน log ให้เอง · SBPGI ไม่ INSERT เอง | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| email_sent (ระบบ SBP เดิม) | W (โดย @gosoft-sbp/email-lib) | lib เขียน log ให้เอง · SGI ไม่ INSERT เอง | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | (backend config) | R | ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
@@ -447,10 +470,10 @@ repository ของ Job 10 ประกาศเป็น factory provider (`{p
 -- TODO: ทุก statement รันผ่าน DATA_SOURCE (SELECT ไป slave, write ไป master) และ
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
--- [R] interface_transactions : pending ACK จาก STA และสถานะล่าสุด
+-- [R] sgi_interface_transactions : pending ACK จาก STA และสถานะล่าสุด
 -- TODO: อ่านรายการที่ยังไม่ได้ ACK (safety net) — ยืนยันชื่อสถานะ/คอลัมน์เวลากับ database.md
 SELECT id, data_name, direction, status, business_key, period_key, file_name, created_at
-  FROM interface_transactions
+  FROM sgi_interface_transactions
  WHERE data_name = ANY($1)  -- TODO: รายการ interface ที่ Job 10 เฝ้าดู (ไม่ใช่ job_no ของตัวเอง)
    AND status IN ('READY', 'SENT')  -- TODO: สถานะที่ถือว่ายังไม่มี ACK
    AND created_at < NOW() - ($2 || ' hours')::interval  -- TODO: threshold จาก config
@@ -464,13 +487,13 @@ SELECT /* TODO: columns */
  ORDER BY /* TODO: คีย์ที่ทำให้ลำดับคงที่ */
  LIMIT $1 OFFSET $2;  -- TODO: อ่านเป็น chunk กัน memory บวม
 
--- [W (โดย @GOSOFT-SBP/EMAIL-LIB)] email_sent (ระบบ SBP เดิม) : lib เขียน log ให้เอง · SBPGI ไม่ INSERT เอง
+-- [W (โดย @GOSOFT-SBP/EMAIL-LIB)] email_sent (ระบบ SBP เดิม) : lib เขียน log ให้เอง · SGI ไม่ INSERT เอง
 -- TODO: เติมคอลัมน์ payload จริงจาก database.md
 INSERT INTO email_sent (ระบบ SBP เดิม)
   (/* TODO: business key + payload + created_by, created_at */)
 VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
 -- ⚠️ ตารางนี้ไม่มี business unique key ใน DDL จริง — ON CONFLICT ใช้ไม่ได้
---    fcs_qssi_score: ข้อค้าง DP-4 (การเพิ่ม unique index ต้อง sign-off เจ้าของ performance.service.ts)
+--    fcs_qssi_score: reuse ตารางเดิมแบบอ่านอย่างเดียว — ห้ามแก้ constraint/index ของตารางเดิม
 --    ระหว่างยังไม่ปิด: ลบงวดเดิมก่อนแล้ว INSERT ใหม่ใน transaction เดียว
 ON CONFLICT (/* ยังใช้ไม่ได้ — ดูหมายเหตุด้านบน */)
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
@@ -508,8 +531,8 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 10 เดิมคือ email-lib (sendEmail · UTF-8) — ย้ายมาเป็น env SBPGI_JOB10_MAIL_TO
-    const recipients = (process.env.SBPGI_JOB10_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    // TODO: ผู้รับของ Job 10 เดิมคือ email-lib (sendEmail · UTF-8) — ย้ายมาเป็น env SGI_JOB10_MAIL_TO
+    const recipients = (process.env.SGI_JOB10_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
       return;
@@ -517,7 +540,7 @@ export class JobFailureNotifier {
     try {
       await this.mailService.sendMail({
         // TODO: emailId = id ของ template EM-07 (แจ้ง error batch) ในตาราง email_template
-        emailId: Number(process.env.SBPGI_JOB_FAIL_EMAIL_TEMPLATE_ID),
+        emailId: Number(process.env.SGI_JOB_FAIL_EMAIL_TEMPLATE_ID),
         mailTo: recipients.join(','), // signature รับ string ไม่ใช่ string[]
         mailCc: '',
         param: {
@@ -540,22 +563,22 @@ export class JobFailureNotifier {
 ##### 9.6.2 Checklist การ rerun
 
 - กติกา rerun ของ Job 10: รันซ้ำได้; ต้องไม่ส่งอีเมลซ้ำถ้ามี sent marker ในรอบเดียวกัน
-- ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: read-only; callback /sbpgi/interface/sta/ack เป็นผู้เขียน ACK หลัก
+- ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: read-only; callback /sgi/interface/sta/ack เป็นผู้เขียน ACK หลัก
 - ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: ห้ามกลับไปใช้ TIS-620/hardcoded recipient; Job 10 เป็น safety net ไม่ใช่ primary ACK path
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
 - สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=10 --period=<YYYYMM>`
 - หลังรันซ้ำ ตรวจ output `อีเมลเตือน UTF-8 + pending ACK dashboard` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
-- ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
+- ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 
 ## 10. Processing Flow
 
 | Step | Description |
 | --- | --- |
 | 1 | เริ่ม |
-| 2 | อ่าน interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold |
+| 2 | อ่าน sgi_interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold |
 | 3 | พบรายการค้าง? \| No: จบการทำงาน |
 | 4 | ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม (ผู้รับตาม backend config) |
-| 5 | แสดงรายการใน /sbpgi/interface/pending-ack (POST /sbpgi/interface/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ) |
+| 5 | แสดงรายการใน /sgi/interface/pending-ack (POST /sgi/interface/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ) |
 | 6 | จบ |
 
 ## 11. Acceptance Criteria

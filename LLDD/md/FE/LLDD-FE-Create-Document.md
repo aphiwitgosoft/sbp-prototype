@@ -10,17 +10,29 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **8 ชั่วโมง** = implementation 6 + unit test 2 (25%) |
 | Owner | Kittisak <New> Kaeowika |
 | Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
-| Objective | หน้าสร้างเอกสารประกันรายได้ — **มติ 2026-08-06: ไม่มีฟอร์มฝั่ง SBP** main card เป็น iframe ของหน้าสร้างเอกสารระบบ FS ตรง ๆ + หมายเหตุ 4 ขั้นตอนใต้ iframe · `POST /sbpgi/document` เรียกโดย pipeline/service token |
+| Objective | หน้าสร้างเอกสารประกันรายได้ — **มติ 2026-08-06: ไม่มีฟอร์มฝั่ง SBP** main card เป็น iframe ของหน้าสร้างเอกสารระบบ FS ตรง ๆ + หมายเหตุ 4 ขั้นตอนใต้ iframe · `POST /sgi/document` เรียกโดย pipeline/service token |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
+
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| ใช้ endpoint ของ | **LLDD-BE-API-Document-Create-Update** | `POST /api/v1/sgi/document` |
+| ใช้ endpoint ของ | **LLDD-BE-API-Lookup** | `GET /store/search (ระบบ SBP เดิม)` |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| สัญญากลาง | **LLDD-FE-Integration-Contracts** | API client · auth header · error mapping · RBAC/menu gating ฝั่ง FE |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Foundation** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
 
 ## 2. Screen / Functional Scope
 
 - 🔴 **มติ 2026-08-06 — หน้านี้ไม่มีฟอร์มและไม่มีแท็บฝั่ง SBP**
 - main card = iframe ของหน้าสร้างเอกสารระบบ FS ตรง ๆ (เหมือน `k2-create.html`)
 - หมายเหตุ 4 ขั้นตอน (verbatim จากหน้าจอ K2 เดิม) อยู่ใต้ iframe นอกกรอบ
-- `POST /sbpgi/document` เป็น pipeline/service-token ไม่ใช่ฟอร์ม FE — ต้นทางสร้างที่ FS แล้วรอ SBP Statement ส่งกลับ (~1 วัน)
-- การคีย์/ปรับข้อมูลร้านตาม SDD GI ทำที่หน้าเอกสาร (`PUT /sbpgi/document/{docNo}`) ไม่ใช่หน้านี้
+- `POST /sgi/document` เป็น pipeline/service-token ไม่ใช่ฟอร์ม FE — ต้นทางสร้างที่ FS แล้วรอ SBP Statement ส่งกลับ (~1 วัน)
+- การคีย์/ปรับข้อมูลร้านตาม SDD GI ทำที่หน้าเอกสาร (`PUT /sgi/document/{docNo}`) ไม่ใช่หน้านี้
 - ⚠️ หัวข้อ 5.1-5.6 (SBP mirror form + FS bridge) เป็นดีไซน์ก่อนมติ — เก็บไว้เป็นทางเลือกสำรอง **ไม่อยู่ในขอบเขต 8 ชม.**
 
 ## 3. Screenshot Reference
@@ -29,11 +41,21 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 _รูปที่ 1: Screenshot: k2-create-01.png_
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 2: Implementation flow reference: LLDD FE - Create Document](../../assets/flows/FE-LLDD-FE-Create-Document.png)
 
 _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 3: Sequence diagram: LLDD FE - Create Document](../../assets/flows/FE-LLDD-FE-Create-Document-sequence.png)
+
+_รูปที่ 3: Sequence diagram: LLDD FE - Create Document_
 
 ## 5. Field, Format, and Validation
 
@@ -60,7 +82,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 | Tab | Purpose | Render behavior |
 | --- | --- | --- |
-| สร้างเอกสารทั่วไป | สร้างเอกสาร MANUAL/out-of-condition ผ่าน API ของ SBPGI | ใช้ form ปกติและ submit POST /api/v1/sbpgi/document |
+| สร้างเอกสารทั่วไป | สร้างเอกสาร MANUAL/out-of-condition ผ่าน API ของ SGI | ใช้ form ปกติและ submit POST /api/v1/sgi/document |
 | เอกสารจาก FS | สร้างเอกสารโดยอ้าง field/form ของ FS เดิม | โหลด FS iframe แบบ hidden แล้วสร้าง SBP form mirror ตาม field ที่พบใน iframe |
 
 ### 5.2 FS iframe Integration Contract
@@ -190,9 +212,9 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /store/search (ระบบ SBP เดิม); POST /api/v1/sbpgi/document |
+| Input | GET /store/search (ระบบ SBP เดิม); POST /api/v1/sgi/document |
 | Progress | User opens create page; Choose tab: สร้างเอกสารทั่วไป or เอกสารจาก FS; For FS tab load hidden iframe and discover fields; Render SBP mirror form from iframe field metadata |
-| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / sgi_consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Create Document Component Contract
 
@@ -201,8 +223,8 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | C01 | 🔴 **มติ 2026-08-06 — หน้านี้ไม่มีฟอร์มและไม่มีแท็บฝั่ง SBP** | หน้าเดียว ไม่มี state ของฟอร์ม — ถือแค่ config URL ของ FS และสถานะโหลด iframe | ไม่มี draft/unsaved-change guard เพราะไม่มีฟอร์มฝั่ง SBP |
 | C02 | main card = iframe ของหน้าสร้างเอกสารระบบ FS ตรง ๆ (เหมือน `k2-create.html`) | render กรอบ iframe ของหน้าสร้างเอกสารระบบ FS (สไตล์ `.fs-frame` เดียวกับ k2-document) | iframe load/error/timeout มี state ชัดเจนและมีข้อความบอกผู้ใช้เมื่อโหลดไม่ขึ้น |
 | C03 | หมายเหตุ 4 ขั้นตอน (verbatim จากหน้าจอ K2 เดิม) อยู่ใต้ iframe นอกกรอบ | render การ์ดหมายเหตุ 4 ขั้นตอน **verbatim จากหน้าจอ K2 เดิม** ใต้ iframe (นอกกรอบ) | ข้อความตรงต้นฉบับทุกตัวอักษร ห้าม paraphrase |
-| C04 | `POST /sbpgi/document` เป็น pipeline/service-token ไม่ใช่ฟอร์ม FE — ต้นทางสร้างที่ FS แล้วรอ SBP Statement ส่งกลับ (~1 วัน) | ลิงก์กลับไปหน้ารายการเอกสารและหน้าเอกสารเมื่อ SBP Statement ส่งข้อมูลกลับแล้ว (~1 วัน) | ผู้ใช้เข้าใจว่าเอกสารจะมาเองไม่ต้องกดสร้างซ้ำ |
-| C05 | การคีย์/ปรับข้อมูลร้านตาม SDD GI ทำที่หน้าเอกสาร (`PUT /sbpgi/document/{docNo}`) ไม่ใช่หน้านี้ | route guard/เมนูของหน้านี้มาจาก `GET /menus` ของระบบเดิม ไม่ hardcode | ผู้ใช้ที่ไม่มีสิทธิ์เมนูเข้าหน้านี้ไม่ได้ |
+| C04 | `POST /sgi/document` เป็น pipeline/service-token ไม่ใช่ฟอร์ม FE — ต้นทางสร้างที่ FS แล้วรอ SBP Statement ส่งกลับ (~1 วัน) | ลิงก์กลับไปหน้ารายการเอกสารและหน้าเอกสารเมื่อ SBP Statement ส่งข้อมูลกลับแล้ว (~1 วัน) | ผู้ใช้เข้าใจว่าเอกสารจะมาเองไม่ต้องกดสร้างซ้ำ |
+| C05 | การคีย์/ปรับข้อมูลร้านตาม SDD GI ทำที่หน้าเอกสาร (`PUT /sgi/document/{docNo}`) ไม่ใช่หน้านี้ | route guard/เมนูของหน้านี้มาจาก `GET /menus` ของระบบเดิม ไม่ hardcode | ผู้ใช้ที่ไม่มีสิทธิ์เมนูเข้าหน้านี้ไม่ได้ |
 | C06 | ⚠️ หัวข้อ 5.1-5.6 (SBP mirror form + FS bridge) เป็นดีไซน์ก่อนมติ — เก็บไว้เป็นทางเลือกสำรอง **ไม่อยู่ในขอบเขต 8 ชม.** | ⚠️ *(ทางเลือกสำรอง — ไม่อยู่ในขอบเขต 8 ชม.)* SBP mirror form + FS bridge ตามหัวข้อ 5.1-5.6 | ใช้เมื่อ FS ไม่ยอมให้ฝัง iframe หรือ origin ไม่ผ่าน — ต้องตั้งงบใหม่ก่อนทำ |
 
 ### 5.91 Create Document API Adapter Map
@@ -210,7 +232,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
 | GET /store/search (ระบบ SBP เดิม) | ค้นหาร้านสำหรับ popup | Search store (แว่นขยาย) |
-| POST /api/v1/sbpgi/document | สร้างเอกสาร | Save draft (ปุ่มบันทึก); Submit (ปุ่มส่งดำเนินการ) |
+| POST /api/v1/sgi/document | สร้างเอกสาร | Save draft (ปุ่มบันทึก); Submit (ปุ่มส่งดำเนินการ) |
 
 ### 5.92 Create Document Interaction State Machine
 
@@ -219,8 +241,8 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | Search store | แว่นขยาย | GET /store/search (ระบบ SBP เดิม) | เลือก impacted/new store |
 | Open FS tab | tab เอกสารจาก FS | Load hidden iframe from fsIframeUrl | discover FS fields and render SBP mirror form |
 | Change FS mirror value | input/select ใน SBP mirror form | iframe value sync service | ส่งค่าเข้า field ใน hidden iframe และ dispatch input/change |
-| Save draft | ปุ่มบันทึก | POST /api/v1/sbpgi/document | สร้าง draft |
-| Submit | ปุ่มส่งดำเนินการ | POST /api/v1/sbpgi/document | สร้างเอกสารและเริ่ม workflow |
+| Save draft | ปุ่มบันทึก | POST /api/v1/sgi/document | สร้าง draft |
+| Submit | ปุ่มส่งดำเนินการ | POST /api/v1/sgi/document | สร้างเอกสารและเริ่ม workflow |
 | Submit FS iframe | ปุ่มส่งใน tab เอกสารจาก FS | sync all mirror values + submit iframe form | submit form ของ FS ใน hidden iframe |
 
 ### 5.93 Create Document Feature Failure Checks
@@ -241,8 +263,8 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | Search store | แว่นขยาย | GET /store/search (ระบบ SBP เดิม) | เลือก impacted/new store |
 | Open FS tab | tab เอกสารจาก FS | Load hidden iframe from fsIframeUrl | discover FS fields and render SBP mirror form |
 | Change FS mirror value | input/select ใน SBP mirror form | iframe value sync service | ส่งค่าเข้า field ใน hidden iframe และ dispatch input/change |
-| Save draft | ปุ่มบันทึก | POST /api/v1/sbpgi/document | สร้าง draft |
-| Submit | ปุ่มส่งดำเนินการ | POST /api/v1/sbpgi/document | สร้างเอกสารและเริ่ม workflow |
+| Save draft | ปุ่มบันทึก | POST /api/v1/sgi/document | สร้าง draft |
+| Submit | ปุ่มส่งดำเนินการ | POST /api/v1/sgi/document | สร้างเอกสารและเริ่ม workflow |
 | Submit FS iframe | ปุ่มส่งใน tab เอกสารจาก FS | sync all mirror values + submit iframe form | submit form ของ FS ใน hidden iframe |
 
 ## 7. API Contract
@@ -290,7 +312,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 | items[].storeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].regionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/sbpgi/document
+### POST /api/v1/sgi/document
 
 สร้างเอกสาร
 
@@ -344,15 +366,15 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 
 #### 8.1 ผังไฟล์ที่ต้องสร้าง
 
-โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SBPGI อยู่ใต้ `src/app/(main)/sbpgi/*` และ import ผ่าน alias `@/*` ทุกจุด
+โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด
 
 | Path ไฟล์ | หน้าที่ |
 | --- | --- |
-| src/app/(main)/sbpgi/document/create/page.tsx | route page — หน้าสร้างเอกสาร: tab ทั่วไป + tab เอกสารจาก FS (hidden iframe) |
+| src/app/(main)/sgi/document/create/page.tsx | route page — หน้าสร้างเอกสาร: tab ทั่วไป + tab เอกสารจาก FS (hidden iframe) |
 | (ไม่มี component ฟอร์ม) | หน้านี้เป็น iframe ของหน้าสร้างเอกสารระบบ FS ล้วน ๆ (มติ 2026-08-06) — ไม่มีฟอร์ม/ตารางฝั่ง SBP |
-| src/services/sbpgi/document.service.ts | service — เรียก BFF ผ่าน apiClient (GET, POST) |
-| src/hooks/sbpgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
-| src/types/sbpgi/document.ts | types — request/response ตาม API contract ของเอกสารนี้ |
+| src/services/sgi/document.service.ts | service — เรียก BFF ผ่าน apiClient (GET, POST) |
+| src/hooks/sgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
+| src/types/sgi/document.ts | types — request/response ตาม API contract ของเอกสารนี้ |
 
 #### 8.2 page.tsx — หน้าสร้างเอกสาร (iframe ของหน้า FS + postMessage)
 
@@ -362,7 +384,7 @@ _รูปที่ 2: Implementation flow reference: LLDD FE - Create Document_
 //   (scope ไม่ได้ระบุ tab)
 //
 // ⚠️ มติ 2026-08-06: หน้านี้ **ไม่มีฟอร์มฝั่ง SBP** — main card คือ iframe ของหน้าสร้างเอกสาร
-//    ของระบบ FS ตรง ๆ (เหมือน k2-create.html) และ `POST /sbpgi/document` เป็น pipeline/service-token
+//    ของระบบ FS ตรง ๆ (เหมือน k2-create.html) และ `POST /sgi/document` เป็น pipeline/service-token
 //    endpoint (Job 8) ไม่ใช่ฟอร์มที่ FE ยิงเอง
 // ⚠️ ห้ามอ่าน/เขียน DOM ข้าม iframe (`contentDocument`) — FS อยู่คนละ origin เบราว์เซอร์บล็อกทันที
 //    ช่องทางสื่อสารเดียวที่ใช้ได้คือ `postMessage` และต้องตรวจ `event.origin` ทุกครั้ง
@@ -371,7 +393,7 @@ import { useEffect, useRef, useState } from 'react';
 import AccessDenied from '@/components/Permission/AccessDenied';
 import { permissionStore } from '@/stores/permissionStore';
 
-const PAGE_URL = '/sbpgi/document/create';
+const PAGE_URL = '/sgi/document/create';
 // TODO: ตั้งใน .env.sbpm.<env> — ต้องเป็น origin ของ FS ที่ยืนยันกับทีม FS แล้ว
 const FS_IFRAME_URL = process.env.NEXT_PUBLIC_FS_CREATE_DOCUMENT_URL ?? '';
 const FS_ORIGIN = process.env.NEXT_PUBLIC_FS_ORIGIN ?? '';
@@ -413,18 +435,18 @@ export default function CreateDocumentPage() {
 }
 ```
 
-#### 8.3 service — `src/services/sbpgi/document.service.ts`
+#### 8.3 service — `src/services/sgi/document.service.ts`
 
-⚠️ `src/services/sbpgi/document.service.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/services/sgi/document.service.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/services/sbpgi/document.service.ts
+// src/services/sgi/document.service.ts
 // apiClient = axios instance กลาง (baseURL = bffUrl ซึ่งรวม /api/v1 แล้ว, withCredentials, refresh-token interceptor, global loading)
 // ห้ามสร้าง axios instance ใหม่ และห้าม set Authorization header เอง — session อยู่ใน httpOnly cookie ของ BFF
 
 import apiClient from '@/lib/apiClient';
-import type { ApiResponse } from '@/types/sbpgi/common';
-import type * as T from '@/types/sbpgi/document';
+import type { ApiResponse } from '@/types/sgi/common';
+import type * as T from '@/types/sgi/document';
 
 /** GET /store/search (ระบบ SBP เดิม) — ค้นหาร้านสำหรับ popup */
 export async function getStoreSearch(params: T.StoreSearchParams): Promise<T.StoreSearchResponse> {
@@ -432,21 +454,21 @@ export async function getStoreSearch(params: T.StoreSearchParams): Promise<T.Sto
   return data.data;
 }
 
-/** POST /api/v1/sbpgi/document — สร้างเอกสาร */
-export async function createSbpgiDocument(body: T.CreateSbpgiDocumentRequest): Promise<T.CreateSbpgiDocumentResponse> {
-  const { data } = await apiClient.post<ApiResponse<T.CreateSbpgiDocumentResponse>>('/sbpgi/document', body);
+/** POST /api/v1/sgi/document — สร้างเอกสาร */
+export async function createSgiDocument(body: T.CreateSgiDocumentRequest): Promise<T.CreateSgiDocumentResponse> {
+  const { data } = await apiClient.post<ApiResponse<T.CreateSgiDocumentResponse>>('/sgi/document', body);
   return data.data;
 }
 
 // TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
 ```
 
-#### 8.4 types — `src/types/sbpgi/document.ts`
+#### 8.4 types — `src/types/sgi/document.ts`
 
-⚠️ `src/types/sbpgi/document.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/types/sgi/document.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/types/sbpgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
+// src/types/sgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
 // วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
 /** GET /store/search (ระบบ SBP เดิม) — request */
@@ -463,8 +485,8 @@ export interface StoreSearchItem {
 }
 export interface StoreSearchResponse { items: StoreSearchItem[]; }
 
-/** POST /api/v1/sbpgi/document — request */
-export interface CreateSbpgiDocumentRequest {
+/** POST /api/v1/sgi/document — request */
+export interface CreateSgiDocumentRequest {
   source: string;
   impactMonth: string;
   statementPeriod: string;
@@ -474,8 +496,8 @@ export interface CreateSbpgiDocumentRequest {
   reason: string;
 }
 
-/** POST /api/v1/sbpgi/document — response */
-export interface CreateSbpgiDocumentResponse {
+/** POST /api/v1/sgi/document — response */
+export interface CreateSgiDocumentResponse {
   docNo: string;
   statusCode: string;
   message: string;
@@ -484,18 +506,18 @@ export interface CreateSbpgiDocumentResponse {
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
-#### 8.5 react-query keys + hooks — `src/hooks/sbpgi/document.query.ts`
+#### 8.5 react-query keys + hooks — `src/hooks/sgi/document.query.ts`
 
-⚠️ `src/hooks/sbpgi/document.query.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/hooks/sgi/document.query.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/hooks/sbpgi/document.query.ts
+// src/hooks/sgi/document.query.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as api from '@/services/sbpgi/document.service';
-import type * as T from '@/types/sbpgi/document';
+import * as api from '@/services/sgi/document.service';
+import type * as T from '@/types/sgi/document';
 
 export const documentKeys = {
-  all: ['sbpgi', 'document'] as const,
+  all: ['sgi', 'document'] as const,
   storeSearch: (params?: T.StoreSearchParams | null) => [...documentKeys.all, 'storeSearch', params] as const,
 };
 
@@ -508,10 +530,10 @@ export function useStoreSearchQuery(params?: T.StoreSearchParams | null) {
   });
 }
 
-export function useCreateSbpgiDocumentMutation() {
+export function useCreateSgiDocumentMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: T.CreateSbpgiDocumentRequest) => api.createSbpgiDocument(body),
+    mutationFn: (body: T.CreateSgiDocumentRequest) => api.createSgiDocument(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentKeys.all }); // reload list/detail/timeline
     },
@@ -588,7 +610,7 @@ export function useCreateSbpgiDocumentMutation() {
 | business rule | logic | FS submit syncs all values before iframe submit |
 | business rule | logic | validation message ชัดเจน |
 | `GET /store/search (ระบบ SBP เดิม)` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `POST /api/v1/sbpgi/document` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `POST /api/v1/sgi/document` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
 | component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
 | hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
 | error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |

@@ -14,6 +14,20 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| ถูกเรียกจาก | **LLDD-FE-Document-Lists** | `GET /api/v1/sgi/document` · `GET /api/v1/sgi/document/tasks` |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| โครงสร้างข้อมูล | **LLDD-BE-Database-Structure** | DDL ของตารางที่หัวข้อ Reference DB Mapping อ้างถึง |
+| workflow engine | **LLDD-BE-Workflow-Engine-Definition** | นิยาม state/route/event ที่หัวข้อ Workflow Trigger Event Contract เรียกใช้ |
+| แพลตฟอร์มระบบเดิม | **LLDD-BE-Integration-SBP-Platform** | header จาก BFF (`x-api-key` / `x-user-*`) · การ reuse ตารางและ service ของระบบ SBP เดิม |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-API-Common-Contracts** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Database-Structure** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+
 ## 2. Screen / Functional Scope
 
 - Inbox tasks API
@@ -26,11 +40,21 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 1: Implementation flow reference: LLDD BE - API Document List and Search](../../assets/flows/BE-LLDD-BE-API-Document-List-Search.png)
 
 _รูปที่ 1: Implementation flow reference: LLDD BE - API Document List and Search_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 2: Sequence diagram: LLDD BE - API Document List and Search](../../assets/flows/BE-LLDD-BE-API-Document-List-Search-sequence.png)
+
+_รูปที่ 2: Sequence diagram: LLDD BE - API Document List and Search_
 
 ## 5. Field, Format, and Validation
 
@@ -43,23 +67,23 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 | sourceSystem | enum | ALLMAP / USER | **B5** ที่มาของแถวร้านเปิดใหม่ — `ALLMAP` ระบบ default ให้อัตโนมัติ (Job 9) · `USER` เจ้าหน้าที่ SBP DSA คีย์เองจากเอกสารแจ้งของหน่วยงานส่งเสริม (ผัง To-Be · SDD สไลด์ 7) · ซ้ำ `(doc_no, new_store_code)` ให้คืน `409` |
 | date | DD/MM/YYYY | valid date | payload เป็น ISO ค.ศ. · FE แสดง ค.ศ. เป็นค่าเริ่มต้น (DatePicker buddhistEra=false) แสดง พ.ศ. เฉพาะจุดที่เปิด flag |
 | attachment | file | <= 5 MB | รองรับ vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv |
-| year | ค.ศ. YYYY | required for /sbpgi/document | ไม่ระบุคืน 400 ตาม SRS · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. |
+| year | ค.ศ. YYYY | required for /sgi/document | ไม่ระบุคืน 400 ตาม SRS · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. |
 | page/size | integer | page>=1 size<=100 | pagination |
 
 ### 5.9 Input / Progress / Output Contract
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/sbpgi/document/tasks; GET /api/v1/sbpgi/document |
-| Progress | Read JWT section/role; Validate year for documents; Build filter query; Join impacted_stores |
-| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
+| Input | GET /api/v1/sgi/document/tasks; GET /api/v1/sgi/document |
+| Progress | Read JWT section/role; Validate year for documents; Build filter query; Join sgi_impacted_stores |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / sgi_consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Endpoint Implementation Contract
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| GET /api/v1/sbpgi/document/tasks | Inbox tasks API | Read JWT section/role | year missing fails for /sbpgi/document |
-| GET /api/v1/sbpgi/document | Document search API | Validate year for documents | leading zero storeCode preserved |
+| GET /api/v1/sgi/document/tasks | Inbox tasks API | Read JWT section/role | year missing fails for /sgi/document |
+| GET /api/v1/sgi/document | Document search API | Validate year for documents | leading zero storeCode preserved |
 
 ### 5.91 Backend Execution Sequence
 
@@ -68,7 +92,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 | 1 | Read JWT section/role | tasks by section |
 | 2 | Validate year for documents | documents missing year |
 | 3 | Build filter query | store search |
-| 4 | Join impacted_stores | empty result |
+| 4 | Join sgi_impacted_stores | empty result |
 | 5 | Return page result | — (ยังไม่มี test เฉพาะขั้นนี้ · ครอบด้วย test รวมของเอกสารในหัวข้อ 11) |
 
 ### 5.92 Workflow Trigger Event Contract
@@ -79,9 +103,9 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 | --- | --- | --- | --- |
 | กล่องงานรอดำเนินการ | `getPendingFlowByUser` | userData, versionId | เป็นแหล่งความจริงของรายการรอดำเนินการ · section 06 ต้อง union เอกสารที่จบด้วย หยุดชดเชยฯ (stoppedReopenable) เพิ่มเอง |
 
-- 🔴 กติกาเหล็ก: ตาราง `sps_store.workflow_*` (13 ตาราง) เป็นของ lib — SBPGI **R เท่านั้น** ห้าม INSERT/UPDATE/DELETE ตรงในทุกกรณี
+- 🔴 กติกาเหล็ก: ตาราง `sps_store.workflow_*` (13 ตาราง) เป็นของ lib — SGI **R เท่านั้น** ห้าม INSERT/UPDATE/DELETE ตรงในทุกกรณี
 - ทุกการเรียก engine ต้องผ่านตัวห่อกลาง `WorkflowGateway` ที่นิยามใน **LLDD-BE-API-Common-Contracts** (timeout · retry · map error เข้า envelope) ห้าม import lib ตรงจาก service
-- unit test ต้อง mock engine และครอบอย่างน้อย: เรียกสำเร็จ · engine โยน error แล้ว rollback ฝั่ง SBPGI ครบ · เรียกซ้ำด้วย referenceId เดิมไม่เกิดผลซ้ำ
+- unit test ต้อง mock engine และครอบอย่างน้อย: เรียกสำเร็จ · engine โยน error แล้ว rollback ฝั่ง SGI ครบ · เรียกซ้ำด้วย referenceId เดิมไม่เกิดผลซ้ำ
 
 ## 6. Button / User Action Mapping
 
@@ -92,7 +116,7 @@ _รูปที่ 1: Implementation flow reference: LLDD BE - API Document Lis
 
 ## 7. API Contract
 
-### GET /api/v1/sbpgi/document/tasks
+### GET /api/v1/sgi/document/tasks
 
 Inbox tasks API
 
@@ -135,7 +159,7 @@ Inbox tasks API
 | items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | items[].waitingDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### GET /api/v1/sbpgi/document
+### GET /api/v1/sgi/document
 
 Document search API
 
@@ -187,10 +211,10 @@ Document search API
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
 | workflow_transaction / workflow_approver (@srm/glb-workflow) | R | อ่าน inbox ผ่าน getPendingFlowByUser() · เฉพาะ section 06 ต้อง union เอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้ามาด้วย (stoppedReopenable) |
-| compensation_documents | R | ค้นเอกสารตาม year/status/store |
-| impacted_stores | R | ชื่อร้าน ภาค และข้อมูลร้าน |
-| fgi_impact_sales_summaries | R | flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน |
-| consideration_logs | R | ผลการพิจารณาสุดท้าย — คัดเอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้าคิวของ section 06 (SDD สไลด์ 46 ข้อ 1.9) |
+| sgi_compensation_documents | R | ค้นเอกสารตาม year/status/store |
+| sgi_impacted_stores | R | ชื่อร้าน ภาค และข้อมูลร้าน |
+| sgi_fgi_impact_sales_summaries | R | flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน |
+| sgi_consideration_logs | R | ผลการพิจารณาสุดท้าย — คัดเอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้าคิวของ section 06 (SDD สไลด์ 46 ข้อ 1.9) |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -200,49 +224,49 @@ Document search API
 
 | Path | หน้าที่ |
 | --- | --- |
-| store-backend · src/modules/sbpgi-document-list-search/sbpgi-document-list-search.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
-| store-backend · src/modules/sbpgi-document-list-search/sbpgi-document-list-search.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sbpgi-document-list-search/sbpgi-document-list-search.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
-| store-backend · src/modules/sbpgi-document-list-search/dto/sbpgi-document-list-search.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
-| store-backend · src/modules/sbpgi-document-list-search/sbpgi-document-list-search.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
-| store-backend · src/entitys/compensation-documents.entity.ts | entity ของ `compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
-| store-backend · src/entitys/impacted-stores.entity.ts | entity ของ `impacted_stores` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
-| store-backend · src/entitys/fgi-impact-sales-summaries.entity.ts | entity ของ `fgi_impact_sales_summaries` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
-| store-backend · src/providers/sbpgi/sbpgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
-| store-backend · sql/deploy-sbpgi-document-list-search.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
-| BFF · src/common/client-services/sbpgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
-| BFF · src/modules/sbpgi-document-list-search/sbpgi-document-list-search.controller.ts | route ฝั่ง BFF prefix `/bff/sbpgi/…` + `@UseGuards(AuthGuard('jwt'))` |
-| BFF · src/modules/sbpgi-document-list-search/sbpgi-document-list-search.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
+| store-backend · src/modules/sgi-document-list-search/sgi-document-list-search.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
+| store-backend · src/modules/sgi-document-list-search/sgi-document-list-search.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
+| store-backend · src/modules/sgi-document-list-search/sgi-document-list-search.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-document-list-search/dto/sgi-document-list-search.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
+| store-backend · src/modules/sgi-document-list-search/sgi-document-list-search.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
+| store-backend · src/entitys/sgi-compensation-documents.entity.ts | entity ของ `sgi_compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
+| store-backend · src/entitys/sgi-impacted-stores.entity.ts | entity ของ `sgi_impacted_stores` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/entitys/sgi-fgi-impact-sales-summaries.entity.ts | entity ของ `sgi_fgi_impact_sales_summaries` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/providers/sgi/sgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
+| store-backend · sql/deploy-sgi-document-list-search.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
+| BFF · src/common/client-services/sgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
+| BFF · src/modules/sgi-document-list-search/sgi-document-list-search.controller.ts | route ฝั่ง BFF prefix `/bff/sgi/…` + `@UseGuards(AuthGuard('jwt'))` |
+| BFF · src/modules/sgi-document-list-search/sgi-document-list-search.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
 
 #### 9.2 Controller (store-backend)
 
 ```ts
-// src/modules/sbpgi-document-list-search/sbpgi-document-list-search.controller.ts
+// src/modules/sgi-document-list-search/sgi-document-list-search.controller.ts
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { HttpHeaderGuard } from '../../guards/http-header.guard';
 import { UserId } from '../../common/decorators/user-id.decorator';
-import { SbpgiDocumentListSearchService } from './sbpgi-document-list-search.service';
-import { DocumentListSearchQueryDto } from './dto/sbpgi-document-list-search.dto';
+import { SgiDocumentListSearchService } from './sgi-document-list-search.service';
+import { DocumentListSearchQueryDto } from './dto/sgi-document-list-search.dto';
 
 // LLDD BE - API Document List and Search
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sbpgi/sbpgi/document')
+@Controller('sgi/sgi/document')
 @UseGuards(HttpHeaderGuard)
-export class SbpgiDocumentListSearchController {
-  constructor(private readonly service: SbpgiDocumentListSearchService) {}
+export class SgiDocumentListSearchController {
+  constructor(private readonly service: SgiDocumentListSearchService) {}
 
-  // GET /api/v1/sbpgi/document/tasks — Inbox tasks API
+  // GET /api/v1/sgi/document/tasks — Inbox tasks API
   @Get('document/tasks')
-  getSbpgiDocumentTasks(@Query() query: DocumentListSearchQueryDto, @UserId() userId: string) {
+  getSgiDocumentTasks(@Query() query: DocumentListSearchQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getSbpgiDocumentTasks(query, userId);
+    return this.service.getSgiDocumentTasks(query, userId);
   }
 
-  // GET /api/v1/sbpgi/document — Document search API
+  // GET /api/v1/sgi/document — Document search API
   @Get('document')
-  getSbpgiDocument(@Query() query: DocumentListSearchQueryDto, @UserId() userId: string) {
+  getSgiDocument(@Query() query: DocumentListSearchQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.getSbpgiDocument(query, userId);
+    return this.service.getSgiDocument(query, userId);
   }
 }
 ```
@@ -250,7 +274,7 @@ export class SbpgiDocumentListSearchController {
 #### 9.3 DTO + Validation
 
 ```ts
-// src/modules/sbpgi-document-list-search/dto/sbpgi-document-list-search.dto.ts
+// src/modules/sgi-document-list-search/dto/sgi-document-list-search.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
@@ -306,17 +330,17 @@ export class DocumentListSearchQueryDto {
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
-// src/modules/sbpgi-document-list-search/sbpgi-document-list-search.service.ts
+// src/modules/sgi-document-list-search/sgi-document-list-search.service.ts
 import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { WorkflowService } from '../workflow/workflow.service';
-import { SBPGI_SQL } from './sbpgi-document-list-search.sql';
+import { SGI_SQL } from './sgi-document-list-search.sql';
 
 @Injectable()
-export class SbpgiDocumentListSearchService {
-  private readonly logger = new Logger(SbpgiDocumentListSearchService.name);
+export class SgiDocumentListSearchService {
+  private readonly logger = new Logger(SgiDocumentListSearchService.name);
   // versionId ของ workflow ประกันรายได้ (ตั้งใน env เหมือน COOPERATION_WORKFLOW_VERSION_ID)
-  private readonly versionId = Number(process.env.SBPGI_WORKFLOW_VERSION_ID);
+  private readonly versionId = Number(process.env.SGI_WORKFLOW_VERSION_ID);
 
   constructor(
     // DATA_SOURCE override query(): SELECT/WITH ไป slave pool, write ไป master
@@ -324,14 +348,14 @@ export class SbpgiDocumentListSearchService {
     private readonly workflow: WorkflowService,
   ) {}
 
-  // GET /api/v1/sbpgi/document/tasks — Inbox tasks API
-  async getSbpgiDocumentTasks(query: DocumentListSearchQueryDto, userId: string) {
+  // GET /api/v1/sgi/document/tasks — Inbox tasks API
+  async getSgiDocumentTasks(query: DocumentListSearchQueryDto, userId: string) {
     const page = Number(query.page ?? 1);
     const size = Math.min(Number(query.size ?? 20), 100);
-    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sbpgi/document/tasks')
+    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sgi/document/tasks')
     // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
     //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
-    const rows = await this.dataSource.query(SBPGI_SQL.getSbpgiDocumentTasks, [
+    const rows = await this.dataSource.query(SGI_SQL.getSgiDocumentTasks, [
       // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
       userId, (page - 1) * size, size,
     ]);
@@ -339,25 +363,25 @@ export class SbpgiDocumentListSearchService {
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/sbpgi/document — Document search API
-  async getSbpgiDocument(query: DocumentListSearchQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/sbpgi/document
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sbpgi/document')
-    throw new NotImplementedException('getSbpgiDocument ยังไม่ implement');
+  // GET /api/v1/sgi/document — Document search API
+  async getSgiDocument(query: DocumentListSearchQueryDto, userId: string) {
+    // TODO: implement ตาม business rule ของ GET /api/v1/sgi/document
+    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sgi/document')
+    throw new NotImplementedException('getSgiDocument ยังไม่ implement');
   }
 }
 ```
 
 #### 9.5 Workflow (`@srm/glb-workflow`)
 
-✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
+✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ยืนยันแล้ว 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
 | Endpoint | Use case ที่ต้องเรียก | เหตุผล |
 | --- | --- | --- |
-| GET /api/v1/sbpgi/document/tasks | getPendingFlowByUser() | inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header |
+| GET /api/v1/sgi/document/tasks | getPendingFlowByUser() | inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header |
 
 ```ts
-// src/modules/sbpgi-document-list-search/sbpgi-document-list-search.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
+// src/modules/sgi-document-list-search/sgi-document-list-search.workflow.ts (หรือรวมไว้ใน service เดียวกัน)
 // WorkflowService = wrapper ของ @srm/glb-workflow ที่ store-backend มีอยู่แล้ว
 // (DataSource แยกชื่อ 'workflow-connection', ทุก use case ห่อด้วย TypeOrmUnitOfWork)
 
@@ -366,16 +390,16 @@ export class SbpgiDocumentListSearchService {
     userData: { userId: Number(userId), groupId: Number(groupId) },
     versionId: this.versionId,
   });
-  // TODO: join referenceId (= doc_no) กลับไปที่ compensation_documents เพื่อเติมข้อมูลเอกสาร
+  // TODO: join referenceId (= doc_no) กลับไปที่ sgi_compensation_documents เพื่อเติมข้อมูลเอกสาร
 ```
 
 #### 9.6 Entity (TypeORM)
 
 ```ts
-// src/entitys/compensation-documents.entity.ts
+// src/entitys/sgi-compensation-documents.entity.ts
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'compensation_documents', schema: process.env.DB_SCHEMA })
+@Entity({ name: 'sgi_compensation_documents', schema: process.env.DB_SCHEMA })
 export class CompensationDocument {
   @PrimaryColumn({ name: 'doc_no', type: 'varchar', length: 12 })
   docNo: string;
@@ -425,16 +449,16 @@ export class CompensationDocument {
   @Column({ name: 'updated_at', type: 'timestamptz', nullable: true })
   updatedAt?: Date;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
+  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
   //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
 }
 ```
 
 ```ts
-// src/entitys/impacted-stores.entity.ts
+// src/entitys/sgi-impacted-stores.entity.ts
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'impacted_stores', schema: process.env.DB_SCHEMA })
+@Entity({ name: 'sgi_impacted_stores', schema: process.env.DB_SCHEMA })
 export class ImpactedStore {
   @PrimaryColumn({ name: 'store_code', type: 'char', length: 5 })
   storeCode: string;
@@ -457,12 +481,12 @@ export class ImpactedStore {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sbpgi-*.sql ก่อน merge
+  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
   //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`fgi_impact_sales_summaries`, `consideration_logs`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`sgi_fgi_impact_sales_summaries`, `sgi_consideration_logs`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
@@ -474,36 +498,36 @@ export class ImpactedStore {
 #### 9.7 Repository Providers + Module wiring
 
 ```ts
-// src/providers/sbpgi/sbpgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
+// src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
 // convention ของโฟลเดอร์ providers คือ 1 ไฟล์ต่อโดเมน ตั้งชื่อตามโดเมน (business_user/business_user.ts,
 // common_code/common_code.ts …) ไม่ใช่ index.ts
 //
-// ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SBPGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ
+// ⚠️ ไฟล์นี้ใช้ร่วมกันทุกเอกสาร BE ของ SGI — ให้ **merge array เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับ
 //    (ชื่อ const แยกต่อเอกสารไว้แล้วเพื่อไม่ให้ชนกัน)
 import { DataSource } from 'typeorm';
-import { CompensationDocument } from '../../entitys/compensation-documents.entity';
-import { ImpactedStore } from '../../entitys/impacted-stores.entity';
-import { FgiImpactSalesSummary } from '../../entitys/fgi-impact-sales-summaries.entity';
+import { CompensationDocument } from '../../entitys/sgi-compensation-documents.entity';
+import { ImpactedStore } from '../../entitys/sgi-impacted-stores.entity';
+import { FgiImpactSalesSummary } from '../../entitys/sgi-fgi-impact-sales-summaries.entity';
 
-export const sbpgiDocumentListSearchProviders = [
+export const sgiDocumentListSearchProviders = [
   {
-    provide: 'COMPENSATION_DOCUMENT_REPOSITORY',
+    provide: 'SGI_COMPENSATION_DOCUMENT_REPOSITORY',
     useFactory: (dataSource: DataSource) => dataSource.getRepository(CompensationDocument),
     inject: ['DATA_SOURCE'],
   },
   {
-    provide: 'IMPACTED_STORE_REPOSITORY',
+    provide: 'SGI_IMPACTED_STORE_REPOSITORY',
     useFactory: (dataSource: DataSource) => dataSource.getRepository(ImpactedStore),
     inject: ['DATA_SOURCE'],
   },
   {
-    provide: 'FGI_IMPACT_SALES_SUMMARIES_REPOSITORY',
+    provide: 'SGI_FGI_IMPACT_SALES_SUMMARIES_REPOSITORY',
     useFactory: (dataSource: DataSource) => dataSource.getRepository(FgiImpactSalesSummary),
     inject: ['DATA_SOURCE'],
   },
 ];
 
-// src/modules/sbpgi-document-list-search/sbpgi-document-list-search.module.ts
+// src/modules/sgi-document-list-search/sgi-document-list-search.module.ts
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { DatabaseModule } from '../../database/database.module';
 // UserContextMiddleware อ่าน header x-user-id แล้วเซ็ต request.userId ที่ @UserId() ใช้
@@ -511,57 +535,57 @@ import { DatabaseModule } from '../../database/database.module';
 // (ดู evaluation-process.module.ts / inform-evaluate.module.ts / cooperation-request.module.ts)
 import { UserContextMiddleware } from '../../common/middleware/user-context.middleware';
 import { WorkflowModule } from '../workflow/workflow.module';
-import { sbpgiDocumentListSearchProviders } from '../../providers/sbpgi/sbpgi';
-import { SbpgiDocumentListSearchController } from './sbpgi-document-list-search.controller';
-import { SbpgiDocumentListSearchService } from './sbpgi-document-list-search.service';
+import { sgiDocumentListSearchProviders } from '../../providers/sgi/sgi';
+import { SgiDocumentListSearchController } from './sgi-document-list-search.controller';
+import { SgiDocumentListSearchService } from './sgi-document-list-search.service';
 
 @Module({
   imports: [DatabaseModule, WorkflowModule],
-  controllers: [SbpgiDocumentListSearchController],
-  providers: [SbpgiDocumentListSearchService, ...sbpgiDocumentListSearchProviders],
-  exports: [SbpgiDocumentListSearchService],
+  controllers: [SgiDocumentListSearchController],
+  providers: [SgiDocumentListSearchService, ...sgiDocumentListSearchProviders],
+  exports: [SgiDocumentListSearchService],
 })
-export class SbpgiDocumentListSearchModule implements NestModule {
+export class SgiDocumentListSearchModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // ถ้าไม่ apply ตรงนี้ userId จะเป็น undefined เงียบ ๆ ทุก endpoint
-    consumer.apply(UserContextMiddleware).forRoutes(SbpgiDocumentListSearchController);
+    consumer.apply(UserContextMiddleware).forRoutes(SgiDocumentListSearchController);
   }
 }
-// TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SBPGI ตัวอื่น
+// TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
 #### 9.8 BFF Proxy (module + controller + client service)
 
-BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sbpgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
+BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
 ```ts
-// src/common/client-services/sbpgi-client.service.ts
+// src/common/client-services/sgi-client.service.ts
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { BaseClientService } from './base-client.service';
 
 @Injectable()
-export class SbpgiClientService extends BaseClientService implements OnModuleInit {
-  protected logger: Logger = new Logger(SbpgiClientService.name);
+export class SgiClientService extends BaseClientService implements OnModuleInit {
+  protected logger: Logger = new Logger(SgiClientService.name);
 
   onModuleInit() {
-    // TODO: ถ้า deploy SBPGI แยก service ให้เพิ่ม API_SBPGI_BACKEND_* ใน AppConfigService
+    // TODO: ถ้า deploy SGI แยก service ให้เพิ่ม API_SGI_BACKEND_* ใน AppConfigService
     //       ตอนนี้ชี้ store backend ตัวเดียวกับ StoreClientService
     this.defaultHeaders[this.config.api.store.key.name] = this.config.api.store.key.value;
     this.baseUrl = this.config.api.store.url;
   }
 }
 // BaseClientService แกะ { success, data } ให้แล้ว — service ฝั่ง BFF จึงได้ data ตรง ๆ
-// TODO: เพิ่ม SbpgiClientService ใน providers/exports ของ ClientServiceModule (@Global)
+// TODO: เพิ่ม SgiClientService ใน providers/exports ของ ClientServiceModule (@Global)
 ```
 
 ```ts
-// src/modules/sbpgi-document-list-search/sbpgi-document-list-search.service.ts (BFF)
+// src/modules/sgi-document-list-search/sgi-document-list-search.service.ts (BFF)
 import { Injectable } from '@nestjs/common';
-import { SbpgiClientService } from '@common/client-services/sbpgi-client.service';
+import { SgiClientService } from '@common/client-services/sgi-client.service';
 
 @Injectable()
-export class SbpgiDocumentListSearchBffService {
-  constructor(private readonly client: SbpgiClientService) {}
+export class SgiDocumentListSearchBffService {
+  constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
   private userHeaders(user: any) {
@@ -572,38 +596,38 @@ export class SbpgiDocumentListSearchBffService {
     };
   }
 
-  getSbpgiDocumentTasks(params: any, user: any) {
-    return this.client.get('/api/v1/sbpgi/document/tasks', { params, headers: this.userHeaders(user) });
+  getSgiDocumentTasks(params: any, user: any) {
+    return this.client.get('/api/v1/sgi/document/tasks', { params, headers: this.userHeaders(user) });
   }
 
-  getSbpgiDocument(params: any, user: any) {
-    return this.client.get('/api/v1/sbpgi/document', { params, headers: this.userHeaders(user) });
+  getSgiDocument(params: any, user: any) {
+    return this.client.get('/api/v1/sgi/document', { params, headers: this.userHeaders(user) });
   }
 }
 
-// ---------- src/modules/sbpgi-document-list-search/sbpgi-document-list-search.controller.ts (BFF) ----------
+// ---------- src/modules/sgi-document-list-search/sgi-document-list-search.controller.ts (BFF) ----------
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sbpgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sbpgi/document-list-search')
+// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
+@Controller('bff/sgi/document-list-search')
 @UseGuards(AuthGuard('jwt'))
-export class SbpgiDocumentListSearchBffController {
-  constructor(private readonly service: SbpgiDocumentListSearchBffService) {}
+export class SgiDocumentListSearchBffController {
+  constructor(private readonly service: SgiDocumentListSearchBffService) {}
 
-  // proxy ของ GET /api/v1/sbpgi/document/tasks
-  @Get('sbpgi/document/tasks')
-  getSbpgiDocumentTasks(@Query() query: any, @Req() req: any) {
-    return this.service.getSbpgiDocumentTasks(query, req.user);
+  // proxy ของ GET /api/v1/sgi/document/tasks
+  @Get('sgi/document/tasks')
+  getSgiDocumentTasks(@Query() query: any, @Req() req: any) {
+    return this.service.getSgiDocumentTasks(query, req.user);
   }
 
-  // proxy ของ GET /api/v1/sbpgi/document
-  @Get('sbpgi/document')
-  getSbpgiDocument(@Query() query: any, @Req() req: any) {
-    return this.service.getSbpgiDocument(query, req.user);
+  // proxy ของ GET /api/v1/sgi/document
+  @Get('sgi/document')
+  getSgiDocument(@Query() query: any, @Req() req: any) {
+    return this.service.getSgiDocument(query, req.user);
   }
 }
-// TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SbpgiClientService ใน ClientServiceModule (@Global)
+// TODO: register module ใน app.module.ts ของ BFF และเพิ่ม SgiClientService ใน ClientServiceModule (@Global)
 ```
 
 ## 10. Database SQL
@@ -612,26 +636,26 @@ export class SbpgiDocumentListSearchBffController {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| compensation_documents | R | ค้นเอกสารตาม year/status/store |
-| impacted_stores | R | ชื่อร้าน ภาค และข้อมูลร้าน |
-| fgi_impact_sales_summaries | R | flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน |
-| consideration_logs | R | ผลการพิจารณาสุดท้าย — คัดเอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้าคิวของ section 06 (SDD สไลด์ 46 ข้อ 1.9) |
+| sgi_compensation_documents | R | ค้นเอกสารตาม year/status/store |
+| sgi_impacted_stores | R | ชื่อร้าน ภาค และข้อมูลร้าน |
+| sgi_fgi_impact_sales_summaries | R | flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน |
+| sgi_consideration_logs | R | ผลการพิจารณาสุดท้าย — คัดเอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้าคิวของ section 06 (SDD สไลด์ 46 ข้อ 1.9) |
 | workflow_transaction | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_approver | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 
 #### 10.2 SQL จริงต่อ Endpoint
 
-**GET /api/v1/sbpgi/document/tasks** — Inbox tasks API
+**GET /api/v1/sgi/document/tasks** — Inbox tasks API
 
 ```sql
 -- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:
 --      total_compensation_amount  ->  compensate_amount
 -- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
 --    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
--- ⚠️ ไม่มีตาราง workflow_tasks ของ SBPGI แล้ว — กล่องงานอ่านจาก engine กลาง (schema sps_store)
+-- ⚠️ ไม่มีตาราง workflow_tasks ของ SGI แล้ว — กล่องงานอ่านจาก engine กลาง (schema sps_store)
 --    getPendingFlowByUser({userData}) 
--- ✅ DP-1 ปิดแล้ว: reference_id = compensation_documents.id (surrogate · varchar(255)) · ⚠️ DP-2 workflow_transaction ไม่มี PK/index (19,283 แถว → seq-scan) ยังไม่ตัดสิน
---    ยังไม่ตัดสิน — ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
+-- ✅ DP-1 ปิดแล้ว: reference_id = sgi_compensation_documents.id (surrogate · varchar(255)) · ⚠️ DP-2 workflow_transaction ไม่มี PK/index (19,283 แถว → seq-scan) ห้ามแก้ schema ของ library
+--    ห้ามแก้ schema ของ library — กันซ้ำที่ระดับ application ของ SGI
 WITH wh AS (
   -- workflow_transaction ไม่มี created_date — ใช้เวลา event แรกจาก workflow_history แทน
   SELECT transaction_id, MIN(create_date) AS first_event_date
@@ -650,15 +674,15 @@ SELECT d.round_no AS "roundNo",
        ss.total_working_days AS "salesDataDays"
 FROM sps_store.workflow_approver a
 JOIN sps_store.workflow_transaction w ON w.transaction_id = a.transaction_id
-JOIN compensation_documents d ON d.id::text = w.reference_id   -- DP-1 = surrogate id   -- DP-1
+JOIN sgi_compensation_documents d ON d.id::text = w.reference_id   -- DP-1 = surrogate id   -- DP-1
 JOIN store s ON s.store_id = d.impacted_store_code
-LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
-WHERE a.state_id = :sectionFromJwt AND a.state_id = w.current_state_id AND w.version_id = :sbpgiVersionId
+LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
+WHERE a.state_id = :sectionFromJwt AND a.state_id = w.current_state_id AND w.version_id = :sgiVersionId
 ORDER BY w.update_date
 LIMIT :size OFFSET :offset;
 ```
 
-**GET /api/v1/sbpgi/document** — Document search API
+**GET /api/v1/sgi/document** — Document search API
 
 ```sql
 -- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:
@@ -679,10 +703,10 @@ SELECT d.round_no AS "roundNo",
        -- workflow_transaction ไม่มี created_date (มีแค่ update_date) — วันที่เริ่มงานเอาจาก workflow_history
        CASE WHEN w.current_status_id <> :statusDone THEN GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) ELSE 0 END AS "daysPending",
        ss.total_working_days AS "salesDataDays"
-FROM compensation_documents d
+FROM sgi_compensation_documents d
 JOIN store s ON s.store_id = d.impacted_store_code
-LEFT JOIN fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
-LEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.id::text   -- DP-1 = surrogate id (reference_id เป็น varchar(255)) AND w.version_id = :sbpgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)
+LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
+LEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.id::text   -- DP-1 = surrogate id (reference_id เป็น varchar(255)) AND w.version_id = :sgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)
 WHERE d.year = :year
   AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)
   AND (:status            IS NULL OR d.status_code = :status)
@@ -694,10 +718,10 @@ LIMIT :size OFFSET :offset;
 
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |
-| fgi_impact_sales_summaries | CREATE INDEX idx_fgi_impact_sales_summaries_impact_process_id ON fgi_impact_sales_summaries (impact_process_id); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
-| compensation_documents | CREATE INDEX idx_compensation_documents_year_impacted_store_code_status_code ON compensation_documents (year, impacted_store_code, status_code); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
+| sgi_fgi_impact_sales_summaries | CREATE INDEX idx_sgi_fgi_impact_sales_summaries_impact_process_id ON sgi_fgi_impact_sales_summaries (impact_process_id); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
+| sgi_compensation_documents | CREATE INDEX idx_sgi_compensation_documents_year_impacted_store_code_status_ ON sgi_compensation_documents (year, impacted_store_code, status_code); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
 
-ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sbpgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่
+ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่
 
 ## 11. Processing Flow
 
@@ -706,12 +730,12 @@ LIMIT :size OFFSET :offset;
 | 1 | Read JWT section/role |
 | 2 | Validate year for documents |
 | 3 | Build filter query |
-| 4 | Join impacted_stores |
+| 4 | Join sgi_impacted_stores |
 | 5 | Return page result |
 
 ## 12. Acceptance Criteria
 
-- year missing fails for /sbpgi/document
+- year missing fails for /sgi/document
 - leading zero storeCode preserved
 - pagination returns total
 - status filter works
@@ -740,14 +764,14 @@ LIMIT :size OFFSET :offset;
 | `sourceSystem` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: ALLMAP / USER · รูปแบบ: enum |
 | `date` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: valid date · รูปแบบ: DD/MM/YYYY |
 | `attachment` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: <= 5 MB · รูปแบบ: file |
-| `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for /sbpgi/document · รูปแบบ: ค.ศ. YYYY |
+| `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for /sgi/document · รูปแบบ: ค.ศ. YYYY |
 | `page/size` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: page>=1 size<=100 · รูปแบบ: integer |
-| business rule | logic | year missing fails for /sbpgi/document |
+| business rule | logic | year missing fails for /sgi/document |
 | business rule | logic | leading zero storeCode preserved |
 | business rule | logic | pagination returns total |
 | business rule | logic | status filter works |
-| `GET /api/v1/sbpgi/document/tasks` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `GET /api/v1/sbpgi/document` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sgi/document/tasks` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
+| `GET /api/v1/sgi/document` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 
 - ทุกเคสต้องรันได้โดยไม่ต่อ DB/บริการภายนอกจริง — mock ที่ขอบ repository/client เสมอ

@@ -14,6 +14,21 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| ใช้ endpoint ของ | **LLDD-BE-API-Attachment-Sales-Timeline** | `POST /api/v1/sgi/document/{docNo}/attachments` |
+| ใช้ endpoint ของ | **LLDD-BE-API-Document-Create-Update** | `PUT /api/v1/sgi/document/{docNo}` |
+| ใช้ endpoint ของ | **LLDD-BE-API-Document-Detail-Aggregate** | `GET /api/v1/sgi/document/{docNo}` |
+| ใช้ endpoint ของ | **LLDD-BE-API-Document-Workflow-Actions** | `POST /api/v1/sgi/document/{docNo}/actions` |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| สัญญากลาง | **LLDD-FE-Integration-Contracts** | API client · auth header · error mapping · RBAC/menu gating ฝั่ง FE |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Workflow-Engine-Definition** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Foundation** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+
 ## 2. Screen / Functional Scope
 
 - Document header
@@ -38,11 +53,21 @@ _รูปที่ 2: Screenshot: k2-document-02.png_
 
 _รูปที่ 3: Screenshot: k2-document-03.png_
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 4: Implementation flow reference: LLDD FE - Document Detail and Action](../../assets/flows/FE-LLDD-FE-Document-Detail.png)
 
 _รูปที่ 4: Implementation flow reference: LLDD FE - Document Detail and Action_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 5: Sequence diagram: LLDD FE - Document Detail and Action](../../assets/flows/FE-LLDD-FE-Document-Detail-sequence.png)
+
+_รูปที่ 5: Sequence diagram: LLDD FE - Document Detail and Action_
 
 ## 5. Field, Format, and Validation
 
@@ -58,7 +83,7 @@ _รูปที่ 4: Implementation flow reference: LLDD FE - Document Detail 
 | result | verbatim from actionOptions | required on submit action | FE แสดง radio ตาม `actionOptions` จาก API เท่านั้น · ไม่เลือกแล้วกดส่ง → popup **verbatim SRS**: `ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ` |
 | comment | text | required บาง result | trim before submit · SRS บังคับ required เมื่อเลือกไม่ชดเชย แต่ไม่ได้ระบุข้อความ popup |
 | compensatePercent | number | sum = 100 | validate before save · ไม่ครบ 100% → popup `โปรดตรวจสอบ %ชดเชย ของท่าน รวมกันแล้วไม่เท่ากับ 100%` |
-| competitorCode | select จาก master competitors | required เมื่อเพิ่ม/แก้แถวคู่แข่ง | ไม่เลือก → popup **verbatim SRS §10**: `กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ` |
+| competitorCode | select จาก master sgi_competitors | required เมื่อเพิ่ม/แก้แถวคู่แข่ง | ไม่เลือก → popup **verbatim SRS §10**: `กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ` |
 | factor.startDate / factor.endDate | date | endDate >= startDate | **กติกา SRS §11**: วันที่สิ้นสุดต้องเท่ากับหรือมากกว่าวันที่เริ่มต้น — ถ้าน้อยกว่าต้องแสดง Pop-up แจ้งเตือน (SRS ไม่ได้ระบุข้อความ ให้ยืนยันกับ BA ก่อน UAT) |
 
 ### 5.1 Role-based Render Contract (ไม่ใช่ Routing Spec)
@@ -104,10 +129,10 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 | Role profile | Radio options shown | Required comment rule |
 | --- | --- | --- |
 | 06 ฝ่าย SBP DSA | เห็นควรไม่ชดเชย; หยุดชดเชยประกันรายได้; ส่งหน่วยงานส่งเสริมธุรกิจ SBP; ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ | บังคับเมื่อเลือก เห็นควรไม่ชดเชย |
-| 08 เจ้าหน้าที่ SBP DSA | คำนวณเงินชดเชยเรียบร้อย; ส่งกลับฝ่าย SBP DSA | บังคับเมื่อ actionOptions.requireComment=true |
+| 08 เจ้าหน้าที่ SBP DSA | คำนวณเงินชดเชยเรียบร้อย (**ปุ่มเดียว** · มติ 2026-09-01) | บังคับเมื่อ actionOptions.requireComment=true |
 | 01 หน่วยงานส่งเสริมธุรกิจ SBP | เห็นควรชดเชย; เห็นควรไม่ชดเชย; ฝ่าย SBP DSA ดำเนินการ (ส่งกลับ) | บังคับเมื่อเลือก เห็นควรไม่ชดเชย |
-| 02 GM ส่งเสริมธุรกิจฯ | เห็นควรชดเชย; เห็นควรไม่ชดเชย; ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP | บังคับเมื่อ actionOptions.requireComment=true |
-| 03 AVP สำนักบริหาร SBP | เห็นควรชดเชย; เห็นควรไม่ชดเชย; ส่งกลับ GM ส่งเสริมธุรกิจฯ | บังคับเมื่อ actionOptions.requireComment=true |
+| 02 GM ส่งเสริมธุรกิจฯ | เห็นควรชดเชย; เห็นควรไม่ชดเชย; **ส่งกลับฝ่าย SBP DSA** (มติ 2026-09-01) | บังคับเมื่อ actionOptions.requireComment=true |
+| 03 AVP สำนักบริหาร SBP | เห็นควรชดเชย; เห็นควรไม่ชดเชย; **ส่งกลับฝ่าย SBP DSA** (มติ 2026-09-01) | บังคับเมื่อ actionOptions.requireComment=true |
 
 #### Role Detail Documents
 
@@ -133,9 +158,9 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/sbpgi/document/{docNo}; PUT /api/v1/sbpgi/document/{docNo}; POST /api/v1/sbpgi/document/{docNo}/actions |
+| Input | GET /api/v1/sgi/document/{docNo}; PUT /api/v1/sgi/document/{docNo}; POST /api/v1/sgi/document/{docNo}/actions |
 | Progress | Load document detail; Render role profile from API; User edits allowed sections only; Validate fields and popup text |
-| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / sgi_consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Document Detail and Action Component Contract
 
@@ -153,19 +178,19 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
-| GET /api/v1/sbpgi/document/{docNo} | โหลดรายละเอียดเอกสารพร้อม role profile สำหรับหน้า detail | Save section (ปุ่มบันทึก); Submit action (ปุ่มส่งดำเนินการ); Upload file (เลือกไฟล์); Open sales (ข้อมูลยอดขายเพิ่มเติม) |
-| PUT /api/v1/sbpgi/document/{docNo} | บันทึกส่วนย่อย เช่น ร้านเปิดใหม่/คู่แข่ง/ปัจจัย | Save section (ปุ่มบันทึก); Submit action (ปุ่มส่งดำเนินการ); Upload file (เลือกไฟล์); Open sales (ข้อมูลยอดขายเพิ่มเติม) |
-| POST /api/v1/sbpgi/document/{docNo}/actions | ส่งผลพิจารณาที่เลือกจาก actionOptions; ตัวอย่าง currentSection=01 จึงเปลี่ยนไป 02 | Submit action (ปุ่มส่งดำเนินการ) |
-| POST /api/v1/sbpgi/document/{docNo}/attachments | แนบไฟล์ | Upload file (เลือกไฟล์) |
+| GET /api/v1/sgi/document/{docNo} | โหลดรายละเอียดเอกสารพร้อม role profile สำหรับหน้า detail | Save section (ปุ่มบันทึก); Submit action (ปุ่มส่งดำเนินการ); Upload file (เลือกไฟล์); Open sales (ข้อมูลยอดขายเพิ่มเติม) |
+| PUT /api/v1/sgi/document/{docNo} | บันทึกส่วนย่อย เช่น ร้านเปิดใหม่/คู่แข่ง/ปัจจัย | Save section (ปุ่มบันทึก); Submit action (ปุ่มส่งดำเนินการ); Upload file (เลือกไฟล์); Open sales (ข้อมูลยอดขายเพิ่มเติม) |
+| POST /api/v1/sgi/document/{docNo}/actions | ส่งผลพิจารณาที่เลือกจาก actionOptions; ตัวอย่าง currentSection=01 จึงเปลี่ยนไป 02 | Submit action (ปุ่มส่งดำเนินการ) |
+| POST /api/v1/sgi/document/{docNo}/attachments | แนบไฟล์ | Upload file (เลือกไฟล์) |
 
 ### 5.92 Document Detail and Action Interaction State Machine
 
 | Action | Trigger | API / State transition | Expected visible result |
 | --- | --- | --- | --- |
-| Save section | ปุ่มบันทึก | PUT /api/v1/sbpgi/document/{docNo} | save partial |
-| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/sbpgi/document/{docNo}/actions | submit selected result and reload status |
-| Upload file | เลือกไฟล์ | POST /api/v1/sbpgi/document/{docNo}/attachments | append attachment |
-| Open sales | ข้อมูลยอดขายเพิ่มเติม | GET /api/v1/sbpgi/document/{docNo}/sales | show chart/detail |
+| Save section | ปุ่มบันทึก | PUT /api/v1/sgi/document/{docNo} | save partial |
+| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/sgi/document/{docNo}/actions | submit selected result and reload status |
+| Upload file | เลือกไฟล์ | POST /api/v1/sgi/document/{docNo}/attachments | append attachment |
+| Open sales | ข้อมูลยอดขายเพิ่มเติม | GET /api/v1/sgi/document/{docNo}/sales | show chart/detail |
 
 ### 5.93 Document Detail and Action Feature Failure Checks
 
@@ -182,14 +207,14 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
-| Save section | ปุ่มบันทึก | PUT /api/v1/sbpgi/document/{docNo} | save partial |
-| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/sbpgi/document/{docNo}/actions | submit selected result and reload status |
-| Upload file | เลือกไฟล์ | POST /api/v1/sbpgi/document/{docNo}/attachments | append attachment |
-| Open sales | ข้อมูลยอดขายเพิ่มเติม | GET /api/v1/sbpgi/document/{docNo}/sales | show chart/detail |
+| Save section | ปุ่มบันทึก | PUT /api/v1/sgi/document/{docNo} | save partial |
+| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/sgi/document/{docNo}/actions | submit selected result and reload status |
+| Upload file | เลือกไฟล์ | POST /api/v1/sgi/document/{docNo}/attachments | append attachment |
+| Open sales | ข้อมูลยอดขายเพิ่มเติม | GET /api/v1/sgi/document/{docNo}/sales | show chart/detail |
 
 ## 7. API Contract
 
-### GET /api/v1/sbpgi/document/{docNo}
+### GET /api/v1/sgi/document/{docNo}
 
 โหลดรายละเอียดเอกสารพร้อม role profile สำหรับหน้า detail
 
@@ -274,7 +299,7 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 | impactedStore.storeCode | string | Yes | exactly 5 digits; preserve leading zero |
 | newStores | array<object> | Yes | JSON array; element type shown in Type column |
 
-### PUT /api/v1/sbpgi/document/{docNo}
+### PUT /api/v1/sgi/document/{docNo}
 
 บันทึกส่วนย่อย เช่น ร้านเปิดใหม่/คู่แข่ง/ปัจจัย
 
@@ -313,7 +338,7 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 | --- | --- | --- | --- |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/sbpgi/document/{docNo}/actions
+### POST /api/v1/sgi/document/{docNo}/actions
 
 ส่งผลพิจารณาที่เลือกจาก actionOptions; ตัวอย่าง currentSection=01 จึงเปลี่ยนไป 02
 
@@ -351,7 +376,7 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 | nextSection | string | Yes | canonical code; do not replace with display label |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/sbpgi/document/{docNo}/attachments
+### POST /api/v1/sgi/document/{docNo}/attachments
 
 แนบไฟล์
 
@@ -391,39 +416,39 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 
 #### 8.1 ผังไฟล์ที่ต้องสร้าง
 
-โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SBPGI อยู่ใต้ `src/app/(main)/sbpgi/*` และ import ผ่าน alias `@/*` ทุกจุด
+โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด
 
 | Path ไฟล์ | หน้าที่ |
 | --- | --- |
-| src/app/(main)/sbpgi/document/[docNo]/page.tsx | route page — หน้ารายละเอียดเอกสาร + action panel ตาม role profile |
-| src/components/sbpgi/document-detail/DocumentSection.tsx | component — render 1 section ตาม sectionKey + editable |
-| src/components/sbpgi/document-detail/ActionPanel.tsx | component — radio ผลการพิจารณา + comment + ปุ่มยืนยัน |
-| src/services/sbpgi/document.service.ts | service — เรียก BFF ผ่าน apiClient (GET, POST, PUT) |
-| src/hooks/sbpgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
-| src/types/sbpgi/document.ts | types — request/response ตาม API contract ของเอกสารนี้ |
+| src/app/(main)/sgi/document/[docNo]/page.tsx | route page — หน้ารายละเอียดเอกสาร + action panel ตาม role profile |
+| src/components/sgi/document-detail/DocumentSection.tsx | component — render 1 section ตาม sectionKey + editable |
+| src/components/sgi/document-detail/ActionPanel.tsx | component — radio ผลการพิจารณา + comment + ปุ่มยืนยัน |
+| src/services/sgi/document.service.ts | service — เรียก BFF ผ่าน apiClient (GET, POST, PUT) |
+| src/hooks/sgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
+| src/types/sgi/document.ts | types — request/response ตาม API contract ของเอกสารนี้ |
 
 #### 8.2 page.tsx — หน้ารายละเอียดเอกสาร (section gating จาก API)
 
 ```tsx
 'use client';
 // หน้ารายละเอียดเอกสาร + action panel ตาม role profile
-// route: /sbpgi/document/[docNo]
+// route: /sgi/document/[docNo]
 
 import { useParams } from 'next/navigation';
 import AccessDenied from '@/components/Permission/AccessDenied';
 import { permissionStore } from '@/stores/permissionStore';
-import DocumentSection from '@/components/sbpgi/document-detail/DocumentSection';
-import ActionPanel from '@/components/sbpgi/document-detail/ActionPanel';
-import { useSbpgiDocumentDetailQuery, useCreateSbpgiDocumentActionsMutation } from '@/hooks/sbpgi/document.query';
+import DocumentSection from '@/components/sgi/document-detail/DocumentSection';
+import ActionPanel from '@/components/sgi/document-detail/ActionPanel';
+import { useSgiDocumentDetailQuery, useCreateSgiDocumentActionsMutation } from '@/hooks/sgi/document.query';
 
-const PAGE_URL = '/sbpgi/document';
+const PAGE_URL = '/sgi/document';
 
 export default function DocumentDetailPage() {
   const params = useParams<{ docNo: string }>();
   const docNo = decodeURIComponent(params.docNo); // docNo = 'YYYY/xxxxx' จึงถูก encode ใน route param
   const { hasPermission, isPermissionLoaded } = permissionStore();
-  const { data: doc, isLoading } = useSbpgiDocumentDetailQuery(docNo);
-  const submitAction = useCreateSbpgiDocumentActionsMutation(docNo);
+  const { data: doc, isLoading } = useSgiDocumentDetailQuery(docNo);
+  const submitAction = useCreateSgiDocumentActionsMutation(docNo);
 
   // สิทธิ์แสดง/แก้ไขแต่ละ section มาจาก API เท่านั้น — FE ห้ามคำนวณจาก role เอง
   const show = (key: string) => !!doc?.visibleSections?.includes(key);
@@ -456,42 +481,42 @@ export default function DocumentDetailPage() {
 }
 ```
 
-#### 8.3 service — `src/services/sbpgi/document.service.ts`
+#### 8.3 service — `src/services/sgi/document.service.ts`
 
-⚠️ `src/services/sbpgi/document.service.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/services/sgi/document.service.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/services/sbpgi/document.service.ts
+// src/services/sgi/document.service.ts
 // apiClient = axios instance กลาง (baseURL = bffUrl ซึ่งรวม /api/v1 แล้ว, withCredentials, refresh-token interceptor, global loading)
 // ห้ามสร้าง axios instance ใหม่ และห้าม set Authorization header เอง — session อยู่ใน httpOnly cookie ของ BFF
 
 import apiClient from '@/lib/apiClient';
-import type { ApiResponse } from '@/types/sbpgi/common';
-import type * as T from '@/types/sbpgi/document';
+import type { ApiResponse } from '@/types/sgi/common';
+import type * as T from '@/types/sgi/document';
 
-/** GET /api/v1/sbpgi/document/{docNo} — โหลดรายละเอียดเอกสารพร้อม role profile สำหรับหน้า detail */
-export async function getSbpgiDocumentDetail(docNo: string): Promise<T.SbpgiDocumentDetailResponse> {
-  const { data } = await apiClient.get<ApiResponse<T.SbpgiDocumentDetailResponse>>(`/sbpgi/document/${encodeURIComponent(docNo)}`);
+/** GET /api/v1/sgi/document/{docNo} — โหลดรายละเอียดเอกสารพร้อม role profile สำหรับหน้า detail */
+export async function getSgiDocumentDetail(docNo: string): Promise<T.SgiDocumentDetailResponse> {
+  const { data } = await apiClient.get<ApiResponse<T.SgiDocumentDetailResponse>>(`/sgi/document/${encodeURIComponent(docNo)}`);
   return data.data;
 }
 
-/** PUT /api/v1/sbpgi/document/{docNo} — บันทึกส่วนย่อย เช่น ร้านเปิดใหม่/คู่แข่ง/ปัจจัย */
-export async function updateSbpgiDocument(docNo: string, body: T.UpdateSbpgiDocumentRequest): Promise<T.UpdateSbpgiDocumentResponse> {
-  const { data } = await apiClient.put<ApiResponse<T.UpdateSbpgiDocumentResponse>>(`/sbpgi/document/${encodeURIComponent(docNo)}`, body);
+/** PUT /api/v1/sgi/document/{docNo} — บันทึกส่วนย่อย เช่น ร้านเปิดใหม่/คู่แข่ง/ปัจจัย */
+export async function updateSgiDocument(docNo: string, body: T.UpdateSgiDocumentRequest): Promise<T.UpdateSgiDocumentResponse> {
+  const { data } = await apiClient.put<ApiResponse<T.UpdateSgiDocumentResponse>>(`/sgi/document/${encodeURIComponent(docNo)}`, body);
   return data.data;
 }
 
-/** POST /api/v1/sbpgi/document/{docNo}/actions — ส่งผลพิจารณาที่เลือกจาก actionOptions; ตัวอย่าง currentSection=01 จึงเปลี่ยนไป 02 */
-export async function createSbpgiDocumentActions(docNo: string, body: T.CreateSbpgiDocumentActionsRequest): Promise<T.CreateSbpgiDocumentActionsResponse> {
-  const { data } = await apiClient.post<ApiResponse<T.CreateSbpgiDocumentActionsResponse>>(`/sbpgi/document/${encodeURIComponent(docNo)}/actions`, body);
+/** POST /api/v1/sgi/document/{docNo}/actions — ส่งผลพิจารณาที่เลือกจาก actionOptions; ตัวอย่าง currentSection=01 จึงเปลี่ยนไป 02 */
+export async function createSgiDocumentActions(docNo: string, body: T.CreateSgiDocumentActionsRequest): Promise<T.CreateSgiDocumentActionsResponse> {
+  const { data } = await apiClient.post<ApiResponse<T.CreateSgiDocumentActionsResponse>>(`/sgi/document/${encodeURIComponent(docNo)}/actions`, body);
   return data.data;
 }
 
-/** POST /api/v1/sbpgi/document/{docNo}/attachments — แนบไฟล์ */
-export async function createSbpgiDocumentAttachments(docNo: string, body: T.CreateSbpgiDocumentAttachmentsRequest): Promise<T.CreateSbpgiDocumentAttachmentsResponse> {
+/** POST /api/v1/sgi/document/{docNo}/attachments — แนบไฟล์ */
+export async function createSgiDocumentAttachments(docNo: string, body: T.CreateSgiDocumentAttachmentsRequest): Promise<T.CreateSgiDocumentAttachmentsResponse> {
   const form = new FormData();
   form.append('file', body.file); // TODO: ตรวจขนาด <= 5MB และนามสกุลที่อนุญาตก่อนเรียก
-  const { data } = await apiClient.post<ApiResponse<T.CreateSbpgiDocumentAttachmentsResponse>>(`/sbpgi/document/${encodeURIComponent(docNo)}/attachments`, form, {
+  const { data } = await apiClient.post<ApiResponse<T.CreateSgiDocumentAttachmentsResponse>>(`/sgi/document/${encodeURIComponent(docNo)}/attachments`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return data.data;
@@ -500,16 +525,16 @@ export async function createSbpgiDocumentAttachments(docNo: string, body: T.Crea
 // TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
 ```
 
-#### 8.4 types — `src/types/sbpgi/document.ts`
+#### 8.4 types — `src/types/sgi/document.ts`
 
-⚠️ `src/types/sbpgi/document.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/types/sgi/document.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/types/sbpgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
+// src/types/sgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
 // วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
-/** GET /api/v1/sbpgi/document/{docNo} — response */
-export interface SbpgiDocumentDetailResponse {
+/** GET /api/v1/sgi/document/{docNo} — response */
+export interface SgiDocumentDetailResponse {
   docNo: string;
   statusCode: string;
   viewerRbacRoleCode: string;
@@ -528,66 +553,66 @@ export interface SbpgiDocumentDetailResponse {
   newStores: unknown[];
 }
 
-/** PUT /api/v1/sbpgi/document/{docNo} — request */
-export interface UpdateSbpgiDocumentRequest {
+/** PUT /api/v1/sgi/document/{docNo} — request */
+export interface UpdateSgiDocumentRequest {
   newStores: {
     newStoreCode: string;
     compensatePercent: number;
   }[];
 }
 
-/** PUT /api/v1/sbpgi/document/{docNo} — response */
-export interface UpdateSbpgiDocumentResponse {
+/** PUT /api/v1/sgi/document/{docNo} — response */
+export interface UpdateSgiDocumentResponse {
   message: string;
 }
 
-/** POST /api/v1/sbpgi/document/{docNo}/actions — request */
-export interface CreateSbpgiDocumentActionsRequest {
+/** POST /api/v1/sgi/document/{docNo}/actions — request */
+export interface CreateSgiDocumentActionsRequest {
   result: string;
   comment: string;
 }
 
-/** POST /api/v1/sbpgi/document/{docNo}/actions — response */
-export interface CreateSbpgiDocumentActionsResponse {
+/** POST /api/v1/sgi/document/{docNo}/actions — response */
+export interface CreateSgiDocumentActionsResponse {
   statusCode: string;
   nextSection: string;
   message: string;
 }
 
 // endpoint ที่เหลือของเอกสารนี้ — TODO: แทน placeholder ด้วย interface เต็มรูปแบบเดียวกับข้างบน
-export type CreateSbpgiDocumentAttachmentsRequest = Record<string, unknown>;
-export type CreateSbpgiDocumentAttachmentsResponse = Record<string, unknown>;
+export type CreateSgiDocumentAttachmentsRequest = Record<string, unknown>;
+export type CreateSgiDocumentAttachmentsResponse = Record<string, unknown>;
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
-#### 8.5 react-query keys + hooks — `src/hooks/sbpgi/document.query.ts`
+#### 8.5 react-query keys + hooks — `src/hooks/sgi/document.query.ts`
 
-⚠️ `src/hooks/sbpgi/document.query.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/hooks/sgi/document.query.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/hooks/sbpgi/document.query.ts
+// src/hooks/sgi/document.query.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as api from '@/services/sbpgi/document.service';
-import type * as T from '@/types/sbpgi/document';
+import * as api from '@/services/sgi/document.service';
+import type * as T from '@/types/sgi/document';
 
 export const documentKeys = {
-  all: ['sbpgi', 'document'] as const,
-  sbpgiDocumentDetail: (docNo: string) => [...documentKeys.all, 'sbpgiDocumentDetail', docNo] as const,
+  all: ['sgi', 'document'] as const,
+  sgiDocumentDetail: (docNo: string) => [...documentKeys.all, 'sgiDocumentDetail', docNo] as const,
 };
 
-export function useSbpgiDocumentDetailQuery(docNo: string) {
+export function useSgiDocumentDetailQuery(docNo: string) {
   return useQuery({
-    queryKey: documentKeys.sbpgiDocumentDetail(docNo),
-    queryFn: () => api.getSbpgiDocumentDetail(docNo),
+    queryKey: documentKeys.sgiDocumentDetail(docNo),
+    queryFn: () => api.getSgiDocumentDetail(docNo),
     enabled: !!docNo, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
     staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
   });
 }
 
-export function useUpdateSbpgiDocumentMutation(docNo: string) {
+export function useUpdateSgiDocumentMutation(docNo: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: T.UpdateSbpgiDocumentRequest) => api.updateSbpgiDocument(docNo, body),
+    mutationFn: (body: T.UpdateSgiDocumentRequest) => api.updateSgiDocument(docNo, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentKeys.all }); // reload list/detail/timeline
     },
@@ -595,10 +620,10 @@ export function useUpdateSbpgiDocumentMutation(docNo: string) {
   });
 }
 
-export function useCreateSbpgiDocumentActionsMutation(docNo: string) {
+export function useCreateSgiDocumentActionsMutation(docNo: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: T.CreateSbpgiDocumentActionsRequest) => api.createSbpgiDocumentActions(docNo, body),
+    mutationFn: (body: T.CreateSgiDocumentActionsRequest) => api.createSgiDocumentActions(docNo, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentKeys.all }); // reload list/detail/timeline
     },
@@ -606,12 +631,12 @@ export function useCreateSbpgiDocumentActionsMutation(docNo: string) {
   });
 }
 
-// TODO: ยังขาดอีก 1 เส้น เขียน hook ด้วยรูปแบบเดียวกัน: POST /sbpgi/document/{docNo}/attachments
+// TODO: ยังขาดอีก 1 เส้น เขียน hook ด้วยรูปแบบเดียวกัน: POST /sgi/document/{docNo}/attachments
 ```
 
-#### 8.6 ฟอร์มพิจารณา + validation — `src/components/sbpgi/document-detail/ActionPanel.tsx`
+#### 8.6 ฟอร์มพิจารณา + validation — `src/components/sgi/document-detail/ActionPanel.tsx`
 
-หน้านี้**ไม่มีการค้นหา** — ฟอร์มเดียวของหน้าคือฟอร์มผลการพิจารณาที่ยิง `POST /api/v1/sbpgi/document/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`
+หน้านี้**ไม่มีการค้นหา** — ฟอร์มเดียวของหน้าคือฟอร์มผลการพิจารณาที่ยิง `POST /api/v1/sgi/document/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`
 
 ```tsx
 'use client';
@@ -630,7 +655,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { RadioButtonGroup } from '@/components/Form';
 import { InputTextarea } from '@/components/Form/InputText/inputtextArea';
-import type { DocumentActionRequest } from '@/types/sbpgi/common';
+import type { DocumentActionRequest } from '@/types/sgi/common';
 
 interface ActionOption { value: string; label: string; requireComment?: boolean }
 
@@ -754,17 +779,17 @@ export default function ActionPanel({ options, onSubmit, onCancel, submitting }:
 | `result` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required on submit action · รูปแบบ: verbatim from actionOptions |
 | `comment` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required บาง result · รูปแบบ: text |
 | `compensatePercent` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: sum = 100 · รูปแบบ: number |
-| `competitorCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required เมื่อเพิ่ม/แก้แถวคู่แข่ง · รูปแบบ: select จาก master competitors |
+| `competitorCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required เมื่อเพิ่ม/แก้แถวคู่แข่ง · รูปแบบ: select จาก master sgi_competitors |
 | `factor.startDate / factor.endDate` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: endDate >= startDate · รูปแบบ: date |
 | business rule | logic | ส่วน read-only แก้ไม่ได้ |
 | business rule | logic | % ชดเชยรวม 100 |
 | business rule | logic | action required result |
 | business rule | logic | upload limit 5MB |
 | business rule | logic | timeline reload หลัง submit |
-| `GET /api/v1/sbpgi/document/{docNo}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `PUT /api/v1/sbpgi/document/{docNo}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `POST /api/v1/sbpgi/document/{docNo}/actions` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `POST /api/v1/sbpgi/document/{docNo}/attachments` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/sgi/document/{docNo}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `PUT /api/v1/sgi/document/{docNo}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `POST /api/v1/sgi/document/{docNo}/actions` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `POST /api/v1/sgi/document/{docNo}/attachments` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
 | component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
 | hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
 | error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |

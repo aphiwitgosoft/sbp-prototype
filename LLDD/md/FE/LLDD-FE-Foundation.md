@@ -14,6 +14,17 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| ใช้ endpoint ของ | **LLDD-BE-API-Lookup** | `GET /api/v1/sgi/lookup/document-statuses` |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| สัญญากลาง | **LLDD-FE-Integration-Contracts** | API client · auth header · error mapping · RBAC/menu gating ฝั่ง FE |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Integration-Contracts** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+
 ## 2. Screen / Functional Scope
 
 - Non-screen technical foundation
@@ -27,11 +38,21 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 1: Implementation flow reference: LLDD FE - Application Foundation and Shared UI](../../assets/flows/FE-LLDD-FE-Foundation.png)
 
 _รูปที่ 1: Implementation flow reference: LLDD FE - Application Foundation and Shared UI_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 2: Sequence diagram: LLDD FE - Application Foundation and Shared UI](../../assets/flows/FE-LLDD-FE-Foundation-sequence.png)
+
+_รูปที่ 2: Sequence diagram: LLDD FE - Application Foundation and Shared UI_
 
 ## 5. Field, Format, and Validation
 
@@ -46,9 +67,9 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Application Foun
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/sbpgi/lookup/document-statuses |
+| Input | GET /api/v1/sgi/lookup/document-statuses |
 | Progress | Initialize app config; Register SBP Mall routes; Create shared API client; Prepare constants/formatters |
-| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / sgi_consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Application Foundation and Shared UI Component Contract
 
@@ -65,7 +86,7 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Application Foun
 
 | Endpoint | Typed adapter purpose | Invoked by |
 | --- | --- | --- |
-| GET /api/v1/sbpgi/lookup/document-statuses | โหลดสถานะเอกสารสำหรับ dropdown/badge | Register module route (bootstrap) |
+| GET /api/v1/sgi/lookup/document-statuses | โหลดสถานะเอกสารสำหรับ dropdown/badge | Register module route (bootstrap) |
 
 ### 5.92 Application Foundation and Shared UI Interaction State Machine
 
@@ -93,7 +114,7 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Application Foun
 
 ## 7. API Contract
 
-### GET /api/v1/sbpgi/lookup/document-statuses
+### GET /api/v1/sgi/lookup/document-statuses
 
 โหลดสถานะเอกสารสำหรับ dropdown/badge
 
@@ -136,104 +157,104 @@ _รูปที่ 1: Implementation flow reference: LLDD FE - Application Foun
 
 #### 8.1 ผังไฟล์ที่ต้องสร้าง
 
-โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SBPGI อยู่ใต้ `src/app/(main)/sbpgi/*` และ import ผ่าน alias `@/*` ทุกจุด
+โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด
 
 | Path ไฟล์ | หน้าที่ |
 | --- | --- |
-| src/app/(main)/sbpgi/layout.tsx | layout ของโมดูล + prefetch lookup (ไม่สร้าง QueryClient ใหม่) |
-| src/constants/sbpgi/routes.ts | route registry ของโมดูล (ใช้ร่วมกับ url ที่มาจาก GET /menus) |
-| src/services/sbpgi/lookup.service.ts | service — เรียก BFF ผ่าน apiClient (GET) |
-| src/hooks/sbpgi/lookup.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
-| src/types/sbpgi/lookup.ts | types — request/response ตาม API contract ของเอกสารนี้ |
+| src/app/(main)/sgi/layout.tsx | layout ของโมดูล + prefetch lookup (ไม่สร้าง QueryClient ใหม่) |
+| src/constants/sgi/routes.ts | route registry ของโมดูล (ใช้ร่วมกับ url ที่มาจาก GET /menus) |
+| src/services/sgi/lookup.service.ts | service — เรียก BFF ผ่าน apiClient (GET) |
+| src/hooks/sgi/lookup.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
+| src/types/sgi/lookup.ts | types — request/response ตาม API contract ของเอกสารนี้ |
 
-#### 8.2 layout.tsx + route registry ของโมดูล SBPGI
+#### 8.2 layout.tsx + route registry ของโมดูล SGI
 
 ```tsx
 'use client';
-// src/app/(main)/sbpgi/layout.tsx — โครง layout ของโมดูล SBPGI
+// src/app/(main)/sgi/layout.tsx — โครง layout ของโมดูล SGI
 // (main)/layout.tsx เดิมมี AppHeader / AppSider / LottieLoader / QueryClientProvider อยู่แล้ว
 // โมดูลนี้จึง "ห้าม" สร้าง QueryClient ใหม่ และ "ห้าม" สร้าง axios instance ของตัวเอง
 
 import { ReactNode } from 'react';
-import { useSbpgiLookupDocumentStatusesQuery } from '@/hooks/sbpgi/lookup.query';
+import { useSgiLookupDocumentStatusesQuery } from '@/hooks/sgi/lookup.query';
 
 /** route registry ของโมดูล — ใช้ประกอบลิงก์ภายใน ส่วนเมนู/สิทธิ์ยังมาจาก GET /menus เท่านั้น */
-export const SBPGI_ROUTES = {
-  waiting: '/sbpgi/document/waiting',
-  related: '/sbpgi/document/related',
-  create: '/sbpgi/document/create',
-  detail: (docNo: string) => `/sbpgi/document/${encodeURIComponent(docNo)}`,
-  report: '/sbpgi/report/status-summary',
+export const SGI_ROUTES = {
+  waiting: '/sgi/document/waiting',
+  related: '/sgi/document/related',
+  create: '/sgi/document/create',
+  detail: (docNo: string) => `/sgi/document/${encodeURIComponent(docNo)}`,
+  report: '/sgi/report/status-summary',
 } as const;
 
-export default function SbpgiLayout({ children }: { children: ReactNode }) {
+export default function SgiLayout({ children }: { children: ReactNode }) {
   // prefetch lookup ที่ทุกหน้าในโมดูลใช้ร่วมกัน (master -> staleTime ยาว)
-  useSbpgiLookupDocumentStatusesQuery();
+  useSgiLookupDocumentStatusesQuery();
 
   // TODO: ใส่ ErrorBoundary ของโมดูล และ empty state เมื่อ permission ยังโหลดไม่เสร็จ
-  return <div className="sbpgi-module">{children}</div>;
+  return <div className="sgi-module">{children}</div>;
 }
 ```
 
-#### 8.3 service — `src/services/sbpgi/lookup.service.ts`
+#### 8.3 service — `src/services/sgi/lookup.service.ts`
 
-⚠️ `src/services/sbpgi/lookup.service.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `lookup` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/services/sgi/lookup.service.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `lookup` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/services/sbpgi/lookup.service.ts
+// src/services/sgi/lookup.service.ts
 // apiClient = axios instance กลาง (baseURL = bffUrl ซึ่งรวม /api/v1 แล้ว, withCredentials, refresh-token interceptor, global loading)
 // ห้ามสร้าง axios instance ใหม่ และห้าม set Authorization header เอง — session อยู่ใน httpOnly cookie ของ BFF
 
 import apiClient from '@/lib/apiClient';
-import type { ApiResponse } from '@/types/sbpgi/common';
-import type * as T from '@/types/sbpgi/lookup';
+import type { ApiResponse } from '@/types/sgi/common';
+import type * as T from '@/types/sgi/lookup';
 
-/** GET /api/v1/sbpgi/lookup/document-statuses — โหลดสถานะเอกสารสำหรับ dropdown/badge */
-export async function getSbpgiLookupDocumentStatuses(): Promise<T.SbpgiLookupDocumentStatusesResponse> {
-  const { data } = await apiClient.get<ApiResponse<T.SbpgiLookupDocumentStatusesResponse>>('/sbpgi/lookup/document-statuses');
+/** GET /api/v1/sgi/lookup/document-statuses — โหลดสถานะเอกสารสำหรับ dropdown/badge */
+export async function getSgiLookupDocumentStatuses(): Promise<T.SgiLookupDocumentStatusesResponse> {
+  const { data } = await apiClient.get<ApiResponse<T.SgiLookupDocumentStatusesResponse>>('/sgi/lookup/document-statuses');
   return data.data;
 }
 
 // TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
 ```
 
-#### 8.4 types — `src/types/sbpgi/lookup.ts`
+#### 8.4 types — `src/types/sgi/lookup.ts`
 
-⚠️ `src/types/sbpgi/lookup.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `lookup` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/types/sgi/lookup.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `lookup` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/types/sbpgi/lookup.ts — ตรงกับตาราง API ในเอกสารนี้
+// src/types/sgi/lookup.ts — ตรงกับตาราง API ในเอกสารนี้
 // วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
-/** GET /api/v1/sbpgi/lookup/document-statuses — 1 แถวในตาราง */
-export interface SbpgiLookupDocumentStatusesItem {
+/** GET /api/v1/sgi/lookup/document-statuses — 1 แถวในตาราง */
+export interface SgiLookupDocumentStatusesItem {
   code: string;
   label: string;
 }
-export interface SbpgiLookupDocumentStatusesResponse { items: SbpgiLookupDocumentStatusesItem[]; }
+export interface SgiLookupDocumentStatusesResponse { items: SgiLookupDocumentStatusesItem[]; }
 
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
-#### 8.5 react-query keys + hooks — `src/hooks/sbpgi/lookup.query.ts`
+#### 8.5 react-query keys + hooks — `src/hooks/sgi/lookup.query.ts`
 
-⚠️ `src/hooks/sbpgi/lookup.query.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `lookup` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/hooks/sgi/lookup.query.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `lookup` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/hooks/sbpgi/lookup.query.ts
+// src/hooks/sgi/lookup.query.ts
 import { useQuery } from '@tanstack/react-query';
-import * as api from '@/services/sbpgi/lookup.service';
-import type * as T from '@/types/sbpgi/lookup';
+import * as api from '@/services/sgi/lookup.service';
+import type * as T from '@/types/sgi/lookup';
 
 export const lookupKeys = {
-  all: ['sbpgi', 'lookup'] as const,
-  sbpgiLookupDocumentStatuses: () => [...lookupKeys.all, 'sbpgiLookupDocumentStatuses'] as const,
+  all: ['sgi', 'lookup'] as const,
+  sgiLookupDocumentStatuses: () => [...lookupKeys.all, 'sgiLookupDocumentStatuses'] as const,
 };
 
-export function useSbpgiLookupDocumentStatusesQuery() {
+export function useSgiLookupDocumentStatusesQuery() {
   return useQuery({
-    queryKey: lookupKeys.sbpgiLookupDocumentStatuses(),
-    queryFn: () => api.getSbpgiLookupDocumentStatuses(),
+    queryKey: lookupKeys.sgiLookupDocumentStatuses(),
+    queryFn: () => api.getSgiLookupDocumentStatuses(),
     staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
   });
 }
@@ -290,7 +311,7 @@ export function useSbpgiLookupDocumentStatusesQuery() {
 | business rule | logic | API error shape ใช้ร่วมกัน |
 | business rule | logic | ไม่มี dependency กับ Login/Auth ใหม่ |
 | business rule | logic | CSS responsive base พร้อม |
-| `GET /api/v1/sbpgi/lookup/document-statuses` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/sgi/lookup/document-statuses` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
 | component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
 | hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
 | error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |

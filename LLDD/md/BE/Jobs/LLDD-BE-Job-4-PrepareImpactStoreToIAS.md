@@ -14,6 +14,19 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| โครงสร้างข้อมูล | **LLDD-BE-Database-Structure** | DDL ของตารางที่หัวข้อ Reference DB Mapping อ้างถึง |
+| แพลตฟอร์มระบบเดิม | **LLDD-BE-Integration-SBP-Platform** | header จาก BFF (`x-api-key` / `x-user-*`) · การ reuse ตารางและ service ของระบบ SBP เดิม |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-API-Common-Contracts** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Database-Structure** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Job-2-ImportImpactStore** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+
 ## 2. Screen / Functional Scope
 
 - Main class/script: fgi.main.PrepareImpactStoreToIAS / FGI_ExportImpactStoreToAMS.sh
@@ -27,20 +40,30 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 1: Implementation flow reference: LLDD BE - Job 4 PrepareImpactStoreToIAS](../../../assets/flows/BE-Job-4-PrepareImpactStoreToIAS.png)
 
 _รูปที่ 1: Implementation flow reference: LLDD BE - Job 4 PrepareImpactStoreToIAS_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 2: Sequence diagram: LLDD BE - Job 4 PrepareImpactStoreToIAS](../../../assets/flows/BE-Job-4-PrepareImpactStoreToIAS-sequence.png)
+
+_รูปที่ 2: Sequence diagram: LLDD BE - Job 4 PrepareImpactStoreToIAS_
 
 ## 5. Field, Format, and Validation
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | กำหนดการรัน (Cron) | 0 16 7-16 * * | แก้ไขได้ | รันวันที่ 7-16 เวลา 16:00 |
-| EAI S3 bucket + prefix (ขาออก) | eai-sbpgi/outbound/ias/ | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | endpoint/region resolve จาก environment; สิทธิ์ใช้ IAM role ของ pod หรือ secretRef และจำกัดเฉพาะ prefix ขาออกของ IAS |
-| Credential reference (IAM role / secret) | secret/sbpgi/interfaces/eai-s3 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ห้ามเก็บ password/private key ใน config/env ของ job |
-| Local staging path (ก่อนอัปโหลด) | /data/sbpgi/outbox/ias | แก้ไขได้ | ต้องรองรับ temp file, fsync และ atomic rename |
+| EAI S3 bucket + prefix (ขาออก) | eai-sgi/outbound/ias/ | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | endpoint/region resolve จาก environment; สิทธิ์ใช้ IAM role ของ pod หรือ secretRef และจำกัดเฉพาะ prefix ขาออกของ IAS |
+| Credential reference (IAM role / secret) | secret/sgi/interfaces/eai-s3 | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ห้ามเก็บ password/private key ใน config/env ของ job |
+| Local staging path (ก่อนอัปโหลด) | /data/sgi/outbox/ias | แก้ไขได้ | ต้องรองรับ temp file, fsync และ atomic rename |
 
 ### 5.9 Input / Progress / Output Contract
 
@@ -69,7 +92,7 @@ query eligible stores, write outbound IAS request file, upload to EAI S3 outboun
 | Output identity | IAS request file containing store/open-date pairs; run history includes generated file name and exported row count. | reconcile input, success, reject and skipped counts |
 | Dedup proof | ชื่อไฟล์ deterministic จาก period+runId และ UNIQUE(data_name,direction,business_key,period_key); outbox retry ใช้ transaction เดิม ไม่สร้าง request ซ้ำ | rerun fixture produces no duplicate target business key |
 | Transaction proof | สร้างไฟล์ temp, fsync, atomic rename และคำนวณ checksum ให้สำเร็จก่อน; จากนั้น transaction เดียว lock W, update W→P และ insert outbox READY; ห้าม commit W→P ก่อนมี durable file | injected failure leaves no partial committed state outside documented boundary |
-| Security proof | สิทธิ์เขียน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sbpgi/interfaces/eai-s3; จำกัดสิทธิ์เฉพาะ prefix ขาออกของ IAS (PutObject เท่านั้น) และห้าม editable access key ในหน้าจอ/ไฟล์ config | config/log/error contains no plaintext secret |
+| Security proof | สิทธิ์เขียน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sgi/interfaces/eai-s3; จำกัดสิทธิ์เฉพาะ prefix ขาออกของ IAS (PutObject เท่านั้น) และห้าม editable access key ในหน้าจอ/ไฟล์ config | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
 
@@ -87,13 +110,13 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | Repository | iasRequestRepository |
 | Idempotency / dedup | ชื่อไฟล์ deterministic จาก period+runId และ UNIQUE(data_name,direction,business_key,period_key); outbox retry ใช้ transaction เดิม ไม่สร้าง request ซ้ำ |
 | Transaction boundary | สร้างไฟล์ temp, fsync, atomic rename และคำนวณ checksum ให้สำเร็จก่อน; จากนั้น transaction เดียว lock W, update W→P และ insert outbox READY; ห้าม commit W→P ก่อนมี durable file |
-| Security | สิทธิ์เขียน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sbpgi/interfaces/eai-s3; จำกัดสิทธิ์เฉพาะ prefix ขาออกของ IAS (PutObject เท่านั้น) และห้าม editable access key ในหน้าจอ/ไฟล์ config |
+| Security | สิทธิ์เขียน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sgi/interfaces/eai-s3; จำกัดสิทธิ์เฉพาะ prefix ขาออกของ IAS (PutObject เท่านั้น) และห้าม editable access key ในหน้าจอ/ไฟล์ config |
 
 #### Input / candidate query
 
 ```sql
 SELECT s.id, s.impact_process_id, s.impacted_store_code, s.new_store_code, s.impact_month
-FROM fgi_impact_stores s
+FROM sgi_fgi_impact_stores s
 WHERE s.sales_request_status = 'W'
 ORDER BY s.id
 FOR UPDATE SKIP LOCKED;
@@ -102,17 +125,17 @@ FOR UPDATE SKIP LOCKED;
 #### Write / upsert query
 
 ```sql
-UPDATE fgi_impact_stores
+UPDATE sgi_fgi_impact_stores
 SET sales_request_status = 'P', updated_at = CURRENT_TIMESTAMP
 WHERE id = ANY(:impact_store_ids) AND sales_request_status = 'W';
 
-INSERT INTO interface_transactions
+INSERT INTO sgi_interface_transactions
     (run_id, data_name, direction, status, impact_process_id, business_key, period_key,
      file_name, file_checksum, outbox_status, purge_after)
 SELECT :run_id, 'IAS_SALES_REQUEST', 'OUT', 'READY', impact_process_id,
        impacted_store_code || ':' || new_store_code, impact_month,
        :file_name, :file_checksum, 'READY', CURRENT_TIMESTAMP + INTERVAL '180 days'
-FROM fgi_impact_stores
+FROM sgi_fgi_impact_stores
 WHERE id = ANY(:impact_store_ids)
 ON CONFLICT (data_name, direction, business_key, period_key) DO NOTHING;
 ```
@@ -152,7 +175,7 @@ export async function runLlddBeJob4Prepareimpactstoretoias(ctx, services) {
 | --- | --- | --- |
 | 1 | lock candidate W ด้วย FOR UPDATE SKIP LOCKED และสร้าง payload ใน memory | validation fail: rollback lock; สถานะยัง W |
 | 2 | เขียน temporary file, fsync, atomic rename และคำนวณ SHA-256 | write/rename/checksum fail: ลบ temp; สถานะยัง W; ไม่สร้าง outbox |
-| 3 | transaction เดียว update W→P และ insert interface_transactions/outbox READY | DB fail: rollback W→P และ outbox; durable file คงไว้ให้ cleanup/reconcile โดย checksum |
+| 3 | transaction เดียว update W→P และ insert sgi_interface_transactions/outbox READY | DB fail: rollback W→P และ outbox; durable file คงไว้ให้ cleanup/reconcile โดย checksum |
 | 4 | dispatcher อ่าน READY แล้วอัปโหลดขึ้น EAI S3 (prefix ขาออก); compare checksum ก่อนส่ง | อัปโหลด fail: outbox ยัง READY/FAILED_RETRY; ห้ามเปลี่ยน candidate กลับ W เพื่อไม่ให้สร้างไฟล์ซ้ำ |
 | 5 | ส่งสำเร็จ mark SENT; callback/import ที่สัมพันธ์กัน mark ACKED | ใช้ transaction id เดิมตลอด lifecycle |
 
@@ -163,11 +186,11 @@ export async function runLlddBeJob4Prepareimpactstoretoias(ctx, services) {
 | รันตามตารางเวลา | CRON | scheduler → runner (job 4) | อ่าน cron/พารามิเตอร์จาก backend config |
 | รันนอกรอบ (manual/rerun) | CLI | CLI/ops runbook → runner (job 4) | guard ไม่ให้รันซ้อนด้วย distributed lock |
 | แก้พารามิเตอร์/เปิด-ปิด job | CONFIG | แก้ backend config แล้ว deploy | ไม่มี endpoint และไม่มีหน้าจอควบคุม — หน้า Flow Batch Job เป็น reference อย่างเดียว (2026-08-06) |
-| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ interface_transactions |
+| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ sgi_interface_transactions |
 
 ## 7. API Contract
 
-**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
@@ -175,35 +198,35 @@ export async function runLlddBeJob4Prepareimpactstoretoias(ctx, services) {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| fgi_impact_stores | R/W | lock candidate W และเปลี่ยนเป็น P หลัง durable file สำเร็จเท่านั้น |
-| fgi_impact_sales_summaries | R/W | สร้าง/ผูกหัวสรุปยอดขายใน transaction |
-| interface_transactions | W | transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key |
+| sgi_fgi_impact_stores | R/W | lock candidate W และเปลี่ยนเป็น P หลัง durable file สำเร็จเท่านั้น |
+| sgi_fgi_impact_sales_summaries | R/W | สร้าง/ผูกหัวสรุปยอดขายใน transaction |
+| sgi_interface_transactions | W | transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key |
 | (application log แบบ structured) | W | run status และ reconcile count — ตาราง job_run_histories ถูกตัด 2026-08-06 |
 
 ## 9. Skeleton Code (Batch Job 4)
 
 #### 9.1 ผังไฟล์ที่ต้องสร้าง (Job 4)
 
-โครงไฟล์ของ Job 4 (fgi.main.PrepareImpactStoreToIAS เดิม) วางใต้ `src/batch/sbpgi/` ของ store-backend โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`
+โครงไฟล์ของ Job 4 (fgi.main.PrepareImpactStoreToIAS เดิม) วางใต้ `src/batch/sgi/` ของ store-backend โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`
 
 **หมายเหตุสำคัญ — `src/batch/*` ทั้งชุดเป็นของใหม่ที่ยังไม่มีใน store-backend**: ปัจจุบัน repo ไม่มีโฟลเดอร์ `src/batch` เลย และแม้จะติดตั้ง `@nestjs/schedule` ไว้แล้วก็ยัง**ไม่มี `@Cron`/`@Interval` แม้แต่จุดเดียว** ดังนั้น `runner.ts` / `scheduler.ts` / `cli.js` / `job-failure.notifier.ts` คือ **งานตั้งต้นของ Phase แรก** ที่ต้องสร้างเองทั้งหมด พร้อม register `ScheduleModule.forRoot()` ใน `app.module.ts` — ไม่ใช่ของเดิมที่ reuse ได้
 
 | Path | หน้าที่ |
 | --- | --- |
-| src/batch/sbpgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.job.ts | คลาส `PrepareImpactStoreToIasJob` — `run(ctx)` เรียงตาม flow ของ Job 4 ทีละขั้น, ครอบ transaction, จบด้วย structured log |
-| src/batch/sbpgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.service.ts | คลาส `PrepareImpactStoreToIasService` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE` |
-| src/batch/sbpgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.config.ts | คลาส `SbpgiJob4Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 4 ตัวของ Job 4 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
-| src/batch/sbpgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.module.ts | NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule` |
+| src/batch/sgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.job.ts | คลาส `PrepareImpactStoreToIasJob` — `run(ctx)` เรียงตาม flow ของ Job 4 ทีละขั้น, ครอบ transaction, จบด้วย structured log |
+| src/batch/sgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.service.ts | คลาส `PrepareImpactStoreToIasService` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE` |
+| src/batch/sgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.config.ts | คลาส `SgiJob4Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 4 ตัวของ Job 4 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
+| src/batch/sgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.module.ts | NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule` |
 | src/batch/runner.ts | ตัวรันกลาง: resolve job ตาม jobNo, กันรันซ้อนด้วย advisory lock, จับ error → แจ้งเตือน, เขียน structured log สรุป (ใช้ร่วมทั้ง 11 job) |
-| src/batch/scheduler.ts | ลงทะเบียน cron จาก config (`SBPGI_JOB4_CRON` = `0 16 7-16 * *`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook |
+| src/batch/scheduler.ts | ลงทะเบียน cron จาก config (`SGI_JOB4_CRON` = `0 16 7-16 * *`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook |
 | src/batch/job-failure.notifier.ts | ส่งอีเมลแจ้งผู้ดูแลเมื่อ job ล้มเหลว ผ่าน `EmailLibService` ของ `@gosoft-sbp/email-lib` (log ลง `email_sent` ให้อัตโนมัติ) |
 
 #### 9.2 Config Schema ของ Job 4 (backend config / env)
 
-cron ปัจจุบันของ Job 4 คือ `0 16 7-16 * *` (วันที่ 7–16 เวลา 16:00) — ประกาศเป็น `SBPGI_JOB4_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้
+cron ปัจจุบันของ Job 4 คือ `0 16 7-16 * *` (วันที่ 7–16 เวลา 16:00) — ประกาศเป็น `SGI_JOB4_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้
 
 ```ts
-// src/batch/sbpgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.config.ts
+// src/batch/sgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.config.ts
 // convention จริงของ store-backend คือคลาส config (`src/config/app.config.ts` ที่ export ผ่าน
 // `AppConfigModule` แบบ @Global แล้วอ่าน process.env ตรง ๆ) — โปรเจกต์นี้ **ไม่ได้ใช้ registerAs**
 // แม้แต่จุดเดียว จึงประกาศเป็นคลาสให้รีวิว/ทดสอบเหมือน config ตัวอื่น
@@ -230,18 +253,18 @@ export interface Job4Config {
 }
 
 @Injectable()
-export class SbpgiJob4Config implements Job4Config {
+export class SgiJob4Config implements Job4Config {
   // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)
-  enabled = (process.env.SBPGI_JOB4_ENABLED ?? 'true') === 'true';
-  cron = process.env.SBPGI_JOB4_CRON ?? '0 16 7-16 * *';
-  cron = process.env.SBPGI_JOB4_CRON ?? '0 16 7-16 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  eaiS3Bucket = process.env.SBPGI_JOB4_EAI_S3_BUCKET ?? 'eai-sbpgi/outbound/ias/'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  credentialReferenceIam = process.env.SBPGI_JOB4_CREDENTIAL_REFERENCE_IAM ?? 'secret/sbpgi/interfaces/eai-s3'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  localStagingPath = process.env.SBPGI_JOB4_LOCAL_STAGING_PATH ?? '/data/sbpgi/outbox/ias'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  mailTo = process.env.SBPGI_JOB4_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: email-lib กลาง (sendEmail) แจ้งเมื่อ durable write, DB transaction หรือการอัปโหลดขึ้น EAI S3 retry เกิน threshold)
+  enabled = (process.env.SGI_JOB4_ENABLED ?? 'true') === 'true';
+  cron = process.env.SGI_JOB4_CRON ?? '0 16 7-16 * *';
+  cron = process.env.SGI_JOB4_CRON ?? '0 16 7-16 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
+  eaiS3Bucket = process.env.SGI_JOB4_EAI_S3_BUCKET ?? 'eai-sgi/outbound/ias/'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  credentialReferenceIam = process.env.SGI_JOB4_CREDENTIAL_REFERENCE_IAM ?? 'secret/sgi/interfaces/eai-s3'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  localStagingPath = process.env.SGI_JOB4_LOCAL_STAGING_PATH ?? '/data/sgi/outbox/ias'; // TODO: แก้ผ่าน env/config file แล้ว deploy
+  mailTo = process.env.SGI_JOB4_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: email-lib กลาง (sendEmail) แจ้งเมื่อ durable write, DB transaction หรือการอัปโหลดขึ้น EAI S3 retry เกิน threshold)
 }
 
-// TODO: เพิ่ม SbpgiJob4Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
+// TODO: เพิ่ม SgiJob4Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
 ```
 
 #### 9.3 Job Class — `run(ctx)` ของ Job 4 ทีละขั้นตามผัง
@@ -346,7 +369,7 @@ export class PrepareImpactStoreToIasService {
 | 7 | end | จบ | summarize() | - |
 
 ```ts
-// src/batch/sbpgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.job.ts
+// src/batch/sgi/job-4-prepare-impact-store-to-ias/job-4-prepare-impact-store-to-ias.job.ts
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { DataSource, EntityManager } from 'typeorm';
 import { PrepareImpactStoreToIasService, type JobState } from './job-4-prepare-impact-store-to-ias.service';
@@ -417,7 +440,7 @@ import type { DataSource } from 'typeorm';
 
 // TODO: ห้ามใช้แถวสถานะ RUNNING ในตารางเป็นตัวกัน (ไม่มีตาราง job_run_histories แล้ว)
 //       ใช้ PostgreSQL advisory lock ระดับ session แทน — ปลดอัตโนมัติเมื่อ connection หลุด
-export const SBPGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SBPGI
+export const SGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SGI
 export const JOB_LOCK_KEYS: Record<string, number> = { '4': 40 /* TODO: เพิ่มครบทั้ง 11 job */ };
 
 @Injectable()
@@ -434,7 +457,7 @@ export class BatchRunner {
     try {
       const [{ locked }] = await runner.query(
         'SELECT pg_try_advisory_lock($1, $2) AS locked',
-        [SBPGI_JOB_LOCK_CLASS_ID, objectId],
+        [SGI_JOB_LOCK_CLASS_ID, objectId],
       );
       if (!locked) {
         // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล
@@ -444,7 +467,7 @@ export class BatchRunner {
       return await fn();
     } finally {
       // TODO: ปลด lock ทุกกรณี แล้วคืน connection เข้า pool
-      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SBPGI_JOB_LOCK_CLASS_ID, objectId]);
+      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SGI_JOB_LOCK_CLASS_ID, objectId]);
       await runner.release();
     }
   }
@@ -457,9 +480,9 @@ repository ของ Job 4 ประกาศเป็น factory provider (`{pr
 
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
-| fgi_impact_stores | R/W | lock candidate W และเปลี่ยนเป็น P หลัง durable file สำเร็จเท่านั้น | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| fgi_impact_sales_summaries | R/W | สร้าง/ผูกหัวสรุปยอดขายใน transaction | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| interface_transactions | W | transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_fgi_impact_stores | R/W | lock candidate W และเปลี่ยนเป็น P หลัง durable file สำเร็จเท่านั้น | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_fgi_impact_sales_summaries | R/W | สร้าง/ผูกหัวสรุปยอดขายใน transaction | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_interface_transactions | W | transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key | เขียน SQL ตรงผ่าน DATA_SOURCE |
 | (application log แบบ structured) | W | run status และ reconcile count — ตาราง job_run_histories ถูกตัด 2026-08-06 | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
@@ -467,33 +490,33 @@ repository ของ Job 4 ประกาศเป็น factory provider (`{pr
 -- TODO: ทุก statement รันผ่าน DATA_SOURCE (SELECT ไป slave, write ไป master) และ
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
--- [R/W] fgi_impact_stores : lock candidate W และเปลี่ยนเป็น P หลัง durable file สำเร็จเท่านั้น
+-- [R/W] sgi_fgi_impact_stores : lock candidate W และเปลี่ยนเป็น P หลัง durable file สำเร็จเท่านั้น
 -- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
 SELECT /* TODO: PK + คอลัมน์ที่ต้องใช้ */
-  FROM fgi_impact_stores
+  FROM sgi_fgi_impact_stores
  WHERE impact_year = $1 AND impact_month = $2  -- TODO: ยืนยันชื่อคอลัมน์งวดกับ database.md
    FOR UPDATE SKIP LOCKED;
 
-UPDATE fgi_impact_stores
+UPDATE sgi_fgi_impact_stores
    SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
        updated_at = NOW(), updated_by = 'JOB4'
  WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
 
--- [R/W] fgi_impact_sales_summaries : สร้าง/ผูกหัวสรุปยอดขายใน transaction
+-- [R/W] sgi_fgi_impact_sales_summaries : สร้าง/ผูกหัวสรุปยอดขายใน transaction
 -- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
 SELECT /* TODO: PK + คอลัมน์ที่ต้องใช้ */
-  FROM fgi_impact_sales_summaries
+  FROM sgi_fgi_impact_sales_summaries
  WHERE impact_year = $1 AND impact_month = $2  -- TODO: ยืนยันชื่อคอลัมน์งวดกับ database.md
    FOR UPDATE SKIP LOCKED;
 
-UPDATE fgi_impact_sales_summaries
+UPDATE sgi_fgi_impact_sales_summaries
    SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
        updated_at = NOW(), updated_by = 'JOB4'
  WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
 
--- [W] interface_transactions : transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key
+-- [W] sgi_interface_transactions : transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key
 -- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
-INSERT INTO interface_transactions
+INSERT INTO sgi_interface_transactions
   (run_id, data_name, direction, status, business_key, period_key,
    file_name, file_checksum, created_at)
 VALUES ($1 /* run_id = correlation id ของรอบรัน Job 4 จาก application log */,
@@ -529,8 +552,8 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 4 เดิมคือ email-lib กลาง (sendEmail) แจ้งเมื่อ durable write, DB transaction หรือการอัปโหลดขึ้น EAI S3 retry เกิน threshold — ย้ายมาเป็น env SBPGI_JOB4_MAIL_TO
-    const recipients = (process.env.SBPGI_JOB4_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    // TODO: ผู้รับของ Job 4 เดิมคือ email-lib กลาง (sendEmail) แจ้งเมื่อ durable write, DB transaction หรือการอัปโหลดขึ้น EAI S3 retry เกิน threshold — ย้ายมาเป็น env SGI_JOB4_MAIL_TO
+    const recipients = (process.env.SGI_JOB4_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
       return;
@@ -538,7 +561,7 @@ export class JobFailureNotifier {
     try {
       await this.mailService.sendMail({
         // TODO: emailId = id ของ template EM-07 (แจ้ง error batch) ในตาราง email_template
-        emailId: Number(process.env.SBPGI_JOB_FAIL_EMAIL_TEMPLATE_ID),
+        emailId: Number(process.env.SGI_JOB_FAIL_EMAIL_TEMPLATE_ID),
         mailTo: recipients.join(','), // signature รับ string ไม่ใช่ string[]
         mailCc: '',
         param: {
@@ -566,7 +589,7 @@ export class JobFailureNotifier {
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
 - สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=4 --period=<YYYYMM>`
 - หลังรันซ้ำ ตรวจ output `AMS06001O (UTF-8)` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
-- ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
+- ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 
 ## 10. Processing Flow
 
@@ -612,7 +635,7 @@ export class JobFailureNotifier {
 | business rule | logic | ทุกรอบต้องเขียน application log แบบ structured (เวลา/แถว/ไฟล์/ผล) และ error ต้องส่ง EM-07 |
 | business rule | logic | DB/table mapping ใช้เป็น reference สำหรับ implement Job เท่านั้น ไม่ใช่งานสร้างหน้า Database |
 | business rule | logic | รองรับ rerun rule และ risk note ตาม runbook |
-| `fgi_impact_stores`, `fgi_impact_sales_summaries`, `interface_transactions` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| `sgi_fgi_impact_stores`, `sgi_fgi_impact_sales_summaries`, `sgi_interface_transactions` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | runner | idempotency | รันซ้ำด้วย fixture เดิมต้องไม่เกิดแถวซ้ำ (ON CONFLICT / business unique key ทำงาน) |
 | runner | lock | เรียกซ้อนขณะกำลังรัน ต้องถูกปฏิเสธด้วย advisory lock |
 

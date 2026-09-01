@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the integrated SBPGI SRS as DOCX and PDF from repository sources."""
+"""Build the integrated SGI SRS as DOCX and PDF from repository sources."""
 
 from __future__ import annotations
 
@@ -55,9 +55,9 @@ DATA_FILE = TMP / "prototype_data.json"
 HEADER_LOGO = TMP / "pdfs" / "extracted-images" / "img-002.png"
 COVER_BADGE = TMP / "pdfs" / "extracted-images" / "img-000.png"
 
-DOCX_OUT = OUT / "SRS-ระบบประกันรายได้-SBPGI-Integrated-v1.0.docx"
-PDF_OUT = OUT / "pdf" / "SRS-ระบบประกันรายได้-SBPGI-Integrated-v1.0.pdf"
-MD_OUT = OUT / "SRS-ระบบประกันรายได้-SBPGI-Integrated-v1.0.md"
+DOCX_OUT = OUT / "SRS-ระบบประกันรายได้-SGI-Integrated-v1.0.docx"
+PDF_OUT = OUT / "pdf" / "SRS-ระบบประกันรายได้-SGI-Integrated-v1.0.pdf"
+MD_OUT = OUT / "SRS-ระบบประกันรายได้-SGI-Integrated-v1.0.md"
 SCREENSHOT_FULL_DIR = OUT / "screenshots" / "full"
 SCREENSHOT_SLICE_DIR = OUT / "screenshots" / "slices"
 
@@ -224,7 +224,7 @@ def unique_texts(values: Iterable[str]) -> list[str]:
 
 
 def target_job(job: dict[str, Any]) -> dict[str, Any]:
-    """Align legacy batch-source entries with the SBPGI target architecture."""
+    """Align legacy batch-source entries with the SGI target architecture."""
 
     def normalize_target_text(value: Any) -> Any:
         if isinstance(value, str):
@@ -512,7 +512,7 @@ def build_model() -> Model:
     model.heading("1. SRS Overview and Scope", 1)
     model.heading("1.1 Purpose", 2)
     model.para(
-        "เอกสารนี้กำหนดความต้องการของระบบประกันรายได้ SBPGI แบบรวม ครอบคลุมกระบวนการนำเข้าข้อมูลผลกระทบและยอดขาย "
+        "เอกสารนี้กำหนดความต้องการของระบบประกันรายได้ SGI แบบรวม ครอบคลุมกระบวนการนำเข้าข้อมูลผลกระทบและยอดขาย "
         "การคำนวณ การสร้างเอกสาร การพิจารณาอนุมัติ การรายงาน การส่ง Statement และการติดตามผลการทำงานของระบบ"
     )
     model.para(
@@ -520,7 +520,7 @@ def build_model() -> Model:
         "รูป Flow ตารางข้อมูล และภาพหน้าจอที่อยู่ใน SRS ถือเป็นส่วนหนึ่งของคำอธิบายระบบ แต่ไม่เพิ่มขอบเขตนอกเหนือจาก requirement ที่ระบุ"
     )
     model.note(
-        "หมายเหตุเวอร์ชัน: เอกสาร v1.0 เป็น baseline เริ่มต้นสำหรับการพัฒนาและตรวจรับระบบประกันรายได้ SBPGI"
+        "หมายเหตุเวอร์ชัน: เอกสาร v1.0 เป็น baseline เริ่มต้นสำหรับการพัฒนาและตรวจรับระบบประกันรายได้ SGI"
     )
     model.heading("1.2 Requirement classification", 2)
     model.table(
@@ -568,7 +568,7 @@ def build_model() -> Model:
     model.table(
         ["ID", "Type", "Statement", "Validation / approval gate"],
         [
-            ["ASM-001", "Assumption", "Platform SSO/AD/LDAP ยืนยัน credential และส่ง employee identity ที่เชื่อถือได้ให้ SBPGI; SBPGI ไม่เก็บ password hash", "ผ่าน integration/security test กับ platform identity"],
+            ["ASM-001", "Assumption", "Platform SSO/AD/LDAP ยืนยัน credential และส่ง employee identity ที่เชื่อถือได้ให้ SGI; SGI ไม่เก็บ password hash", "ผ่าน integration/security test กับ platform identity"],
             ["ASM-002", "Assumption", "QSSI, ALLMAP, IAS/MIS, STA, SAP และ SMTP ให้บริการตาม interface window และ data contract ที่อนุมัติ", "ผ่าน connectivity และ golden-file test ก่อน UAT"],
             ["ASM-003", "Assumption", "ข้อมูลสาขามี region/branch type/nิติบุคคล/DV ที่เพียงพอสำหรับ candidate selection และ Gen Flow Gate", "รายงาน reject/missing master ต้องเป็นศูนย์หรือได้รับ waiver"],
             ["CON-001", "Constraint", "Store code เป็นข้อความ 5 หลักและต้องรักษาเลขศูนย์นำหน้าใน DB, API, file และ UI", "contract/golden-file test"],
@@ -610,7 +610,7 @@ def build_model() -> Model:
         [0.15, 0.35, 0.5],
     )
     model.note(
-        "SYS: ระบบต้องรวมการสร้างเอกสารและ workflow ไว้ภายใน SBPGI โดยใช้ DB transaction และ Workflow Engine ภายใน "
+        "SYS: ระบบต้องรวมการสร้างเอกสารและ workflow ไว้ภายใน SGI โดยใช้ DB transaction และ Workflow Engine ภายใน "
         "ห้ามสร้างไฟล์ BPM06001O/BPM06002O/BPM06003O หรือเรียก K2 StartInstance ใน runtime ใหม่"
     )
     model.heading("2.3 User roles", 2)
@@ -636,7 +636,7 @@ def build_model() -> Model:
     model.table(
         ["System", "Direction", "Mechanism", "Requirement"],
         [
-            ["QSSI", "Inbound", "ระบบ SBP เดิมนำเข้าให้ (fcs_qssi_score)", "SBPGI อ่านอย่างเดียว; คะแนน 6 หมวด 8,9,12,1,10,16"],
+            ["QSSI", "Inbound", "ระบบ SBP เดิมนำเข้าให้ (fcs_qssi_score)", "SGI อ่านอย่างเดียว; คะแนน 6 หมวด 8,9,12,1,10,16"],
             ["ALLMAP", "Inbound", "SQL Server views / link", "คู่ร้านถูกกระทบ ร้านคู่แข่ง และ POI map"],
             ["IAS/MIS", "Outbound/Inbound", "AMS06001O / AMS06001I", "ยอดขาย 4 windows x 15 days"],
             ["STA", "Outbound/Inbound", "RabbitMQ sta.compensation.result + ACK/API callback", "ส่งผลชดเชยและเฝ้าระวัง ACK"],
@@ -684,7 +684,7 @@ def build_model() -> Model:
         ["REQ-INT-001", "Job 4 ต้องสร้าง durable file สำเร็จก่อน commit W เป็น P และ outbox READY", "failure injection ก่อน/หลัง fsync"],
         ["REQ-INT-002", "Interface callback ต้องอัปเดต tracking เดิมแบบ compare-and-set และงาน purge ต้องลบเฉพาะ terminal/expired/non-held", "ACK race และ retention test"],
         ["REQ-INT-003", "ระบบต้องใช้ typed FK สำหรับ interface transaction และรักษา business key/idempotency key", "schema constraint/rerun test"],
-        ["REQ-SEC-001", "ระบบต้องไม่เก็บ password hash หรือ credential ของ platform identity ภายใน user account ของ SBPGI", "schema/secret scan"],
+        ["REQ-SEC-001", "ระบบต้องไม่เก็บ password hash หรือ credential ของ platform identity ภายใน user account ของ SGI", "schema/secret scan"],
         ["REQ-SEC-002", "การเชื่อมต่อภายนอกต้องอ่าน secret จาก Secret Manager และบังคับ TLS/host verification", "deployment/security evidence"],
         ["REQ-FIL-001", "ไฟล์แนบต้องไม่เกิน 5 MB ผ่าน type/AV scan และดาวน์โหลดได้เฉพาะผู้มีสิทธิ์เมื่อสถานะ CLEAN", "upload/download security test"],
         ["REQ-RPT-001", "รายงานหน้าจอและไฟล์ Excel ต้องใช้ filter/dataset เดียวกันและมีข้อมูลครบ 14 คอลัมน์ (SDD สไลด์ 60)", "preview/export reconciliation"],
@@ -706,11 +706,11 @@ def build_model() -> Model:
     model.pagebreak()
     model.heading("3.1.1 End-to-end flow", 3)
     stages = [
-        ("A1", "คะแนน QSSI รายเดือน", "ระบบ SBP เดิมนำเข้าลง fcs_qssi_score; SBPGI อ่านอย่างเดียว (ตัด Job 1 ออก 2026-08-24)"),
+        ("A1", "คะแนน QSSI รายเดือน", "ระบบ SBP เดิมนำเข้าลง fcs_qssi_score; SGI อ่านอย่างเดียว (ตัด Job 1 ออก 2026-08-24)"),
         ("A2", "นำเข้าคู่ร้านและคู่แข่ง", "Jobs 2-3 อ่าน ALLMAP ทุกวันที่ 7 และตั้ง verify_status ตามกฎ DENY/ON_PROCESS"),
         ("A3", "ขอยอดขายรายวัน", "Job 4 สร้าง AMS06001O วันที่ 7-16 เวลา 16:00"),
         ("A4", "รับยอดขายและคำนวณ", "Job 5 รับ AMS06001I, คำนวณ 4x15 วัน, outlier |sales_diff| >= 50"),
-        ("B1", "สร้างเอกสารอัตโนมัติ", "Document Service สร้าง compensation_documents และรายการลูกโดยตรงใน DB"),
+        ("B1", "สร้างเอกสารอัตโนมัติ", "Document Service สร้าง sgi_compensation_documents และรายการลูกโดยตรงใน DB"),
         ("B2", "เปิด workflow", "Workflow Engine เปิด instance เมื่อผ่าน Gen Flow Gate และเริ่ม Section 06"),
         ("C1", "SBP DSA ตรวจสอบ", "Section 06 และ 08 ตรวจข้อมูลและคำนวณเงินชดเชย"),
         ("C2", "ฝ่ายส่งเสริมธุรกิจปรับข้อมูล", "Section 01 แก้ร้านเปิดใหม่ คู่แข่ง ปัจจัย และตรวจ % ชดเชยรวม 100%"),
@@ -763,7 +763,7 @@ def build_model() -> Model:
         "บัญชีตรวจสอบยอดผ่านรายงาน SBP Mall และ Export Excel นอก workflow",
         "งานเตือนรายสัปดาห์ทำงานวันจันทร์ 10:00 และ escalation งานค้าง 30/45/60 วันต้องอ่านค่าจาก config",
         "การเปลี่ยนกฎธุรกิจ เช่น -10, 50, 60 วัน และ 100,000 บาท ต้องผ่าน Business sign-off",
-        "ทุก action ต้องบันทึก consideration_logs, ผู้กระทำ, เวลา, สถานะก่อน/หลัง และ correlation id",
+        "ทุก action ต้องบันทึก sgi_consideration_logs, ผู้กระทำ, เวลา, สถานะก่อน/หลัง และ correlation id",
     ]:
         model.bullet(rule)
     if (ROOT / "Flow ประกันรายได้.png").exists():
@@ -817,7 +817,7 @@ def build_model() -> Model:
         ["P0", "Job 4 transaction", "ใช้ transaction/outbox ไม่ให้ W->P commit ก่อนสร้างไฟล์สำเร็จ"],
         ["P0", "Secrets/TLS", "ย้าย credential ไป Secret Manager และบังคับ TLS"],
         ["P0", "Tracking purge", "แก้ SQL purge data_name และทำ migration/test"],
-        ["P1", "Polymorphic FK", "ใช้ typed FK ใน interface_transactions"],
+        ["P1", "Polymorphic FK", "ใช้ typed FK ใน sgi_interface_transactions"],
         ["P1", "NULL growth rate", "ส่งรอตรวจสอบแทน auto-accept; ต้องมี Business sign-off"],
         ["P1", "Master joins", "รายงาน reject/reconcile แทนการทำแถวหายเงียบ"],
         ["P1", "Golden files", "ทดสอบ encoding วันที่ พ.ศ. delimiter และ field count ทุก interface"],
@@ -884,7 +884,7 @@ def build_model() -> Model:
         "Committed implementation scope ของหน้าจอ SBP Mall คือ 7 หน้าในตารางนี้ (หน้า Global Config และ Email Template ยกเลิกทั้งฟีเจอร์ · หน้า Batch Job ย้ายไปกลุ่มเมนู Flow เหลือเฉพาะ Flowchart และตารางฐานข้อมูลที่ใช้ · ตัดสินใจ 6 สิงหาคม 2026) — "
         "ปรับตามการตัดสินใจ 2026-08-06: ตัดหน้า Overview/Dashboard ออก โดยหน้าแรกของระบบเปลี่ยนเป็นหน้าเอกสารรอดำเนินการ (SCR-02) "
         "และลบหน้าข้อมูลผิดปกติ/แจกงานถาวร (ข้อมูลผิดปกติเหลือเป็นธงสีแดงในแถวตาราง) · "
-        "หน้ากำหนดผู้ปฏิบัติงานและสิทธิ์การเข้าถึงเมนูไม่อยู่ใน scope SBPGI — ใช้ระบบผู้ใช้/สิทธิ์ของระบบ SBP เดิม (ตัดสินใจ 2026-08-05)"
+        "หน้ากำหนดผู้ปฏิบัติงานและสิทธิ์การเข้าถึงเมนูไม่อยู่ใน scope SGI — ใช้ระบบผู้ใช้/สิทธิ์ของระบบ SBP เดิม (ตัดสินใจ 2026-08-05)"
     )
     screens = [
         {
@@ -1216,7 +1216,7 @@ def build_model() -> Model:
     model.table(
         ["Term", "Definition"],
         [
-            ["SBPGI", "Target integrated system for FGI/FCS processing and K2-style documents/workflow"],
+            ["SGI", "Target integrated system for FGI/FCS processing and K2-style documents/workflow"],
             ["SP / Store Partner", "ร้าน Franchise ที่อยู่ในขอบเขตประกันรายได้"],
             ["FGI/FCS", "Legacy batch domains for impact and QSSI data"],
             ["K2", "Legacy BPM/workflow platform and original K2 SRS scope"],
@@ -1244,7 +1244,7 @@ def make_md(model: Model):
     lines = [
         "# SOFTWARE REQUIREMENT SPECIFICATION",
         "",
-        "## ระบบประกันรายได้ SBPGI",
+        "## ระบบประกันรายได้ SGI",
         "",
         f"Version {DOC_VERSION}",
         "",
@@ -1577,7 +1577,7 @@ def build_docx(model: Model):
     p.paragraph_format.space_after = Pt(26)
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run("ระบบประกันรายได้ SBPGI")
+    r = p.add_run("ระบบประกันรายได้ SGI")
     docx_set_font(r, size=20, bold=True)
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1611,8 +1611,8 @@ def build_docx(model: Model):
     values = [
         DOC_VERSION,
         RELEASE_DATE,
-        "SBPGI Project Team",
-        "Initial integrated SBPGI baseline for SBP Mall scope, internal workflow, batch, API and operational requirements",
+        "SGI Project Team",
+        "Initial integrated SGI baseline for SBP Mall scope, internal workflow, batch, API and operational requirements",
         "",
         "",
     ]
@@ -1788,9 +1788,9 @@ def build_docx(model: Model):
             doc.add_page_break()
 
     DOCX_OUT.parent.mkdir(parents=True, exist_ok=True)
-    doc.core_properties.title = "Software Requirement Specification - ระบบประกันรายได้ SBPGI"
+    doc.core_properties.title = "Software Requirement Specification - ระบบประกันรายได้ SGI"
     doc.core_properties.subject = "Self-contained SBP Mall software requirements"
-    doc.core_properties.author = "SBPGI Project Team"
+    doc.core_properties.author = "SGI Project Team"
     doc.core_properties.comments = "Self-contained SRS baseline; open items require approval before implementation."
     doc.save(DOCX_OUT)
 
@@ -1956,15 +1956,15 @@ def build_pdf(model: Model):
         rightMargin=RIGHT,
         topMargin=TOP,
         bottomMargin=BOTTOM,
-        title="Software Requirement Specification - ระบบประกันรายได้ SBPGI",
-        author="SBPGI Project Team",
+        title="Software Requirement Specification - ระบบประกันรายได้ SGI",
+        author="SGI Project Team",
         subject="Self-contained SBP Mall software requirements",
     )
     story: list[Flowable] = []
 
     # Cover
     story.extend([Spacer(1, 39 * mm), Paragraph("SOFTWARE REQUIREMENT SPECIFICATION", st["CoverTitle"])])
-    story.append(Paragraph("ระบบประกันรายได้ SBPGI", st["CoverThai"]))
+    story.append(Paragraph("ระบบประกันรายได้ SGI", st["CoverThai"]))
     story.append(Paragraph(f"VERSION {DOC_VERSION.upper()}", st["CoverVersion"]))
     if COVER_BADGE.exists():
         story.append(Image(str(COVER_BADGE), width=48 * mm, height=49 * mm, hAlign="CENTER"))
@@ -1986,8 +1986,8 @@ def build_pdf(model: Model):
             [
                 DOC_VERSION,
                 RELEASE_DATE,
-                "SBPGI Project Team",
-                "Initial integrated SBPGI baseline for SBP Mall scope, internal workflow, batch, API and operational requirements",
+                "SGI Project Team",
+                "Initial integrated SGI baseline for SBP Mall scope, internal workflow, batch, API and operational requirements",
                 "",
                 "",
             ]

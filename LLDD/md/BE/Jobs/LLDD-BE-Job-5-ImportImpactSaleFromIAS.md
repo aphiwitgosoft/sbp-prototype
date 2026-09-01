@@ -10,9 +10,22 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **21 ชั่วโมง** = implementation 16 + unit test 5 (30%) |
 | Owner | Aphiwit <Bank> Khammoon |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) — batch runner ฝั่ง backend **ไม่ผ่าน BFF** · cron/พารามิเตอร์อยู่ใน backend config (env/config file) |
-| Objective | รับยอดขายจาก IAS + คำนวณ Growth: อ่านไฟล์ตอบกลับยอดขาย AMS06001I ที่ IAS/MIS วางไว้บน **EAI S3** (prefix ขาเข้า · มติ 2026-08-24 แทนการรับผ่าน SFTP) บันทึกยอดขายรายวันลง sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff |
+| Objective | รับยอดขายจาก IAS + คำนวณ Growth: อ่านไฟล์ตอบกลับยอดขาย AMS06001I ที่ IAS/MIS วางไว้บน **EAI S3** (prefix ขาเข้า · มติ 2026-08-24 แทนการรับผ่าน SFTP) บันทึกยอดขายรายวันลง sgi_sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
+
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| โครงสร้างข้อมูล | **LLDD-BE-Database-Structure** | DDL ของตารางที่หัวข้อ Reference DB Mapping อ้างถึง |
+| แพลตฟอร์มระบบเดิม | **LLDD-BE-Integration-SBP-Platform** | header จาก BFF (`x-api-key` / `x-user-*`) · การ reuse ตารางและ service ของระบบ SBP เดิม |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-API-Common-Contracts** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Database-Structure** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-BE-Job-4-PrepareImpactStoreToIAS** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
 
 ## 2. Screen / Functional Scope
 
@@ -27,11 +40,21 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 1: Implementation flow reference: LLDD BE - Job 5 ImportImpactSaleFromIAS](../../../assets/flows/BE-Job-5-ImportImpactSaleFromIAS.png)
 
 _รูปที่ 1: Implementation flow reference: LLDD BE - Job 5 ImportImpactSaleFromIAS_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 2: Sequence diagram: LLDD BE - Job 5 ImportImpactSaleFromIAS](../../../assets/flows/BE-Job-5-ImportImpactSaleFromIAS-sequence.png)
+
+_รูปที่ 2: Sequence diagram: LLDD BE - Job 5 ImportImpactSaleFromIAS_
 
 ## 5. Field, Format, and Validation
 
@@ -71,7 +94,7 @@ scan files, validate pattern, parse daily sales windows, derive before/after imp
 | Output identity | FGI_IMPACT_STORE_SALES_TRN and FGI_IMPACT_STORE_SALES updated; confirm-receive rows written; source file moved to backup or error recorded. | reconcile input, success, reject and skipped counts |
 | Dedup proof | checksum กันไฟล์ซ้ำ + UNIQUE(sales_summary_id,txn_date,window_no); คำนวณ summary ใหม่จาก transaction rows ทุก rerun | rerun fixture produces no duplicate target business key |
 | Transaction proof | upsert รายวันและ update summary ของ sales_summary_id เดียวกันใน transaction; checksum/file tracking commit พร้อมกัน | injected failure leaves no partial committed state outside documented boundary |
-| Security proof | สิทธิ์อ่าน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sbpgi/interfaces/eai-s3 จำกัดเฉพาะ prefix ขาเข้า/backup ของ IAS (GetObject + PutObject เฉพาะ backup); quarantine อ็อบเจกต์ที่ checksum/รูปแบบไม่ผ่าน แทนการลบทิ้ง | config/log/error contains no plaintext secret |
+| Security proof | สิทธิ์อ่าน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sgi/interfaces/eai-s3 จำกัดเฉพาะ prefix ขาเข้า/backup ของ IAS (GetObject + PutObject เฉพาะ backup); quarantine อ็อบเจกต์ที่ checksum/รูปแบบไม่ผ่าน แทนการลบทิ้ง | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
 
@@ -90,14 +113,14 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | Repository | iasSalesRepository |
 | Idempotency / dedup | checksum กันไฟล์ซ้ำ + UNIQUE(sales_summary_id,txn_date,window_no); คำนวณ summary ใหม่จาก transaction rows ทุก rerun |
 | Transaction boundary | upsert รายวันและ update summary ของ sales_summary_id เดียวกันใน transaction; checksum/file tracking commit พร้อมกัน |
-| Security | สิทธิ์อ่าน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sbpgi/interfaces/eai-s3 จำกัดเฉพาะ prefix ขาเข้า/backup ของ IAS (GetObject + PutObject เฉพาะ backup); quarantine อ็อบเจกต์ที่ checksum/รูปแบบไม่ผ่าน แทนการลบทิ้ง |
+| Security | สิทธิ์อ่าน EAI S3 ใช้ IAM role ของ pod หรือ secretRef=secret/sgi/interfaces/eai-s3 จำกัดเฉพาะ prefix ขาเข้า/backup ของ IAS (GetObject + PutObject เฉพาะ backup); quarantine อ็อบเจกต์ที่ checksum/รูปแบบไม่ผ่าน แทนการลบทิ้ง |
 
 #### Input / candidate query
 
 ```sql
 SELECT t.sales_summary_id, t.txn_date, t.sales_amount, t.window_no, t.source_checksum
-FROM sales_transactions t
-JOIN fgi_impact_sales_summaries s ON s.id = t.sales_summary_id
+FROM sgi_sales_transactions t
+JOIN sgi_fgi_impact_sales_summaries s ON s.id = t.sales_summary_id
 WHERE s.impact_process_id = :impact_process_id
 ORDER BY t.sales_summary_id, t.txn_date, t.window_no;
 ```
@@ -105,7 +128,7 @@ ORDER BY t.sales_summary_id, t.txn_date, t.window_no;
 #### Write / upsert query
 
 ```sql
-INSERT INTO sales_transactions
+INSERT INTO sgi_sales_transactions
     (sales_summary_id, txn_date, window_no, sales_amount, sales_diff, is_outlier, source_checksum)
 VALUES (:sales_summary_id, :txn_date, :window_no, :sales_amount, :sales_diff, :is_outlier, :source_checksum)
 ON CONFLICT (sales_summary_id, txn_date, window_no)
@@ -114,7 +137,7 @@ DO UPDATE SET sales_amount = EXCLUDED.sales_amount,
               is_outlier = EXCLUDED.is_outlier,
               source_checksum = EXCLUDED.source_checksum;
 
-UPDATE fgi_impact_sales_summaries
+UPDATE sgi_fgi_impact_sales_summaries
 SET total_working_days = :total_working_days,
     growth_rate_before = :growth_rate_before,
     growth_rate_after = :growth_rate_after,
@@ -160,11 +183,11 @@ export async function runLlddBeJob5Importimpactsalefromias(ctx, services) {
 | รันตามตารางเวลา | CRON | scheduler → runner (job 5) | อ่าน cron/พารามิเตอร์จาก backend config |
 | รันนอกรอบ (manual/rerun) | CLI | CLI/ops runbook → runner (job 5) | guard ไม่ให้รันซ้อนด้วย distributed lock |
 | แก้พารามิเตอร์/เปิด-ปิด job | CONFIG | แก้ backend config แล้ว deploy | ไม่มี endpoint และไม่มีหน้าจอควบคุม — หน้า Flow Batch Job เป็น reference อย่างเดียว (2026-08-06) |
-| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ interface_transactions |
+| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ sgi_interface_transactions |
 
 ## 7. API Contract
 
-**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SBPGI อยู่ที่ **LLDD-API** และ `api.md`
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
@@ -172,34 +195,34 @@ export async function runLlddBeJob5Importimpactsalefromias(ctx, services) {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| sales_transactions | W | ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา) |
-| fgi_impact_sales_summaries | R/W | อัปเดต total_working_days, growth_rate_diff, sales_status Y/N |
-| interface_transactions | W | tracking: data_name=IMPACT_STORE_SALES · direction=IN · status=ACKED (ขารับกลับของรอบที่ Job 4 ส่งออก) · typed FK = sales_summary_id |
+| sgi_sales_transactions | W | ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา) |
+| sgi_fgi_impact_sales_summaries | R/W | อัปเดต total_working_days, growth_rate_diff, sales_status Y/N |
+| sgi_interface_transactions | W | tracking: data_name=IMPACT_STORE_SALES · direction=IN · status=ACKED (ขารับกลับของรอบที่ Job 4 ส่งออก) · typed FK = sales_summary_id |
 
 ## 9. Skeleton Code (Batch Job 5)
 
 #### 9.1 ผังไฟล์ที่ต้องสร้าง (Job 5)
 
-โครงไฟล์ของ Job 5 (fgi.main.ImportImpactSaleFromIAS เดิม) วางใต้ `src/batch/sbpgi/` ของ store-backend โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`
+โครงไฟล์ของ Job 5 (fgi.main.ImportImpactSaleFromIAS เดิม) วางใต้ `src/batch/sgi/` ของ store-backend โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`
 
 **หมายเหตุสำคัญ — `src/batch/*` ทั้งชุดเป็นของใหม่ที่ยังไม่มีใน store-backend**: ปัจจุบัน repo ไม่มีโฟลเดอร์ `src/batch` เลย และแม้จะติดตั้ง `@nestjs/schedule` ไว้แล้วก็ยัง**ไม่มี `@Cron`/`@Interval` แม้แต่จุดเดียว** ดังนั้น `runner.ts` / `scheduler.ts` / `cli.js` / `job-failure.notifier.ts` คือ **งานตั้งต้นของ Phase แรก** ที่ต้องสร้างเองทั้งหมด พร้อม register `ScheduleModule.forRoot()` ใน `app.module.ts` — ไม่ใช่ของเดิมที่ reuse ได้
 
 | Path | หน้าที่ |
 | --- | --- |
-| src/batch/sbpgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.job.ts | คลาส `ImportImpactSaleFromIasJob` — `run(ctx)` เรียงตาม flow ของ Job 5 ทีละขั้น, ครอบ transaction, จบด้วย structured log |
-| src/batch/sbpgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.service.ts | คลาส `ImportImpactSaleFromIasService` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE` |
-| src/batch/sbpgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.config.ts | คลาส `SbpgiJob5Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 6 ตัวของ Job 5 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
-| src/batch/sbpgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.module.ts | NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule` |
+| src/batch/sgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.job.ts | คลาส `ImportImpactSaleFromIasJob` — `run(ctx)` เรียงตาม flow ของ Job 5 ทีละขั้น, ครอบ transaction, จบด้วย structured log |
+| src/batch/sgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.service.ts | คลาส `ImportImpactSaleFromIasService` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE` |
+| src/batch/sgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.config.ts | คลาส `SgiJob5Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) — cron และพารามิเตอร์ทั้ง 6 ตัวของ Job 5 อ่านจาก env/config file (ไม่มีตาราง job_configs) |
+| src/batch/sgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.module.ts | NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule` |
 | src/batch/runner.ts | ตัวรันกลาง: resolve job ตาม jobNo, กันรันซ้อนด้วย advisory lock, จับ error → แจ้งเตือน, เขียน structured log สรุป (ใช้ร่วมทั้ง 11 job) |
-| src/batch/scheduler.ts | ลงทะเบียน cron จาก config (`SBPGI_JOB5_CRON` = `30 16 7-16 * *`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook |
+| src/batch/scheduler.ts | ลงทะเบียน cron จาก config (`SGI_JOB5_CRON` = `30 16 7-16 * *`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook |
 | src/batch/job-failure.notifier.ts | ส่งอีเมลแจ้งผู้ดูแลเมื่อ job ล้มเหลว ผ่าน `EmailLibService` ของ `@gosoft-sbp/email-lib` (log ลง `email_sent` ให้อัตโนมัติ) |
 
 #### 9.2 Config Schema ของ Job 5 (backend config / env)
 
-cron ปัจจุบันของ Job 5 คือ `30 16 7-16 * *` (วันที่ 7–16 เวลา 16:30) — ประกาศเป็น `SBPGI_JOB5_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้
+cron ปัจจุบันของ Job 5 คือ `30 16 7-16 * *` (วันที่ 7–16 เวลา 16:30) — ประกาศเป็น `SGI_JOB5_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้
 
 ```ts
-// src/batch/sbpgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.config.ts
+// src/batch/sgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.config.ts
 // convention จริงของ store-backend คือคลาส config (`src/config/app.config.ts` ที่ export ผ่าน
 // `AppConfigModule` แบบ @Global แล้วอ่าน process.env ตรง ๆ) — โปรเจกต์นี้ **ไม่ได้ใช้ registerAs**
 // แม้แต่จุดเดียว จึงประกาศเป็นคลาสให้รีวิว/ทดสอบเหมือน config ตัวอื่น
@@ -230,20 +253,20 @@ export interface Job5Config {
 }
 
 @Injectable()
-export class SbpgiJob5Config implements Job5Config {
+export class SgiJob5Config implements Job5Config {
   // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)
-  enabled = (process.env.SBPGI_JOB5_ENABLED ?? 'true') === 'true';
-  cron = process.env.SBPGI_JOB5_CRON ?? '30 16 7-16 * *';
-  cron = process.env.SBPGI_JOB5_CRON ?? '30 16 7-16 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  inputFile = process.env.SBPGI_JOB5_INPUT_FILE ?? 'AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์)'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  calcWindow = process.env.SBPGI_JOB5_CALC_WINDOW ?? '4 ช่วง × 15 วัน รอบวันเปิดร้านใหม่ (ไม่รวมวันเปิด) — วันเปิดร้านอ่านจาก master ของระบบ SBP เดิม'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  outlier = process.env.SBPGI_JOB5_OUTLIER ?? '|sales_diff| ≥ 50'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  workingDays = Number(process.env.SBPGI_JOB5_WORKING_DAYS ?? 60); // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  preAccept = process.env.SBPGI_JOB5_PRE_ACCEPT ?? 'อายุร้าน < 12 เดือน 15 วัน หรือวันทำการ < 60 → Y'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
-  mailTo = process.env.SBPGI_JOB5_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: go-sbp (ผ่าน shared helper))
+  enabled = (process.env.SGI_JOB5_ENABLED ?? 'true') === 'true';
+  cron = process.env.SGI_JOB5_CRON ?? '30 16 7-16 * *';
+  cron = process.env.SGI_JOB5_CRON ?? '30 16 7-16 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
+  inputFile = process.env.SGI_JOB5_INPUT_FILE ?? 'AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์)'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  calcWindow = process.env.SGI_JOB5_CALC_WINDOW ?? '4 ช่วง × 15 วัน รอบวันเปิดร้านใหม่ (ไม่รวมวันเปิด) — วันเปิดร้านอ่านจาก master ของระบบ SBP เดิม'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  outlier = process.env.SGI_JOB5_OUTLIER ?? '|sales_diff| ≥ 50'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  workingDays = Number(process.env.SGI_JOB5_WORKING_DAYS ?? 60); // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  preAccept = process.env.SGI_JOB5_PRE_ACCEPT ?? 'อายุร้าน < 12 เดือน 15 วัน หรือวันทำการ < 60 → Y'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
+  mailTo = process.env.SGI_JOB5_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: go-sbp (ผ่าน shared helper))
 }
 
-// TODO: เพิ่ม SbpgiJob5Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
+// TODO: เพิ่ม SgiJob5Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig
 ```
 
 #### 9.3 Job Class — `run(ctx)` ของ Job 5 ทีละขั้นตามผัง
@@ -315,12 +338,12 @@ export class ImportImpactSaleFromIasService {
     return true; // TODO: เงื่อนไขจริงตามผัง
   }
 
-  // เปิด transaction ต่อไฟล์ แล้ว insert sales_transactions แถวดิบ
+  // เปิด transaction ต่อไฟล์ แล้ว insert sgi_sales_transactions แถวดิบ
   async step04Insert(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
 
-  // insert interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED
+  // insert sgi_interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED
   async step05ReadFile(state: JobState, manager?: EntityManager): Promise<void> {
     // TODO: implement
   }
@@ -367,8 +390,8 @@ export class ImportImpactSaleFromIasService {
 | 1 | start | เริ่ม | createState() | - |
 | 2 | io | ดึงไฟล์จาก EAI S3 (prefix ขาเข้า) แล้วอ่าน WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 3 | decision | เป็นงวดที่ยังไม่นำเข้า? | check03ResolvePeriod() | [end] จบ (idempotency guard กันนำเข้าซ้ำ) |
-| 4 | process | เปิด transaction ต่อไฟล์ แล้ว insert sales_transactions แถวดิบ | step04Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 5 | process | insert interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED | step05ReadFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 4 | process | เปิด transaction ต่อไฟล์ แล้ว insert sgi_sales_transactions แถวดิบ | step04Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 5 | process | insert sgi_interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED | step05ReadFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | process | total_working_days = จำนวนแถวดิบทั้งหมด | step06Calculate() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 7 | decision | ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept) | check07Calculate() | [branch] Pre-accept: sales_status = Y ทันที |
 | 8 | process | คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (\|sales_diff\| ≥ 50) | step08Calculate() | throw JobFailedError เมื่อทำไม่สำเร็จ |
@@ -378,7 +401,7 @@ export class ImportImpactSaleFromIasService {
 | 12 | end | จบ | summarize() | - |
 
 ```ts
-// src/batch/sbpgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.job.ts
+// src/batch/sgi/job-5-import-impact-sale-from-ias/job-5-import-impact-sale-from-ias.job.ts
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { DataSource, EntityManager } from 'typeorm';
 import { ImportImpactSaleFromIasService, type JobState } from './job-5-import-impact-sale-from-ias.service';
@@ -410,9 +433,9 @@ export class ImportImpactSaleFromIasJob {
       }
       // === transaction boundary === TODO: ต่อไฟล์ + savepoint (ระวัง inner catch ทำให้ rollback ไม่ทำงาน)
       await this.dataSource.transaction(async (manager: EntityManager) => {
-        // ขั้นที่ 4: เปิด transaction ต่อไฟล์ แล้ว insert sales_transactions แถวดิบ · TODO: ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน
+        // ขั้นที่ 4: เปิด transaction ต่อไฟล์ แล้ว insert sgi_sales_transactions แถวดิบ · TODO: ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน
         await this.service.step04Insert(state, manager);
-        // ขั้นที่ 5: insert interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED · TODO: บันทึก*การรับไฟล์* — ทำทันทีที่อ่านไฟล์สำเร็จ ไม่ผูกกับผล Y/N เพราะไฟล์มาถึงแล้วไม่ว่าผลจะเป็นอะไร (ถ้าผูกกับสาขา Y งวดที่ผลเป็น N จะไม่มีบันทึก แล้ว Job 10 จะเข้าใจว่า IAS ไม่ตอบกลับ) · เป็นขารับกลับของรอบที่ Job 4 ส่งออก จึงใช้ data_name เดิม — UNIQUE (data_name, direction, business_key, period_key) แยกขา OUT/IN ให้อยู่แล้ว · typed FK = sales_summary_id · acked_at = now
+        // ขั้นที่ 5: insert sgi_interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED · TODO: บันทึก*การรับไฟล์* — ทำทันทีที่อ่านไฟล์สำเร็จ ไม่ผูกกับผล Y/N เพราะไฟล์มาถึงแล้วไม่ว่าผลจะเป็นอะไร (ถ้าผูกกับสาขา Y งวดที่ผลเป็น N จะไม่มีบันทึก แล้ว Job 10 จะเข้าใจว่า IAS ไม่ตอบกลับ) · เป็นขารับกลับของรอบที่ Job 4 ส่งออก จึงใช้ data_name เดิม — UNIQUE (data_name, direction, business_key, period_key) แยกขา OUT/IN ให้อยู่แล้ว · typed FK = sales_summary_id · acked_at = now
         await this.service.step05ReadFile(state, manager);
         // ขั้นที่ 6: total_working_days = จำนวนแถวดิบทั้งหมด · TODO: นับรวมแถวนอกหน้าต่างคำนวณด้วย (raw count)
         await this.service.step06Calculate(state, manager);
@@ -474,7 +497,7 @@ import type { DataSource } from 'typeorm';
 
 // TODO: ห้ามใช้แถวสถานะ RUNNING ในตารางเป็นตัวกัน (ไม่มีตาราง job_run_histories แล้ว)
 //       ใช้ PostgreSQL advisory lock ระดับ session แทน — ปลดอัตโนมัติเมื่อ connection หลุด
-export const SBPGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SBPGI
+export const SGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SGI
 export const JOB_LOCK_KEYS: Record<string, number> = { '5': 50 /* TODO: เพิ่มครบทั้ง 11 job */ };
 
 @Injectable()
@@ -491,7 +514,7 @@ export class BatchRunner {
     try {
       const [{ locked }] = await runner.query(
         'SELECT pg_try_advisory_lock($1, $2) AS locked',
-        [SBPGI_JOB_LOCK_CLASS_ID, objectId],
+        [SGI_JOB_LOCK_CLASS_ID, objectId],
       );
       if (!locked) {
         // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล
@@ -501,7 +524,7 @@ export class BatchRunner {
       return await fn();
     } finally {
       // TODO: ปลด lock ทุกกรณี แล้วคืน connection เข้า pool
-      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SBPGI_JOB_LOCK_CLASS_ID, objectId]);
+      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SGI_JOB_LOCK_CLASS_ID, objectId]);
       await runner.release();
     }
   }
@@ -514,39 +537,39 @@ repository ของ Job 5 ประกาศเป็น factory provider (`{pr
 
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
-| sales_transactions | W | ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา) | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| fgi_impact_sales_summaries | R/W | อัปเดต total_working_days, growth_rate_diff, sales_status Y/N | เขียน SQL ตรงผ่าน DATA_SOURCE |
-| interface_transactions | W | tracking: data_name=IMPACT_STORE_SALES · direction=IN · status=ACKED (ขารับกลับของรอบที่ Job 4 ส่งออก) · typed FK = sales_summary_id | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_sales_transactions | W | ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา) | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_fgi_impact_sales_summaries | R/W | อัปเดต total_working_days, growth_rate_diff, sales_status Y/N | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_interface_transactions | W | tracking: data_name=IMPACT_STORE_SALES · direction=IN · status=ACKED (ขารับกลับของรอบที่ Job 4 ส่งออก) · typed FK = sales_summary_id | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 5 ImportImpactSaleFromIAS — query หลักที่ต้อง implement
 -- TODO: ทุก statement รันผ่าน DATA_SOURCE (SELECT ไป slave, write ไป master) และ
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
--- [W] sales_transactions : ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา)
+-- [W] sgi_sales_transactions : ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา)
 -- TODO: เติมคอลัมน์ payload จริงจาก database.md
-INSERT INTO sales_transactions
+INSERT INTO sgi_sales_transactions
   (/* TODO: business key + payload + created_by, created_at */)
 VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)
-ON CONFLICT (sales_summary_id, txn_date, window_no)   -- unique key จริงตาม DDL ของ sales_transactions (ห้ามเดา)
+ON CONFLICT (sales_summary_id, txn_date, window_no)   -- unique key จริงตาม DDL ของ sgi_sales_transactions (ห้ามเดา)
 DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */
        updated_at = NOW(), updated_by = 'JOB5';
 
--- [R/W] fgi_impact_sales_summaries : อัปเดต total_working_days, growth_rate_diff, sales_status Y/N
+-- [R/W] sgi_fgi_impact_sales_summaries : อัปเดต total_working_days, growth_rate_diff, sales_status Y/N
 -- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
 SELECT /* TODO: PK + คอลัมน์ที่ต้องใช้ */
-  FROM fgi_impact_sales_summaries
+  FROM sgi_fgi_impact_sales_summaries
  WHERE impact_year = $1 AND impact_month = $2  -- TODO: ยืนยันชื่อคอลัมน์งวดกับ database.md
    FOR UPDATE SKIP LOCKED;
 
-UPDATE fgi_impact_sales_summaries
+UPDATE sgi_fgi_impact_sales_summaries
    SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
        updated_at = NOW(), updated_by = 'JOB5'
  WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);
 
--- [W] interface_transactions : tracking: data_name=IMPACT_STORE_SALES · direction=IN · status=ACKED (ขารับกลับของรอบที่ Job 4 ส่งออก) · typed FK = sales_summary_id
+-- [W] sgi_interface_transactions : tracking: data_name=IMPACT_STORE_SALES · direction=IN · status=ACKED (ขารับกลับของรอบที่ Job 4 ส่งออก) · typed FK = sales_summary_id
 -- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
-INSERT INTO interface_transactions
+INSERT INTO sgi_interface_transactions
   (run_id, data_name, direction, status, business_key, period_key,
    file_name, file_checksum, created_at)
 VALUES ($1 /* run_id = correlation id ของรอบรัน Job 5 จาก application log */,
@@ -578,8 +601,8 @@ export class JobFailureNotifier {
   constructor(private readonly mailService: EmailLibService) {}
 
   async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {
-    // TODO: ผู้รับของ Job 5 เดิมคือ go-sbp (ผ่าน shared helper) — ย้ายมาเป็น env SBPGI_JOB5_MAIL_TO
-    const recipients = (process.env.SBPGI_JOB5_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    // TODO: ผู้รับของ Job 5 เดิมคือ go-sbp (ผ่าน shared helper) — ย้ายมาเป็น env SGI_JOB5_MAIL_TO
+    const recipients = (process.env.SGI_JOB5_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!recipients.length) {
       this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));
       return;
@@ -587,7 +610,7 @@ export class JobFailureNotifier {
     try {
       await this.mailService.sendMail({
         // TODO: emailId = id ของ template EM-07 (แจ้ง error batch) ในตาราง email_template
-        emailId: Number(process.env.SBPGI_JOB_FAIL_EMAIL_TEMPLATE_ID),
+        emailId: Number(process.env.SGI_JOB_FAIL_EMAIL_TEMPLATE_ID),
         mailTo: recipients.join(','), // signature รับ string ไม่ใช่ string[]
         mailCc: '',
         param: {
@@ -596,7 +619,7 @@ export class JobFailureNotifier {
           period: ctx.period, triggeredBy: ctx.triggeredBy,
           output: 'AMS06001I (รับเข้า)',
           errorMessage: error.message,
-          rerunNote: 'มี period guard — ถ้าจะซ้ำต้องลบ/แก้ sales_transactions อย่างระวังและคำนวณหัวตารางใหม่',
+          rerunNote: 'มี period guard — ถ้าจะซ้ำต้องลบ/แก้ sgi_sales_transactions อย่างระวังและคำนวณหัวตารางใหม่',
         },
       });
     } catch (mailError) {
@@ -609,13 +632,13 @@ export class JobFailureNotifier {
 
 ##### 9.6.2 Checklist การ rerun
 
-- กติกา rerun ของ Job 5: มี period guard — ถ้าจะซ้ำต้องลบ/แก้ sales_transactions อย่างระวังและคำนวณหัวตารางใหม่
+- กติกา rerun ของ Job 5: มี period guard — ถ้าจะซ้ำต้องลบ/แก้ sgi_sales_transactions อย่างระวังและคำนวณหัวตารางใหม่
 - ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: ต่อไฟล์ + savepoint (ระวัง inner catch ทำให้ rollback ไม่ทำงาน)
 - ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: P1: growth_rate_diff = NULL ถูก accept อัตโนมัติ / ต้องทดสอบ ก.พ. ปีอธิกสุรทิน และร้านไม่มียอดขาย
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
 - สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=5 --period=<YYYYMM>`
 - หลังรันซ้ำ ตรวจ output `AMS06001I (รับเข้า)` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
-- ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
+- ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 
 ## 10. Processing Flow
 
@@ -624,8 +647,8 @@ export class JobFailureNotifier {
 | 1 | เริ่ม |
 | 2 | ดึงไฟล์จาก EAI S3 (prefix ขาเข้า) แล้วอ่าน WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด |
 | 3 | เป็นงวดที่ยังไม่นำเข้า? \| No: จบ (idempotency guard กันนำเข้าซ้ำ) |
-| 4 | เปิด transaction ต่อไฟล์ แล้ว insert sales_transactions แถวดิบ (ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน) |
-| 5 | insert interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED (บันทึก*การรับไฟล์* — ทำทันทีที่อ่านไฟล์สำเร็จ ไม่ผูกกับผล Y/N เพราะไฟล์มาถึงแล้วไม่ว่าผลจะเป็นอะไร (ถ้าผูกกับสาขา Y งวดที่ผลเป็น N จะไม่มีบันทึก แล้ว Job 10 จะเข้าใจว่า IAS ไม่ตอบกลับ) · เป็นขารับกลับของรอบที่ Job 4 ส่งออก จึงใช้ data_name เดิม — UNIQUE (data_name, direction, business_key, period_key) แยกขา OUT/IN ให้อยู่แล้ว · typed FK = sales_summary_id · acked_at = now) |
+| 4 | เปิด transaction ต่อไฟล์ แล้ว insert sgi_sales_transactions แถวดิบ (ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน) |
+| 5 | insert sgi_interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED (บันทึก*การรับไฟล์* — ทำทันทีที่อ่านไฟล์สำเร็จ ไม่ผูกกับผล Y/N เพราะไฟล์มาถึงแล้วไม่ว่าผลจะเป็นอะไร (ถ้าผูกกับสาขา Y งวดที่ผลเป็น N จะไม่มีบันทึก แล้ว Job 10 จะเข้าใจว่า IAS ไม่ตอบกลับ) · เป็นขารับกลับของรอบที่ Job 4 ส่งออก จึงใช้ data_name เดิม — UNIQUE (data_name, direction, business_key, period_key) แยกขา OUT/IN ให้อยู่แล้ว · typed FK = sales_summary_id · acked_at = now) |
 | 6 | total_working_days = จำนวนแถวดิบทั้งหมด (นับรวมแถวนอกหน้าต่างคำนวณด้วย (raw count)) |
 | 7 | ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept) \| No: Pre-accept: sales_status = Y ทันที (pre-accept เมื่ออายุร้าน < 12ด.15ว. หรือวันทำการ < 60) |
 | 8 | คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (\|sales_diff\| ≥ 50) (4 หน้าต่าง × 15 วัน ไม่รวมวันเปิดร้านใหม่ / ธงรวมอดีต-ปัจจุบันต้องตรงกัน) |
@@ -668,7 +691,7 @@ export class JobFailureNotifier {
 | business rule | logic | ทุกรอบต้องเขียน application log แบบ structured (เวลา/แถว/ไฟล์/ผล) และ error ต้องส่ง EM-07 |
 | business rule | logic | DB/table mapping ใช้เป็น reference สำหรับ implement Job เท่านั้น ไม่ใช่งานสร้างหน้า Database |
 | business rule | logic | รองรับ rerun rule และ risk note ตาม runbook |
-| `sales_transactions`, `fgi_impact_sales_summaries`, `interface_transactions` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| `sgi_sales_transactions`, `sgi_fgi_impact_sales_summaries`, `sgi_interface_transactions` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | runner | idempotency | รันซ้ำด้วย fixture เดิมต้องไม่เกิดแถวซ้ำ (ON CONFLICT / business unique key ทำงาน) |
 | runner | lock | เรียกซ้อนขณะกำลังรัน ต้องถูกปฏิเสธด้วย advisory lock |
 

@@ -196,7 +196,7 @@ Integration (SRM) ใช้รับข้อมูลตั้งต้นห�
 | `/documents/abnormal` | DocumentListAbnormal | ข้อมูลผิดปกติหรือ placeholder |
 | `/documents/create` | CreateDocument | สร้างเอกสารประกันรายได้ |
 | `/documents/:docNo` | DocumentDetail | รายละเอียดเอกสารและ action |
-| `/sbpgi/report/status-summary` | StatusSummaryReport | รายงานตรวจสอบประกันรายได้ |
+| `/sgi/report/status-summary` | StatusSummaryReport | รายงานตรวจสอบประกันรายได้ |
 | `/masters/operators` | OperatorMaster | กำหนดผู้ปฏิบัติงาน |
 | `/masters/factors` | ExternalFactorMaster | กำหนดปัจจัยภายนอก |
 | `/permissions` | MenuPermission | สิทธิ์การเข้าถึงเมนู |
@@ -220,11 +220,11 @@ Integration (SRM) ใช้รับข้อมูลตั้งต้นห�
 | Page | UI Sections | API |
 |---|---|---|
 | Overview | KPI, pending queue, monthly chart, status chart | `GET /dashboard/summary` |
-| Document List | Search/filter, table, status flag, row click | `GET /sbpgi/document/tasks`, `GET /sbpgi/document` |
-| Create Document | Store selector, period, source, save/submit | `POST /sbpgi/document` |
-| Document Detail | Header, store, new stores, map, history, competitors, factors, attachments, action | `GET /sbpgi/document/{docNo}`, `PUT /sbpgi/document/{docNo}`, `POST /sbpgi/document/{docNo}/actions` |
-| Report | Filter, preview, export | `GET /sbpgi/report/status-summary`, `GET /sbpgi/report/status-summary/export` |
-| Master | CRUD table, modal, reason, audit | `/operators`, `/sbpgi/master/factors`, `/menu-permissions` |
+| Document List | Search/filter, table, status flag, row click | `GET /sgi/document/tasks`, `GET /sgi/document` |
+| Create Document | Store selector, period, source, save/submit | `POST /sgi/document` |
+| Document Detail | Header, store, new stores, map, history, competitors, factors, attachments, action | `GET /sgi/document/{docNo}`, `PUT /sgi/document/{docNo}`, `POST /sgi/document/{docNo}/actions` |
+| Report | Filter, preview, export | `GET /sgi/report/status-summary`, `GET /sgi/report/status-summary/export` |
+| Master | CRUD table, modal, reason, audit | `/operators`, `/sgi/master/factors`, `/menu-permissions` |
 
 ## 9. Backend Low Level Design
 
@@ -271,18 +271,18 @@ src/modules/incomeGuarantee/
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/v1/dashboard/summary` | Dashboard KPI และกราฟ |
-| `GET` | `/api/v1/sbpgi/document/tasks` | เอกสารรอดำเนินการ |
-| `GET` | `/api/v1/sbpgi/document` | ค้นหาเอกสารที่เกี่ยวข้อง |
-| `GET` | `/api/v1/sbpgi/document/{docNo}` | รายละเอียดเอกสาร 12 ส่วน |
-| `POST` | `/api/v1/sbpgi/document` | สร้างเอกสาร |
-| `PUT` | `/api/v1/sbpgi/document/{docNo}` | บันทึกส่วนย่อย |
-| `POST` | `/api/v1/sbpgi/document/{docNo}/actions` | ส่งผลพิจารณา |
-| `GET` | `/api/v1/sbpgi/document/{docNo}/timeline` | ประวัติการพิจารณา |
-| `POST` | `/api/v1/sbpgi/document/{docNo}/attachments` | แนบไฟล์ |
-| `GET` | `/api/v1/sbpgi/report/status-summary` | Preview รายงาน |
-| `GET` | `/api/v1/sbpgi/report/status-summary/export` | Export Excel (14 คอลัมน์) |
+| `GET` | `/api/v1/sgi/document/tasks` | เอกสารรอดำเนินการ |
+| `GET` | `/api/v1/sgi/document` | ค้นหาเอกสารที่เกี่ยวข้อง |
+| `GET` | `/api/v1/sgi/document/{docNo}` | รายละเอียดเอกสาร 12 ส่วน |
+| `POST` | `/api/v1/sgi/document` | สร้างเอกสาร |
+| `PUT` | `/api/v1/sgi/document/{docNo}` | บันทึกส่วนย่อย |
+| `POST` | `/api/v1/sgi/document/{docNo}/actions` | ส่งผลพิจารณา |
+| `GET` | `/api/v1/sgi/document/{docNo}/timeline` | ประวัติการพิจารณา |
+| `POST` | `/api/v1/sgi/document/{docNo}/attachments` | แนบไฟล์ |
+| `GET` | `/api/v1/sgi/report/status-summary` | Preview รายงาน |
+| `GET` | `/api/v1/sgi/report/status-summary/export` | Export Excel (14 คอลัมน์) |
 | `GET/POST/PUT/DELETE` | `/api/v1/operators` | ผู้ปฏิบัติงาน |
-| `GET/POST/PUT/DELETE` | `/api/v1/sbpgi/master/factors` | ปัจจัยภายนอก |
+| `GET/POST/PUT/DELETE` | `/api/v1/sgi/master/factors` | ปัจจัยภายนอก |
 | `GET/PUT` | `/api/v1/menu-permissions` | สิทธิ์เมนู |
 | `POST` | `/api/v1/integrations/srm/income-guarantee` | Inbound SRM integration, provisional |
 

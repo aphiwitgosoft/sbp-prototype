@@ -85,7 +85,7 @@
           </div>
           <div class="journey-step k2">
             <span class="journey-no">4</span><h3>อนุมัติ 5 ขั้น</h3>
-            <p>Workflow ภายในเดินงาน 06→08→01→02→03 พร้อมส่งกลับและแจ้งอีเมล · บัญชีตรวจผ่านรายงาน SBP Mall (SDD v7.5)</p>
+            <p>Workflow ภายในเดินงาน 06→08→<b>06</b>→01→02→03 พร้อมส่งกลับและแจ้งอีเมล (มติ 2026-09-01 — ขั้น 08 คำนวณเสร็จคืนงานให้ 06 · ปุ่มส่งกลับทุกขั้นชี้ 06) · บัญชีตรวจผ่านรายงาน SBP Mall (SDD v7.5)</p>
             <code>workflow_instance · task</code>
           </div>
           <div class="journey-step out">
@@ -133,7 +133,7 @@
           <rect x="64" y="240" width="284" height="84" rx="10" fill="#f6f8fb" stroke="#c4cdd8" stroke-width="1.5" stroke-dasharray="4 3"/>
           <text x="78" y="262" font-size="12.5" font-weight="600" fill="#8493a5">Auth &amp; RBAC — ใช้ระบบ SBP เดิม</text>
           <rect x="78" y="270" width="120" height="17" rx="8" fill="#fff6e6"/><text x="138" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#b45309">ตัดสินใจ 2026-08-05</text>
-          <text x="78" y="306" font-size="10.5" fill="#8493a5">Cognito + BFF + auth-backend/ABS · ไม่สร้างใน SBPGI</text>
+          <text x="78" y="306" font-size="10.5" fill="#8493a5">Cognito + BFF + auth-backend/ABS · ไม่สร้างใน SGI</text>
 
           <rect x="358" y="240" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#c8a2e8" stroke-width="1.5"/>
           <text x="372" y="262" font-size="12.5" font-weight="600" fill="#2b3440">Document &amp; Compensation Service</text>
@@ -144,7 +144,7 @@
           <text x="666" y="262" font-size="12.5" font-weight="600" fill="#2b3440">Workflow Engine (@srm/glb-workflow)</text>
           <rect x="666" y="270" width="88" height="17" rx="8" fill="#f1ecfe"/><text x="710" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#6d28d9">K2 · SRS 3.1.4</text>
           <rect x="760" y="270" width="130" height="17" rx="8" fill="#e8f0fe"/><text x="825" y="282.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">แทน K2 REST (Job 8b)</text>
-          <text x="666" y="302" font-size="10.5" fill="#5d6b7a">5 ขั้น 06→08→01→02→03 · วงเงิน เกณฑ์เดียว 100,000 · บัญชีนอก flow</text>
+          <text x="666" y="302" font-size="10.5" fill="#5d6b7a">5 ขั้น 06→08→06→01→02→03 · วงเงิน เกณฑ์เดียว 100,000 · บัญชีนอก flow</text>
           <text x="666" y="317" font-size="10" fill="#8493a5">engine จริง = 13 ตาราง · schema sps_store · ชื่อ function รอยืนยัน</text>
 
           <!-- row 2 -->
@@ -195,21 +195,21 @@
         </div>
         <p style="font-size:12.5px;color:var(--muted);margin:12px 2px 0;">
           จุดเปลี่ยนสำคัญ: <b>ไม่มี BPM/K2 engine ภายนอกอีกต่อไป</b> — การเปิดและเดิน workflow ใช้ <b>@srm/glb-workflow</b> ซึ่งเป็น engine ที่ระบบ SBP ปัจจุบันใช้งานจริงอยู่แล้ว (ตัดสินใจ 2026-08-06 · ไม่เขียน engine เอง)
-          — Jobs 7/8/9 เขียนฐานข้อมูลตรงผ่าน Document Service และ Job 8b เปิด workflow ผ่าน <code>POST /sbpgi/workflow/instances</code> ส่วน interface กับระบบภายนอก (QSSI, ALLMAP, IAS, STA) ยังเป็นขอบเขตของทีมอื่น — QSSI/ALLMAP คงกลไกเดิม · IAS/MIS ย้ายไป <b>EAI S3</b> · STA ย้ายไป <b>RabbitMQ</b> (มติ 2026-08-24)
+          — Jobs 7/8/9 เขียนฐานข้อมูลตรงผ่าน Document Service และ Job 8b เปิด workflow ผ่าน <code>POST /sgi/workflow/instances</code> ส่วน interface กับระบบภายนอก (QSSI, ALLMAP, IAS, STA) ยังเป็นขอบเขตของทีมอื่น — QSSI/ALLMAP คงกลไกเดิม · IAS/MIS ย้ายไป <b>EAI S3</b> · STA ย้ายไป <b>RabbitMQ</b> (มติ 2026-08-24)
         </p>
         <div class="rule" style="margin:12px 2px 0;padding:12px 14px;border-left:4px solid #2f6fed;background:#f5f9ff;border-radius:8px;font-size:12.5px;color:#5d6b7a;">
           <b>ข้อเท็จจริงของ Workflow Engine จากฐานข้อมูลจริง (ยืนยัน 2026-08-10 · ที่มา <code>SBP/db-schema-sps_store.md</code> · <code>SBP/db-schema-sps_auth.md</code> · สรุปที่ <code>SBP/SBPGI-vs-existing-system.md</code> §3.1)</b>
           <ul style="margin:8px 0 0;padding-left:18px;line-height:1.75;">
             <li><b>engine มี 13 ตาราง ไม่ใช่ 10</b> — <code>workflow</code> · <code>workflow_version</code> · <code>workflow_state</code> · <code>workflow_status</code> · <code>workflow_event</code> · <code>workflow_route</code> · <code>workflow_group</code> · <code>workflow_group_map</code> · <code>workflow_transaction</code> · <code>workflow_history</code> · <code>workflow_approver</code> · <code>workflow_part</code> · <code>workflow_part_display</code></li>
             <li><b>engine ตัวจริงอยู่ schema <code>sps_store</code> ไม่ใช่ <code>sps_auth</code></b> — สอง schema มีครบ 13 ตารางชื่อเดียวกันแต่คนละชุด/คนละเวอร์ชัน (<code>workflow_state</code> ของ <code>sps_auth</code> 3 คอลัมน์ / <code>sps_store</code> 4 คอลัมน์) · ปริมาณจริง <code>sps_store</code>: <code>workflow_transaction</code> 19,283 แถว · <code>workflow_history</code> 38,010 · <code>workflow_approver</code> 96,542 · ส่วน <code>sps_auth</code> เป็นชุดของ auth-backend (transaction 55 · route 41 · state 10)</li>
-            <li><b>ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:</b> <code>sps_store.workflow_transaction</code> <b>ไม่มี PK และไม่มี index เลย</b> ทั้งที่มี 19,283 แถว (ตัวเดียวกันใน <code>sps_auth</code> มี PK ปกติ) → seq-scan ทุก action · <b>ยังไม่ตัดสิน</b>ว่าจะขอ sign-off เพิ่ม index หรือกันซ้ำฝั่ง SBPGI — ดู <b>DP-2</b></li>
+            <li><b>ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:</b> <code>sps_store.workflow_transaction</code> <b>ไม่มี PK และไม่มี index เลย</b> ทั้งที่มี 19,283 แถว (ตัวเดียวกันใน <code>sps_auth</code> มี PK ปกติ) → seq-scan ทุก action · <b>ยังไม่ตัดสิน</b>ว่าจะขอ sign-off เพิ่ม index หรือกันซ้ำฝั่ง SGI — ดู <b>DP-2</b></li>
             <li><b>✅ API ของ engine — ยึด LLDD ของ lib (ปิดข้อค้าง 2026-08-14):</b> 8 function ตามชีต <b>Detail</b> ของ <code>SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx</code> — <code>initializeWorkflow</code> · <code>eventWorkflow</code> · <code>getPermissionEvents</code> · <code>getHistory</code> · <code>getTransaction</code> · <code>getPendingFlowByUser</code> · <code>getWorkflowsByUser</code> · <code>addPreApprover</code> · <i>Trigger Event</i> เป็นชื่อหัวข้อขั้นตอนภายใน <code>eventWorkflow</code> และ <code>*UseCase</code> เป็น wrapper ของ store-backend ไม่ใช่ API ของ lib</li>
-            <li><b>✅ <code>referenceId</code> ปิดแล้ว 2026-08-17 — ใช้ <code>compensation_documents.id</code> (surrogate)</b> ตามที่ระบบเดิม (cooperation-request · inform-evaluate) ทำจริงทุกจุด · ส่งเป็น string เพราะ <code>sps_store.workflow_transaction.reference_id</code> เป็น <code>varchar(255)</code> · ผลที่ตามมา: แก้ <code>doc_no</code> ภายหลังได้โดย workflow ไม่หลุด link · ⚠️ <b>แต่ยังต้องออกเลขพร้อมตอน INSERT เสมอ</b> — ตารางลูก 6 ตัว (<code>document_new_stores</code> · <code>document_external_factors</code> · <code>document_competitors</code> · <code>document_cost_details</code> · <code>document_attachments</code> · <code>consideration_logs</code>) FK ไป <code>doc_no</code> แบบ <code>NOT NULL</code> จึงบันทึกรายละเอียดเอกสารไม่ได้เลยถ้า <code>doc_no</code> ยังว่าง (Job 8 ออกเลขใน INSERT เดียวกันอยู่แล้ว)</li>
+            <li><b>✅ <code>referenceId</code> ปิดแล้ว 2026-08-17 — ใช้ <code>sgi_compensation_documents.id</code> (surrogate)</b> ตามที่ระบบเดิม (cooperation-request · inform-evaluate) ทำจริงทุกจุด · ส่งเป็น string เพราะ <code>sps_store.workflow_transaction.reference_id</code> เป็น <code>varchar(255)</code> · ผลที่ตามมา: แก้ <code>doc_no</code> ภายหลังได้โดย workflow ไม่หลุด link · ⚠️ <b>แต่ยังต้องออกเลขพร้อมตอน INSERT เสมอ</b> — ตารางลูก 6 ตัว (<code>sgi_document_new_stores</code> · <code>sgi_document_external_factors</code> · <code>sgi_document_competitors</code> · <code>sgi_document_cost_details</code> · <code>sgi_document_attachments</code> · <code>sgi_consideration_logs</code>) FK ไป <code>doc_no</code> แบบ <code>NOT NULL</code> จึงบันทึกรายละเอียดเอกสารไม่ได้เลยถ้า <code>doc_no</code> ยังว่าง (Job 8 ออกเลขใน INSERT เดียวกันอยู่แล้ว)</li>
             <li><b><code>workflow_part</code> / <code>workflow_part_display</code></b> ของ engine คุม READ/WRITE รายส่วนของหน้าจอต่อ state ซึ่ง<b>ทับซ้อน</b>กับกลไก <code>data-editrole</code>/<code>.edit-only</code> ที่ prototype ทำเอง — <b>เป็นข้อค้างตัดสินใจ ยังไม่เปลี่ยนดีไซน์</b></li>
           </ul>
         </div>
         <p style="font-size:12.5px;color:var(--muted);margin:8px 2px 0;">
-          สัญญากลางที่ผูกกับ workflow: ดู <code>LLDD-BE-API-Common-Contracts</code> และ <code>LLDD-FE-Integration-Contracts</code> ก่อน implement ทุกจุดที่เรียก workflow API — <code>POST /sbpgi/document/{docNo}/actions</code> รับ <code>{result, comment}</code> และคืน <code>{nextSection, statusCode, status}</code>; <code>POST /sbpgi/workflow/instances</code> ใช้ service token และ Gen Flow Gate W/Y/N อยู่ที่ BE Workflow Engine
+          สัญญากลางที่ผูกกับ workflow: ดู <code>LLDD-BE-API-Common-Contracts</code> และ <code>LLDD-FE-Integration-Contracts</code> ก่อน implement ทุกจุดที่เรียก workflow API — <code>POST /sgi/document/{docNo}/actions</code> รับ <code>{result, comment}</code> และคืน <code>{nextSection, statusCode, status}</code>; <code>POST /sgi/workflow/instances</code> ใช้ service token และ Gen Flow Gate W/Y/N อยู่ที่ BE Workflow Engine
         </p>
       </div>
 
@@ -220,15 +220,15 @@
 
           <div class="flow-stage"><span>A</span> รับและวิเคราะห์ข้อมูลผลกระทบ · Jobs 2–5</div>
           <div class="tl-item done"><span class="tl-dot"></span>
-            <div class="tl-t">1. คะแนน QSSI รายเดือน <span class="ref" style="background:#eef1f5;color:#64748b;">ไม่อยู่ในขอบเขต SBPGI</span></div>
+            <div class="tl-t">1. คะแนน QSSI รายเดือน <span class="ref" style="background:#eef1f5;color:#64748b;">ไม่อยู่ในขอบเขต SGI</span></div>
             <div class="tl-meta"><b>ตัด Job 1 ImportQSSI ออกแล้ว (2026-08-24)</b> — ระบบ SBP เดิมนำเข้าข้อมูลนี้ลง <code>sps_store.fcs_qssi_score</code> ให้อยู่แล้วผ่าน
-              <code>POST /performance/import-qssi</code> (staging <code>fcs_tmp_qssi_score</code> · 23,958,780 แถว) → <b>SBPGI แค่ <code>SELECT</code> อ่านตารางนั้น</b>
+              <code>POST /performance/import-qssi</code> (staging <code>fcs_tmp_qssi_score</code> · 23,958,780 แถว) → <b>SGI แค่ <code>SELECT</code> อ่านตารางนั้น</b>
               ไม่ต้องสร้าง job นำเข้าเอง ไม่ต้อง migrate และไม่ต้องแตะ constraint/index ของตารางเดิม (ปิดข้อค้าง DP-4 ไปด้วย)<br>
               ผู้ใช้ข้อมูลคือ <b>Job 6</b> ที่ตรวจความครบของคะแนน 6 หมวด (8, 9, 12, 1, 10, 16) ก่อนปล่อยสถานะ INIT</div></div>
 
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">2. นำเข้าคู่ร้านถูกกระทบ + ร้านคู่แข่ง <span class="ref fgi">FGI/FCS · Jobs 2–3</span></div>
-            <div class="tl-meta">ทุกวันที่ 7 เวลา 07:00 จาก ALLMAP (SQL Server) → fgi_impact_stores (กฎ DENY/ON_PROCESS → W/N/P) และ fgi_impact_competitors</div></div>
+            <div class="tl-meta">ทุกวันที่ 7 เวลา 07:00 จาก ALLMAP (SQL Server) → sgi_fgi_impact_stores (กฎ DENY/ON_PROCESS → W/N/P) และ sgi_fgi_impact_competitors</div></div>
 
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">3. ขอยอดขายรายวันจาก IAS <span class="ref fgi">FGI/FCS · Job 4</span></div>
@@ -236,29 +236,29 @@
 
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">4. รับยอดขาย + คำนวณ Growth Rate <span class="ref fgi">FGI/FCS · Job 5</span></div>
-            <div class="tl-meta">16:30 รับ AMS06001I → sales_transactions → คำนวณ sales_diff 4 หน้าต่าง × 15 วัน (outlier |sales_diff| ≥ 50) → sales_status Y/N · ระบบใหม่เพิ่ม review case ที่ growth_rate_diff เป็น NULL (แก้ P1 auto-accept)</div></div>
+            <div class="tl-meta">16:30 รับ AMS06001I → sgi_sales_transactions → คำนวณ sales_diff 4 หน้าต่าง × 15 วัน (outlier |sales_diff| ≥ 50) → sales_status Y/N · ระบบใหม่เพิ่ม review case ที่ growth_rate_diff เป็น NULL (แก้ P1 auto-accept)</div></div>
 
           <div class="flow-stage"><span>B</span> เชื่อม FGI/FCS เข้าสู่ระบบเอกสารและ Workflow</div>
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">5. สร้างเอกสารประกันรายได้อัตโนมัติ <span class="ref mix">FGI/FCS → K2</span> <span class="ref new">เปลี่ยนกลไก</span></div>
-            <div class="tl-meta">Jobs 7/8/9 เขียนฐานข้อมูลตรงผ่าน Document Service — สร้าง compensation_documents (เลขที่ YYYY/xxxxx) + document_new_stores + document_competitors ตรงใน DB โซนเดียวกัน — ไม่มีไฟล์ ไม่มี SFTP ภายใน · เพิ่มเส้นทาง manual: ผู้ใช้สร้างเอกสารเองผ่านหน้า "สร้างเอกสาร" (POST /sbpgi/document) สำหรับเคสที่ batch ไม่ได้สร้าง (ขั้น 15 ของ Approve Flow เดิม)</div></div>
+            <div class="tl-meta">Jobs 7/8/9 เขียนฐานข้อมูลตรงผ่าน Document Service — สร้าง sgi_compensation_documents (เลขที่ YYYY/xxxxx) + sgi_document_new_stores + sgi_document_competitors ตรงใน DB โซนเดียวกัน — ไม่มีไฟล์ ไม่มี SFTP ภายใน · เพิ่มเส้นทาง manual: ผู้ใช้สร้างเอกสารเองผ่านหน้า "สร้างเอกสาร" (POST /sgi/document) สำหรับเคสที่ batch ไม่ได้สร้าง (ขั้น 15 ของ Approve Flow เดิม)</div></div>
 
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">6. เปิด Workflow ตาม Gen Flow Gate <span class="ref mix">FGI/FCS Job 8b → K2</span> <span class="ref new">เปลี่ยนกลไก</span></div>
-            <div class="tl-meta">เกณฑ์คงเดิมทุกข้อ: คู่ร้านผ่านกฎรัศมี ≤1 กม.(กทม./ปริมณฑล) หรือ ≤2 กม.(ต่างจังหวัด) · workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เรียก POST /sbpgi/workflow/instances ด้วย service token; ผ่าน gate ตั้ง Y; fail ถาวร (branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10) ตั้ง N; เฉพาะ distance/juristic/growth เป็น NULL หรือ sales_status ยังไม่พร้อมจึงคง W เพื่อ rerun</div></div>
+            <div class="tl-meta">เกณฑ์คงเดิมทุกข้อ: คู่ร้านผ่านกฎรัศมี ≤1 กม.(กทม./ปริมณฑล) หรือ ≤2 กม.(ต่างจังหวัด) · workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N} — เรียก POST /sgi/workflow/instances ด้วย service token; ผ่าน gate ตั้ง Y; fail ถาวร (branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10) ตั้ง N; เฉพาะ distance/juristic/growth เป็น NULL หรือ sales_status ยังไม่พร้อมจึงคง W เพื่อ rerun</div></div>
 
           <div class="flow-stage"><span>C</span> ผู้ใช้ตรวจสอบและอนุมัติ · Section 06–03</div>
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">6b. จุดเข้า flow ตามประเภทเคส (ระบบตัดสินอัตโนมัติ) <span class="ref new">To-Be 12/02/2026</span></div>
-            <div class="tl-meta">เอกสารไม่ได้เริ่มที่ขั้น 06 เสมอไป — ① <b>เปิดเรื่องใหม่</b> (<code>last_compensate_seq_no</code> = 1) เริ่มที่ <b>06</b> ตาม flow เดิม · ② <b>ชดเชยต่อเนื่อง</b> (<code>last_compensate_seq_no</code> &gt; 1 และ <code>flag_action</code> = Y) ระบบ <b>Auto Approve</b> การเปิดเรื่องแล้วส่งตรงเข้า <b>08</b> ข้ามขั้น 06 · ③ <b>ยอดชดเชย = 0</b> เช็คจำนวนงวดที่ยอดเป็น 0 ติดกัน: <b>≤ 3 เดือน</b> ส่งอัตโนมัติไป <b>01</b> (ข้ามทั้ง 06 และ 08) · <b>&gt; 3 เดือน (เดือนที่ 4)</b> <b>หยุดชดเชยประกันรายได้อัตโนมัติ</b> ปิดเอกสารทันที · ทุกเส้นทางอัตโนมัติบันทึก consideration_logs ด้วยผู้ดำเนินการ SYSTEM · ⚠️ ต้องเติมคอลัมน์ gap F8 (fgi_impact_processes) + ตาราง gap F1 (fgi_impact_compensations) ก่อนจึงทำได้จริง</div></div>
+            <div class="tl-meta">เอกสารไม่ได้เริ่มที่ขั้น 06 เสมอไป — ① <b>เปิดเรื่องใหม่</b> (<code>last_compensate_seq_no</code> = 1) เริ่มที่ <b>06</b> ตาม flow เดิม · ② <b>ต่อเนื่อง · ยอดชดเชย &gt; 0</b> (<code>last_compensate_seq_no</code> &gt; 1 และ <code>flag_action</code> = Y) ระบบ <b>Auto Approve</b> การเปิดเรื่องแล้วส่งตรงเข้า <b>08</b> ข้ามขั้น 06 · ③ <b>ต่อเนื่อง · ยอดชดเชย = 0</b> เช็คจำนวนงวดที่ยอดเป็น 0 ติดกัน: <b>≤ 3 เดือน</b> ส่งอัตโนมัติไป <b>08</b> เหมือนกัน (<b>มติ 2026-09-01</b> — เดิมส่งไป 01) · <b>&gt; 3 เดือน (เดือนที่ 4)</b> <b>หยุดชดเชยประกันรายได้อัตโนมัติ</b> ปิดเอกสารทันที · ทุกเส้นทางอัตโนมัติบันทึก sgi_consideration_logs ด้วยผู้ดำเนินการ SYSTEM · ⚠️ ต้องเติมคอลัมน์ gap F8 (sgi_fgi_impact_processes) + ตาราง gap F1 (sgi_fgi_impact_compensations) ก่อนจึงทำได้จริง</div></div>
 
           <div class="tl-item active"><span class="tl-dot"></span>
-            <div class="tl-t">7. ขั้น 1–2: ฝ่าย SBP DSA ตรวจสอบ + คำนวณเงินชดเชย <span class="ref k2">K2 · Section 06 → 08</span></div>
-            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · ส่งพิจารณาด้วย POST /sbpgi/document/{docNo}/actions payload เดียว {result, comment}; result เป็น 6-enum verbatim · บันทึก consideration_logs + SBPGI เรียก sendEmail() ของ email-lib เอง โดยใช้เลข template จาก sps_store.workflow_route.email_id (ปิด DP-5 · 2026-08-14 · ไม่มีตาราง status_email_rules) · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
+            <div class="tl-t">7. ขั้น 1–2: ฝ่าย SBP DSA ตรวจสอบ + คำนวณเงินชดเชย <span class="ref k2">K2 · Section 06 → 08 → 06</span></div>
+            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · ส่งพิจารณาด้วย POST /sgi/document/{docNo}/actions payload เดียว {result, comment}; result เป็น 7-enum verbatim (เพิ่ม “คำนวณเงินชดเชยเรียบร้อย” ของขั้น 08 เมื่อ 2026-09-01 · ขั้น 08 มีปุ่มเดียวและคืนงานให้ 06) · บันทึก sgi_consideration_logs + SGI เรียก sendEmail() ของ email-lib เอง โดยใช้เลข template จาก sps_store.workflow_route.email_id (ปิด DP-5 · 2026-08-14 · ไม่มีตาราง status_email_rules) · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">8. ขั้น 3: หน่วยงานส่งเสริมธุรกิจฯ ปรับข้อมูล <span class="ref k2">K2 · Section 01</span></div>
-            <div class="tl-meta">แก้ไขร้านเปิดใหม่ / ร้านคู่แข่ง / ปัจจัยภายนอก (%ชดเชยรวมต้องเท่ากับ 100%) แล้วส่งพิจารณาต่อ หรือส่งกลับ (back-flow)</div></div>
+            <div class="tl-meta">แก้ไขร้านเปิดใหม่ / ร้านคู่แข่ง / ปัจจัยภายนอก (%ชดเชยรวมต้องเท่ากับ 100%) แล้วส่งพิจารณาต่อ หรือส่งกลับ (back-flow — <b>ทุกขั้นส่งกลับมาที่ 06 ฝ่าย SBP DSA เสมอ · มติ 2026-09-01</b>)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">9. ขั้น 4–5: GM → AVP ตามวงเงิน <span class="ref k2">K2 · Section 02 → 03</span></div>
@@ -271,11 +271,11 @@
           <div class="flow-stage"><span>D</span> ส่งผลออกและเฝ้าระวัง ACK · Jobs 6 และ 10</div>
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">11. ส่งผลชดเชยเข้า Statement <span class="ref fgi">FGI/FCS · Job 6</span></div>
-            <div class="tl-meta">ทุกวัน 17:00 · sync สถานะ 10 ขั้น → ตรวจ QSSI ครบ 6 หมวด (8,9,12,1,10,16) → เขียน outbox (<code>interface_transactions</code> READY) ใน transaction เดียวกับ sync → publish RabbitMQ <code>sta.compensation.result</code> (JSON UTF-8 14 ฟิลด์) ไป STA แล้ว update เป็น SENT · ระบบใหม่แก้บั๊ก purge tracking (E20)</div></div>
+            <div class="tl-meta">ทุกวัน 17:00 · sync สถานะ 10 ขั้น → ตรวจ QSSI ครบ 6 หมวด (8,9,12,1,10,16) → เขียน outbox (<code>sgi_interface_transactions</code> READY) ใน transaction เดียวกับ sync → publish RabbitMQ <code>sta.compensation.result</code> (JSON UTF-8 14 ฟิลด์) ไป STA แล้ว update เป็น SENT · ระบบใหม่แก้บั๊ก purge tracking (E20)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">12. เฝ้าระวัง ACK จาก STA <span class="ref fgi">FGI/FCS · Job 10</span> <span class="ref new">เพิ่ม callback</span></div>
-            <div class="tl-meta">เดิม: watchdog อ่าน tracking ทุก 07:00 แล้วส่งเมลเมื่อค้าง ≥ 1 วัน · ใหม่: เพิ่มเส้น POST /sbpgi/interface/sta/ack ให้ STA ยิงตอบกลับตรง — watchdog ยังคงไว้เป็น safety net</div></div>
+            <div class="tl-meta">เดิม: watchdog อ่าน tracking ทุก 07:00 แล้วส่งเมลเมื่อค้าง ≥ 1 วัน · ใหม่: เพิ่มเส้น POST /sgi/interface/sta/ack ให้ STA ยิงตอบกลับตรง — watchdog ยังคงไว้เป็น safety net</div></div>
 
         </div>
       </div>
@@ -312,12 +312,12 @@
           </tbody>
         </table></div>
         <p style="font-size:12.5px;color:var(--muted);margin:8px 0 16px;">
-          เก็บที่ <code>fgi_impact_processes.datasource</code> — <b>ไม่เปลี่ยนจุดเข้า workflow</b> บอกแค่ว่าใครคีย์ข้อมูล (SDD GI สไลด์ 17 · 47 · 49)
+          เก็บที่ <code>sgi_fgi_impact_processes.datasource</code> — <b>ไม่เปลี่ยนจุดเข้า workflow</b> บอกแค่ว่าใครคีย์ข้อมูล (SDD GI สไลด์ 17 · 47 · 49)
         </p>
 
         <h3 style="font-size:14.5px;margin:4px 0 8px;">มอบหมายเจ้าของงานอัตโนมัติ + ร้านกระทบเพิ่ม</h3>
         <div class="rules">
-          <div class="rule"><b>เคสต่อเนื่อง</b>ระบบส่งงานให้ <b>เจ้าหน้าที่ SBP DSA คนเดิม</b> อัตโนมัติ ไม่ต้องแจกงานด้วยมือ — resolve จาก <code>consideration_logs.consider_by</code> ของเอกสารรอบก่อน แล้วผูกด้วย <code>addPreApprover()</code></div>
+          <div class="rule"><b>เคสต่อเนื่อง</b>ระบบส่งงานให้ <b>เจ้าหน้าที่ SBP DSA คนเดิม</b> อัตโนมัติ ไม่ต้องแจกงานด้วยมือ — resolve จาก <code>sgi_consideration_logs.consider_by</code> ของเอกสารรอบก่อน แล้วผูกด้วย <code>addPreApprover()</code></div>
           <div class="rule"><b>เห็นควรไม่ชดเชยรายได้</b>เอกสารจบในเดือนนั้น · เดือนถัดไประบบดึงร้านเข้ามาเป็น<b>งานใบใหม่</b>พร้อมเจ้าของงานคนเดิม (SDD สไลด์ 46 · 48 · 64)</div>
           <div class="rule"><b>ร้านอื่นเปิดกระทบเพิ่ม</b>เข้าเอกสารได้ 2 ทาง — ระบบ default ให้อัตโนมัติจาก ALLMAP (<code>source_system = ALLMAP</code>) หรือเจ้าหน้าที่คีย์เอง (<code>USER</code>) · เพิ่มร้านเมื่อไรต้อง<b>เกลี่ย %ชดเชยใหม่ให้รวมเป็น 100%</b> ทั้งเอกสาร</div>
           <div class="rule"><b>พนักงานลาออก</b>ยังต้องเปิด SR เพื่อแก้ชื่อผู้ดำเนินการ (SDD สไลด์ 48)</div>
@@ -335,7 +335,7 @@
             <tbody>
               <tr><td>อีเมลเตือนงานค้างรายสัปดาห์</td>
                 <td class="int-old">ส่งอีเมลแจ้งเตือนผู้ดำเนินการ ทุกวันจันทร์ 10:00 แทบทุกขั้น (จุด 10.1, 20.2, 30.1, 70.1, 80.1, 110.2)</td>
-                <td class="int-new">email-lib กลาง (sendEmail) เพิ่ม reminder job รายสัปดาห์ อ่านงานค้างจาก <code>sps_store.workflow_transaction</code>/<code>workflow_approver</code> ของ @srm/glb-workflow (ตาราง <code>workflow_tasks</code> ถูกตัดไปแล้ว) · ผู้รับ = เจ้าของงานค้าง (<code>business_user.email</code>) · เมลกลุ่มนี้ไม่ใช่ transition จึงไม่มี route ให้แขวน <code>email_id</code> — เก็บเลข template ที่ <code>mas_param</code> แล้ว SBPGI เรียก <code>sendEmail()</code> เอง (ปิด DP-5 · 2026-08-14) · รอบเวลาแก้ได้ใน config</td>
+                <td class="int-new">email-lib กลาง (sendEmail) เพิ่ม reminder job รายสัปดาห์ อ่านงานค้างจาก <code>sps_store.workflow_transaction</code>/<code>workflow_approver</code> ของ @srm/glb-workflow (ตาราง <code>workflow_tasks</code> ถูกตัดไปแล้ว) · ผู้รับ = เจ้าของงานค้าง (<code>business_user.email</code>) · เมลกลุ่มนี้ไม่ใช่ transition จึงไม่มี route ให้แขวน <code>email_id</code> — เก็บเลข template ที่ <code>mas_param</code> แล้ว SGI เรียก <code>sendEmail()</code> เอง (ปิด DP-5 · 2026-08-14) · รอบเวลาแก้ได้ใน config</td>
                 <td>โซน B/C · ไม่แตะ FGI/FCS</td></tr>
               <tr><td>Escalation งานค้าง 30/45/60 วัน</td>
                 <td class="int-old">ส่งต่อไปยัง GM OPT เมื่องานค้างครบ 30, 45, 60 วัน (จุด 20.3)</td>
@@ -343,7 +343,7 @@
                 <td>โซน B · ไม่แตะ FGI/FCS</td></tr>
               <tr><td>สร้างเอกสารแบบ manual</td>
                 <td class="int-old">ขั้น 15 (lane admin): กรอกข้อมูลร้านเปิดใหม่/ร้านถูกกระทบเอง เมื่อระบบคำนวณให้ไม่ได้</td>
-                <td class="int-new">สร้างข้อมูลต้นทางที่ระบบ FS → รอ SBP Statement ส่งกลับ (~1 วัน) → POST /sbpgi/document ลงตารางชุดเดียวกับเส้นอัตโนมัติ · ไม่มีฟอร์มสร้างเอกสารใน FE (ตัดสินใจ 2026-08-06 — k2-create เหลือเป็นหน้าอธิบายกระบวนการ)</td>
+                <td class="int-new">สร้างข้อมูลต้นทางที่ระบบ FS → รอ SBP Statement ส่งกลับ (~1 วัน) → POST /sgi/document ลงตารางชุดเดียวกับเส้นอัตโนมัติ · ไม่มีฟอร์มสร้างเอกสารใน FE (ตัดสินใจ 2026-08-06 — k2-create เหลือเป็นหน้าอธิบายกระบวนการ)</td>
                 <td>โซน B · ไม่แตะ FGI/FCS</td></tr>
               <tr><td>เงื่อนไขร้านก่อน/หลัง 1/10/2014</td>
                 <td class="int-old">โน้ต 10.1–10.4 แยกจุดเริ่มเอกสารตามวันที่โอนร้านแฟรนไชส์ และกรณีไม่มีข้อมูลให้คำนวณ</td>

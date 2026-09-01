@@ -24,7 +24,7 @@
  code{background:#f1f5f9;padding:1px 6px;border-radius:5px;font-size:12px}
 </style></head><body>
 <header>
-  <h1>Flow K2 — ชุดแผนภาพ Workflow อนุมัติประกันรายได้ (SBPGI)</h1>
+  <h1>Flow K2 — ชุดแผนภาพ Workflow อนุมัติประกันรายได้ (SGI)</h1>
   <p>สร้างจาก <code>k2-flow.html</code> · <code>workflow.md</code> · <code>workflow_status_document.md</code> —
      แยกเป็น 4 แผนภาพตามประเด็น เพื่อให้อ่านง่ายกว่ารวมไว้รูปเดียว<br>
      regenerate: <code>python3 tools/build_k2_flow_diagram.py</code> · ห้ามแก้ไฟล์ใน <code>output/</code> ด้วยมือ</p>
@@ -34,7 +34,7 @@
   <section class="fig" id="01-swimlane">
     <div class="fig-h"><h2>Swimlane หลัก — Workflow 5 ขั้น</h2>
       <div class="dl"><a href="01-swimlane.svg" download>SVG</a><a href="01-swimlane.png" download>PNG</a></div></div>
-    <p class="sub">ภาพรวมทั้งกระบวนการ: จุดเข้าตามประเภทเคส → 06 → 08 → 01 → 02 → 03 → จบ · เส้นส่งกลับ · ปลายทางบัญชี/SAP</p>
+    <p class="sub">ภาพรวมทั้งกระบวนการ: จุดเข้าตามประเภทเคส → 06 → 08 → 06 → 01 → 02 → 03 → จบ · เส้นส่งกลับ (ทุกขั้นกลับ 06) · ปลายทางบัญชี/SAP</p>
     <div class="scroll"><img src="01-swimlane.png" alt="Swimlane หลัก — Workflow 5 ขั้น" width="1960" height="1394"></div>
   </section>
   <section class="fig" id="02-entry-gate">
@@ -57,7 +57,7 @@
   </section>
 </main>
 <footer>
-  <b>กติกาที่แผนภาพชุดนี้สะท้อน</b> — workflow 5 ขั้น <code>06 → 08 → 01 → 02 → 03</code> · สถานะเอกสาร 6 ค่า (ตัดขั้นบัญชี 04/05 ตาม SDD v7.5) ·
+  <b>กติกาที่แผนภาพชุดนี้สะท้อน</b> — workflow 5 ขั้น <code>06 → 08 → 06 → 01 → 02 → 03</code> (มติ 2026-09-01 — ขั้น 08 คำนวณเสร็จส่งยอดกลับ 06 · ปุ่มส่งกลับทุกขั้นชี้ 06) · สถานะเอกสาร 6 ค่า (ตัดขั้นบัญชี 04/05 ตาม SDD v7.5) ·
   วงเงินเกณฑ์เดียว <b>100,000</b> บาท/รายการ (มติประชุม 2026-08-18 — &lt; 100,000 จบที่ GM · ≥ 100,000 ส่ง AVP) ·
   เห็นควรไม่ชดเชยที่ขั้น 01/02 จบทันที · 3 จุดเข้าตามประเภทเคส (ผัง To-Be 12/02/2026) ·
   auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48)

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""สร้าง ER Diagram ฉบับสมบูรณ์ของ SBPGI → output/diagrams/
+"""สร้าง ER Diagram ฉบับสมบูรณ์ของ SGI → output/diagrams/
 
 ผลลัพธ์
-  output/diagrams/er-sbpgi-complete.svg     ภาพเวกเตอร์ (แหล่งจริงของรูป)
-  output/diagrams/er-sbpgi-complete.html    หน้าโต้ตอบ (zoom/pan · คลิกตารางเพื่อไล่เส้น · ค้นหา · ภาคผนวกตารางทั้งหมด)
-  output/diagrams/er-sbpgi-complete.md      รายการความสัมพันธ์ + mermaid erDiagram
-  output/diagrams/er-sbpgi-complete.png     ภาพ raster (ถ้ามี Chrome — สคริปต์เรนเดอร์ให้เอง)
+  output/diagrams/er-sgi-complete.svg     ภาพเวกเตอร์ (แหล่งจริงของรูป)
+  output/diagrams/er-sgi-complete.html    หน้าโต้ตอบ (zoom/pan · คลิกตารางเพื่อไล่เส้น · ค้นหา · ภาคผนวกตารางทั้งหมด)
+  output/diagrams/er-sgi-complete.md      รายการความสัมพันธ์ + mermaid erDiagram
+  output/diagrams/er-sgi-complete.png     ภาพ raster (ถ้ามี Chrome — สคริปต์เรนเดอร์ให้เอง)
 
 ใช้:  python3 tools/build_er_diagram.py [--no-png]
 """
@@ -24,7 +24,7 @@ from er_model import CROSS, FORBIDDEN, GROUPS, KEY_COLS, NOTES, WARNINGS  # noqa
 from er_sources import ROOT, Table, load_all  # noqa: E402
 
 OUT = ROOT / "output" / "diagrams"
-STEM = "er-sbpgi-complete"
+STEM = "er-sgi-complete"
 
 # ------------------------------------------------------------------ ขนาด/ระยะ
 
@@ -45,8 +45,8 @@ TYPE_FS = 8.9
 
 # Data Spine ตาม database.md — ลำดับ ID ที่ใช้ trace หนึ่งรายการผลกระทบตั้งแต่ต้นจนจบ
 SPINE = {
-    "sbpgi.fgi_impact_processes": "1",
-    "sbpgi.compensation_documents": "2",
+    "sgi.sgi_fgi_impact_processes": "1",
+    "sgi.sgi_compensation_documents": "2",
     "sps_store.workflow_transaction": "3",
     "sps_store.workflow_approver": "4",
     "sps_store.business_user": "5",
@@ -396,8 +396,8 @@ def _box_svg(key: str, b: Box, warning: str) -> str:
     )
     if t.schema != g["schema"]:
         meta = f"reuse จาก {t.schema} — ห้าม CREATE ใหม่"
-    elif t.schema == "sbpgi":
-        meta = f"sbpgi · โซน {g['key']} (ตารางใหม่)"
+    elif t.schema == "sgi":
+        meta = f"sgi · โซน {g['key']} (ตารางใหม่)"
     else:
         meta = t.schema
     if t.rows and t.rows > 0:
@@ -440,7 +440,7 @@ def _box_svg(key: str, b: Box, warning: str) -> str:
         )
     if b.hidden:
         rows.append(
-            f'<text class="foot" x="{b.x+9:.0f}" y="{b.y+b.h-4:.0f}">+{b.hidden} คอลัมน์ที่ไม่ได้ใช้ใน SBPGI</text>'
+            f'<text class="foot" x="{b.x+9:.0f}" y="{b.y+b.h-4:.0f}">+{b.hidden} คอลัมน์ที่ไม่ได้ใช้ใน SGI</text>'
         )
     if warning:
         rows.append(
@@ -482,18 +482,18 @@ def _notes_card(groups: list[dict], canvas_w: float) -> str:
 
 
 def _title_block(w: float, boxes: dict[str, Box], edges: list[dict], schemas: dict) -> str:
-    n_sbpgi = sum(1 for k in boxes if k.startswith("sbpgi."))
+    n_sgi = sum(1 for k in boxes if k.startswith("sgi."))
     n_store = sum(1 for k in boxes if k.startswith("sps_store."))
     n_auth = sum(1 for k in boxes if k.startswith("sps_auth."))
     kinds = {k: sum(1 for e in edges if e["kind"] == k) for k in KIND_STYLE}
     x = CANVAS_PAD
     p = [
-        f'<text class="h1" x="{x:.0f}" y="{58:.0f}">ER Diagram ฉบับสมบูรณ์ · ระบบประกันรายได้ SBPGI</text>',
+        f'<text class="h1" x="{x:.0f}" y="{58:.0f}">ER Diagram ฉบับสมบูรณ์ · ระบบประกันรายได้ SGI</text>',
         f'<text class="h2" x="{x:.0f}" y="{84:.0f}">'
         f'FGI/FCS pipeline + K2 เอกสาร/workflow + master ใช้ร่วม + ฐานข้อมูลระบบ SBP เดิม '
         f'(schema sps_store · sps_auth) — เชื่อมความสัมพันธ์ครบทุกเส้น</text>',
         f'<text class="h2" x="{x:.0f}" y="{106:.0f}">'
-        f'{n_sbpgi} ตาราง SBPGI · {n_store} ตาราง sps_store · {n_auth} ตาราง sps_auth · '
+        f'{n_sgi} ตาราง SGI · {n_store} ตาราง sps_store · {n_auth} ตาราง sps_auth · '
         f'{len(edges)} ความสัมพันธ์ '
         f'(FK {kinds["fk"]} · logical {kinds["logical"]} · ข้าม service {kinds["api"]} · snapshot {kinds["snapshot"]}) · '
         f'สร้างจาก LLDD-Database.md + SBP/db-schema-*.md (ดึงฐานจริง 07/08/2026)</text>',
@@ -519,7 +519,7 @@ def _title_block(w: float, boxes: dict[str, Box], edges: list[dict], schemas: di
         p.append(f'<text class="lgb" x="{lx+56:.0f}" y="{yy:.0f}">{esc(name)}</text>')
         p.append(f'<text class="lg" x="{lx+156:.0f}" y="{yy:.0f}">{esc(desc)}</text>')
     p.append(f'<text class="lgb" x="{lx:.0f}" y="{ly+82:.0f}">Data Spine — ID ที่ใช้ไล่หนึ่งรายการผลกระทบตั้งแต่ต้นจนจบ '
-             f'<tspan class="lg">① impact_process_id → ② compensation_documents.id (= referenceId ที่ส่งให้ engine) '
+             f'<tspan class="lg">① impact_process_id → ② sgi_compensation_documents.id (= referenceId ที่ส่งให้ engine) '
              f'→ ③ transaction_id → ④ approver_id → ⑤ ผู้ปฏิบัติงาน (business_user)</tspan></text>')
     p.append(f'<text class="lg" x="{lx:.0f}" y="{ly+102:.0f}">'
              f'สัญลักษณ์ปลายเส้นเป็น crow\'s foot (ตีนกา = ด้าน "หลายแถว" · ขีดเดียว = ด้าน "หนึ่งแถว") · '
@@ -564,12 +564,12 @@ def render_html(svg: str, boxes: dict[str, Box], edges: list[dict], schemas: dic
             f"<h3>schema <code>{schema}</code> — {len(tabs)} ตาราง/วิว "
             f"(บนรูป {sum(1 for k in drawn if k.startswith(schema + '.'))})</h3>"
             f"<table class='cat'><thead><tr><th>ตาราง</th><th>คอลัมน์</th><th>PK</th>"
-            f"<th>แถว</th><th>บนรูป</th><th>หมายเหตุ (ใช้ใน SBPGI)</th></tr></thead><tbody>{rows}</tbody></table>"
+            f"<th>แถว</th><th>บนรูป</th><th>หมายเหตุ (ใช้ใน SGI)</th></tr></thead><tbody>{rows}</tbody></table>"
         )
     return f"""<!doctype html>
 <html lang="th"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ER Diagram ฉบับสมบูรณ์ · SBPGI</title>
+<title>ER Diagram ฉบับสมบูรณ์ · SGI</title>
 <style>
 *{{box-sizing:border-box}}
 body{{margin:0;background:#eef2f7;font-family:"Noto Sans Thai","Sarabun",system-ui,-apple-system,sans-serif;color:#0f172a}}
@@ -605,7 +605,7 @@ tr.on td{{background:#ecfdf5}}
 #tail{{background:#fff;padding:20px 26px;border-top:2px solid #cbd5e1}}
 </style></head><body>
 <header>
-<b>ER Diagram ฉบับสมบูรณ์ · SBPGI</b>
+<b>ER Diagram ฉบับสมบูรณ์ · SGI</b>
 <span style="color:#64748b;font-size:12px">{len(boxes)} ตาราง · {len(edges)} ความสัมพันธ์</span>
 <input id="q" placeholder="ค้นหาตาราง/คอลัมน์…" size="22">
 <button data-z="0.8">−</button><button data-z="1.25">+</button><button data-z="fit">พอดีจอ</button><button data-z="1">100%</button>
@@ -620,7 +620,7 @@ tr.on td{{background:#ecfdf5}}
 <table><thead><tr><th>จาก</th><th>ความสัมพันธ์</th><th>ไป</th><th>ชนิด</th><th>ความหมาย</th><th>สถานะ</th><th>หลักฐาน</th></tr></thead>
 <tbody>{rel_rows}</tbody></table>
 <h2>ภาคผนวก — ตารางทั้งหมดของฐานข้อมูลระบบ SBP เดิม</h2>
-<p style="font-size:12.5px;color:#475569">แถวเขียว = ตารางที่ปรากฏบนรูป · ที่เหลือคือตารางอื่นของ schema เดียวกันที่ SBPGI ไม่ได้ใช้</p>
+<p style="font-size:12.5px;color:#475569">แถวเขียว = ตารางที่ปรากฏบนรูป · ที่เหลือคือตารางอื่นของ schema เดียวกันที่ SGI ไม่ได้ใช้</p>
 {''.join(cat)}
 </div>
 <script>
@@ -679,15 +679,15 @@ document.getElementById('q').oninput=e=>{{
 
 def render_md(boxes: dict[str, Box], edges: list[dict], schemas: dict) -> str:
     L: list[str] = []
-    L.append("# ER Diagram ฉบับสมบูรณ์ — SBPGI + ฐานข้อมูลระบบ SBP เดิม\n")
+    L.append("# ER Diagram ฉบับสมบูรณ์ — SGI + ฐานข้อมูลระบบ SBP เดิม\n")
     L.append("> สร้างอัตโนมัติด้วย `python3 tools/build_er_diagram.py` — **ห้ามแก้ไฟล์นี้ด้วยมือ**  ")
     L.append("> แหล่งข้อมูล: `LLDD/md/LLDD-Database.md` (DDL 20 ตาราง) · `SBP/db-schema-sps_store.md` · "
              "`SBP/db-schema-sps_auth.md` (ดึงฐานจริง 07/08/2026) · `database.md` (Cross-System Keys)  ")
-    L.append("> รูป: `er-sbpgi-complete.svg` (เวกเตอร์) · `er-sbpgi-complete.png` · "
-             "`er-sbpgi-complete.html` (โต้ตอบได้ · มีภาคผนวกตารางครบทุกตาราง)\n")
+    L.append("> รูป: `er-sgi-complete.svg` (เวกเตอร์) · `er-sgi-complete.png` · "
+             "`er-sgi-complete.html` (โต้ตอบได้ · มีภาคผนวกตารางครบทุกตาราง)\n")
 
-    n = {s: sum(1 for k in boxes if k.startswith(s + ".")) for s in ("sbpgi", "sps_store", "sps_auth")}
-    L.append(f"**บนรูป:** {len(boxes)} ตาราง ({n['sbpgi']} SBPGI · {n['sps_store']} sps_store · "
+    n = {s: sum(1 for k in boxes if k.startswith(s + ".")) for s in ("sgi", "sps_store", "sps_auth")}
+    L.append(f"**บนรูป:** {len(boxes)} ตาราง ({n['sgi']} SGI · {n['sps_store']} sps_store · "
              f"{n['sps_auth']} sps_auth) · {len(edges)} ความสัมพันธ์\n")
 
     for g in GROUPS:
@@ -781,7 +781,7 @@ def main() -> None:
     (OUT / f"{STEM}.md").write_text(render_md(boxes, edges, schemas), encoding="utf-8")
 
     print(f"ตาราง {len(boxes)} · ความสัมพันธ์ {len(edges)} · ผืนผ้าใบ {w:.0f}×{h:.0f}")
-    for s in ("sbpgi", "sps_store", "sps_auth"):
+    for s in ("sgi", "sps_store", "sps_auth"):
         print(f"  {s:10s} {sum(1 for k in boxes if k.startswith(s + '.')):3d} ตาราง")
     print(f"  → {OUT / (STEM + '.svg')}")
     print(f"  → {OUT / (STEM + '.html')}")

@@ -14,6 +14,18 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
+### 1.1 เอกสาร LLDD ที่เกี่ยวข้อง
+
+ตารางนี้สร้างจาก endpoint และตารางที่เอกสารฉบับนี้ประกาศไว้จริง — อ่านฉบับที่อยู่ในตารางก่อนลงมือ เพื่อไม่ให้สัญญา request/response หรือชื่อคอลัมน์หลุดจากกัน
+
+| ความสัมพันธ์ | เอกสาร LLDD | เกี่ยวข้องตรงไหน |
+| --- | --- | --- |
+| ใช้ endpoint ของ | **LLDD-BE-API-Document-Detail-Aggregate** | `GET /api/v1/sgi/document/{docNo}` |
+| ใช้ endpoint ของ | **LLDD-BE-API-Document-Workflow-Actions** | `POST /api/v1/sgi/document/{docNo}/actions` |
+| สัญญากลาง | **LLDD-BE-API-Common-Contracts** | envelope `{success,data}` · error code · pagination · รูปแบบวันที่/เลขเอกสาร |
+| สัญญากลาง | **LLDD-FE-Integration-Contracts** | API client · auth header · error mapping · RBAC/menu gating ฝั่ง FE |
+| ต้องจบก่อน (ลำดับงาน) | **LLDD-FE-Document-Detail** | เป็นฉบับต้นทางของสัญญา/โครงที่ฉบับนี้อ้าง |
+
 ## 2. Screen / Functional Scope
 
 - Role profile P-02 - GM ส่งเสริมธุรกิจฯ
@@ -26,11 +38,21 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ไม่มีภาพหน้าจอสำหรับหัวข้อนี้ — เป็นเอกสารฝั่ง Backend/Batch ที่ไม่มี UI (ภาพหน้าจอทั้งหมดอยู่ในเอกสารชุด FE)
 
-## 4. Implementation Flow Diagram (Reference)
+## 4. Implementation Flow & Sequence Diagram (Reference)
+
+### 4.1 Implementation Flow (ลำดับขั้นการทำงาน)
 
 ![รูปที่ 1: Implementation flow reference: LLDD FE - Document Detail Role 02 GM Business Promotion](../../assets/flows/FE-LLDD-FE-Document-Detail-Role-02-GM-Business-Promotion.png)
 
 _รูปที่ 1: Implementation flow reference: LLDD FE - Document Detail Role 02 GM Business Promotion_
+
+### 4.2 Sequence Diagram (ใครคุยกับใคร ลำดับไหน)
+
+ผู้แสดงและลำดับข้อความในภาพนี้สร้างจาก endpoint ในหัวข้อ 7 และตารางในหัวข้อ Reference DB Mapping ของเอกสารฉบับนี้เอง จึงตรงกับสัญญาเสมอ
+
+![รูปที่ 2: Sequence diagram: LLDD FE - Document Detail Role 02 GM Business Promotion](../../assets/flows/FE-LLDD-FE-Document-Detail-Role-02-GM-Business-Promotion-sequence.png)
+
+_รูปที่ 2: Sequence diagram: LLDD FE - Document Detail Role 02 GM Business Promotion_
 
 ## 5. Field, Format, and Validation
 
@@ -92,11 +114,11 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | --- | --- |
 | เห็นควรชดเชย | comment optional |
 | เห็นควรไม่ชดเชย | comment ตาม actionOptions.requireComment |
-| ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP | comment ตาม actionOptions.requireComment |
+| ส่งกลับฝ่าย SBP DSA | comment ตาม actionOptions.requireComment — มติ 2026-09-01 (เดิมส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP) |
 
 ### 5.6 API Response Example
 
-#### GET /api/v1/sbpgi/document/{docNo} response
+#### GET /api/v1/sgi/document/{docNo} response
 
 ```json
 {
@@ -131,8 +153,8 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
       "requireComment": false
     },
     {
-      "value": "ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP",
-      "label": "ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP",
+      "value": "ส่งกลับฝ่าย SBP DSA",
+      "label": "ส่งกลับฝ่าย SBP DSA",
       "requireComment": false
     }
   ]
@@ -161,33 +183,33 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/sbpgi/document/{docNo}; POST /api/v1/sbpgi/document/{docNo}/actions |
+| Input | GET /api/v1/sgi/document/{docNo}; POST /api/v1/sgi/document/{docNo}/actions |
 | Progress | Load document detail; Apply visibleSections and editableSections; Render fields/actions for this role only; Validate popup text |
-| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / consideration_logs / workflow_history ของ engine) |
+| Output | ไม่มีตารางที่เอกสารนี้เขียนเอง — output คือ response ตาม envelope กลาง `{success, data}` และร่องรอยที่ตรวจย้อนได้ (log / sgi_consideration_logs / workflow_history ของ engine) |
 
 ### 5.90 Document Detail Role 02 GM Business Promotion Implementation Steps
 
 | Step | Implementation detail | Check |
 | --- | --- | --- |
-| Load exact profile | เรียก GET /api/v1/sbpgi/document/{docNo} และยืนยัน roleProfileCode=P-02, statusCode=02 ก่อน render action state | profile mismatch ต้อง fail closed; ไม่ใช้ role switcher เพื่อจำลอง P-02 |
+| Load exact profile | เรียก GET /api/v1/sgi/document/{docNo} และยืนยัน roleProfileCode=P-02, statusCode=02 ก่อน render action state | profile mismatch ต้อง fail closed; ไม่ใช้ role switcher เพื่อจำลอง P-02 |
 | Render profile sections | render เฉพาะ visibleSections ของ P-02: doc-header, sec-sales, sec-map, sec-newstore, sec-competitor, sec-factor, sec-attach, sec-comp-history, sec-decision-history, sec-action; ซ่อน: sec-calc | section ที่ซ่อนต้องไม่อยู่ใน DOM และ section key ที่ไม่รู้จักต้อง log/ignore แบบ fail closed |
 | Apply edit boundary | เปิด mutation control เฉพาะ editableSections ของ P-02: ไม่มี; business section ทั้งหมด read-only | read-only section ไม่มี focusable input/save/add/delete และ payload ต้องไม่มี field นอก editableSections |
 | Attachment control | canUploadAttachment=true สำหรับ GM Business Promotion; ใช้ allowlist, 5 MB และ scan-status contract | ปุ่ม upload ตรง flag, FILE_TOO_LARGE/FILE_SCAN_BLOCKED แสดงที่ attachment section |
-| Render exact action set | แสดง actionOptions ของ P-02 เท่านั้น: เห็นควรชดเชย; เห็นควรไม่ชดเชย; ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP; comment rules: เห็นควรชดเชย: comment optional; เห็นควรไม่ชดเชย: comment ตาม actionOptions.requireComment; ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP: comment ตาม actionOptions.requireComment | radio label/requireComment มาจาก API และ FE ไม่คำนวณ nextSection |
+| Render exact action set | แสดง actionOptions ของ P-02 เท่านั้น: เห็นควรชดเชย; เห็นควรไม่ชดเชย; ส่งกลับฝ่าย SBP DSA; comment rules: เห็นควรชดเชย: comment optional; เห็นควรไม่ชดเชย: comment ตาม actionOptions.requireComment; ส่งกลับฝ่าย SBP DSA: comment ตาม actionOptions.requireComment — มติ 2026-09-01 (เดิมส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP) | radio label/requireComment มาจาก API และ FE ไม่คำนวณ nextSection |
 | Submit and reload | ส่ง result/comment สำหรับ P-02 แล้ว invalidate detail, timeline, task/list cache | หลัง submit ต้องโหลด status/actionOptions ใหม่และไม่คง action set ของ P-02 เมื่อ workflow เปลี่ยนขั้น |
 
 ## 6. Button / User Action Mapping
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
-| Load detail | เปิดเอกสาร | GET /api/v1/sbpgi/document/{docNo} | render role profile |
-| Save editable section | ปุ่มบันทึก | PUT /api/v1/sbpgi/document/{docNo} | ใช้เฉพาะ role ที่มี editableSections |
-| Upload attachment | เลือกไฟล์ | POST /api/v1/sbpgi/document/{docNo}/attachments | append attachment when allowed |
-| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/sbpgi/document/{docNo}/actions | submit selected result |
+| Load detail | เปิดเอกสาร | GET /api/v1/sgi/document/{docNo} | render role profile |
+| Save editable section | ปุ่มบันทึก | PUT /api/v1/sgi/document/{docNo} | ใช้เฉพาะ role ที่มี editableSections |
+| Upload attachment | เลือกไฟล์ | POST /api/v1/sgi/document/{docNo}/attachments | append attachment when allowed |
+| Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/sgi/document/{docNo}/actions | submit selected result |
 
 ## 7. API Contract
 
-### GET /api/v1/sbpgi/document/{docNo}
+### GET /api/v1/sgi/document/{docNo}
 
 โหลด role profile P-02 สำหรับหน้า detail
 
@@ -238,8 +260,8 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
       "requireComment": false
     },
     {
-      "value": "ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP",
-      "label": "ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP",
+      "value": "ส่งกลับฝ่าย SBP DSA",
+      "label": "ส่งกลับฝ่าย SBP DSA",
       "requireComment": false
     }
   ]
@@ -261,7 +283,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | actionOptions[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | actionOptions[].requireComment | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/sbpgi/document/{docNo}/actions
+### POST /api/v1/sgi/document/{docNo}/actions
 
 ตัวอย่าง positive-path จาก section 02; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม ≥ 100,000 บาท และจบที่ GM เมื่อ < 100,000 บาท (มติ 2026-08-18)
 
@@ -305,18 +327,18 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 #### 8.1 ผังไฟล์ที่ต้องสร้าง
 
-โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SBPGI อยู่ใต้ `src/app/(main)/sbpgi/*` และ import ผ่าน alias `@/*` ทุกจุด
+โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด
 
 | Path ไฟล์ | หน้าที่ |
 | --- | --- |
-| src/app/(main)/sbpgi/document/[docNo]/page.tsx | route page — ใช้ร่วมกับหน้า detail — view ของ workflow section 02 |
-| src/components/sbpgi/document-detail/RoleView02.tsx | component — view เฉพาะ workflow section 02 (อ่าน visibleSections/editableSections จาก API) |
-| src/components/sbpgi/document-detail/ActionForm02.tsx | component — ฟอร์มผลการพิจารณา (result + comment) ของ section นี้ |
-| src/components/sbpgi/document-detail/DocumentSection.tsx | component ร่วม — render 1 section ตาม sectionKey (ประกาศครั้งเดียวที่ LLDD-FE-Document-Detail) |
-| src/components/sbpgi/document-detail/ActionPanel.tsx | component ร่วม — กล่อง action ของหน้า detail (ประกาศครั้งเดียวที่ LLDD-FE-Document-Detail) |
-| src/services/sbpgi/document.service.ts | service — เรียก BFF ผ่าน apiClient (GET, POST) |
-| src/hooks/sbpgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
-| src/types/sbpgi/document.ts | types — request/response ตาม API contract ของเอกสารนี้ |
+| src/app/(main)/sgi/document/[docNo]/page.tsx | route page — ใช้ร่วมกับหน้า detail — view ของ workflow section 02 |
+| src/components/sgi/document-detail/RoleView02.tsx | component — view เฉพาะ workflow section 02 (อ่าน visibleSections/editableSections จาก API) |
+| src/components/sgi/document-detail/ActionForm02.tsx | component — ฟอร์มผลการพิจารณา (result + comment) ของ section นี้ |
+| src/components/sgi/document-detail/DocumentSection.tsx | component ร่วม — render 1 section ตาม sectionKey (ประกาศครั้งเดียวที่ LLDD-FE-Document-Detail) |
+| src/components/sgi/document-detail/ActionPanel.tsx | component ร่วม — กล่อง action ของหน้า detail (ประกาศครั้งเดียวที่ LLDD-FE-Document-Detail) |
+| src/services/sgi/document.service.ts | service — เรียก BFF ผ่าน apiClient (GET, POST) |
+| src/hooks/sgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
+| src/types/sgi/document.ts | types — request/response ตาม API contract ของเอกสารนี้ |
 
 #### 8.2 RoleView component — view เฉพาะบทบาทของหน้า Document Detail
 
@@ -327,11 +349,11 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 // actionOptions ที่ API ส่งให้ role นี้ (ยัง render จาก doc.actionOptions ห้าม hardcode ใน component):
 //   - เห็นควรชดเชย (ไม่บังคับความคิดเห็น)
 //   - เห็นควรไม่ชดเชย (ไม่บังคับความคิดเห็น)
-//   - ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP (ไม่บังคับความคิดเห็น)
+//   - ส่งกลับฝ่าย SBP DSA (ไม่บังคับความคิดเห็น)
 
-import DocumentSection from '@/components/sbpgi/document-detail/DocumentSection';
-import ActionPanel from '@/components/sbpgi/document-detail/ActionPanel';
-import type { DocumentsDetailResponse } from '@/types/sbpgi/document';
+import DocumentSection from '@/components/sgi/document-detail/DocumentSection';
+import ActionPanel from '@/components/sgi/document-detail/ActionPanel';
+import type { DocumentsDetailResponse } from '@/types/sgi/document';
 
 interface Props {
   doc: DocumentsDetailResponse;
@@ -365,44 +387,44 @@ export default function RoleView02({ doc, onSubmitAction, submitting }: Props) {
 }
 ```
 
-#### 8.3 service — `src/services/sbpgi/document.service.ts`
+#### 8.3 service — `src/services/sgi/document.service.ts`
 
-⚠️ `src/services/sbpgi/document.service.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/services/sgi/document.service.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/services/sbpgi/document.service.ts
+// src/services/sgi/document.service.ts
 // apiClient = axios instance กลาง (baseURL = bffUrl ซึ่งรวม /api/v1 แล้ว, withCredentials, refresh-token interceptor, global loading)
 // ห้ามสร้าง axios instance ใหม่ และห้าม set Authorization header เอง — session อยู่ใน httpOnly cookie ของ BFF
 
 import apiClient from '@/lib/apiClient';
-import type { ApiResponse } from '@/types/sbpgi/common';
-import type * as T from '@/types/sbpgi/document';
+import type { ApiResponse } from '@/types/sgi/common';
+import type * as T from '@/types/sgi/document';
 
-/** GET /api/v1/sbpgi/document/{docNo} — โหลด role profile P-02 สำหรับหน้า detail */
-export async function getSbpgiDocumentDetail(docNo: string): Promise<T.SbpgiDocumentDetailResponse> {
-  const { data } = await apiClient.get<ApiResponse<T.SbpgiDocumentDetailResponse>>(`/sbpgi/document/${encodeURIComponent(docNo)}`);
+/** GET /api/v1/sgi/document/{docNo} — โหลด role profile P-02 สำหรับหน้า detail */
+export async function getSgiDocumentDetail(docNo: string): Promise<T.SgiDocumentDetailResponse> {
+  const { data } = await apiClient.get<ApiResponse<T.SgiDocumentDetailResponse>>(`/sgi/document/${encodeURIComponent(docNo)}`);
   return data.data;
 }
 
-/** POST /api/v1/sbpgi/document/{docNo}/actions — ตัวอย่าง positive-path จาก section 02; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม ≥ 100,000 บาท และจบที่ GM เมื่อ < 100,000 บาท (มติ 2026-08-18) */
-export async function createSbpgiDocumentActions(docNo: string, body: T.CreateSbpgiDocumentActionsRequest): Promise<T.CreateSbpgiDocumentActionsResponse> {
-  const { data } = await apiClient.post<ApiResponse<T.CreateSbpgiDocumentActionsResponse>>(`/sbpgi/document/${encodeURIComponent(docNo)}/actions`, body);
+/** POST /api/v1/sgi/document/{docNo}/actions — ตัวอย่าง positive-path จาก section 02; Section 02 ส่งต่อ AVP (03) เมื่อยอดรวม ≥ 100,000 บาท และจบที่ GM เมื่อ < 100,000 บาท (มติ 2026-08-18) */
+export async function createSgiDocumentActions(docNo: string, body: T.CreateSgiDocumentActionsRequest): Promise<T.CreateSgiDocumentActionsResponse> {
+  const { data } = await apiClient.post<ApiResponse<T.CreateSgiDocumentActionsResponse>>(`/sgi/document/${encodeURIComponent(docNo)}/actions`, body);
   return data.data;
 }
 
 // TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
 ```
 
-#### 8.4 types — `src/types/sbpgi/document.ts`
+#### 8.4 types — `src/types/sgi/document.ts`
 
-⚠️ `src/types/sbpgi/document.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/types/sgi/document.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/types/sbpgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
+// src/types/sgi/document.ts — ตรงกับตาราง API ในเอกสารนี้
 // วันที่/เดือนเป็น ค.ศ. ทั้ง payload (ISO) และ display — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
 
-/** GET /api/v1/sbpgi/document/{docNo} — response */
-export interface SbpgiDocumentDetailResponse {
+/** GET /api/v1/sgi/document/{docNo} — response */
+export interface SgiDocumentDetailResponse {
   docNo: string;
   statusCode: string;
   viewerRbacRoleCode: string;
@@ -416,14 +438,14 @@ export interface SbpgiDocumentDetailResponse {
   }[];
 }
 
-/** POST /api/v1/sbpgi/document/{docNo}/actions — request */
-export interface CreateSbpgiDocumentActionsRequest {
+/** POST /api/v1/sgi/document/{docNo}/actions — request */
+export interface CreateSgiDocumentActionsRequest {
   result: string;
   comment: string;
 }
 
-/** POST /api/v1/sbpgi/document/{docNo}/actions — response */
-export interface CreateSbpgiDocumentActionsResponse {
+/** POST /api/v1/sgi/document/{docNo}/actions — response */
+export interface CreateSgiDocumentActionsResponse {
   statusCode: string;
   nextSection: string;
   message: string;
@@ -432,34 +454,34 @@ export interface CreateSbpgiDocumentActionsResponse {
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
-#### 8.5 react-query keys + hooks — `src/hooks/sbpgi/document.query.ts`
+#### 8.5 react-query keys + hooks — `src/hooks/sgi/document.query.ts`
 
-⚠️ `src/hooks/sbpgi/document.query.ts` เป็น **ไฟล์ร่วมของโมดูล SBPGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
+⚠️ `src/hooks/sgi/document.query.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
 ```ts
-// src/hooks/sbpgi/document.query.ts
+// src/hooks/sgi/document.query.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as api from '@/services/sbpgi/document.service';
-import type * as T from '@/types/sbpgi/document';
+import * as api from '@/services/sgi/document.service';
+import type * as T from '@/types/sgi/document';
 
 export const documentKeys = {
-  all: ['sbpgi', 'document'] as const,
-  sbpgiDocumentDetail: (docNo: string) => [...documentKeys.all, 'sbpgiDocumentDetail', docNo] as const,
+  all: ['sgi', 'document'] as const,
+  sgiDocumentDetail: (docNo: string) => [...documentKeys.all, 'sgiDocumentDetail', docNo] as const,
 };
 
-export function useSbpgiDocumentDetailQuery(docNo: string) {
+export function useSgiDocumentDetailQuery(docNo: string) {
   return useQuery({
-    queryKey: documentKeys.sbpgiDocumentDetail(docNo),
-    queryFn: () => api.getSbpgiDocumentDetail(docNo),
+    queryKey: documentKeys.sgiDocumentDetail(docNo),
+    queryFn: () => api.getSgiDocumentDetail(docNo),
     enabled: !!docNo, // ยังไม่ยิงจนกว่าจะมีพารามิเตอร์ครบ
     staleTime: 30_000, // TODO: ปรับตามความถี่ของข้อมูลหน้านี้
   });
 }
 
-export function useCreateSbpgiDocumentActionsMutation(docNo: string) {
+export function useCreateSgiDocumentActionsMutation(docNo: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: T.CreateSbpgiDocumentActionsRequest) => api.createSbpgiDocumentActions(docNo, body),
+    mutationFn: (body: T.CreateSgiDocumentActionsRequest) => api.createSgiDocumentActions(docNo, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: documentKeys.all }); // reload list/detail/timeline
     },
@@ -468,9 +490,9 @@ export function useCreateSbpgiDocumentActionsMutation(docNo: string) {
 }
 ```
 
-#### 8.6 ฟอร์มพิจารณา + validation — `src/components/sbpgi/document-detail/ActionForm02.tsx`
+#### 8.6 ฟอร์มพิจารณา + validation — `src/components/sgi/document-detail/ActionForm02.tsx`
 
-หน้านี้**ไม่มีการค้นหา** — ฟอร์มเดียวของหน้าคือฟอร์มผลการพิจารณาที่ยิง `POST /api/v1/sbpgi/document/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`
+หน้านี้**ไม่มีการค้นหา** — ฟอร์มเดียวของหน้าคือฟอร์มผลการพิจารณาที่ยิง `POST /api/v1/sgi/document/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`
 
 ```tsx
 'use client';
@@ -479,7 +501,7 @@ export function useCreateSbpgiDocumentActionsMutation(docNo: string) {
 // option ที่ role นี้เห็นตาม contract (render จาก doc.actionOptions ห้าม hardcode ใน JSX):
 //   - เห็นควรชดเชย (value='เห็นควรชดเชย', requireComment=false)
 //   - เห็นควรไม่ชดเชย (value='เห็นควรไม่ชดเชย', requireComment=false)
-//   - ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP (value='ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP', requireComment=false)
+//   - ส่งกลับฝ่าย SBP DSA (value='ส่งกลับฝ่าย SBP DSA', requireComment=false)
 // editableSections ของ role นี้ (ใช้เป็น constant สำหรับ assertion/test เท่านั้น ไม่ใช่เพื่อ hardcode การ render):
 export const EDITABLE_SECTIONS_02 = [] as const;
 
@@ -488,7 +510,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { RadioButtonGroup } from '@/components/Form';
 import { InputTextarea } from '@/components/Form/InputText/inputtextArea';
-import type { DocumentActionRequest } from '@/types/sbpgi/common';
+import type { DocumentActionRequest } from '@/types/sgi/common';
 
 interface ActionOption { value: string; label: string; requireComment?: boolean }
 
@@ -608,8 +630,8 @@ export default function ActionForm02({ options, onSubmit, onCancel, submitting }
 | business rule | logic | section ที่ hidden ต้องไม่ render |
 | business rule | logic | section ที่ read-only ต้องไม่มี editable control |
 | business rule | logic | action panel ตรงกับ actionOptions จาก API |
-| `GET /api/v1/sbpgi/document/{docNo}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
-| `POST /api/v1/sbpgi/document/{docNo}/actions` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `GET /api/v1/sgi/document/{docNo}` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
+| `POST /api/v1/sgi/document/{docNo}/actions` | api client | hook/service เรียกเส้นนี้ด้วยพารามิเตอร์ถูกต้อง · map {success:true,data} เป็น state ที่หน้าจอใช้ · เจอ {success:false,error} แล้วแสดงข้อความไทย verbatim (mock ด้วย msw) |
 | component | render | render ด้วย React Testing Library แล้วเห็น element ตาม field/action contract ของเอกสารนี้ |
 | hook/state | interaction | ยิง action แล้ว state เปลี่ยนตามที่ระบุ และเรียก API layer ที่ mock ไว้ด้วยพารามิเตอร์ถูกต้อง |
 | error path | ui | API ตอบ error envelope แล้วหน้าจอต้องแสดงข้อความไทย verbatim ไม่ crash |

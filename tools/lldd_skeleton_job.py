@@ -9,7 +9,7 @@ params / meta ของแต่ละ job ทำให้ skeleton ของแ
 convention ที่ยึด (ตัดสินใจ 2026-08-06):
   * ไม่มีตาราง ``job_configs`` / ``job_run_histories`` และไม่มี Job Admin API
     → cron/พารามิเตอร์อยู่ใน backend config (env/config file), ผลการรันเขียน
-      application log แบบ structured + ``interface_transactions``
+      application log แบบ structured + ``sgi_interface_transactions``
   * runner กันรันซ้อนด้วย PostgreSQL advisory lock (ไม่ใช่แถว RUNNING ในตาราง)
   * job error → ส่งอีเมลผ่าน ``@gosoft-sbp/email-lib`` ของระบบเดิม
   * ไฟล์ interface ยังใช้กลไกเดิม (fixed-width + encoding เดิม)
@@ -34,14 +34,14 @@ from typing import Any
 # unique key เชิงธุรกิจของแต่ละตาราง — คัดจาก CONSTRAINT ใน DDL (tools/build_lldd_documents.py)
 # ใช้เติม ON CONFLICT ใน skeleton ให้ตรงของจริง แทนที่จะปล่อยเป็น TODO ให้ dev เดา
 BUSINESS_UNIQUE_KEYS: dict[str, str] = {
-    "fgi_impact_stores": "impacted_store_code, new_store_code, impact_month",
-    "fgi_impact_competitors": "impact_process_id, competitor_code, period_key",
-    "fgi_impact_processes": "impacted_store_code, impact_month",
-    "sales_transactions": "sales_summary_id, txn_date, window_no",
-    "document_competitors": "doc_no, competitor_code",
-    "document_new_stores": "doc_no, new_store_code",
-    "compensation_documents": "source, impacted_store_code, impact_month, new_store_code, round_no",
-    "interface_transactions": "data_name, direction, business_key, period_key",
+    "sgi_fgi_impact_stores": "impacted_store_code, new_store_code, impact_month",
+    "sgi_fgi_impact_competitors": "impact_process_id, competitor_code, period_key",
+    "sgi_fgi_impact_processes": "impacted_store_code, impact_month",
+    "sgi_sales_transactions": "sales_summary_id, txn_date, window_no",
+    "sgi_document_competitors": "doc_no, competitor_code",
+    "sgi_document_new_stores": "doc_no, new_store_code",
+    "sgi_compensation_documents": "source, impacted_store_code, impact_month, new_store_code, round_no",
+    "sgi_interface_transactions": "data_name, direction, business_key, period_key",
 }
 
 def p(text: str) -> dict[str, Any]:
@@ -346,7 +346,7 @@ def _tables(topic: Any, job: dict[str, Any]) -> list[list[Any]]:
 # ตารางที่ถูกยกเลิก/แทนที่ตามการตัดสินใจ 2026-08-06 — ห้าม generate SQL ตรง ๆ
 _REPLACED_TABLES: dict[str, str] = {
     "job_configs": "ยกเลิกแล้ว — cron/พารามิเตอร์อยู่ใน backend config (env/config file)",
-    "job_run_histories": "ยกเลิกแล้ว — ผลการรันเขียน application log แบบ structured + interface_transactions",
+    "job_run_histories": "ยกเลิกแล้ว — ผลการรันเขียน application log แบบ structured + sgi_interface_transactions",
     "workflow_instances": "ใช้ @srm/glb-workflow (`sps_store.workflow_transaction`) ผ่าน initializeWorkflow แทน SQL ตรง",
     "workflow_tasks": "ใช้ @srm/glb-workflow (`sps_store.workflow_approver` / `workflow_history`) ผ่าน addPreApprover + eventWorkflow",
     "workflow_sections": "ใช้ @srm/glb-workflow (`sps_store.workflow_state` / `workflow_route`) แทน",
@@ -366,7 +366,7 @@ _REPLACED_TABLES: dict[str, str] = {
 
 
 def _file_map_blocks(no: str, folder: str, base: str, pascal: str, job: dict[str, Any]) -> list[dict[str, Any]]:
-    root = f"src/batch/sbpgi/{folder}"
+    root = f"src/batch/sgi/{folder}"
     rows = [
         [
             f"{root}/{base}.job.ts",
@@ -378,7 +378,7 @@ def _file_map_blocks(no: str, folder: str, base: str, pascal: str, job: dict[str
         ],
         [
             f"{root}/{base}.config.ts",
-            f"คลาส `SbpgiJob{_job_slug(no)}Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) "
+            f"คลาส `SgiJob{_job_slug(no)}Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) "
             f"— cron และพารามิเตอร์ทั้ง {len(job.get('params', []) or [])} ตัวของ Job {no} อ่านจาก env/config file (ไม่มีตาราง job_configs)",
         ],
         [
@@ -391,7 +391,7 @@ def _file_map_blocks(no: str, folder: str, base: str, pascal: str, job: dict[str
         ],
         [
             "src/batch/scheduler.ts",
-            f"ลงทะเบียน cron จาก config (`SBPGI_JOB{_job_slug(no)}_CRON` = `{job.get('cron', '-')}`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook",
+            f"ลงทะเบียน cron จาก config (`SGI_JOB{_job_slug(no)}_CRON` = `{job.get('cron', '-')}`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook",
         ],
         [
             "src/batch/job-failure.notifier.ts",
@@ -401,7 +401,7 @@ def _file_map_blocks(no: str, folder: str, base: str, pascal: str, job: dict[str
     return [
         h(2, f"5.94 ผังไฟล์ที่ต้องสร้าง (Job {no})"),
         p(
-            f"โครงไฟล์ของ Job {no} ({job.get('cls', '-')} เดิม) วางใต้ `src/batch/sbpgi/` ของ store-backend "
+            f"โครงไฟล์ของ Job {no} ({job.get('cls', '-')} เดิม) วางใต้ `src/batch/sgi/` ของ store-backend "
             "โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, "
             "repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`"
         ),
@@ -520,8 +520,8 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
     iface: list[str] = ["  /** เปิด/ปิด job รอบถัดไปโดยไม่ต้อง deploy โค้ด */", "  enabled: boolean;"]
     factory: list[str] = [
         "  // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)",
-        f"  enabled = (process.env.SBPGI_JOB{slug}_ENABLED ?? 'true') === 'true';",
-        f"  cron = process.env.SBPGI_JOB{slug}_CRON ?? {_ts_string(job.get('cron', ''))};",
+        f"  enabled = (process.env.SGI_JOB{slug}_ENABLED ?? 'true') === 'true';",
+        f"  cron = process.env.SGI_JOB{slug}_CRON ?? {_ts_string(job.get('cron', ''))};",
     ]
     iface.append("  /** cron ของ job นี้ (อ่านตอน bootstrap ของ scheduler.ts) */")
     iface.append("  cron: string;")
@@ -531,7 +531,7 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
         kind = str(row[2]) if len(row) > 2 else "text"
         editable = bool(row[3]) if len(row) > 3 else True
         note = str(row[4]) if len(row) > 4 else ""
-        env = f"SBPGI_JOB{slug}_{_upper_snake(key)}"
+        env = f"SGI_JOB{slug}_{_upper_snake(key)}"
         # ค่า default ที่เป็นข้อความอธิบาย (เช่น "|sales_diff| ≥ 50") ต้องเป็น string เสมอ
         ts_type = "number" if (kind == "number" and _is_number(value)) else "string"
         iface.append(f"  /** {label}{(' — ' + note) if note else ''} */")
@@ -545,7 +545,7 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
         else:
             factory.append(f"  {key} = process.env.{env} ?? {_ts_string(value)}; // TODO: {comment}")
     factory.append(
-        f"  mailTo = process.env.SBPGI_JOB{slug}_MAIL_TO ?? ''; "
+        f"  mailTo = process.env.SGI_JOB{slug}_MAIL_TO ?? ''; "
         f"// TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: {job.get('meta', {}).get('mail', '-')})"
     )
     iface.append("  /** ผู้รับอีเมลเมื่อ job ล้มเหลว — เก็บเป็น string คั่น comma ให้ตรง signature ของ")
@@ -553,7 +553,7 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
     iface.append("  mailTo: string;")
 
     text = "\n".join([
-        f"// {'src/batch/sbpgi/' + folder + '/' + base + '.config.ts'}",
+        f"// {'src/batch/sgi/' + folder + '/' + base + '.config.ts'}",
         "// convention จริงของ store-backend คือคลาส config (`src/config/app.config.ts` ที่ export ผ่าน",
         "// `AppConfigModule` แบบ @Global แล้วอ่าน process.env ตรง ๆ) — โปรเจกต์นี้ **ไม่ได้ใช้ registerAs**",
         "// แม้แต่จุดเดียว จึงประกาศเป็นคลาสให้รีวิว/ทดสอบเหมือน config ตัวอื่น",
@@ -566,17 +566,17 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
         "}",
         "",
         "@Injectable()",
-        f"export class SbpgiJob{slug}Config implements Job{slug}Config {{",
+        f"export class SgiJob{slug}Config implements Job{slug}Config {{",
         *factory,
         "}",
         "",
-        f"// TODO: เพิ่ม SbpgiJob{slug}Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig",
+        f"// TODO: เพิ่ม SgiJob{slug}Config ใน providers/exports ของ AppConfigModule (@Global) เหมือน AppConfig",
     ])
     return [
         h(2, f"5.95 Config Schema ของ Job {no} (backend config / env)"),
         p(
             f"cron ปัจจุบันของ Job {no} คือ `{job.get('cron', '-')}` ({job.get('cronTh', '-')}) — "
-            f"ประกาศเป็น `SBPGI_JOB{slug}_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; "
+            f"ประกาศเป็น `SGI_JOB{slug}_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; "
             "ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้"
         ),
         code(text, "ts"),
@@ -681,7 +681,7 @@ def _job_class_blocks(
     slug = _job_slug(no)
 
     lines: list[str] = [
-        f"// src/batch/sbpgi/{folder}/{base}.job.ts",
+        f"// src/batch/sgi/{folder}/{base}.job.ts",
         "import { Inject, Injectable, Logger } from '@nestjs/common';",
         "import type { DataSource, EntityManager } from 'typeorm';",
         f"import {{ {pascal}Service, type JobState }} from './{base}.service';",
@@ -774,7 +774,7 @@ def _lock_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, An
         "",
         "// TODO: ห้ามใช้แถวสถานะ RUNNING ในตารางเป็นตัวกัน (ไม่มีตาราง job_run_histories แล้ว)",
         "//       ใช้ PostgreSQL advisory lock ระดับ session แทน — ปลดอัตโนมัติเมื่อ connection หลุด",
-        "export const SBPGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SBPGI",
+        "export const SGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SGI",
         f"export const JOB_LOCK_KEYS: Record<string, number> = {{ '{no}': {lock_key} /* TODO: เพิ่มครบทั้ง 11 job */ }};",
         "",
         "@Injectable()",
@@ -791,7 +791,7 @@ def _lock_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, An
         "    try {",
         "      const [{ locked }] = await runner.query(",
         "        'SELECT pg_try_advisory_lock($1, $2) AS locked',",
-        "        [SBPGI_JOB_LOCK_CLASS_ID, objectId],",
+        "        [SGI_JOB_LOCK_CLASS_ID, objectId],",
         "      );",
         "      if (!locked) {",
         "        // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล",
@@ -801,7 +801,7 @@ def _lock_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, An
         "      return await fn();",
         "    } finally {",
         "      // TODO: ปลด lock ทุกกรณี แล้วคืน connection เข้า pool",
-        "      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SBPGI_JOB_LOCK_CLASS_ID, objectId]);",
+        "      await runner.query('SELECT pg_advisory_unlock($1, $2)', [SGI_JOB_LOCK_CLASS_ID, objectId]);",
         "      await runner.release();",
         "    }",
         "  }",
@@ -835,11 +835,11 @@ def _sql_for_table(name: str, mode: str, usage: str, no: str, job: dict[str, Any
         lines.append(f"-- TODO: ห้ามเขียน SQL ตรงกับตารางนี้ — {_REPLACED_TABLES[name]}")
         lines.append("")
         return lines
-    if name == "interface_transactions" and mode == "R":
+    if name == "sgi_interface_transactions" and mode == "R":
         lines.extend([
             "-- TODO: อ่านรายการที่ยังไม่ได้ ACK (safety net) — ยืนยันชื่อสถานะ/คอลัมน์เวลากับ database.md",
             "SELECT id, data_name, direction, status, business_key, period_key, file_name, created_at",
-            "  FROM interface_transactions",
+            "  FROM sgi_interface_transactions",
             f" WHERE data_name = ANY($1)  -- TODO: รายการ interface ที่ Job {no} เฝ้าดู (ไม่ใช่ job_no ของตัวเอง)",
             "   AND status IN ('READY', 'SENT')  -- TODO: สถานะที่ถือว่ายังไม่มี ACK",
             "   AND created_at < NOW() - ($2 || ' hours')::interval  -- TODO: threshold จาก config",
@@ -847,10 +847,10 @@ def _sql_for_table(name: str, mode: str, usage: str, no: str, job: dict[str, Any
             "",
         ])
         return lines
-    if name == "interface_transactions":
+    if name == "sgi_interface_transactions":
         lines.extend([
             "-- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)",
-            "INSERT INTO interface_transactions",
+            "INSERT INTO sgi_interface_transactions",
             "  (run_id, data_name, direction, status, business_key, period_key,",
             "   file_name, file_checksum, created_at)",
             f"VALUES ($1 /* run_id = correlation id ของรอบรัน Job {no} จาก application log */,",
@@ -909,12 +909,12 @@ def _sql_for_table(name: str, mode: str, usage: str, no: str, job: dict[str, Any
         "VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)",
         (f"ON CONFLICT ({conflict})   -- unique key จริงตาม DDL ของ {name} (ห้ามเดา)"
          if conflict else (
-             "-- ⚠️ ตารางของ @srm/glb-workflow — SBPGI ห้าม INSERT/UPDATE ตรง ต้องเรียกผ่าน engine เท่านั้น\n"
-             "--    (workflow_transaction ไม่มี PK และไม่มี index เลย · ข้อค้าง DP-2)\n"
+             "-- ⚠️ ตารางของ @srm/glb-workflow — SGI ห้าม INSERT/UPDATE ตรง ต้องเรียกผ่าน engine เท่านั้น\n"
+             "--    (workflow_transaction ไม่มี PK และไม่มี index เลย — กันซ้ำที่ระดับ application ของ SGI)\n"
              "ON CONFLICT (/* ไม่ใช้ — ลบ statement นี้ทิ้งแล้วเรียก engine แทน */)"
              if name.startswith("workflow_") else
              "-- ⚠️ ตารางนี้ไม่มี business unique key ใน DDL จริง — ON CONFLICT ใช้ไม่ได้\n"
-             "--    fcs_qssi_score: ข้อค้าง DP-4 (การเพิ่ม unique index ต้อง sign-off เจ้าของ performance.service.ts)\n"
+             "--    fcs_qssi_score: reuse ตารางเดิมแบบอ่านอย่างเดียว — ห้ามแก้ constraint/index ของตารางเดิม\n"
              "--    ระหว่างยังไม่ปิด: ลบงวดเดิมก่อนแล้ว INSERT ใหม่ใน transaction เดียว\n"
              "ON CONFLICT (/* ยังใช้ไม่ได้ — ดูหมายเหตุด้านบน */)"
          )),
@@ -987,8 +987,8 @@ def _notify_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, 
         "  constructor(private readonly mailService: EmailLibService) {}",
         "",
         "  async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {",
-        f"    // TODO: ผู้รับของ Job {no} เดิมคือ {meta.get('mail', '-')} — ย้ายมาเป็น env SBPGI_JOB{slug}_MAIL_TO",
-        f"    const recipients = (process.env.SBPGI_JOB{slug}_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);",
+        f"    // TODO: ผู้รับของ Job {no} เดิมคือ {meta.get('mail', '-')} — ย้ายมาเป็น env SGI_JOB{slug}_MAIL_TO",
+        f"    const recipients = (process.env.SGI_JOB{slug}_MAIL_TO ?? '').split(',').map((s) => s.trim()).filter(Boolean);",
         "    if (!recipients.length) {",
         "      this.logger.warn(JSON.stringify({ event: 'job.mail.skipped', jobNo, reason: 'NO_RECIPIENT' }));",
         "      return;",
@@ -996,7 +996,7 @@ def _notify_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, 
         "    try {",
         "      await this.mailService.sendMail({",
         "        // TODO: emailId = id ของ template EM-07 (แจ้ง error batch) ในตาราง email_template",
-        "        emailId: Number(process.env.SBPGI_JOB_FAIL_EMAIL_TEMPLATE_ID),",
+        "        emailId: Number(process.env.SGI_JOB_FAIL_EMAIL_TEMPLATE_ID),",
         "        mailTo: recipients.join(','), // signature รับ string ไม่ใช่ string[]",
         "        mailCc: '',",
         "        param: {",
@@ -1017,14 +1017,14 @@ def _notify_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, 
     ])
 
     checklist = [
-        f"กติกา rerun ของ Job {no}: {meta.get('rerun', 'ยังไม่ระบุ — ต้องยืนยันกับ Ops ก่อนขึ้น production')}",
+        f"กติกา rerun ของ Job {no}: {meta.get('rerun', 'รันซ้ำได้แบบ idempotent — กันซ้ำด้วย business key ของรอบนั้น')}",
         f"ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: {meta.get('trans', 'ยังไม่ระบุ')}",
         f"ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: {meta.get('risk', 'ยังไม่ระบุ')}",
         f"ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ",
         f"สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): "
         f"`node dist/batch/cli.js --job={no} --period=<YYYYMM>`",
         f"หลังรันซ้ำ ตรวจ output `{job.get('out', '-')}` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด",
-        "ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่",
+        "ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่",
     ]
     return [
         h(2, f"5.99 การแจ้งเตือนและการรันซ้ำของ Job {no}"),

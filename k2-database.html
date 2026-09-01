@@ -83,9 +83,9 @@
             <text x="820" y="498">1</text>
           </g>
 
-          <!-- entity: compensation_documents (center) -->
+          <!-- entity: sgi_compensation_documents (center) -->
           <rect x="392" y="300" width="216" height="152" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
-          <text x="404" y="318" fill="#2f6fed" font-size="12.5" font-weight="700">compensation_documents</text>
+          <text x="404" y="318" fill="#2f6fed" font-size="11.5" font-weight="700">sgi_compensation_documents</text>
           <line x1="392" y1="326" x2="608" y2="326" stroke="#e6ebf2"/>
           <text x="404" y="344" fill="#56606c" font-size="10.3"><tspan font-weight="700">doc_no</tspan>  ◄ PK (YYYY/xxxxx)</text>
           <text x="404" y="360" fill="#56606c" font-size="10.3">document_round · compensation_round · impact_month</text>
@@ -95,9 +95,9 @@
           <text x="404" y="424" fill="#56606c" font-size="10.3">compensation_amount</text>
           <text x="404" y="440" fill="#56606c" font-size="10.3">sales_drop_percent</text>
 
-          <!-- impacted_stores (left) -->
+          <!-- sgi_impacted_stores (left) -->
           <rect x="108" y="288" width="192" height="116" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
-          <text x="120" y="306" fill="#2f6fed" font-size="12.5" font-weight="700">impacted_stores</text>
+          <text x="120" y="306" fill="#2f6fed" font-size="11.5" font-weight="700">sgi_impacted_stores</text>
           <line x1="108" y1="314" x2="300" y2="314" stroke="#e6ebf2"/>
           <text x="120" y="332" fill="#56606c" font-size="10.3"><tspan font-weight="700">store_code</tspan>  ◄ PK</text>
           <text x="120" y="348" fill="#56606c" font-size="10.3">store_name · zone_code</text>
@@ -107,21 +107,21 @@
 
           <!-- workflow_sections (top-left) -->
           <rect x="180" y="96" width="182" height="78" rx="8" fill="#fff" stroke="#f59e0b" stroke-width="1.6"/>
-          <text x="192" y="114" fill="#b45309" font-size="12.5" font-weight="700">workflow_sections</text>
+          <text x="192" y="114" fill="#b45309" font-size="11.5" font-weight="700">workflow_sections</text>
           <line x1="180" y1="122" x2="362" y2="122" stroke="#f6e6c8"/>
           <text x="192" y="140" fill="#56606c" font-size="10.3"><tspan font-weight="700">section_code</tspan>  ◄ PK</text>
           <text x="192" y="156" fill="#56606c" font-size="10.3">section_name (06/08/01…)</text>
 
           <!-- document_statuses (top) -->
           <rect x="432" y="96" width="164" height="78" rx="8" fill="#fff" stroke="#f59e0b" stroke-width="1.6"/>
-          <text x="444" y="114" fill="#b45309" font-size="12.5" font-weight="700">document_statuses</text>
+          <text x="444" y="114" fill="#b45309" font-size="11.5" font-weight="700">document_statuses</text>
           <line x1="432" y1="122" x2="596" y2="122" stroke="#f6e6c8"/>
           <text x="444" y="140" fill="#56606c" font-size="10.3"><tspan font-weight="700">status_code</tspan>  ◄ PK</text>
           <text x="444" y="156" fill="#56606c" font-size="10.3">status_name</text>
 
-          <!-- document_new_stores (right-top) -->
+          <!-- sgi_document_new_stores (right-top) -->
           <rect x="726" y="60" width="210" height="132" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
-          <text x="738" y="78" fill="#2f6fed" font-size="12.5" font-weight="700">document_new_stores</text>
+          <text x="738" y="78" fill="#2f6fed" font-size="11.5" font-weight="700">sgi_document_new_stores</text>
           <line x1="726" y1="86" x2="936" y2="86" stroke="#e6ebf2"/>
           <text x="738" y="104" fill="#56606c" font-size="10.3"><tspan font-weight="700">id</tspan>  ◄ PK</text>
           <text x="738" y="120" fill="#56606c" font-size="10.3">doc_no  ◄ FK</text>
@@ -130,33 +130,33 @@
           <text x="738" y="168" fill="#56606c" font-size="10.3">compensation_percent</text>
           <text x="738" y="184" fill="#56606c" font-size="10.3">compensation_amount</text>
 
-          <!-- document_competitors (right) -->
+          <!-- sgi_document_competitors (right) -->
           <rect x="726" y="244" width="210" height="94" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
-          <text x="738" y="262" fill="#2f6fed" font-size="12.5" font-weight="700">document_competitors</text>
+          <text x="738" y="262" fill="#2f6fed" font-size="11.5" font-weight="700">sgi_document_competitors</text>
           <line x1="726" y1="270" x2="936" y2="270" stroke="#e6ebf2"/>
           <text x="738" y="288" fill="#56606c" font-size="10.3"><tspan font-weight="700">id</tspan>  ◄ PK</text>
           <text x="738" y="304" fill="#56606c" font-size="10.3">doc_no ◄ FK · competitor_code ◄ FK</text>
           <text x="738" y="320" fill="#56606c" font-size="10.3">open_date · remark</text>
 
-          <!-- document_external_factors (right) -->
+          <!-- sgi_document_external_factors (right) -->
           <rect x="726" y="380" width="210" height="86" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
-          <text x="738" y="398" fill="#2f6fed" font-size="12.5" font-weight="700">document_external_factors</text>
+          <text x="738" y="398" fill="#2f6fed" font-size="11.5" font-weight="700">sgi_document_external_factors</text>
           <line x1="726" y1="406" x2="936" y2="406" stroke="#e6ebf2"/>
           <text x="738" y="424" fill="#56606c" font-size="10.3"><tspan font-weight="700">id</tspan>  ◄ PK</text>
           <text x="738" y="440" fill="#56606c" font-size="10.3">doc_no ◄ FK · factor_code ◄ FK</text>
           <text x="738" y="456" fill="#56606c" font-size="10.3">start_date · end_date</text>
 
-          <!-- external_factors (right-bottom, master) -->
+          <!-- sgi_external_factors (right-bottom, master) -->
           <rect x="726" y="502" width="210" height="82" rx="8" fill="#fff" stroke="#16a34a" stroke-width="1.6"/>
-          <text x="738" y="520" fill="#15803d" font-size="12.5" font-weight="700">external_factors</text>
+          <text x="738" y="520" fill="#15803d" font-size="11.5" font-weight="700">sgi_external_factors</text>
           <line x1="726" y1="528" x2="936" y2="528" stroke="#dcefe3"/>
           <text x="738" y="546" fill="#56606c" font-size="10.3"><tspan font-weight="700">factor_code</tspan>  ◄ PK</text>
           <text x="738" y="562" fill="#56606c" font-size="10.3">factor_name</text>
           <text x="738" y="578" fill="#56606c" font-size="10.3">factor_remark</text>
 
-          <!-- consideration_logs (bottom) -->
+          <!-- sgi_consideration_logs (bottom) -->
           <rect x="410" y="512" width="206" height="118" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
-          <text x="422" y="530" fill="#2f6fed" font-size="12.5" font-weight="700">consideration_logs</text>
+          <text x="422" y="530" fill="#2f6fed" font-size="11.5" font-weight="700">sgi_consideration_logs</text>
           <line x1="410" y1="538" x2="616" y2="538" stroke="#e6ebf2"/>
           <text x="422" y="556" fill="#56606c" font-size="10.3"><tspan font-weight="700">id</tspan>  ◄ PK</text>
           <text x="422" y="572" fill="#56606c" font-size="10.3">doc_no  ◄ FK</text>
@@ -164,9 +164,9 @@
           <text x="422" y="604" fill="#56606c" font-size="10.3">result · detail</text>
           <text x="422" y="620" fill="#56606c" font-size="10.3">action_at</text>
 
-          <!-- document_attachments (bottom-left) -->
+          <!-- sgi_document_attachments (bottom-left) -->
           <rect x="130" y="512" width="192" height="110" rx="8" fill="#fff" stroke="#2f6fed" stroke-width="1.6"/>
-          <text x="142" y="530" fill="#2f6fed" font-size="12.5" font-weight="700">document_attachments</text>
+          <text x="142" y="530" fill="#2f6fed" font-size="11.5" font-weight="700">sgi_document_attachments</text>
           <line x1="130" y1="538" x2="322" y2="538" stroke="#e6ebf2"/>
           <text x="142" y="556" fill="#56606c" font-size="10.3"><tspan font-weight="700">id</tspan>  ◄ PK</text>
           <text x="142" y="572" fill="#56606c" font-size="10.3">doc_no  ◄ FK</text>
@@ -199,7 +199,7 @@
           </div>
 
           <div class="ent">
-            <h3><code>external_factors</code> <span class="src-srs">SRS</span></h3>
+            <h3><code>sgi_external_factors</code> <span class="src-srs">SRS</span></h3>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">factor_code</td><td class="ty">varchar(10)</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">factor_name</td><td class="ty">varchar(150)</td><td></td></tr>
@@ -208,7 +208,7 @@
           </div>
 
           <div class="ent">
-            <h3><code>competitors</code> <span class="src-add">ออกแบบ</span></h3>
+            <h3><code>sgi_competitors</code> <span class="src-add">ออกแบบ</span></h3>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">competitor_code</td><td class="ty">varchar(10)</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">competitor_name</td><td class="ty">varchar(100)</td><td></td></tr>
@@ -247,7 +247,7 @@
         <div class="ent-grid">
 
           <div class="ent">
-            <h3><code>compensation_documents</code> <span class="src-add">ออกแบบ</span></h3>
+            <h3><code>sgi_compensation_documents</code> <span class="src-add">ออกแบบ</span></h3>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">document_round · compensation_round · impact_month</td><td class="ty">int · int · varchar(7)</td><td></td></tr>
@@ -262,7 +262,7 @@
           </div>
 
           <div class="ent">
-            <h3><code>impacted_stores</code> <span class="src-srs">SRS</span></h3>
+            <h3><code>sgi_impacted_stores</code> <span class="src-srs">SRS</span></h3>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">store_code</td><td class="ty">varchar(5)</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">store_name · zone_code</td><td class="ty">varchar · varchar(3)</td><td></td></tr>
@@ -273,7 +273,7 @@
           </div>
 
           <div class="ent">
-            <h3><code>document_new_stores</code> <span class="src-srs">SRS</span></h3>
+            <h3><code>sgi_document_new_stores</code> <span class="src-srs">SRS</span></h3>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
@@ -287,7 +287,7 @@
           </div>
 
           <div class="ent">
-            <h3><code>document_competitors</code> <span class="src-srs">SRS</span></h3>
+            <h3><code>sgi_document_competitors</code> <span class="src-srs">SRS</span></h3>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
@@ -298,7 +298,7 @@
           </div>
 
           <div class="ent">
-            <h3><code>document_external_factors</code> <span class="src-srs">SRS</span></h3>
+            <h3><code>sgi_document_external_factors</code> <span class="src-srs">SRS</span></h3>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
@@ -309,7 +309,7 @@
           </div>
 
           <div class="ent">
-            <h3><code>consideration_logs</code> <span class="src-srs">SRS</span></h3>
+            <h3><code>sgi_consideration_logs</code> <span class="src-srs">SRS</span></h3>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
@@ -320,7 +320,7 @@
           </div>
 
           <div class="ent">
-            <h3><code>compensation_histories</code> <span class="src-srs">SRS</span></h3>
+            <h3><code>sgi_compensation_histories</code> <span class="src-srs">SRS</span></h3>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">store_code</td><td class="ty">varchar(5)</td><td><span class="fk">FK</span></td></tr>
@@ -333,7 +333,7 @@
           </div>
 
           <div class="ent">
-            <h3><code>document_attachments</code> <span class="src-srs">SRS</span></h3>
+            <h3><code>sgi_document_attachments</code> <span class="src-srs">SRS</span></h3>
             <table class="spec"><thead><tr><th>Column</th><th>Type</th><th>Key</th></tr></thead><tbody>
               <tr><td class="k">id</td><td class="ty">bigint</td><td><span class="pk">PK</span></td></tr>
               <tr><td class="k">doc_no</td><td class="ty">varchar(10)</td><td><span class="fk">FK</span></td></tr>
@@ -349,7 +349,7 @@
       <!-- Internal workflow tables -->
       <div class="card">
         <div class="card-head"><h2>ตาราง Workflow ภายใน</h2><span class="pill warn" style="margin-left:auto;">ภาพ K2 as-designed · ไม่ใช่ target schema</span></div>
-        <p class="cut-note">หน้านี้เป็น <b>ภาพ schema ของ K2 ตามที่ออกแบบไว้เดิม</b> ไม่ใช่ target schema ของ SBPGI · ตาราง workflow ทั้งหมดในหัวข้อนี้ถูกตัดออกเมื่อ 2026-08-06 แล้วเปลี่ยนไปใช้ engine กลาง <b>@srm/glb-workflow</b> (13 ตาราง · schema <code>sps_store</code>) — <b>ห้ามสร้างตารางเหล่านี้ใหม่</b></p>
+        <p class="cut-note">หน้านี้เป็น <b>ภาพ schema ของ K2 ตามที่ออกแบบไว้เดิม</b> ไม่ใช่ target schema ของ SGI · ตาราง workflow ทั้งหมดในหัวข้อนี้ถูกตัดออกเมื่อ 2026-08-06 แล้วเปลี่ยนไปใช้ engine กลาง <b>@srm/glb-workflow</b> (13 ตาราง · schema <code>sps_store</code>) — <b>ห้ามสร้างตารางเหล่านี้ใหม่</b></p>
         <div class="ent-grid">
 
           <div class="ent">
