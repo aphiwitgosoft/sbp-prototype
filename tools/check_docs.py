@@ -2014,18 +2014,32 @@ check("กลุ่ม sidebar ที่เอกสารระบุ ไม่
 # · "pending ACK watchdog" (LLDD-BE-Job-Batch-Email-SRM)
 # ชื่อ path /interface/pending-ack คงไว้เพื่อ compatibility ได้ แต่ "คำอธิบาย" ต้องไม่สื่อว่ารอ ACK จาก STA
 _ackw_bad = []
+# 2026-09-09: ขยายให้ครอบคำที่หลุดมาได้ — เจอค้างใน boilerplate ของ Job ทั้ง 12 ฉบับ
+# ("transactional outbox + ACK") และในคำอธิบายคอลัมน์/ตาราง ("รับไฟล์/ACK กลับ" · "สถานะ ACK")
 _ACKW = ("ACK ค้าง", "watchdog ACK", "pending ACK", "ACK watchdog",
-         "ยังไม่มี ACK", "ยังไม่ได้ ACK", "STA ACK callback")
+         "ยังไม่มี ACK", "ยังไม่ได้ ACK", "STA ACK callback",
+         "outbox + ACK", "และ ACK", "/ACK", "สถานะ ACK", "ACK/purge", "บันทึก ACK")
 # บรรทัดที่กำลัง "ปฏิเสธ" สำนวนนั้นอยู่ ถือว่าถูก
 _ACKW_OK = ("ไม่ใช่การรอ ACK", "ไม่ใช่ ACK", "ไม่มี ACK", "ห้ามตีความว่ารอ ACK",
             "ถูกตัด", "2026-09-08", "ตัดเมื่อ", "compatibility")
+# สำนวนที่ "ผิดเสมอ" ไม่ว่าบรรทัดจะมีคำอธิบาย/วันที่มติกำกับหรือไม่ —
+# เพราะเป็นการบรรยายกลไกผิด ไม่ใช่การอ้างอิงประวัติ (เจอจริง 2026-09-09: บรรทัดที่มี
+# "(มติ 2026-09-08)" อยู่ด้วย เลยรอดจาก whitelist ระดับบรรทัดไปทั้งบรรทัด)
+_ACKW_ALWAYS = ("outbox + ACK", "transactional outbox + ACK", "ACK/purge", "สถานะ ACK", "บันทึก ACK")
 for _f in DOC_FILES + glob.glob(".claude/skills/**/*.md", recursive=True):
     if not os.path.exists(_f):
         continue
     for _i, _line in enumerate(read(_f).split("\n"), 1):
+        for _w in _ACKW_ALWAYS:
+            if _w in _line:
+                _ackw_bad.append(
+                    f"{_f}:{_i} ใช้สำนวน `{_w}` — กลไกจริงคือ publisher confirm "
+                    "(มติข้อ 2.13) · สำนวนนี้ผิดเสมอ แม้บรรทัดจะมีคำอธิบายกำกับ")
         if any(_k in _line for _k in _ACKW_OK):
             continue
         for _w in _ACKW:
+            if _w in _ACKW_ALWAYS:
+                continue
             if _w in _line:
                 _ackw_bad.append(
                     f"{_f}:{_i} ใช้สำนวน `{_w}` — มติข้อ 2.13 (2026-09-08) เปลี่ยนเป็น "
@@ -2102,6 +2116,215 @@ try:
 except Exception as _e:   # pragma: no cover
     _jw_bad.append(f"ตรวจ WORKFLOW_TRIGGER_CONTRACTS ไม่ได้: {_e}")
 check("batch job เรียก @srm/glb-workflow เอง (ต้องผ่าน BE API)", sorted(set(_jw_bad)))
+
+# --------------------------- #91 สคริปต์ SQL ต้องตรงกับ DDL และต้องปลอดภัย
+# เพิ่ม 2026-09-09 พร้อม output/sql/ — สคริปต์ติดตั้ง schema + seed ลงฐาน SBP เดิม
+# เหตุผล: ไฟล์ .sql generate จาก DDL ชุดเดียวกับเอกสาร ถ้าใครแก้ DDL แล้วลืม generate ใหม่
+#         ไฟล์ที่ DBA เอาไปรันจะไม่ตรงกับเอกสาร — และต้องกันไม่ให้มีคำสั่งแตะระบบเดิม
+_sql_bad: list[str] = []
+_SQL_DIR = "output/sql"
+_sql_main = os.path.join(_SQL_DIR, "sgi_schema.sql")
+_sql_seed = os.path.join(_SQL_DIR, "sgi_seed_data.sql")
+try:
+    import build_sgi_schema_sql as _BS
+    if not os.path.exists(_sql_main):
+        _sql_bad.append(f"{_sql_main} :: ยังไม่ถูกสร้าง — รัน tools/build_sgi_schema_sql.py")
+    else:
+        _sm = read(_sql_main)
+        _ddl_tables = {_BS.table_of(_st) for _t, _st in _BS.collect()["creates"]}
+        for _t2 in sorted(_ddl_tables):
+            if f"CREATE TABLE {_t2}" not in _sm:
+                _sql_bad.append(f"{_sql_main} :: ขาด CREATE TABLE {_t2} — ไฟล์ค้างเวอร์ชันเก่า ให้ generate ใหม่")
+        # ห้ามมีคำสั่งใดแตะตารางที่ไม่ใช่ sgi_
+        for _m in re.finditer(r"^(?:CREATE TABLE|ALTER TABLE)\s+(\w+)", _sm, re.M):
+            if not _m.group(1).startswith("sgi_"):
+                _sql_bad.append(f"{_sql_main} :: {_m.group(0)} แตะตารางที่ไม่ใช่ของ SGI")
+        for _kw in ("DROP TABLE", "TRUNCATE", "DELETE FROM"):
+            for _ln in _sm.split("\n"):
+                if _kw in _ln and not _ln.strip().startswith("--"):
+                    _sql_bad.append(f"{_sql_main} :: มี {_kw} ในสคริปต์ติดตั้ง — ต้องไม่มี")
+    if not os.path.exists(_sql_seed):
+        _sql_bad.append(f"{_sql_seed} :: ยังไม่ถูกสร้าง — รัน tools/build_sgi_schema_sql.py")
+    else:
+        _ss = read(_sql_seed)
+        # seed แตะตารางระบบเดิมได้ แต่ต้อง INSERT อย่างเดียวและรันซ้ำได้
+        for _kw in ("UPDATE ", "DELETE FROM", "TRUNCATE", "DROP "):
+            for _ln in _ss.split("\n"):
+                if _kw in _ln and not _ln.strip().startswith("--"):
+                    _sql_bad.append(f"{_sql_seed} :: มี {_kw.strip()} ที่ไม่ใช่คอมเมนต์ — "
+                                    "seed ต้อง INSERT อย่างเดียว ห้ามแก้/ลบแถวของระบบเดิม")
+        for _stmt in _ss.split(";"):
+            if "INSERT INTO" in _stmt and "WHERE NOT EXISTS" not in _stmt:
+                _mm = re.search(r"INSERT INTO (\w+)", _stmt)
+                _sql_bad.append(f"{_sql_seed} :: INSERT ลง {_mm.group(1) if _mm else '?'} "
+                                "ไม่มี WHERE NOT EXISTS — รันซ้ำแล้วจะได้แถวซ้ำ")
+        # จำนวน master ต้องตรงกับหน้าจอที่เป็นต้นทาง
+        _n_comp = len(_BS.read_competitors())
+        _n_fact = len(_BS.read_factors())
+        if _ss.count("INSERT INTO sgi_competitors") != _n_comp:
+            _sql_bad.append(f"{_sql_seed} :: แบรนด์คู่แข่งใน seed ไม่ตรงกับ k2-competitors.html ({_n_comp} รายการ)")
+        if _ss.count("INSERT INTO sgi_external_factors") != _n_fact:
+            _sql_bad.append(f"{_sql_seed} :: ปัจจัยภายนอกใน seed ไม่ตรงกับ k2-factors.html ({_n_fact} รายการ)")
+except Exception as _e:   # pragma: no cover
+    _sql_bad.append(f"ตรวจสคริปต์ SQL ไม่ได้: {_e}")
+check("สคริปต์ SQL ไม่ตรงกับ DDL หรือมีคำสั่งที่ไม่ปลอดภัย", sorted(set(_sql_bad)))
+
+# ------------------- #92 job ที่ event-driven ต้องไม่มี cron/schedule ในเอกสาร
+# เจอจริง 2026-09-09 (ผู้ใช้ชี้): เอกสาร Job 11 บอกพร้อมกันว่าเป็น event-driven
+# (consumer เรียก SubmitJob) แต่ก็บอกว่า "ตัวจริงตั้งที่ AWS Batch scheduled event"
+# และยังประกาศ SGI_JOB11_CRON ไว้ — เป็นคนละ trigger contract
+# ถ้าทีมพัฒนาอ่านแล้วตั้ง schedule ตามนั้น job จะรันซ้อนกับ consumer แล้วประมวลผลข้อความซ้ำ
+_ed_bad: list[str] = []
+try:
+    import build_lldd_documents as _BE2
+    _ed_generic: dict[str, list[int]] = {}
+    for _j in _BE2.read_js_array_from_html("job-batch.html", "JOBS"):
+        if str(_j.get("cron", "")).strip().lower() != "event-driven":
+            continue
+        _no = _j["no"]
+        _slug = str(_no).upper()
+        _doc = [_p for _p in glob.glob("LLDD/md/Jobs/*.md")
+                if re.search(rf"LLDD-BE-Job-{re.escape(str(_no))}-", os.path.basename(_p))]
+        for _p2 in _doc:
+            for _i, _line in enumerate(read(_p2).split("\n"), 1):
+                # อนุญาตเฉพาะบรรทัดที่ "ห้าม" เท่านั้น
+                if "ห้าม" in _line or "ไม่มีและต้องไม่มี" in _line:
+                    continue
+                if f"SGI_JOB{_slug}_CRON" in _line:
+                    _ed_bad.append(f"{_p2}:{_i} job {_no} เป็น event-driven แต่ยังประกาศ "
+                                   f"SGI_JOB{_slug}_CRON — จะมีคนเอาไปตั้ง schedule ซ้อนกับ consumer")
+                # ข้อความพื้นฐานของ repo ("repo นี้ไม่มี @Cron · ตารางเวลาตั้งที่ AWS Batch")
+                # เป็นความจริงที่ใช้ร่วมทุก job — ที่ผิดคือประโยคที่ผูก schedule เข้ากับ *job นี้*
+                if re.search(r"ตารางเวลาของ Job\s*" + re.escape(str(_no)) + r"\b", _line) \
+                        and "AWS Batch scheduled event" in _line:
+                    _ed_bad.append(f"{_p2}:{_i} job {_no} เป็น event-driven แต่ยังบอกว่า "
+                                   "'ตารางเวลาของ job นี้ตั้งที่ AWS Batch scheduled event' — "
+                                   "ขัดกับ trigger ของ consumer")
+                # และถ้ามีข้อความพื้นฐานเรื่อง schedule ต้องมีข้อยกเว้นกำกับไว้ในเอกสารเดียวกัน
+                if "AWS Batch scheduled event" in _line and "ยกเว้น" not in _line:
+                    _ed_generic.setdefault(_p2, []).append(_i)
+                if re.search(r"cron:\s*string", _line):
+                    _ed_bad.append(f"{_p2}:{_i} job {_no} เป็น event-driven แต่ config ยังมีฟิลด์ cron")
+    # เอกสารของ job event-driven ที่มีข้อความ schedule แบบพื้นฐาน ต้องมีข้อยกเว้นอย่างน้อย 1 แห่ง
+    for _p3, _lines in _ed_generic.items():
+        if "ยกเว้น" not in read(_p3):
+            _ed_bad.append(f"{_p3} :: พูดถึง 'AWS Batch scheduled event' {len(_lines)} จุด "
+                           "แต่ไม่มีข้อความยกเว้นบอกว่า job นี้เป็น event-driven ห้ามตั้ง schedule")
+except Exception as _e:   # pragma: no cover
+    _ed_bad.append(f"ตรวจ job event-driven ไม่ได้: {_e}")
+check("job ที่ event-driven ยังมี cron/schedule ในเอกสาร", sorted(set(_ed_bad)))
+
+# ------------- #93 สถานะปลายทางของ outbox ต้องตรงกับโดเมนใน DDL ทุกที่
+# เจอจริง 2026-09-09 (ผู้ใช้ชี้): LLDD-BE-API-Document-Workflow-Actions บอกว่าได้ publisher
+# confirm แล้ว "update เป็น SENT" แต่ DDL กำหนดว่าขาออกจบที่
+# outbox_status = 'CONFIRMED' + status = 'COMPLETED'  (SENT = ยิงแล้วแต่ยังไม่ confirm)
+# ถ้าทำตามเอกสารนั้น แถวจะค้างที่ SENT แล้ว Job 10 จะเตือนไม่หยุด
+#
+# ตรวจเฉพาะประโยคที่ **สั่งเปลี่ยนสถานะ** เท่านั้น — ประโยคที่เป็นคำถามใน decision node
+# ("ได้ publisher confirm?") หรือบอกว่าใครเป็นคนเขียน ไม่ใช่คำสั่ง จึงไม่นับ
+_ob_bad: list[str] = []
+_OB_VERB = r"(update|อัปเดต|ตั้ง|เปลี่ยน|mark|จึง)"
+for _f in DOC_FILES:
+    for _i, _line in enumerate(read(_f).split("\n"), 1):
+        if "publisher confirm" not in _line:
+            continue
+        # ผิดชัดเจน: บอกว่า confirm แล้วให้เป็น SENT
+        if re.search(r"publisher confirm[^\n]{0,80}" + _OB_VERB + r"[^\n]{0,30}[`']?SENT", _line):
+            _ob_bad.append(f"{_f}:{_i} บอกว่าได้ publisher confirm แล้วตั้งเป็น SENT — "
+                           "SENT แปลว่ายิงแล้วแต่ยังไม่ confirm · ปลายทางคือ "
+                           "outbox_status = 'CONFIRMED' + status = 'COMPLETED'")
+            continue
+        # ประโยคที่สั่งเปลี่ยนสถานะหลัง confirm ต้องระบุ CONFIRMED
+        if re.search(r"(?<!ไม่)(?<!ยังไม่)(ได้|เมื่อได้|หลังได้)\s*publisher confirm[^\n]{0,60}" + _OB_VERB, _line) \
+                and not re.search(r"(ยังไม่|ไม่)ได้\s*publisher confirm", _line) \
+                and "CONFIRMED" not in _line:
+            _ob_bad.append(f"{_f}:{_i} สั่งเปลี่ยนสถานะหลังได้ publisher confirm "
+                           "แต่ไม่ได้ระบุ outbox_status = 'CONFIRMED'")
+# และห้ามมีที่ไหนบอกว่าขาออก "จบ" ที่ SENT
+for _f in DOC_FILES:
+    for _i, _line in enumerate(read(_f).split("\n"), 1):
+        if re.search(r"(จบที่|สิ้นสุดที่|ปลายทางคือ)\s*[`']?SENT", _line):
+            _ob_bad.append(f"{_f}:{_i} บอกว่าขาออกจบที่ SENT — DDL กำหนดให้จบที่ COMPLETED")
+check("สถานะปลายทางของ outbox ไม่ตรงกับโดเมนใน DDL", sorted(set(_ob_bad)))
+
+# --------------------- #94 PDF ต้องไม่มีอักขระที่ฟอนต์ไม่มี glyph (กล่อง □)
+# เจอจริง 2026-09-09 (ผู้ใช้ชี้): PDF แสดง ⚠️ 🔴 ✅ เป็นกล่อง □ เพราะฟอนต์ที่ใช้สร้าง PDF
+# (Arial Unicode) ไม่มี glyph emoji เลย — พบ 964 จุดในชุดเอกสาร
+# แก้ด้วย pdf_safe_text() ที่แปลงเป็นสัญลักษณ์ขาวดำตอนเรนเดอร์ PDF (md/html/docx ไม่กระทบ)
+# กฎนี้กันไม่ให้ emoji "ตัวใหม่" ที่ยังไม่มีในตารางแปลง หลุดเข้า PDF อีก
+_glyph_bad: list[str] = []
+try:
+    from reportlab.pdfbase.ttfonts import TTFont as _TTF
+    import build_lldd_documents as _BG
+    _cmap = _TTF("GlyphCheck", _BG.FONT).face.charToGlyph
+    # 1) ตารางแปลงต้องครอบคลุมอักขระทุกตัวที่ "ต้นทางเอกสาร" ใช้แล้วฟอนต์ไม่มี
+    _srcs = glob.glob("LLDD/md/**/*.md", recursive=True) + glob.glob("tools/*.py")
+    _uncovered: dict[str, int] = {}
+    for _sf in _srcs:
+        for _ch in read(_sf):
+            if ord(_ch) > 0x2000 and ord(_ch) not in _cmap:
+                if _BG.pdf_safe_text(_ch) == _ch:      # แปลงแล้วยังเหมือนเดิม = ยังไม่มีในตาราง
+                    _uncovered[_ch] = _uncovered.get(_ch, 0) + 1
+    for _ch, _n in sorted(_uncovered.items()):
+        _glyph_bad.append(f"U+{ord(_ch):05X} ({_ch}) ใช้ {_n} จุด แต่ฟอนต์ PDF ไม่มี glyph "
+                          "และยังไม่มีในตาราง _PDF_GLYPH_FALLBACK → จะขึ้นเป็นกล่อง □ ใน PDF")
+    # 2) ตรวจ PDF ที่สร้างแล้วจริง ๆ (สุ่มไฟล์ใหญ่ที่สุดเพื่อไม่ให้ชุดตรวจช้า)
+    _pdfs = sorted(glob.glob("LLDD/pdf/**/*.pdf", recursive=True),
+                   key=lambda p2: os.path.getsize(p2), reverse=True)[:4]
+    for _pf in _pdfs:
+        try:
+            _pt = subprocess.run(["pdftotext", "-layout", _pf, "-"],
+                                 capture_output=True, text=True, timeout=60).stdout
+        except Exception:
+            continue
+        _miss = sorted({_c for _c in _pt if ord(_c) > 0x2000 and ord(_c) not in _cmap})
+        if _miss:
+            _glyph_bad.append(f"{_pf} :: มีอักขระที่ฟอนต์ไม่มี glyph "
+                              f"{[f'U+{ord(c):05X}' for c in _miss[:5]]} — จะแสดงเป็นกล่อง □")
+except Exception as _e:   # pragma: no cover
+    _glyph_bad.append(f"ตรวจ glyph ของ PDF ไม่ได้: {_e}")
+check("PDF มีอักขระที่ฟอนต์ไม่มี glyph (จะขึ้นเป็นกล่อง)", sorted(set(_glyph_bad)))
+
+# ------------ #95 วันที่หัวไฟล์ + ข้ออ้าง "บล็อก" ที่ปิดไปแล้ว
+# เจอจริง 2026-09-09 (ผู้ใช้ชี้): DECISIONS บอกว่า migration ติด F8/F1 อยู่
+# ทั้งที่ส่วนประวัติในไฟล์เดียวกันระบุว่าปิดตั้งแต่ 2026-08-21 · และหัวไฟล์ยังเป็น 2026-08-24
+# ทั้งที่เนื้อหามีมติถึง 2026-09-08/09
+_hdr_bad: list[str] = []
+_DATED_DOCS = ("DECISIONS-รอตัดสินใจ.md",)
+for _f in _DATED_DOCS:
+    if not os.path.exists(_f):
+        continue
+    _t = read(_f)
+    _all = sorted(set(re.findall(r"20\d\d-\d\d-\d\d", _t)))
+    _m = re.search(r"\*\*ปรับปรุง:\*\*\s*(20\d\d-\d\d-\d\d)", _t)
+    if not _m:
+        _hdr_bad.append(f"{_f} :: หาบรรทัด '**ปรับปรุง:**' ไม่เจอ")
+    elif _all and _m.group(1) < _all[-1]:
+        _hdr_bad.append(f"{_f} :: หัวไฟล์บอกปรับปรุง {_m.group(1)} "
+                        f"แต่ในไฟล์มีมติถึง {_all[-1]} — วันที่หัวไฟล์ตกยุค")
+    # ข้อที่ปิดไปแล้วต้องไม่ถูกอ้างว่ายัง "บล็อก" อยู่
+    for _closed, _when in (("F8/F1", "2026-08-21"), ("F8 + F1", "2026-08-21")):
+        for _i, _line in enumerate(_t.split("\n"), 1):
+            if _closed in _line and "บล็อก" in _line and "ไม่บล็อกแล้ว" not in _line:
+                _hdr_bad.append(f"{_f}:{_i} อ้างว่า {_closed} ยังบล็อกอยู่ "
+                                f"แต่ปิดไปแล้วเมื่อ {_when} (ประวัติอยู่ในไฟล์เดียวกัน)")
+# ตารางที่สคริปต์ติดตั้งสร้างจริง ห้ามมีเอกสารไหนบอกว่า "สร้างไม่ได้"
+# (เจอจริง 2026-09-09: DP-11 เขียนว่า sgi_compensation_histories สร้างไม่ได้
+#  ขณะที่ sgi_schema.sql สร้างตารางนี้จริง — ที่ยังตัดสินไม่ได้คือใครเขียนข้อมูล ไม่ใช่ตัวตาราง)
+try:
+    _sql_txt = read("output/sql/sgi_schema.sql") if os.path.exists("output/sql/sgi_schema.sql") else ""
+    _created = set(re.findall(r"CREATE TABLE (\w+)", _sql_txt))
+    for _f2 in DOC_FILES:
+        for _i2, _l2 in enumerate(read(_f2).split("\n"), 1):
+            if "สร้างไม่ได้" not in _l2 or "ไม่ได้บล็อกการสร้างตาราง" in _l2:
+                continue
+            for _tb in _created:
+                if _tb in _l2:
+                    _hdr_bad.append(f"{_f2}:{_i2} บอกว่า {_tb} 'สร้างไม่ได้' "
+                                    "แต่ output/sql/sgi_schema.sql สร้างตารางนี้จริง")
+except Exception as _e:   # pragma: no cover
+    _hdr_bad.append(f"ตรวจตารางที่ 'สร้างไม่ได้' ไม่ได้: {_e}")
+check("วันที่หัวไฟล์ตกยุค หรืออ้างข้อที่ปิดแล้วว่ายังบล็อก", sorted(set(_hdr_bad)))
 
 # ------------------------------------------------------------------- รายงานผล
 print(f"schema sps_store: {len(schema)} ตาราง · ตรวจ {len(DOC_FILES)} ไฟล์\n")

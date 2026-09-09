@@ -408,7 +408,7 @@ export class SgiWorkflowInstancesService {
     await runner.startTransaction();
     try {
       // TODO: lock แถวเป้าหมายของ sgi_fgi_impact_processes ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SGI_SQL.createSgiWorkflowInstancesLock, [body.impactProcessId]);
+      const [current] = await runner.query(SGI_SQL.createSgiWorkflowInstancesLock, [body.requestId]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }

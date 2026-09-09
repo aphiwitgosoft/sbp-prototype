@@ -563,7 +563,7 @@ export class SgiDocumentCreateUpdateService {
     await runner.startTransaction();
     try {
       // TODO: lock แถวเป้าหมายของ sgi_compensation_documents ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SGI_SQL.createSgiDocumentLock, [body.newStoreCode]);
+      const [current] = await runner.query(SGI_SQL.createSgiDocumentLock, [body.impactMonth]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }

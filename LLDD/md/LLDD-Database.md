@@ -111,8 +111,10 @@ CREATE TABLE sgi_impacted_stores (
 
 -- ❌ ไม่สร้างตาราง employees ใน SGI — ใช้ business_user / business_user_group ของระบบ SBP เดิม
 
-ALTER TABLE sgi_impacted_stores
-    -- opt_dv_user_id ไม่มี FK — ผู้ใช้อยู่ที่ business_user ของระบบ SBP เดิม (ตัด employees 2026-08-05)
+-- หมายเหตุ sgi_impacted_stores: opt_dv_user_id ไม่มี FK — ผู้ใช้อยู่ที่ business_user
+--   ของระบบ SBP เดิม (ตัดตาราง employees ออกเมื่อ 2026-08-05)
+--   ⚠️ แก้ 2026-09-09: เดิมบรรทัดนี้เขียนเป็น "ALTER TABLE sgi_impacted_stores" ค้างไว้
+--      โดยไม่มีเนื้อคำสั่งและไม่มี ; — ถ้าก๊อป DDL ไปรันจริงจะ syntax error
 
 -- ❌ ไม่สร้างตาราง operator_assignments ใน SGI — ใช้ group + scope ของ auth-backend + prepared approvers ของ @srm/glb-workflow (ตัดสินใจ 2026-08-05)
 
@@ -284,7 +286,8 @@ CREATE TABLE sgi_interface_transactions (
     id BIGSERIAL PRIMARY KEY,
     -- run_id เป็น correlation id ของรอบรัน (มาจาก application log) — ไม่มี FK เพราะ job_run_histories ถูกตัด 2026-08-06
     run_id VARCHAR(50),
-    -- direction: OUT = ส่งไฟล์ออกไประบบภายนอก (Job 4 → IAS · Job 6 → STA) · IN = รับไฟล์/ACK กลับ (Job 5 · callback ของ STA)
+    -- direction: OUT = ส่งออกไประบบภายนอก (Job 4 → IAS · Job 6 → STA) · IN = รับเข้าจากภายนอก (Job 5 ไฟล์จาก IAS · Job 11 ข้อความจาก STA)
+    --            ⚠️ ไม่มี "ACK กลับ" จาก STA แล้ว (มติ 2026-09-08 ข้อ 2.13) — ความสำเร็จของขาออกวัดที่ outbox_status = CONFIRMED
     --            INTERNAL = การส่งต่อ*ภายในระบบเดียวกัน* ที่มาแทนไฟล์ EAI เดิม (Jobs 7/8/9 เขียน DB ตรง — ไม่มี ACK ให้รอ จึงจบที่ status = COMPLETED)
     -- ชุดค่าปิด 9 ค่า เขียนโดย batch เท่านั้น (ไม่ใช่ input ของผู้ใช้) — ต้องล็อกเพราะ data_name เป็นส่วนหนึ่งของ
     -- UNIQUE ที่กันส่งซ้ำ และเป็นตัวกรองของ watchdog Job 10 · พิมพ์ผิดหนึ่งตัว = กันซ้ำไม่ทำงาน + watchdog เงียบ
@@ -568,7 +571,7 @@ RETURNING i.id, i.data_name, i.business_key;
 | Auto-assign (SDD 46/48) | 06 เห็นควรไม่ชดเชย -> ปิดเอกสารและตั้งงานเดือนถัดไปให้เจ้าของงานคนเดิม ผ่าน addPreApprover · 06 หยุดชดเชยฯ -> เอกสารกลับเข้า GET /sgi/document/tasks ของ 06 ทันที (stoppedReopenable) | เดือนที่กดเห็นควรไม่ชดเชย ต้องไม่พบเอกสารใน GET /sgi/document/tasks ของ 06 · เดือนถัดไปต้องพบพร้อม assignee คนเดิม |
 | Attachment upload | metadata insert after storage write with scan_status = PENDING; objectKey never exposed | storage fail leaves no CLEAN metadata |
 | Job 4 IAS request | durable file (fsync + atomic rename + checksum) ก่อน transaction W→P + outbox READY | file fail คง W; DB fail rollback W→P/outbox; S3 upload fail retry transaction เดิม |
-| Interface ACK/purge | ACK compare-and-set บน transaction เดิม; purge เฉพาะ terminal + purge_after + non-held | pending/failed/unacked/legal-hold ห้ามลบ |
+| Interface confirm/purge | publisher confirm ตั้ง outbox_status = CONFIRMED + status = COMPLETED แบบ compare-and-set บน transaction เดิม; purge เฉพาะ terminal + purge_after + non-held | pending/failed/unacked/legal-hold ห้ามลบ |
 | Master mutation | update entity ใน transaction เดียว | mutation fail ต้อง rollback ครบ |
 
 ## 8. Seed Data

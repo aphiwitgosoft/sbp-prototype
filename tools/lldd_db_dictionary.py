@@ -362,7 +362,7 @@ TABLE_DOCS["sgi_interface_transactions"] = {
         "และเป็นกลไก idempotent หลักของทุก job",
         "`ck_interface_typed_reference` บังคับว่าต้องมีอย่างน้อย 1 ใน `impact_process_id` / "
         "`sales_summary_id` / `doc_no` — แก้บั๊ก polymorphic FK ของระบบเดิม",
-        "🔴 **มติ 2026-09-08 (ข้อ 2.13): ไม่มีสถานะ ACK ระดับธุรกิจ** — ความสำเร็จวัดจาก "
+        "🔴 **มติ 2026-09-08 (ข้อ 2.13): ระบบ STA ไม่ตอบรับระดับธุรกิจกลับมา** — ความสำเร็จของขาออกวัดจาก "
         "`outbox_status = 'CONFIRMED'` (publisher confirm ของ RabbitMQ)",
     ],
     "columns": {

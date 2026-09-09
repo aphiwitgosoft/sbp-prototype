@@ -306,7 +306,7 @@ ORDER BY update_date DESC NULLS LAST, create_date DESC LIMIT 1;
 | อีเมลแจ้งสถานะ | workflow ให้ **เลข template** ผ่าน `workflow_route.email_id` แล้ว **SGI เรียก `sendEmail()` ของ `@gosoft-sbp/email-lib` เอง** พร้อม `mailTo` / `mailCc` / `param` | `triggerEvent` ของ engine ไม่มีฟิลด์ `mailTo`/`mailCc`/`param` ที่ `sendEmail` บังคับ (ปิด 2026-08-14) |
 | ไฟล์แนบ | `sgi_document_attachments` เก็บ **metadata ฝั่ง SGI** แล้วฝากไฟล์กับ service S3 ของระบบเดิม (`upload-file-aws` / `download-file-aws`) — ไม่เขียน storage layer เอง | `upload_general` ของระบบเดิมไม่มีคอลัมน์ที่เอกสารต้องใช้ (ปิด 2026-08-24) |
 | ที่อยู่ของโค้ด SGI | เป็น **โมดูลใน `srm-sps-spsap-store-backend` เดิม** ไม่แยก backend ใหม่ | ได้ guard / interceptor / response envelope ของ store-backend มาใช้ทันที (ปิด 2026-08-21) |
-| `sgi_interface_transactions` | ใช้ DDL ตามที่ประกาศไว้ในเอกสาร `LLDD-Database` — 1 แถวต่อ 1 record ที่รับส่งกับระบบภายนอก พร้อมสถานะ ACK | เป็นตารางของ SGI เอง (`integration_log` ของระบบเดิมเก็บ payload ต่อ call ไม่ใช่ระดับ record) |
+| `sgi_interface_transactions` | ใช้ DDL ตามที่ประกาศไว้ในเอกสาร `LLDD-Database` — 1 แถวต่อ 1 record ที่รับส่งกับระบบภายนอก พร้อมสถานะ สถานะการรับส่ง (ขาออกจบที่ outbox_status = CONFIRMED) | เป็นตารางของ SGI เอง (`integration_log` ของระบบเดิมเก็บ payload ต่อ call ไม่ใช่ระดับ record) |
 
 ### 5.9 Input / Progress / Output Contract
 

@@ -36,6 +36,12 @@ python3 tools/build_worklist.py                              # worklist.html —
 #   ลิงก์แชร์ ?b=<38 ตัวอักษร> (ส่งในแชท) · worklist-board.json (baseline ที่ commit ขึ้น git แล้วหน้าเว็บ fetch เป็นค่าตั้งต้น)
 python3 tools/build_planner_tasks.py                          # output/planner-tasks.csv|.txt — ข้อมูลการ์ด Microsoft Planner (label · checklist · ลิงก์ LLDD บน SharePoint) จากชุดข้อมูลเดียวกับ LLDD
 python3 tools/build_tobe_csv.py                               # output/tobe-work.csv + **tobe-work.xlsx** (Numbers/Excel เปิดแล้วแก้ได้ — .csv เปิดใน Numbers เป็นอ่านอย่างเดียวเสมอ) — 1 แถว = 1 ข้อที่ SDD สั่ง (สไลด์ · ข้อ · ทำอะไร · ใครทำกี่ชั่วโมง · รวม) · เฉพาะงานใหม่ของ To-Be · เฉพาะสาย FE/BE · ชั่วโมงรายข้อกระจายจากชั่วโมงของเอกสาร LLDD ตาม `BULLET_DOCS` (แบ่งเท่า) ผลรวมรายข้อ = ยอดจริงของ TB เสมอ
+python3 tools/build_sgi_schema_sql.py                        # output/sql/ — SQL ที่รันได้จริงลงฐาน SBP เดิม (schema `sps_store`)
+#   sgi_schema.sql          สร้าง 19 ตารางใหม่ 3 โซน + 23 index (เรียงตาม dependency · ทั้งไฟล์อยู่ใน transaction เดียว · preflight หยุดถ้ามีตาราง sgi_ อยู่แล้ว)
+#   sgi_seed_data.sql       ข้อมูลตั้งต้น — คู่แข่ง 11 · ปัจจัยภายนอก 4 · common_code SGI_DECISION 7 · mas_param SGI_* 9 · email_template EM-01..08
+#   sgi_schema_rollback.sql DROP ทั้งหมด (dev/uat เท่านั้น)
+#   ⚠️ generate จาก DDL ชุดเดียวกับเอกสาร LLDD-Database — **ห้ามแก้ .sql ด้วยมือ** · check_docs.py กฎ #91 ดักไว้
+#   ⚠️ ยังไม่เคยรันกับ PostgreSQL จริง (เครื่องนี้ไม่มี) — ตรวจแล้วเชิงโครงสร้างเท่านั้น ต้องลอง dev ก่อนขึ้น UAT
 python3 tools/build_k2_flow_diagram.py                        # ชุดแผนภาพ Flow K2 (4 รูป · SVG+PNG+index.html) → output/flow/
 python3 tools/build_integrated_srs.py                         # integrated SRS DOCX/PDF → output/srs/
 node tools/capture_srs_screenshots.mjs                        # page screenshots → output/srs/screenshots/

@@ -258,7 +258,7 @@ RPA ดึงข้อมูลร้านจาก SBP Mall ให้ทีม
 **สิ่งที่ยังอยู่:**
 - **batch job ทั้ง 12 ตัว (Jobs 2–10 + 8b จาก Batch v4.0 · ตัด Job 1 ImportQSSI 2026-08-24 · + Job 11 ConsumeStaCompensate และ Job 12 NotifyPendingWork ของใหม่ 2026-09-02) ยังทำงานตามปกติ** ตามเอกสาร Batch v4.0 — ไม่กระทบ pipeline FGI/FCS
 - **พารามิเตอร์และตารางเวลา** ย้ายไปกำหนดใน **backend config** (config file/env ของฝั่ง BE) แทนตาราง `job_configs` — แก้ค่าโดยการ deploy config ไม่ใช่ผ่านหน้าจอ
-- **ผลการรัน** เก็บที่ application log ของ BE และ `sgi_interface_transactions` (สถานะรับ–ส่งไฟล์/ACK ซึ่งยังมี endpoint กลุ่ม Interface อยู่) แทนตาราง `job_run_histories`
+- **ผลการรัน** เก็บที่ application log ของ BE และ `sgi_interface_transactions` (สถานะรับ–ส่งไฟล์/ข้อความ ซึ่งยังมี endpoint กลุ่ม Interface อยู่) แทนตาราง `job_run_histories`
 - ตาราง `job_configs` และ `job_run_histories` **ถูกลบจาก target schema** (24 → 22 ตาราง)
 
 ## ระบบ audit ของ master — ยกเลิกและลบทิ้ง (ตัดสินใจ 2026-08-07 · 1 เส้น)

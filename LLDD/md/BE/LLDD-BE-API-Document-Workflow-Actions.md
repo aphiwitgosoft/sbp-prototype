@@ -101,7 +101,7 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 | ชื่อชุดข้อมูล | `dataName = "sgi_reflow"` · `sender = "SGI"` · โครงสร้างฟิลด์ชุดเดียวกับ `sgi_impact_store` |
 | ค่าที่บังคับ | `compensate_status = "R"` ทุกรายการ · `stmt_year_month` ว่างเสมอ (ยังไม่ทราบงวด statement ใหม่) |
 | จำนวนรายการ | **1 รายการต่อ 1 งวด** (`compensate_year_month`) ที่ต้อง reflow — ส่งครบทุกงวดที่เอกสารเดิมครอบคลุม |
-| Transaction boundary | insert แถว outbox `sgi_interface_transactions` (**`data_name = 'SGI_REFLOW'`** · `direction = 'OUT'` · `status = 'READY'`) **ใน transaction เดียวกับการเปิดรอบพิจารณาใหม่** แล้ว publish นอก transaction · ได้ publisher confirm จึง update เป็น `SENT` <br>⚠️ `SGI_REFLOW` เพิ่งถูกเพิ่มเข้า `CHECK` ของ `data_name` เมื่อ 2026-09-02 — ก่อนหน้านั้น INSERT นี้จะถูก constraint ปฏิเสธ |
+| Transaction boundary | insert แถว outbox `sgi_interface_transactions` (**`data_name = 'SGI_REFLOW'`** · `direction = 'OUT'` · `status = 'READY'`) **ใน transaction เดียวกับการเปิดรอบพิจารณาใหม่** แล้ว publish นอก transaction · publish สำเร็จตั้ง `status = 'SENT'` + `outbox_status = 'PUBLISHED'` · **ได้ publisher confirm จาก broker จึงตั้ง `outbox_status = 'CONFIRMED'` + `status = 'COMPLETED'`** (ตรงกับโดเมนใน `LLDD-Database` · มติ 2026-09-08 ข้อ 2.13 — ค้างที่ `SENT` แปลว่ายังไม่ confirm และ Job 10 จะเตือน) <br>⚠️ `SGI_REFLOW` เพิ่งถูกเพิ่มเข้า `CHECK` ของ `data_name` เมื่อ 2026-09-02 — ก่อนหน้านั้น INSERT นี้จะถูก constraint ปฏิเสธ |
 | Idempotency | `message_id` = `sgi_interface_transactions.id` · กดเปิดพิจารณาใหม่ซ้ำบนเอกสารเดิมต้องไม่เกิดแถว outbox ที่สอง |
 
 ### 5.1b Auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48 · 64)

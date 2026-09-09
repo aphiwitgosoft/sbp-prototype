@@ -149,7 +149,7 @@
             <tr><td>ค่าที่บังคับ</td><td><code>compensate_status = "R"</code> ทุกรายการ · <code>stmt_year_month</code> ว่างเสมอ (ยังไม่ทราบงวด statement ใหม่)</td></tr>
             <tr><td>จำนวนรายการ</td><td><b>1 รายการต่อ 1 งวด</b> (<code>compensate_year_month</code>) — ส่งครบทุกงวดที่เอกสารเดิมครอบคลุม</td></tr>
             <tr><td>โครงสร้างฟิลด์</td><td>ชุดเดียวกับ <code>sgi_impact_store</code> ต่างที่ <code>dataName</code> และค่า <code>compensate_status</code></td></tr>
-            <tr><td>Transaction boundary</td><td>insert outbox <code>sgi_interface_transactions</code> (OUT · READY) <b>ใน transaction เดียวกับการเปิดรอบพิจารณาใหม่</b> แล้ว publish นอก transaction · ได้ publisher confirm จึง update เป็น SENT</td></tr>
+            <tr><td>Transaction boundary</td><td>insert outbox <code>sgi_interface_transactions</code> (OUT · READY) <b>ใน transaction เดียวกับการเปิดรอบพิจารณาใหม่</b> แล้ว publish นอก transaction · publish สำเร็จตั้ง status = SENT + outbox_status = PUBLISHED · <b>ได้ publisher confirm จึงตั้ง outbox_status = CONFIRMED + status = COMPLETED</b></td></tr>
             <tr><td>Idempotency</td><td><code>message_id</code> = <code>sgi_interface_transactions.id</code> · กดซ้ำบนเอกสารเดิมต้องไม่เกิดแถว outbox ที่สอง</td></tr>
           </tbody>
         </table>

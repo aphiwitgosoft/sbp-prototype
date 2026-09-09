@@ -1,6 +1,6 @@
 # สรุปสถานะโครงการ SGI — งานที่ยังไม่ได้ทำ และเรื่องที่รอตัดสินใจ
 
-**ปรับปรุง:** 2026-08-24 · **ขอบเขต:** ระบบประกันรายได้ (K2 → SGI)
+**ปรับปรุง:** 2026-09-09 · **ขอบเขต:** ระบบประกันรายได้ (K2 → SGI)
 **ที่มา:** SDD GI (สไลด์ 43–66) · ผัง To-Be `120226` · ฐานข้อมูลจริง `sps_store` · living docs (`workflow.md` · `api.md` · `database.md`) · [`TOBE-flow-gap-review-2026-08-19.md`](TOBE-flow-gap-review-2026-08-19.md) · [`SDD-บัญชีประกันรายได้-gap-analysis.md`](SDD-บัญชีประกันรายได้-gap-analysis.md)
 
 > เอกสารนี้มี **2 ส่วน** — ส่วนที่ 1 คือ**งานที่ยังไม่ได้ทำ** (รู้ว่าต้องทำ แต่ยังไม่ได้ลงมือ) · ส่วนที่ 2 คือ**เรื่องที่ยังตัดสินใจไม่ได้** (ลงมือไม่ได้จนกว่าจะมีคำตอบ)
@@ -14,7 +14,7 @@
 |---|---|---|
 | **แบบ (design)** | ✅ **เสร็จ** | living docs 3 ฉบับ + LLDD **43 ฉบับ** (42 ฉบับมี .md = 39 หัวข้อ + 3 อ้างอิง · + พจนานุกรมข้อมูลที่เป็น PDF อย่างเดียว) + prototype **21 หน้า** + ชุดแผนภาพ flow 4 รูป |
 | **ระบบจริง (FE/BE/Job)** | ❌ **ยังไม่เริ่มเขียนสักบรรทัด** | ประเมิน **829 ชม.** (implementation 675 + unit test 154) @ **8.5 ชม./วัน** ≈ 97 man-day · เพดานทีม 6 คน × 4 สัปดาห์ × 42.5 ชม. = **1,020 ชม.** |
-| **ย้ายข้อมูล (migration)** | ❌ **ยังไม่ทำ** | ออกแบบเสร็จใน `LLDD-BE-Data-Migration-Cutover` แต่ยังไม่ได้ลงมือ · **F8/F1 บล็อกอยู่** |
+| **ย้ายข้อมูล (migration)** | ❌ **ยังไม่ทำ** | ออกแบบเสร็จใน `LLDD-BE-Data-Migration-Cutover` · สคริปต์ติดตั้งพร้อมแล้วที่ `output/sql/sgi_schema.sql` + `sgi_seed_data.sql` (2026-09-09) แต่ยังไม่ได้ลงมือ · **✅ F8/F1 ไม่บล็อกแล้ว — ปิดตั้งแต่ 2026-08-21 และรับเข้าโครง 20 ตารางเรียบร้อย** · สิ่งที่ยังค้างคือ **DP-11 (ข้อ 1.1)** — ลง schema ได้ครบทุกตาราง แต่ยังตัดสินไม่ได้ว่าใครเขียนข้อมูลลง `sgi_compensation_histories` และยอดที่ Job 6 ส่งไป STA มาจากไหน |
 | **เรื่องที่รอตัดสินใจ** | 🟠 **16 ข้อ** | ในนั้น **1 ข้อบล็อกการเริ่มเขียน BE** |
 
 ---
@@ -132,7 +132,7 @@ Bank เป็น senior และใช้ AI ได้ดี จึงคิ�
 > ### ✅ มติ 2026-08-24 — Job 6 ส่งค่าชดเชยไป STA ด้วย RabbitMQ แทนไฟล์ + SFTP
 > | เรื่อง | มติ | ผล |
 > |---|---|---|
-> | ช่องทางส่งค่าชดเชยไป STA | **publish RabbitMQ message แทนไฟล์ `FRBC0001` + SFTP** | Job 6 เขียน outbox `sgi_interface_transactions` (`direction = OUT` · `status = READY`) ใน transaction เดียวกับ 10 mutation → publish exchange `sgi.interface` routing `sta.compensation.result` → update `READY → SENT` · เนื้อข้อมูลคงสัญญาเดิม **14 ฟิลด์** แต่เป็น **JSON UTF-8** (ไม่มี windows-874 แล้วเพราะไม่ใช่ไฟล์) · **ปรับตามมติข้อ 2.13 (2026-09-08): ไม่มี ACK ระดับธุรกิจ** — `outbox_status = CONFIRMED` เมื่อได้ publisher confirm จาก broker และ Job 10 เฝ้าแถวที่ยังไม่ CONFIRMED |
+> | ช่องทางส่งค่าชดเชยไป STA | **publish RabbitMQ message แทนไฟล์ `FRBC0001` + SFTP** | Job 6 เขียน outbox `sgi_interface_transactions` (`direction = OUT` · `status = READY`) ใน transaction เดียวกับ 10 mutation → publish exchange `sgi.interface` routing `sta.compensation.result` → `READY → SENT` (+ `outbox_status = PUBLISHED`) → **ได้ publisher confirm จึง `outbox_status = CONFIRMED` + `status = COMPLETED`** · เนื้อข้อมูลคงสัญญาเดิม **14 ฟิลด์** แต่เป็น **JSON UTF-8** (ไม่มี windows-874 แล้วเพราะไม่ใช่ไฟล์) · **ปรับตามมติข้อ 2.13 (2026-09-08): ไม่มี ACK ระดับธุรกิจ** — `outbox_status = CONFIRMED` เมื่อได้ publisher confirm จาก broker และ Job 10 เฝ้าแถวที่ยังไม่ CONFIRMED |
 > | ขอบเขต transaction | **แยก commit — เลิกกติกา "SFTP ล้มเหลว = rollback ทั้ง transaction"** | ใช้ transactional outbox แบบเดียวกับ Job 4 · publish ไม่สำเร็จ = แถวค้าง `READY/FAILED_RETRY` ให้ dispatcher ส่งซ้ำ **โดยไม่ rollback การ sync สถานะ** · ส่งซ้ำปลอดภัยเพราะใช้ `message_id = sgi_interface_transactions.id` เป็น idempotency key ฝั่ง STA |
 >
 > ⏳ **ยังต้องยืนยันกับทีม STA/EAI ก่อนลงมือ:** ชื่อ exchange + routing key จริง (ที่ใส่ไว้เป็นค่าเสนอ) · ใครประกาศ exchange/queue และ binding · **ฟิลด์วันที่ 3/5/6 ยังต้องเป็น พ.ศ. หรือเปลี่ยนเป็น ISO ค.ศ. ได้** (ข้อจำกัด windows-874 หายไปแล้ว แต่รูปแบบวันที่เป็นสัญญาข้อมูล ไม่ใช่ข้อจำกัดของไฟล์) · STA กันรับซ้ำด้วย `message_id` ได้จริงหรือไม่ · นโยบาย DLQ/retry ของ broker · ยังต้องส่งไฟล์คู่ขนานช่วง cutover หรือไม่
@@ -172,7 +172,7 @@ Bank เป็น senior และใช้ AI ได้ดี จึงคิ�
 | | |
 |---|---|
 | **ทางเลือก** | (ก) SGI เขียนตัวเลขลง `fr_store_insure` เอง · (ข) ทีมงานยังคีย์มือเหมือนเดิม |
-| **บล็อกอะไร** | ตาราง `sgi_compensation_histories` **สร้างไม่ได้** จนกว่าจะเคาะ · กระทบ Job 6 (message ที่ส่งไป STA) |
+| **บล็อกอะไร** | **ไม่ได้บล็อกการสร้างตาราง** — DDL ของ `sgi_compensation_histories` นิ่งแล้วและอยู่ใน `output/sql/sgi_schema.sql` (ปรับถ้อยคำ 2026-09-09 · เดิมเขียนว่า "สร้างไม่ได้" ซึ่งขัดกับสคริปต์ติดตั้งที่สร้างตารางนี้จริง) · สิ่งที่ยังตัดสินไม่ได้คือ **ใครเป็นเจ้าของตัวเลขและใครเขียนลงตารางนี้** → กระทบ **Job 6** (ยอดที่ส่งไป STA) และกระทบว่าต้อง sync กับ `fr_store_insure` ของระบบเดิมหรือไม่ · **ลง schema ได้เลย แต่ยัง implement ตัวเขียนข้อมูลไม่ได้** |
 | **ประเภท** | **ธุรกิจล้วน** ไม่ใช่เทคนิค |
 | **⚠️ ไม่ใช่เรื่องเดียวกับเกณฑ์ 100,000** | `100,000` = **วงเงินอนุมัติ** (ใครเซ็น) ปิดไปแล้ว 2026-08-18 · **DP-11 = ตัวเลขเงินที่อนุมัติแล้วไปเก็บที่ไหน** · ระบบเดิมมี `sps_store.fr_store_insure` (708 แถว · `store_id`·`year`·`month`·`money_support`·`split` ต่อ `order_id`) ที่โมดูล inquiry เขียนอยู่แล้ว และ**มิติซ้ำ**กับ `sgi_compensation_histories` ที่เราจะสร้าง |
 | **ต้องถามฝั่งบัญชี/SBP ก่อนตอบ** | `fr_store_insure` วันนี้ **ใครกรอก · กรอกจากอะไร · เป็นตัวเลขเดียวกับเงินชดเชยที่ผ่าน workflow เราไหม** |

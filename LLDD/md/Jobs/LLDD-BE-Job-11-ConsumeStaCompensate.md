@@ -33,7 +33,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 - Output: sgi_fgi_impact_compensations (forecast_amount / adjust_amount)
 - Estimate: 12 ชั่วโมง
 - Argument รับผ่าน `INPUT` (JSON) — local ใช้ env `JOB_NAME`/`INPUT` · AWS Batch ใช้ `argv[3]`/`argv[2]` · ดูหัวข้อ 5.95 · ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)
-- ตารางเวลาตั้งที่ **AWS Batch scheduled event** (repo ไม่มี `@Cron`) · ทุก job ถูกบันทึกลง `integration_log` โดย `main.ts` อัตโนมัติ + structured log `BATCH_START`/`BATCH_END` พร้อม `runId`
+- ตารางเวลาตั้งที่ **AWS Batch scheduled event** (repo ไม่มี `@Cron`) — **ยกเว้น job ที่เป็น event-driven (ดูหัวข้อ Config Schema ของ job นั้น) ซึ่งห้ามตั้ง schedule** · ทุก job ถูกบันทึกลง `integration_log` โดย `main.ts` อัตโนมัติ + structured log `BATCH_START`/`BATCH_END` พร้อม `runId`
 
 ## 3. Screenshot Reference
 
@@ -180,7 +180,7 @@ export async function runLlddBeJob11Consumestacompensate(ctx, services) {
 | Local / CLI / runbook | env `JOB_NAME` | env `INPUT` (JSON string) | `JOB_NAME=sgi-consume-sta-compensate INPUT='{"dataType":"message","dataName":"sta_update_compensate","dataMessage":[{"storeCode":"01234","compensateMonth":"2026-06","amount":15000}],"sender":"sta","sentAt":"2026-09-08T03:00:00.000Z"}' npm run start` |
 | AWS Batch (ตารางเวลาจริง) | `process.argv[3]` | `process.argv[2]` (JSON string) | `node dist/main.js '{"dataType":"message","dataName":"sta_update_compensate","dataMessage":[{"storeCode":"01234","compensateMonth":"2026-06","amount":15000}],"sender":"sta","sentAt":"2026-09-08T03:00:00.000Z"}' sgi-consume-sta-compensate` |
 
-**ตารางเวลาไม่ได้อยู่ในโค้ด** — repo นี้ไม่มี `@Cron`/`@Interval` แม้แต่จุดเดียว (แม้ติดตั้ง `@nestjs/schedule` ไว้) cron ในหัวข้อ 5 เป็น **นิยามของ AWS Batch scheduled event** ที่ต้องตั้งตอน deploy ไม่ใช่ค่าที่อ่านจาก config file
+**ตารางเวลาไม่ได้อยู่ในโค้ด** — repo นี้ไม่มี `@Cron`/`@Interval` แม้แต่จุดเดียว (แม้ติดตั้ง `@nestjs/schedule` ไว้) cron ในหัวข้อ 5 เป็น **นิยามของ AWS Batch scheduled event** ที่ต้องตั้งตอน deploy ไม่ใช่ค่าที่อ่านจาก config file · 🔴 **ยกเว้น job นี้** ซึ่งเป็น **event-driven ไม่มีตารางเวลา** — `srm-sps-spsap-store-consumer` เรียก SubmitJob ให้เมื่อมีข้อความเข้าคิว **ห้ามตั้ง AWS Batch scheduled event ให้ job นี้** เพราะจะรันซ้อนกับ consumer
 
 #### Argument ที่รับได้ (`INPUT` เป็น JSON object · ไม่ส่ง = `{}`)
 
@@ -231,7 +231,7 @@ Job 11 ตัดสิน 3 เรื่องต่อข้อความ 1 �
 | รันตามตารางเวลา | CRON | scheduler → runner (job 11) | อ่าน cron/พารามิเตอร์จาก backend config |
 | รันนอกรอบ (manual/rerun) | CLI | CLI/ops runbook → runner (job 11) | guard ไม่ให้รันซ้อนด้วย distributed lock |
 | แก้พารามิเตอร์/เปิด-ปิด job | CONFIG | แก้ backend config แล้ว deploy | ไม่มี endpoint และไม่มีหน้าจอควบคุม — หน้า Flow Batch Job เป็น reference อย่างเดียว (2026-08-06) |
-| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ sgi_interface_transactions |
+| ตรวจผลการรัน | LOG | application log (structured) | ไม่มีตาราง job_run_histories แล้ว · ผลการรับส่งไฟล์/ข้อความดูที่ sgi_interface_transactions |
 
 ## 7. API Contract
 
@@ -255,7 +255,7 @@ Job 11 ตัดสิน 3 เรื่องต่อข้อความ 1 �
 
 **สิ่งที่ reuse ได้ทันที ไม่ต้องเขียนใหม่** — ต่างจากแผนเดิมที่ตั้งไว้บน store-backend ซึ่งต้องสร้าง runner ทั้งชุดเอง: `src/main.ts` (dispatcher + `BATCH_START`/`BATCH_END` + `runId` + log ลง `integration_log` อัตโนมัติ) · `src/modules/rabbitMQ/rabbitmq.service.ts` (`publishMessage`) · `src/shared/services/s3.service.ts` · `StatementService.decodeThaiFileContent()` (WINDOWS-874 auto-detect) · `@gosoft-sbp/email-lib` · `@srm/glb-log`
 
-⚠️ **สิ่งที่ repo นี้ยังไม่มี และเป็นงานตั้งต้นจริง**: (1) ไม่มี `@Cron` เลย — ตารางเวลาต้องตั้งเป็น **AWS Batch scheduled event** (2) ไม่มี distributed lock (`pg_try_advisory_lock`) — การกันรันซ้อนพึ่ง AWS Batch queue ถ้างานไหนรับความเสี่ยงนี้ไม่ได้ต้องเพิ่มเอง (3) `publishMessage` เป็น fire-and-forget ไม่มี publisher confirm/outbox — งานที่ต้องการ **transactional outbox + ACK** (Job 6) ต้องสร้างกลไกเพิ่ม ไม่ใช่ reuse ตรง ๆ (4) ยังไม่มี entity/ตาราง `sgi_*` แม้แต่ตัวเดียว
+⚠️ **สิ่งที่ repo นี้ยังไม่มี และเป็นงานตั้งต้นจริง**: (1) ไม่มี `@Cron` เลย — ตารางเวลาต้องตั้งเป็น **AWS Batch scheduled event** (2) ไม่มี distributed lock (`pg_try_advisory_lock`) — การกันรันซ้อนพึ่ง AWS Batch queue ถ้างานไหนรับความเสี่ยงนี้ไม่ได้ต้องเพิ่มเอง (3) `publishMessage` เป็น fire-and-forget **ไม่มี publisher confirm และไม่มี outbox** — งานที่ต้องการ **transactional outbox + publisher confirm** (Job 6 · และ `sgi_reflow` ฝั่ง BE) ต้องสร้างกลไกเพิ่มเอง ไม่ใช่ reuse ได้เลย · ⚠️ ไม่มี ACK ระดับธุรกิจให้รอ (มติ 2026-09-08 ข้อ 2.13) (4) ยังไม่มี entity/ตาราง `sgi_*` แม้แต่ตัวเดียว
 
 | Path | หน้าที่ |
 | --- | --- |
@@ -283,7 +283,7 @@ Job 11 ตัดสิน 3 เรื่องต่อข้อความ 1 �
 
 ### 9.2 Config Schema ของ Job 11 (backend config / env)
 
-ตารางเวลาของ Job 11 คือ `event-driven` (ไม่มีตารางเวลา — consumer SubmitJob ให้ทุกครั้งที่มีข้อความเข้าคิว (มติ 2026-09-08 · 1 ข้อความ = 1 การรัน)) — ⚠️ **ตัวจริงตั้งที่ AWS Batch scheduled event ไม่ใช่ในโค้ด** (repo นี้ไม่มี `@Cron` เลย) ค่า `SGI_JOB11_CRON` เก็บไว้เป็นเอกสารประกอบ/ตรวจสอบเท่านั้น · `SGI_JOB11_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล (กันกรณี AWS Batch ยังยิงเข้ามา)
+🔴 **Job 11 เป็น event-driven — ไม่มีตารางเวลา และห้ามตั้ง** · ตัวกระตุ้นคือ `srm-sps-spsap-store-consumer` เรียก SubmitJob ทุกครั้งที่มีข้อความเข้าคิว (1 ข้อความ = 1 การรัน · มติ 2026-09-08 ข้อ 2.11) · **ห้ามประกาศ `SGI_JOB11_CRON` และห้ามตั้ง AWS Batch scheduled event ให้ job นี้** เพราะจะรันซ้อนกับ consumer แล้วประมวลผลข้อความซ้ำ · `SGI_JOB11_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล
 
 ```ts
 // src/config/config.ts — เพิ่มบล็อกนี้ต่อท้าย (repo ใช้ export const ไม่ใช้ registerAs)
@@ -297,8 +297,10 @@ import { Injectable } from '@nestjs/common';
 export interface Job11Config {
   /** เปิด/ปิด job รอบถัดไปโดยไม่ต้อง deploy โค้ด */
   enabled: boolean;
-  /** ตารางเวลาของ job นี้ — บันทึกไว้เพื่ออ้างอิงเท่านั้น ตัวจริงตั้งที่ AWS Batch scheduled event */
-  cron: string;
+  /** ⚠️ job นี้เป็น event-driven — **ไม่มีและต้องไม่มี** cron/schedule
+   *  ตัวกระตุ้นคือ store-consumer เรียก SubmitJob เมื่อมีข้อความเข้าคิว (1 ข้อความ = 1 การรัน)
+   *  ห้ามประกาศ SGI_JOB11_CRON หรือตั้ง AWS Batch scheduled event ให้ job นี้
+   *  เพราะจะรันซ้อนกับ consumer แล้วประมวลผลข้อความซ้ำ */
   /** ตัวกระตุ้น (Trigger) — มติ 2026-09-08 — 1 ข้อความ = 1 การรัน (ไม่ใช่ cron ทุก 10 นาที) · consumer คุม prefetch/ack ให้ */
   trigger: string;
   /** Queue — **consumer เป็นผู้ bind/consume คิวนี้ ไม่ใช่ job** — ระบุไว้เพื่ออ้างอิง · ชื่อ queue/routing key ต้อง confirm กับทีม STA */
@@ -316,7 +318,6 @@ export interface Job11Config {
 export class SgiJob11Config implements Job11Config {
   // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)
   enabled = (process.env.SGI_JOB11_ENABLED ?? 'true') === 'true';
-  cron = process.env.SGI_JOB11_CRON ?? 'event-driven';
   trigger = process.env.SGI_JOB11_TRIGGER ?? 'ข้อความจาก STA ผ่าน srm-sps-spsap-store-consumer'; // TODO: แก้ผ่าน env/config file แล้ว deploy
   queue = process.env.SGI_JOB11_QUEUE ?? 'srm.sgi.sta-update-compensate.queue'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   dataName = process.env.SGI_JOB11_DATA_NAME ?? 'sta_update_compensate'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
@@ -562,7 +563,7 @@ repository ของ Job 11 ประกาศเป็น factory provider (`{p
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
 -- [W] sgi_interface_transactions : บันทึกขาเข้า direction = IN · กันซ้ำระดับข้อความ
--- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
+-- บันทึกผลการรับส่งระดับ record ของ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)
 INSERT INTO sgi_interface_transactions
   (run_id, data_name, direction, status, business_key, period_key,
    file_name, file_checksum, created_at)

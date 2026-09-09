@@ -246,7 +246,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job Batch and Email Integrati
 | --- | --- | --- |
 | (backend config: config file/env) | R | enabled, cron, params ของ batch — ตาราง job_configs ถูกตัด 2026-08-06 ไม่มีหน้าจอควบคุม · **cron จริงตั้งที่ AWS Batch scheduled event ของ sop-sgi-batch ไม่ใช่ที่ store-backend** |
 | (application log แบบ structured) | W | ประวัติการรันและสถานะล่าสุด — ตาราง job_run_histories ถูกตัด 2026-08-06 |
-| sgi_interface_transactions | R/W | tracking file/API interface และ ACK |
+| sgi_interface_transactions | R/W | tracking การรับส่งไฟล์/ข้อความ + outbox (สถานะจบที่ outbox_status = CONFIRMED) |
 | email_template (SBP) | R | subject_format/body_format ของระบบ SBP เดิม — อ่านอย่างเดียว |
 | email_sent (SBP) | W (โดย email-lib) | log การส่งของ batch — lib เขียนให้เอง |
 
@@ -639,7 +639,7 @@ export class SgiJobBatchEmailSRMBffController {
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| sgi_interface_transactions | R/W | tracking file/API interface และ ACK |
+| sgi_interface_transactions | R/W | tracking การรับส่งไฟล์/ข้อความ + outbox (สถานะจบที่ outbox_status = CONFIRMED) |
 | email_sent | W (โดย email-lib) | log การส่งของ batch — lib เขียนให้เอง |
 | email_template | R | ใช้ของระบบเดิม: email_template + email_sent + @gosoft-sbp/email-lib |
 

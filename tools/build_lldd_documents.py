@@ -521,6 +521,12 @@ JOB_RUN_CONTRACT: dict[str, dict[str, Any]] = {
 }
 
 
+def _job_is_event_driven(job_no: str) -> bool:
+    """job ที่ถูกกระตุ้นด้วยข้อความจาก store-consumer — ไม่มีและห้ามมีตารางเวลา"""
+    job = batch_job_by_no(job_no)
+    return str((job or {}).get("cron", "")).strip().lower() == "event-driven"
+
+
 def job_run_contract_blocks(job_no: str, section: str) -> list[dict[str, Any]]:
     """5.9x — job นี้ลงทะเบียนใน sop-sgi-batch อย่างไร และรับ argument อะไรได้บ้าง"""
     spec = JOB_RUN_CONTRACT.get(job_no)
@@ -546,6 +552,12 @@ def job_run_contract_blocks(job_no: str, section: str) -> list[dict[str, Any]]:
         p(
             "**ตารางเวลาไม่ได้อยู่ในโค้ด** — repo นี้ไม่มี `@Cron`/`@Interval` แม้แต่จุดเดียว (แม้ติดตั้ง `@nestjs/schedule` ไว้) "
             "cron ในหัวข้อ 5 เป็น **นิยามของ AWS Batch scheduled event** ที่ต้องตั้งตอน deploy ไม่ใช่ค่าที่อ่านจาก config file"
+            + (
+                " · 🔴 **ยกเว้น job นี้** ซึ่งเป็น **event-driven ไม่มีตารางเวลา** — "
+                "`srm-sps-spsap-store-consumer` เรียก SubmitJob ให้เมื่อมีข้อความเข้าคิว "
+                "**ห้ามตั้ง AWS Batch scheduled event ให้ job นี้** เพราะจะรันซ้อนกับ consumer"
+                if _job_is_event_driven(job_no) else ""
+            )
         ),
         h(3, "Argument ที่รับได้ (`INPUT` เป็น JSON object · ไม่ส่ง = `{}`)"),
         p(
@@ -1430,7 +1442,7 @@ UPDATE sgi_interface_transactions
    AND (last_ack_notified_on IS NULL OR last_ack_notified_on < CURRENT_DATE)
 RETURNING id;""",
         "idempotency": "คอลัมน์ last_ack_notified_on บน sgi_interface_transactions เป็น marker ต่อรายการต่อวัน; rerun วันเดียวกันไม่ส่งอีเมลซ้ำ (ย้ายมาจาก audit_logs ที่ถูกยกเลิก 2026-08-07)",
-        "transaction": "อ่าน pending แบบ read-only (ไม่แตะ outbox_status — Job 6 เป็นผู้เขียนเมื่อได้ publisher confirm); reserve notification marker ก่อนส่ง; ส่งล้มเหลว mark FAILED และ retry ด้วย marker เดิม",
+        "transaction": "อ่าน pending แบบ read-only (ไม่แตะ outbox_status — Job 6 เป็นผู้เขียน `outbox_status = 'CONFIRMED'` + `status = 'COMPLETED'` เมื่อได้ publisher confirm); reserve notification marker ก่อนส่ง; ส่งอีเมลล้มเหลวจึง mark FAILED และ retry ด้วย marker เดิม",
         "security": "SGI เรียก sendEmail() ของ email-lib เอง (ปิด DP-5 · 2026-08-14) — เลข template มาจาก workflow_route.email_id · credential SMTP/SES และตาราง email_template/email_sent เป็นของระบบ SBP เดิม",
         "steps": "loadOverdueAcknowledgements|reserveNotificationMarkers|sendPendingAckDigest|closeNotificationMarkers",
     },
@@ -2441,8 +2453,59 @@ _MD_BOLD_RE = re.compile(r"\*\*(.+?)\*\*", re.S)
 _MD_CODE_RE = re.compile(r"`([^`]+)`")
 
 
+# ---------------------------------------------------------------------------
+# PDF: แปลง emoji เป็นสัญลักษณ์ที่ฟอนต์มี glyph จริง
+# ---------------------------------------------------------------------------
+# เจอจริง 2026-09-09 (ผู้ใช้ชี้): PDF แสดง ⚠️ 🔴 ✅ เป็นกล่อง □ เพราะฟอนต์ที่ใช้สร้าง PDF
+# (Arial Unicode) **ไม่มี glyph emoji เลยสักตัว** — ตรวจแล้วมีอักขระแบบนี้ 964 จุดในชุดเอกสาร
+# แก้เฉพาะ "ตอนเรนเดอร์ PDF" เท่านั้น — md/html/docx ยังแสดง emoji ตามเดิมเพราะที่นั่นแสดงได้ปกติ
+#
+# ตัวแทนเลือกจากอักขระที่ยืนยันแล้วว่าฟอนต์มี และสื่อความหมายเดิมได้ในงานพิมพ์ขาวดำ
+_PDF_GLYPH_FALLBACK = {
+    "\uFE0F": "",          # variation selector — ตัดทิ้ง ไม่งั้นกลายเป็นกล่องตัวที่สอง
+    "\uFEFF": "",          # zero-width no-break space
+    "\u26A0": "▲",         # ⚠ คำเตือน
+    "\U0001F534": "●",     # 🔴 สำคัญมาก
+    "\U0001F7E0": "●",     # 🟠
+    "\u2705": "✓",         # ✅ ผ่าน/ปิดแล้ว
+    "\u274C": "✗",         # ❌ ไม่ทำ/ตัดออก
+    "\u26D4": "✗",         # ⛔ ห้าม
+    "\u23F3": "⌛",         # ⏳ ยังค้าง
+    "\u23F1": "⌛",         # ⏱
+    "\u23F0": "⌛",         # ⏰
+    "\u2B07": "↓",         # ⬇
+    "\U0001F449": "→",     # 👉
+    "\u2139": "※",         # ℹ
+    "\u2699": "◆",         # ⚙
+    "\U0001F517": "◇",     # 🔗
+    "\U0001F464": "○",     # 👤
+    "\U0001F4F6": "▪",     # 📶
+    "\U0001F5C4": "▣",     # 🗄
+    "\U0001F5C2": "▣",     # 🗂
+    "\U0001F4C2": "▣",     # 📂
+    "\U0001F4C4": "▫",     # 📄
+    "\U0001F511": "◆",     # 🔑
+    "\U0001F512": "◆",     # 🔒
+    "\U0001F50C": "◆",     # 🔌
+    "\U0001F4BE": "▣",     # 💾
+    "\U0001F4C5": "▫",     # 📅
+    "\U0001F4E6": "▣",     # 📦
+    "\U0001F3E0": "▫",     # 🏠
+    "\U0001F3A8": "◇",     # 🎨
+    "\U0001F7E9": "▪",     # 🟩
+    "\U0001F7E6": "▪",     # 🟦
+    "\U0001F7EA": "▪",     # 🟪
+}
+_PDF_GLYPH_RE = re.compile("|".join(map(re.escape, _PDF_GLYPH_FALLBACK)))
+
+
+def pdf_safe_text(text: Any) -> str:
+    """แทน emoji ด้วยสัญลักษณ์ที่ฟอนต์ PDF มี glyph จริง (ใช้เฉพาะทาง PDF)"""
+    return _PDF_GLYPH_RE.sub(lambda m: _PDF_GLYPH_FALLBACK[m.group(0)], str(text))
+
+
 def para(text: Any, style: ParagraphStyle) -> Paragraph:
-    esc = str(text if text is not None else "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    esc = pdf_safe_text(text if text is not None else "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     esc = esc.replace("\n", "<br/>")
     # แปลง markdown inline ที่ generator ใช้อยู่ (ไม่งั้น PDF จะโชว์ดอกจันดิบ)
     esc = _MD_BOLD_RE.sub(r"<b>\1</b>", esc)
@@ -2462,7 +2525,7 @@ def para(text: Any, style: ParagraphStyle) -> Paragraph:
 
 def code_para(text: Any, style: ParagraphStyle) -> Paragraph:
     escaped_lines = []
-    for line in str(text if text is not None else "").splitlines():
+    for line in pdf_safe_text(text if text is not None else "").splitlines():
         leading = len(line) - len(line.lstrip(" "))
         body = line[leading:].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         escaped_lines.append("&nbsp;" * leading + body)
@@ -2526,14 +2589,14 @@ def add_pdf_image(story: list[Any], styles: dict[str, ParagraphStyle], path: Pat
 def build_pdf(title: str, blocks: list[dict[str, Any]], out_path: Path) -> None:
     styles = init_pdf_styles()
     doc = SimpleDocTemplate(str(out_path), pagesize=A4, leftMargin=0.55 * inch, rightMargin=0.55 * inch, topMargin=0.55 * inch, bottomMargin=0.55 * inch)
-    story: list[Any] = [Paragraph(title, styles["title"]), para("SBP Mall - ระบบประกันรายได้ | Low Level Design Document", styles["body"]), Spacer(1, 8)]
+    story: list[Any] = [Paragraph(pdf_safe_text(title), styles["title"]), para("SBP Mall - ระบบประกันรายได้ | Low Level Design Document", styles["body"]), Spacer(1, 8)]
     figure_no = 0
     for block in blocks:
         btype = block["type"]
         if btype in ("h1", "h2", "h3", "h4"):
             min_space = {"h1": 1.6 * inch, "h2": 1.15 * inch, "h3": 0.9 * inch, "h4": 0.8 * inch}[btype]
             story.append(CondPageBreak(min_space))
-            story.append(Paragraph(block["text"], styles[btype]))
+            story.append(Paragraph(pdf_safe_text(block["text"]), styles[btype]))
         elif btype == "p":
             story.append(para(block["text"], styles["body"]))
         elif btype == "bullets":
@@ -3991,7 +4054,7 @@ ORDER BY update_date DESC NULLS LAST, create_date DESC LIMIT 1;""",
                 ["อีเมลแจ้งสถานะ", "workflow ให้ **เลข template** ผ่าน `workflow_route.email_id` แล้ว **SGI เรียก `sendEmail()` ของ `@gosoft-sbp/email-lib` เอง** พร้อม `mailTo` / `mailCc` / `param`", "`triggerEvent` ของ engine ไม่มีฟิลด์ `mailTo`/`mailCc`/`param` ที่ `sendEmail` บังคับ (ปิด 2026-08-14)"],
                 ["ไฟล์แนบ", "`sgi_document_attachments` เก็บ **metadata ฝั่ง SGI** แล้วฝากไฟล์กับ service S3 ของระบบเดิม (`upload-file-aws` / `download-file-aws`) — ไม่เขียน storage layer เอง", "`upload_general` ของระบบเดิมไม่มีคอลัมน์ที่เอกสารต้องใช้ (ปิด 2026-08-24)"],
                 ["ที่อยู่ของโค้ด SGI", "เป็น **โมดูลใน `srm-sps-spsap-store-backend` เดิม** ไม่แยก backend ใหม่", "ได้ guard / interceptor / response envelope ของ store-backend มาใช้ทันที (ปิด 2026-08-21)"],
-                ["`sgi_interface_transactions`", "ใช้ DDL ตามที่ประกาศไว้ในเอกสาร `LLDD-Database` — 1 แถวต่อ 1 record ที่รับส่งกับระบบภายนอก พร้อมสถานะ ACK", "เป็นตารางของ SGI เอง (`integration_log` ของระบบเดิมเก็บ payload ต่อ call ไม่ใช่ระดับ record)"],
+                ["`sgi_interface_transactions`", "ใช้ DDL ตามที่ประกาศไว้ในเอกสาร `LLDD-Database` — 1 แถวต่อ 1 record ที่รับส่งกับระบบภายนอก พร้อมสถานะ สถานะการรับส่ง (ขาออกจบที่ outbox_status = CONFIRMED)", "เป็นตารางของ SGI เอง (`integration_log` ของระบบเดิมเก็บ payload ต่อ call ไม่ใช่ระดับ record)"],
             ],
         ),
     ]
@@ -4182,7 +4245,7 @@ def workflow_action_transition_blocks() -> list[dict[str, Any]]:
             ["ชื่อชุดข้อมูล", "`dataName = \"sgi_reflow\"` · `sender = \"SGI\"` · โครงสร้างฟิลด์ชุดเดียวกับ `sgi_impact_store`"],
             ["ค่าที่บังคับ", "`compensate_status = \"R\"` ทุกรายการ · `stmt_year_month` ว่างเสมอ (ยังไม่ทราบงวด statement ใหม่)"],
             ["จำนวนรายการ", "**1 รายการต่อ 1 งวด** (`compensate_year_month`) ที่ต้อง reflow — ส่งครบทุกงวดที่เอกสารเดิมครอบคลุม"],
-            ["Transaction boundary", "insert แถว outbox `sgi_interface_transactions` (**`data_name = 'SGI_REFLOW'`** · `direction = 'OUT'` · `status = 'READY'`) **ใน transaction เดียวกับการเปิดรอบพิจารณาใหม่** แล้ว publish นอก transaction · ได้ publisher confirm จึง update เป็น `SENT` <br>⚠️ `SGI_REFLOW` เพิ่งถูกเพิ่มเข้า `CHECK` ของ `data_name` เมื่อ 2026-09-02 — ก่อนหน้านั้น INSERT นี้จะถูก constraint ปฏิเสธ"],
+            ["Transaction boundary", "insert แถว outbox `sgi_interface_transactions` (**`data_name = 'SGI_REFLOW'`** · `direction = 'OUT'` · `status = 'READY'`) **ใน transaction เดียวกับการเปิดรอบพิจารณาใหม่** แล้ว publish นอก transaction · publish สำเร็จตั้ง `status = 'SENT'` + `outbox_status = 'PUBLISHED'` · **ได้ publisher confirm จาก broker จึงตั้ง `outbox_status = 'CONFIRMED'` + `status = 'COMPLETED'`** (ตรงกับโดเมนใน `LLDD-Database` · มติ 2026-09-08 ข้อ 2.13 — ค้างที่ `SENT` แปลว่ายังไม่ confirm และ Job 10 จะเตือน) <br>⚠️ `SGI_REFLOW` เพิ่งถูกเพิ่มเข้า `CHECK` ของ `data_name` เมื่อ 2026-09-02 — ก่อนหน้านั้น INSERT นี้จะถูก constraint ปฏิเสธ"],
             ["Idempotency", "`message_id` = `sgi_interface_transactions.id` · กดเปิดพิจารณาใหม่ซ้ำบนเอกสารเดิมต้องไม่เกิดแถว outbox ที่สอง"],
         ]),
         h(2, "5.1b Auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48 · 64)"),
@@ -5801,7 +5864,7 @@ def job_topic(job: dict[str, Any]) -> Topic:
         f"Output: {job.get('out', '-')}",
         f"Estimate: {estimated_hours} ชั่วโมง",
         "Argument รับผ่าน `INPUT` (JSON) — local ใช้ env `JOB_NAME`/`INPUT` · AWS Batch ใช้ `argv[3]`/`argv[2]` · ดูหัวข้อ 5.95 · ไม่มีตาราง job_configs และไม่มีหน้าจอควบคุม (หน้า Flow Batch Job ในกลุ่มเมนู Flow เหลือแค่ Flowchart + Database ที่ใช้ · 2026-08-06)",
-        "ตารางเวลาตั้งที่ **AWS Batch scheduled event** (repo ไม่มี `@Cron`) · ทุก job ถูกบันทึกลง `integration_log` โดย `main.ts` อัตโนมัติ + structured log `BATCH_START`/`BATCH_END` พร้อม `runId`",
+        "ตารางเวลาตั้งที่ **AWS Batch scheduled event** (repo ไม่มี `@Cron`) — **ยกเว้น job ที่เป็น event-driven (ดูหัวข้อ Config Schema ของ job นั้น) ซึ่งห้ามตั้ง schedule** · ทุก job ถูกบันทึกลง `integration_log` โดย `main.ts` อัตโนมัติ + structured log `BATCH_START`/`BATCH_END` พร้อม `runId`",
     ]
     if no == "8b":
         scope.append("Depends on LLDD-BE-API-Workflow-Instances; Job 8b เรียก Workflow Engine ภายในและไม่ duplicate Gen Flow Gate logic")
@@ -5820,7 +5883,7 @@ def job_topic(job: dict[str, Any]) -> Topic:
             ("รันตามตารางเวลา", "CRON", f"scheduler → runner (job {no})", "อ่าน cron/พารามิเตอร์จาก backend config"),
             ("รันนอกรอบ (manual/rerun)", "CLI", f"CLI/ops runbook → runner (job {no})", "guard ไม่ให้รันซ้อนด้วย distributed lock"),
             ("แก้พารามิเตอร์/เปิด-ปิด job", "CONFIG", "แก้ backend config แล้ว deploy", "ไม่มี endpoint และไม่มีหน้าจอควบคุม — หน้า Flow Batch Job เป็น reference อย่างเดียว (2026-08-06)"),
-            ("ตรวจผลการรัน", "LOG", "application log (structured)", "ไม่มีตาราง job_run_histories แล้ว · ไฟล์/ACK ดูที่ sgi_interface_transactions"),
+            ("ตรวจผลการรัน", "LOG", "application log (structured)", "ไม่มีตาราง job_run_histories แล้ว · ผลการรับส่งไฟล์/ข้อความดูที่ sgi_interface_transactions"),
         ],
         [],
         flow,
@@ -6980,7 +7043,7 @@ def topics() -> list[Topic]:
         "BE/LLDD-BE-Job-Batch-Email-SRM": [
             ("(backend config: config file/env)", "R", "enabled, cron, params ของ batch — ตาราง job_configs ถูกตัด 2026-08-06 ไม่มีหน้าจอควบคุม · **cron จริงตั้งที่ AWS Batch scheduled event ของ sop-sgi-batch ไม่ใช่ที่ store-backend**"),
             ("(application log แบบ structured)", "W", "ประวัติการรันและสถานะล่าสุด — ตาราง job_run_histories ถูกตัด 2026-08-06"),
-            ("sgi_interface_transactions", "R/W", "tracking file/API interface และ ACK"),
+            ("sgi_interface_transactions", "R/W", "tracking การรับส่งไฟล์/ข้อความ + outbox (สถานะจบที่ outbox_status = CONFIRMED)"),
             ("email_template (SBP)", "R", "subject_format/body_format ของระบบ SBP เดิม — อ่านอย่างเดียว"),
             ("email_sent (SBP)", "W (โดย email-lib)", "log การส่งของ batch — lib เขียนให้เอง"),
         ],
@@ -7449,7 +7512,7 @@ def api_endpoint_groups() -> list[list[Any]]:
         ["Master Data", "8", "factors CRUD, competitors CRUD", "master ที่มีหน้าจอดูแลของตัวเอง (ไม่มี audit · ยกเลิกระบบ audit ของ master 2026-08-07)"],
         ["รายงาน", "2", "GET /sgi/report/status-summary, /export", "accounting search/export Excel (14 columns, SDD slide 60)"],
         ["Workflow ภายใน", "3", "POST /sgi/workflow/instances, GET /sgi/workflow/instances/{id}, /sgi/workflow/summary", "internal workflow engine for Job 8b"],
-        ["Interface Tracking", "2", "GET /sgi/interface/tracking, GET /sgi/interface/pending-ack", "file tracking และ ACK (ตัด GET /dashboard/summary ออก 2026-08-06 · ตัด POST /integrations/srm/income-guarantee 2026-08-07)"],
+        ["Interface Tracking", "2", "GET /sgi/interface/tracking, GET /sgi/interface/pending-ack", "tracking การรับส่งไฟล์/ข้อความ + รายการขาออกที่ยังไม่ publisher confirm (ตัด GET /dashboard/summary ออก 2026-08-06 · ตัด POST /integrations/srm/income-guarantee 2026-08-07)"],
     ]
 
 
@@ -7690,8 +7753,10 @@ CREATE TABLE sgi_impacted_stores (
 
 -- ❌ ไม่สร้างตาราง employees ใน SGI — ใช้ business_user / business_user_group ของระบบ SBP เดิม
 
-ALTER TABLE sgi_impacted_stores
-    -- opt_dv_user_id ไม่มี FK — ผู้ใช้อยู่ที่ business_user ของระบบ SBP เดิม (ตัด employees 2026-08-05)
+-- หมายเหตุ sgi_impacted_stores: opt_dv_user_id ไม่มี FK — ผู้ใช้อยู่ที่ business_user
+--   ของระบบ SBP เดิม (ตัดตาราง employees ออกเมื่อ 2026-08-05)
+--   ⚠️ แก้ 2026-09-09: เดิมบรรทัดนี้เขียนเป็น "ALTER TABLE sgi_impacted_stores" ค้างไว้
+--      โดยไม่มีเนื้อคำสั่งและไม่มี ; — ถ้าก๊อป DDL ไปรันจริงจะ syntax error
 
 -- ❌ ไม่สร้างตาราง operator_assignments ใน SGI — ใช้ group + scope ของ auth-backend + prepared approvers ของ @srm/glb-workflow (ตัดสินใจ 2026-08-05)
 
@@ -7858,7 +7923,8 @@ CREATE TABLE sgi_interface_transactions (
     id BIGSERIAL PRIMARY KEY,
     -- run_id เป็น correlation id ของรอบรัน (มาจาก application log) — ไม่มี FK เพราะ job_run_histories ถูกตัด 2026-08-06
     run_id VARCHAR(50),
-    -- direction: OUT = ส่งไฟล์ออกไประบบภายนอก (Job 4 → IAS · Job 6 → STA) · IN = รับไฟล์/ACK กลับ (Job 5 · callback ของ STA)
+    -- direction: OUT = ส่งออกไประบบภายนอก (Job 4 → IAS · Job 6 → STA) · IN = รับเข้าจากภายนอก (Job 5 ไฟล์จาก IAS · Job 11 ข้อความจาก STA)
+    --            ⚠️ ไม่มี "ACK กลับ" จาก STA แล้ว (มติ 2026-09-08 ข้อ 2.13) — ความสำเร็จของขาออกวัดที่ outbox_status = CONFIRMED
     --            INTERNAL = การส่งต่อ*ภายในระบบเดียวกัน* ที่มาแทนไฟล์ EAI เดิม (Jobs 7/8/9 เขียน DB ตรง — ไม่มี ACK ให้รอ จึงจบที่ status = COMPLETED)
     -- ชุดค่าปิด 9 ค่า เขียนโดย batch เท่านั้น (ไม่ใช่ input ของผู้ใช้) — ต้องล็อกเพราะ data_name เป็นส่วนหนึ่งของ
     -- UNIQUE ที่กันส่งซ้ำ และเป็นตัวกรองของ watchdog Job 10 · พิมพ์ผิดหนึ่งตัว = กันซ้ำไม่ทำงาน + watchdog เงียบ
@@ -8286,7 +8352,7 @@ def lldd_database_blocks(all_topics: list[Topic]) -> list[dict[str, Any]]:
                 ["Auto-assign (SDD 46/48)", "06 เห็นควรไม่ชดเชย -> ปิดเอกสารและตั้งงานเดือนถัดไปให้เจ้าของงานคนเดิม ผ่าน addPreApprover · 06 หยุดชดเชยฯ -> เอกสารกลับเข้า GET /sgi/document/tasks ของ 06 ทันที (stoppedReopenable)", "เดือนที่กดเห็นควรไม่ชดเชย ต้องไม่พบเอกสารใน GET /sgi/document/tasks ของ 06 · เดือนถัดไปต้องพบพร้อม assignee คนเดิม"],
                 ["Attachment upload", "metadata insert after storage write with scan_status = PENDING; objectKey never exposed", "storage fail leaves no CLEAN metadata"],
                 ["Job 4 IAS request", "durable file (fsync + atomic rename + checksum) ก่อน transaction W→P + outbox READY", "file fail คง W; DB fail rollback W→P/outbox; S3 upload fail retry transaction เดิม"],
-                ["Interface ACK/purge", "ACK compare-and-set บน transaction เดิม; purge เฉพาะ terminal + purge_after + non-held", "pending/failed/unacked/legal-hold ห้ามลบ"],
+                ["Interface confirm/purge", "publisher confirm ตั้ง outbox_status = CONFIRMED + status = COMPLETED แบบ compare-and-set บน transaction เดิม; purge เฉพาะ terminal + purge_after + non-held", "pending/failed/unacked/legal-hold ห้ามลบ"],
                 ["Master mutation", "update entity ใน transaction เดียว", "mutation fail ต้อง rollback ครบ"],
             ],
         ),

@@ -428,7 +428,8 @@ def _file_map_blocks(no: str, folder: str, base: str, pascal: str, job: dict[str
         p(
             "⚠️ **สิ่งที่ repo นี้ยังไม่มี และเป็นงานตั้งต้นจริง**: (1) ไม่มี `@Cron` เลย — ตารางเวลาต้องตั้งเป็น **AWS Batch scheduled event** "
             "(2) ไม่มี distributed lock (`pg_try_advisory_lock`) — การกันรันซ้อนพึ่ง AWS Batch queue ถ้างานไหนรับความเสี่ยงนี้ไม่ได้ต้องเพิ่มเอง "
-            "(3) `publishMessage` เป็น fire-and-forget ไม่มี publisher confirm/outbox — งานที่ต้องการ **transactional outbox + ACK** (Job 6) ต้องสร้างกลไกเพิ่ม ไม่ใช่ reuse ตรง ๆ "
+            "(3) `publishMessage` เป็น fire-and-forget **ไม่มี publisher confirm และไม่มี outbox** — งานที่ต้องการ **transactional outbox + publisher confirm** (Job 6 · และ `sgi_reflow` ฝั่ง BE) ต้องสร้างกลไกเพิ่มเอง ไม่ใช่ reuse ได้เลย · ⚠️ ไม่มี ACK ระดับธุรกิจให้รอ (มติ 2026-09-08 ข้อ 2.13) "
+
             "(4) ยังไม่มี entity/ตาราง `sgi_*` แม้แต่ตัวเดียว"
         ),
         table(["Path", "หน้าที่"], rows),
@@ -592,13 +593,22 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
     slug = _job_slug(no)
     keys = _dedupe([_param_key(str(row[0]), idx) for idx, row in enumerate(params, start=1)])
     iface: list[str] = ["  /** เปิด/ปิด job รอบถัดไปโดยไม่ต้อง deploy โค้ด */", "  enabled: boolean;"]
+    # job ที่ถูกกระตุ้นด้วยข้อความ (consumer SubmitJob) **ต้องไม่มีฟิลด์ cron เลย**
+    # ไม่งั้นจะมีคนเอาไปตั้ง schedule แล้วรันซ้อนกับ consumer (เจอจริง 2026-09-09 ที่ Job 11)
+    event_driven = str(job.get("cron", "")).strip().lower() == "event-driven"
     factory: list[str] = [
         "  // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)",
         f"  enabled = (process.env.SGI_JOB{slug}_ENABLED ?? 'true') === 'true';",
-        f"  cron = process.env.SGI_JOB{slug}_CRON ?? {_ts_string(job.get('cron', ''))};",
     ]
-    iface.append("  /** ตารางเวลาของ job นี้ — บันทึกไว้เพื่ออ้างอิงเท่านั้น ตัวจริงตั้งที่ AWS Batch scheduled event */")
-    iface.append("  cron: string;")
+    if event_driven:
+        iface.append("  /** ⚠️ job นี้เป็น event-driven — **ไม่มีและต้องไม่มี** cron/schedule")
+        iface.append("   *  ตัวกระตุ้นคือ store-consumer เรียก SubmitJob เมื่อมีข้อความเข้าคิว (1 ข้อความ = 1 การรัน)")
+        iface.append("   *  ห้ามประกาศ SGI_JOB" + slug + "_CRON หรือตั้ง AWS Batch scheduled event ให้ job นี้")
+        iface.append("   *  เพราะจะรันซ้อนกับ consumer แล้วประมวลผลข้อความซ้ำ */")
+    else:
+        factory.append(f"  cron = process.env.SGI_JOB{slug}_CRON ?? {_ts_string(job.get('cron', ''))};")
+        iface.append("  /** ตารางเวลาของ job นี้ — บันทึกไว้เพื่ออ้างอิงเท่านั้น ตัวจริงตั้งที่ AWS Batch scheduled event */")
+        iface.append("  cron: string;")
     for key, row in zip(keys, params[:12]):
         label = str(row[0])
         value = row[1] if len(row) > 1 else ""
@@ -649,10 +659,22 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
     return [
         h(2, f"5.95 Config Schema ของ Job {no} (backend config / env)"),
         p(
-            f"ตารางเวลาของ Job {no} คือ `{job.get('cron', '-')}` ({job.get('cronTh', '-')}) — "
-            "⚠️ **ตัวจริงตั้งที่ AWS Batch scheduled event ไม่ใช่ในโค้ด** (repo นี้ไม่มี `@Cron` เลย) "
-            f"ค่า `SGI_JOB{slug}_CRON` เก็บไว้เป็นเอกสารประกอบ/ตรวจสอบเท่านั้น · "
-            f"`SGI_JOB{slug}_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล (กันกรณี AWS Batch ยังยิงเข้ามา)"
+            (
+                f"🔴 **Job {no} เป็น event-driven — ไม่มีตารางเวลา และห้ามตั้ง** · "
+                f"ตัวกระตุ้นคือ `srm-sps-spsap-store-consumer` เรียก SubmitJob ทุกครั้งที่มีข้อความเข้าคิว "
+                f"(1 ข้อความ = 1 การรัน · มติ 2026-09-08 ข้อ 2.11) · "
+                f"**ห้ามประกาศ `SGI_JOB{slug}_CRON` และห้ามตั้ง AWS Batch scheduled event ให้ job นี้** "
+                f"เพราะจะรันซ้อนกับ consumer แล้วประมวลผลข้อความซ้ำ · "
+                f"`SGI_JOB{slug}_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล"
+            )
+            if str(job.get("cron", "")).strip().lower() == "event-driven"
+            else (
+                f"ตารางเวลาของ Job {no} คือ `{job.get('cron', '-')}` ({job.get('cronTh', '-')}) — "
+                "⚠️ **ตัวจริงตั้งที่ AWS Batch scheduled event ไม่ใช่ในโค้ด** (repo นี้ไม่มี `@Cron` เลย) "
+                f"ค่า `SGI_JOB{slug}_CRON` เก็บไว้เป็นเอกสารประกอบ/ตรวจสอบเท่านั้น · "
+                f"`SGI_JOB{slug}_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล "
+                "(กันกรณี AWS Batch ยังยิงเข้ามา)"
+            )
         ),
         code(text, "ts"),
     ]
@@ -1194,7 +1216,7 @@ def _sql_for_table(name: str, mode: str, usage: str, no: str, job: dict[str, Any
         return lines
     if name == "sgi_interface_transactions":
         lines.extend([
-            "-- TODO: บันทึก ACK ระดับ record ของไฟล์ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)",
+            "-- บันทึกผลการรับส่งระดับ record ของ interface (แทน job_run_histories ที่ยกเลิกไปแล้ว)",
             "INSERT INTO sgi_interface_transactions",
             "  (run_id, data_name, direction, status, business_key, period_key,",
             "   file_name, file_checksum, created_at)",
