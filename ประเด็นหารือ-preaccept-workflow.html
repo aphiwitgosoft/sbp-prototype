@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ประเด็นหารือ — ร้าน Pre-accept เปิด Workflow ไม่ได้ (Job 5 ↔ Job 8b)</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <style>
   :root{
     --ink:#1f2733; --sub:#5d6b7a; --line:#e3e9f0; --bg:#f6f8fb; --card:#fff;
@@ -35,6 +36,9 @@
   th,td{border:1px solid var(--line); padding:9px 11px; text-align:left; vertical-align:top;}
   th{background:#f2f6fc; font-weight:700; color:#374151;}
   .opt td:first-child{font-weight:700; white-space:nowrap;}
+  /* มือถือ: ตารางกว้างต้องเลื่อนในกล่องของตัวเอง และคอลัมน์แรกเลิก nowrap (แก้ 2026-09-07) */
+  .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  @media (max-width:560px){ .opt td:first-child{white-space:normal;} th,td{overflow-wrap:anywhere;} }
   .pro{color:var(--green);} .con{color:var(--red);}
   .diagram{background:#fbfcfe; border:1px solid var(--line); border-radius:12px; padding:8px; overflow-x:auto;}
   .diagram svg{display:block; margin:0 auto; min-width:820px;}
@@ -74,7 +78,7 @@
     </ul>
     <h3>ข) Job 8b — Gen Flow Gate (ลำดับการตัดสิน W / Y / N)</h3>
     <p>Gate ไล่เช็คทีละเงื่อนไขตามลำดับ แล้วคืนค่าแรกที่เข้า — <span style="color:var(--red);font-weight:700;">เงื่อนไข growth ถูกเช็คก่อน sales_status</span>:</p>
-    <table>
+    <div class="table-scroll"><table>
       <tr><th>ลำดับ</th><th>เงื่อนไข</th><th>ผล</th></tr>
       <tr><td>1</td><td>branch_type ไม่อยู่ในเซ็ต FAM/FB1/FC1/FB2/FVB/FVC</td><td>N</td></tr>
       <tr><td>2</td><td>ระยะทางเกินรัศมี (&gt;1 กม. กทม./ปริมณฑล หรือ &gt;2 กม. ตจว.)</td><td>N</td></tr>
@@ -86,7 +90,7 @@
       <tr><td>8</td><td>growth_rate_diff &gt; −10</td><td>N</td></tr>
       <tr><td>9</td><td>sales_status ไม่อยู่ใน (Y,N) — <span style="color:var(--sub);">เช็คทีหลัง ไม่มีวันถึงสำหรับ pre-accept</span></td><td>W</td></tr>
       <tr style="background:var(--greenbg);"><td>10</td><td>ผ่านครบทุกข้อ</td><td><b>Y</b> → สร้าง workflow</td></tr>
-    </table>
+    </table></div>
   </section>
 
   <!-- 3 diagram -->
@@ -182,7 +186,7 @@
   <!-- 6 -->
   <section>
     <h2><span class="n">6</span> ตัวเลือกและข้อดี–ข้อเสีย (เพื่อประกอบการตัดสิน)</h2>
-    <table class="opt">
+    <div class="table-scroll"><table class="opt">
       <tr><th>ตัวเลือก</th><th>ทำอะไร</th><th>ข้อดี / ข้อเสีย</th></tr>
       <tr>
         <td>A. เปิด workflow ให้ pre-accept</td>
@@ -199,7 +203,7 @@
         <td>ทบทวนกฎ Job 5: ร้านข้อมูลไม่พอ <b>ไม่</b>ตั้ง sales_status=Y แต่คงสถานะรอ/กันออกจาก gate จนกว่าข้อมูลจะครบ</td>
         <td><span class="pro">+ Gate ไม่ต้องแก้</span><br><span class="con">− ขัดเจตนา “pre-accept” เดิม และร้านอายุน้อยอาจไม่มีวันครบ 60 วันในงวดที่ต้องชดเชย</span></td>
       </tr>
-    </table>
+    </table></div>
     <div class="callout blue"><b>ข้อสังเกตทางเทคนิค:</b> ถ้าเลือก A การแก้เล็กมาก — แค่ปรับลำดับใน CASE ของ Gate ให้เช็ค <code>sales_status</code> ก่อน <code>growth_rate_diff IS NULL</code> หรือรวมเงื่อนไข <code>(growth_rate_diff ≤ −10 OR sales_status='Y')</code> แต่ <b>ต้องได้ business sign-off ก่อน</b> เพราะเป็นการเปลี่ยนกติกาการอนุมัติเปิดงาน</div>
   </section>
 
@@ -207,8 +211,8 @@
   <section>
     <h2><span class="n">7</span> อ้างอิงในเอกสาร (ตรวจซ้ำได้)</h2>
     <ul class="ref">
-      <li><code>LLDD/md/BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.md</code> — กฎ Pre-accept (§5 ตารางพารามิเตอร์ “กฎ Pre-accept”) และ flow step 6 (“Pre-accept: sales_status = Y ทันที”)</li>
-      <li><code>LLDD/md/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.md</code> — Gen Flow Gate (CASE) บรรทัด <code>WHEN ss.growth_rate_diff IS NULL THEN 'W'</code> อยู่ก่อนการเช็ค <code>sales_status</code></li>
+      <li><code>LLDD/md/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.md</code> — กฎ Pre-accept (§5 ตารางพารามิเตอร์ “กฎ Pre-accept”) และ flow step 6 (“Pre-accept: sales_status = Y ทันที”)</li>
+      <li><code>LLDD/md/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.md</code> — Gen Flow Gate (CASE) บรรทัด <code>WHEN ss.growth_rate_diff IS NULL THEN 'W'</code> อยู่ก่อนการเช็ค <code>sales_status</code></li>
       <li>SRS §3.1.2 Gen Flow Gate · SRS §3.2.4 (P1: NULL growth_rate → “รอตรวจสอบ” แทน auto-accept — เกี่ยวโยงโดยตรง)</li>
       <li>เกณฑ์ธุรกิจที่ล็อก: 60 วันทำการ · growth_rate_diff ≤ −10 · การเปลี่ยนต้องมี business sign-off</li>
     </ul>

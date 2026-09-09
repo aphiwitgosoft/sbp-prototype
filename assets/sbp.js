@@ -79,12 +79,18 @@
     { key:'flow-fgi',    label:'Flow FGI/FCS',             href:'flow-fgi.html',     icon:I.flow,      group:'Flow' },
     { key:'k2-flow',     label:'Flow K2',                  href:'k2-flow.html',      icon:I.route,     group:'Flow' },
     { key:'plan-flow',   label:'Flow FGI/FCS + K2',        href:'plan-flow.html',    icon:I.flow,      group:'Flow' },
+    // Sequence diagram ของระบบใหม่ (ALLMAP · SGI · EAI S3 · IAS/MIS · RabbitMQ · STA · SAP)
+    // ต้นฉบับเป็น Mermaid ที่ new-flow-improved.mmd — หน้านี้ฝังไฟล์ .svg ที่ render ไว้แล้ว
+    { key:'new-flow-improved', label:'Flow ระบบใหม่ (Sequence)', href:'new-flow-improved.html', icon:I.route, group:'Flow' },
     // Batch Job ย้ายจากกลุ่ม Admin มาที่นี่ 2026-08-06 — เหลือเฉพาะแท็บ Flowchart การทำงาน + Database ที่ใช้
     // (ตัดแบบฟอร์มพารามิเตอร์/ประวัติการรันออก · cron และพารามิเตอร์กำหนดที่ backend config)
     { key:'job-batch',   label:'Flow Batch Job',           href:'job-batch.html',    icon:I.clock,     group:'Flow' },
     { key:'fgi-database', label:'DB FGI/FCS',               href:'fgi-database.html', icon:I.db,        group:'Database' },
     { key:'k2-database', label:'DB K2',                     href:'k2-database.html',  icon:I.schema,    group:'Database' },
     { key:'plan-database', label:'DB FGI/FCS + K2',         href:'plan-database.html', icon:I.db,       group:'Database' },
+    // ER Diagram ฉบับสมบูรณ์ — หน้า standalone ที่ tools/build_er_diagram.py สร้าง (zoom/pan · คลิกไล่เส้น · ภาคผนวกทุกตาราง)
+    // ไม่ใช้ page contract ของ sbp.js จึงมีลิงก์ "← กลับระบบประกันรายได้" ในตัว
+    { key:'er-diagram',  label:'ER Diagram (ฉบับเต็ม)',      href:'output/diagrams/er-sgi-complete.html', icon:I.schema, group:'Database' },
     { key:'plan-api',    label:'API',                       href:'plan-api.html',     icon:I.braces,    group:'Plan' },
     // Worklist = หน้าจัดการงาน (งาน -> API -> DB) สร้างจากข้อมูลชุดเดียวกับ LLDD ด้วย tools/build_worklist.py
     // เป็นหน้า standalone (มี sidebar ของตัวเองแบบ Notion) จึงไม่ใช้ page contract ของ sbp.js
@@ -782,10 +788,84 @@
   }
 
   /* ---------- init ---------- */
+  /* ── ชื่อที่ screen reader อ่านได้ ให้ control ที่สร้างจาก markup/JS (เพิ่ม 2026-09-07) ──
+     ตรวจด้วย Chrome headless แล้วพบ control 108 ตัวใน 7 หน้าที่ไม่มีชื่อเลย — checkbox ในแถว,
+     ปุ่มไอคอน ดู/แก้ไข/ลบ, ช่องกรอก % และ dropdown บางตัว · ผูกไว้ที่นี่ที่เดียวเพื่อให้
+     หน้าใหม่ที่ทำตาม page contract ได้ชื่อไปด้วยอัตโนมัติ ไม่ต้องไล่เติมทีละหน้า */
+  function cellText(el) {
+    var td = el.closest ? el.closest('td') : null;
+    var tr = td ? td.parentElement : null;
+    if (!tr) return '';
+    var cells = tr.querySelectorAll('td');
+    for (var i = 0; i < cells.length; i++) {
+      var t = (cells[i].textContent || '').trim();
+      if (t) return t.length > 40 ? t.slice(0, 40) + '…' : t;
+    }
+    return '';
+  }
+  function columnLabel(el) {
+    var td = el.closest ? el.closest('td') : null;
+    var tr = td ? td.parentElement : null;
+    var table = td ? el.closest('table') : null;
+    if (!td || !tr || !table) return '';
+    var idx = Array.prototype.indexOf.call(tr.children, td);
+    var th = table.querySelectorAll('thead th')[idx];
+    return th ? (th.textContent || '').trim() : '';
+  }
+  function hasName(el) {
+    if ((el.getAttribute('aria-label') || '').trim()) return true;
+    if (el.getAttribute('aria-labelledby')) return true;
+    if (el.id && document.querySelector('label[for="' + (window.CSS && CSS.escape ? CSS.escape(el.id) : el.id) + '"]')) return true;
+    if (el.closest && el.closest('label')) return true;
+    if (el.tagName === 'BUTTON' && (el.textContent || '').trim()) return true;
+    if ((el.getAttribute('title') || '').trim()) return true;
+    if ((el.getAttribute('placeholder') || '').trim()) return true;
+    return false;
+  }
+  var ICON_LABEL = { 'icon-view': 'ดูรายละเอียด', 'icon-edit': 'แก้ไข', 'icon-del': 'ลบ',
+                     'modal-close': 'ปิดหน้าต่าง', 'icon-btn': 'ดำเนินการ' };
+  function labelControls(root) {
+    var scope = root || document;
+    var nodes = scope.querySelectorAll('input, select, textarea, button');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.type === 'hidden' || hasName(el)) continue;
+      var name = '';
+      if (el.type === 'checkbox' && el.classList.contains('cbx')) {
+        name = el.closest('thead') ? 'เลือกทั้งหมด' : ('เลือกแถว' + (cellText(el) ? ' ' + cellText(el) : ''));
+      } else if (el.tagName === 'BUTTON') {
+        for (var key in ICON_LABEL) {
+          if (el.classList.contains(key)) { name = ICON_LABEL[key] + (cellText(el) ? ' ' + cellText(el) : ''); break; }
+        }
+      }
+      if (!name) {
+        var col = columnLabel(el);
+        if (col) name = col + (cellText(el) ? ' ของ ' + cellText(el) : '');
+      }
+      if (!name) {
+        var prev = el.previousElementSibling;
+        if (prev && /^(LABEL|SPAN|B|STRONG)$/.test(prev.tagName)) name = (prev.textContent || '').trim();
+      }
+      if (name) el.setAttribute('aria-label', name);
+    }
+  }
+  window.SBP = window.SBP || {};
+  window.SBP.labelControls = labelControls;
+
+  // modal ถูกสร้างหลัง DOMContentLoaded — เฝ้าดู DOM แล้วตั้งชื่อให้ control ที่เพิ่งโผล่
+  if (window.MutationObserver) {
+    var labelTimer = null;
+    new MutationObserver(function () {
+      if (labelTimer) return;
+      labelTimer = setTimeout(function () { labelTimer = null; labelControls(); }, 60);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     buildHeader();
     buildSidebar();
     wire();
+    labelControls();
     revealOnLoad();
     countUp();
     renderCharts();

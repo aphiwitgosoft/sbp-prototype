@@ -1,8 +1,8 @@
-Planner · SBP Mall · 37 การ์ด
-ป้ายที่ใช้ทั้งหมด 16 ป้าย (Planner จำกัด 25): Step 1, BE, DATABASE, 31+ hrs., WORKFLOW, BFF, 16-30 hrs., Step 2, API, FE, Step 3, 8-15 hrs., JOBS, Step 4, Step 5, Step 6
+Planner · SBP Mall · 39 การ์ด
+ป้ายที่ใช้ทั้งหมด 17 ป้าย (Planner จำกัด 25): Step 1, BE, DATABASE, 31+ hrs., WORKFLOW, BFF, 16-30 hrs., Step 2, API, 8-15 hrs., FE, Step 3, JOBS, Step 4, Step 5, Step 6, Step 7
 
  1. [BE] Database Structure and Deployment
-    ผู้รับผิดชอบ : Bank · 31 ชม.
+    ผู้รับผิดชอบ : Pete · 31 ชม.
     Labels      : Step 1 | BE | DATABASE | 31+ hrs.
     Checklist   :
        - เขียน DDL / migration script
@@ -23,7 +23,7 @@ Planner · SBP Mall · 37 การ์ด
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-Integration-SBP-Platform.pdf
 
  3. [BE] Workflow Engine Definition
-    ผู้รับผิดชอบ : Bank · 24 ชม.
+    ผู้รับผิดชอบ : Pete · 24 ชม.
     Labels      : Step 1 | BE | WORKFLOW | 16-30 hrs.
     Checklist   :
        - controller + DTO/validation
@@ -44,7 +44,7 @@ Planner · SBP Mall · 37 การ์ด
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-API-Common-Contracts.pdf
 
  5. [BE] Data Migration and Cutover
-    ผู้รับผิดชอบ : Bank · 43 ชม.
+    ผู้รับผิดชอบ : Vava · 43 ชม.
     Labels      : Step 2 | BE | DATABASE | WORKFLOW | 31+ hrs.
     Checklist   :
        - เขียน DDL / migration script
@@ -55,8 +55,8 @@ Planner · SBP Mall · 37 การ์ด
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/LLDD-BE-Data-Migration-Cutover.pdf
 
  6. [BE] Job Batch and Email Integration
-    ผู้รับผิดชอบ : Pete · 19 ชม.
-    Labels      : Step 2 | BE | 16-30 hrs.
+    ผู้รับผิดชอบ : Pete · 11 ชม.
+    Labels      : Step 2 | BE | 8-15 hrs.
     Checklist   :
        - controller + DTO/validation
        - service + SQL ตาม DB Mapping
@@ -171,14 +171,14 @@ Planner · SBP Mall · 37 การ์ด
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Foundation.pdf
 
 17. [Job] Job 2 ImportImpactStore
-    ผู้รับผิดชอบ : Bank · 19 ชม.
+    ผู้รับผิดชอบ : Bank · 20 ชม.
     Labels      : Step 3 | JOBS | 16-30 hrs.
     Checklist   :
        - อ่านสเปก LLDD + ตั้ง config/env
        - เขียน runner + SQL ตามลำดับขั้น
        - idempotency + rerun/rollback
        - unit test ตามขอบเขตใน LLDD
-    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-2-ImportImpactStore.pdf
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-2-ImportImpactStore.pdf
 
 18. [FE] Create Document
     ผู้รับผิดชอบ : New · 8 ชม.
@@ -231,34 +231,34 @@ Planner · SBP Mall · 37 การ์ด
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Report.pdf
 
 23. [Job] Job 3 ImportImpactCompetitor
-    ผู้รับผิดชอบ : Bank · 13 ชม.
+    ผู้รับผิดชอบ : Bank · 12 ชม.
     Labels      : Step 4 | JOBS | 8-15 hrs.
     Checklist   :
        - อ่านสเปก LLDD + ตั้ง config/env
        - เขียน runner + SQL ตามลำดับขั้น
        - idempotency + rerun/rollback
        - unit test ตามขอบเขตใน LLDD
-    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.pdf
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-3-ImportImpactCompetitor.pdf
 
 24. [Job] Job 4 PrepareImpactStoreToIAS
-    ผู้รับผิดชอบ : Bank · 19 ชม.
+    ผู้รับผิดชอบ : Bank · 17 ชม.
     Labels      : Step 4 | JOBS | 16-30 hrs.
     Checklist   :
        - อ่านสเปก LLDD + ตั้ง config/env
        - เขียน runner + SQL ตามลำดับขั้น
        - idempotency + rerun/rollback
        - unit test ตามขอบเขตใน LLDD
-    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS.pdf
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-4-PrepareImpactStoreToIAS.pdf
 
 25. [Job] Job 6 ExportImpactStoreToFS
-    ผู้รับผิดชอบ : Bank · 34 ชม.
+    ผู้รับผิดชอบ : Bank · 32 ชม.
     Labels      : Step 4 | JOBS | 31+ hrs.
     Checklist   :
        - อ่านสเปก LLDD + ตั้ง config/env
        - เขียน runner + SQL ตามลำดับขั้น
        - idempotency + rerun/rollback
        - unit test ตามขอบเขตใน LLDD
-    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.pdf
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-6-ExportImpactStoreToFS.pdf
 
 26. [FE] Document Detail Role 01 Business Promotion
     ผู้รับผิดชอบ : New · 13 ชม. (รวมใน [FE] Document Detail and Action)
@@ -311,36 +311,46 @@ Planner · SBP Mall · 37 การ์ด
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Document-Detail-Role-08-SBP-DSA-Officer.pdf
 
 31. [Job] Job 10 NotifyNoReceiveData
-    ผู้รับผิดชอบ : Bank · 11 ชม.
+    ผู้รับผิดชอบ : Bank · 8 ชม.
     Labels      : Step 5 | JOBS | 8-15 hrs.
     Checklist   :
        - อ่านสเปก LLDD + ตั้ง config/env
        - เขียน runner + SQL ตามลำดับขั้น
        - idempotency + rerun/rollback
        - unit test ตามขอบเขตใน LLDD
-    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.pdf
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-10-NotifyNoReceiveData.pdf
 
-32. [Job] Job 5 ImportImpactSaleFromIAS
-    ผู้รับผิดชอบ : Bank · 21 ชม.
+32. [Job] Job 11 ConsumeStaCompensate
+    ผู้รับผิดชอบ : Bank · 16 ชม.
     Labels      : Step 5 | JOBS | 16-30 hrs.
     Checklist   :
        - อ่านสเปก LLDD + ตั้ง config/env
        - เขียน runner + SQL ตามลำดับขั้น
        - idempotency + rerun/rollback
        - unit test ตามขอบเขตใน LLDD
-    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.pdf
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-11-ConsumeStaCompensate.pdf
 
-33. [Job] Job 8 CreateCompensationDocument
-    ผู้รับผิดชอบ : Bank · 24 ชม.
+33. [Job] Job 5 ImportImpactSaleFromIAS
+    ผู้รับผิดชอบ : Bank · 17 ชม.
     Labels      : Step 5 | JOBS | 16-30 hrs.
     Checklist   :
        - อ่านสเปก LLDD + ตั้ง config/env
        - เขียน runner + SQL ตามลำดับขั้น
        - idempotency + rerun/rollback
        - unit test ตามขอบเขตใน LLDD
-    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-8-CreateCompensationDocument.pdf
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-5-ImportImpactSaleFromIAS.pdf
 
-34. [FE] Testing and Delivery
+34. [Job] Job 8 CreateCompensationDocument
+    ผู้รับผิดชอบ : Bank · 23 ชม.
+    Labels      : Step 5 | JOBS | 16-30 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-8-CreateCompensationDocument.pdf
+
+35. [FE] Testing and Delivery
     ผู้รับผิดชอบ : lin · 12 ชม.
     Labels      : Step 6 | FE | 8-15 hrs.
     Checklist   :
@@ -350,7 +360,27 @@ Planner · SBP Mall · 37 การ์ด
        - unit test ตามขอบเขตใน LLDD
     LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/FE/LLDD-FE-Testing-Delivery.pdf
 
-35. [Job] Job 7 SyncCompetitorToDocument
+36. [Job] Job 7 SyncCompetitorToDocument
+    ผู้รับผิดชอบ : Bank · 12 ชม.
+    Labels      : Step 6 | JOBS | 8-15 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument.pdf
+
+37. [Job] Job 8b StartInternalWorkflow
+    ผู้รับผิดชอบ : Bank · 28 ชม.
+    Labels      : Step 6 | JOBS | WORKFLOW | 16-30 hrs.
+    Checklist   :
+       - อ่านสเปก LLDD + ตั้ง config/env
+       - เขียน runner + SQL ตามลำดับขั้น
+       - idempotency + rerun/rollback
+       - unit test ตามขอบเขตใน LLDD
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.pdf
+
+38. [Job] Job 9 SyncNewStoreToDocument
     ผู้รับผิดชอบ : Bank · 13 ชม.
     Labels      : Step 6 | JOBS | 8-15 hrs.
     Checklist   :
@@ -358,26 +388,15 @@ Planner · SBP Mall · 37 การ์ด
        - เขียน runner + SQL ตามลำดับขั้น
        - idempotency + rerun/rollback
        - unit test ตามขอบเขตใน LLDD
-    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-7-SyncCompetitorToDocument.pdf
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument.pdf
 
-36. [Job] Job 8b StartInternalWorkflow
-    ผู้รับผิดชอบ : Bank · 29 ชม.
-    Labels      : Step 6 | JOBS | WORKFLOW | 16-30 hrs.
-    Checklist   :
-       - อ่านสเปก LLDD + ตั้ง config/env
-       - เขียน runner + SQL ตามลำดับขั้น
-       - idempotency + rerun/rollback
-       - trigger event: เรียก engine ตามหัวข้อ Workflow Trigger Event Contract + mock ใน unit test
-       - unit test ตามขอบเขตใน LLDD
-    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-8b-StartInternalWorkflow.pdf
-
-37. [Job] Job 9 SyncNewStoreToDocument
-    ผู้รับผิดชอบ : Bank · 15 ชม.
-    Labels      : Step 6 | JOBS | 8-15 hrs.
+39. [Job] Job 12 NotifyPendingWork
+    ผู้รับผิดชอบ : Bank · 13 ชม.
+    Labels      : Step 7 | JOBS | 8-15 hrs.
     Checklist   :
        - อ่านสเปก LLDD + ตั้ง config/env
        - เขียน runner + SQL ตามลำดับขั้น
        - idempotency + rerun/rollback
        - unit test ตามขอบเขตใน LLDD
-    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/BE/Jobs/LLDD-BE-Job-9-SyncNewStoreToDocument.pdf
+    LLDD        : https://cpallgroup.sharepoint.com/sites/MST-GO0666ITHW2025ReplaceSBPManagementSystem/Shared%20Documents/General/04-Analysis%20%26%20Design/LLDD/Non-Baseline/Phase%204%20%5BSBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89%2C%20Contract%20Management%20%28%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B9%82%E0%B8%AD%E0%B8%99%29%5D/SBP%20Operating%20Management%20%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B1%E0%B8%99%E0%B8%A3%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%94%E0%B9%89/Jobs/LLDD-BE-Job-12-NotifyPendingWork.pdf
 

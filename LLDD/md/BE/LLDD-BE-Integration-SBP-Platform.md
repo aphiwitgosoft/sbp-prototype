@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | 20 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
-| Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Owner | Tunyatorn &lt;Vava&gt; Kiatkongphongsa |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | กำหนดวิธีที่ SGI ต่อกับแพลตฟอร์ม SBP เดิม: BFF header/ตัวตน, response envelope, ไฟล์บน S3, อีเมลผ่าน @gosoft-sbp/email-lib และค่ากำหนดกลางใน mas_param/common_code — เป็น blocker ที่ต้องปิดในสัปดาห์แรก |
 
@@ -58,12 +58,13 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Integration with SBP Platform
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | x-api-key | string | required ทุก request จาก BFF | ตรวจที่ guard ของ store-backend ก่อนเข้า controller |
-| x-user-id | string เช่น `0000123456` | required ทุก endpoint ของผู้ใช้ — ไม่มี = 401 | created_by/updated_by ของ SGI + sgi_consideration_logs.actor_user_id + ส่งเป็น userId เข้า engine · 🔴 ห้ามเขียน current_approver เอง (engine เป็นคนเขียน) |
+| x-user-id | string เช่น `0000123456` | required ทุก endpoint ของผู้ใช้ — ไม่มี = 401 | created_by/updated_by ของ SGI + sgi_consideration_logs.consider_by + ส่งเป็น userId เข้า engine · 🔴 ห้ามเขียน current_approver เอง (engine เป็นคนเขียน) |
 | x-user-group-id | string เช่น `08` | required เมื่อ endpoint ต้องรู้ section | map เป็น section_code ของ workflow (06/08/01/02/03) — เป็นด่านหลักในการตัดสินสิทธิ์เขียน |
 | x-user-full-name | string · **%-encoded** | ไม่บังคับ | ชื่อผู้ทำรายการใน timeline/อีเมล · 🔴 ต้อง decodeURIComponent ก่อนใช้เสมอ · ไม่มีให้ fallback เป็น x-user-id |
 | x-user-permissions | string (serialized) · รูปแบบไม่ผูกเป็นสัญญา | **ด่านเสริม ไม่ใช่ด่านเดียว** | สิทธิ์ต่อ URL จาก auth-backend — SGI ไม่คำนวณสิทธิ์เมนูเอง · parse ไม่ผ่านให้ตกไปใช้ x-user-group-id + สถานะเอกสาร (ดู 5.1.2) |
 | accept-language | string เช่น `th` | ไม่บังคับ | ภาษาข้อความ error — default th (ไทย verbatim ตาม SRS) |
 | envelope | {success, data} | บังคับทุก endpoint | ResponseInterceptor ห่อให้แล้ว — service ห้ามห่อซ้ำ |
+| envelope ที่ผ่าน BFF | {success, data, requestId} | **BFF ต้อง unwrap ของ store-backend 1 ชั้นก่อนคืน** | 🔴 ยืนยันจากโค้ดจริง 2026-09-04: BFF มี `ResponseInterceptor` ระดับ global (`src/common/interceptors/response.interceptor.ts`) ที่ห่อผลของ controller เป็น `{success, data, requestId}` เสมอ · แต่ `client-service.abstract.ts` คืน `response.data` ซึ่งเป็น envelope ของ store-backend อยู่แล้ว → ถ้าส่งต่อดิบ ๆ interceptor จะเห็นคีย์ `success` แล้วห่อซ้ำ FE ได้ `data.data.data` · **สัญญา: `SgiClientService` คืน `response.data.data`** แล้ว FE อ่าน `data.data` ชั้นเดียว · `requestId` เป็นของ BFF ใช้อ้างอิงตอนแจ้งปัญหา store-backend ไม่ต้องสร้างเอง |
 | error | {success:false, data:null, error:{code,message}} | message ภาษาไทย verbatim ตาม SRS | โยนผ่าน HttpException เท่านั้น |
 | sps_store.mas_param | key-value ของระบบเดิม | **runtime = read-only · เขียนเฉพาะตอน seed/cutover** | 93,752 แถว · ไม่มี PK/unique → อ่านต้อง WHERE active_flag='Y' + LIMIT 1 เสมอ · 🔴 ค่า SGI_* ยังไม่มี ต้อง seed (5.5.2) |
 | sps_store.common_code / common_code_type | code master ของระบบเดิม | **runtime = read-only · เขียนเฉพาะตอน seed/cutover** | 2,609 / 376 แถว · code_type เป็น varchar(20) · ต้อง INSERT common_code_type ก่อน · 🔴 SGI_APPROVE_LIMIT ยังไม่มี ต้อง seed (5.5.2) |
@@ -96,7 +97,7 @@ x-user-permissions: [{"url":"/sgi/document/waiting","canView":true,"canManage":t
 | Header | ตัวอย่างค่า | มาจากไหน | SGI ใช้ทำอะไร | ถ้าไม่มี/ผิด |
 | --- | --- | --- | --- | --- |
 | `x-api-key` | `8f2b1c94-6d5e-4a70-b1c3-9ee27a4f0d51` | env ของ BFF ต่อ backend (`API_STORE_BACKEND_KEY_VALUE`) เทียบกับ `X_API_KEY` ของ store-backend | พิสูจน์ว่า request มาจาก BFF จริง ไม่ใช่ใครยิงตรง — **ไม่ใช่ตัวตนผู้ใช้** | **401** `ไม่พบสิทธิ์การเข้าใช้งาน` · `HttpHeaderGuard` ของระบบเดิมเทียบแบบ `===` ตรง ๆ |
-| `x-user-id` | `0000123456` | `sub`/employee id จาก JWT ของ Cognito (BFF ถอดจาก cookie) | 🔴 **ตัวตนผู้ใช้** — ใส่ใน `created_by`/`updated_by`, `sgi_consideration_logs.actor_user_id`, และส่งเป็น `userId` เข้า `eventWorkflow` / `initializeWorkflow` ของ engine | **401** — ห้ามให้ผ่านโดยไม่มี userId เพราะ audit trail จะขาด |
+| `x-user-id` | `0000123456` | `sub`/employee id จาก JWT ของ Cognito (BFF ถอดจาก cookie) | 🔴 **ตัวตนผู้ใช้** — ใส่ใน `created_by`/`updated_by`, `sgi_consideration_logs.consider_by`, และส่งเป็น `userId` เข้า `eventWorkflow` / `initializeWorkflow` ของ engine | **401** — ห้ามให้ผ่านโดยไม่มี userId เพราะ audit trail จะขาด |
 | `x-user-group-id` | `08` | auth-backend (ABS) — กลุ่มสิทธิ์ของผู้ใช้ | map เป็น **section_code** ของ workflow (06/08/01/02/03) เพื่อกรองกล่องงานและตัดสินว่ากดปุ่มไหนได้ | **403** เมื่อ endpoint ต้องรู้ section · endpoint อ่านอย่างเดียวยอมให้ผ่านได้ |
 | `x-user-full-name` | `%E0%B8%AA%E0%B8%A1%E0%B8%8A%E0%B8%B2%E0%B8%A2%20%E0%B9%83%E0%B8%88%E0%B8%94%E0%B8%B5`  → `สมชาย ใจดี` | employee backend (`/employees/{empId}/profile`) | แสดงชื่อผู้ทำรายการใน timeline/อีเมล · **ต้อง `decodeURIComponent` ก่อนใช้เสมอ** (BFF encode มา) | ไม่บล็อก — fallback เป็น `x-user-id` แล้วเติมชื่อทีหลังจาก `business_user` |
 | `x-user-permissions` | `[{"url":"/sgi/document/waiting","canView":true,"canManage":true,"canExport":false,"canOther":false}]` | auth-backend `GET /groups/current-user/permissions` (ชุดเดียวกับที่ FE ใช้) | กันเรียก API ตรงโดยข้ามหน้าจอ — เทียบ `url` ของหน้าที่เป็นเจ้าของ endpoint นั้น + `canManage` ก่อนยอมให้เขียน | **403** สำหรับ endpoint ที่เขียนข้อมูล · ⚠️ ดูข้อควรระวังด้านล่าง |
@@ -253,6 +254,7 @@ curl -X POST 'http://localhost:3004/api/v1/sgi/document/2026%2F00123/actions' \
 | เกณฑ์ยอดขายไม่ครบ **60 วัน** · growth rate **-10%** | `sps_store.mas_param` | `param_name = 'SGI_SALES_DAYS_MIN' / 'SGI_GROWTH_RATE_MAX'` | 🔴 **ยังไม่มี — ต้อง seed** · ใช้กับธงข้อมูลผิดปกติและ Gen Flow Gate |
 
 ```sql
+-- bind ตามลำดับ: $1=name
 -- seed ตอน setup (idempotent) — ⚠️ ทั้งสองตารางไม่มี unique จึงต้อง guard ด้วย NOT EXISTS เอง
 -- 1) ลงทะเบียน code_type ก่อนเสมอ ไม่งั้น dropdown ของระบบเดิมจะไม่รู้จัก
 INSERT INTO sps_store.common_code_type (code_type, code_type_name, active_flag, create_date, create_user)
@@ -273,7 +275,7 @@ WHERE NOT EXISTS (SELECT 1 FROM sps_store.mas_param
 
 -- อ่านค่ากลับมาใช้ — ต้องกรอง active_flag เสมอ และ LIMIT 1 เพราะไม่มี unique กันซ้ำ
 SELECT param_value FROM sps_store.mas_param
-WHERE param_name = :name AND active_flag = 'Y'
+WHERE param_name = $1 /* name */ AND active_flag = 'Y'
 ORDER BY update_date DESC NULLS LAST, create_date DESC LIMIT 1;
 ```
 
@@ -356,7 +358,7 @@ ORDER BY update_date DESC NULLS LAST, create_date DESC LIMIT 1;
 
 ## 7. API Contract
 
-**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SGI อยู่ที่ **LLDD-API** และ `api.md`
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 28 เส้นของ SGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 

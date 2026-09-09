@@ -2,6 +2,8 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
 <title>งานเบื้องหลังระบบประกันรายได้ — อ่าน 30 วินาทีจบ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -148,10 +150,23 @@
              line-height:1; flex-shrink:0;}
   .closer .t{font-size:21px; font-weight:600; color:#141c26; line-height:1.55;}
   .closer .t em{font-style:normal; color:#2f6fed;}
+
+/* ── เปิดอ่านบนจอเล็กได้ โดยไม่เปลี่ยนหน้ากระดาษ (แก้ 2026-09-07) ─────────────────
+   หน้านี้เป็น "แผ่นโปสเตอร์" ความกว้างตายตัวสำหรับ export/print — จะทำให้ responsive
+   แบบพับเนื้อหาไม่ได้เพราะเลย์เอาต์ทั้งใบผูกกับความกว้างนั้น
+   วิธีที่ถูกคือ **ให้กล่องเลื่อน ไม่ใช่ให้ทั้งหน้าเลื่อน**: กระดาษคงขนาดเดิมเป๊ะ
+   ส่วนคนอ่านบนจอเล็กเลื่อนดูในกรอบได้ · ตอน print ยังได้ขนาดเดิมทุกมิลลิเมตร */
+html, body { max-width: 100%; overflow-x: hidden; }
+body { display: flow-root; }
+.sheet-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+@media print {
+  html, body { overflow: visible; }
+  .sheet-scroll { overflow: visible; }
+}
 </style>
 </head>
 <body>
-<div class="sheet" id="sheet">
+<div class="sheet-scroll"><div class="sheet" id="sheet">
 
   <!-- ============ หัวเรื่อง ============ -->
   <div class="headwrap">
@@ -359,6 +374,7 @@
       และถ้าเงินไปไม่ถึงร้าน <em>ระบบจะเป็นฝ่ายบอกเราก่อนเสมอ</em></div>
   </div>
 
+</div>
 </div>
 </body>
 </html>

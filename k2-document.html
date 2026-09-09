@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>เอกสารข้อมูลร้านถูกกระทบ · SBP Management System</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/sbp.css">
 </head>
 <body data-page="k2-document" data-nav="modules" data-module="k2-document" data-crumb="เอกสารร้านถูกกระทบ">
@@ -21,7 +22,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM19 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 8v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3 3M9 4h8a2 2 0 0 1 2 2v6"/></svg>
             ขั้นตอน Workflow ตามบทบาท
           </div>
-          <select id="roleSwitch" style="min-width:360px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;"></select>
+          <select id="roleSwitch" aria-label="สลับบทบาทเพื่อดูมุมมองของแต่ละขั้น workflow" style="min-width:min(360px,100%);padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;"></select>
           <span id="roleStep" class="pill info" style="font-weight:600;"></span>
           <span class="rb-hint" style="color:var(--muted);font-size:12.5px;flex:1;min-width:220px;">ส่วนที่ไม่อยู่ในสิทธิ์ของบทบาทนี้จะแสดงเป็น <b>Read Only</b></span>
         </div>
@@ -451,7 +452,7 @@
         { label:'ส่งกลับ ฝ่าย SBP DSA' } ] },   /* มติ 2026-09-01 — เดิม 'ส่งกลับหน่วยงานส่งเสริมธุรกิจ SBP' (→ 01) */
       { key:'avp', role:'ผู้บริหารสำนักบริหาร SBP (AVP OPT · section_code 03)', status:'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill:'info', edit:[], opts:[
         { label:'เห็นควรชดเชย → เสร็จสิ้นดำเนินการ', end:true },
-        { label:'เห็นควรไม่ชดเชย → รอฝ่าย SBP DSA' },
+        { label:'เห็นควรไม่ชดเชย → เสร็จสิ้นดำเนินการ', end:true },   /* มติ 2026-09-02 — จบ flow ทันทีเหมือน 01/02 (เดิมตีกลับ 06) */
         { label:'ส่งกลับ ฝ่าย SBP DSA' } ] }   /* มติ 2026-09-01 — เดิม 'ส่งกลับ GM ส่งเสริมธุรกิจฯ' (→ 02) */
       /* ตัดบทบาทบัญชี 04/05 ตาม SDD v7.5 — บัญชีตรวจผ่านรายงาน SBP Mall นอก workflow */
     ];

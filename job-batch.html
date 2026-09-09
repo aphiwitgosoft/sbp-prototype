@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Flow Batch Job (FGI/FCS) · SBP Management System</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/sbp.css">
 <style>
   /* ===== page-specific: batch job console ===== */
@@ -60,12 +61,12 @@
           <tr><td><b>แลกยอดขาย</b></td><td class="mono">4 · 5</td><td>ส่งรายการไป <b>IAS/MIS</b> เป็นไฟล์ <code>AMS06001O</code> แล้วรับยอดขายกลับเป็น <code>AMS06001I</code> → <code>sgi_sales_transactions</code> + คำนวณ growth</td></tr>
           <tr><td><b>สร้างเอกสาร</b></td><td class="mono">8 · 7 · 9</td><td><b>เขียนฐานข้อมูลตรง</b> — สร้าง <code>sgi_compensation_documents</code> แล้วเติม <code>sgi_document_competitors</code> · <code>sgi_document_new_stores</code> ผ่าน Document Service</td></tr>
           <tr><td><b>เปิด workflow</b></td><td class="mono">8b</td><td>ตัดสินจุดเข้า flow จากประเภทเคส แล้วเรียก <code>POST /api/v1/sgi/workflow/instances</code> ของ <b>Workflow Engine ภายใน</b></td></tr>
-          <tr><td><b>ส่งผล + เฝ้าระวัง</b></td><td class="mono">6 · 10</td><td>ส่งค่าชดเชยไป <b>STA</b> ด้วย <b>RabbitMQ message</b> (<code>sta.compensation.result</code>) และเฝ้าระวัง ACK ค้างเกิน 1 วันแล้วส่งอีเมลเตือน</td></tr>
+          <tr><td><b>ส่งผล + เฝ้าระวัง</b></td><td class="mono">6 · 10</td><td>ส่งค่าชดเชยไป <b>STA</b> ด้วย <b>RabbitMQ message</b> (<code>sta.compensation.result</code>) และเฝ้าระวังข้อความที่ broker ยังไม่ publisher confirm เกิน 1 วันแล้วส่งอีเมลเตือน</td></tr>
         </tbody>
       </table></div>
       <p style="font-size:12.5px;color:var(--muted);margin:10px 0 0;">
         <b>คะแนน QSSI ไม่ใช่ Job ของระบบนี้</b> — ระบบ SBP เดิมนำเข้า <code>fcs_qssi_score</code> ให้อยู่แล้ว Job 6 แค่อ่านไปตรวจความครบ 6 หมวด
-        &nbsp;·&nbsp; พารามิเตอร์/cron อ่านจาก backend config · รายละเอียดระดับลงมือทำอยู่ใน <code>LLDD/md/BE/Jobs/</code> · กติกาจุดเข้า flow ดู <code>workflow.md</code>
+        &nbsp;·&nbsp; พารามิเตอร์/cron อ่านจาก backend config · รายละเอียดระดับลงมือทำอยู่ใน <code>LLDD/md/Jobs/</code> · กติกาจุดเข้า flow ดู <code>workflow.md</code>
       </p>
     </div>
 
@@ -169,7 +170,7 @@
 (function () {
   "use strict";
 
-  /* ================= data: 10 entry points (Jobs 2–10 + 8b) ================= */
+  /* ============ data: 12 entry points (Jobs 2–10 + 8b จาก Batch v4.0 · + Job 11, 12 เพิ่ม 2026-09-02) ============ */
   var PHASES = [
     { k:'A', t:'นำเข้า Master', s:'ALLMAP (SQL Server)', c:'', jobs:['2','3'] },
     { k:'B', t:'แลกเปลี่ยนยอดขาย', s:'IAS / MIS', c:'c-teal', jobs:['4','5'] },
@@ -295,7 +296,7 @@
       tables:[
         ['sgi_fgi_impact_stores', 'R/W', 'lock candidate W และเปลี่ยนเป็น P หลัง durable file สำเร็จเท่านั้น'],
         ['sgi_fgi_impact_sales_summaries', 'R/W', 'สร้าง/ผูกหัวสรุปยอดขายใน transaction'],
-        ['sgi_interface_transactions', 'W', 'transactional outbox READY/SENT/ACKED พร้อม checksum และ idempotency key'],
+        ['sgi_interface_transactions', 'W', 'transactional outbox READY/SENT/COMPLETED + outbox_status READY/PUBLISHED/CONFIRMED พร้อม checksum และ idempotency key'],
         ['(application log แบบ structured)', 'W', 'run status และ reconcile count — ตาราง job_run_histories ถูกตัด 2026-08-06']
       ],
       rels:['sgi_fgi_impact_sales_summaries (impacted_store_code + impact_month + impact_year) → หัวตารางของ sgi_sales_transactions รายวันที่ Job 5 จะเติม', 'sgi_interface_transactions ผูกด้วย typed FK (impact_process_id / sales_summary_id / doc_no) และเก็บรหัสร้านใน business_key'],
@@ -318,11 +319,11 @@
       cls:'fgi.main.ImportImpactSaleFromIAS',
       script:'FGI_ImportImpactStoreSale.sh',
       cron:'30 16 7-16 * *',
-      cronTh:'วันที่ 7–16 เวลา 16:30',
+      cronTh:'วันที่ 7–16 เวลา 16:30 — **เป็นตารางของโหมด safety-net เท่านั้น** (ทางปกติคือ consumer SubmitJob เมื่อ EAI แจ้งว่าไฟล์พร้อม · มติ 2026-09-08)',
       out:'AMS06001I (รับเข้า)',
-      desc:'อ่านไฟล์ตอบกลับยอดขาย AMS06001I ที่ IAS/MIS วางไว้บน **EAI S3** (prefix ขาเข้า · มติ 2026-08-24 แทนการรับผ่าน SFTP) บันทึกยอดขายรายวันลง sgi_sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff',
+      desc:'ถูก **สั่งให้ทำงานโดย `srm-sps-spsap-store-consumer`** (มติ 2026-09-08) — EAI ส่งข้อความเข้า RabbitMQ ว่าไฟล์ตอบกลับ AMS06001I พร้อมแล้ว consumer อ่าน config จาก S3 แล้ว SubmitJob มาที่ job นี้พร้อม `INPUT` ที่มี `dataType`/`urls` · job **ดาวน์โหลดไฟล์จาก S3 URI ที่ได้รับเอง** (consumer ไม่ดาวน์โหลดให้) · ไม่ใช่ cron ที่ไปไล่หาไฟล์เองอีกต่อไป · แทนการรับผ่าน SFTP ตามมติ 2026-08-24 บันทึกยอดขายรายวันลง sgi_sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff',
       params:[
-        ['กำหนดการรัน (Cron)', '30 16 7-16 * *', 'text', 1, '30 นาทีหลัง Job 4'],
+        ['ตัวกระตุ้น (Trigger)', 'ข้อความจาก EAI ผ่าน srm-sps-spsap-store-consumer', 'text', 1, 'มติ 2026-09-08 — consumer bind คิวของ SGI แล้ว SubmitJob มาที่ job นี้ · cron เดิม 30 16 7-16 * * เก็บไว้เป็น **safety net** เผื่อข้อความหาย (รันแล้วไม่เจอไฟล์ใหม่ = จบทันที ไม่ error)'],
         ['Input File', 'AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์)', 'text', 0, 'impacted_store_code | วันเปิดร้านใหม่ | วันที่ขาย | ยอดขาย (4 ฟิลด์ตามสัญญาไฟล์ของ IAS)'],
         ['หน้าต่างคำนวณ', '4 ช่วง × 15 วัน รอบวันเปิดร้านใหม่ (ไม่รวมวันเปิด) — วันเปิดร้านอ่านจาก master ของระบบ SBP เดิม', 'text', 0, ''],
         ['เกณฑ์ Outlier', '|sales_diff| ≥ 50', 'number', 0, 'literal ในโค้ด — เปลี่ยนต้องอนุมัติธุรกิจ (8.2)'],
@@ -331,10 +332,10 @@
       ],
       flow:[
         { k:'start', t:'เริ่ม' },
-        { k:'io', t:'ดึงไฟล์จาก EAI S3 (prefix ขาเข้า) แล้วอ่าน WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิด', d:'' },
+        { k:'io', t:'ดาวน์โหลดไฟล์จาก S3 URI ที่ได้รับใน INPUT (store-consumer ส่งแค่ที่อยู่ · มติ 2026-09-08) แล้วอ่าน WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิดร้านใหม่', d:'' },
         { k:'d', t:'เป็นงวดที่ยังไม่นำเข้า?', no:'จบ (idempotency guard กันนำเข้าซ้ำ)', noKind:'end', d:'' },
         { k:'p', t:'เปิด transaction ต่อไฟล์ แล้ว insert sgi_sales_transactions แถวดิบ', d:'ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน' },
-        { k:'p', t:'insert sgi_interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = ACKED', d:'บันทึก*การรับไฟล์* — ทำทันทีที่อ่านไฟล์สำเร็จ ไม่ผูกกับผล Y/N เพราะไฟล์มาถึงแล้วไม่ว่าผลจะเป็นอะไร (ถ้าผูกกับสาขา Y งวดที่ผลเป็น N จะไม่มีบันทึก แล้ว Job 10 จะเข้าใจว่า IAS ไม่ตอบกลับ) · เป็นขารับกลับของรอบที่ Job 4 ส่งออก จึงใช้ data_name เดิม — UNIQUE (data_name, direction, business_key, period_key) แยกขา OUT/IN ให้อยู่แล้ว · typed FK = sales_summary_id · acked_at = now' },
+        { k:'p', t:'insert sgi_interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = COMPLETED', d:'บันทึก*การรับไฟล์* — ทำทันทีที่อ่านไฟล์สำเร็จ ไม่ผูกกับผล Y/N เพราะไฟล์มาถึงแล้วไม่ว่าผลจะเป็นอะไร (ถ้าผูกกับสาขา Y งวดที่ผลเป็น N จะไม่มีบันทึก แล้ว Job 10 จะเข้าใจว่า IAS ไม่ตอบกลับ) · เป็นขารับกลับของรอบที่ Job 4 ส่งออก จึงใช้ data_name เดิม — UNIQUE (data_name, direction, business_key, period_key) แยกขา OUT/IN ให้อยู่แล้ว · typed FK = sales_summary_id · acked_at = now' },
         { k:'p', t:'total_working_days = จำนวนแถวดิบทั้งหมด', d:'นับรวมแถวนอกหน้าต่างคำนวณด้วย (raw count)' },
         { k:'d', t:'ต้องคำนวณ sales_diff? (ไม่เข้าเงื่อนไข pre-accept)', no:'Pre-accept: sales_status = Y ทันที', d:'pre-accept เมื่ออายุร้าน < 12ด.15ว. หรือวันทำการ < 60' },
         { k:'p', t:'คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (|sales_diff| ≥ 50)', d:'4 หน้าต่าง × 15 วัน ไม่รวมวันเปิดร้านใหม่ / ธงรวมอดีต-ปัจจุบันต้องตรงกัน' },
@@ -346,7 +347,7 @@
       tables:[
         ['sgi_sales_transactions', 'W', 'ยอดขายรายวันดิบจากไฟล์ (4 หน้าต่างเวลา)'],
         ['sgi_fgi_impact_sales_summaries', 'R/W', 'อัปเดต total_working_days, growth_rate_diff, sales_status Y/N'],
-        ['sgi_interface_transactions', 'W', 'tracking: data_name=IMPACT_STORE_SALES · direction=IN · status=ACKED (ขารับกลับของรอบที่ Job 4 ส่งออก) · typed FK = sales_summary_id']
+        ['sgi_interface_transactions', 'W', 'tracking: data_name=IMPACT_STORE_SALES · direction=IN · status=COMPLETED (ขารับกลับของรอบที่ Job 4 ส่งออก) · typed FK = sales_summary_id']
       ],
       rels:['sgi_sales_transactions → ลูกของ sgi_fgi_impact_sales_summaries (หัวตารางต่อร้าน+งวด) ผูกด้วย sales_summary_id — รหัสร้านอยู่ที่ hub sgi_fgi_impact_processes ไม่ได้เก็บซ้ำในตารางลูก', 'ผล growth_rate_diff ที่คำนวณได้ ถูกใช้เป็นเงื่อนไข Gen Flow Gate (≤ −10) ของ Job 8b'],
       meta:{ trans:'ต่อไฟล์ + savepoint (ระวัง inner catch ทำให้ rollback ไม่ทำงาน)', rerun:'มี period guard — ถ้าจะซ้ำต้องลบ/แก้ sgi_sales_transactions อย่างระวังและคำนวณหัวตารางใหม่', mail:'go-sbp (ผ่าน shared helper)', risk:'P1: growth_rate_diff = NULL ถูก accept อัตโนมัติ / ต้องทดสอบ ก.พ. ปีอธิกสุรทิน และร้านไม่มียอดขาย' },
@@ -368,7 +369,7 @@
       script:'FGI_ExportImpactStoreToSTA.sh',
       cron:'0 17 * * *',
       cronTh:'ทุกวัน 17:00',
-      out:'RabbitMQ message (sgi.interface / sta.compensation.result)',
+      out:'RabbitMQ message sgi_impact_store (exchange sgi.interface)',
       desc:'รัน 10 mutation ตามลำดับบนตารางสถานะ ตรวจความครบของคะแนน QSSI 6 หมวด สร้างชุดสถานะที่ส่งออกได้ แล้ว **publish message ไป RabbitMQ** ให้ระบบ Statement (STA) รับต่อ (มติ 2026-08-24 — เลิกเขียนไฟล์ FRBC0001 + SFTP) · เนื้อข้อมูลยังเป็นสัญญาเดิม 14 ฟิลด์ แต่เป็น JSON UTF-8 ไม่ใช่ text windows-874 · ใช้ **transactional outbox** แบบเดียวกับ Job 4 — DB transaction ครอบ sync + outbox แล้วค่อย publish นอก transaction',
       params:[
         ['กำหนดการรัน (Cron)', '0 17 * * *', 'text', 1, 'ทุกวัน 17:00'],
@@ -377,7 +378,7 @@
         ['หมวด QSSI ที่ตรวจ', '8, 9, 12, 1, 10, 16', 'text', 0, 'ต้องครบทั้ง 6 หมวดจากงวด max เดียว ในกรอบ 3 เดือน'],
         ['RabbitMQ exchange', 'sgi.interface (topic, durable)', 'text', 0, 'อ่านชื่อ exchange จาก backend config (`SGI_MQ_EXCHANGE`) ไม่ hardcode'],
         ['Routing key', 'sta.compensation.result', 'text', 0, 'STA เป็นเจ้าของ queue ที่ bind มาที่ routing key นี้'],
-        ['Message payload', 'JSON UTF-8 · 14 ฟิลด์ตามสัญญา FRBC0001 เดิม', 'text', 0, 'ฟิลด์ 3/5/6 คงเป็นวันที่ พ.ศ. ตามสัญญา 14 ฟิลด์เดิมของ STA — แปลงเฉพาะตอนประกอบ payload ห้ามให้ปนเข้า DB/API'],
+        ['Message payload', 'JSON UTF-8 · dataName = sgi_impact_store (14 ฟิลด์ · สัญญาที่ STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md)', 'text', 0, 'ฟิลด์ 3/5/6 คงเป็นวันที่ พ.ศ. ตามสัญญา 14 ฟิลด์เดิมของ STA — แปลงเฉพาะตอนประกอบ payload ห้ามให้ปนเข้า DB/API'],
         ['Message properties', 'persistent (delivery_mode=2) · message_id = sgi_interface_transactions.id', 'text', 0, 'message_id เป็น idempotency key ให้ STA กันรับซ้ำ'],
         ['Secret reference', 'secret/sgi/mq/sta', 'text', 0, 'user/password ของ broker จาก Secret Manager · เชื่อมด้วย AMQPS (TLS verify-full)']
       ],
@@ -391,17 +392,20 @@
         { k:'p', t:'insert outbox: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N (direction = OUT · status = READY)', d:'อยู่ใน transaction เดียวกับ 10 mutation — commit แล้วข้อมูลจะไม่หาย แม้ broker ล่ม' },
         { k:'io', tx:0, t:'publish ไป RabbitMQ exchange sgi.interface (routing sta.compensation.result)', d:'นอก DB transaction · persistent + publisher confirm + mandatory' },
         { k:'d', tx:0, t:'ได้ publisher confirm?', no:'คง outbox เป็น READY/FAILED_RETRY ให้ dispatcher ส่งซ้ำ — ไม่ rollback การ sync', noKind:'err', d:'เลี่ยง dual-write: การ sync สถานะกับการส่ง message แยก commit กัน · ส่งซ้ำได้เพราะ STA กันซ้ำด้วย message_id' },
-        { k:'p', tx:0, t:'update outbox: status READY → SENT (บันทึก sent_at)', d:'ACK เชิงธุรกิจมาทีหลังทาง POST /sgi/interface/sta/ack · Job 10 เฝ้าแถวที่ค้างไม่ ACK ≥ 1 วัน' },
+        { k:'p', tx:0, t:'update outbox: outbox_status READY → PUBLISHED → CONFIRMED (บันทึก sent_at)', d:'CONFIRMED ตั้งได้เฉพาะเมื่อได้ publisher confirm จาก broker · Job 10 เฝ้าแถวที่ยังไม่ CONFIRMED ≥ 1 วัน' },
         { k:'end', t:'จบ' }
       ],
       tables:[
         ['sgi_fgi_impact_processes', 'R/W', 'หนึ่งใน 10 mutation (สถานะ process / last_compensation_amount)'],
         ['sgi_fgi_impact_stores', 'R/W', 'สถานะค่าชดเชย I/C/A/N/S/Z และข้อมูลร้าน/ผู้อนุมัติ/ค่าชดเชยร้านใหม่'],
         ['fcs_qssi_score', 'R', 'ตรวจความครบคะแนน 6 หมวด — อ่านอย่างเดียว ระบบ SBP เดิมเป็นคนนำเข้า (คอลัมน์จริง: store_id · category · month · year · score)'],
-        ['sgi_interface_transactions', 'W', 'outbox + tracking COMPENSATE_INIT / APPROVE (I,N) · direction = OUT · READY → SENT → ACKED · typed FK = impact_process_id']
+        ['sgi_fgi_impact_sales_summaries', 'R', 'growth_rate_diff / total_working_days ที่ใช้คัดชุดส่งออก (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้)'],
+        ['sgi_compensation_documents', 'R', 'ผลพิจารณาของงวดที่ต้องส่งไป STA (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้)'],
+        ['sgi_consideration_logs', 'R', 'ผลการพิจารณาล่าสุดของเอกสาร ใช้ประกอบ compensate_status (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้)'],
+        ['sgi_interface_transactions', 'W', 'outbox + tracking COMPENSATE_INIT / APPROVE (I,N) · direction = OUT · READY → PUBLISHED → CONFIRMED · typed FK = impact_process_id']
       ],
       rels:['hub sgi_fgi_impact_processes (id) → แม่ของ sgi_fgi_impact_stores ทั้งหมดที่ถูก mutate', 'fcs_qssi_score → เงื่อนไขปล่อยสถานะ INIT (ครบ 6 หมวดจากงวดเดียว)', 'สถานะ COMPENSATE I/C/A/N/S/Z บน sgi_fgi_impact_stores → กำหนด data_name ของ outbox ที่ Job 10 เฝ้าดู', 'sgi_interface_transactions.id → message_id ของ RabbitMQ message (idempotency key ฝั่ง STA)'],
-      meta:{ trans:'DB transaction คลุม 10 mutation + outbox (READY) เท่านั้น — publish อยู่นอก transaction แล้วค่อย update READY → SENT', rerun:'transaction ป้องกันตามปกติ แต่ต้อง reconcile 10 mutation · ส่งซ้ำปลอดภัยเพราะ message_id = sgi_interface_transactions.id ให้ STA กันซ้ำได้', mail:'storeretention เมื่อ publish สำเร็จ (เลิกส่ง mailToBPM — ไม่มีไฟล์ BPM แล้ว)', risk:'บั๊กจริง E20 ของโค้ดเดิม: SQL purge ต่อ data_name สองค่าเป็น string เดียว — tracking ไม่เคยถูกลบ สะสมโตขึ้นเรื่อย ๆ' },
+      meta:{ trans:'DB transaction คลุม 10 mutation + outbox (READY) เท่านั้น — publish อยู่นอก transaction แล้วค่อย update READY → PUBLISHED → CONFIRMED', rerun:'transaction ป้องกันตามปกติ แต่ต้อง reconcile 10 mutation · ส่งซ้ำปลอดภัยเพราะ message_id = sgi_interface_transactions.id ให้ STA กันซ้ำได้', mail:'storeretention เมื่อ publish สำเร็จ (เลิกส่ง mailToBPM — ไม่มีไฟล์ BPM แล้ว)', risk:'บั๊กจริง E20 ของโค้ดเดิม: SQL purge ต่อ data_name สองค่าเป็น string เดียว — tracking ไม่เคยถูกลบ สะสมโตขึ้นเรื่อย ๆ' },
       hist:[
         ['01/07/2026 17:00', '3 นาที 02 วิ', '1,254', '1,254 msg → sta.compensation.result', 'ok', 'INIT 118 / APPROVE 1,136'],
         ['30/06/2026 17:00', '2 นาที 51 วิ', '1,190', '1,190 msg → sta.compensation.result', 'ok', ''],
@@ -516,9 +520,9 @@
         { k:'p', t:'อ่าน candidate ที่มี sgi_compensation_documents แล้วและ workflow_generation_status=W', d:'' },
         { k:'d', t:'พบเงื่อนไขไม่ผ่านถาวร?', no:'ไม่พบ - ตรวจความพร้อมของข้อมูลต่อ', d:'branch type, distance, missing DV, same juristic หรือ growth > -10 -> N' },
         { k:'d', t:'ข้อมูล Gate พร้อมครบ?', no:'distance/juristic/growth เป็น NULL หรือ sales status ยังไม่พร้อม -> คง W', d:'คง W เฉพาะข้อมูลต้นทางที่ยังรอเติมเพื่อให้ rerun ได้' },
-        { k:'p', t:'ตัดสินจุดเข้า flow จากประเภทเคส', d:'อ่าน sgi_fgi_impact_processes.last_compensate_seq_no + flag_action และจำนวนงวดที่ COALESCE(adjust_amount, forecast_amount) = 0 จาก sgi_fgi_impact_compensations → เปิดที่ state 06 (เปิดเรื่องใหม่) · 08 (ชดเชยต่อเนื่อง) · 01 (ยอด 0 ไม่เกิน 3 เดือน) หรือปิดเอกสารเป็นหยุดชดเชย (ยอด 0 เดือนที่ 4) — ดู LLDD Job 8b ข้อ 4a' },
+        { k:'p', t:'ตัดสินจุดเข้า flow จากประเภทเคส', d:'อ่าน sgi_fgi_impact_processes.last_compensate_seq_no + flag_action และจำนวนงวดที่ COALESCE(adjust_amount, forecast_amount) = 0 จาก sgi_fgi_impact_compensations → เปิดที่ state 06 (เปิดเรื่องใหม่) · 08 (ชดเชยต่อเนื่อง — ทั้งยอด > 0 และยอด 0 ไม่เกิน 3 เดือน · มติ 2026-09-01 เดิมยอด 0 เข้า 01) หรือปิดเอกสารเป็นหยุดชดเชย (ยอด 0 เดือนที่ 4) — ดู LLDD Job 8b ข้อ 4a' },
         { k:'io', t:'POST /api/v1/sgi/workflow/instances', d:'service token ภายใน ไม่ใช้ HTTP Basic Auth/K2 REST' },
-        { k:'p', t:'เรียก initializeWorkflow + addPreApprover ของ @srm/glb-workflow (state ตามประเภทเคส)', d:'engine เขียน workflow_transaction/workflow_approver เอง — SGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3' },
+        { k:'p', t:'เรียก POST /api/v1/sgi/workflow/instances ด้วย service token (job ไม่เรียก lib เอง · มติ 2026-09-09)', d:'BE เป็นผู้เรียก engine แล้วเขียน workflow_transaction/workflow_approver เอง — SGI ไม่ insert ตรง · API 8 ตัวตามชีต Detail ของ LLDD lib — ดู LLDD-BE-Workflow-Engine-Definition 5.3' },
         { k:'p', t:'workflow_generation_status = Y', d:'เปิด workflow สำเร็จ' },
         { k:'io', t:'ส่งอีเมลสรุปราย DV ผ่าน email-lib กลาง (sendEmail)', d:'' },
         { k:'end', t:'จบ' }
@@ -527,10 +531,11 @@
         ['sgi_fgi_impact_processes', 'R', 'last_compensate_seq_no + flag_action — ใช้ตัดสินจุดเข้า flow (คอลัมน์กลุ่ม F8)'],
         ['sgi_fgi_impact_compensations', 'R', 'COALESCE(adjust_amount, forecast_amount) = 0 กี่งวดติดกัน — เกณฑ์ยอด 0 (ตาราง F1)'],
         ['sgi_impacted_stores', 'R', 'opt_dv_user_id สำหรับ group อีเมลราย DV และเงื่อนไข Gate (ต้องไม่ว่าง)'],
+        ['sgi_fgi_impact_sales_summaries', 'R', 'growth_rate_diff <= -10 และ sales_status ที่ Gen Flow Gate ใช้ตัดสิน (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้)'],
         ['sgi_fgi_impact_stores', 'R/W', 'อ่าน candidate + เขียน W/Y/N'],
         ['sgi_compensation_documents', 'R/W', 'ยืนยันเอกสารจาก Job 8 หรือสร้างถ้ายังไม่มีตาม idempotency'],
-        ['workflow_transaction (@srm/glb-workflow · sps_store)', 'W (ผ่าน lib)', 'เปิด instance ด้วย initializeWorkflow() — ห้าม insert ตรง'],
-        ['workflow_approver (@srm/glb-workflow · sps_store)', 'W (ผ่าน lib)', 'prepared approver ขั้นแรก state 06 ด้วย addPreApprover() — ห้าม insert ตรง'],
+        ['workflow_transaction (@srm/glb-workflow · sps_store)', 'W (ผ่าน BE API)', '**job ไม่แตะตารางนี้และไม่เรียก lib เอง** (มติ 2026-09-09) — เรียก POST /sgi/workflow/instances แล้ว BE เป็นผู้เรียก initializeWorkflow()'],
+        ['workflow_approver (@srm/glb-workflow · sps_store)', 'W (ผ่าน BE API)', '**job ไม่แตะตารางนี้** — BE เป็นผู้เรียก addPreApprover() ให้ · ห้าม insert ตรง'],
         ['(backend config)', 'R', 'ผู้รับอีเมลของ batch job — ไม่ใช่ workflow event · เลข template ของ workflow มาจาก workflow_route.email_id']
       ],
       rels:['แทน K2 REST StartInstance ด้วย Workflow Engine ภายใน', 'ไม่มี Basic Auth/HTTP endpoint legacy ใน runtime target'],
@@ -586,7 +591,7 @@
     {
       no:'10',
       name:'NotifyNoReceiveData',
-      th:'Watchdog เฝ้าระวัง ACK ค้าง',
+      th:'Watchdog เฝ้าระวังข้อความขาออกที่ค้างส่ง',
       tag:'WATCHDOG',
       tagCls:'wd',
       phase:'E',
@@ -594,34 +599,108 @@
       script:'FGI_NotifyNoReceiveData.sh',
       cron:'0 07 * * *',
       cronTh:'ทุกวัน 07:00',
-      out:'อีเมลเตือน UTF-8 + pending ACK dashboard',
-      desc:'งาน safety net ตรวจ sgi_interface_transactions หา ACK จาก STA ที่ยังค้างเกิน 1 วัน หลังเพิ่ม POST /api/v1/sgi/interface/sta/ack ให้ STA callback ตรง; ส่งอีเมล UTF-8 ผ่าน email-lib กลาง (sendEmail)',
+      out:'อีเมลเตือน UTF-8 + หน้ารายการค้างส่ง (pending-ack)',
+      desc:'งาน safety net ตรวจ sgi_interface_transactions หาข้อความขาออกที่ยังไม่ได้ publisher confirm จาก RabbitMQ เกิน 1 วัน; ส่งอีเมล UTF-8 ผ่าน email-lib กลาง (sendEmail) — มติ 2026-09-08 (ข้อ 2.13) เปลี่ยนเกณฑ์จาก ACK ระดับธุรกิจเป็น publisher confirm เพราะสเปก STA ไม่มี ACK แบบ HTTP (เส้น POST /sgi/interface/sta/ack ถูกตัด)',
       params:[
-        ['กำหนดการรัน (Cron)', '0 07 * * *', 'text', 1, 'ทุกวัน 07:00; เป็น safety net หลัง STA callback'],
-        ['Pending threshold', '>= 1 วัน', 'number', 1, 'เตือนเมื่อยังไม่มี ACK หลังครบ threshold'],
+        ['กำหนดการรัน (Cron)', '0 07 * * *', 'text', 1, 'ทุกวัน 07:00; เป็น safety net ของ outbox publisher'],
+        ['Pending threshold', '>= 1 วัน', 'number', 1, 'เตือนเมื่อ outbox_status ยังไม่เป็น CONFIRMED หลังครบ threshold'],
         ['ขอบเขตที่เฝ้าดู', 'direction = OUT · data_name = COMPENSATE_INIT_I, COMPENSATE_APPROVE_I', 'text', 0, 'เฉพาะฝั่ง STA - ไม่เฝ้า dataset ของ BPM'],
         ['Encoding', 'UTF-8', 'text', 0, 'แทน TIS-620 เดิมตาม email-lib กลาง (sendEmail)']
       ],
       flow:[
         { k:'start', t:'เริ่ม' },
-        { k:'p', t:'อ่าน sgi_interface_transactions: direction = OUT · ยังไม่มี ACK · อายุ >= threshold', d:'' },
+        { k:'p', t:'อ่าน sgi_interface_transactions: direction = OUT · outbox_status != CONFIRMED · อายุ >= threshold', d:'CONFIRMED = broker ตอบรับแล้ว (publisher confirm)' },
         { k:'d', t:'พบรายการค้าง?', no:'จบการทำงาน', noKind:'end', d:'' },
         { k:'io', t:'ส่งอีเมล UTF-8 ผ่าน @gosoft-sbp/email-lib ของระบบ SBP เดิม', d:'ผู้รับตาม backend config' },
-        { k:'p', t:'แสดงรายการใน /sgi/interface/pending-ack', d:'POST /sgi/interface/sta/ack เป็นเส้นทางหลักเมื่อ STA ตอบกลับ' },
+        { k:'p', t:'แสดงรายการใน /sgi/interface/pending-ack', d:'ทีมงานใช้หน้านี้ตามงานค้าง แล้วสั่ง republish จาก outbox' },
         { k:'end', t:'จบ' }
       ],
       tables:[
-        ['sgi_interface_transactions', 'R', 'pending ACK จาก STA และสถานะล่าสุด'],
-        ['email_template (ระบบ SBP เดิม)', 'R', 'template EM-08 watchdog ACK — อ่านอย่างเดียว'],
+        ['sgi_interface_transactions', 'R', 'แถวขาออกที่ยังไม่ CONFIRMED และสถานะล่าสุด'],
+        ['email_template (ระบบ SBP เดิม)', 'R', 'template EM-08 watchdog ค้างส่ง — อ่านอย่างเดียว'],
         ['email_sent (ระบบ SBP เดิม)', 'W (โดย @gosoft-sbp/email-lib)', 'lib เขียน log ให้เอง · SGI ไม่ INSERT เอง'],
         ['(backend config)', 'R', 'ผู้รับอีเมลของ job นี้ (EM-08 watchdog) — กำหนดใน config file/env']
       ],
-      rels:['sgi_interface_transactions คือตาราง tracking กลางของทุก interface — return_code = NULL หมายถึงยังไม่ได้รับ ACK จากปลายทาง', 'แถวที่เฝ้าดูถูกสร้างโดย Job 6 (COMPENSATE_INIT / APPROVE) และรอ ACK จากระบบ STA'],
-      meta:{ trans:'read-only; callback /sgi/interface/sta/ack เป็นผู้เขียน ACK หลัก', rerun:'รันซ้ำได้; ต้องไม่ส่งอีเมลซ้ำถ้ามี sent marker ในรอบเดียวกัน', mail:'email-lib (sendEmail · UTF-8)', risk:'ห้ามกลับไปใช้ TIS-620/hardcoded recipient; Job 10 เป็น safety net ไม่ใช่ primary ACK path' },
+      rels:['sgi_interface_transactions คือตาราง tracking กลางของทุก interface — outbox_status != CONFIRMED หมายถึง broker ยังไม่ตอบรับข้อความนั้น', 'แถวที่เฝ้าดูถูกสร้างโดย Job 6 (COMPENSATE_INIT / APPROVE) และรอ publisher confirm จาก RabbitMQ — สเปก STA ไม่มี ACK กลับมา จึงไม่รอ ACK ระดับธุรกิจ'],
+      meta:{ trans:'read-only; Job 6 เป็นผู้เขียน outbox_status = CONFIRMED เมื่อได้ publisher confirm', rerun:'รันซ้ำได้; ต้องไม่ส่งอีเมลซ้ำถ้ามี sent marker ในรอบเดียวกัน', mail:'email-lib (sendEmail · UTF-8)', risk:'ห้ามกลับไปใช้ TIS-620/hardcoded recipient; ห้ามตีความว่ารอ ACK จาก STA — สเปก STA ไม่มี ACK' },
       hist:[
-        ['02/07/2026 07:00', '-', '-', 'อีเมลเตือน UTF-8 + pending ACK dashboard', 'ok', 'target design - DB/internal workflow']
+        ['02/07/2026 07:00', '-', '-', 'อีเมลเตือน UTF-8 + หน้ารายการค้างส่ง', 'ok', 'target design - DB/internal workflow']
       ],
       run:['02/07/2026 07:00', 'fail', '03/07/2026 07:00']
+    },
+    {
+      no:'11',
+      name:'ConsumeStaCompensate',
+      th:'รับยอดชดเชยจาก STA (RabbitMQ)',
+      tag:'CONSUME',
+      tagCls:'imp',
+      phase:'B',
+      cls:'(ของใหม่ — ไม่มีคลาสเดิมใน fcsJar)',
+      script:'sgi-consume-sta-compensate',
+      cron:'event-driven',
+      cronTh:'ไม่มีตารางเวลา — consumer SubmitJob ให้ทุกครั้งที่มีข้อความเข้าคิว (มติ 2026-09-08 · 1 ข้อความ = 1 การรัน)',
+      out:'sgi_fgi_impact_compensations (forecast_amount / adjust_amount)',
+      desc:'**ไม่ต่อ RabbitMQ เอง** (มติ 2026-09-08) — `srm-sps-spsap-store-consumer` เป็นผู้ consume คิว `sta_update_compensate` แล้ว SubmitJob มาที่ job นี้พร้อม `INPUT` = ข้อความทั้ง envelope · job มีหน้าที่ **อัปเดตยอดเงินประกันรายได้ของงวดที่ระบุ** อย่างเดียว — ปิดช่องว่างที่สเปก STA บังคับให้ SGI consume แต่ยังไม่มีเอกสารรองรับ (มติ 2026-09-02)',
+      params:[
+        ['ตัวกระตุ้น (Trigger)', 'ข้อความจาก STA ผ่าน srm-sps-spsap-store-consumer', 'text', 1, 'มติ 2026-09-08 — 1 ข้อความ = 1 การรัน (ไม่ใช่ cron ทุก 10 นาที) · consumer คุม prefetch/ack ให้'],
+        ['Queue', 'srm.sgi.sta-update-compensate.queue', 'text', 0, '**consumer เป็นผู้ bind/consume คิวนี้ ไม่ใช่ job** — ระบุไว้เพื่ออ้างอิง · ชื่อ queue/routing key ต้อง confirm กับทีม STA'],
+        ['dataName ที่รับ', 'sta_update_compensate', 'text', 0, 'ข้ามข้อความที่ dataName ไม่ตรง (log warn + ack ทิ้ง)'],
+        ['DLQ', 'srm.sgi.sta-update-compensate.dlq', 'text', 0, '**เป็นหน้าที่ของ consumer ไม่ใช่ job** — ⚠️ ทั้ง DLQ และ retry ยังไม่มีในโค้ด consumer (ข้อ C1/C2) ต้องผลักให้ทีมนั้นเพิ่มก่อน UAT']
+      ],
+      flow:[
+        { k:'start', t:'เริ่ม' },
+        { k:'io', t:'รับ INPUT = envelope ที่ store-consumer ส่งมา (ไม่ต่อ RabbitMQ เอง · มติ 2026-09-08)', d:'exchange sgi.interface' },
+        { k:'d', t:'dataName ตรง sta_update_compensate ไหม?', no:'จบการทำงาน', noKind:'end', d:'คิวว่าง = จบแบบ SUCCESS' },
+        { k:'p', t:'ตรวจ envelope: dataType/dataName/sender/sentAt + schema ของ dataMessage', d:'ผิดรูป = เข้า DLQ' },
+        { k:'p', t:'กันซ้ำด้วย sgi_interface_transactions (direction IN)', d:'business_key + period_key เดิม = ack ทิ้ง' },
+        { k:'p', t:'อัปเดต forecast_amount / adjust_amount ของงวดที่ระบุ ใน transaction', d:'impactStatus Z = ยอดศูนย์ · W = ไม่ศูนย์' },
+        { k:'io', t:'จบงาน — exit code บอกผลให้ AWS Batch (ack/nack เป็นหน้าที่ของ consumer)', d:'commit ไม่ผ่าน = nack + requeue' },
+        { k:'end', t:'จบ' }
+      ],
+      tables:[
+        ['sgi_interface_transactions', 'W', 'บันทึกขาเข้า direction = IN · กันซ้ำระดับข้อความ'],
+        ['sgi_fgi_impact_compensations', 'W', 'forecast_amount / adjust_amount ของงวดที่ STA แจ้ง'],
+        ['sgi_fgi_impact_processes', 'R', 'หา impact_process_id จาก impacted_store_code + งวด']
+      ],
+      rels:['สเปกข้อความอยู่ที่ STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md ข้อ 3 — โครงสร้างฟิลด์ชุดเดียวกับ sgi_impact_store', 'คู่กับ Job 6 ที่ publish sgi_impact_store ออกไป — job นี้คือขากลับของสัญญาเดียวกัน']
+    },
+    {
+      no:'12',
+      name:'NotifyPendingWork',
+      th:'เตือนงานค้าง + escalation (ช่วง 30-36 / 45-51 / 60-66 วัน)',
+      tag:'NOTIFY',
+      tagCls:'wd',
+      phase:'E',
+      cls:'fgi.main.SendMailReport',
+      script:'FGI_SendMailReport.sh',
+      cron:'0 10 * * 1',
+      cronTh:'ทุกวันจันทร์ 10:00 น.',
+      out:'อีเมลเตือนงานค้าง แยกตามโซน 3 ช่วงอายุงาน',
+      desc:'อ่านงานที่ค้างในขั้นรอดำเนินการของ workflow engine แล้วส่งอีเมลเตือนตามช่วงอายุงาน 30-36 / 45-51 / 60-66 วัน จัดกลุ่มตามโซนของร้านที่ถูกกระทบ ส่งถึง GM และหน่วยงานส่งเสริมธุรกิจ — ปิดช่องว่างที่ไม่มีเอกสารรองรับมาก่อน (มติ 2026-09-02)',
+      params:[
+        ['กำหนดการรัน (Cron)', '0 10 * * 1', 'text', 1, 'ทุกวันจันทร์ 10:00 น. ตาม workflow.md'],
+        ['ช่วงอายุงานที่เตือน', '30-36 | 45-51 | 60-66 วัน', 'text', 1, 'เป็นช่วง 7 วัน ไม่ใช่ ">= n วัน" — นอกช่วงไม่ส่งเลย (พฤติกรรมเดิมของ MailReportService.seperateDay)'],
+        ['กลุ่มผู้รับ', 'GM group 38 · OPT group 15', 'text', 1, 'business_user ของระบบ SBP เดิม'],
+        ['การจัดกลุ่ม', 'ตามโซนของร้านที่ถูกกระทบ (zone)', 'text', 0, '1 อีเมลต่อ 1 โซนต่อ 1 ช่วงอายุ'],
+        ['Template', 'EM-04 (เตือนรายสัปดาห์) · EM-05 (escalation)', 'text', 1, 'ใช้ template ที่มีอยู่แล้วในชุด 8 ฉบับ — ไม่สร้าง EM ใหม่ · เลขจริงอ่านจาก mas_param · ระบบเดิมใช้ template 38 (EMAILTOSBP)']
+      ],
+      flow:[
+        { k:'start', t:'เริ่ม' },
+        { k:'p', t:'อ่านงานค้างด้วย SQL อ่านอย่างเดียวบน sps_store.workflow_transaction', d:'เฉพาะ state ที่รอคนกด · **ไม่เรียก getPendingFlowByUser ของ lib** (มติ 2026-09-09 — workflow lib ใช้กับ flow K2 เท่านั้น) · job ต้องการงานค้าง**ทั้งระบบ**เพื่อคิดอายุ 30/45/60 วัน ไม่ใช่ inbox รายคน · ห้ามเขียนตารางของ engine' },
+        { k:'p', t:'คำนวณอายุงาน (วัน) จากเวลาที่เข้าขั้นนั้น', d:'' },
+        { k:'d', t:'อายุอยู่ในช่วง 30-36 / 45-51 / 60-66?', no:'ข้ามรายการนั้น', noKind:'p', d:'นอกช่วงไม่ส่ง' },
+        { k:'p', t:'จัดกลุ่มตามโซน แล้วประกอบเนื้อหาอีเมลต่อโซน', d:'' },
+        { k:'io', t:'ส่งอีเมลผ่าน @gosoft-sbp/email-lib ถึง GM (38) + OPT (15)', d:'lib เขียน email_sent ให้เอง' },
+        { k:'end', t:'จบ' }
+      ],
+      tables:[
+        ['sps_store.workflow_transaction', 'R', 'งานค้างของ engine กลาง — ห้ามเขียน'],
+        ['sgi_compensation_documents', 'R', 'เลขเอกสาร · ร้าน · งวด สำหรับเนื้อหาอีเมล'],
+        ['sgi_impacted_stores', 'R', 'โซนของร้านที่ถูกกระทบ ใช้จัดกลุ่มผู้รับ'],
+        ['business_user (ระบบ SBP เดิม)', 'R', 'อีเมลของ GM group 38 และ OPT group 15'],
+        ['email_sent (ระบบ SBP เดิม)', 'W (โดย @gosoft-sbp/email-lib)', 'lib เขียน log ให้เอง']
+      ],
+      rels:['แทน fgi.main.SendMailReport + MailReportService ของระบบเดิม (K2 SmartObject) — ระบบใหม่อ่านงานค้างจาก @srm/glb-workflow แทน', 'ช่วง 7 วันผูกกับการรันสัปดาห์ละครั้ง — เปลี่ยนความถี่ต้องทบทวนช่วงพร้อมกัน']
     }
   ];
 

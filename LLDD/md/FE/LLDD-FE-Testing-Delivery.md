@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | FE |
 | Estimate | 12 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
-| Owner | Chidchanok <lin> Saengamnat |
+| Owner | Chidchanok &lt;lin&gt; Saengamnat |
 | Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Document type | FE verification and release handover specification; not an application screen |
 | Objective | กำหนด regression, responsive pass, API payload adjustment และ delivery note สำหรับ FE |

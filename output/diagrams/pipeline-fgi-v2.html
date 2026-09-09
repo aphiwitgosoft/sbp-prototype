@@ -1,4 +1,9 @@
-﻿<title>ระบบประกันรายได้ — กว่าเงินชดเชยจะถึงร้าน</title>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<title>ระบบประกันรายได้ — กว่าเงินชดเชยจะถึงร้าน</title>
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -230,9 +235,22 @@
   .close .q{font-size:34px; line-height:.9; color:#c9d4e4; font-weight:700; flex:none}
   .close p{margin:0; font-size:16px; line-height:1.68; font-weight:600; color:var(--ink); max-width:1250px}
   .close p span{color:var(--c1)}
+
+/* ── เปิดอ่านบนจอเล็กได้ โดยไม่เปลี่ยนหน้ากระดาษ (แก้ 2026-09-07) ─────────────────
+   หน้านี้เป็น "แผ่นโปสเตอร์" ความกว้างตายตัวสำหรับ export/print — จะทำให้ responsive
+   แบบพับเนื้อหาไม่ได้เพราะเลย์เอาต์ทั้งใบผูกกับความกว้างนั้น
+   วิธีที่ถูกคือ **ให้กล่องเลื่อน ไม่ใช่ให้ทั้งหน้าเลื่อน**: กระดาษคงขนาดเดิมเป๊ะ
+   ส่วนคนอ่านบนจอเล็กเลื่อนดูในกรอบได้ · ตอน print ยังได้ขนาดเดิมทุกมิลลิเมตร */
+html, body { max-width: 100%; overflow-x: hidden; }
+body { display: flow-root; }
+.sheet-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+@media print {
+  html, body { overflow: visible; }
+  .sheet-scroll { overflow: visible; }
+}
 </style>
 
-<div class="sheet" id="sheet">
+<div class="sheet-scroll"><div class="sheet" id="sheet">
 
   <!-- ===================== HEADER ===================== -->
   <div class="head">
@@ -766,3 +784,4 @@
   /* ช่วงที่ 5 · ทุกวัน */
   #d5 i{background:var(--c5)}
 </style>
+</div>

@@ -53,6 +53,9 @@ def table(headers: list[str], rows: list[list[Any]]) -> dict[str, Any]:
 
 
 def code(text: str, lang: str = "") -> dict[str, Any]:
+    if lang == "sql":
+        import build_lldd_documents as _BA   # import ตอนเรียก (โมดูลนั้น import ไฟล์นี้ตอนโหลด)
+        text = _BA.to_positional_sql(text)
     return {"type": "code", "text": text, "lang": lang}
 
 
@@ -128,12 +131,20 @@ CUT_TABLE_REPLACEMENT: dict[str, str] = {
     "user_accounts": "AWS Cognito + auth-backend users",
 }
 
-# ชื่อคอลัมน์ที่ SQL ตัวอย่างเก่ายังใช้อยู่แต่ไม่ตรงกับ entity ที่ skeleton ประกาศ
-CUT_COLUMN_ALIASES: dict[str, str] = {
-    "total_compensation_amount": "compensate_amount",
-    "d.year": "d.account_year",
-    "d.month": "d.account_month",
-}
+# ชื่อคอลัมน์ที่ SQL ตัวอย่างเก่ายังใช้อยู่แต่ไม่ตรงกับ DDL จริง
+#   ⚠️ 2026-09-02 — ทั้ง 3 รายการเดิม (`total_compensation_amount` · `d.year` · `d.month`) **ถูกถอนออก**
+#      เพราะ DDL ประกาศคอลัมน์เหล่านี้ไว้จริงทั้งหมด (`sgi_compensation_documents` มีทั้ง `year`/`account_year`
+#      และ `total_compensation_amount`) คำเตือนเดิมจึงชี้ให้ dev แก้ไปเป็นชื่อที่ **ไม่มีอยู่จริง**
+#   ก่อนเติมรายการใหม่ ต้องเช็คก่อนว่าชื่อฝั่งซ้ายไม่มีใน DDL จริง — `_active_column_aliases()` กรองให้อัตโนมัติ
+CUT_COLUMN_ALIASES: dict[str, str] = {}
+
+
+def _active_column_aliases() -> dict[str, str]:
+    """คืนเฉพาะ alias ที่ยัง 'ผิดจริง' — ถ้าชื่อฝั่งซ้ายมีอยู่ใน DDL แล้วให้เลิกเตือน"""
+    known: set[str] = set()
+    for cols in _ddl_entity_columns().values():
+        known.update(c[0] for c in cols)
+    return {old: new for old, new in CUT_COLUMN_ALIASES.items() if old.split(".")[-1] not in known}
 
 
 def _cut_reason(path: str) -> str:
@@ -149,263 +160,29 @@ def _cut_reason(path: str) -> str:
 # --------------------------------------------------------------------------------------
 # คอลัมน์อ้างอิงของตาราง SGI (สรุปจาก database.md — Canonical Column Contract)
 #   table -> (ClassName, [(column, tsType, columnOptions, isPk)])
+#   ⚠️ 2026-09-02 — ตารางที่มี CREATE TABLE ใน LLDD-Database ให้เก็บ **ชื่อคลาสอย่างเดียว** (list ว่าง)
+#      คอลัมน์ generate จาก DDL ผ่าน _ddl_entity_columns() · ห้ามกลับไปเขียนคู่ขนาน
+#      (ของเดิมเขียนมือแล้วหลุดจาก DDL ครบทั้ง 18 ตาราง) · check_docs.py ข้อ 43 ดักไว้แล้ว
 # --------------------------------------------------------------------------------------
 COLUMN_HINTS: dict[str, tuple[str, list[tuple[str, str, str, bool]]]] = {
-    "sgi_compensation_documents": (
-        "CompensationDocument",
-        [
-            ("doc_no", "string", "type: 'varchar', length: 12", True),
-            ("impact_process_id", "number", "type: 'bigint', nullable: true", False),
-            ("impacted_store_code", "string", "type: 'char', length: 5", False),
-            ("status_code", "string", "type: 'varchar', length: 2", False),
-            ("current_section_code", "string", "type: 'varchar', length: 2", False),
-            ("round_no", "number", "type: 'int', nullable: true", False),
-            ("loop_no", "number", "type: 'int', nullable: true", False),
-            ("statement_id", "string", "type: 'varchar', length: 30, nullable: true", False),
-            ("statement_date", "Date", "type: 'date', nullable: true", False),
-            ("account_year", "number", "type: 'int', nullable: true", False),
-            ("account_month", "number", "type: 'int', nullable: true", False),
-            ("compensate_amount", "string", "type: 'numeric', precision: 15, scale: 2, nullable: true", False),
-            ("allmap_url", "string", "type: 'text', nullable: true", False),
-            ("approver_snapshot", "Record<string, unknown>", "type: 'jsonb', nullable: true", False),
-            ("created_at", "Date", "type: 'timestamptz', nullable: true", False),
-            ("updated_at", "Date", "type: 'timestamptz', nullable: true", False),
-        ],
-    ),
-    "sgi_document_new_stores": (
-        "DocumentNewStore",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("doc_no", "string", "type: 'varchar', length: 12", False),
-            ("new_store_code", "string", "type: 'char', length: 5", False),
-            ("distance_km", "string", "type: 'numeric', precision: 6, scale: 2, nullable: true", False),
-            ("compensate_percent", "string", "type: 'numeric', precision: 5, scale: 2", False),
-            ("compensate_amount", "string", "type: 'numeric', precision: 15, scale: 2, nullable: true", False),
-            ("open_date", "Date", "type: 'date', nullable: true", False),
-        ],
-    ),
-    "sgi_document_competitors": (
-        "DocumentCompetitor",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("doc_no", "string", "type: 'varchar', length: 12", False),
-            ("competitor_code", "string", "type: 'varchar', length: 20", False),
-            ("branch_name", "string", "type: 'varchar', length: 200, nullable: true", False),
-            ("zone_code", "string", "type: 'varchar', length: 10, nullable: true", False),
-            ("subzone_code", "string", "type: 'varchar', length: 10, nullable: true", False),
-            ("open_date", "Date", "type: 'date', nullable: true", False),
-            ("close_date", "Date", "type: 'date', nullable: true", False),
-            ("source_system", "string", "type: 'varchar', length: 10", False),
-        ],
-    ),
-    "sgi_document_external_factors": (
-        "DocumentExternalFactor",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("doc_no", "string", "type: 'varchar', length: 12", False),
-            ("factor_code", "string", "type: 'varchar', length: 20", False),
-            ("start_date", "Date", "type: 'date', nullable: true", False),
-            ("end_date", "Date", "type: 'date', nullable: true", False),
-            ("remark", "string", "type: 'text', nullable: true", False),
-        ],
-    ),
-    "sgi_document_attachments": (
-        "DocumentAttachment",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("doc_no", "string", "type: 'varchar', length: 12", False),
-            ("section_code", "string", "type: 'varchar', length: 2", False),
-            ("file_name", "string", "type: 'varchar', length: 255", False),
-            ("file_path", "string", "type: 'varchar', length: 1000", False),
-            ("file_size", "number", "type: 'int'", False),
-            ("content_type", "string", "type: 'varchar', length: 100, nullable: true", False),
-            ("upload_status", "string", "type: 'varchar', length: 1, nullable: true", False),
-            ("upload_message", "string", "type: 'varchar', length: 500, nullable: true", False),
-            ("purge_flag", "string", "type: 'char', length: 1, nullable: true", False),
-            ("uploaded_by", "string", "type: 'varchar', length: 50", False),
-            ("uploaded_at", "Date", "type: 'timestamptz'", False),
-        ],
-    ),
-    "sgi_consideration_logs": (
-        "ConsiderationLog",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("doc_no", "string", "type: 'varchar', length: 12", False),
-            ("section_code", "string", "type: 'varchar', length: 2", False),
-            ("decision_code", "string", "type: 'varchar', length: 10, nullable: true", False),
-            ("result", "string", "type: 'varchar', length: 200", False),
-            ("result_category", "string", "type: 'varchar', length: 10", False),
-            ("detail", "string", "type: 'text', nullable: true", False),
-            ("consider_by", "string", "type: 'varchar', length: 50", False),
-            ("action_datetime", "Date", "type: 'timestamptz'", False),
-        ],
-    ),
-    "sgi_compensation_histories": (
-        "CompensationHistory",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("store_code", "string", "type: 'char', length: 5", False),
-            ("ref_doc_no", "string", "type: 'varchar', length: 12, nullable: true", False),
-            ("compensate_year", "number", "type: 'int'", False),
-            ("compensate_month", "number", "type: 'int'", False),
-            ("compensate_amount", "string", "type: 'numeric', precision: 15, scale: 2", False),
-            ("submit_account_month", "string", "type: 'varchar', length: 7, nullable: true", False),
-            ("submit_status", "string", "type: 'char', length: 1, nullable: true", False),
-        ],
-    ),
-    "sgi_fgi_impact_processes": (
-        "FgiImpactProcess",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("impacted_store_code", "string", "type: 'char', length: 5", False),
-            ("period_year", "number", "type: 'int'", False),
-            ("period_month", "number", "type: 'int'", False),
-            ("action_status", "string", "type: 'char', length: 1", False),
-            ("workflow_generation_status", "string", "type: 'char', length: 1", False),
-            ("last_compensation_amount", "string", "type: 'numeric', precision: 15, scale: 2, nullable: true", False),
-            ("created_at", "Date", "type: 'timestamptz', nullable: true", False),
-        ],
-    ),
-    "sgi_fgi_impact_stores": (
-        "FgiImpactStore",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("impact_process_id", "number", "type: 'bigint'", False),
-            ("impacted_store_code", "string", "type: 'char', length: 5", False),
-            ("new_store_code", "string", "type: 'char', length: 5", False),
-            ("verify_status", "string", "type: 'char', length: 1", False),
-            ("compensate_percent", "string", "type: 'numeric', precision: 5, scale: 2, nullable: true", False),
-            ("period_year", "number", "type: 'int'", False),
-            ("period_month", "number", "type: 'int'", False),
-        ],
-    ),
-    "sgi_fgi_impact_sales_summaries": (
-        "FgiImpactSalesSummary",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("impact_process_id", "number", "type: 'bigint'", False),
-            ("growth_rate_diff", "string", "type: 'numeric', precision: 7, scale: 2, nullable: true", False),
-            ("total_working_days", "number", "type: 'int', nullable: true", False),
-            ("period_year", "number", "type: 'int'", False),
-            ("period_month", "number", "type: 'int'", False),
-        ],
-    ),
-    "sgi_fgi_impact_competitors": (
-        "FgiImpactCompetitor",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("impact_process_id", "number", "type: 'bigint'", False),
-            ("competitor_code", "string", "type: 'varchar', length: 20", False),
-            ("branch_name", "string", "type: 'varchar', length: 200, nullable: true", False),
-            ("zone_code", "string", "type: 'varchar', length: 10, nullable: true", False),
-            ("open_date", "Date", "type: 'date', nullable: true", False),
-        ],
-    ),
-    "sgi_sales_transactions": (
-        "SalesTransaction",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("sales_summary_id", "number", "type: 'bigint'", False),
-            ("txn_date", "Date", "type: 'date'", False),
-            ("window_no", "number", "type: 'int'", False),
-            ("sales_amount", "string", "type: 'numeric', precision: 15, scale: 2", False),
-            ("sales_diff", "string", "type: 'numeric', precision: 15, scale: 2, nullable: true", False),
-            ("is_outlier", "boolean", "type: 'boolean', default: false", False),
-        ],
-    ),
-    "sgi_interface_transactions": (
-        "InterfaceTransaction",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("data_name", "string", "type: 'varchar', length: 50", False),
-            ("direction", "string", "type: 'varchar', length: 3", False),
-            ("business_key", "string", "type: 'varchar', length: 100, nullable: true", False),
-            ("doc_no", "string", "type: 'varchar', length: 12, nullable: true", False),
-            ("impact_process_id", "number", "type: 'bigint', nullable: true", False),
-            ("sales_summary_id", "number", "type: 'bigint', nullable: true", False),
-            ("file_name", "string", "type: 'varchar', length: 255, nullable: true", False),
-            ("status", "string", "type: 'varchar', length: 20", False),
-            ("sent_at", "Date", "type: 'timestamptz', nullable: true", False),
-            ("acked_at", "Date", "type: 'timestamptz', nullable: true", False),
-            ("return_code", "string", "type: 'varchar', length: 10, nullable: true", False),
-        ],
-    ),
-    "sgi_external_factors": (
-        "ExternalFactor",
-        [
-            ("factor_code", "string", "type: 'varchar', length: 20", True),
-            ("factor_name", "string", "type: 'varchar', length: 200", False),
-            ("description", "string", "type: 'text', nullable: true", False),
-            ("is_active", "boolean", "type: 'boolean', default: true", False),
-        ],
-    ),
-    "sgi_impacted_stores": (
-        "ImpactedStore",
-        [
-            ("store_code", "string", "type: 'char', length: 5", True),
-            ("store_name", "string", "type: 'varchar', length: 200", False),
-            ("zone_code", "string", "type: 'varchar', length: 10, nullable: true", False),
-            ("region_code", "string", "type: 'varchar', length: 10, nullable: true", False),
-            ("store_type", "string", "type: 'varchar', length: 5, nullable: true", False),
-            ("transfer_sbp_date", "Date", "type: 'date', nullable: true", False),
-            ("is_active", "boolean", "type: 'boolean', default: true", False),
-        ],
-    ),
-    "sgi_competitors": (
-        "Competitor",
-        [
-            ("competitor_code", "string", "type: 'varchar', length: 2", True),
-            ("name_th", "string", "type: 'varchar', length: 200", False),
-            ("name_en", "string", "type: 'varchar', length: 200, nullable: true", False),
-            ("is_active", "boolean", "type: 'boolean', default: true", False),
-        ],
-    ),
-    "sgi_document_cost_details": (
-        "DocumentCostDetail",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("doc_no", "string", "type: 'varchar', length: 12", False),
-            ("new_store_code", "string", "type: 'char', length: 5, nullable: true", False),
-            ("cost_year", "number", "type: 'int'", False),
-            ("cost_month", "number", "type: 'int'", False),
-            ("cost_target", "string", "type: 'numeric', precision: 15, scale: 2, nullable: true", False),
-            ("cost_amount", "string", "type: 'numeric', precision: 15, scale: 2, nullable: true", False),
-        ],
-    ),
-    "sgi_document_running_numbers": (
-        "DocumentRunningNumber",
-        [
-            ("year", "number", "type: 'int'", True),
-            ("last_running_no", "number", "type: 'int', default: 0", False),
-        ],
-    ),
-    "job_configs": (
-        "JobConfig",
-        [
-            ("job_no", "string", "type: 'varchar', length: 5", True),
-            ("job_name", "string", "type: 'varchar', length: 200", False),
-            ("cron_expression", "string", "type: 'varchar', length: 50, nullable: true", False),
-            ("is_enabled", "boolean", "type: 'boolean', default: true", False),
-            ("params", "Record<string, unknown>", "type: 'jsonb', nullable: true", False),
-            ("updated_by", "string", "type: 'varchar', length: 50, nullable: true", False),
-            ("updated_at", "Date", "type: 'timestamptz', nullable: true", False),
-        ],
-    ),
-    "job_run_histories": (
-        "JobRunHistory",
-        [
-            ("id", "number", "type: 'bigint'", True),
-            ("job_no", "string", "type: 'varchar', length: 5", False),
-            ("run_status", "string", "type: 'varchar', length: 20", False),
-            ("started_at", "Date", "type: 'timestamptz'", False),
-            ("finished_at", "Date", "type: 'timestamptz', nullable: true", False),
-            ("total_records", "number", "type: 'int', default: 0", False),
-            ("success_records", "number", "type: 'int', default: 0", False),
-            ("failed_records", "number", "type: 'int', default: 0", False),
-            ("error_message", "string", "type: 'text', nullable: true", False),
-            ("triggered_by", "string", "type: 'varchar', length: 50, nullable: true", False),
-        ],
-    ),
+    "sgi_compensation_documents": ("CompensationDocument", []),
+    "sgi_document_new_stores": ("DocumentNewStore", []),
+    "sgi_document_competitors": ("DocumentCompetitor", []),
+    "sgi_document_external_factors": ("DocumentExternalFactor", []),
+    "sgi_document_attachments": ("DocumentAttachment", []),
+    "sgi_consideration_logs": ("ConsiderationLog", []),
+    "sgi_compensation_histories": ("CompensationHistory", []),
+    "sgi_fgi_impact_processes": ("FgiImpactProcess", []),
+    "sgi_fgi_impact_stores": ("FgiImpactStore", []),
+    "sgi_fgi_impact_sales_summaries": ("FgiImpactSalesSummary", []),
+    "sgi_fgi_impact_competitors": ("FgiImpactCompetitor", []),
+    "sgi_sales_transactions": ("SalesTransaction", []),
+    "sgi_interface_transactions": ("InterfaceTransaction", []),
+    "sgi_external_factors": ("ExternalFactor", []),
+    "sgi_impacted_stores": ("ImpactedStore", []),
+    "sgi_competitors": ("Competitor", []),
+    "sgi_document_cost_details": ("DocumentCostDetail", []),
+    "sgi_document_running_numbers": ("DocumentRunningNumber", []),
     # ⚠️ store-backend มีตารางนี้อยู่แล้วในชื่อ **เอกพจน์** `fcs_qssi_score` (sps_store)
     #    และมีโค้ดเขียนอยู่จริง (performance.service.ts) — ห้ามสร้างตาราง/entity ซ้ำ
     "fcs_qssi_score": (
@@ -445,6 +222,103 @@ def _singular(word: str) -> str:
     return word
 
 
+# --------------------------------------------------------------------------------------
+# คอลัมน์ของ entity ต้องมาจาก DDL จริงเสมอ (แก้ 2026-09-02)
+#   เดิม COLUMN_HINTS เขียนมือคู่ขนานกับ DDL แล้ว **หลุดกันทั้ง 18 ตาราง** — entity ที่ dev copy ไป
+#   จะพังทันทีที่ query (เช่น ตารางร้านเปิดใหม่เคยประกาศคอลัมน์ยอดชดเชยผิดชื่อ ต่างจาก DDL หนึ่งตัวอักษร,
+#   sgi_document_competitors ประกาศ zone_code/subzone_code ที่ไม่มีอยู่จริง)
+#   ตอนนี้จึง parse DDL จาก build_lldd_documents.database_ddl_sections() แล้ว override ให้อัตโนมัติ
+#   COLUMN_HINTS เหลือหน้าที่เดียวคือ **ตั้งชื่อคลาส** + เก็บโครงของตารางที่ไม่มีใน DDL (fcs_qssi_score)
+# --------------------------------------------------------------------------------------
+
+_TS_BY_SQL: tuple[tuple[str, str, str], ...] = (
+    # (regex ของชนิด SQL, tsType, template ของ options)
+    (r"^BIGSERIAL$",            "number",                   "type: 'bigint'"),
+    (r"^SERIAL$",               "number",                   "type: 'int'"),
+    (r"^BIGINT$",               "number",                   "type: 'bigint'"),
+    (r"^SMALLINT$",             "number",                   "type: 'smallint'"),
+    (r"^INTEGER$|^INT$",        "number",                   "type: 'int'"),
+    (r"^NUMERIC\((\d+),(\d+)\)$", "string",                 "type: 'numeric', precision: {0}, scale: {1}"),
+    (r"^VARCHAR\((\d+)\)$",    "string",                   "type: 'varchar', length: {0}"),
+    (r"^CHAR\((\d+)\)$",       "string",                   "type: 'char', length: {0}"),
+    (r"^TEXT$",                 "string",                   "type: 'text'"),
+    (r"^DATE$",                 "Date",                     "type: 'date'"),
+    (r"^TIMESTAMP.*$",          "Date",                     "type: 'timestamp'"),
+    (r"^BOOLEAN$",              "boolean",                  "type: 'boolean'"),
+    (r"^JSONB$",                "Record<string, unknown>",  "type: 'jsonb'"),
+)
+
+_DDL_CACHE: dict[str, list[tuple[str, str, str, bool]]] | None = None
+
+
+def _split_top_level(body: str) -> list[str]:
+    """แยกนิยามคอลัมน์ด้วย comma ที่ระดับวงเล็บ 0 — ห้ามใช้ body.split(',') เพราะ NUMERIC(14,2) จะขาด"""
+    parts, depth, buf = [], 0, ""
+    for ch in body:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append(buf)
+            buf = ""
+        else:
+            buf += ch
+    parts.append(buf)
+    return parts
+
+
+def _ddl_entity_columns() -> dict[str, list[tuple[str, str, str, bool]]]:
+    """parse CREATE TABLE ทั้งหมดจาก DDL แล้วแปลงเป็นรูปเดียวกับ COLUMN_HINTS[...][1]"""
+    global _DDL_CACHE
+    if _DDL_CACHE is not None:
+        return _DDL_CACHE
+    try:
+        import build_lldd_documents as _BA  # import ตอนเรียกใช้ เพราะ _BA import ไฟล์นี้ตอนโหลด
+        ddl = "\n\n".join(sql for _title, sql in _BA.database_ddl_sections())
+    except Exception:  # pragma: no cover — ถ้า import ไม่ได้ก็ถอยไปใช้ค่าที่เขียนมือ
+        _DDL_CACHE = {}
+        return _DDL_CACHE
+    out: dict[str, list[tuple[str, str, str, bool]]] = {}
+    for m in re.finditer(r"CREATE TABLE (?:IF NOT EXISTS )?([a-z_0-9]+)\s*\(([\s\S]*?)\n\);", ddl):
+        tname, body = m.group(1), re.sub(r"--[^\n]*", "", m.group(2))
+        cols: list[tuple[str, str, str, bool]] = []
+        for part in _split_top_level(body):
+            part = " ".join(part.split())
+            w = re.match(r"([a-z_][a-z_0-9]*)\s+([A-Za-z]+(?:\([\d,\s]*\))?)(.*)$", part)
+            if not w or w.group(1).upper() in ("CONSTRAINT", "PRIMARY", "UNIQUE", "CHECK", "FOREIGN"):
+                continue
+            col, sqltype, rest = w.group(1), w.group(2).upper().replace(" ", ""), w.group(3)
+            ts, opts = "string", "type: 'varchar'"
+            for pattern, ts_type, tmpl in _TS_BY_SQL:
+                mm = re.match(pattern, sqltype)
+                if mm:
+                    ts, opts = ts_type, tmpl.format(*mm.groups())
+                    break
+            is_pk = "PRIMARY KEY" in rest.upper() or sqltype in ("BIGSERIAL", "SERIAL") and "PRIMARY KEY" in rest.upper()
+            nullable = not is_pk and "NOT NULL" not in rest.upper()
+            if nullable:
+                opts += ", nullable: true"
+            d = re.search(r"DEFAULT\s+('[^']*'|-?\d+(?:\.\d+)?|TRUE|FALSE)", rest, re.I)
+            if d:
+                lit = d.group(1)
+                opts += f", default: {lit.lower() if lit.upper() in ('TRUE', 'FALSE') else lit}"
+            cols.append((col, ts, opts, is_pk))
+        if cols:
+            out[tname] = cols
+    _DDL_CACHE = out
+    return out
+
+
+def _entity_columns(tname: str) -> list[tuple[str, str, str, bool]] | None:
+    """DDL ชนะเสมอ · ถอยไปใช้ COLUMN_HINTS เฉพาะตารางที่ไม่มี CREATE TABLE (เช่น fcs_qssi_score ของระบบเดิม)"""
+    from_ddl = _ddl_entity_columns().get(tname)
+    if from_ddl:
+        return from_ddl
+    hint = COLUMN_HINTS.get(tname)
+    return hint[1] if hint else None
+
+
 def _entity_class(tname: str) -> str:
     hint = COLUMN_HINTS.get(tname)
     if hint:
@@ -453,8 +327,22 @@ def _entity_class(tname: str) -> str:
 
 
 def _clip(text: str, width: int = 78) -> str:
+    """ตัดข้อความให้พอดีบรรทัด — แต่ **ห้ามตัดกลางชื่อเอกสาร LLDD-***
+
+    เจอจริง 2026-09-08: purpose ของ endpoint แบบ "อ้างอิงเท่านั้น — เจ้าของคือ
+    LLDD-BE-API-Report-and-Master-Data" ถูกตัดเหลือ "LLDD-BE-API-Report-and-Ma…"
+    ซึ่งทำลายข้อมูลชิ้นเดียวที่คอมเมนต์นั้นมีไว้บอก (ว่าไปดูเอกสารไหนต่อ)
+    จึงยืดขอบตัดไปจนจบชื่อเอกสารเสมอ — คอมเมนต์ยาวเกินนิดหน่อยไม่เสียหาย
+    """
     text = " ".join(str(text).split())
-    return text if len(text) <= width else text[: width - 1] + "…"
+    if len(text) <= width:
+        return text
+    cut = width - 1
+    for m in re.finditer(r"LLDD-[A-Za-z0-9-]+", text):
+        if m.start() < cut < m.end():      # ขอบตัดตกกลางชื่อเอกสาร
+            cut = m.end()
+            break
+    return text if cut >= len(text) else text[:cut] + "…"
 
 
 # --------------------------------------------------------------------------------------
@@ -576,16 +464,25 @@ BACKEND_PREFIX = "sgi"
 
 
 def _strip_api_prefix(segments: list[str]) -> list[str]:
+    """ตัด `api/v1` และ **`sgi` ตัวแรก** ออก — ทั้งสองชั้นผูกที่ระดับแอป/โมดูล ไม่ใช่ที่ `@Controller()`
+
+    ⚠️ แก้ 2026-09-04: ตั้งแต่มติ namespace 2026-08-25 path ในสเปกมี `sgi` อยู่ในตัวแล้ว
+    (`/api/v1/sgi/document/tasks`) แต่โค้ดเดิมยัง prepend `BACKEND_PREFIX` ทับเข้าไปอีก
+    ผลคือ skeleton ทุกฉบับออกมาเป็น `@Controller('sgi/sgi/document')` + `@Get('document/tasks')`
+    ซึ่งเมื่อรวม prefix ของ RouterModule แล้วจะได้ `/api/v1/sgi/sgi/sgi/document/document/tasks`
+    """
     out = list(segments)
     if out[:2] == ["api", "v1"]:
         out = out[2:]
+    if out[:1] == [BACKEND_PREFIX]:
+        out = out[1:]
     return out
 
 
 def _controller_base(endpoints: list[_Endpoint]) -> str:
-    """base path ร่วมของ controller ฝั่ง store-backend (prefix `sgi/…` ไม่ใช่ `api/v1/…`)."""
+    """base path ร่วมของ controller ฝั่ง store-backend — **ไม่รวม `sgi/`** (ผูกที่ระดับโมดูล)"""
     if not endpoints:
-        return BACKEND_PREFIX
+        return ""
     common = _strip_api_prefix(endpoints[0].segments)
     for ep in endpoints[1:]:
         merged: list[str] = []
@@ -598,11 +495,12 @@ def _controller_base(endpoints: list[_Endpoint]) -> str:
         common.pop()
     if len(endpoints) == 1 and len(common) == len(_strip_api_prefix(endpoints[0].segments)):
         common = common[:-1]
-    return "/".join([BACKEND_PREFIX] + common)
+    # ห้ามใส่ `sgi/` — RouterModule.register([{ path: 'sgi', module: SgiModule }]) ใส่ให้แล้ว
+    return "/".join(common)
 
 
 def _relative_route(ep: _Endpoint, base: str) -> str:
-    base_parts = [x for x in base.split("/") if x and x != BACKEND_PREFIX]
+    base_parts = [x for x in base.split("/") if x]
     rest = [(":" + s[1:-1]) if s.startswith("{") else s for s in _strip_api_prefix(ep.segments)][len(base_parts):]
     return "/".join(rest)
 
@@ -652,7 +550,7 @@ def _workflow_plan(topic: Any, endpoints: list[_Endpoint], reused: list[tuple[st
             plan.append([label, "getTransaction()", "อ่าน currentState ของ instance ตาม referenceId"])
         elif path.endswith("/timeline"):
             plan.append([label, "getHistory()", "timeline การเปลี่ยน state (fromState/toState/event/remark)"])
-        # ⚠️ ห้ามใช้ substring "pending" — จะไปโดน /sgi/interface/pending-ack ซึ่งเป็น watchdog ACK ของ STA
+        # ⚠️ ห้ามใช้ substring "pending" — จะไปโดน /sgi/interface/pending-ack ซึ่งเป็น watchdog ข้อความค้างส่ง
         #    (อ่าน sgi_interface_transactions) ไม่ใช่ inbox ของ workflow engine
         elif path.rstrip("/").endswith("/sgi/document/tasks"):
             plan.append([label, "getPendingFlowByUser()", "inbox งานค้างของ userId/groupId ที่ BFF ส่งมาใน header"])
@@ -696,14 +594,18 @@ def _dto_property(name: str, example: Any, info: tuple[str, str, str] | None) ->
     elif isinstance(example, (int, float)):
         ts = "number"
     elif isinstance(example, list):
-        ts = "string[]"
+        # ⚠️ แก้ 2026-09-04: เดิม list ทุกชนิดกลายเป็น string[] + @IsString({each:true})
+        #    payload จริงที่เป็นอาร์เรย์ของ object (newStores/competitors/externalFactors)
+        #    จะโดน ValidationPipe ตีกลับ 400 ทุกครั้ง — ต้องเป็น nested DTO
+        ts = f"{_pascal(_singular(name))}ItemDto[]" if example and isinstance(example[0], dict) else "string[]"
     elif isinstance(example, dict):
         ts = "Record<string, unknown>"
+    is_object_array = ts.endswith("ItemDto[]")
     if "integer" in low_fmt or low_fmt.strip() == "int":
         ts = "number"
     elif "number" in low_fmt:
         ts = "number"
-    elif "array" in low_fmt:
+    elif "array" in low_fmt and not is_object_array:
         ts = "string[]"
     elif "boolean" in low_fmt:
         ts = "boolean"
@@ -726,6 +628,10 @@ def _dto_property(name: str, example: Any, info: tuple[str, str, str] | None) ->
     elif ts == "boolean":
         decos.append("@Type(() => Boolean)")
         decos.append("@IsBoolean()")
+    elif ts.endswith("ItemDto[]"):
+        decos.append("@IsArray()")
+        decos.append("@ValidateNested({ each: true })")
+        decos.append(f"@Type(() => {ts[:-2]})")
     elif ts == "string[]":
         decos.append("@IsArray()")
         decos.append("@IsString({ each: true })")
@@ -762,7 +668,42 @@ def _dto_property(name: str, example: Any, info: tuple[str, str, str] | None) ->
 def _dto_class(class_name: str, source: dict[str, Any], skip: set[str], fields: dict[str, tuple[str, str, str]],
                header: str, max_props: int = 8, force_optional: set[str] | None = None) -> list[str]:
     force_optional = force_optional or set()
-    lines = [f"// {header}", f"export class {class_name} {{"]
+    lines: list[str] = []
+    # อาร์เรย์ของ object ต้องมีคลาสลูกจริง ไม่งั้น @Type(() => XItemDto) อ้างของที่ไม่มี
+    #   optional = key ที่ไม่ได้อยู่ครบทุก element (เช่น id ของแถวที่ผู้ใช้เพิ่มใหม่)
+    for key, example in source.items():
+        if not _IDENT.match(str(key)) or key in skip:
+            continue
+        items = [v for v in example if isinstance(v, dict)] if isinstance(example, list) else []
+        if not items:
+            continue
+        merged: dict[str, Any] = {}
+        for it in items:
+            for k2, v2 in it.items():
+                merged.setdefault(k2, v2)
+        item_cls = f"{_pascal(_singular(key))}ItemDto"
+        lines.append(f"// 1 แถวของ `{key}` — property ที่ไม่ได้มีครบทุกแถวถือเป็น optional")
+        lines.append(f"export class {item_cls} {{")
+        for k2, v2 in merged.items():
+            if not _IDENT.match(str(k2)):
+                continue
+            ts2, decos2, note2 = _dto_property(k2, v2, fields.get(k2) or fields.get(_camel(k2)))
+            _absent = any(k2 not in it for it in items)
+            _nullable = any(it.get(k2) is None for it in items)
+            if (_absent or _nullable) and decos2 and decos2[0] == "@IsNotEmpty()":
+                decos2[0] = "@IsOptional()"
+                note2 = (note2 + " · " if note2 else "") + (
+                    "ไม่ส่ง = แถวใหม่ที่ผู้ใช้เพิ่ม (INSERT)" if _absent else "ส่ง null ได้")
+            if note2:
+                lines.append(f"  /** {_clip(note2, 90)} */")
+            lines += [f"  {d}" for d in decos2]
+            opt2 = "?" if any(d.startswith("@IsOptional") for d in decos2) else ""
+            lines.append(f"  {k2}{opt2}: {ts2};")
+            lines.append("")
+        if lines[-1] == "":
+            lines.pop()
+        lines += ["}", ""]
+    lines += [f"// {header}", f"export class {class_name} {{"]
     count = 0
     for key, example in source.items():
         if not _IDENT.match(str(key)) or key in skip:
@@ -796,7 +737,7 @@ _DTO_IMPORTS = [
     "import { Type } from 'class-transformer';",
     "import {",
     "  IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,",
-    "  IsString, Matches, Max, MaxLength, Min,",
+    "  IsString, Matches, Max, MaxLength, Min, ValidateNested,",
     "} from 'class-validator';",
     "",
     "// ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)",
@@ -848,7 +789,15 @@ def _dto_spec(topic: Any, endpoints: list[_Endpoint], pascal: str, slug: str) ->
     if not parts:
         parts.append("\n".join(header + [""] + _dto_class(
             f"{pascal}RequestDto", {}, set(), fields, "payload ของโมดูลนี้")))
-    return {"query_class": query_class, "body_classes": body_classes, "parts": parts}
+    # ชื่อ property ที่ DTO ประกาศจริง — service ต้องใช้ตรวจก่อนอ้าง query.page / body.xxx
+    # (เพิ่ม 2026-09-08 · เดิม service เดาว่ามี page/size/docNo เสมอ แล้วคอมไพล์ไม่ผ่าน)
+    _query_props = {k for k in query_source if _IDENT.match(str(k)) and k not in query_skip}
+    _body_props: set[str] = set()
+    for ep in endpoints:
+        if ep.method != "GET" and ep.payload_keys:
+            _body_props.update(k for k in ep.payload_keys if _IDENT.match(str(k)) and k not in ep.params)
+    return {"query_class": query_class, "body_classes": body_classes, "parts": parts,
+            "query_props": _query_props, "body_props": _body_props}
 
 
 # --------------------------------------------------------------------------------------
@@ -965,6 +914,132 @@ def _controller_code(topic: Any, slug: str, pascal: str, base: str, dto: dict[st
     return "\n".join(lines)
 
 
+# ══ body จริงของ service สำหรับเส้นที่ "SQL พร้อมแล้ว" (เติมตามมติผู้ใช้ 2026-09-08 · ทางเลือก ค.) ═══
+#   เดิมทุกเส้นที่ไม่ใช่ read/write ตัวแรกจะเป็น `throw new NotImplementedException` เหมือนกันหมด
+#   ผู้ใช้เลือกให้เติมเฉพาะกลุ่มที่เสี่ยงพลาดสูง = Report and Master Data (8 method)
+#   เพราะมี pagination · export · master CRUD ที่มีกฎ 409 ซ้อนอยู่ ซึ่งพลาดง่ายที่สุดในชุด
+#   เส้นอื่นยังเป็น stub ที่ throw ตามเดิม (ตั้งใจ — ล้มดังดีกว่าผ่านเงียบ)
+#
+#   คีย์ = "METHOD path" ตรงกับคีย์ของ SGI_SQL · ค่าคือบรรทัดโค้ดใน method (ไม่รวม signature/ปีกกา)
+SERVICE_BODIES: dict[str, list[str]] = {
+    "GET /api/v1/sgi/report/status-summary/export": [
+        "// ใช้ SELECT ชุดเดียวกับ status-summary แต่ **ไม่ตัดหน้า** (ไม่มี LIMIT/OFFSET) ตาม SQL ในเอกสาร",
+        "// สถานะเป็น filter บังคับตัวเดียว (SDD สไลด์ 60) — ไม่ส่งมาให้ 400 REPORT_STATUS_REQUIRED",
+        "if (!query.status) {",
+        "  throw new BadRequestException({ code: 'REPORT_STATUS_REQUIRED', message: 'กรุณาเลือกสถานะก่อนค้นหา' });",
+        "}",
+        "// bind ตามลำดับของ SQL: $1=year $2=status $3=impactedStoreCode $4=newStoreCode $5=psFrom $6=psTo $7=storeTypes",
+        "// year แยกจาก Period Statement (ค.ศ.) — DTO ส่งเป็นช่วง `periodStatementFrom/To` รูปแบบ YYYY-MM",
+        "const year = Number((query.periodStatementFrom ?? '').slice(0, 4)) || undefined;",
+        "const rows = await this.dataSource.query(SGI_SQL.exportStatusSummary, [",
+        "  year, query.status, query.impactedStoreCode ?? null, query.newStoreCode ?? null,",
+        "  query.periodStatementFrom ?? null, query.periodStatementTo ?? null, query.storeTypes ?? null,",
+        "]);",
+        "// 14 คอลัมน์ตาม SDD สไลด์ 60 — หัวคอลัมน์ใช้ชื่อบนหน้าจอรายงาน ไม่ใช่ชื่อคอลัมน์ DB",
+        "// ไฟล์ .xlsx สร้างที่ชั้น controller (StreamableFile) — service คืนข้อมูลดิบเท่านั้น",
+        "return { fileName: `sgi-report-${year ?? 'all'}-${query.status}.xlsx`, rows };",
+    ],
+    "GET /api/v1/sgi/master/factors": [
+        "// master ปัจจัยภายนอก — ไม่แบ่งหน้าเพราะเป็น master ขนาดเล็ก",
+        "// SQL รับ $1=q (คำค้นชื่อ) · สัญญาปัจจุบันยังไม่มีช่องค้นหาในหน้าจอ จึงส่ง null = เอาทั้งหมด",
+        "// ถ้าเพิ่มช่องค้นหาเมื่อไร ให้เพิ่มฟิลด์ใน DTO ก่อน แล้วค่อยส่ง `%${query.q}%` ที่นี่",
+        "const items = await this.dataSource.query(SGI_SQL.getSgiMasterFactors, [null]);",
+        "return { items, total: items.length };",
+    ],
+    "PUT /api/v1/sgi/master/factors/{code}": [
+        "// ห้ามแก้ factor_code (เป็น PK และถูกอ้างจาก sgi_document_external_factors)",
+        "// bind: $1=factorName $2=factorRemark $3=code",
+        "//   ⚠️ ชื่อฟิลด์ต่างกันสองฝั่ง — DTO ใช้ `description` ส่วนคอลัมน์/พารามิเตอร์ SQL คือ factor_remark",
+        "const result = await this.dataSource.query(SGI_SQL.updateSgiMasterFactorsByCode, [",
+        "  body.factorName, body.description ?? null, code,",
+        "]);",
+        "// pg คืน [rows, affectedRows] สำหรับ UPDATE ที่ไม่มี RETURNING",
+        "if (Number(result?.[1] ?? 0) === 0) {",
+        "  throw new NotFoundException('ไม่พบปัจจัยภายนอกรหัสนี้');",
+        "}",
+        "return { message: 'saved' };",
+    ],
+    "DELETE /api/v1/sgi/master/factors/{code}": [
+        "// SQL ของเส้นนี้มี 2 statement → แยกเป็น 2 คีย์: ...InUse (SELECT ตรวจ) และตัวลบ",
+        "// ถูกอ้างในเอกสารแล้วต้อง 409 ไม่ใช่ลบทิ้ง",
+        "const runner = this.dataSource.createQueryRunner();",
+        "await runner.connect();",
+        "await runner.startTransaction();",
+        "try {",
+        "  const used = await runner.query(SGI_SQL.removeSgiMasterFactorsByCodeInUse, [code]);",
+        "  if (used.length > 0) {",
+        "    throw new ConflictException({ code: 'MASTER_IN_USE', message: 'ปัจจัยนี้ถูกใช้ในเอกสารแล้ว ลบไม่ได้' });",
+        "  }",
+        "  const result = await runner.query(SGI_SQL.removeSgiMasterFactorsByCode, [code]);",
+        "  if (Number(result?.[1] ?? 0) === 0) {",
+        "    throw new NotFoundException('ไม่พบปัจจัยภายนอกรหัสนี้');",
+        "  }",
+        "  await runner.commitTransaction();",
+        "  return { message: 'deleted' };",
+        "} catch (error) {",
+        "  await runner.rollbackTransaction();",
+        "  throw error;",
+        "} finally {",
+        "  await runner.release();",
+        "}",
+    ],
+    "GET /api/v1/sgi/master/competitors": [
+        "// master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — SQL รับ $1=q เช่นเดียวกับฝั่งปัจจัย",
+        "const items = await this.dataSource.query(SGI_SQL.getSgiMasterCompetitors, [null]);",
+        "return { items, total: items.length };",
+    ],
+    "POST /api/v1/sgi/master/competitors": [
+        "// bind: $1=code $2=nameTh $3=nameEn $4=remark · ชื่อไทย/อังกฤษบังคับทั้งคู่ (DTO ตรวจแล้วอีกชั้น)",
+        "try {",
+        "  await this.dataSource.query(SGI_SQL.createSgiMasterCompetitors, [",
+        "    body.competitorCode, body.nameTh, body.nameEn, body.remark ?? null,",
+        "  ]);",
+        "} catch (error: any) {",
+        "  // 23505 = unique_violation ของ PostgreSQL — รหัสซ้ำต้องเป็น 409 ไม่ใช่ 500",
+        "  if (error?.code === '23505') {",
+        "    throw new ConflictException({ code: 'CODE_DUPLICATE', message: 'รหัสคู่แข่งนี้มีอยู่แล้ว' });",
+        "  }",
+        "  throw error;",
+        "}",
+        "return { message: 'created', code: body.competitorCode };",
+    ],
+    "PUT /api/v1/sgi/master/competitors/{code}": [
+        "// ห้ามแก้ competitor_code (เป็น PK และถูกอ้างจาก sgi_document_competitors)",
+        "// bind: $1=nameTh $2=nameEn $3=remark $4=isActive $5=code",
+        "const result = await this.dataSource.query(SGI_SQL.updateSgiMasterCompetitorsByCode, [",
+        "  body.nameTh, body.nameEn, body.remark ?? null, body.active ?? true, code,",
+        "]);",
+        "if (Number(result?.[1] ?? 0) === 0) {",
+        "  throw new NotFoundException('ไม่พบคู่แข่งรหัสนี้');",
+        "}",
+        "return { message: 'saved' };",
+    ],
+    "DELETE /api/v1/sgi/master/competitors/{code}": [
+        "// เหมือนฝั่งปัจจัย — ถูกอ้างในเอกสารแล้วต้อง 409",
+        "const runner = this.dataSource.createQueryRunner();",
+        "await runner.connect();",
+        "await runner.startTransaction();",
+        "try {",
+        "  const used = await runner.query(SGI_SQL.removeSgiMasterCompetitorsByCodeInUse, [code]);",
+        "  if (used.length > 0) {",
+        "    throw new ConflictException({ code: 'MASTER_IN_USE', message: 'คู่แข่งรายนี้ถูกใช้ในเอกสารแล้ว ลบไม่ได้' });",
+        "  }",
+        "  const result = await runner.query(SGI_SQL.removeSgiMasterCompetitorsByCode, [code]);",
+        "  if (Number(result?.[1] ?? 0) === 0) {",
+        "    throw new NotFoundException('ไม่พบคู่แข่งรหัสนี้');",
+        "  }",
+        "  await runner.commitTransaction();",
+        "  return { message: 'deleted' };",
+        "} catch (error) {",
+        "  await runner.rollbackTransaction();",
+        "  throw error;",
+        "} finally {",
+        "  await runner.release();",
+        "}",
+    ],
+}
+
+
 def _service_code(topic: Any, endpoints: list[_Endpoint], own: list[tuple[str, str, str]], slug: str,
                   pascal: str, wf_plan: list[list[str]], dto: dict[str, Any]) -> str:
     """service ต้องมี method ครบทุกเส้นที่ controller เรียก และ signature ต้องตรงกันเป๊ะ
@@ -980,7 +1055,8 @@ def _service_code(topic: Any, endpoints: list[_Endpoint], own: list[tuple[str, s
 
     lines = [
         f"// src/modules/sgi-{slug}/sgi-{slug}.service.ts",
-        "import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';",
+        ("import { BadRequestException, ConflictException, Inject, Injectable, Logger, "
+         "NotFoundException, NotImplementedException } from '@nestjs/common';"),
         "import { DataSource } from 'typeorm';",
     ]
     if uses_wf:
@@ -1020,18 +1096,24 @@ def _service_code(topic: Any, endpoints: list[_Endpoint], own: list[tuple[str, s
         lines.append(f"  // {ep.method} {ep.path} — {_clip(ep.purpose, 70)}")
         if ep is read_ep:
             lines.append(f"  async {ep.handler}({sig}) {{")
-            if has_query:
+            # ⚠️ แก้ 2026-09-08: เดิมอ้าง query.page/query.size ทุกครั้งที่ endpoint มี query
+            #    แต่ DTO บางตัวไม่ได้ประกาศสองฟิลด์นี้ (เช่น Report/Master ที่ filter มาจาก SDD สไลด์ 60)
+            #    → TypeScript คอมไพล์ไม่ผ่าน · ตอนนี้เช็คจาก DTO จริงก่อนใช้
+            dto_props = dto.get("body_props", set()) if isinstance(dto, dict) else set()
+            paged = has_query and {"page", "size"} <= set(dto.get("query_props", set()) or set())
+            if paged:
                 lines.append("    const page = Number(query.page ?? 1);")
                 lines.append("    const size = Math.min(Number(query.size ?? 20), 100);")
             else:
                 lines.append("    const page = 1;")
-                lines.append("    const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า")
+                lines.append("    // DTO ของเส้นนี้ไม่มี page/size (ดูหัวข้อ DTO) — ไม่แบ่งหน้า")
+                lines.append("    const size = 100;")
             lines += [
                 f"    // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ '{ep.method} {ep.path}')",
-                "    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()",
-                "    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน",
+                "    // SQL ในเอกสารเป็น positional $1..$n อยู่แล้ว (ตัวสร้างแปลงให้ตั้งแต่ 2026-09-04)",
+                "    //   บรรทัดแรกของบล็อก SQL คือ `-- bind ตามลำดับ: $1=... · $2=...` ให้เรียงอาร์กิวเมนต์ตามนั้น",
                 f"    const rows = await this.dataSource.query(SGI_SQL.{ep.handler}, [",
-                "      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง",
+                "      // เรียงให้ตรงกับบรรทัด `-- bind ตามลำดับ:` ของ SQL เส้นนี้",
                 "      userId, (page - 1) * size, size,",
                 "    ]);",
                 "    // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length",
@@ -1041,7 +1123,12 @@ def _service_code(topic: Any, endpoints: list[_Endpoint], own: list[tuple[str, s
             ]
             continue
         if ep is write_ep:
-            first_key = _camel(ep.params[0]) if ep.params else "body.docNo"
+            # ⚠️ แก้ 2026-09-08: เดิม fallback เป็น body.docNo ซึ่ง DTO ของ master ไม่มี
+            if ep.params:
+                first_key = _camel(ep.params[0])
+            else:
+                _first = next(iter(dto.get("body_props", []) or []), None)
+                first_key = f"body.{_first}" if _first else "/* TODO: คีย์ที่ใช้ล็อกแถว — ดู DTO ของเส้นนี้ */"
             lines += [
                 f"  // mutation ต้องอยู่ใน transaction เดียว (ไม่มี audit ของ master แล้ว · 2026-08-07)",
                 f"  async {ep.handler}({sig}) {{",
@@ -1079,7 +1166,15 @@ def _service_code(topic: Any, endpoints: list[_Endpoint], own: list[tuple[str, s
                 "",
             ]
             continue
+        body = SERVICE_BODIES.get(f"{ep.method} {ep.path}")
+        if body:
+            # เส้นที่ SQL พร้อมแล้ว — เขียน body จริง (มติผู้ใช้ 2026-09-08 · ทางเลือก ค.)
+            lines.append(f"  async {ep.handler}({sig}) {{")
+            lines += [f"    {line}" for line in body]
+            lines += ["  }", ""]
+            continue
         # เส้นที่เหลือ: stub ที่ signature ตรงกับ controller เพื่อให้ TypeScript ผ่านตั้งแต่วันแรก
+        #   ตั้งใจให้ throw — ล้มดังตั้งแต่เรียกครั้งแรก ดีกว่าคืนค่าผิดเงียบ ๆ
         lines += [
             f"  async {ep.handler}({sig}) {{",
             f"    // TODO: implement ตาม business rule ของ {ep.method} {ep.path}",
@@ -1171,7 +1266,7 @@ def _workflow_code(slug: str, pascal: str, wf_plan: list[list[str]]) -> str:
 
 def _entity_code(tname: str) -> str:
     cls = _entity_class(tname)
-    hint = COLUMN_HINTS.get(tname)
+    hint = _entity_columns(tname)
     lines = [
         f"// src/entitys/{tname.replace('_', '-')}.entity.ts",
         "import { Column, Entity, PrimaryColumn } from 'typeorm';",
@@ -1188,14 +1283,14 @@ def _entity_code(tname: str) -> str:
             "  //       และห้ามประกาศ relation — โมดูลนี้ join ด้วย raw SQL ตาม convention ของทีม",
         ]
     else:
-        for col, ts, opts, is_pk in hint[1]:
+        for col, ts, opts, is_pk in hint:
             deco = "PrimaryColumn" if is_pk else "Column"
             lines.append(f"  @{deco}({{ name: '{col}', {opts} }})")
             optional = "?" if "nullable: true" in opts else ""
             lines.append(f"  {_camel(col)}{optional}: {ts};")
             lines.append("")
-        lines.append("  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge")
-        lines.append("  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)")
+        lines.append("  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ")
+        lines.append("  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)")
     lines.append("}")
     return "\n".join(lines)
 
@@ -1291,6 +1386,12 @@ def _bff_client_code() -> str:
 
 def _bff_code(endpoints: list[_Endpoint], slug: str, pascal: str) -> str:
     sample = endpoints[:3]
+    # path ของ BFF ต้อง **เหมือนที่ FE เรียกจริง** — apiClient ของพอร์ทัลยิง `/sgi/document/...`
+    #   (baseURL รวม /api/v1 ไว้แล้ว · ดู LLDD-FE-Integration-Contracts §8.3)
+    # ⚠️ แก้ 2026-09-04: ของเดิมตั้งเป็น `bff/sgi/<ชื่อเอกสาร LLDD>` เช่น `bff/sgi/document-list-search`
+    #   ซึ่งไม่มีใครเรียก — FE ยิง /sgi/document แล้วจะได้ 404 · และ BFF จริงก็ตั้งชื่อ controller
+    #   ตาม resource ไม่ใช่ตามเอกสาร (juristic-group · contract · store-inquiry · lookups …)
+    bff_base = "sgi" + ("/" + _controller_base(endpoints) if _controller_base(endpoints) else "")
     lines = [
         f"// src/modules/sgi-{slug}/sgi-{slug}.service.ts (BFF)",
         "import { Injectable } from '@nestjs/common';",
@@ -1301,6 +1402,9 @@ def _bff_code(endpoints: list[_Endpoint], slug: str, pascal: str) -> str:
         "  constructor(private readonly client: SgiClientService) {}",
         "",
         "  // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward",
+        "  // ⚠️ ต้อง unwrap envelope ของ store-backend 1 ชั้นก่อนคืน (ยืนยันจากโค้ดจริง 2026-09-04):",
+        "  //    ResponseInterceptor ระดับ global ของ BFF ห่อผลลัพธ์เป็น { success, data, requestId } อีกที",
+        "  //    ถ้าคืน { success, data } ดิบมา FE จะได้ data.data.data — SgiClientService จึงต้องคืน .data.data",
         "  private userHeaders(user: any) {",
         "    return {",
         "      'x-user-id': user?.userId,",
@@ -1335,15 +1439,15 @@ def _bff_code(endpoints: list[_Endpoint], slug: str, pascal: str) -> str:
         "import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';",
         "import { AuthGuard } from '@nestjs/passport';",
         "",
-        "// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)",
-        f"@Controller('bff/sgi/{slug}')",
+        "// path เดียวกับที่ FE เรียก (apiClient baseURL รวม /api/v1 แล้ว) — ห้ามตั้งตามชื่อเอกสาร LLDD",
+        f"@Controller('{bff_base}')",
         "@UseGuards(AuthGuard('jwt'))",
         f"export class Sgi{pascal}BffController {{",
         f"  constructor(private readonly service: Sgi{pascal}BffService) {{}}",
     ]
     for ep in sample[:2]:
         deco = ep.method.capitalize() if ep.method != "DELETE" else "Delete"
-        route = "/".join(ep.nest_segments[2:]) if len(ep.nest_segments) > 2 else "/".join(ep.nest_segments)
+        route = _relative_route(ep, _controller_base(endpoints))
         args = [f"@Param('{x}') {_camel(x)}: string" for x in ep.params]
         call = [_camel(x) for x in ep.params]
         if ep.method == "GET":
@@ -1357,7 +1461,7 @@ def _bff_code(endpoints: list[_Endpoint], slug: str, pascal: str) -> str:
         lines += [
             "",
             f"  // proxy ของ {ep.method} {ep.path}",
-            f"  @{deco}('{route}')",
+            f"  @{deco}({repr(route) if route else ''})",
             f"  {ep.handler}({', '.join(args)}) {{",
             f"    return this.service.{ep.handler}({', '.join(call)});",
             "  }",
@@ -1405,14 +1509,15 @@ def _sql_warnings(sql: str) -> list[str]:
         lines.append("--    ห้าม implement ตามตัวอักษร ให้แทนที่ก่อนใช้งาน:")
         for tname in hit_tables:
             lines.append(f"--      {tname}  ->  {CUT_TABLE_REPLACEMENT[tname]}")
-    hit_cols = [old for old in CUT_COLUMN_ALIASES if old in (sql or "")]
+    aliases = _active_column_aliases()
+    hit_cols = [old for old in aliases if old in (sql or "")]
     if hit_cols:
         lines.append("-- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:")
         for old in hit_cols:
-            lines.append(f"--      {old}  ->  {CUT_COLUMN_ALIASES[old]}")
-    if ":" in (sql or "") and re.search(r"(?<![:\w]):[a-zA-Z_][a-zA-Z0-9_]*", sql or ""):
-        lines.append("-- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend")
-        lines.append("--    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder")
+            lines.append(f"--      {old}  ->  {aliases[old]}")
+    # หมายเหตุ 2026-09-04: ตัวสร้างเอกสารแปลง `:name` เป็น `$n /* ชื่อ */` ให้แล้วที่ code(..., "sql")
+    #   บล็อก SQL ที่พิมพ์ออกมาจึงคัดลอกไปวางใน dataSource.query(sql, params) ได้ทันที
+    #   (เดิมพิมพ์ :name แล้วเตือนให้ผู้อ่านไปแปลงเอง ซึ่งคัดลอกไปรันตรง ๆ ไม่ได้)
     if lines:
         lines.append("")
     return lines
@@ -1547,7 +1652,10 @@ def be_skeleton_blocks(topic: Any, ctx: Any = None) -> list[dict[str, Any]]:
         [f"store-backend · src/modules/sgi-{slug}/sgi-{slug}.service.ts",
          "business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction"],
         [f"store-backend · src/modules/sgi-{slug}/sgi-{slug}.sql.ts",
-         f"เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ {sec_sql}) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย"],
+         f"เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ {sec_sql}) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย · "
+         "**คีย์ = ชื่อ handler** เช่น `getSgiMasterFactors` · บล็อกที่มีหลาย statement ให้แยกเป็นหลายคีย์ "
+         "โดยเติมท้ายชื่อให้สื่อความ เช่น DELETE master ที่มี 2 statement → "
+         "`removeSgiMasterFactorsByCodeInUse` (SELECT ตรวจการใช้งาน) + `removeSgiMasterFactorsByCode` (DELETE)"],
         [f"store-backend · src/modules/sgi-{slug}/dto/sgi-{slug}.dto.ts",
          "DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้"],
         [f"store-backend · src/modules/sgi-{slug}/sgi-{slug}.module.ts",

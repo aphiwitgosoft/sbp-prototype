@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | **32 ชั่วโมง** = implementation 24 + unit test 8 (30%) |
-| Owner | Butsaba <But> Podamrong |
+| Owner | Butsaba &lt;But&gt; Podamrong |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ APIs สำหรับสร้างเอกสารใหม่และบันทึกส่วนย่อยของเอกสาร |
 
@@ -109,12 +109,13 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Document Create and Updat
 ### 5.4 docNo Generator SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=year · $2=docNo · $3=runningNo · $4=impactProcessId · $5=impactedStoreCode · $6=impactMonth · $7=newStoreCode · $8=roundNo · $9=source · $10=statusInit · $11=userId
 -- ออกเลขเอกสาร YYYY/xxxxx แบบ atomic ต่อ "ปี ค.ศ." (ห้ามใช้ พ.ศ. — ดู api.md มติ 2026-08-06)
 -- ตารางจริงคือ sgi_document_running_numbers (year · last_running_no · updated_at) ไม่มีคอลัมน์ created_at
 
 -- 1) สร้างแถวของปีนี้ถ้ายังไม่มี (idempotent)
 INSERT INTO sgi_document_running_numbers (year, last_running_no)
-VALUES (:year, 0)
+VALUES ($1 /* year */, 0)
 ON CONFLICT (year) DO NOTHING;
 
 -- 2) กินเลขถัดไปในทรานแซกชันเดียวกับการสร้างเอกสาร — UPDATE ... RETURNING ล็อกแถวให้เอง
@@ -122,7 +123,7 @@ ON CONFLICT (year) DO NOTHING;
 UPDATE sgi_document_running_numbers
 SET last_running_no = last_running_no + 1,
     updated_at = CURRENT_TIMESTAMP
-WHERE year = :year
+WHERE year = $1 /* year */
 RETURNING last_running_no;          -- → :runningNo
 
 -- 3) docNo = :year || '/' || lpad(:runningNo::text, 5, '0')   เช่น 2026/00123
@@ -132,9 +133,9 @@ INSERT INTO sgi_compensation_documents (
     impact_process_id, impacted_store_code, impact_month, new_store_code,
     round_no, source, status_code, current_section_code, created_by
 ) VALUES (
-    :docNo, :year, :runningNo,
-    :impactProcessId, :impactedStoreCode, :impactMonth, :newStoreCode,
-    :roundNo, :source, :statusInit, '06', :userId
+    $2 /* docNo */, $1 /* year */, $3 /* runningNo */,
+    $4 /* impactProcessId */, $5 /* impactedStoreCode */, $6 /* impactMonth */, $7 /* newStoreCode */,
+    $8 /* roundNo */, $9 /* source */, $10 /* statusInit */, '06', $11 /* userId */
 );
 -- created_at / total_compensation_amount / version_no มี DEFAULT อยู่แล้ว ไม่ต้องส่ง
 ```
@@ -194,12 +195,13 @@ Create document API
 
 ```json
 {
-  "impactedStoreCode": "00788",
-  "impactMonth": "2026-06",
   "source": "MANUAL",
-  "newStoreCode": "00990",
+  "impactMonth": "2026-07",
+  "statementPeriod": "2026-07",
+  "impactedStoreCode": "01234",
+  "newStoreCode": "22864",
   "roundNo": 1,
-  "reason": "manual create",
+  "reason": "สร้างเอกสารนอกเงื่อนไข",
   "requestId": "uuid"
 }
 ```
@@ -208,9 +210,10 @@ Create document API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
-| impactMonth | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
 | source | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| impactMonth | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| statementPeriod | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | newStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | reason | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
@@ -220,8 +223,9 @@ Create document API
 
 ```json
 {
-  "docNo": "2026/00124",
-  "statusCode": "06"
+  "docNo": "2026/00001",
+  "statusCode": "06",
+  "message": "created"
 }
 ```
 
@@ -231,6 +235,7 @@ Create document API
 | --- | --- | --- | --- |
 | docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | statusCode | string | Yes | canonical code; do not replace with display label |
+| message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### PUT /api/v1/sgi/document/{docNo}
 
@@ -240,16 +245,45 @@ Update document partial sections
 
 ```json
 {
+  "versionNo": 3,
   "newStores": [
     {
       "newStoreCode": "00990",
       "compensatePercent": 60,
+      "compensationAmount": 18000.0,
       "sourceSystem": "ALLMAP"
     },
     {
       "newStoreCode": "01180",
       "compensatePercent": 40,
+      "compensationAmount": 12000.0,
       "sourceSystem": "USER"
+    }
+  ],
+  "competitors": [
+    {
+      "id": 8801,
+      "competitorCode": "01",
+      "impactDate": "2026-07-15"
+    },
+    {
+      "competitorCode": "07",
+      "impactDate": "2026-07-20",
+      "id": 8801
+    }
+  ],
+  "externalFactors": [
+    {
+      "id": 4402,
+      "factorCode": "F03",
+      "dateFrom": "2026-07-01",
+      "dateTo": "2026-07-31"
+    },
+    {
+      "factorCode": "F09",
+      "dateFrom": "2026-07-10",
+      "dateTo": null,
+      "id": 4402
     }
   ]
 }
@@ -259,16 +293,28 @@ Update document partial sections
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| newStores | array<object> | Yes | JSON array; element type shown in Type column |
+| versionNo | integer | Yes | optimistic concurrency: ต้องส่งค่าล่าสุดที่โหลดมา · ไม่ตรงคืน 409 STALE_VERSION |
+| newStores | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | newStores[].newStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | newStores[].compensatePercent | integer | Yes | number 0..100 with 2 decimals |
-| newStores[].sourceSystem | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| newStores[].compensationAmount | number | Yes | number >= 0 with 2 decimals |
+| newStores[].sourceSystem | string | Yes | ALLMAP = ระบบดึงมาเอง · USER = ผู้ใช้คีย์เพิ่ม |
+| competitors | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| competitors[].id | integer | No | id ของแถวเดิม — **ไม่ส่ง = แถวที่ผู้ใช้เพิ่มใหม่ (INSERT)** · แถวเดิมที่ไม่ถูกส่งมาถือว่าถูกลบ |
+| competitors[].competitorCode | string | Yes | รหัสแบรนด์คู่แข่งจาก master 01–11 เท่านั้น (ห้าม free text) |
+| competitors[].impactDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| externalFactors | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| externalFactors[].id | integer | No | id ของแถวเดิม — **ไม่ส่ง = แถวที่ผู้ใช้เพิ่มใหม่ (INSERT)** · แถวเดิมที่ไม่ถูกส่งมาถือว่าถูกลบ |
+| externalFactors[].factorCode | string | Yes | รหัสปัจจัยภายนอกจาก master (sgi_external_factors.factor_code) |
+| externalFactors[].dateFrom | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| externalFactors[].dateTo | string | No | UTF-8; use value domain described by endpoint purpose |
 
 #### Response
 
 ```json
 {
-  "message": "saved"
+  "message": "saved",
+  "versionNo": 4
 }
 ```
 
@@ -277,6 +323,7 @@ Update document partial sections
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| versionNo | integer | Yes | optimistic concurrency: ต้องส่งค่าล่าสุดที่โหลดมา · ไม่ตรงคืน 409 STALE_VERSION |
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
@@ -297,13 +344,13 @@ Update document partial sections
 
 โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
 
-#### 9.1 ผังไฟล์ที่ต้องสร้าง
+### 9.1 ผังไฟล์ที่ต้องสร้าง
 
 | Path | หน้าที่ |
 | --- | --- |
 | store-backend · src/modules/sgi-document-create-update/sgi-document-create-update.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
 | store-backend · src/modules/sgi-document-create-update/sgi-document-create-update.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sgi-document-create-update/sgi-document-create-update.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-document-create-update/sgi-document-create-update.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย · **คีย์ = ชื่อ handler** เช่น `getSgiMasterFactors` · บล็อกที่มีหลาย statement ให้แยกเป็นหลายคีย์ โดยเติมท้ายชื่อให้สื่อความ เช่น DELETE master ที่มี 2 statement → `removeSgiMasterFactorsByCodeInUse` (SELECT ตรวจการใช้งาน) + `removeSgiMasterFactorsByCode` (DELETE) |
 | store-backend · src/modules/sgi-document-create-update/dto/sgi-document-create-update.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sgi-document-create-update/sgi-document-create-update.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/sgi-compensation-documents.entity.ts | entity ของ `sgi_compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
@@ -315,7 +362,7 @@ Update document partial sections
 | BFF · src/modules/sgi-document-create-update/sgi-document-create-update.controller.ts | route ฝั่ง BFF prefix `/bff/sgi/…` + `@UseGuards(AuthGuard('jwt'))` |
 | BFF · src/modules/sgi-document-create-update/sgi-document-create-update.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
 
-#### 9.2 Controller (store-backend)
+### 9.2 Controller (store-backend)
 
 ```ts
 // src/modules/sgi-document-create-update/sgi-document-create-update.controller.ts
@@ -327,20 +374,20 @@ import { CreateSgiDocumentBodyDto, UpdateSgiDocumentByDocNoBodyDto } from './dto
 
 // LLDD BE - API Document Create and Update
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sgi/sgi/document')
+@Controller('document')
 @UseGuards(HttpHeaderGuard)
 export class SgiDocumentCreateUpdateController {
   constructor(private readonly service: SgiDocumentCreateUpdateService) {}
 
   // POST /api/v1/sgi/document — Create document API
-  @Post('document')
+  @Post()
   createSgiDocument(@Body() body: CreateSgiDocumentBodyDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.createSgiDocument(body, userId);
   }
 
   // PUT /api/v1/sgi/document/{docNo} — Update document partial sections
-  @Put('document/:docNo')
+  @Put(':docNo')
   updateSgiDocumentByDocNo(
     @Param('docNo') docNo: string,
     @Body() body: UpdateSgiDocumentByDocNoBodyDto,
@@ -352,14 +399,14 @@ export class SgiDocumentCreateUpdateController {
 }
 ```
 
-#### 9.3 DTO + Validation
+### 9.3 DTO + Validation
 
 ```ts
 // src/modules/sgi-document-create-update/dto/sgi-document-create-update.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
-  IsString, Matches, Max, MaxLength, Min,
+  IsString, Matches, Max, MaxLength, Min, ValidateNested,
 } from 'class-validator';
 
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
@@ -367,19 +414,23 @@ import {
 
 // body ของ POST /api/v1/sgi/document
 export class CreateSgiDocumentBodyDto {
-  @IsNotEmpty()
-  @IsString()
-  impactedStoreCode: string;
-
-  @IsNotEmpty()
-  @IsString()
-  impactMonth: string;
-
   /** แยกแหล่งสร้างเอกสาร */
   @IsNotEmpty()
   @IsString()
   @IsIn(['MANUAL', 'FS'])
   source: string;
+
+  @IsNotEmpty()
+  @IsString()
+  impactMonth: string;
+
+  @IsNotEmpty()
+  @IsString()
+  statementPeriod: string;
+
+  @IsNotEmpty()
+  @IsString()
+  impactedStoreCode: string;
 
   @IsNotEmpty()
   @IsString()
@@ -390,32 +441,104 @@ export class CreateSgiDocumentBodyDto {
   @IsInt()
   roundNo: number;
 
-  @IsNotEmpty()
-  @IsString()
-  @MaxLength(500)
-  reason: string;
-
   // TODO: เพิ่ม property ที่เหลือของ payload นี้ให้ครบตามหัวข้อฟิลด์ของเอกสารนี้
 }
 ```
 
 ```ts
+// 1 แถวของ `newStores` — property ที่ไม่ได้มีครบทุกแถวถือเป็น optional
+export class NewStoreItemDto {
+  @IsNotEmpty()
+  @IsString()
+  newStoreCode: string;
+
+  @IsNotEmpty()
+  @Type(() => Number)
+  @IsInt()
+  compensatePercent: number;
+
+  @IsNotEmpty()
+  @Type(() => Number)
+  @IsInt()
+  compensationAmount: number;
+
+  /** **B5** ที่มาของแถวร้านเปิดใหม่ — `ALLMAP` ระบบ default ให้อัตโนมัติ (Job 9) · `USER` เจ้า… */
+  @IsNotEmpty()
+  @IsString()
+  sourceSystem: string;
+}
+
+// 1 แถวของ `competitors` — property ที่ไม่ได้มีครบทุกแถวถือเป็น optional
+export class CompetitorItemDto {
+  @IsNotEmpty()
+  @Type(() => Number)
+  @IsInt()
+  id: number;
+
+  @IsNotEmpty()
+  @IsString()
+  competitorCode: string;
+
+  @IsNotEmpty()
+  @IsString()
+  impactDate: string;
+}
+
+// 1 แถวของ `externalFactors` — property ที่ไม่ได้มีครบทุกแถวถือเป็น optional
+export class ExternalFactorItemDto {
+  @IsNotEmpty()
+  @Type(() => Number)
+  @IsInt()
+  id: number;
+
+  @IsNotEmpty()
+  @IsString()
+  factorCode: string;
+
+  @IsNotEmpty()
+  @IsString()
+  dateFrom: string;
+
+  /** ส่ง null ได้ */
+  @IsOptional()
+  @IsString()
+  dateTo?: string;
+}
+
 // body ของ PUT /api/v1/sgi/document/{docNo}
 export class UpdateSgiDocumentByDocNoBodyDto {
   @IsNotEmpty()
+  @Type(() => Number)
+  @IsInt()
+  versionNo: number;
+
+  @IsNotEmpty()
   @IsArray()
-  @IsString({ each: true })
-  newStores: string[];
+  @ValidateNested({ each: true })
+  @Type(() => NewStoreItemDto)
+  newStores: NewStoreItemDto[];
+
+  @IsNotEmpty()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CompetitorItemDto)
+  competitors: CompetitorItemDto[];
+
+  @IsNotEmpty()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ExternalFactorItemDto)
+  externalFactors: ExternalFactorItemDto[];
 }
 ```
 
-#### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
+### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
 
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
 // src/modules/sgi-document-create-update/sgi-document-create-update.service.ts
-import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { WorkflowService } from '../workflow/workflow.service';
 import { SGI_SQL } from './sgi-document-create-update.sql';
@@ -440,7 +563,7 @@ export class SgiDocumentCreateUpdateService {
     await runner.startTransaction();
     try {
       // TODO: lock แถวเป้าหมายของ sgi_compensation_documents ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SGI_SQL.createSgiDocumentLock, [body.docNo]);
+      const [current] = await runner.query(SGI_SQL.createSgiDocumentLock, [body.newStoreCode]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }
@@ -471,7 +594,7 @@ export class SgiDocumentCreateUpdateService {
 }
 ```
 
-#### 9.5 Workflow (`@srm/glb-workflow`)
+### 9.5 Workflow (`@srm/glb-workflow`)
 
 ✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ยืนยันแล้ว 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
@@ -489,7 +612,7 @@ export class SgiDocumentCreateUpdateService {
   // TODO: map currentState -> statusCode/statusName ที่ FE ใช้
 ```
 
-#### 9.6 Entity (TypeORM)
+### 9.6 Entity (TypeORM)
 
 ```ts
 // src/entitys/sgi-compensation-documents.entity.ts
@@ -497,20 +620,29 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'sgi_compensation_documents', schema: process.env.DB_SCHEMA })
 export class CompensationDocument {
-  @PrimaryColumn({ name: 'doc_no', type: 'varchar', length: 12 })
-  docNo: string;
+  @PrimaryColumn({ name: 'id', type: 'bigint' })
+  id: number;
 
-  @Column({ name: 'impact_process_id', type: 'bigint', nullable: true })
-  impactProcessId?: number;
+  @Column({ name: 'doc_no', type: 'varchar', length: 10, nullable: true })
+  docNo?: string;
 
-  @Column({ name: 'impacted_store_code', type: 'char', length: 5 })
+  @Column({ name: 'year', type: 'int', nullable: true })
+  year?: number;
+
+  @Column({ name: 'running_no', type: 'int', nullable: true })
+  runningNo?: number;
+
+  @Column({ name: 'impact_process_id', type: 'bigint' })
+  impactProcessId: number;
+
+  @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
-  statusCode: string;
+  @Column({ name: 'impact_month', type: 'char', length: 7, nullable: true })
+  impactMonth?: string;
 
-  @Column({ name: 'current_section_code', type: 'varchar', length: 2 })
-  currentSectionCode: string;
+  @Column({ name: 'new_store_code', type: 'varchar', length: 5, nullable: true })
+  newStoreCode?: string;
 
   @Column({ name: 'round_no', type: 'int', nullable: true })
   roundNo?: number;
@@ -518,7 +650,22 @@ export class CompensationDocument {
   @Column({ name: 'loop_no', type: 'int', nullable: true })
   loopNo?: number;
 
-  @Column({ name: 'statement_id', type: 'varchar', length: 30, nullable: true })
+  @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
+  source: string;
+
+  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  statusCode: string;
+
+  @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })
+  currentSectionCode?: string;
+
+  @Column({ name: 'total_compensation_amount', type: 'numeric', precision: 14, scale: 2, default: 0 })
+  totalCompensationAmount: string;
+
+  @Column({ name: 'allmap_url', type: 'varchar', length: 500, nullable: true })
+  allmapUrl?: string;
+
+  @Column({ name: 'statement_id', type: 'varchar', length: 50, nullable: true })
   statementId?: string;
 
   @Column({ name: 'statement_date', type: 'date', nullable: true })
@@ -530,23 +677,26 @@ export class CompensationDocument {
   @Column({ name: 'account_month', type: 'int', nullable: true })
   accountMonth?: number;
 
-  @Column({ name: 'compensate_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
-  compensateAmount?: string;
-
-  @Column({ name: 'allmap_url', type: 'text', nullable: true })
-  allmapUrl?: string;
-
   @Column({ name: 'approver_snapshot', type: 'jsonb', nullable: true })
   approverSnapshot?: Record<string, unknown>;
 
-  @Column({ name: 'created_at', type: 'timestamptz', nullable: true })
-  createdAt?: Date;
+  @Column({ name: 'version_no', type: 'int', default: 1 })
+  versionNo: number;
 
-  @Column({ name: 'updated_at', type: 'timestamptz', nullable: true })
+  @Column({ name: 'created_by', type: 'varchar', length: 30 })
+  createdBy: string;
+
+  @Column({ name: 'created_at', type: 'timestamp' })
+  createdAt: Date;
+
+  @Column({ name: 'updated_by', type: 'varchar', length: 30, nullable: true })
+  updatedBy?: string;
+
+  @Column({ name: 'updated_at', type: 'timestamp', nullable: true })
   updatedAt?: Date;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
@@ -559,26 +709,29 @@ export class DocumentNewStore {
   @PrimaryColumn({ name: 'id', type: 'bigint' })
   id: number;
 
-  @Column({ name: 'doc_no', type: 'varchar', length: 12 })
+  @Column({ name: 'doc_no', type: 'varchar', length: 10 })
   docNo: string;
 
-  @Column({ name: 'new_store_code', type: 'char', length: 5 })
+  @Column({ name: 'new_store_code', type: 'varchar', length: 5 })
   newStoreCode: string;
 
-  @Column({ name: 'distance_km', type: 'numeric', precision: 6, scale: 2, nullable: true })
+  @Column({ name: 'distance_km', type: 'numeric', precision: 8, scale: 3, nullable: true })
   distanceKm?: string;
 
-  @Column({ name: 'compensate_percent', type: 'numeric', precision: 5, scale: 2 })
+  @Column({ name: 'compensate_percent', type: 'numeric', precision: 7, scale: 4 })
   compensatePercent: string;
 
-  @Column({ name: 'compensate_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
-  compensateAmount?: string;
+  @Column({ name: 'compensation_amount', type: 'numeric', precision: 14, scale: 2, default: 0 })
+  compensationAmount: string;
 
-  @Column({ name: 'open_date', type: 'date', nullable: true })
-  openDate?: Date;
+  @Column({ name: 'source_system', type: 'varchar', length: 30 })
+  sourceSystem: string;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  @Column({ name: 'updated_at', type: 'timestamp' })
+  updatedAt: Date;
+
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
@@ -591,7 +744,7 @@ export class DocumentNewStore {
 | workflow_transaction | W (ผ่าน lib) | workflow engine @srm/glb-workflow |
 | workflow_approver | W (ผ่าน lib) | workflow engine @srm/glb-workflow |
 
-#### 9.7 Repository Providers + Module wiring
+### 9.7 Repository Providers + Module wiring
 
 ```ts
 // src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
@@ -650,7 +803,7 @@ export class SgiDocumentCreateUpdateModule implements NestModule {
 // TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
-#### 9.8 BFF Proxy (module + controller + client service)
+### 9.8 BFF Proxy (module + controller + client service)
 
 BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
@@ -684,6 +837,9 @@ export class SgiDocumentCreateUpdateBffService {
   constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  // ⚠️ ต้อง unwrap envelope ของ store-backend 1 ชั้นก่อนคืน (ยืนยันจากโค้ดจริง 2026-09-04):
+  //    ResponseInterceptor ระดับ global ของ BFF ห่อผลลัพธ์เป็น { success, data, requestId } อีกที
+  //    ถ้าคืน { success, data } ดิบมา FE จะได้ data.data.data — SgiClientService จึงต้องคืน .data.data
   private userHeaders(user: any) {
     return {
       'x-user-id': user?.userId,
@@ -705,20 +861,20 @@ export class SgiDocumentCreateUpdateBffService {
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sgi/document-create-update')
+// path เดียวกับที่ FE เรียก (apiClient baseURL รวม /api/v1 แล้ว) — ห้ามตั้งตามชื่อเอกสาร LLDD
+@Controller('sgi/document')
 @UseGuards(AuthGuard('jwt'))
 export class SgiDocumentCreateUpdateBffController {
   constructor(private readonly service: SgiDocumentCreateUpdateBffService) {}
 
   // proxy ของ POST /api/v1/sgi/document
-  @Post('sgi/document')
+  @Post()
   createSgiDocument(@Body() body: any, @Req() req: any) {
     return this.service.createSgiDocument(body, req.user);
   }
 
   // proxy ของ PUT /api/v1/sgi/document/{docNo}
-  @Put('sgi/document/:docNo')
+  @Put(':docNo')
   updateSgiDocumentByDocNo(@Param('docNo') docNo: string, @Body() body: any, @Req() req: any) {
     return this.service.updateSgiDocumentByDocNo(docNo, body, req.user);
   }
@@ -728,7 +884,7 @@ export class SgiDocumentCreateUpdateBffController {
 
 ## 10. Database SQL
 
-#### 10.1 ตารางที่อ่าน/เขียน
+### 10.1 ตารางที่อ่าน/เขียน
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
@@ -741,20 +897,19 @@ export class SgiDocumentCreateUpdateBffController {
 | workflow_transaction | W (ผ่าน lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_approver | W (ผ่าน lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 
-#### 10.2 SQL จริงต่อ Endpoint
+### 10.2 SQL จริงต่อ Endpoint
 
 **POST /api/v1/sgi/document** — Create document API
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=impactProcessId · $2=statusDone · $3=docNo · $4=year · $5=runningNo · $6=storeCode · $7=month · $8=statusInit · $9=section06 · $10=empId
 -- กันซ้ำเฉพาะเอกสาร active (SDD GI): เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้
 SELECT 1 FROM sgi_compensation_documents
-WHERE impact_process_id = :impactProcessId AND status_code <> :statusDone;
+WHERE impact_process_id = $1 /* impactProcessId */ AND status_code <> $2 /* statusDone */;
 
 -- ออกเลขที่ YYYY/xxxxx (running ต่อปี) แล้วสร้างเอกสาร + เปิด workflow งานแรก (Section 06)
 INSERT INTO sgi_compensation_documents (doc_no, year, running_no, impact_process_id, impacted_store_code, impact_month, status_code, current_section_code, created_by)
-VALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :statusInit, :section06, :empId);
+VALUES ($3 /* docNo */, $4 /* year */, $5 /* runningNo */, $1 /* impactProcessId */, $6 /* storeCode */, $7 /* month */, $8 /* statusInit */, $9 /* section06 */, $10 /* empId */);
 -- ⚠️ ไม่ INSERT ตาราง workflow เอง — เรียก @srm/glb-workflow (schema sps_store) ให้ library เขียนให้
 --    initialize(versionId=:sgiVersionId, referenceId=:referenceId, userId=:empId)
 --    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
@@ -767,23 +922,32 @@ VALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :status
 **PUT /api/v1/sgi/document/{docNo}** — Update document partial sections
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=now · $2=empId · $3=docNo · $4=versionNo · $5=pct · $6=amount · $7=newStoreCode · $8=date · $9=competitorId · $10=from · $11=to · $12=factorId · $13=competitorCode · $14=impactDate · $15=factorCode · $16=dateFrom · $17=dateTo · $18=keepCompetitorIds · $19=keepFactorIds
 -- ตรวจสิทธิ์ตาม role + current_section ก่อน · %ชดเชยร้านใหม่รวมกันต้อง = 100% (ไม่งั้น 422)
 -- optimistic concurrency: mutation ทุกชุดต้องส่ง versionNo ล่าสุด; ไม่ตรงคืน 409 STALE_VERSION
-UPDATE sgi_compensation_documents SET version_no = version_no + 1, updated_at = :now, updated_by = :empId
-WHERE doc_no = :docNo AND version_no = :versionNo;
-UPDATE sgi_document_new_stores       SET compensate_percent = :pct, compensate_amount = :amount
-WHERE new_store_code = :newStoreCode AND doc_no = :docNo;
-UPDATE sgi_document_competitors      SET impact_date = :date         WHERE id = :competitorId AND doc_no = :docNo;
-UPDATE sgi_document_external_factors SET date_from = :from, date_to = :to WHERE id = :factorId AND doc_no = :docNo;
+UPDATE sgi_compensation_documents SET version_no = version_no + 1, updated_at = $1 /* now */, updated_by = $2 /* empId */
+WHERE doc_no = $3 /* docNo */ AND version_no = $4 /* versionNo */;
+UPDATE sgi_document_new_stores       SET compensate_percent = $5 /* pct */, compensation_amount = $6 /* amount */
+WHERE new_store_code = $7 /* newStoreCode */ AND doc_no = $3 /* docNo */;
+UPDATE sgi_document_competitors      SET impact_date = $8 /* date */         WHERE id = $9 /* competitorId */ AND doc_no = $3 /* docNo */;
+UPDATE sgi_document_external_factors SET date_from = $10 /* from */, date_to = $11 /* to */ WHERE id = $12 /* factorId */ AND doc_no = $3 /* docNo */;
+
+-- แถวที่ผู้ใช้ "เพิ่มเอง" (element ที่ไม่มี id) ต้อง INSERT ไม่ใช่ UPDATE — ของเดิมมีแต่ UPDATE/DELETE
+--   competitorCode ต้องเป็นรหัสแบรนด์ใน master 01-11 เท่านั้น (ไม่ใช่ free text) · source_system = USER
+INSERT INTO sgi_document_competitors (doc_no, competitor_code, impact_date, source_system)
+VALUES ($3 /* docNo */, $13 /* competitorCode */, $14 /* impactDate */, 'USER')
+ON CONFLICT ON CONSTRAINT uq_doc_competitor DO UPDATE SET impact_date = EXCLUDED.impact_date;
+
+INSERT INTO sgi_document_external_factors (doc_no, factor_code, date_from, date_to)
+VALUES ($3 /* docNo */, $15 /* factorCode */, $16 /* dateFrom */, $17 /* dateTo */)
+ON CONFLICT ON CONSTRAINT uq_doc_factor DO UPDATE SET date_to = EXCLUDED.date_to;
 
 -- ลบรายการที่ผู้ใช้เอาออก (ปุ่ม "ลบที่เลือก" ส่งอาร์เรย์ชุดใหม่มาแทนทั้งชุด)
-DELETE FROM sgi_document_competitors      WHERE doc_no = :docNo AND id NOT IN (:keepCompetitorIds);
-DELETE FROM sgi_document_external_factors WHERE doc_no = :docNo AND id NOT IN (:keepFactorIds);
+DELETE FROM sgi_document_competitors      WHERE doc_no = $3 /* docNo */ AND id NOT IN ($18 /* keepCompetitorIds */);
+DELETE FROM sgi_document_external_factors WHERE doc_no = $3 /* docNo */ AND id NOT IN ($19 /* keepFactorIds */);
 ```
 
-#### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
 
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |

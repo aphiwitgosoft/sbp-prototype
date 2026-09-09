@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | **26 ชั่วโมง** = implementation 20 + unit test 6 (30%) |
-| Owner | Butsaba <But> Podamrong |
+| Owner | Butsaba &lt;But&gt; Podamrong |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ APIs สำหรับงานรอดำเนินการและค้นหาเอกสารที่เกี่ยวข้อง |
 
@@ -124,9 +124,10 @@ Inbox tasks API
 
 ```json
 {
-  "sectionCode": "06",
   "page": 1,
-  "size": 20
+  "size": 20,
+  "status": "06",
+  "sectionCode": "06"
 }
 ```
 
@@ -134,18 +135,31 @@ Inbox tasks API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| sectionCode | string | No | canonical code; do not replace with display label |
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
+| status | string | No | UTF-8; use value domain described by endpoint purpose |
+| sectionCode | string | No | canonical code; do not replace with display label |
 
 #### Response
 
 ```json
 {
+  "page": 1,
+  "size": 20,
+  "total": 24,
   "items": [
     {
+      "roundNo": 1,
       "docNo": "2026/00123",
-      "waitingDays": 3
+      "impactedStoreCode": "01234",
+      "impactedStoreName": "สาขาตัวอย่าง",
+      "regionCode": "BE",
+      "salesDeclinePercent": 12.5,
+      "statusCode": "06",
+      "statusName": "รอฝ่าย SBP DSA ดำเนินการ",
+      "totalCompensationAmount": 48200.0,
+      "daysPending": 3,
+      "salesDataDays": 58
     }
   ]
 }
@@ -155,9 +169,21 @@ Inbox tasks API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| page | integer | Yes | >= 1; default 1 |
+| size | integer | Yes | 1..100; default 20 |
+| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
-| items[].waitingDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
+| items[].impactedStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].regionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].salesDeclinePercent | number | Yes | number 0..100 with 2 decimals |
+| items[].statusCode | string | Yes | canonical code; do not replace with display label |
+| items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].totalCompensationAmount | number | Yes | number >= 0 with 2 decimals |
+| items[].daysPending | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].salesDataDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### GET /api/v1/sgi/document
 
@@ -170,7 +196,8 @@ Document search API
   "year": 2026,
   "storeCode": "00788",
   "status": "06",
-  "page": 1
+  "page": 1,
+  "size": 20
 }
 ```
 
@@ -182,15 +209,28 @@ Document search API
 | storeCode | string | No | exactly 5 digits; preserve leading zero |
 | status | string | No | UTF-8; use value domain described by endpoint purpose |
 | page | integer | No | >= 1; default 1 |
+| size | integer | No | 1..100; default 20 |
 
 #### Response
 
 ```json
 {
+  "page": 1,
+  "size": 20,
+  "total": 342,
   "items": [
     {
-      "docNo": "2026/00123",
-      "statusCode": "06"
+      "roundNo": 2,
+      "docNo": "2026/00124",
+      "impactedStoreCode": "01235",
+      "impactedStoreName": "สาขาตัวอย่าง 2",
+      "regionCode": "BS",
+      "salesDeclinePercent": 18.0,
+      "statusCode": "99",
+      "statusName": "เสร็จสิ้น",
+      "totalCompensationAmount": 72500.0,
+      "daysPending": 0,
+      "salesDataDays": 60
     }
   ]
 }
@@ -200,9 +240,21 @@ Document search API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| page | integer | Yes | >= 1; default 1 |
+| size | integer | Yes | 1..100; default 20 |
+| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
+| items[].impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
+| items[].impactedStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].regionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].salesDeclinePercent | number | Yes | number 0..100 with 2 decimals |
 | items[].statusCode | string | Yes | canonical code; do not replace with display label |
+| items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].totalCompensationAmount | number | Yes | number >= 0 with 2 decimals |
+| items[].daysPending | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].salesDataDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
@@ -214,19 +266,20 @@ Document search API
 | sgi_compensation_documents | R | ค้นเอกสารตาม year/status/store |
 | sgi_impacted_stores | R | ชื่อร้าน ภาค และข้อมูลร้าน |
 | sgi_fgi_impact_sales_summaries | R | flag ข้อมูลผิดปกติ/ยอดขายไม่ครบ 60 วัน |
+| workflow_history (@srm/glb-workflow · sps_store) | R | ประวัติการเดิน state ของ engine (อ้างอิงเสริม ห้ามเขียน) (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
 | sgi_consideration_logs | R | ผลการพิจารณาสุดท้าย — คัดเอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้าคิวของ section 06 (SDD สไลด์ 46 ข้อ 1.9) |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
 โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
 
-#### 9.1 ผังไฟล์ที่ต้องสร้าง
+### 9.1 ผังไฟล์ที่ต้องสร้าง
 
 | Path | หน้าที่ |
 | --- | --- |
 | store-backend · src/modules/sgi-document-list-search/sgi-document-list-search.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
 | store-backend · src/modules/sgi-document-list-search/sgi-document-list-search.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sgi-document-list-search/sgi-document-list-search.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-document-list-search/sgi-document-list-search.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย · **คีย์ = ชื่อ handler** เช่น `getSgiMasterFactors` · บล็อกที่มีหลาย statement ให้แยกเป็นหลายคีย์ โดยเติมท้ายชื่อให้สื่อความ เช่น DELETE master ที่มี 2 statement → `removeSgiMasterFactorsByCodeInUse` (SELECT ตรวจการใช้งาน) + `removeSgiMasterFactorsByCode` (DELETE) |
 | store-backend · src/modules/sgi-document-list-search/dto/sgi-document-list-search.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sgi-document-list-search/sgi-document-list-search.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/sgi-compensation-documents.entity.ts | entity ของ `sgi_compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
@@ -238,7 +291,7 @@ Document search API
 | BFF · src/modules/sgi-document-list-search/sgi-document-list-search.controller.ts | route ฝั่ง BFF prefix `/bff/sgi/…` + `@UseGuards(AuthGuard('jwt'))` |
 | BFF · src/modules/sgi-document-list-search/sgi-document-list-search.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
 
-#### 9.2 Controller (store-backend)
+### 9.2 Controller (store-backend)
 
 ```ts
 // src/modules/sgi-document-list-search/sgi-document-list-search.controller.ts
@@ -250,20 +303,20 @@ import { DocumentListSearchQueryDto } from './dto/sgi-document-list-search.dto';
 
 // LLDD BE - API Document List and Search
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sgi/sgi/document')
+@Controller('document')
 @UseGuards(HttpHeaderGuard)
 export class SgiDocumentListSearchController {
   constructor(private readonly service: SgiDocumentListSearchService) {}
 
   // GET /api/v1/sgi/document/tasks — Inbox tasks API
-  @Get('document/tasks')
+  @Get('tasks')
   getSgiDocumentTasks(@Query() query: DocumentListSearchQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiDocumentTasks(query, userId);
   }
 
   // GET /api/v1/sgi/document — Document search API
-  @Get('document')
+  @Get()
   getSgiDocument(@Query() query: DocumentListSearchQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiDocument(query, userId);
@@ -271,14 +324,14 @@ export class SgiDocumentListSearchController {
 }
 ```
 
-#### 9.3 DTO + Validation
+### 9.3 DTO + Validation
 
 ```ts
 // src/modules/sgi-document-list-search/dto/sgi-document-list-search.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
-  IsString, Matches, Max, MaxLength, Min,
+  IsString, Matches, Max, MaxLength, Min, ValidateNested,
 } from 'class-validator';
 
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
@@ -286,11 +339,6 @@ import {
 
 // query ร่วมของ GET ทุกเส้นในโมดูลนี้ (path param ใช้ @Param แยก)
 export class DocumentListSearchQueryDto {
-  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
-  @IsOptional()
-  @IsString()
-  sectionCode?: string;
-
   /** pagination */
   @IsOptional()
   @Type(() => Number)
@@ -306,6 +354,15 @@ export class DocumentListSearchQueryDto {
   @Max(100)
   size?: number;
 
+  @IsNotEmpty()
+  @IsString()
+  status: string;
+
+  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  @IsOptional()
+  @IsString()
+  sectionCode?: string;
+
   /** ไม่ระบุคืน 400 ตาม SRS · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. · required เฉพาะบาง endpoin… */
   @IsOptional()
   @Type(() => Number)
@@ -317,21 +374,16 @@ export class DocumentListSearchQueryDto {
   @IsString()
   @Matches(/^\d{5}$/, { message: 'รหัสร้านต้องเป็นตัวเลข 5 หลัก และคงเลขศูนย์นำหน้า' })
   storeCode?: string;
-
-  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
-  @IsOptional()
-  @IsString()
-  status?: string;
 }
 ```
 
-#### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
+### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
 
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
 // src/modules/sgi-document-list-search/sgi-document-list-search.service.ts
-import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { WorkflowService } from '../workflow/workflow.service';
 import { SGI_SQL } from './sgi-document-list-search.sql';
@@ -353,10 +405,10 @@ export class SgiDocumentListSearchService {
     const page = Number(query.page ?? 1);
     const size = Math.min(Number(query.size ?? 20), 100);
     // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sgi/document/tasks')
-    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
-    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
+    // SQL ในเอกสารเป็น positional $1..$n อยู่แล้ว (ตัวสร้างแปลงให้ตั้งแต่ 2026-09-04)
+    //   บรรทัดแรกของบล็อก SQL คือ `-- bind ตามลำดับ: $1=... · $2=...` ให้เรียงอาร์กิวเมนต์ตามนั้น
     const rows = await this.dataSource.query(SGI_SQL.getSgiDocumentTasks, [
-      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
+      // เรียงให้ตรงกับบรรทัด `-- bind ตามลำดับ:` ของ SQL เส้นนี้
       userId, (page - 1) * size, size,
     ]);
     // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
@@ -372,7 +424,7 @@ export class SgiDocumentListSearchService {
 }
 ```
 
-#### 9.5 Workflow (`@srm/glb-workflow`)
+### 9.5 Workflow (`@srm/glb-workflow`)
 
 ✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ยืนยันแล้ว 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
@@ -393,7 +445,7 @@ export class SgiDocumentListSearchService {
   // TODO: join referenceId (= doc_no) กลับไปที่ sgi_compensation_documents เพื่อเติมข้อมูลเอกสาร
 ```
 
-#### 9.6 Entity (TypeORM)
+### 9.6 Entity (TypeORM)
 
 ```ts
 // src/entitys/sgi-compensation-documents.entity.ts
@@ -401,20 +453,29 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'sgi_compensation_documents', schema: process.env.DB_SCHEMA })
 export class CompensationDocument {
-  @PrimaryColumn({ name: 'doc_no', type: 'varchar', length: 12 })
-  docNo: string;
+  @PrimaryColumn({ name: 'id', type: 'bigint' })
+  id: number;
 
-  @Column({ name: 'impact_process_id', type: 'bigint', nullable: true })
-  impactProcessId?: number;
+  @Column({ name: 'doc_no', type: 'varchar', length: 10, nullable: true })
+  docNo?: string;
 
-  @Column({ name: 'impacted_store_code', type: 'char', length: 5 })
+  @Column({ name: 'year', type: 'int', nullable: true })
+  year?: number;
+
+  @Column({ name: 'running_no', type: 'int', nullable: true })
+  runningNo?: number;
+
+  @Column({ name: 'impact_process_id', type: 'bigint' })
+  impactProcessId: number;
+
+  @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
-  statusCode: string;
+  @Column({ name: 'impact_month', type: 'char', length: 7, nullable: true })
+  impactMonth?: string;
 
-  @Column({ name: 'current_section_code', type: 'varchar', length: 2 })
-  currentSectionCode: string;
+  @Column({ name: 'new_store_code', type: 'varchar', length: 5, nullable: true })
+  newStoreCode?: string;
 
   @Column({ name: 'round_no', type: 'int', nullable: true })
   roundNo?: number;
@@ -422,7 +483,22 @@ export class CompensationDocument {
   @Column({ name: 'loop_no', type: 'int', nullable: true })
   loopNo?: number;
 
-  @Column({ name: 'statement_id', type: 'varchar', length: 30, nullable: true })
+  @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
+  source: string;
+
+  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  statusCode: string;
+
+  @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })
+  currentSectionCode?: string;
+
+  @Column({ name: 'total_compensation_amount', type: 'numeric', precision: 14, scale: 2, default: 0 })
+  totalCompensationAmount: string;
+
+  @Column({ name: 'allmap_url', type: 'varchar', length: 500, nullable: true })
+  allmapUrl?: string;
+
+  @Column({ name: 'statement_id', type: 'varchar', length: 50, nullable: true })
   statementId?: string;
 
   @Column({ name: 'statement_date', type: 'date', nullable: true })
@@ -434,23 +510,26 @@ export class CompensationDocument {
   @Column({ name: 'account_month', type: 'int', nullable: true })
   accountMonth?: number;
 
-  @Column({ name: 'compensate_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
-  compensateAmount?: string;
-
-  @Column({ name: 'allmap_url', type: 'text', nullable: true })
-  allmapUrl?: string;
-
   @Column({ name: 'approver_snapshot', type: 'jsonb', nullable: true })
   approverSnapshot?: Record<string, unknown>;
 
-  @Column({ name: 'created_at', type: 'timestamptz', nullable: true })
-  createdAt?: Date;
+  @Column({ name: 'version_no', type: 'int', default: 1 })
+  versionNo: number;
 
-  @Column({ name: 'updated_at', type: 'timestamptz', nullable: true })
+  @Column({ name: 'created_by', type: 'varchar', length: 30 })
+  createdBy: string;
+
+  @Column({ name: 'created_at', type: 'timestamp' })
+  createdAt: Date;
+
+  @Column({ name: 'updated_by', type: 'varchar', length: 30, nullable: true })
+  updatedBy?: string;
+
+  @Column({ name: 'updated_at', type: 'timestamp', nullable: true })
   updatedAt?: Date;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
@@ -460,20 +539,20 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'sgi_impacted_stores', schema: process.env.DB_SCHEMA })
 export class ImpactedStore {
-  @PrimaryColumn({ name: 'store_code', type: 'char', length: 5 })
+  @PrimaryColumn({ name: 'store_code', type: 'varchar', length: 5 })
   storeCode: string;
 
-  @Column({ name: 'store_name', type: 'varchar', length: 200 })
-  storeName: string;
+  @Column({ name: 'dv_code', type: 'varchar', length: 20, nullable: true })
+  dvCode?: string;
 
-  @Column({ name: 'zone_code', type: 'varchar', length: 10, nullable: true })
-  zoneCode?: string;
+  @Column({ name: 'opt_dv_user_id', type: 'varchar', length: 30, nullable: true })
+  optDvUserId?: string;
 
-  @Column({ name: 'region_code', type: 'varchar', length: 10, nullable: true })
-  regionCode?: string;
+  @Column({ name: 'latitude', type: 'numeric', precision: 10, scale: 7, nullable: true })
+  latitude?: string;
 
-  @Column({ name: 'store_type', type: 'varchar', length: 5, nullable: true })
-  storeType?: string;
+  @Column({ name: 'longitude', type: 'numeric', precision: 10, scale: 7, nullable: true })
+  longitude?: string;
 
   @Column({ name: 'transfer_sbp_date', type: 'date', nullable: true })
   transferSbpDate?: Date;
@@ -481,8 +560,11 @@ export class ImpactedStore {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  @Column({ name: 'updated_at', type: 'timestamp' })
+  updatedAt: Date;
+
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
@@ -494,8 +576,9 @@ export class ImpactedStore {
 | --- | --- | --- |
 | workflow_transaction | R | workflow engine @srm/glb-workflow |
 | workflow_approver | R | workflow engine @srm/glb-workflow |
+| workflow_history | R | workflow engine @srm/glb-workflow |
 
-#### 9.7 Repository Providers + Module wiring
+### 9.7 Repository Providers + Module wiring
 
 ```ts
 // src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
@@ -554,7 +637,7 @@ export class SgiDocumentListSearchModule implements NestModule {
 // TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
-#### 9.8 BFF Proxy (module + controller + client service)
+### 9.8 BFF Proxy (module + controller + client service)
 
 BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
@@ -588,6 +671,9 @@ export class SgiDocumentListSearchBffService {
   constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  // ⚠️ ต้อง unwrap envelope ของ store-backend 1 ชั้นก่อนคืน (ยืนยันจากโค้ดจริง 2026-09-04):
+  //    ResponseInterceptor ระดับ global ของ BFF ห่อผลลัพธ์เป็น { success, data, requestId } อีกที
+  //    ถ้าคืน { success, data } ดิบมา FE จะได้ data.data.data — SgiClientService จึงต้องคืน .data.data
   private userHeaders(user: any) {
     return {
       'x-user-id': user?.userId,
@@ -609,20 +695,20 @@ export class SgiDocumentListSearchBffService {
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sgi/document-list-search')
+// path เดียวกับที่ FE เรียก (apiClient baseURL รวม /api/v1 แล้ว) — ห้ามตั้งตามชื่อเอกสาร LLDD
+@Controller('sgi/document')
 @UseGuards(AuthGuard('jwt'))
 export class SgiDocumentListSearchBffController {
   constructor(private readonly service: SgiDocumentListSearchBffService) {}
 
   // proxy ของ GET /api/v1/sgi/document/tasks
-  @Get('sgi/document/tasks')
+  @Get('tasks')
   getSgiDocumentTasks(@Query() query: any, @Req() req: any) {
     return this.service.getSgiDocumentTasks(query, req.user);
   }
 
   // proxy ของ GET /api/v1/sgi/document
-  @Get('sgi/document')
+  @Get()
   getSgiDocument(@Query() query: any, @Req() req: any) {
     return this.service.getSgiDocument(query, req.user);
   }
@@ -632,7 +718,7 @@ export class SgiDocumentListSearchBffController {
 
 ## 10. Database SQL
 
-#### 10.1 ตารางที่อ่าน/เขียน
+### 10.1 ตารางที่อ่าน/เขียน
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
@@ -642,16 +728,14 @@ export class SgiDocumentListSearchBffController {
 | sgi_consideration_logs | R | ผลการพิจารณาสุดท้าย — คัดเอกสารที่จบด้วย หยุดชดเชยประกันรายได้ เข้าคิวของ section 06 (SDD สไลด์ 46 ข้อ 1.9) |
 | workflow_transaction | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_approver | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| workflow_history | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 
-#### 10.2 SQL จริงต่อ Endpoint
+### 10.2 SQL จริงต่อ Endpoint
 
 **GET /api/v1/sgi/document/tasks** — Inbox tasks API
 
 ```sql
--- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:
---      total_compensation_amount  ->  compensate_amount
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=sectionFromJwt · $2=sgiVersionId · $3=size · $4=offset
 -- ⚠️ ไม่มีตาราง workflow_tasks ของ SGI แล้ว — กล่องงานอ่านจาก engine กลาง (schema sps_store)
 --    getPendingFlowByUser({userData}) 
 -- ✅ DP-1 ปิดแล้ว: reference_id = sgi_compensation_documents.id (surrogate · varchar(255)) · ⚠️ DP-2 workflow_transaction ไม่มี PK/index (19,283 แถว → seq-scan) ห้ามแก้ schema ของ library
@@ -677,19 +761,15 @@ JOIN sps_store.workflow_transaction w ON w.transaction_id = a.transaction_id
 JOIN sgi_compensation_documents d ON d.id::text = w.reference_id   -- DP-1 = surrogate id   -- DP-1
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
-WHERE a.state_id = :sectionFromJwt AND a.state_id = w.current_state_id AND w.version_id = :sgiVersionId
+WHERE a.state_id = $1 /* sectionFromJwt */ AND a.state_id = w.current_state_id AND w.version_id = $2 /* sgiVersionId */
 ORDER BY w.update_date
-LIMIT :size OFFSET :offset;
+LIMIT $3 /* size */ OFFSET $4 /* offset */;
 ```
 
 **GET /api/v1/sgi/document** — Document search API
 
 ```sql
--- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:
---      total_compensation_amount  ->  compensate_amount
---      d.year  ->  d.account_year
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=statusDone · $2=year · $3=impactedStoreCode · $4=status · $5=size · $6=offset
 -- ต้องระบุ :year เสมอ ไม่งั้นตอบ 400 (กติกา SRS)
 SELECT d.round_no AS "roundNo",
        d.doc_no AS "docNo",
@@ -701,20 +781,20 @@ SELECT d.round_no AS "roundNo",
        d.status_code AS "statusCode",
        d.current_section_code AS "currentSection",
        -- workflow_transaction ไม่มี created_date (มีแค่ update_date) — วันที่เริ่มงานเอาจาก workflow_history
-       CASE WHEN w.current_status_id <> :statusDone THEN GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) ELSE 0 END AS "daysPending",
+       CASE WHEN w.current_status_id <> $1 /* statusDone */ THEN GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) ELSE 0 END AS "daysPending",
        ss.total_working_days AS "salesDataDays"
 FROM sgi_compensation_documents d
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
 LEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.id::text   -- DP-1 = surrogate id (reference_id เป็น varchar(255)) AND w.version_id = :sgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)
-WHERE d.year = :year
-  AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)
-  AND (:status            IS NULL OR d.status_code = :status)
+WHERE d.year = $2 /* year */
+  AND ($3 /* impactedStoreCode */ IS NULL OR d.impacted_store_code = $3 /* impactedStoreCode */)
+  AND ($4 /* status */            IS NULL OR d.status_code = $4 /* status */)
 ORDER BY d.doc_no DESC
-LIMIT :size OFFSET :offset;
+LIMIT $5 /* size */ OFFSET $6 /* offset */;
 ```
 
-#### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
 
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |

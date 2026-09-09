@@ -4,7 +4,8 @@
     python3 tools/build_worklist.py
 
 เชื่อม 3 ชั้นเข้าด้วยกัน คลิกข้ามกันได้:
-    งาน (37 หัวข้อจาก LLDD 40 ฉบับ)  ->  API ที่งานนั้นเรียก  ->  ตาราง DB ที่ API นั้นแตะ
+    งาน (หัวข้อ LLDD ที่คิดชั่วโมง)  ->  API ที่งานนั้นเรียก  ->  ตาราง DB ที่ API นั้นแตะ
+    จำนวนเอกสารคำนวณสดจากชุด topics ห้าม hardcode (เคยค้างที่ 40 ตอนเพิ่ม Job 11/12 · 2026-09-02)
 พร้อมตาราง "กำลังคนเทียบกรอบเวลา" ที่คำนวณจากกติกาเวลาเดียวกับ LLDD (HOURS_PER_DAY / เป้า 4 สัปดาห์)
 
 ข้อมูลทั้งหมด derive จากแหล่งเดียวกับเอกสารส่งมอบ จึงไม่มีทางหลุดจากกัน:
@@ -136,14 +137,14 @@ def clean_table_name(raw: str) -> str | None:
 
 
 def canonical_endpoints() -> set[str]:
-    """29 เส้นที่ยังใช้งานจริงใน plan-api.html (ตัด /* */ ที่เป็นเส้นยกเลิกออก)"""
+    """28 เส้นที่ยังใช้งานจริงใน plan-api.html (ตัด /* */ ที่เป็นเส้นยกเลิกออก)"""
     text = re.sub(r"/\*.*?\*/", "", (ROOT / "plan-api.html").read_text(encoding="utf-8"), flags=re.S)
     return {f"{m.group(1)} {m.group(2)}"
             for m in re.finditer(r"m:\s*'(GET|POST|PUT|PATCH|DELETE)'[^}]*?p:\s*'([^']+)'", text)}
 
 
 def api_kind(key: str, canon: set[str]) -> str:
-    """own = 29 เส้นของ SGI · external = API ของระบบ SBP เดิม · contract = pseudo (/*) ในเอกสารสัญญากลาง"""
+    """own = 28 เส้นของ SGI · external = API ของระบบ SBP เดิม · contract = pseudo (/*) ในเอกสารสัญญากลาง"""
     if "/*" in key:
         return "contract"
     if key in canon:
@@ -180,7 +181,7 @@ def build_model() -> dict:
             "id": tid,
             "file": t.file,
             "title": t.title.replace("LLDD ", ""),
-            "track": "Job" if "/Jobs/" in t.file else t.track,
+            "track": "Job" if t.file.startswith("Jobs/") else t.track,
             "owner": t.owner,
             "ownerShort": t.owner.split("<")[1].split(">")[0] if "<" in t.owner else t.owner,
             "hours": t.hours,
@@ -431,6 +432,8 @@ function capacityCard(){
   return `<h2>กำลังคนเทียบกรอบเวลา</h2>
   <p class="sub">กติกาเวลาจาก LLDD: <b>${M.targetWeeks} สัปดาห์ × ${M.daysPerWeek} วัน × ${M.hoursPerDay} ชม./วัน = ${M.ceiling} ชม./คน</b> ·
   ทีม ${M.owners.length} คน = ${M.teamCapacity} ชม. เทียบงาน ${M.totalHours} ชม. (${Math.round(M.totalHours/M.teamCapacity*100)}% utilization)</p>
+  <div class="note" style="border-left:3px solid #d68a10">⚠️ <b>ตัวเลข "สัปดาห์" ในตารางนี้คือ ชั่วโมง ÷ ${M.hoursPerWeek} — คิดเฉพาะปริมาณงาน ยังไม่นับการรอ dependency</b> ·
+  <a href="#/plan">แผนงานรายสัปดาห์</a> จัดคิวตาม dependency จริง + คิวของเจ้าของงาน (หนึ่งคนทำได้ทีละฉบับ) จึงยาวกว่าเสมอ — ใช้ตัวเลขจากหน้านั้นเวลาคุยกำหนดส่งมอบ ส่วนตารางนี้ใช้ดูว่า<b>ใครรับงานเกินตัว</b></div>
   ${warn}
   <table><thead><tr><th>คน</th><th style="text-align:right">ชม.</th><th style="text-align:right">วัน</th><th style="text-align:right">สัปดาห์</th><th>ภาระเทียบเพดาน</th><th>สถานะ</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
@@ -465,8 +468,8 @@ function renderHome(){
     <div><b>${sum('total')}</b><small>ชั่วโมงรวม</small></div>
   </div>
   <div class="note" style="border-left:3px solid #2f6fed"><b>กระทบยอดกับเอกสาร LLDD:</b>
-  <b>งาน ${ts.length}</b> = การ์ดงานตั้งต้น + <b>${Object.values(T).filter(t=>t.included).length}</b> role pack ที่รวมอยู่ใน FE-Document-Detail = <b>${Object.values(T).length} หัวข้อ</b> · บวกเอกสารอ้างอิง 3 ฉบับ (LLDD-API / LLDD-Database / LLDD-To-Be ที่ไม่คิดชั่วโมงแยก) = <b>LLDD 40 ฉบับ</b> ที่ส่งมอบ &nbsp;·&nbsp;
-  <b>API ${Object.values(A).filter(a=>a.kind==='own').length}</b> = ครบ 29 เส้นตาม <code>api.md</code> พอดี (ที่เห็นเพิ่มคือ ${Object.values(A).filter(a=>a.kind==='external').length} เส้นของระบบเดิม และ ${Object.values(A).filter(a=>a.kind==='contract').length} รายการ pseudo <code>/*</code> จากเอกสารสัญญากลาง ซึ่งไม่นับเป็น endpoint) &nbsp;·&nbsp;
+  <b>งาน ${ts.length}</b> = การ์ดงานตั้งต้น + <b>${Object.values(T).filter(t=>t.included).length}</b> role pack ที่รวมอยู่ใน FE-Document-Detail = <b>${Object.values(T).length} หัวข้อ</b> · บวกเอกสารอ้างอิง 3 ฉบับ (LLDD-API / LLDD-Database / LLDD-To-Be ที่ไม่คิดชั่วโมงแยก) = <b>LLDD ${Object.values(T).length + 3} ฉบับ</b> ที่ส่งมอบ &nbsp;·&nbsp;
+  <b>API ${Object.values(A).filter(a=>a.kind==='own').length}</b> = ครบ 28 เส้นตาม <code>api.md</code> พอดี (ที่เห็นเพิ่มคือ ${Object.values(A).filter(a=>a.kind==='external').length} เส้นของระบบเดิม และ ${Object.values(A).filter(a=>a.kind==='contract').length} รายการ pseudo <code>/*</code> จากเอกสารสัญญากลาง ซึ่งไม่นับเป็น endpoint) &nbsp;·&nbsp;
   <b>ตาราง ${Object.values(D).filter(t=>!t.existing).length}</b> = จำนวน <code>CREATE TABLE</code> ใน DDL — <code>database.md</code> นับเป็น <b>20 ตาราง</b> เพราะรวม <code>fcs_qssi_score</code> ที่ reuse ของระบบเดิมแบบอ่านอย่างเดียว (หน้านี้จัดอยู่ในกลุ่มตารางระบบเดิม)</div>
   ${capacityCard()}
   <div class="note"><b>อ่านยังไง:</b> เริ่มที่กลุ่มงานทางซ้าย → เปิดงานที่รับผิดชอบ → ในหน้างานจะมี <b>ขั้นตอนการทำงาน</b>, <b>เกณฑ์ตรวจรับ</b> และ <b>ขอบเขต unit test</b> ครบ ·
@@ -531,7 +534,7 @@ function renderApi(id){
   return `<div class="crumb"><a href="#/">Worklist</a> / API / ${esc(a.path)}</div>
   <h1><span class="m ${a.method}">${a.method}</span> <span class="mono" style="font-size:23px">${esc(a.path)}</span></h1>
   <p class="sub">${md(a.purpose)}</p>
-  ${a.kind==='external'?'<div class="note">🔗 <b>เส้นนี้เป็น API ของระบบ SBP เดิม</b> — SGI เรียกใช้ ไม่ได้สร้างเอง จึงไม่นับใน 29 เส้นของโครงการ</div>':''}
+  ${a.kind==='external'?'<div class="note">🔗 <b>เส้นนี้เป็น API ของระบบ SBP เดิม</b> — SGI เรียกใช้ ไม่ได้สร้างเอง จึงไม่นับใน 28 เส้นของโครงการ</div>':''}
   ${a.kind==='contract'?'<div class="note">📄 <b>ไม่ใช่ endpoint จริง</b> — เป็นสัญญากลางที่บังคับใช้กับ <i>ทุกเส้น</i> (envelope · error · auth · pagination) จึงเขียนเป็น <code>/*</code></div>':''}
   <h2>1. งานที่เรียกเส้นนี้</h2>${a.tasks.map(taskPill).join(' ')||'<p class="empty">—</p>'}
   <h2>2. Request</h2><pre>${esc(JSON.stringify(a.request,null,2))}</pre>
@@ -824,6 +827,7 @@ def render(model: dict) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <title>Worklist — ระบบประกันรายได้ SGI</title>
 <style>{CSS}</style>
 </head>
@@ -854,7 +858,7 @@ def main() -> None:
     _ctr = sum(1 for a in model["apis"].values() if a.get("kind") == "contract")
     _new = sum(1 for t in model["tables"].values() if not t.get("existing"))
     _old = len(model["tables"]) - _new
-    print(f"worklist.html · งาน {len(model['tasks'])} หัวข้อ (LLDD 40 ฉบับ) · "
+    print(f"worklist.html · งาน {len(model['tasks'])} หัวข้อ (LLDD {len(model['tasks']) + 3} ฉบับ) · "
           f"API {_own} ของ SGI + {_ext} ระบบเดิม + {_ctr} pseudo · "
           f"ตาราง {_new} SGI + {_old} ระบบเดิม · {out.stat().st_size//1024} KB")
 

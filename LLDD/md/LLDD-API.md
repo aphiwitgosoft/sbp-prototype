@@ -11,7 +11,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Item | Detail |
 | --- | --- |
 | API base | /api/v1 |
-| Endpoint count | 29 endpoints, 6 groups |
+| Endpoint count | 28 endpoints, 6 groups |
 | Detailed implementation docs | LLDD-BE-API-Common-Contracts, LLDD-BE-API-Document-List-Search, LLDD-BE-API-Document-Create-Update, LLDD-BE-API-Document-Detail-Aggregate, LLDD-BE-API-Document-Workflow-Actions, LLDD-BE-API-Workflow-Instances, LLDD-BE-API-Attachment-Sales-Timeline, LLDD-BE-API-Lookup, LLDD-BE-API-Report-and-Master-Data |
 | Out of scope | Login/Auth implementation ของ platform, SAP/SR process ภายนอก, หน้าจอข้อมูลผิดปกติที่ถูกตัดออกจากขอบเขตแล้ว |
 
@@ -44,7 +44,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Master Data | 8 | /api/v1/sgi/master/competitors, /api/v1/sgi/master/competitors, /api/v1/sgi/master/competitors/{code}, /api/v1/sgi/master/competitors/{code} ... | K2 · SRS 3.1.9 |
 | รายงาน | 2 | /api/v1/sgi/report/status-summary, /api/v1/sgi/report/status-summary/export | K2 · SRS 3.1.7 |
 | Workflow ภายใน | 3 | /api/v1/sgi/workflow/instances, /api/v1/sgi/workflow/instances/{id}, /api/v1/sgi/workflow/summary | K2 3.1.4 + FGI/FCS Job 8b |
-| Interface (tracking / ACK) | 3 | /api/v1/sgi/interface/tracking, /api/v1/sgi/interface/sta/ack, /api/v1/sgi/interface/pending-ack | FGI/FCS · tracking / watchdog |
+| Interface (tracking) | 2 | /api/v1/sgi/interface/tracking, /api/v1/sgi/interface/pending-ack | FGI/FCS · tracking / watchdog |
 
 ## 5. Request Lifecycle
 
@@ -72,7 +72,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | 6 | POST | /api/v1/sgi/document/{docNo}/actions | ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · วงเงิน เกณฑ์เดียว 100,000 (SDD GI 24/02/2026) |
 | 7 | GET | /api/v1/sgi/document/{docNo}/timeline | ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร) |
 | 8 | POST | /api/v1/sgi/document/{docNo}/attachments | แนบไฟล์เข้าเอกสาร — จำกัด 5MB ต่อไฟล์ตาม SRS |
-| 9 | GET | /api/v1/sgi/document/{docNo}/attachments/{attachId}/download | ดาวน์โหลดไฟล์แนบผ่าน BE stream โดยตรวจสิทธิ์เอกสารและ scanStatus=CLEAN ก่อนส่ง binary |
+| 9 | GET | /api/v1/sgi/document/{docNo}/attachments/{attachId}/download | ดาวน์โหลดไฟล์แนบผ่าน BE stream — ตรวจสิทธิ์เอกสาร แล้วตัดสินตามนโยบายเดียว: CLEAN ได้เสมอ · BLOCKED/FAILED คืน 422 FILE_SCAN_BLOCKED · PENDING ขึ้นกับสวิตช์ SGI_ALLOW_PENDING_DOWNLOAD ใน mas_param (ยังไม่มีตัวสแกนในระบบ — รอ security sign-off) |
 | 10 | GET | /api/v1/sgi/document/{docNo}/attachments/download-all | ดาวน์โหลดไฟล์แนบทั้งหมดของเอกสารเป็นไฟล์ .zip — ปุ่ม "ดาวน์โหลดทั้งหมด" ระดับการ์ด (เทียบเท่าปุ่ม Download ของ K2 เดิม) |
 | 11 | GET | /api/v1/sgi/document/{docNo}/sales | ข้อมูลยอดขายเพิ่มเติมของเอกสาร (4 หน้าต่าง × 15 วัน) — ปุ่ม "ข้อมูลยอดขายเพิ่มเติม" ในหน้าเอกสาร k2-document.html |
 
@@ -146,6 +146,7 @@ Query: ?page=1&size=20&q=00788
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=sectionFromJwt · $2=sgiVersionId · $3=size · $4=offset
 -- ⚠️ ไม่มีตาราง workflow_tasks ของ SGI แล้ว — กล่องงานอ่านจาก engine กลาง (schema sps_store)
 --    getPendingFlowByUser({userData}) 
 -- ✅ DP-1 ปิดแล้ว: reference_id = sgi_compensation_documents.id (surrogate · varchar(255)) · ⚠️ DP-2 workflow_transaction ไม่มี PK/index (19,283 แถว → seq-scan) ห้ามแก้ schema ของ library
@@ -171,9 +172,9 @@ JOIN sps_store.workflow_transaction w ON w.transaction_id = a.transaction_id
 JOIN sgi_compensation_documents d ON d.id::text = w.reference_id   -- DP-1 = surrogate id   -- DP-1
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
-WHERE a.state_id = :sectionFromJwt AND a.state_id = w.current_state_id AND w.version_id = :sgiVersionId
+WHERE a.state_id = $1 /* sectionFromJwt */ AND a.state_id = w.current_state_id AND w.version_id = $2 /* sgiVersionId */
 ORDER BY w.update_date
-LIMIT :size OFFSET :offset;
+LIMIT $3 /* size */ OFFSET $4 /* offset */;
 ```
 
 #### 6.1.2 GET /api/v1/sgi/document
@@ -228,6 +229,7 @@ items[] ใช้ field ชุดเดียวกับ §6.2.1 GET /api/v1/sg
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=statusDone · $2=year · $3=impactedStoreCode · $4=status · $5=size · $6=offset
 -- ต้องระบุ :year เสมอ ไม่งั้นตอบ 400 (กติกา SRS)
 SELECT d.round_no AS "roundNo",
        d.doc_no AS "docNo",
@@ -239,17 +241,17 @@ SELECT d.round_no AS "roundNo",
        d.status_code AS "statusCode",
        d.current_section_code AS "currentSection",
        -- workflow_transaction ไม่มี created_date (มีแค่ update_date) — วันที่เริ่มงานเอาจาก workflow_history
-       CASE WHEN w.current_status_id <> :statusDone THEN GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) ELSE 0 END AS "daysPending",
+       CASE WHEN w.current_status_id <> $1 /* statusDone */ THEN GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) ELSE 0 END AS "daysPending",
        ss.total_working_days AS "salesDataDays"
 FROM sgi_compensation_documents d
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
 LEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.id::text   -- DP-1 = surrogate id (reference_id เป็น varchar(255)) AND w.version_id = :sgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)
-WHERE d.year = :year
-  AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)
-  AND (:status            IS NULL OR d.status_code = :status)
+WHERE d.year = $2 /* year */
+  AND ($3 /* impactedStoreCode */ IS NULL OR d.impacted_store_code = $3 /* impactedStoreCode */)
+  AND ($4 /* status */            IS NULL OR d.status_code = $4 /* status */)
 ORDER BY d.doc_no DESC
-LIMIT :size OFFSET :offset;
+LIMIT $5 /* size */ OFFSET $6 /* offset */;
 ```
 
 #### 6.1.3 GET /api/v1/sgi/document/{docNo}
@@ -268,7 +270,7 @@ LIMIT :size OFFSET :offset;
 | Step | Flow |
 | --- | --- |
 | 1 | โหลดเอกสาร + ร้านใหม่ + คู่แข่ง + ปัจจัย + ไฟล์แนบ + สรุปชดเชย ในคำขอเดียว |
-| 2 | คำนวณ compensateAmount ต่อร้านเปิดใหม่ = ยอดชดเชยร้านถูกกระทบ × %ชดเชย (ปัดเศษที่ BE · ผลรวมต้องเท่ากับยอดชดเชยพอดี) |
+| 2 | คำนวณ compensationAmount ต่อร้านเปิดใหม่ = ยอดชดเชยร้านถูกกระทบ × %ชดเชย (ปัดเศษที่ BE · ผลรวมต้องเท่ากับยอดชดเชยพอดี) |
 | 3 | คำนวณ permissions: ส่วนไหนแก้ได้ตาม role + current_section_code (data-editrole เดิม) |
 | 4 | FE ใช้ธงนี้แสดงป้าย "อ่านอย่างเดียว" ต่อส่วน + ซ่อนคอลัมน์ checkbox/Action ของตารางที่แก้ไม่ได้ |
 
@@ -293,17 +295,17 @@ LIMIT :size OFFSET :offset;
   "currentSection": "06",
   "impactedStore": { "storeCode": "00788", ... },
   // newStores[] = แหล่งข้อมูลของตารางร้านเปิดใหม่ (กราฟสัดส่วนเงินชดเชยถอดออกแล้ว 2026-08-06)
-  // compensateAmount คำนวณที่ BE (= compensation.amount x compensatePercent) — FE ไม่คูณเอง
+  // compensationAmount คำนวณที่ BE (= compensation.amount x compensatePercent) — FE ไม่คูณเอง
   "newStores": [
     { "newStoreCode": "00990", "storeName": "สาขารัตนาธิเบศร์ 2", "distanceKm": 0.85,
-      "compensatePercent": 60.0, "compensateAmount": 28920.00 },
+      "compensatePercent": 60.0, "compensationAmount": 28920.00 },
     { "newStoreCode": "01180", "storeName": "สาขาซอยวัดกู้", "distanceKm": 1.40,
-      "compensatePercent": 40.0, "compensateAmount": 19280.00 }
+      "compensatePercent": 40.0, "compensationAmount": 19280.00 }
   ],
   "competitors": [ ... ],
   "factors": [ ... ],
   "compensation": { "amount": 48200.00, "salesDropPercent": 12.45 },
-  "permissions": { "canEditSections": ["competitor","factor"], "canAction": true }
+  "permissions": { "editableSections": ["competitor","factor"], "canAction": true }
 }
 ```
 
@@ -315,13 +317,14 @@ LIMIT :size OFFSET :offset;
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=docNo
 -- โหลดเอกสารฉบับเต็ม 12 ส่วนในคำขอเดียว
-SELECT * FROM sgi_compensation_documents      WHERE doc_no = :docNo;
-SELECT * FROM sgi_document_new_stores          WHERE doc_no = :docNo;
-SELECT * FROM sgi_document_competitors         WHERE doc_no = :docNo;
-SELECT * FROM sgi_document_external_factors    WHERE doc_no = :docNo;
-SELECT * FROM sgi_document_attachments         WHERE doc_no = :docNo;
-SELECT * FROM sgi_consideration_logs           WHERE doc_no = :docNo ORDER BY action_datetime;
+SELECT * FROM sgi_compensation_documents      WHERE doc_no = $1 /* docNo */;
+SELECT * FROM sgi_document_new_stores          WHERE doc_no = $1 /* docNo */;
+SELECT * FROM sgi_document_competitors         WHERE doc_no = $1 /* docNo */;
+SELECT * FROM sgi_document_external_factors    WHERE doc_no = $1 /* docNo */;
+SELECT * FROM sgi_document_attachments         WHERE doc_no = $1 /* docNo */ AND deleted_flag = 'N';
+SELECT * FROM sgi_consideration_logs           WHERE doc_no = $1 /* docNo */ ORDER BY action_datetime;
 ```
 
 #### 6.1.4 POST /api/v1/sgi/document
@@ -378,13 +381,14 @@ SELECT * FROM sgi_consideration_logs           WHERE doc_no = :docNo ORDER BY ac
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=impactProcessId · $2=statusDone · $3=docNo · $4=year · $5=runningNo · $6=storeCode · $7=month · $8=statusInit · $9=section06 · $10=empId
 -- กันซ้ำเฉพาะเอกสาร active (SDD GI): เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้
 SELECT 1 FROM sgi_compensation_documents
-WHERE impact_process_id = :impactProcessId AND status_code <> :statusDone;
+WHERE impact_process_id = $1 /* impactProcessId */ AND status_code <> $2 /* statusDone */;
 
 -- ออกเลขที่ YYYY/xxxxx (running ต่อปี) แล้วสร้างเอกสาร + เปิด workflow งานแรก (Section 06)
 INSERT INTO sgi_compensation_documents (doc_no, year, running_no, impact_process_id, impacted_store_code, impact_month, status_code, current_section_code, created_by)
-VALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :statusInit, :section06, :empId);
+VALUES ($3 /* docNo */, $4 /* year */, $5 /* runningNo */, $1 /* impactProcessId */, $6 /* storeCode */, $7 /* month */, $8 /* statusInit */, $9 /* section06 */, $10 /* empId */);
 -- ⚠️ ไม่ INSERT ตาราง workflow เอง — เรียก @srm/glb-workflow (schema sps_store) ให้ library เขียนให้
 --    initialize(versionId=:sgiVersionId, referenceId=:referenceId, userId=:empId)
 --    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
@@ -410,7 +414,7 @@ VALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :status
 | Step | Flow |
 | --- | --- |
 | 1 | ตรวจว่า role + section ปัจจุบันมีสิทธิ์แก้ส่วนที่ส่งมา (เช่น Section 01 แก้คู่แข่ง/ปัจจัยได้) |
-| 2 | validate %ชดเชยของร้านใหม่รวมกันต้องเท่ากับ 100% แล้วคำนวณ compensateAmount ใหม่ทุกแถว |
+| 2 | validate %ชดเชยของร้านใหม่รวมกันต้องเท่ากับ 100% แล้วคำนวณ compensationAmount ใหม่ทุกแถว |
 | 3 | validate require field ของแถวที่ผู้ใช้เพิ่มเอง: คู่แข่ง = รหัสแบรนด์จาก master /sgi/master/competitors (01–11) + วันที่เปิดกระทบ · ปัจจัย = รหัสจาก master /sgi/master/factors + วันที่เริ่มต้น (วันที่สิ้นสุดถ้ามีต้อง ≥ วันที่เริ่มต้น) |
 | 4 | ส่งอาร์เรย์มา = ชุดข้อมูลเต็มของส่วนนั้น — รายการที่หายไปจากอาร์เรย์ถือว่าถูกลบ (รองรับปุ่ม "ลบที่เลือก") · ฝั่ง FE เรียกเส้นนี้ทันทีเมื่อกดบันทึกใน modal หรือยืนยันลบ ไม่มีปุ่มบันทึกระดับการ์ดแล้ว |
 | 5 | บันทึกและคืนเอกสารล่าสุด |
@@ -450,18 +454,29 @@ VALUES (:docNo, :year, :runningNo, :impactProcessId, :storeCode, :month, :status
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=now · $2=empId · $3=docNo · $4=versionNo · $5=pct · $6=amount · $7=newStoreCode · $8=date · $9=competitorId · $10=from · $11=to · $12=factorId · $13=competitorCode · $14=impactDate · $15=factorCode · $16=dateFrom · $17=dateTo · $18=keepCompetitorIds · $19=keepFactorIds
 -- ตรวจสิทธิ์ตาม role + current_section ก่อน · %ชดเชยร้านใหม่รวมกันต้อง = 100% (ไม่งั้น 422)
 -- optimistic concurrency: mutation ทุกชุดต้องส่ง versionNo ล่าสุด; ไม่ตรงคืน 409 STALE_VERSION
-UPDATE sgi_compensation_documents SET version_no = version_no + 1, updated_at = :now, updated_by = :empId
-WHERE doc_no = :docNo AND version_no = :versionNo;
-UPDATE sgi_document_new_stores       SET compensate_percent = :pct, compensate_amount = :amount
-WHERE new_store_code = :newStoreCode AND doc_no = :docNo;
-UPDATE sgi_document_competitors      SET impact_date = :date         WHERE id = :competitorId AND doc_no = :docNo;
-UPDATE sgi_document_external_factors SET date_from = :from, date_to = :to WHERE id = :factorId AND doc_no = :docNo;
+UPDATE sgi_compensation_documents SET version_no = version_no + 1, updated_at = $1 /* now */, updated_by = $2 /* empId */
+WHERE doc_no = $3 /* docNo */ AND version_no = $4 /* versionNo */;
+UPDATE sgi_document_new_stores       SET compensate_percent = $5 /* pct */, compensation_amount = $6 /* amount */
+WHERE new_store_code = $7 /* newStoreCode */ AND doc_no = $3 /* docNo */;
+UPDATE sgi_document_competitors      SET impact_date = $8 /* date */         WHERE id = $9 /* competitorId */ AND doc_no = $3 /* docNo */;
+UPDATE sgi_document_external_factors SET date_from = $10 /* from */, date_to = $11 /* to */ WHERE id = $12 /* factorId */ AND doc_no = $3 /* docNo */;
+
+-- แถวที่ผู้ใช้ "เพิ่มเอง" (element ที่ไม่มี id) ต้อง INSERT ไม่ใช่ UPDATE — ของเดิมมีแต่ UPDATE/DELETE
+--   competitorCode ต้องเป็นรหัสแบรนด์ใน master 01-11 เท่านั้น (ไม่ใช่ free text) · source_system = USER
+INSERT INTO sgi_document_competitors (doc_no, competitor_code, impact_date, source_system)
+VALUES ($3 /* docNo */, $13 /* competitorCode */, $14 /* impactDate */, 'USER')
+ON CONFLICT ON CONSTRAINT uq_doc_competitor DO UPDATE SET impact_date = EXCLUDED.impact_date;
+
+INSERT INTO sgi_document_external_factors (doc_no, factor_code, date_from, date_to)
+VALUES ($3 /* docNo */, $15 /* factorCode */, $16 /* dateFrom */, $17 /* dateTo */)
+ON CONFLICT ON CONSTRAINT uq_doc_factor DO UPDATE SET date_to = EXCLUDED.date_to;
 
 -- ลบรายการที่ผู้ใช้เอาออก (ปุ่ม "ลบที่เลือก" ส่งอาร์เรย์ชุดใหม่มาแทนทั้งชุด)
-DELETE FROM sgi_document_competitors      WHERE doc_no = :docNo AND id NOT IN (:keepCompetitorIds);
-DELETE FROM sgi_document_external_factors WHERE doc_no = :docNo AND id NOT IN (:keepFactorIds);
+DELETE FROM sgi_document_competitors      WHERE doc_no = $3 /* docNo */ AND id NOT IN ($18 /* keepCompetitorIds */);
+DELETE FROM sgi_document_external_factors WHERE doc_no = $3 /* docNo */ AND id NOT IN ($19 /* keepFactorIds */);
 ```
 
 #### 6.1.6 POST /api/v1/sgi/document/{docNo}/actions
@@ -481,7 +496,7 @@ DELETE FROM sgi_document_external_factors WHERE doc_no = :docNo AND id NOT IN (:
 | --- | --- |
 | 1 | ตรวจว่าผู้ใช้เป็น approver ของ state ปัจจุบันใน @srm/glb-workflow schema sps_store (getTransaction / getPermissionEvents ) |
 | 2 | validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว |
-| 3 | คำนวณขั้นถัดไปตามตารางเส้นทาง (ตารางเส้นทาง workflow · SDD GI): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 01/02 เห็นควรไม่ชดเชย → เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น) · 02 ชดเชย < 100,000 → เสร็จสิ้น (จบที่ GM) · ≥ 100,000 → 03 → จบ  · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ |
+| 3 | คำนวณขั้นถัดไปตามตารางเส้นทาง (ตารางเส้นทาง workflow · SDD GI): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 01/02/03 เห็นควรไม่ชดเชย → เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น · ขั้น 03 ตามมติ 2026-09-02) · 02 ชดเชย < 100,000 → เสร็จสิ้น (จบที่ GM) · ≥ 100,000 → 03 → จบ  · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ |
 | 4 | insert sgi_consideration_logs + ปิด task เดิม เปิด task ใหม่ |
 | 5 | auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48): กรณี 06 เห็นควรไม่ชดเชย → ปิดเอกสารและไม่แสดงในหน้ารอดำเนินการของ 06 ในเดือนนั้น แล้วตั้งงานรอบเดือนถัดไปให้ผู้ดำเนินการคนเดิม · เคสต่อเนื่อง → ส่งงานให้เจ้าหน้าที่ SBP DSA คนเดิมอัตโนมัติ · resolve จาก sgi_consideration_logs ของเอกสารรอบก่อนของร้านเดียวกัน (section_code เดียวกัน) แล้วผูกด้วย addPreApprover() — ไม่มีคอลัมน์ assignee ในตารางของ SGI · fallback เป็น group ของ auth-backend เมื่อรอบก่อนไม่เคยผ่านขั้นนั้นหรือพนักงานลาออก |
 | 6 | SGI เรียก sendEmail() แจ้งผู้อนุมัติถัดไป ด้วยเลข template จาก workflow_route.email_id (นอก transaction) |
@@ -526,6 +541,7 @@ DELETE FROM sgi_document_external_factors WHERE doc_no = :docNo AND id NOT IN (:
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=docNo · $2=curSection · $3=empId · $4=result · $5=comment · $6=now · $7=nextStatus · $8=nextSection · $9=versionNo · $10=versionId · $11=prevStateId · $12=event · $13=nextStateId · $14=transactionId · $15=emailId · $16=since
 -- ตรวจเป็นเจ้าของงานขั้นปัจจุบัน + ต้องเลือก result แล้ว (ไม่งั้น 422)
 -- result รับ 7-enum verbatim เท่านั้น: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI) / ส่งเจ้าหน้าที่ SBP DSA / คำนวณเงินชดเชยเรียบร้อย (Section 08 · เพิ่ม 2026-09-01) / ส่งกลับ
 -- มติ 2026-09-01: Section 08 คืน nextSection = 06 (เดิม 01) · ส่งกลับทุก Section คืน 06 (เดิม 02→01 · 03→02)
@@ -535,11 +551,11 @@ SQL Reference
 -- referenceId = sgi_compensation_documents.id (surrogate · DP-1 ปิดแล้ว 2026-08-17)
 
 INSERT INTO sgi_consideration_logs (doc_no, section_code, consider_by, result, detail, action_datetime)
-VALUES (:docNo, :curSection, :empId, :result, :comment, :now);
+VALUES ($1 /* docNo */, $2 /* curSection */, $3 /* empId */, $4 /* result */, $5 /* comment */, $6 /* now */);
 
 -- คำนวณขั้นถัดไป (วงเงิน เกณฑ์เดียว 100,000 · SDD GI) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock
-UPDATE sgi_compensation_documents SET status_code = :nextStatus, current_section_code = :nextSection, version_no = version_no + 1, updated_at = :now, updated_by = :empId
-WHERE doc_no = :docNo AND version_no = :versionNo;
+UPDATE sgi_compensation_documents SET status_code = $7 /* nextStatus */, current_section_code = $8 /* nextSection */, version_no = version_no + 1, updated_at = $6 /* now */, updated_by = $3 /* empId */
+WHERE doc_no = $1 /* docNo */ AND version_no = $9 /* versionNo */;
 -- งานขั้นถัดไปเปิดโดย engine (addPreApprover) ไม่ใช่ INSERT ของ SGI
 
 -- ✅ ปิด DP-5 (แก้มติ 2026-08-14): workflow ให้ "เลข template" · SGI เรียก lib ส่งเอง (ไม่มีตาราง status_email_rules)
@@ -549,21 +565,21 @@ WHERE doc_no = :docNo AND version_no = :versionNo;
 --    :prevStateId เก็บจาก getTransaction() "ก่อน" เรียก eventWorkflow · :nextStateId อ่านจาก getTransaction() "หลัง" สำเร็จ
 SELECT r.email_id
 FROM sps_store.workflow_route r
-WHERE r.version_id = :versionId
-  AND r.from_state_id = :prevStateId
-  AND r.event = :event
-  AND r.to_state_id = :nextStateId;
+WHERE r.version_id = $10 /* versionId */
+  AND r.from_state_id = $11 /* prevStateId */
+  AND r.event = $12 /* event */
+  AND r.to_state_id = $13 /* nextStateId */;
 
 -- 2) หาอีเมลผู้อนุมัติลำดับถัดไปที่ engine resolve ให้แล้ว
 SELECT string_agg(DISTINCT u.email, ',') AS mail_to
 FROM sps_store.workflow_approver a
 JOIN sps_store.business_user u ON u.user_id = a.current_approver
-WHERE a.transaction_id = :transactionId AND a.state_id = :nextStateId AND u.email IS NOT NULL;
+WHERE a.transaction_id = $14 /* transactionId */ AND a.state_id = $13 /* nextStateId */ AND u.email IS NOT NULL;
 
 -- 2b) ผู้รับ CC — ระบบเดิมมีกลไกอยู่แล้ว (fml_email_account.template_id)
 SELECT string_agg(email, ',') AS mail_cc
 FROM fml_email_account
-WHERE template_id = :emailId;
+WHERE template_id = $15 /* emailId */;
 
 -- 3) เรียก lib "นอก transaction" (อีเมลล้มต้องไม่ rollback การอนุมัติ · lib ไม่ retry ให้)
 --    emailService.sendEmail({ emailId, mailTo, mailCc, param:{docNo, storeName, amount}, userId })
@@ -572,7 +588,7 @@ WHERE template_id = :emailId;
 -- 4) รายงานตามเก็บเมลที่ส่งไม่สำเร็จ (⚠️ คอลัมน์จริงคือ send_by ไม่ใช่ sent_by)
 SELECT email_sent_id, email_id, mail_to, mail_cc, is_sent, error, sent_date, send_by
 FROM email_sent
-WHERE is_sent = 'N' AND sent_date >= :since
+WHERE is_sent = 'N' AND sent_date >= $16 /* since */
 ORDER BY sent_date DESC;
 ```
 
@@ -626,12 +642,13 @@ ORDER BY sent_date DESC;
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=docNo
 -- ✅ DP-7 ปิดแล้ว 2026-08-24: sgi_consideration_logs เป็น timeline เต็มของ SGI (ตารางของเราเอง)
 --    engine เก็บ timeline แต่ไม่มีรหัสผลพิจารณา/ไฟล์แนบ จึงไม่ join getHistory() (DP-1 กำหนดคีย์ที่ใช้ค้น)
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT section_code, consider_by, result, detail, action_datetime
 FROM sgi_consideration_logs
-WHERE doc_no = :docNo
+WHERE doc_no = $1 /* docNo */
 ORDER BY action_datetime;
 ```
 
@@ -672,26 +689,30 @@ multipart/form-data
 
 ```json
 201 Created
-{ "attachId": 771, "fileName": "หนังสือแจ้งผล.pdf", "scanStatus": "CLEAN" }
+{ "attachId": 771, "fileName": "หนังสือแจ้งผล.pdf", "scanStatus": "PENDING" }
 ```
 
 | Error / Condition |
 | --- |
-| 413 — ไฟล์เกิน 5MB |
-| 415 — ชนิดไฟล์ไม่อนุญาต |
-| 422 — ไฟล์แนบไม่ผ่านการตรวจสอบความปลอดภัย |
+| 413 FILE_TOO_LARGE — ไฟล์เกิน 5MB |
+| 415 FILE_TYPE_UNSUPPORTED — ชนิดไฟล์ไม่อยู่ใน allowlist |
+| 422 ATTACHMENT_FILE_REQUIRED — กดแนบเอกสารโดยยังไม่เลือกไฟล์ |
+| 422 FILE_SCAN_BLOCKED — scan_status เป็น BLOCKED/FAILED |
 
 SQL Reference
 
 ```sql
--- ตรวจขนาด ≤ 5MB, sanitize filename, sha256, AV scan=CLEAN ก่อน commit metadata
+-- bind ตามลำดับ: $1=docNo · $2=sectionCode · $3=fileName · $4=mimeType · $5=fileSize · $6=storageProvider · $7=bucket · $8=objectKey · $9=sha256 · $10=scanClean · $11=empId · $12=now
+-- ตรวจขนาด ≤ 5MB, sanitize filename, sha256 ก่อน commit metadata
+-- ⚠️ scan_status เริ่มที่ 'PENDING' เสมอ — ระบบยังไม่มีตัวสแกน ให้ตัวสแกนอัปเดตเป็น CLEAN/BLOCKED ทีหลัง
+--    (เขียน CLEAN ตอน insert = ประกาศว่าสแกนผ่านทั้งที่ไม่เคยสแกน)
 INSERT INTO sgi_document_attachments (doc_no, section_code, file_name, mime_type, file_size, storage_provider, bucket, object_key, sha256, scan_status, uploaded_by, uploaded_at)
-VALUES (:docNo, :sectionCode, :fileName, :mimeType, :fileSize, :storageProvider, :bucket, :objectKey, :sha256, :scanClean, :empId, :now);
+VALUES ($1 /* docNo */, $2 /* sectionCode */, $3 /* fileName */, $4 /* mimeType */, $5 /* fileSize */, $6 /* storageProvider */, $7 /* bucket */, $8 /* objectKey */, $9 /* sha256 */, $10 /* scanClean */, $11 /* empId */, $12 /* now */);
 ```
 
 #### 6.1.9 GET /api/v1/sgi/document/{docNo}/attachments/{attachId}/download
 
-ดาวน์โหลดไฟล์แนบผ่าน BE stream โดยตรวจสิทธิ์เอกสารและ scanStatus=CLEAN ก่อนส่ง binary
+ดาวน์โหลดไฟล์แนบผ่าน BE stream — ตรวจสิทธิ์เอกสาร แล้วตัดสินตามนโยบายเดียว: CLEAN ได้เสมอ · BLOCKED/FAILED คืน 422 FILE_SCAN_BLOCKED · PENDING ขึ้นกับสวิตช์ SGI_ALLOW_PENDING_DOWNLOAD ใน mas_param (ยังไม่มีตัวสแกนในระบบ — รอ security sign-off)
 
 | Item | Detail |
 | --- | --- |
@@ -705,7 +726,7 @@ VALUES (:docNo, :sectionCode, :fileName, :mimeType, :fileSize, :storageProvider,
 | Step | Flow |
 | --- | --- |
 | 1 | ตรวจสิทธิ์อ่านเอกสารและ attachment ต้องผูกกับ docNo |
-| 2 | ตรวจ scan_status = CLEAN |
+| 2 | ตัดสินตามนโยบายเดียว — CLEAN ผ่าน · BLOCKED/FAILED คืน 422 · PENDING ขึ้นกับ SGI_ALLOW_PENDING_DOWNLOAD |
 | 3 | อ่าน object storage ผ่าน bucket/object_key |
 | 4 | stream ผ่าน BE พร้อม Content-Disposition; ไม่ expose permanent bucket URL |
 
@@ -737,10 +758,15 @@ Content-Disposition: attachment; filename="หนังสือแจ้งผ�
 SQL Reference
 
 ```sql
--- ตรวจสิทธิ์อ่านเอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน stream ผ่าน BE
+-- bind ตามลำดับ: $1=docNo · $2=attachId
+-- ตรวจสิทธิ์อ่านเอกสาร + attachment ต้องเป็นของ docNo แล้วตัดสิน scan_status ตามนโยบายเดียว
+--    สวิตช์ SGI_ALLOW_PENDING_DOWNLOAD ใน mas_param (Y/N) ส่งเข้ามาเป็นพารามิเตอร์ boolean
+--    CLEAN ได้เสมอ · BLOCKED/FAILED ไม่ได้เสมอ (422 FILE_SCAN_BLOCKED) · PENDING ขึ้นกับสวิตช์
+--    รายละเอียดเต็ม: LLDD-BE-Integration-SBP-Platform หัวข้อ 5
 SELECT attach_id, bucket, object_key, file_name, mime_type, scan_status
 FROM sgi_document_attachments
-WHERE doc_no = :docNo AND attach_id = :attachId;
+WHERE doc_no = $1 /* docNo */ AND attach_id = $2 /* attachId */
+  AND deleted_flag = 'N';   -- ไฟล์ที่ถูกลบแบบ soft delete ห้ามดาวน์โหลด
 ```
 
 #### 6.1.10 GET /api/v1/sgi/document/{docNo}/attachments/download-all
@@ -786,12 +812,17 @@ WHERE doc_no = :docNo AND attach_id = :attachId;
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=docNo · $2=allowPendingDownload
 -- รวมไฟล์แนบทั้งหมดเป็น .zip — ตรวจสิทธิ์อ่านเอกสารก่อน แล้วรวมเฉพาะไฟล์ที่ scan ผ่าน
--- ⚠️ นโยบาย AV ยังไม่เคาะ (ดู LLDD-BE-API-Attachment-Sales-Timeline 5.1) — ถ้ายังไม่มีตัวสแกน การบังคับ CLEAN จะทำให้ดาวน์โหลดไม่ได้เลย
+-- ⚠️ นโยบาย AV เคาะแล้ว 2026-09-07 (ดู LLDD-BE-Integration-SBP-Platform หัวข้อ 5) — ยังไม่มีตัวสแกนในระบบ จึงใช้สวิตช์ SGI_ALLOW_PENDING_DOWNLOAD คุมว่าจะให้ PENDING ดาวน์โหลดได้หรือไม่
 -- ไม่มีไฟล์ที่ดาวน์โหลดได้เลย -> 404 (ไม่คืน zip เปล่า)
 SELECT attach_id, bucket, object_key, file_name, mime_type, file_size
 FROM sgi_document_attachments
-WHERE doc_no = :docNo AND scan_status = 'CLEAN'
+WHERE doc_no = $1 /* docNo */
+  AND deleted_flag = 'N'                                    -- ไฟล์ที่ถูกลบแบบ soft delete ห้ามรวมลง zip
+  AND (scan_status = 'CLEAN'
+       OR (scan_status = 'PENDING' AND $2 /* allowPendingDownload */))   -- สวิตช์ SGI_ALLOW_PENDING_DOWNLOAD
+  AND scan_status NOT IN ('BLOCKED', 'FAILED')                    -- ปิดตายเสมอ ไม่ขึ้นกับสวิตช์
 ORDER BY section_code, attach_id;
 ```
 
@@ -847,15 +878,16 @@ ORDER BY section_code, attach_id;
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=docNo · $2=salesSummaryId
 -- หา impact_process_id ของเอกสาร แล้วอ่านยอดขาย 4 หน้าต่าง × 15 วัน
 SELECT ss.id AS sales_summary_id, ss.growth_rate_diff, ss.total_working_days
 FROM sgi_compensation_documents d
 JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
-WHERE d.doc_no = :docNo;
+WHERE d.doc_no = $1 /* docNo */;
 
 SELECT window_no, txn_date, sales_amount, sales_diff, is_outlier
 FROM sgi_sales_transactions
-WHERE sales_summary_id = :salesSummaryId
+WHERE sales_summary_id = $2 /* salesSummaryId */
 ORDER BY window_no, txn_date;
 ```
 
@@ -908,10 +940,11 @@ ORDER BY window_no, txn_date;
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=sgiVersionId
 -- ตาราง document_statuses ของ SGI ถูกตัดแล้ว — อ่านจาก workflow_status ของ engine กลาง
 SELECT status_id AS status_code, status_name, seq AS sort_order
 FROM sps_store.workflow_status
-WHERE version_id = :sgiVersionId
+WHERE version_id = $1 /* sgiVersionId */
 ORDER BY seq;
 ```
 
@@ -964,6 +997,7 @@ ORDER BY seq;
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=sgiVersionId
 -- ตาราง workflow_sections ของ SGI ถูกตัดแล้ว — อ่าน state จาก engine กลาง และวงเงินจาก common_code ของระบบเดิม
 -- (approve_limit_amount = SectionLimitCost ของ K2 เดิม · เกณฑ์เดียว 100,000 ตามมติ 2026-08-18 — เป็น data ไม่ hardcode · ขั้น 03 เป็น null = ไม่มีเพดาน)
 -- ⚠️ sps_store.workflow_state ไม่มีคอลัมน์ลำดับ (มีแค่ version_id · state_id · state_name · create_date)
@@ -974,7 +1008,7 @@ SELECT s.state_id AS section_code, s.state_name AS section_name,
 FROM sps_store.workflow_state s
 LEFT JOIN sps_store.workflow_route r ON r.version_id = s.version_id AND r.from_state_id = s.state_id
 LEFT JOIN common_code c ON c.code_type = 'SGI_APPROVE_LIMIT' AND c.code_value = s.state_id
-WHERE s.version_id = :sgiVersionId
+WHERE s.version_id = $1 /* sgiVersionId */
 GROUP BY s.state_id, s.state_name, c.other_value
 ORDER BY sort_order;
 ```
@@ -1035,10 +1069,11 @@ Query: ?q=lotus
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=q
 -- master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) · ระบบเดิมเก็บชื่อไทยและอังกฤษ
 SELECT competitor_code, name_th, name_en, remark, is_active
 FROM sgi_competitors
-WHERE (:q IS NULL OR name_th LIKE :q OR name_en LIKE :q)
+WHERE ($1 /* q */ IS NULL OR name_th LIKE $1 /* q */ OR name_en LIKE $1 /* q */)
 ORDER BY competitor_code;
 ```
 
@@ -1090,9 +1125,10 @@ ORDER BY competitor_code;
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=code · $2=nameTh · $3=nameEn · $4=remark
 -- competitor_code ห้ามซ้ำ (ไม่งั้น 409) · ชื่อไทยและอังกฤษบังคับทั้งคู่
 INSERT INTO sgi_competitors (competitor_code, name_th, name_en, remark, is_active)
-VALUES (:code, :nameTh, :nameEn, :remark, TRUE);
+VALUES ($1 /* code */, $2 /* nameTh */, $3 /* nameEn */, $4 /* remark */, TRUE);
 ```
 
 #### 6.3.3 PUT /api/v1/sgi/master/competitors/{code}
@@ -1138,11 +1174,12 @@ VALUES (:code, :nameTh, :nameEn, :remark, TRUE);
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=nameTh · $2=nameEn · $3=remark · $4=isActive · $5=code
 -- ห้ามแก้ competitor_code (เป็น PK และถูกอ้างจาก sgi_document_competitors)
 UPDATE sgi_competitors
-   SET name_th = :nameTh, name_en = :nameEn, remark = :remark, is_active = :isActive,
+   SET name_th = $1 /* nameTh */, name_en = $2 /* nameEn */, remark = $3 /* remark */, is_active = $4 /* isActive */,
        updated_at = CURRENT_TIMESTAMP
- WHERE competitor_code = :code;
+ WHERE competitor_code = $5 /* code */;
 ```
 
 #### 6.3.4 DELETE /api/v1/sgi/master/competitors/{code}
@@ -1188,10 +1225,11 @@ UPDATE sgi_competitors
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=code
 -- ตรวจไม่ถูกอ้างในเอกสารก่อนลบ (ไม่งั้น 409)
-SELECT 1 FROM sgi_document_competitors WHERE competitor_code = :code;
+SELECT 1 FROM sgi_document_competitors WHERE competitor_code = $1 /* code */;
 
-DELETE FROM sgi_competitors WHERE competitor_code = :code;
+DELETE FROM sgi_competitors WHERE competitor_code = $1 /* code */;
 ```
 
 #### 6.3.5 GET /api/v1/sgi/master/factors
@@ -1236,9 +1274,10 @@ Query: ?q=ถนน
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=q
 SELECT factor_code, factor_name, factor_remark
 FROM sgi_external_factors
-WHERE :q IS NULL OR factor_name LIKE :q
+WHERE $1 /* q */ IS NULL OR factor_name LIKE $1 /* q */
 ORDER BY factor_code;
 ```
 
@@ -1283,9 +1322,10 @@ ORDER BY factor_code;
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=factorCode · $2=factorName · $3=factorRemark
 -- factor_code ห้ามซ้ำ (ไม่งั้น 409)
 INSERT INTO sgi_external_factors (factor_code, factor_name, factor_remark)
-VALUES (:factorCode, :factorName, :factorRemark);
+VALUES ($1 /* factorCode */, $2 /* factorName */, $3 /* factorRemark */);
 ```
 
 #### 6.3.7 PUT /api/v1/sgi/master/factors/{code}
@@ -1331,9 +1371,10 @@ VALUES (:factorCode, :factorName, :factorRemark);
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=factorName · $2=factorRemark · $3=code
 -- ไม่มี audit/เหตุผลแล้ว (ยกเลิก audit_logs 2026-08-07)
-UPDATE sgi_external_factors SET factor_name = :factorName, factor_remark = :factorRemark
-WHERE factor_code = :code;
+UPDATE sgi_external_factors SET factor_name = $1 /* factorName */, factor_remark = $2 /* factorRemark */
+WHERE factor_code = $3 /* code */;
 ```
 
 #### 6.3.8 DELETE /api/v1/sgi/master/factors/{code}
@@ -1378,10 +1419,11 @@ WHERE factor_code = :code;
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=code
 -- ตรวจไม่ถูกอ้างในเอกสารก่อนลบ (ไม่งั้น 409)
-SELECT 1 FROM sgi_document_external_factors WHERE factor_code = :code;
+SELECT 1 FROM sgi_document_external_factors WHERE factor_code = $1 /* code */;
 
-DELETE FROM sgi_external_factors WHERE factor_code = :code;
+DELETE FROM sgi_external_factors WHERE factor_code = $1 /* code */;
 ```
 
 ### 6.4 รายงาน
@@ -1437,9 +1479,9 @@ Query: ?year=2026&status=เสร็จสิ้นดำเนินการ&
   "page": 1, "total": 212,
   "items": [{
     "impactedStoreCode": "00788", "impactedStoreName": "รัตนอุทิศ ซ.13", "impactedRegion": "RSU", "impactedStoreType": "B",
-    "impactMonth": "05/2026", "periodStatement": "07/06/2026",
+    "impactMonth": "2026-05", "periodStatement": "2026-06-07",
     "newStoreCode": "00990", "newStoreName": "เซเว่นฯ รัตนาธิเบศร์ 12", "newRegion": "RSU", "newStoreType": "A",
-    "compensateAmount": 48200.00, "round": 1, "createdDate": "12/06/2026", "docNo": "2026/00123"
+    "compensationAmount": 48200.00, "roundNo": 1, "createdDate": "2026-06-12", "docNo": "2026/00123"
   }]
 }
 ```
@@ -1453,6 +1495,7 @@ Query: ?year=2026&status=เสร็จสิ้นดำเนินการ&
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=year · $2=status · $3=impactedStoreCode · $4=newStoreCode · $5=psFrom · $6=psTo · $7=storeTypes · $8=regions · $9=result · $10=size · $11=offset
 -- 14 คอลัมน์ตาม SDD สไลด์ 60 ; ต้องระบุ :year และ :status เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว
 -- ⚠️ ตาราง stores ของ SGI ถูกตัด 2026-08-06 — ใช้ store ของระบบ SBP เดิม (sps_store 19,402 แถว): คีย์ store_id · ภาค zone_cd
 SELECT si.store_id   AS impacted_store_code, si.store_name   AS impacted_store_name,
@@ -1471,16 +1514,16 @@ LEFT JOIN LATERAL (
   SELECT result_category FROM sgi_consideration_logs
   WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1
 ) cl ON TRUE
-WHERE d.year = :year
-  AND d.status_code = :status                                   -- Drop-down บังคับ (SDD สไลด์ 60)
-  AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)
-  AND (:newStoreCode      IS NULL OR dns.new_store_code    = :newStoreCode)
-  AND (:psFrom IS NULL OR d.statement_date BETWEEN :psFrom AND :psTo)  -- ค.ศ. ; บังคับเมื่อ status = เสร็จสิ้นดำเนินการ
-  AND (:storeTypes IS NULL OR si.store_type  = ANY(:storeTypes))       -- 7 ค่า `A B C D E PTT บริษัท` (BranchTypeProfile.BranchTypeFGIName · ห้าม hardcode)
-  AND (:regions    IS NULL OR si.zone_cd = ANY(:regions))          -- 13 ภาค + ภาคใหม่อัตโนมัติ
-  AND (:result     IS NULL OR cl.result_category = :result)            -- APPROVE / REJECT (ไม่บังคับ)
+WHERE d.year = $1 /* year */
+  AND d.status_code = $2 /* status */                                   -- Drop-down บังคับ (SDD สไลด์ 60)
+  AND ($3 /* impactedStoreCode */ IS NULL OR d.impacted_store_code = $3 /* impactedStoreCode */)
+  AND ($4 /* newStoreCode */      IS NULL OR dns.new_store_code    = $4 /* newStoreCode */)
+  AND ($5 /* psFrom */ IS NULL OR d.statement_date BETWEEN $5 /* psFrom */ AND $6 /* psTo */)  -- ค.ศ. ; บังคับเมื่อ status = เสร็จสิ้นดำเนินการ
+  AND ($7 /* storeTypes */ IS NULL OR si.store_type  = ANY($7 /* storeTypes */))       -- 7 ค่า `A B C D E PTT บริษัท` (BranchTypeProfile.BranchTypeFGIName · ห้าม hardcode)
+  AND ($8 /* regions */    IS NULL OR si.zone_cd = ANY($8 /* regions */))          -- 13 ภาค + ภาคใหม่อัตโนมัติ
+  AND ($9 /* result */     IS NULL OR cl.result_category = $9 /* result */)            -- APPROVE / REJECT (ไม่บังคับ)
 ORDER BY d.doc_no
-LIMIT :size OFFSET :offset;
+LIMIT $10 /* size */ OFFSET $11 /* offset */;
 ```
 
 #### 6.4.2 GET /api/v1/sgi/report/status-summary/export
@@ -1575,7 +1618,7 @@ ORDER BY d.doc_no;
 {
   "impactProcessId": 88123,
   "sourceJobNo": "8b",
-  "requestId": "job8b-88123-256907"
+  "requestId": "job8b-88123-202607"
 }
 ```
 
@@ -1600,6 +1643,7 @@ ORDER BY d.doc_no;
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=impactProcessId · $2=flagN · $3=flagW · $4=gateDecision · $5=flagY
 -- Gen Flow Gate: workflow_generation_status มี source of truth ที่ sgi_fgi_impact_processes
 SELECT p.id AS impact_process_id, p.workflow_generation_status, ist.opt_dv_user_id,
        -- ⚠️ store ของระบบเดิมไม่มี juristic_name — นิติบุคคลอยู่คนละตาราง (fr_store / franchisee / juristic)
@@ -1617,11 +1661,11 @@ LEFT JOIN juristic ij  ON ij.juristic_id = ifs.juristic_id
 LEFT JOIN fr_store nfs ON nfs.store_id = ns.store_id
 LEFT JOIN juristic nj  ON nj.juristic_id = nfs.juristic_id
 LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = p.id
-WHERE p.id = :impactProcessId FOR UPDATE OF p;
+WHERE p.id = $1 /* impactProcessId */ FOR UPDATE OF p;
 
 -- fail ถาวร (branch/distance over/missing DV/same juristic/growth > -10) → N; เฉพาะ distance/juristic/growth NULL หรือ sales_status ยังไม่พร้อมจึงคง W
-UPDATE sgi_fgi_impact_processes SET workflow_generation_status = :flagN
-WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagN;
+UPDATE sgi_fgi_impact_processes SET workflow_generation_status = $2 /* flagN */
+WHERE id = $1 /* impactProcessId */ AND workflow_generation_status = $3 /* flagW */ AND $4 /* gateDecision */ = $2 /* flagN */;
 
 -- ผ่าน gate → ใช้เอกสารที่ Job 8 สร้างแล้ว เปิด instance + งานแรกผ่าน @srm/glb-workflow แล้วตั้ง Y ใน transaction เดียว
 -- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 20 ตารางแล้ว)
@@ -1631,9 +1675,9 @@ WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDec
 --    sps_store.workflow_transaction (ไม่มี PK/index · 19,283 แถว) → กันซ้ำที่ application (DP-2)
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT d.doc_no FROM sgi_compensation_documents d
-WHERE d.impact_process_id = :impactProcessId AND :gateDecision = :flagY;
-UPDATE sgi_fgi_impact_processes SET workflow_generation_status = :flagY
-WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagY;
+WHERE d.impact_process_id = $1 /* impactProcessId */ AND $4 /* gateDecision */ = $5 /* flagY */;
+UPDATE sgi_fgi_impact_processes SET workflow_generation_status = $5 /* flagY */
+WHERE id = $1 /* impactProcessId */ AND workflow_generation_status = $3 /* flagW */ AND $4 /* gateDecision */ = $5 /* flagY */;
 ```
 
 #### 6.5.2 GET /api/v1/sgi/workflow/instances/{id}
@@ -1685,16 +1729,17 @@ WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDec
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=id · $2=sgiVersionId · $3=referenceId
 -- ✅ DP-1 ปิดแล้ว: referenceId = sgi_compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ห้ามแก้ schema ของ library
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.transaction_id, w.reference_id, w.current_state_id, w.current_status_id, w.current_approver,
        a.state_id AS pending_state_id, a.approver_id, a.approve_seq
 FROM sps_store.workflow_transaction w
 LEFT JOIN sps_store.workflow_approver a ON a.transaction_id = w.transaction_id AND a.state_id = w.current_state_id
-WHERE w.transaction_id = :id AND w.version_id = :sgiVersionId;
+WHERE w.transaction_id = $1 /* id */ AND w.version_id = $2 /* sgiVersionId */;
 
 -- เอกสารที่ผูกกับ instance (join ด้วยsgi_compensation_documents.id (DP-1 ปิดแล้ว))
-SELECT doc_no, status_code, current_section_code FROM sgi_compensation_documents WHERE doc_no = :referenceId;
+SELECT doc_no, status_code, current_section_code FROM sgi_compensation_documents WHERE doc_no = $3 /* referenceId */;
 ```
 
 #### 6.5.3 GET /api/v1/sgi/workflow/summary
@@ -1744,6 +1789,7 @@ SELECT doc_no, status_code, current_section_code FROM sgi_compensation_documents
 SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=sgiVersionId · $2=statusDone
 SELECT workflow_generation_status, COUNT(*) AS cnt
 FROM sgi_fgi_impact_processes
 GROUP BY workflow_generation_status;
@@ -1752,17 +1798,16 @@ GROUP BY workflow_generation_status;
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.current_state_id AS section_code, COUNT(*) AS open_tasks
 FROM sps_store.workflow_transaction w
-WHERE w.version_id = :sgiVersionId AND w.current_status_id <> :statusDone
+WHERE w.version_id = $1 /* sgiVersionId */ AND w.current_status_id <> $2 /* statusDone */
 GROUP BY w.current_state_id;
 ```
 
-### 6.6 Interface (tracking / ACK)
+### 6.6 Interface (tracking)
 
 | Endpoint | Method | Path | Summary |
 | --- | --- | --- | --- |
 | 1 | GET | /api/v1/sgi/interface/tracking | สถานะการรับ–ส่งไฟล์กับระบบภายนอก (sgi_interface_transactions ใหม่ แทน FGI_CONFIRM_RECEIVE_DATA) |
-| 2 | POST | /api/v1/sgi/interface/sta/ack | Callback ให้ระบบ STA ยิงตอบรับ (ACK) ตรง — แทนการรออัปเดต return_code ฝั่งเดียว |
-| 3 | GET | /api/v1/sgi/interface/pending-ack | รายการ ACK ค้างเกิน 1 วัน (เกณฑ์เดียวกับ watchdog) — ใช้ทั้งหน้า dashboard และอีเมลเตือน |
+| 2 | GET | /api/v1/sgi/interface/pending-ack | รายการข้อความขาออกที่ broker ยังไม่ publisher confirm เกิน 1 วัน (เกณฑ์เดียวกับ watchdog Job 10 · มติ 2026-09-08 ข้อ 2.13) — ใช้ทั้งหน้า dashboard และอีเมลเตือน |
 
 #### 6.6.1 GET /api/v1/sgi/interface/tracking
 
@@ -1773,7 +1818,7 @@ GROUP BY w.current_state_id;
 | Global No. | 27 |
 | Method | GET |
 | Path | /api/v1/sgi/interface/tracking |
-| Group | Interface (tracking / ACK) |
+| Group | Interface (tracking) |
 | Access / Role | 01 Admin |
 | Requirement Tag | FGI/FCS |
 
@@ -1812,77 +1857,26 @@ Query: ?dataName=COMPENSATE_INIT_I&pending=true&page=1
 SQL Reference
 
 ```sql
-SELECT id AS tracking_id, data_name, doc_no, sent_at, return_code, acked_at AS receive_date
+-- bind ตามลำดับ: $1=dataName · $2=pending · $3=size · $4=offset
+-- pending = ยังไม่ได้ publisher confirm (มติ 2026-09-08 ข้อ 2.13) — ไม่ใช่ "รอ return_code จาก STA"
+SELECT id AS tracking_id, data_name, doc_no, sent_at, outbox_status, acked_at AS confirmed_date
 FROM sgi_interface_transactions
-WHERE (:dataName IS NULL OR data_name = :dataName)
-  AND (:pending  IS NULL OR return_code IS NULL)
+WHERE ($1 /* dataName */ IS NULL OR data_name = $1 /* dataName */)
+  AND ($2 /* pending */  IS NULL OR outbox_status IS DISTINCT FROM 'CONFIRMED')
 ORDER BY sent_at DESC
-LIMIT :size OFFSET :offset;
+LIMIT $3 /* size */ OFFSET $4 /* offset */;
 ```
 
-#### 6.6.2 POST /api/v1/sgi/interface/sta/ack
+#### 6.6.2 GET /api/v1/sgi/interface/pending-ack
 
-Callback ให้ระบบ STA ยิงตอบรับ (ACK) ตรง — แทนการรออัปเดต return_code ฝั่งเดียว
+รายการข้อความขาออกที่ broker ยังไม่ publisher confirm เกิน 1 วัน (เกณฑ์เดียวกับ watchdog Job 10 · มติ 2026-09-08 ข้อ 2.13) — ใช้ทั้งหน้า dashboard และอีเมลเตือน
 
 | Item | Detail |
 | --- | --- |
 | Global No. | 28 |
-| Method | POST |
-| Path | /api/v1/sgi/interface/sta/ack |
-| Group | Interface (tracking / ACK) |
-| Access / Role | API key ของระบบ STA |
-| Requirement Tag | ใหม่ (เสริม Job 10) |
-
-| Step | Flow |
-| --- | --- |
-| 1 | ตรวจ API key เฉพาะของ STA |
-| 2 | update sgi_interface_transactions.returnCode + receiveDate |
-| 3 | รายการหายจากจอ pending-ack ทันที (watchdog Job 10 ยังคงเป็น safety net) |
-
-| DB Object | R/W | Usage |
-| --- | --- | --- |
-| sgi_interface_transactions | W | บันทึก ACK |
-
-#### Request / Query / Header
-
-```json
-{
-  "trackingId": 9912,
-  "returnCode": "W",
-  "receiveDate": "2026-07-02T08:15:00"
-}
-```
-
-#### Response
-
-```json
-200 OK
-```
-
-| Error / Condition |
-| --- |
-| 401 — API key ไม่ถูกต้อง |
-| 404 — ไม่พบ tracking |
-
-SQL Reference
-
-```sql
--- callback จากระบบ STA (API key) → บันทึก ACK
-UPDATE sgi_interface_transactions
-SET return_code = :returnCode, acked_at = :receiveDate, status = :statusAcked, completed_at = :receiveDate
-WHERE id = :trackingId;
-```
-
-#### 6.6.3 GET /api/v1/sgi/interface/pending-ack
-
-รายการ ACK ค้างเกิน 1 วัน (เกณฑ์เดียวกับ watchdog) — ใช้ทั้งหน้า dashboard และอีเมลเตือน
-
-| Item | Detail |
-| --- | --- |
-| Global No. | 29 |
 | Method | GET |
 | Path | /api/v1/sgi/interface/pending-ack |
-| Group | Interface (tracking / ACK) |
+| Group | Interface (tracking) |
 | Access / Role | 01 Admin |
 | Requirement Tag | FGI/FCS · Job 10 |
 
@@ -1907,7 +1901,7 @@ WHERE id = :trackingId;
 ```json
 {
   "count": 2,
-  "items": [{ "dataName": "COMPENSATE_INIT_I", "docNo": "2026/00098", "ageDays": 2 }]
+  "items": [{ "dataName": "COMPENSATE_INIT_I", "docNo": "2026/00098", "ageHours": 41 }]
 }
 ```
 
@@ -1918,17 +1912,17 @@ WHERE id = :trackingId;
 SQL Reference
 
 ```sql
--- เกณฑ์ watchdog Job 10: เฉพาะขาส่งออกที่ยังไม่มี ACK และอายุ ≥ 1 วัน
---   direction = OUT เท่านั้น — แถว INTERNAL ของ Jobs 7/8/9 จบที่ COMPLETED ทันที ไม่มี ACK ให้รอ
+-- bind ตามลำดับ: $1=thresholdHours
+-- เกณฑ์ watchdog Job 10 (มติ 2026-09-08 ข้อ 2.13): ขาส่งออกที่ broker ยังไม่ publisher confirm และอายุ >= 1 วัน
+--   "ค้าง" = ยังไม่ได้ publisher confirm ไม่ใช่ "STA ยังไม่ ACK" — สเปก STA มีแค่ 3 ข้อความบน RabbitMQ ไม่มี ACK กลับมา
+--   direction = OUT เท่านั้น — แถว INTERNAL ของ Jobs 7/8/9 จบที่ COMPLETED ทันที ไม่มีอะไรให้รอ
 --   (ตรงเจตนาเดิมของ Java: interface_type != 'WS' = เฝ้าเฉพาะ interface แบบไฟล์)
-SELECT data_name, doc_no, sent_at, (CURRENT_DATE - sent_at::date) AS age_days
+SELECT data_name, doc_no, created_at, (CURRENT_DATE - created_at::date) AS age_days
 FROM sgi_interface_transactions
 WHERE direction = 'OUT'
-  AND status NOT IN ('ACKED','COMPLETED')
-  AND return_code IS NULL
-  AND data_name IN (:staDatasets)
-  AND sent_at < CURRENT_DATE - 1
-ORDER BY sent_at;
+  AND (outbox_status IS NULL OR outbox_status <> 'CONFIRMED')
+  AND created_at < CURRENT_TIMESTAMP - ($1 /* thresholdHours */ * INTERVAL '1 hour')
+ORDER BY created_at;
 ```
 
 ## 7. API Test Checklist

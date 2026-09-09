@@ -4,7 +4,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 ## 1. Purpose
 
-เอกสารนี้เป็น LLDD Database ระดับรวมของ target schema ระบบ SGI/SBP Mall ใช้เป็น reference สำหรับ BE API, Batch Job, migration, indexing, transaction และ data dictionary
+เอกสารนี้เป็น LLDD Database ระดับรวมของ target schema ระบบ SGI/SBP Mall ใช้เป็น reference สำหรับ BE API, Batch Job, migration, indexing และ transaction
+
+**แบ่งงานกับเอกสารพี่น้องให้ชัด:** ฉบับนี้ = **DDL ที่รันได้จริง + index + constraint + transaction + seed** · `LLDD-Database-Dictionary` = **คำอธิบายรายตาราง/รายคอลัมน์** (มาจากไหน · ใช้ทำอะไร · ทำไมต้องมี · แต่ละคอลัมน์เก็บอะไร) · `database.md` = ตารางต้นทางตอน migrate และเหตุผลที่ตัดตารางบางตัวทิ้ง
 
 ## 2. Architecture Context
 
@@ -39,7 +41,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | 4 | approver_id (@srm/glb-workflow) | ผู้อนุมัติต่อ state — แทน task_id เดิม | Inbox/current approver guard |
 | 5 | employee_id / user_id | identity — มาจาก BFF header ไม่ใช่ตารางของ SGI | lookup, assignment |
 
-## 4. Data Dictionary
+## 4. Data Dictionary ระดับตาราง (ภาพรวม)
+
+ตารางด้านล่างเป็น **สารบัญระดับตาราง** — โซน · PK · FK · บทบาทย่อ · 👉 **คำอธิบายรายคอลัมน์ (แต่ละคอลัมน์เก็บอะไร ใช้ทำอะไร มาจากไหน ทำไมต้องมี) อยู่ที่เอกสาร `LLDD-Database-Dictionary` คนละฉบับ** — ฉบับนี้ไม่ลงลึกระดับคอลัมน์
 
 | Zone | Table | PK | FK / relationship | Role |
 | --- | --- | --- | --- | --- |
@@ -88,6 +92,9 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 CREATE TABLE sgi_impacted_stores (
     store_code VARCHAR(5) PRIMARY KEY,   -- ร้าน SP · master อยู่ที่ store/mas_store/sevenshop ของระบบเดิม
     dv_code VARCHAR(20), opt_dv_user_id VARCHAR(30), latitude NUMERIC(10,7), longitude NUMERIC(10,7),
+    -- CompTransferSBPDate ของ CompensateFlow เดิม — ใช้แยกร้านที่โอนเป็นแฟรนไชส์ก่อน/หลัง 1/10/2014
+    -- entity ใน LLDD-BE-API-Lookup / Document-List-Search / Document-Detail-Aggregate map คอลัมน์นี้อยู่แล้ว
+    transfer_sbp_date DATE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -174,6 +181,8 @@ CREATE TABLE sgi_fgi_impact_processes (
     -- ไม่ใส่ CHECK constraint — ระบบเดิมยังมีค่า HRS (HR feed) ปนอยู่ ถ้าบังคับโดเมนแคบจะ migrate ไม่ผ่าน
     datasource VARCHAR(5),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- ชื่อ job/ผู้ใช้ที่แตะแถวล่าสุด (JOB2 · JOB6 · x-user-id) — เพิ่ม 2026-09-02 ตาม SQL ที่ Job 6 เขียนจริง
+    updated_by VARCHAR(30),
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_impact_process UNIQUE (impacted_store_code, impact_month)
 );
@@ -190,7 +199,13 @@ CREATE TABLE sgi_fgi_impact_compensations (
     compensate_year INTEGER NOT NULL,
     forecast_amount NUMERIC(14,2),          -- ระบบคำนวณ
     adjust_amount NUMERIC(14,2),            -- คนปรับ · ยอดที่ใช้จริง = COALESCE(adjust_amount, forecast_amount)
-    compensate_status VARCHAR(5),
+    -- โดเมนครบ 6 ค่า (สืบจาก FgiConstant + ExportJdbc · ปิด DP-14 เมื่อ 2026-09-02):
+    --   I = ข้อมูลตั้งต้นของงวด · A = อนุมัติชดเชย · N = เห็นควรไม่ชดเชย · S = หยุดชดเชย · Z = ยอดเป็นศูนย์
+    --   C = ร้านปิดแล้ว (mas_store.close_date <= งวด) หรือสัญญา SBP ถูกยกเลิกด้วย cancel_type IN ('01','02','03','04','08')
+    --       ก่อน/ในงวดนั้น — ระบบเดิมตั้งค่านี้แทน 'I' ตั้งแต่ตอน insert (ExportJdbc บรรทัด 404/414/452)
+    --   ส่ง STA: I/A/N ส่งตรง · S ส่งตรง · **C และ Z แปลงเป็น S เฉพาะใน payload** (ใน DB คงค่าเดิม)
+    --   R (Reflow) เป็นค่าของ message เท่านั้น ไม่เคยลง DB — สร้างที่ POST /sgi/document/{docNo}/actions
+    compensate_status VARCHAR(5) CHECK (compensate_status IN ('I','C','A','N','S','Z')),
     compensate_comment VARCHAR(4000),
     stmt_month INTEGER, stmt_year INTEGER,  -- งวด statement
     approve_date DATE,
@@ -205,6 +220,16 @@ CREATE TABLE sgi_fgi_impact_stores (
     impacted_store_code VARCHAR(5) NOT NULL REFERENCES sgi_impacted_stores(store_code),
     new_store_code VARCHAR(5) NOT NULL,   -- ร้านเปิดใหม่ · master ของระบบเดิม
     impact_month CHAR(7) NOT NULL, distance_km NUMERIC(8,3),
+    -- ⬇ ปิดช่องว่าง G1/G2 (2026-09-02) — legacy มี "สองสถานะคนละเรื่อง" ที่โครงเดิมยุบเหลือคอลัมน์เดียว
+    --   ORA FGI_IMPACT_STORE.FLAG_VERIFY = ผลตรวจ "คู่ร้านนี้เข้าเกณฑ์ชดเชยไหม" (Job 2 · กฎ DENY/ON_PROCESS)
+    --   W = รอตรวจ (ค่าตั้งต้นตอน insert) · P = เข้ากระบวนการ · N = ถูกตัดทิ้ง (เก็บแถวไว้ ไม่ลบ)
+    verify_status CHAR(1) NOT NULL DEFAULT 'W' CHECK (verify_status IN ('W','P','N')),
+    -- ORA FGI_IMPACT_STORE.CREATE_BY / UPDATE_BY — กฎ DENY/ON_PROCESS ของ Job 2 ใช้เป็นเงื่อนไขหลัก
+    --   ALM = ALLMAP (ตรวจตามเกณฑ์) · STA = ระบบ Statement ส่งเข้ามาเอง (ผ่านทันที) · USER = คนคีย์เอง
+    created_by VARCHAR(10) NOT NULL DEFAULT 'ALM' CHECK (created_by IN ('ALM','STA','USER')),
+    updated_by VARCHAR(10) CHECK (updated_by IN ('ALM','STA','USER')),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,   -- กฎ "ตัดทิ้งเมื่อเก่ากว่า 12 เดือน" อ้างคอลัมน์นี้
+    -- สถานะการขอยอดขายจาก IAS/MIS (คนละเรื่องกับ verify_status) — Job 4 เปลี่ยน W->P, Job 5 เปลี่ยน P->Y/E
     sales_request_status CHAR(1) NOT NULL DEFAULT 'W' CHECK (sales_request_status IN ('W','P','Y','E')),
     forecast_compensate_percent NUMERIC(7,4), adjust_compensate_percent NUMERIC(7,4),
     forecast_compensation_amount NUMERIC(14,2), adjust_compensation_amount NUMERIC(14,2),
@@ -218,6 +243,8 @@ CREATE TABLE sgi_fgi_impact_sales_summaries (
     total_working_days INTEGER NOT NULL DEFAULT 0 CHECK (total_working_days >= 0),
     growth_rate_before NUMERIC(9,4), growth_rate_after NUMERIC(9,4), growth_rate_diff NUMERIC(9,4),
     sales_status CHAR(1) NOT NULL DEFAULT 'W' CHECK (sales_status IN ('W','Y','N','E')),
+    -- ชื่อ job/ผู้ใช้ที่แตะแถวล่าสุด (JOB4 · JOB5) — เพิ่ม 2026-09-02 ตาม SQL ที่ Job 4/5 เขียนจริง
+    updated_by VARCHAR(30),
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_sales_summary_process UNIQUE (impact_process_id)
 );
@@ -267,15 +294,29 @@ CREATE TABLE sgi_interface_transactions (
         'IMPACT_STORE_SALES',                                   -- Job 5 <- IAS/MIS (IN)
         'COMPENSATE_INIT_I','COMPENSATE_INIT_N',                -- Job 6 -> STA (OUT)
         'COMPENSATE_APPROVE_I','COMPENSATE_APPROVE_N',          -- Job 6 -> STA (OUT)
-        'IMPACT_COMPETITOR','IMPACT_STORE','NEW_STORE'          -- Jobs 7/8/9 เขียน DB ตรง (INTERNAL)
+        'IMPACT_COMPETITOR','IMPACT_STORE','NEW_STORE',         -- Jobs 7/8/9 เขียน DB ตรง (INTERNAL)
+        -- ⬇ เพิ่ม 2026-09-02 หลังไล่ค่าที่เอกสารใช้จริงเทียบกับ CHECK นี้ (พบว่า 3 ค่าถูก INSERT แต่ CHECK ไม่รับ)
+        'DOCUMENT_CREATE',                                      -- Job 8 บันทึกการสร้างเอกสาร (INTERNAL) — ใช้อยู่แล้วแต่ตกหล่นจาก CHECK
+        'STA_UPDATE_COMPENSATE',                                -- Job 11 <- STA แจ้งยอดชดเชย (IN · message sta_update_compensate)
+        'SGI_REFLOW'                                            -- POST /sgi/document/{docNo}/actions -> STA (OUT · message sgi_reflow)
     )),
     direction VARCHAR(10) NOT NULL CHECK (direction IN ('IN','OUT','INTERNAL')),
-    status VARCHAR(20) NOT NULL CHECK (status IN ('READY','SENT','ACKED','COMPLETED','FAILED','FAILED_RETRY')),
+    -- status = lifecycle ของ "แถว" · outbox_status (ข้างล่าง) = สถานะการ publish ของฝั่งขาออก
+    -- ⚠️ ตัดค่า 'ACKED' ออกเมื่อ 2026-09-08 (มติข้อ 2.13) — ไม่มี ACK ระดับธุรกิจจาก STA ให้รออีกแล้ว
+    --    ขาออกจบที่ COMPLETED เมื่อ outbox_status = 'CONFIRMED' (ได้ publisher confirm จาก broker)
+    status VARCHAR(20) NOT NULL CHECK (status IN ('READY','SENT','COMPLETED','FAILED','FAILED_RETRY')),
     impact_process_id BIGINT REFERENCES sgi_fgi_impact_processes(id),
     sales_summary_id BIGINT REFERENCES sgi_fgi_impact_sales_summaries(id),
     doc_no VARCHAR(10), business_key VARCHAR(200) NOT NULL, period_key VARCHAR(20) NOT NULL,
     correlation_id VARCHAR(100), file_name VARCHAR(255), file_checksum VARCHAR(64),
-    outbox_status VARCHAR(20), return_code VARCHAR(50), return_message VARCHAR(500),
+    -- outbox_status — โดเมนชัดเจนตั้งแต่ 2026-09-08 (มติข้อ 2.13)
+    --   READY      = เขียนลง outbox แล้ว รอ publish
+    --   PUBLISHED  = ยิงเข้า broker แล้วแต่ **ยังไม่ได้ publisher confirm**
+    --   CONFIRMED  = broker ยืนยันรับแล้ว = ถือว่าส่งสำเร็จ (Job 10 เลิกเฝ้าแถวนี้)
+    --   FAILED     = publish ไม่สำเร็จ / ถูก broker ปฏิเสธ
+    -- ⚠️ ไม่มีสถานะ "ACKED" ทั้งที่นี่และที่ status — สเปก STA ไม่มี ACK กลับมา (เส้น POST /sgi/interface/sta/ack ถูกตัด)
+    outbox_status VARCHAR(20) CHECK (outbox_status IN ('READY','PUBLISHED','CONFIRMED','FAILED')),
+    return_code VARCHAR(50), return_message VARCHAR(500),
     retry_count INTEGER NOT NULL DEFAULT 0, sent_at TIMESTAMP, acked_at TIMESTAMP,
     -- marker กัน watchdog (Job 10) ส่งอีเมลเตือนซ้ำในวันเดียวกัน — ย้ายมาจาก audit_logs ที่ยกเลิก 2026-08-07
     last_ack_notified_on DATE,
@@ -290,10 +331,13 @@ CREATE TABLE sgi_interface_transactions (
 
 ```sql
 -- ✅ มติ DP-1 (2026-08-10): PK เป็น surrogate `id` · `doc_no` เป็น UNIQUE ไม่ใช่ PK
--- ⚠️ ผลที่ตามมา: ตารางลูก 8 ตัว (sgi_document_new_stores · sgi_document_competitors ·
---    sgi_document_external_factors · sgi_consideration_logs · sgi_document_attachments · sgi_document_cost_details ·
---    sgi_compensation_histories · sgi_interface_transactions) ยัง FK ด้วย doc_no แบบ NOT NULL
---    → แปลว่า "ต้องออก doc_no ให้เสร็จก่อนจึงบันทึกส่วนย่อยได้"
+-- ⚠️ ผลที่ตามมา: มี 8 ตาราง FK ไป doc_no แต่ **แบ่งเป็น 2 กลุ่ม ไม่เหมือนกัน**
+--    [NOT NULL 6 ตัว] sgi_document_new_stores · sgi_document_competitors · sgi_document_external_factors ·
+--                     sgi_consideration_logs · sgi_document_attachments · sgi_document_cost_details
+--                     → แปลว่า "ต้องออก doc_no ให้เสร็จก่อนจึงบันทึกส่วนย่อยได้"
+--    [nullable 2 ตัว] sgi_compensation_histories.ref_doc_no · sgi_interface_transactions.doc_no
+--                     → 2 ตัวนี้บันทึกได้ก่อนมี doc_no (interface ผูกด้วย typed FK ตัวอื่นแทนได้ ดู ck_interface_typed_reference)
+--    ⚠️ อย่าเขียนรวบว่า "ลูกทั้ง 8 เป็น NOT NULL" — เคยเขียนผิดแบบนั้นและขัดกับ database.md ที่นับ 6 (แก้ 2026-09-08)
 --    จึงต้องออกเลขเอกสารใน INSERT เดียวกับที่สร้างแถวเสมอ (Job 8 ทำแบบนี้อยู่แล้ว)
 --    referenceId ที่ส่งให้ @srm/glb-workflow = id (ตรงกับที่ระบบเดิมทำจริงใน cooperation-request/inform-evaluate)
 --    doc_no อาจยังว่างตอนสร้างแถว แล้วออกเลขทีหลัง จึงเป็น NULL ได้
@@ -324,6 +368,14 @@ CREATE TABLE sgi_compensation_documents (
 ALTER TABLE sgi_interface_transactions
     ADD CONSTRAINT fk_interface_doc_no FOREIGN KEY (doc_no) REFERENCES sgi_compensation_documents(doc_no);
 
+-- ══ นโยบาย ON DELETE ของลูก sgi_compensation_documents (ระบุชัด 2026-09-02) ══
+--   CASCADE = แถวรายละเอียดที่มีความหมายเฉพาะกับเอกสารใบนั้น ลบเอกสารแล้วต้องหายตาม
+--     sgi_document_new_stores · sgi_document_competitors · sgi_document_external_factors · sgi_document_cost_details
+--   ไม่ CASCADE (NO ACTION) = หลักฐาน/ประวัติ ที่ต้องอยู่ต่อแม้เอกสารถูกลบ — **ห้ามเติม CASCADE ให้กลุ่มนี้**
+--     sgi_consideration_logs (ผลพิจารณา) · sgi_document_attachments (ไฟล์แนบ · ใช้ soft delete)
+--     sgi_compensation_histories (ยอดที่ส่ง STA ไปแล้ว) · sgi_interface_transactions.doc_no (หลักฐานรับ-ส่ง interface)
+--   หมายเหตุ: ตามมติ "ไม่มีการเปิด SR เพื่อลบข้อมูล" (ข้อค้าง N1) เอกสารไม่ถูกลบจริงอยู่แล้ว
+--   นโยบายนี้จึงเป็นแนวกันพลาด ไม่ใช่ flow ปกติ
 CREATE TABLE sgi_document_new_stores (
     id BIGSERIAL PRIMARY KEY,
     doc_no VARCHAR(10) NOT NULL REFERENCES sgi_compensation_documents(doc_no) ON DELETE CASCADE,
@@ -404,6 +456,9 @@ CREATE TABLE sgi_document_cost_details (
 CREATE TABLE sgi_document_running_numbers (
     year SMALLINT PRIMARY KEY,   -- ปี ค.ศ. เท่านั้น (เช่น 2026) ห้ามเก็บ พ.ศ.
     last_running_no INTEGER NOT NULL DEFAULT 0 CHECK (last_running_no >= 0),
+    -- ใครแตะแถวล่าสุด — เก็บ "ชื่อ job" (JOB8) หรือ x-user-id · ไม่ใส่ CHECK เพราะโดเมนเปิด
+    -- (เพิ่ม 2026-09-02 · SQL ของ Job 8 เขียนคอลัมน์นี้อยู่แล้วแต่ DDL ไม่เคยประกาศ)
+    updated_by VARCHAR(30),
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- ⚠️ year เป็น "ค.ศ." (มติ 2026-08-06 · ทั้งระบบเป็น ค.ศ. — หน้าจอ K2 จริงก็ ค.ศ. เช่น 2026/01870)
@@ -423,6 +478,7 @@ CREATE TABLE sgi_document_running_numbers (
 ### 5.4 Required Indexes, Partial Uniqueness and Purge
 
 ```sql
+-- bind ตามลำดับ: $1=data_names · $2=batch_size
 CREATE INDEX idx_document_status_section ON sgi_compensation_documents(status_code, current_section_code);
 CREATE INDEX idx_document_impact_process ON sgi_compensation_documents(impact_process_id);
 -- ❌ ไม่มี index ของ workflow_tasks/workflow_instances ใน SGI — ตารางทั้งสองถูกตัดไปแล้ว (2026-08-06)
@@ -449,15 +505,41 @@ CREATE INDEX idx_document_factor_code ON sgi_document_external_factors(factor_co
 CREATE INDEX idx_attachment_scan_status ON sgi_document_attachments(scan_status);
 CREATE INDEX idx_consideration_result ON sgi_consideration_logs(result_category);
 
+-- ── index ที่ batch job ต้องใช้จริง (เพิ่ม 2026-09-02 หลังไล่เงื่อนไขตัดสินของ Jobs 2/4/8b) ──
+-- ทุกตัวเป็น partial index เพราะแถวที่ job หยิบคือแถว "ยังไม่ถูกดำเนินการ" ซึ่งเป็นส่วนน้อยของตาราง
+-- และจะเล็กลงเรื่อย ๆ เมื่อข้อมูลสะสม — index เต็มตารางจะโตโดยไม่จำเป็น
+--   Job 2 ค1/ค2: UPDATE ... WHERE verify_status = 'W'
+CREATE INDEX idx_impact_store_verify_wait ON sgi_fgi_impact_stores(impact_month)
+    WHERE verify_status = 'W';
+--   Job 2 ข: ชุด "คู่ร้านที่มีอยู่แล้ว" ของงวด (คัดแถวที่ไม่ถูกตัดทิ้งออกก่อน)
+CREATE INDEX idx_impact_store_month_active ON sgi_fgi_impact_stores(impact_month, impacted_store_code)
+    WHERE verify_status <> 'N';
+--   Job 4: candidate ขอยอดขาย = ผ่านการตรวจแล้ว (P) และยังไม่ได้ส่งขอ (W)
+CREATE INDEX idx_impact_store_sales_request ON sgi_fgi_impact_stores(id)
+    WHERE verify_status = 'P' AND sales_request_status = 'W';
+--   Job 2 ข / Job 6 / Job 8: หารอบชดเชยที่ยัง active ของร้าน
+CREATE INDEX idx_impact_process_active ON sgi_fgi_impact_processes(impacted_store_code, impact_month)
+    WHERE flag_action IN ('Y', 'W');
+--   Job 8b: รอบที่ยังไม่ได้เปิด workflow
+CREATE INDEX idx_impact_process_wf_wait ON sgi_fgi_impact_processes(id)
+    WHERE workflow_generation_status = 'W';
+--   Job 11: กันซ้ำข้อความขาเข้าจาก STA (คู่กับ UNIQUE เดิมที่ครอบ 4 คอลัมน์)
+CREATE INDEX idx_interface_in_business_key ON sgi_interface_transactions(business_key, period_key)
+    WHERE direction = 'IN';
+--   Job 10: watchdog หาข้อความขาออกที่ broker ยังไม่ confirm (มติ 2026-09-08 ข้อ 2.13)
+--   ⚠️ ต้องตรงกับ WHERE ของ Job 10 เป๊ะ ๆ ไม่งั้น partial index ไม่ถูกใช้
+CREATE INDEX idx_interface_out_pending ON sgi_interface_transactions(created_at)
+    WHERE direction = 'OUT' AND (outbox_status IS NULL OR outbox_status <> 'CONFIRMED');
+
 -- Retention worker: delete only terminal, expired, non-held rows in bounded batches.
 WITH purge_candidates AS (
     SELECT id FROM sgi_interface_transactions
-    WHERE status IN ('ACKED', 'COMPLETED')
+    WHERE status = 'COMPLETED'
       AND purge_after < CURRENT_TIMESTAMP
       AND legal_hold = FALSE
-      AND data_name = ANY(:data_names)
+      AND data_name = ANY($1 /* data_names */)
     ORDER BY id
-    LIMIT :batch_size
+    LIMIT $2 /* batch_size */
     FOR UPDATE SKIP LOCKED
 )
 DELETE FROM sgi_interface_transactions i
@@ -475,7 +557,7 @@ RETURNING i.id, i.data_name, i.business_key;
 | sgi_document_new_stores | INDEX(doc_no) *(ได้จาก UNIQUE (doc_no, new_store_code))*, CHECK compensate_percent between 0 and 100 | detail load and allocation validation |
 | sgi_consideration_logs | INDEX(doc_no, action_datetime DESC), INDEX(result_category) | timeline/report result filter |
 | sgi_document_attachments | INDEX(doc_no) *(ได้จาก UNIQUE ที่ขึ้นต้นด้วย doc_no)*, INDEX(scan_status), UNIQUE(doc_no, sha256, deleted_flag) | attachment list/download/security |
-| sgi_interface_transactions | INDEX(data_name,status), INDEX(impact_process_id), INDEX(doc_no) | tracking and pending ACK |
+| sgi_interface_transactions | INDEX(data_name,status), INDEX(impact_process_id), INDEX(doc_no) | tracking และรายการขาออกที่ยังไม่ publisher confirm |
 
 ## 7. Transaction Rules
 
@@ -484,7 +566,7 @@ RETURNING i.id, i.data_name, i.business_key;
 | Create document | docNo sequence lock (sgi_document_running_numbers) + sgi_compensation_documents + initializeWorkflow/addPreApprover ของ @srm/glb-workflow | any fail rollback all; no partial document · engine อยู่คนละ DataSource จึงต้องมี compensating action เมื่อ commit ฝั่งใดฝั่งหนึ่งไม่ผ่าน |
 | Submit action | ตรวจ current_approver จาก workflow_transaction + insert sgi_consideration_logs + eventWorkflow (เดิน state) + update sgi_compensation_documents | duplicate/current approver conflict returns 409 |
 | Auto-assign (SDD 46/48) | 06 เห็นควรไม่ชดเชย -> ปิดเอกสารและตั้งงานเดือนถัดไปให้เจ้าของงานคนเดิม ผ่าน addPreApprover · 06 หยุดชดเชยฯ -> เอกสารกลับเข้า GET /sgi/document/tasks ของ 06 ทันที (stoppedReopenable) | เดือนที่กดเห็นควรไม่ชดเชย ต้องไม่พบเอกสารใน GET /sgi/document/tasks ของ 06 · เดือนถัดไปต้องพบพร้อม assignee คนเดิม |
-| Attachment upload | metadata insert only after storage write and AV clean; objectKey never exposed | storage/scan fail leaves no CLEAN metadata |
+| Attachment upload | metadata insert after storage write with scan_status = PENDING; objectKey never exposed | storage fail leaves no CLEAN metadata |
 | Job 4 IAS request | durable file (fsync + atomic rename + checksum) ก่อน transaction W→P + outbox READY | file fail คง W; DB fail rollback W→P/outbox; S3 upload fail retry transaction เดิม |
 | Interface ACK/purge | ACK compare-and-set บน transaction เดิม; purge เฉพาะ terminal + purge_after + non-held | pending/failed/unacked/legal-hold ห้ามลบ |
 | Master mutation | update entity ใน transaction เดียว | mutation fail ต้อง rollback ครบ |
@@ -510,7 +592,7 @@ RETURNING i.id, i.data_name, i.business_key;
 | Workflow | no active 04/05 accounting sections/statuses; ไม่มีตาราง workflow ของ SGI — ตรวจว่า state/route ถูกลงทะเบียนที่ engine ครบ |
 | Security | no secrets in mas_param/backend config; storage objectKey not returned to FE |
 | External interface | credential/certificate/private key อยู่ Secret Manager ผ่าน secretRef; TLS verify-full (HTTPS สำหรับ EAI S3 · AMQPS สำหรับ RabbitMQ ของ STA); ทดสอบ rotation และ invalid certificate/host key |
-| Tracking retention | backfill typed FK/purge_after, validate FK, dry-run count แล้ว purge เฉพาะ ACKED/COMPLETED เป็น batch; reconcile count ก่อน/หลัง |
+| Tracking retention | backfill typed FK/purge_after, validate FK, dry-run count แล้ว purge เฉพาะ COMPLETED เป็น batch; reconcile count ก่อน/หลัง |
 | Data integrity | FK/check constraints enabled before SIT; reject legacy invalid enum values |
 | Performance | list/report/inbox queries explain plan uses indexes above |
 
@@ -521,8 +603,8 @@ RETURNING i.id, i.data_name, i.business_key;
 | LLDD-BE-API-Document-List-Search | workflow_transaction / workflow_approver (@srm/glb-workflow)(R), sgi_compensation_documents(R), sgi_impacted_stores(R), sgi_fgi_impact_sales_summaries(R) |
 | LLDD-BE-API-Document-Create-Update | sgi_compensation_documents(R/W), workflow_transaction / workflow_approver (@srm/glb-workflow)(W (ผ่าน lib)), sgi_document_new_stores(R/W), sgi_document_competitors(R/W) |
 | LLDD-BE-API-Document-Detail-Aggregate | sgi_compensation_documents(R), sgi_impacted_stores(R), sgi_document_new_stores(R), sgi_document_competitors(R) |
-| LLDD-BE-API-Document-Workflow-Actions | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow)(R (เขียนผ่าน lib)), sgi_compensation_documents(W), sgi_consideration_logs(W), workflow_transaction (@srm/glb-workflow)(R (เขียนผ่าน lib)) |
-| LLDD-BE-API-Workflow-Instances | sgi_fgi_impact_processes / sgi_fgi_impact_stores(R/W), sgi_compensation_documents(R/W), workflow_transaction (@srm/glb-workflow)(W (โดย lib)), workflow_approver (@srm/glb-workflow)(W (ผ่าน lib)) |
+| LLDD-BE-API-Document-Workflow-Actions | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow)(R (เขียนผ่าน lib)), sgi_compensation_documents(W), sgi_consideration_logs(W), workflow_route (@srm/glb-workflow · sps_store)(R) |
+| LLDD-BE-API-Workflow-Instances | sgi_fgi_impact_processes / sgi_fgi_impact_stores(R/W), sgi_fgi_impact_sales_summaries(R), sgi_impacted_stores(R), sgi_compensation_documents(R/W) |
 | LLDD-BE-API-Attachment-Sales-Timeline | sgi_document_attachments(R/W), sgi_compensation_documents(R), sgi_fgi_impact_sales_summaries(R), sgi_sales_transactions(R) |
 | LLDD-BE-API-Lookup | sgi_impacted_stores (SGI) / store · mas_store · sevenshop (SBP เดิม)(R), workflow_status / workflow_state (@srm/glb-workflow · sps_store)(R), business_user (SBP เดิม)(R), auth-backend groups / menus / permissions (ระบบเดิม)(R) |
 | LLDD-BE-API-Report-and-Master-Data | sgi_compensation_documents(R), sgi_compensation_histories(R), sgi_consideration_logs(R), auth-backend group + scope (business_user_group) / prepared approver ของ @srm/glb-workflow(R) |
@@ -535,9 +617,11 @@ RETURNING i.id, i.data_name, i.business_key;
 | LLDD-BE-Job-3-ImportImpactCompetitor | sgi_fgi_impact_competitors(W) |
 | LLDD-BE-Job-4-PrepareImpactStoreToIAS | sgi_fgi_impact_stores(R/W), sgi_fgi_impact_sales_summaries(R/W), sgi_interface_transactions(W), (application log แบบ structured)(W) |
 | LLDD-BE-Job-5-ImportImpactSaleFromIAS | sgi_sales_transactions(W), sgi_fgi_impact_sales_summaries(R/W), sgi_interface_transactions(W) |
-| LLDD-BE-Job-6-ExportImpactStoreToFS | sgi_fgi_impact_processes(R/W), sgi_fgi_impact_stores(R/W), fcs_qssi_score(R), sgi_interface_transactions(W) |
+| LLDD-BE-Job-6-ExportImpactStoreToFS | sgi_fgi_impact_processes(R/W), sgi_fgi_impact_stores(R/W), fcs_qssi_score(R), sgi_fgi_impact_sales_summaries(R) |
 | LLDD-BE-Job-7-SyncCompetitorToDocument | sgi_fgi_impact_competitors(R), sgi_compensation_documents(R), sgi_document_competitors(W), sgi_interface_transactions(W) |
 | LLDD-BE-Job-8-CreateCompensationDocument | sgi_document_running_numbers(R/W), sgi_fgi_impact_stores(R/W), sgi_fgi_impact_processes(R), sgi_compensation_documents(W) |
-| LLDD-BE-Job-8b-StartInternalWorkflow | sgi_fgi_impact_processes(R), sgi_fgi_impact_compensations(R), sgi_impacted_stores(R), sgi_fgi_impact_stores(R/W) |
+| LLDD-BE-Job-8b-StartInternalWorkflow | sgi_fgi_impact_processes(R), sgi_fgi_impact_compensations(R), sgi_impacted_stores(R), sgi_fgi_impact_sales_summaries(R) |
 | LLDD-BE-Job-9-SyncNewStoreToDocument | sgi_fgi_impact_compensations(R), sgi_fgi_impact_stores(R), sgi_compensation_documents(R), sgi_document_new_stores(W) |
 | LLDD-BE-Job-10-NotifyNoReceiveData | sgi_interface_transactions(R), email_template (ระบบ SBP เดิม)(R), email_sent (ระบบ SBP เดิม)(W (โดย @gosoft-sbp/email-lib)), (backend config)(R) |
+| LLDD-BE-Job-11-ConsumeStaCompensate | sgi_interface_transactions(W), sgi_fgi_impact_compensations(W), sgi_fgi_impact_processes(R) |
+| LLDD-BE-Job-12-NotifyPendingWork | sps_store.workflow_transaction(R), sgi_compensation_documents(R), sgi_impacted_stores(R), business_user (ระบบ SBP เดิม)(R) |

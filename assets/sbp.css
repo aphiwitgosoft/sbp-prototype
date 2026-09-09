@@ -469,3 +469,23 @@ table.data thead th.sort-desc::after{content:"▼"; opacity:1; color:var(--prima
 .fs-frame-body b{display:block; margin:12px 0 6px; font-size:15px; color:#2b3440;}
 .fs-frame-body p{margin:0; max-width:620px; font-size:13px; line-height:1.75; color:#5d6b7a;}
 .fs-frame-body small{display:block; margin-top:10px; max-width:620px; font-size:11.5px; line-height:1.7; color:#9aa7b6;}
+
+/* ── มือถือ: กันหน้าเลื่อนแนวนอน (แก้ 2026-09-07) ───────────────────────────────
+   ตรวจที่ 390px แล้วพบว่าตัวที่ดันหน้ากว้างคือ pill/chip ที่ nowrap · หัวการ์ดที่เป็น flex
+   ไม่ยอม wrap · และ code ยาว ๆ ที่ไม่มีจุดตัดคำ — ไม่ใช่ตัว SVG diagram (พวกนั้นมี wrapper เลื่อนอยู่แล้ว)
+   หลักการ: ให้เนื้อหา "พับ" ได้ ไม่ใช้ overflow:hidden กลบปัญหา */
+/* grid/flex item ต้อง min-width:0 ไม่งั้นกล่องเลื่อนข้างในไม่ทำงาน (ค่าตั้งต้นคือ auto) */
+.db-entity-grid > *, .mod-grid > *, .k2-grid > *, .charts-row > *{ min-width:0; }
+
+@media (max-width:560px){
+  .pill, .chip{ white-space:normal; }
+  /* แถวแบ่งหน้าและ dropdown สลับบทบาท ต้องหดตามจอ ไม่ดันหน้าเลื่อนแนวนอน */
+  .pager .pg-group{ flex-wrap:wrap; }
+  .pager select, .fpanel select, select[id]{ max-width:100%; }
+  .card-head{ flex-wrap:wrap; row-gap:6px; }
+  .card-head h2{ min-width:0; }
+  code, .mono{ overflow-wrap:anywhere; word-break:break-word; }
+  .db-entity h3, .ent h3{ flex-wrap:wrap; row-gap:4px; }
+  .db-entity h3 code, .ent h3 code{ overflow-wrap:anywhere; }
+  table.data{ min-width:0; }
+}

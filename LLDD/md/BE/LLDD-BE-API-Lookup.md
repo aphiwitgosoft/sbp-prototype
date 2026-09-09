@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | **13 ชั่วโมง** = implementation 10 + unit test 3 (30%) |
-| Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Owner | Tunyatorn &lt;Vava&gt; Kiatkongphongsa |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ APIs กลุ่ม lookup ที่ใช้ร่วมทุกหน้าจอของ SBP Mall |
 
@@ -137,7 +137,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Lookup_
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | items[].storeCode | string | Yes | exactly 5 digits; preserve leading zero |
 | items[].storeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
@@ -163,6 +163,8 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Lookup_
 {
   "items": [
     {
+      "code": "06",
+      "label": "รอฝ่าย SBP DSA ดำเนินการ",
       "statusCode": "06",
       "statusName": "รอฝ่าย SBP DSA ดำเนินการ"
     }
@@ -174,7 +176,9 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Lookup_
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| items[].code | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].statusCode | string | Yes | canonical code; do not replace with display label |
 | items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
@@ -211,7 +215,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Lookup_
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | items[].sectionCode | string | Yes | canonical code; do not replace with display label |
 | items[].sectionName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
@@ -232,13 +236,13 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Lookup_
 
 โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
 
-#### 9.1 ผังไฟล์ที่ต้องสร้าง
+### 9.1 ผังไฟล์ที่ต้องสร้าง
 
 | Path | หน้าที่ |
 | --- | --- |
 | store-backend · src/modules/sgi-lookup/sgi-lookup.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
 | store-backend · src/modules/sgi-lookup/sgi-lookup.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sgi-lookup/sgi-lookup.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-lookup/sgi-lookup.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย · **คีย์ = ชื่อ handler** เช่น `getSgiMasterFactors` · บล็อกที่มีหลาย statement ให้แยกเป็นหลายคีย์ โดยเติมท้ายชื่อให้สื่อความ เช่น DELETE master ที่มี 2 statement → `removeSgiMasterFactorsByCodeInUse` (SELECT ตรวจการใช้งาน) + `removeSgiMasterFactorsByCode` (DELETE) |
 | store-backend · src/modules/sgi-lookup/dto/sgi-lookup.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sgi-lookup/sgi-lookup.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/sgi-impacted-stores.entity.ts | entity ของ `sgi_impacted_stores` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
@@ -256,7 +260,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Lookup_
 | --- | --- | --- |
 | GET /store/search (ระบบ SBP เดิม) | ค้นหาร้านสำหรับ popup | endpoint ของระบบ SBP เดิม — เรียกใช้ ไม่ต้อง implement ใหม่ |
 
-#### 9.2 Controller (store-backend)
+### 9.2 Controller (store-backend)
 
 ```ts
 // src/modules/sgi-lookup/sgi-lookup.controller.ts
@@ -267,20 +271,20 @@ import { SgiLookupService } from './sgi-lookup.service';
 
 // LLDD BE - API Lookup
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sgi/sgi/lookup')
+@Controller('lookup')
 @UseGuards(HttpHeaderGuard)
 export class SgiLookupController {
   constructor(private readonly service: SgiLookupService) {}
 
   // GET /api/v1/sgi/lookup/document-statuses — รายการสถานะเอกสาร verbatim
-  @Get('lookup/document-statuses')
+  @Get('document-statuses')
   getSgiLookupDocumentStatuses(@UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiLookupDocumentStatuses(userId);
   }
 
   // GET /api/v1/sgi/lookup/workflow-sections — รายการ section 5 ขั้น
-  @Get('lookup/workflow-sections')
+  @Get('workflow-sections')
   getSgiLookupWorkflowSections(@UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiLookupWorkflowSections(userId);
@@ -288,14 +292,14 @@ export class SgiLookupController {
 }
 ```
 
-#### 9.3 DTO + Validation
+### 9.3 DTO + Validation
 
 ```ts
 // src/modules/sgi-lookup/dto/sgi-lookup.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
-  IsString, Matches, Max, MaxLength, Min,
+  IsString, Matches, Max, MaxLength, Min, ValidateNested,
 } from 'class-validator';
 
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
@@ -307,13 +311,13 @@ export class LookupRequestDto {
 }
 ```
 
-#### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
+### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
 
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
 // src/modules/sgi-lookup/sgi-lookup.service.ts
-import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { WorkflowService } from '../workflow/workflow.service';
 import { SGI_SQL } from './sgi-lookup.sql';
@@ -333,12 +337,13 @@ export class SgiLookupService {
   // GET /api/v1/sgi/lookup/document-statuses — รายการสถานะเอกสาร verbatim
   async getSgiLookupDocumentStatuses(userId: string) {
     const page = 1;
-    const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
+    // DTO ของเส้นนี้ไม่มี page/size (ดูหัวข้อ DTO) — ไม่แบ่งหน้า
+    const size = 100;
     // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sgi/lookup/document-statuses')
-    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
-    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
+    // SQL ในเอกสารเป็น positional $1..$n อยู่แล้ว (ตัวสร้างแปลงให้ตั้งแต่ 2026-09-04)
+    //   บรรทัดแรกของบล็อก SQL คือ `-- bind ตามลำดับ: $1=... · $2=...` ให้เรียงอาร์กิวเมนต์ตามนั้น
     const rows = await this.dataSource.query(SGI_SQL.getSgiLookupDocumentStatuses, [
-      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
+      // เรียงให้ตรงกับบรรทัด `-- bind ตามลำดับ:` ของ SQL เส้นนี้
       userId, (page - 1) * size, size,
     ]);
     // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
@@ -354,7 +359,7 @@ export class SgiLookupService {
 }
 ```
 
-#### 9.5 Workflow (`@srm/glb-workflow`)
+### 9.5 Workflow (`@srm/glb-workflow`)
 
 ✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ยืนยันแล้ว 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
@@ -372,7 +377,7 @@ export class SgiLookupService {
   // TODO: map currentState -> statusCode/statusName ที่ FE ใช้
 ```
 
-#### 9.6 Entity (TypeORM)
+### 9.6 Entity (TypeORM)
 
 ```ts
 // src/entitys/sgi-impacted-stores.entity.ts
@@ -380,20 +385,20 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'sgi_impacted_stores', schema: process.env.DB_SCHEMA })
 export class ImpactedStore {
-  @PrimaryColumn({ name: 'store_code', type: 'char', length: 5 })
+  @PrimaryColumn({ name: 'store_code', type: 'varchar', length: 5 })
   storeCode: string;
 
-  @Column({ name: 'store_name', type: 'varchar', length: 200 })
-  storeName: string;
+  @Column({ name: 'dv_code', type: 'varchar', length: 20, nullable: true })
+  dvCode?: string;
 
-  @Column({ name: 'zone_code', type: 'varchar', length: 10, nullable: true })
-  zoneCode?: string;
+  @Column({ name: 'opt_dv_user_id', type: 'varchar', length: 30, nullable: true })
+  optDvUserId?: string;
 
-  @Column({ name: 'region_code', type: 'varchar', length: 10, nullable: true })
-  regionCode?: string;
+  @Column({ name: 'latitude', type: 'numeric', precision: 10, scale: 7, nullable: true })
+  latitude?: string;
 
-  @Column({ name: 'store_type', type: 'varchar', length: 5, nullable: true })
-  storeType?: string;
+  @Column({ name: 'longitude', type: 'numeric', precision: 10, scale: 7, nullable: true })
+  longitude?: string;
 
   @Column({ name: 'transfer_sbp_date', type: 'date', nullable: true })
   transferSbpDate?: Date;
@@ -401,8 +406,11 @@ export class ImpactedStore {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  @Column({ name: 'updated_at', type: 'timestamp' })
+  updatedAt: Date;
+
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
@@ -431,7 +439,7 @@ export class BusinessUser {
 | menus | R | auth-backend menus |
 | email_template | R | email_template + email_sent + @gosoft-sbp/email-lib |
 
-#### 9.7 Repository Providers + Module wiring
+### 9.7 Repository Providers + Module wiring
 
 ```ts
 // src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
@@ -490,7 +498,7 @@ export class SgiLookupModule implements NestModule {
 // TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
-#### 9.8 BFF Proxy (module + controller + client service)
+### 9.8 BFF Proxy (module + controller + client service)
 
 BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
@@ -524,6 +532,9 @@ export class SgiLookupBffService {
   constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  // ⚠️ ต้อง unwrap envelope ของ store-backend 1 ชั้นก่อนคืน (ยืนยันจากโค้ดจริง 2026-09-04):
+  //    ResponseInterceptor ระดับ global ของ BFF ห่อผลลัพธ์เป็น { success, data, requestId } อีกที
+  //    ถ้าคืน { success, data } ดิบมา FE จะได้ data.data.data — SgiClientService จึงต้องคืน .data.data
   private userHeaders(user: any) {
     return {
       'x-user-id': user?.userId,
@@ -545,20 +556,20 @@ export class SgiLookupBffService {
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sgi/lookup')
+// path เดียวกับที่ FE เรียก (apiClient baseURL รวม /api/v1 แล้ว) — ห้ามตั้งตามชื่อเอกสาร LLDD
+@Controller('sgi/lookup')
 @UseGuards(AuthGuard('jwt'))
 export class SgiLookupBffController {
   constructor(private readonly service: SgiLookupBffService) {}
 
   // proxy ของ GET /api/v1/sgi/lookup/document-statuses
-  @Get('sgi/lookup/document-statuses')
+  @Get('document-statuses')
   getSgiLookupDocumentStatuses(@Query() query: any, @Req() req: any) {
     return this.service.getSgiLookupDocumentStatuses(query, req.user);
   }
 
   // proxy ของ GET /api/v1/sgi/lookup/workflow-sections
-  @Get('sgi/lookup/workflow-sections')
+  @Get('workflow-sections')
   getSgiLookupWorkflowSections(@Query() query: any, @Req() req: any) {
     return this.service.getSgiLookupWorkflowSections(query, req.user);
   }
@@ -568,7 +579,7 @@ export class SgiLookupBffController {
 
 ## 10. Database SQL
 
-#### 10.1 ตารางที่อ่าน/เขียน
+### 10.1 ตารางที่อ่าน/เขียน
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
@@ -581,25 +592,23 @@ export class SgiLookupBffController {
 | menus | R | ใช้ของระบบเดิม: auth-backend menus |
 | email_template | R | ใช้ของระบบเดิม: email_template + email_sent + @gosoft-sbp/email-lib |
 
-#### 10.2 SQL จริงต่อ Endpoint
+### 10.2 SQL จริงต่อ Endpoint
 
 **GET /api/v1/sgi/lookup/document-statuses** — รายการสถานะเอกสาร verbatim
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=sgiVersionId
 -- ตาราง document_statuses ของ SGI ถูกตัดแล้ว — อ่านจาก workflow_status ของ engine กลาง
 SELECT status_id AS status_code, status_name, seq AS sort_order
 FROM sps_store.workflow_status
-WHERE version_id = :sgiVersionId
+WHERE version_id = $1 /* sgiVersionId */
 ORDER BY seq;
 ```
 
 **GET /api/v1/sgi/lookup/workflow-sections** — รายการ section 5 ขั้น
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=sgiVersionId
 -- ตาราง workflow_sections ของ SGI ถูกตัดแล้ว — อ่าน state จาก engine กลาง และวงเงินจาก common_code ของระบบเดิม
 -- (approve_limit_amount = SectionLimitCost ของ K2 เดิม · เกณฑ์เดียว 100,000 ตามมติ 2026-08-18 — เป็น data ไม่ hardcode · ขั้น 03 เป็น null = ไม่มีเพดาน)
 -- ⚠️ sps_store.workflow_state ไม่มีคอลัมน์ลำดับ (มีแค่ version_id · state_id · state_name · create_date)
@@ -610,12 +619,12 @@ SELECT s.state_id AS section_code, s.state_name AS section_name,
 FROM sps_store.workflow_state s
 LEFT JOIN sps_store.workflow_route r ON r.version_id = s.version_id AND r.from_state_id = s.state_id
 LEFT JOIN common_code c ON c.code_type = 'SGI_APPROVE_LIMIT' AND c.code_value = s.state_id
-WHERE s.version_id = :sgiVersionId
+WHERE s.version_id = $1 /* sgiVersionId */
 GROUP BY s.state_id, s.state_name, c.other_value
 ORDER BY sort_order;
 ```
 
-#### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
 
 ยังไม่มีข้อมูลเงื่อนไข query พอจะเสนอ index — รอ SQL ต่อ endpoint ครบก่อน
 

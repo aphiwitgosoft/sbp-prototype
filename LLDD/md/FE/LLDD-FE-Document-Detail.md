@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | FE |
 | Estimate | **75 ชั่วโมง** = implementation 60 + unit test 15 (25%) |
-| Owner | Kittisak <New> Kaeowika |
+| Owner | Kittisak &lt;New&gt; Kaeowika |
 | Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Objective | สร้างหน้าเอกสารรายละเอียดและ Action Panel โดยแสดงผลตาม role profile ของผู้ใช้ที่ login |
 
@@ -80,7 +80,7 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Detail and Action_
 | sourceSystem | enum | ALLMAP / USER | **B5** ที่มาของแถวร้านเปิดใหม่ — `ALLMAP` ระบบ default ให้อัตโนมัติ (Job 9) · `USER` เจ้าหน้าที่ SBP DSA คีย์เองจากเอกสารแจ้งของหน่วยงานส่งเสริม (ผัง To-Be · SDD สไลด์ 7) · ซ้ำ `(doc_no, new_store_code)` ให้คืน `409` |
 | date | DD/MM/YYYY | valid date | payload เป็น ISO ค.ศ. · FE แสดง ค.ศ. เป็นค่าเริ่มต้น (DatePicker buddhistEra=false) แสดง พ.ศ. เฉพาะจุดที่เปิด flag |
 | attachment | file | <= 5 MB | รองรับ vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv |
-| result | verbatim from actionOptions | required on submit action | FE แสดง radio ตาม `actionOptions` จาก API เท่านั้น · ไม่เลือกแล้วกดส่ง → popup **verbatim SRS**: `ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ` |
+| result | actionOptions[].**value** (ไม่ใช่ label) | required on submit action | FE แสดง radio ตาม `actionOptions` จาก API เท่านั้น · ไม่เลือกแล้วกดส่ง → popup **verbatim SRS**: `ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ` |
 | comment | text | required บาง result | trim before submit · SRS บังคับ required เมื่อเลือกไม่ชดเชย แต่ไม่ได้ระบุข้อความ popup |
 | compensatePercent | number | sum = 100 | validate before save · ไม่ครบ 100% → popup `โปรดตรวจสอบ %ชดเชย ของท่าน รวมกันแล้วไม่เท่ากับ 100%` |
 | competitorCode | select จาก master sgi_competitors | required เมื่อเพิ่ม/แก้แถวคู่แข่ง | ไม่เลือก → popup **verbatim SRS §10**: `กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ` |
@@ -171,7 +171,7 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 | C03 | Role-based visible/editable sections | ใช้ visibleSections/editableSections/canAction เป็น source of truth สำหรับ DOM และ focusable controls | section ที่ซ่อนไม่อยู่ใน DOM และ read-only section ไม่มี mutation control |
 | C04 | Action panel by role profile | สร้าง action radio/comment/confirm จาก actionOptions และ requireComment ที่ API ส่งมา | ไม่ hardcode route/nextSection และ block submit เมื่อ result/comment ไม่ครบ |
 | C05 | History/timeline | รวม consideration history, workflow timeline และ invalidate หลัง save/upload/action | ลำดับเวลาใหม่สุดถูกต้องและข้อมูลหลัง submit ไม่ค้างจาก cache เดิม |
-| C06 | Attachment upload/download | upload ด้วย allowlist/5MB/scan state และ download ผ่าน authorized BE stream | BLOCKED/PENDING ดาวน์โหลดไม่ได้และ success แสดงชื่อ/ขนาดไฟล์จาก metadata |
+| C06 | Attachment upload/download | upload ด้วย allowlist/5MB/scan state และ download ผ่าน authorized BE stream | BLOCKED/FAILED ดาวน์โหลดไม่ได้ (422 FILE_SCAN_BLOCKED) · PENDING ขึ้นกับสวิตช์ SGI_ALLOW_PENDING_DOWNLOAD ที่ BE ส่งผลมาให้ — FE **ห้ามตัดสินเอง** ให้ดูจาก header X-SGI-Scan-Status แล้วขึ้นคำเตือนเมื่อเป็น PENDING · success แสดงชื่อ/ขนาดไฟล์จาก metadata |
 | C07 | Map/ALLMAP link | เปิด ALLMAP/map และ sales detail ด้วย doc/store context โดยไม่ expose credential | link/adapter ส่ง identifier ถูกตัวและ failure กลับสู่หน้า detail ได้ |
 
 ### 5.91 Document Detail and Action API Adapter Map
@@ -257,18 +257,22 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
   "canAction": true,
   "actionOptions": [
     {
+      "value": "เห็นควรไม่ชดเชย",
       "label": "เห็นควรไม่ชดเชย",
       "requireComment": true
     },
     {
+      "value": "หยุดชดเชยประกันรายได้",
       "label": "หยุดชดเชยประกันรายได้",
       "requireComment": false
     },
     {
+      "value": "ส่งหน่วยงานส่งเสริมธุรกิจ SBP",
       "label": "ส่งหน่วยงานส่งเสริมธุรกิจ SBP",
       "requireComment": false
     },
     {
+      "value": "ส่งเจ้าหน้าที่ SBP DSA",
       "label": "ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ",
       "requireComment": false
     }
@@ -288,16 +292,17 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 | statusCode | string | Yes | canonical code; do not replace with display label |
 | viewerRbacRoleCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | roleProfileCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| visibleSections | array<string> | Yes | JSON array; element type shown in Type column |
-| editableSections | array<object> | Yes | JSON array; element type shown in Type column |
+| visibleSections | array&lt;string&gt; | Yes | JSON array; element type shown in Type column |
+| editableSections | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | canUploadAttachment | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | canAction | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| actionOptions | array<object> | Yes | JSON array; element type shown in Type column |
+| actionOptions | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| actionOptions[].value | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | actionOptions[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | actionOptions[].requireComment | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | impactedStore | object | Yes | JSON object; nested fields listed below |
 | impactedStore.storeCode | string | Yes | exactly 5 digits; preserve leading zero |
-| newStores | array<object> | Yes | JSON array; element type shown in Type column |
+| newStores | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 
 ### PUT /api/v1/sgi/document/{docNo}
 
@@ -307,10 +312,45 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 
 ```json
 {
+  "versionNo": 3,
   "newStores": [
     {
-      "newStoreCode": "22864",
-      "compensatePercent": 100
+      "newStoreCode": "00990",
+      "compensatePercent": 60,
+      "compensationAmount": 18000.0,
+      "sourceSystem": "ALLMAP"
+    },
+    {
+      "newStoreCode": "01180",
+      "compensatePercent": 40,
+      "compensationAmount": 12000.0,
+      "sourceSystem": "USER"
+    }
+  ],
+  "competitors": [
+    {
+      "id": 8801,
+      "competitorCode": "01",
+      "impactDate": "2026-07-15"
+    },
+    {
+      "competitorCode": "07",
+      "impactDate": "2026-07-20",
+      "id": 8801
+    }
+  ],
+  "externalFactors": [
+    {
+      "id": 4402,
+      "factorCode": "F03",
+      "dateFrom": "2026-07-01",
+      "dateTo": "2026-07-31"
+    },
+    {
+      "factorCode": "F09",
+      "dateFrom": "2026-07-10",
+      "dateTo": null,
+      "id": 4402
     }
   ]
 }
@@ -320,15 +360,28 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| newStores | array<object> | Yes | JSON array; element type shown in Type column |
+| versionNo | integer | Yes | optimistic concurrency: ต้องส่งค่าล่าสุดที่โหลดมา · ไม่ตรงคืน 409 STALE_VERSION |
+| newStores | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | newStores[].newStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | newStores[].compensatePercent | integer | Yes | number 0..100 with 2 decimals |
+| newStores[].compensationAmount | number | Yes | number >= 0 with 2 decimals |
+| newStores[].sourceSystem | string | Yes | ALLMAP = ระบบดึงมาเอง · USER = ผู้ใช้คีย์เพิ่ม |
+| competitors | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| competitors[].id | integer | No | id ของแถวเดิม — **ไม่ส่ง = แถวที่ผู้ใช้เพิ่มใหม่ (INSERT)** · แถวเดิมที่ไม่ถูกส่งมาถือว่าถูกลบ |
+| competitors[].competitorCode | string | Yes | รหัสแบรนด์คู่แข่งจาก master 01–11 เท่านั้น (ห้าม free text) |
+| competitors[].impactDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| externalFactors | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| externalFactors[].id | integer | No | id ของแถวเดิม — **ไม่ส่ง = แถวที่ผู้ใช้เพิ่มใหม่ (INSERT)** · แถวเดิมที่ไม่ถูกส่งมาถือว่าถูกลบ |
+| externalFactors[].factorCode | string | Yes | รหัสปัจจัยภายนอกจาก master (sgi_external_factors.factor_code) |
+| externalFactors[].dateFrom | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| externalFactors[].dateTo | string | No | UTF-8; use value domain described by endpoint purpose |
 
 #### Response
 
 ```json
 {
-  "message": "saved"
+  "message": "saved",
+  "versionNo": 4
 }
 ```
 
@@ -337,6 +390,7 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| versionNo | integer | Yes | optimistic concurrency: ต้องส่งค่าล่าสุดที่โหลดมา · ไม่ตรงคืน 409 STALE_VERSION |
 
 ### POST /api/v1/sgi/document/{docNo}/actions
 
@@ -384,7 +438,8 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 
 ```json
 {
-  "file": "multipart/form-data <= 5MB"
+  "file": "multipart <= 5MB",
+  "sectionCode": "06"
 }
 ```
 
@@ -393,12 +448,13 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | file | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| sectionCode | string | Yes | canonical code; do not replace with display label |
 
 #### Response
 
 ```json
 {
-  "attachmentId": "att-001",
+  "attachId": 771,
   "fileName": "evidence.pdf"
 }
 ```
@@ -407,14 +463,14 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| attachmentId | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ## 8. Skeleton Code (โครงโค้ดตั้งต้นของหน้าจอนี้)
 
 โค้ดชุดนี้อิง convention ของ portal เดิม `srm-sps-spsap-web-frontend` (build target `sbpm`): Next.js App Router + `'use client'`, PrimeReact ที่ห่อไว้แล้วใน `@/components/Form` และ `@/components/Table`, react-hook-form + yup, Zustand `permissionStore`, axios instance กลาง `@/lib/apiClient` และ react-query 5 — **โปรเจกต์ไม่มี chart library** จึงไม่มีโค้ดกราฟในเอกสารนี้ คัดลอกไปตั้งต้นได้ทันที แล้วเติมจุดที่กำกับ `TODO:`
 
-#### 8.1 ผังไฟล์ที่ต้องสร้าง
+### 8.1 ผังไฟล์ที่ต้องสร้าง
 
 โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด
 
@@ -427,7 +483,7 @@ E = แก้ไขได้, R = อ่านอย่างเดียว, H 
 | src/hooks/sgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
 | src/types/sgi/document.ts | types — request/response ตาม API contract ของเอกสารนี้ |
 
-#### 8.2 page.tsx — หน้ารายละเอียดเอกสาร (section gating จาก API)
+### 8.2 page.tsx — หน้ารายละเอียดเอกสาร (section gating จาก API)
 
 ```tsx
 'use client';
@@ -481,7 +537,7 @@ export default function DocumentDetailPage() {
 }
 ```
 
-#### 8.3 service — `src/services/sgi/document.service.ts`
+### 8.3 service — `src/services/sgi/document.service.ts`
 
 ⚠️ `src/services/sgi/document.service.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -522,10 +578,16 @@ export async function createSgiDocumentAttachments(docNo: string, body: T.Create
   return data.data;
 }
 
-// TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
+// ── envelope: อ่าน `data.data` ชั้นเดียว (ยืนยันจากโค้ดจริงของ BFF 2026-09-04) ──
+//   BFF มี ResponseInterceptor ระดับ global (src/common/interceptors/response.interceptor.ts)
+//   ที่ห่อผลลัพธ์ของ controller เป็น { success, data, requestId } ให้เสมอ
+//   ⚠️ ถ้า client service ของ BFF คืน `response.data` ดิบ (= envelope ของ store-backend)
+//      interceptor จะเห็นคีย์ success แล้วห่อซ้ำ → FE ได้ { success, data: { data: <payload> } }
+//      สัญญาที่ตกลง: **BFF ต้อง unwrap ของ store-backend ก่อน 1 ชั้น** (คืน response.data.data)
+//      FE จึงอ่าน data.data ชั้นเดียวตามโค้ดด้านบน · requestId ใช้อ้างอิงตอนแจ้งปัญหา
 ```
 
-#### 8.4 types — `src/types/sgi/document.ts`
+### 8.4 types — `src/types/sgi/document.ts`
 
 ⚠️ `src/types/sgi/document.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -544,6 +606,7 @@ export interface SgiDocumentDetailResponse {
   canUploadAttachment: boolean;
   canAction: boolean;
   actionOptions: {
+    value: string;
     label: string;
     requireComment: boolean;
   }[];
@@ -555,15 +618,30 @@ export interface SgiDocumentDetailResponse {
 
 /** PUT /api/v1/sgi/document/{docNo} — request */
 export interface UpdateSgiDocumentRequest {
+  versionNo: number;
   newStores: {
     newStoreCode: string;
     compensatePercent: number;
+    compensationAmount: number;
+    sourceSystem: string;
+  }[];
+  competitors: {
+    id: number;
+    competitorCode: string;
+    impactDate: string;
+  }[];
+  externalFactors: {
+    id: number;
+    factorCode: string;
+    dateFrom: string;
+    dateTo: string;
   }[];
 }
 
 /** PUT /api/v1/sgi/document/{docNo} — response */
 export interface UpdateSgiDocumentResponse {
   message: string;
+  versionNo: number;
 }
 
 /** POST /api/v1/sgi/document/{docNo}/actions — request */
@@ -585,7 +663,7 @@ export type CreateSgiDocumentAttachmentsResponse = Record<string, unknown>;
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
-#### 8.5 react-query keys + hooks — `src/hooks/sgi/document.query.ts`
+### 8.5 react-query keys + hooks — `src/hooks/sgi/document.query.ts`
 
 ⚠️ `src/hooks/sgi/document.query.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -634,7 +712,7 @@ export function useCreateSgiDocumentActionsMutation(docNo: string) {
 // TODO: ยังขาดอีก 1 เส้น เขียน hook ด้วยรูปแบบเดียวกัน: POST /sgi/document/{docNo}/attachments
 ```
 
-#### 8.6 ฟอร์มพิจารณา + validation — `src/components/sgi/document-detail/ActionPanel.tsx`
+### 8.6 ฟอร์มพิจารณา + validation — `src/components/sgi/document-detail/ActionPanel.tsx`
 
 หน้านี้**ไม่มีการค้นหา** — ฟอร์มเดียวของหน้าคือฟอร์มผลการพิจารณาที่ยิง `POST /api/v1/sgi/document/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`
 
@@ -643,10 +721,10 @@ export function useCreateSgiDocumentActionsMutation(docNo: string) {
 // ActionPanel — ฟอร์ม "ผลการพิจารณา" ของ workflow section 
 // payload ที่ส่งจริงมีแค่ 2 field ตาม CreateDocumentsActionsRequest: { result, comment }
 // option ที่ role นี้เห็นตาม contract (render จาก doc.actionOptions ห้าม hardcode ใน JSX):
-//   - เห็นควรไม่ชดเชย (value='', requireComment=true)
-//   - หยุดชดเชยประกันรายได้ (value='', requireComment=false)
-//   - ส่งหน่วยงานส่งเสริมธุรกิจ SBP (value='', requireComment=false)
-//   - ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ (value='', requireComment=false)
+//   - เห็นควรไม่ชดเชย (value='เห็นควรไม่ชดเชย', requireComment=true)
+//   - หยุดชดเชยประกันรายได้ (value='หยุดชดเชยประกันรายได้', requireComment=false)
+//   - ส่งหน่วยงานส่งเสริมธุรกิจ SBP (value='ส่งหน่วยงานส่งเสริมธุรกิจ SBP', requireComment=false)
+//   - ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ (value='ส่งเจ้าหน้าที่ SBP DSA', requireComment=false)
 // editableSections ของ role นี้ (ใช้เป็น constant สำหรับ assertion/test เท่านั้น ไม่ใช่เพื่อ hardcode การ render):
 export const EDITABLE_SECTIONS_ROLE = [] as const;
 
@@ -660,7 +738,7 @@ import type { DocumentActionRequest } from '@/types/sgi/common';
 interface ActionOption { value: string; label: string; requireComment?: boolean }
 
 // ค่าที่ "บังคับกรอกความคิดเห็น" มาจาก contract ของ role นี้
-const REQUIRE_COMMENT: string[] = [/* TODO: ค่าที่บังคับ comment */];
+const REQUIRE_COMMENT: string[] = ['เห็นควรไม่ชดเชย'];
 
 // ⚠️ ข้อความ validation ด้านล่างเป็น verbatim จาก SRS v3.1 — ห้าม paraphrase ห้ามย่อ
 //    (SRS "รายการหน้าจอ" §10/§13 · ตรงกับที่ prototype k2-document.html ใช้)
@@ -724,7 +802,7 @@ export default function ActionPanel({ options, onSubmit, onCancel, submitting }:
 }
 ```
 
-- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
+- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `&lt;AccessDenied /&gt;` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
 - payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)
@@ -776,7 +854,7 @@ export default function ActionPanel({ options, onSubmit, onCancel, submitting }:
 | `sourceSystem` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: ALLMAP / USER · รูปแบบ: enum |
 | `date` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: valid date · รูปแบบ: DD/MM/YYYY |
 | `attachment` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: <= 5 MB · รูปแบบ: file |
-| `result` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required on submit action · รูปแบบ: verbatim from actionOptions |
+| `result` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required on submit action · รูปแบบ: actionOptions[].**value** (ไม่ใช่ label) |
 | `comment` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required บาง result · รูปแบบ: text |
 | `compensatePercent` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: sum = 100 · รูปแบบ: number |
 | `competitorCode` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required เมื่อเพิ่ม/แก้แถวคู่แข่ง · รูปแบบ: select จาก master sgi_competitors |

@@ -7,10 +7,10 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | รายการ | รายละเอียด |
 | --- | --- |
 | Track | BE |
-| Estimate | **19 ชั่วโมง** = implementation 14 + unit test 5 (30%) |
-| Owner | Peerakorn <Pete> Sakunkaewphithak |
+| Estimate | **11 ชั่วโมง** = implementation 8 + unit test 3 (30%) |
+| Owner | Peerakorn &lt;Pete&gt; Sakunkaewphithak |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
-| Objective | ออกแบบ Backend contracts สำหรับ batch runner (อ่าน config จาก backend), interface tracking/pending ACK และ Notification Service (ส่งผ่าน @gosoft-sbp/email-lib) — ไม่มี Job Admin API, Email Template API (2026-08-06) และไม่มี SRM inbound adapter แล้ว (2026-08-07) |
+| Objective | ออกแบบ Backend contracts ฝั่ง **store-backend** สำหรับ interface tracking / รายการข้อความขาออกที่ยังไม่ได้ publisher confirm (2 เส้น · `POST /sgi/interface/sta/ack` ถูกตัด 2026-09-08 ตามมติข้อ 2.13) และ Notification Service (ส่งผ่าน @gosoft-sbp/email-lib) — ไม่มี Job Admin API, Email Template API (2026-08-06) และไม่มี SRM inbound adapter แล้ว (2026-08-07) · **⚠️ มติ 2026-09-02: งานสร้าง batch runner / scheduler / cli / job-failure notifier ถูกตัดออกจากเอกสารฉบับนี้** — batch job ทั้ง 12 ตัวย้ายไปรันบน `SBP/srm-sps-spsap-sop-sgi-batch` ที่มี dispatcher + `integration_log` + structured log พร้อมแล้ว เอกสารฉบับนี้เหลือเฉพาะ **ฝั่ง API ที่ยังอยู่ใน store-backend** |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -27,11 +27,11 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ## 2. Screen / Functional Scope
 
-- Interface tracking และ pending ACK APIs (3 เส้น)
-- Job runner guard และ application log
+- Interface tracking และรายการค้างส่ง APIs (2 เส้น · `/tracking` · `/pending-ack`)
 - Notification adapter ผ่าน @gosoft-sbp/email-lib
-- STA ACK callback
+- **ไม่มี STA ACK callback** — ตัดเมื่อ 2026-09-08 (ข้อ 2.13) เพราะสเปก STA ไม่มี ACK แบบ HTTP
 - ไม่มี Batch Job Admin API และไม่มี inbound endpoint ของ SRM
+- **ไม่รวม batch runner/scheduler** — อยู่ที่ sop-sgi-batch (มติ 2026-09-02)
 
 ## 3. Screenshot Reference
 
@@ -66,7 +66,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job Batch and Email Integrati
 
 | Stage | Contract for implementation |
 | --- | --- |
-| Input | GET /api/v1/sgi/interface/tracking; GET /api/v1/sgi/interface/pending-ack; POST /api/v1/sgi/interface/sta/ack |
+| Input | GET /api/v1/sgi/interface/tracking; GET /api/v1/sgi/interface/pending-ack |
 | Progress | Receive request; Validate schema; Check idempotency; Process records |
 | Output | (application log แบบ structured); sgi_interface_transactions |
 
@@ -75,8 +75,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job Batch and Email Integrati
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
 | GET /api/v1/sgi/interface/tracking | ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา | Receive request | job run guard prevents duplicate running job |
-| GET /api/v1/sgi/interface/pending-ack | รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน | Validate schema | email preview renders variables |
-| POST /api/v1/sgi/interface/sta/ack | STA ACK callback ให้ Job 10 เป็น safety net | Check idempotency | failed records include detail |
+| GET /api/v1/sgi/interface/pending-ack | รายการข้อความขาออกที่ยังไม่ได้ publisher confirm ตาม watchdog rule อายุอย่างน้อย 1 วัน (path คงชื่อเดิม) | Validate schema | email preview renders variables |
 
 ### 5.91 Backend Execution Sequence
 
@@ -85,9 +84,9 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job Batch and Email Integrati
 | 1 | Receive request | run job |
 | 2 | Validate schema | run duplicate |
 | 3 | Check idempotency | interface tracking filter |
-| 4 | Process records | pending ACK watchdog |
-| 5 | Log success/failure | STA ACK callback |
-| 6 | Return summary | email preview |
+| 4 | Process records | watchdog ข้อความค้างส่ง (ยังไม่ publisher confirm) |
+| 5 | Log success/failure | email preview |
+| 6 | Return summary | — (ยังไม่มี test เฉพาะขั้นนี้ · ครอบด้วย test รวมของเอกสารในหัวข้อ 11) |
 
 ## 6. Button / User Action Mapping
 
@@ -161,7 +160,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job Batch and Email Integrati
 | page | integer | Yes | >= 1; default 1 |
 | size | integer | Yes | 1..100; default 20 |
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | items[].trackingId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].dataName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].direction | string | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -176,7 +175,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job Batch and Email Integrati
 
 ### GET /api/v1/sgi/interface/pending-ack
 
-รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
+รายการข้อความขาออกที่ยังไม่ได้ publisher confirm ตาม watchdog rule อายุอย่างน้อย 1 วัน (path คงชื่อเดิม)
 
 #### Query Params
 
@@ -229,7 +228,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job Batch and Email Integrati
 | size | integer | Yes | 1..100; default 20 |
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | count | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | items[].trackingId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].dataName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].businessKey | string | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -239,49 +238,13 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job Batch and Email Integrati
 | items[].ageHours | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].returnCode | string \| null | No | UTF-8; use value domain described by endpoint purpose |
 
-### POST /api/v1/sgi/interface/sta/ack
-
-STA ACK callback ให้ Job 10 เป็น safety net
-
-#### Request
-
-```json
-{
-  "transactionId": "TX-001",
-  "returnCode": "A",
-  "receivedAt": "2026-07-20T10:00:00+07:00"
-}
-```
-
-#### Request Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| transactionId | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| returnCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| receivedAt | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
-
-#### Response
-
-```json
-{
-  "message": "acknowledged"
-}
-```
-
-#### Response Field Schema
-
-| Field | Type | Required | Constraint / Meaning |
-| --- | --- | --- | --- |
-| message | string | Yes | UTF-8; use value domain described by endpoint purpose |
-
 ## 8. Reference DB Mapping (No Database Page Work)
 
 ส่วนนี้เป็นข้อมูลอ้างอิงสำหรับการ implement API/Job เท่านั้น ไม่ใช่งานสร้างหน้า Database, ไม่ใช่งานออกแบบ DB page และไม่ถูกนับเป็น deliverable แยกของ FE/BE
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| (backend config: config file/env) | R | enabled, cron, params ของ batch — ตาราง job_configs ถูกตัด 2026-08-06 ไม่มีหน้าจอควบคุม |
+| (backend config: config file/env) | R | enabled, cron, params ของ batch — ตาราง job_configs ถูกตัด 2026-08-06 ไม่มีหน้าจอควบคุม · **cron จริงตั้งที่ AWS Batch scheduled event ของ sop-sgi-batch ไม่ใช่ที่ store-backend** |
 | (application log แบบ structured) | W | ประวัติการรันและสถานะล่าสุด — ตาราง job_run_histories ถูกตัด 2026-08-06 |
 | sgi_interface_transactions | R/W | tracking file/API interface และ ACK |
 | email_template (SBP) | R | subject_format/body_format ของระบบ SBP เดิม — อ่านอย่างเดียว |
@@ -291,13 +254,13 @@ STA ACK callback ให้ Job 10 เป็น safety net
 
 โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
 
-#### 9.1 ผังไฟล์ที่ต้องสร้าง
+### 9.1 ผังไฟล์ที่ต้องสร้าง
 
 | Path | หน้าที่ |
 | --- | --- |
-| store-backend · src/modules/sgi-job-batch-email-srm/sgi-job-batch-email-srm.controller.ts | route ทั้งหมดของเอกสารนี้ (3 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
+| store-backend · src/modules/sgi-job-batch-email-srm/sgi-job-batch-email-srm.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
 | store-backend · src/modules/sgi-job-batch-email-srm/sgi-job-batch-email-srm.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sgi-job-batch-email-srm/sgi-job-batch-email-srm.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-job-batch-email-srm/sgi-job-batch-email-srm.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย · **คีย์ = ชื่อ handler** เช่น `getSgiMasterFactors` · บล็อกที่มีหลาย statement ให้แยกเป็นหลายคีย์ โดยเติมท้ายชื่อให้สื่อความ เช่น DELETE master ที่มี 2 statement → `removeSgiMasterFactorsByCodeInUse` (SELECT ตรวจการใช้งาน) + `removeSgiMasterFactorsByCode` (DELETE) |
 | store-backend · src/modules/sgi-job-batch-email-srm/dto/sgi-job-batch-email-srm.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sgi-job-batch-email-srm/sgi-job-batch-email-srm.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/sgi-interface-transactions.entity.ts | entity ของ `sgi_interface_transactions` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
@@ -308,54 +271,47 @@ STA ACK callback ให้ Job 10 เป็น safety net
 | BFF · src/modules/sgi-job-batch-email-srm/sgi-job-batch-email-srm.controller.ts | route ฝั่ง BFF prefix `/bff/sgi/…` + `@UseGuards(AuthGuard('jwt'))` |
 | BFF · src/modules/sgi-job-batch-email-srm/sgi-job-batch-email-srm.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
 
-#### 9.2 Controller (store-backend)
+### 9.2 Controller (store-backend)
 
 ```ts
 // src/modules/sgi-job-batch-email-srm/sgi-job-batch-email-srm.controller.ts
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { HttpHeaderGuard } from '../../guards/http-header.guard';
 import { UserId } from '../../common/decorators/user-id.decorator';
 import { SgiJobBatchEmailSRMService } from './sgi-job-batch-email-srm.service';
-import { JobBatchEmailSRMQueryDto, ReceiveAckStaBodyDto } from './dto/sgi-job-batch-email-srm.dto';
+import { JobBatchEmailSRMQueryDto } from './dto/sgi-job-batch-email-srm.dto';
 
 // LLDD BE - Job Batch and Email Integration
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sgi/sgi/interface')
+@Controller('interface')
 @UseGuards(HttpHeaderGuard)
 export class SgiJobBatchEmailSRMController {
   constructor(private readonly service: SgiJobBatchEmailSRMService) {}
 
   // GET /api/v1/sgi/interface/tracking — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
-  @Get('interface/tracking')
+  @Get('tracking')
   getSgiInterfaceTracking(@Query() query: JobBatchEmailSRMQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiInterfaceTracking(query, userId);
   }
 
-  // GET /api/v1/sgi/interface/pending-ack — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
-  @Get('interface/pending-ack')
+  // GET /api/v1/sgi/interface/pending-ack — รายการข้อความขาออกที่ยังไม่ได้ publisher confirm ตาม watchdog rule อา…
+  @Get('pending-ack')
   getSgiInterfacePendingAck(@Query() query: JobBatchEmailSRMQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiInterfacePendingAck(query, userId);
   }
-
-  // POST /api/v1/sgi/interface/sta/ack — STA ACK callback ให้ Job 10 เป็น safety net
-  @Post('interface/sta/ack')
-  receiveAckSta(@Body() body: ReceiveAckStaBodyDto, @UserId() userId: string) {
-    // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
-    return this.service.receiveAckSta(body, userId);
-  }
 }
 ```
 
-#### 9.3 DTO + Validation
+### 9.3 DTO + Validation
 
 ```ts
 // src/modules/sgi-job-batch-email-srm/dto/sgi-job-batch-email-srm.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
-  IsString, Matches, Max, MaxLength, Min,
+  IsString, Matches, Max, MaxLength, Min, ValidateNested,
 } from 'class-validator';
 
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
@@ -398,31 +354,13 @@ export class JobBatchEmailSRMQueryDto {
 }
 ```
 
-```ts
-// body ของ POST /api/v1/sgi/interface/sta/ack
-export class ReceiveAckStaBodyDto {
-  /** integration log key */
-  @IsNotEmpty()
-  @IsString()
-  transactionId: string;
-
-  @IsNotEmpty()
-  @IsString()
-  returnCode: string;
-
-  @IsNotEmpty()
-  @IsString()
-  receivedAt: string;
-}
-```
-
-#### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
+### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
 
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
 // src/modules/sgi-job-batch-email-srm/sgi-job-batch-email-srm.service.ts
-import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { SGI_SQL } from './sgi-job-batch-email-srm.sql';
 
@@ -440,50 +378,26 @@ export class SgiJobBatchEmailSRMService {
     const page = Number(query.page ?? 1);
     const size = Math.min(Number(query.size ?? 20), 100);
     // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sgi/interface/tracking')
-    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
-    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
+    // SQL ในเอกสารเป็น positional $1..$n อยู่แล้ว (ตัวสร้างแปลงให้ตั้งแต่ 2026-09-04)
+    //   บรรทัดแรกของบล็อก SQL คือ `-- bind ตามลำดับ: $1=... · $2=...` ให้เรียงอาร์กิวเมนต์ตามนั้น
     const rows = await this.dataSource.query(SGI_SQL.getSgiInterfaceTracking, [
-      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
+      // เรียงให้ตรงกับบรรทัด `-- bind ตามลำดับ:` ของ SQL เส้นนี้
       userId, (page - 1) * size, size,
     ]);
     // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/sgi/interface/pending-ack — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
+  // GET /api/v1/sgi/interface/pending-ack — รายการข้อความขาออกที่ยังไม่ได้ publisher confirm ตาม watchdog rule อา…
   async getSgiInterfacePendingAck(query: JobBatchEmailSRMQueryDto, userId: string) {
     // TODO: implement ตาม business rule ของ GET /api/v1/sgi/interface/pending-ack
     //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sgi/interface/pending-ack')
     throw new NotImplementedException('getSgiInterfacePendingAck ยังไม่ implement');
   }
-
-  // POST /api/v1/sgi/interface/sta/ack — STA ACK callback ให้ Job 10 เป็น safety net
-  // mutation ต้องอยู่ใน transaction เดียว (ไม่มี audit ของ master แล้ว · 2026-08-07)
-  async receiveAckSta(body: ReceiveAckStaBodyDto, userId: string) {
-    const runner = this.dataSource.createQueryRunner();
-    await runner.connect();
-    await runner.startTransaction();
-    try {
-      // TODO: lock แถวเป้าหมายของ sgi_interface_transactions ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SGI_SQL.receiveAckStaLock, [body.docNo]);
-      if (!current) {
-        throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
-      }
-      await runner.query(SGI_SQL.receiveAckSta, [/* TODO: ผูกค่าจาก body */]);
-      await runner.commitTransaction();
-      return { message: 'saved' };
-    } catch (error) {
-      await runner.rollbackTransaction();
-      this.logger.error(error);
-      throw error;
-    } finally {
-      await runner.release();
-    }
-  }
 }
 ```
 
-#### 9.5 Entity (TypeORM)
+### 9.5 Entity (TypeORM)
 
 ```ts
 // src/entitys/sgi-interface-transactions.entity.ts
@@ -494,17 +408,17 @@ export class InterfaceTransaction {
   @PrimaryColumn({ name: 'id', type: 'bigint' })
   id: number;
 
-  @Column({ name: 'data_name', type: 'varchar', length: 50 })
+  @Column({ name: 'run_id', type: 'varchar', length: 50, nullable: true })
+  runId?: string;
+
+  @Column({ name: 'data_name', type: 'varchar', length: 80 })
   dataName: string;
 
-  @Column({ name: 'direction', type: 'varchar', length: 3 })
+  @Column({ name: 'direction', type: 'varchar', length: 10 })
   direction: string;
 
-  @Column({ name: 'business_key', type: 'varchar', length: 100, nullable: true })
-  businessKey?: string;
-
-  @Column({ name: 'doc_no', type: 'varchar', length: 12, nullable: true })
-  docNo?: string;
+  @Column({ name: 'status', type: 'varchar', length: 20 })
+  status: string;
 
   @Column({ name: 'impact_process_id', type: 'bigint', nullable: true })
   impactProcessId?: number;
@@ -512,23 +426,59 @@ export class InterfaceTransaction {
   @Column({ name: 'sales_summary_id', type: 'bigint', nullable: true })
   salesSummaryId?: number;
 
+  @Column({ name: 'doc_no', type: 'varchar', length: 10, nullable: true })
+  docNo?: string;
+
+  @Column({ name: 'business_key', type: 'varchar', length: 200 })
+  businessKey: string;
+
+  @Column({ name: 'period_key', type: 'varchar', length: 20 })
+  periodKey: string;
+
+  @Column({ name: 'correlation_id', type: 'varchar', length: 100, nullable: true })
+  correlationId?: string;
+
   @Column({ name: 'file_name', type: 'varchar', length: 255, nullable: true })
   fileName?: string;
 
-  @Column({ name: 'status', type: 'varchar', length: 20 })
-  status: string;
+  @Column({ name: 'file_checksum', type: 'varchar', length: 64, nullable: true })
+  fileChecksum?: string;
 
-  @Column({ name: 'sent_at', type: 'timestamptz', nullable: true })
-  sentAt?: Date;
+  @Column({ name: 'outbox_status', type: 'varchar', length: 20, nullable: true })
+  outboxStatus?: string;
 
-  @Column({ name: 'acked_at', type: 'timestamptz', nullable: true })
-  ackedAt?: Date;
-
-  @Column({ name: 'return_code', type: 'varchar', length: 10, nullable: true })
+  @Column({ name: 'return_code', type: 'varchar', length: 50, nullable: true })
   returnCode?: string;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  @Column({ name: 'return_message', type: 'varchar', length: 500, nullable: true })
+  returnMessage?: string;
+
+  @Column({ name: 'retry_count', type: 'int', default: 0 })
+  retryCount: number;
+
+  @Column({ name: 'sent_at', type: 'timestamp', nullable: true })
+  sentAt?: Date;
+
+  @Column({ name: 'acked_at', type: 'timestamp', nullable: true })
+  ackedAt?: Date;
+
+  @Column({ name: 'last_ack_notified_on', type: 'date', nullable: true })
+  lastAckNotifiedOn?: Date;
+
+  @Column({ name: 'purge_after', type: 'timestamp', nullable: true })
+  purgeAfter?: Date;
+
+  @Column({ name: 'legal_hold', type: 'boolean', default: false })
+  legalHold: boolean;
+
+  @Column({ name: 'created_at', type: 'timestamp' })
+  createdAt: Date;
+
+  @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
+  completedAt?: Date;
+
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
@@ -552,7 +502,7 @@ export class EmailSent {
 | --- | --- | --- |
 | email_template | R | email_template + email_sent + @gosoft-sbp/email-lib |
 
-#### 9.6 Repository Providers + Module wiring
+### 9.6 Repository Providers + Module wiring
 
 ```ts
 // src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
@@ -604,7 +554,7 @@ export class SgiJobBatchEmailSRMModule implements NestModule {
 // TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
-#### 9.7 BFF Proxy (module + controller + client service)
+### 9.7 BFF Proxy (module + controller + client service)
 
 BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
@@ -638,6 +588,9 @@ export class SgiJobBatchEmailSRMBffService {
   constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  // ⚠️ ต้อง unwrap envelope ของ store-backend 1 ชั้นก่อนคืน (ยืนยันจากโค้ดจริง 2026-09-04):
+  //    ResponseInterceptor ระดับ global ของ BFF ห่อผลลัพธ์เป็น { success, data, requestId } อีกที
+  //    ถ้าคืน { success, data } ดิบมา FE จะได้ data.data.data — SgiClientService จึงต้องคืน .data.data
   private userHeaders(user: any) {
     return {
       'x-user-id': user?.userId,
@@ -653,30 +606,26 @@ export class SgiJobBatchEmailSRMBffService {
   getSgiInterfacePendingAck(params: any, user: any) {
     return this.client.get('/api/v1/sgi/interface/pending-ack', { params, headers: this.userHeaders(user) });
   }
-
-  receiveAckSta(body: any, user: any) {
-    return this.client.post('/api/v1/sgi/interface/sta/ack', body, { headers: this.userHeaders(user) });
-  }
 }
 
 // ---------- src/modules/sgi-job-batch-email-srm/sgi-job-batch-email-srm.controller.ts (BFF) ----------
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sgi/job-batch-email-srm')
+// path เดียวกับที่ FE เรียก (apiClient baseURL รวม /api/v1 แล้ว) — ห้ามตั้งตามชื่อเอกสาร LLDD
+@Controller('sgi/interface')
 @UseGuards(AuthGuard('jwt'))
 export class SgiJobBatchEmailSRMBffController {
   constructor(private readonly service: SgiJobBatchEmailSRMBffService) {}
 
   // proxy ของ GET /api/v1/sgi/interface/tracking
-  @Get('sgi/interface/tracking')
+  @Get('tracking')
   getSgiInterfaceTracking(@Query() query: any, @Req() req: any) {
     return this.service.getSgiInterfaceTracking(query, req.user);
   }
 
   // proxy ของ GET /api/v1/sgi/interface/pending-ack
-  @Get('sgi/interface/pending-ack')
+  @Get('pending-ack')
   getSgiInterfacePendingAck(@Query() query: any, @Req() req: any) {
     return this.service.getSgiInterfacePendingAck(query, req.user);
   }
@@ -686,7 +635,7 @@ export class SgiJobBatchEmailSRMBffController {
 
 ## 10. Database SQL
 
-#### 10.1 ตารางที่อ่าน/เขียน
+### 10.1 ตารางที่อ่าน/เขียน
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
@@ -694,51 +643,38 @@ export class SgiJobBatchEmailSRMBffController {
 | email_sent | W (โดย email-lib) | log การส่งของ batch — lib เขียนให้เอง |
 | email_template | R | ใช้ของระบบเดิม: email_template + email_sent + @gosoft-sbp/email-lib |
 
-#### 10.2 SQL จริงต่อ Endpoint
+### 10.2 SQL จริงต่อ Endpoint
 
 **GET /api/v1/sgi/interface/tracking** — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
-SELECT id AS tracking_id, data_name, doc_no, sent_at, return_code, acked_at AS receive_date
+-- bind ตามลำดับ: $1=dataName · $2=pending · $3=size · $4=offset
+-- pending = ยังไม่ได้ publisher confirm (มติ 2026-09-08 ข้อ 2.13) — ไม่ใช่ "รอ return_code จาก STA"
+SELECT id AS tracking_id, data_name, doc_no, sent_at, outbox_status, acked_at AS confirmed_date
 FROM sgi_interface_transactions
-WHERE (:dataName IS NULL OR data_name = :dataName)
-  AND (:pending  IS NULL OR return_code IS NULL)
+WHERE ($1 /* dataName */ IS NULL OR data_name = $1 /* dataName */)
+  AND ($2 /* pending */  IS NULL OR outbox_status IS DISTINCT FROM 'CONFIRMED')
 ORDER BY sent_at DESC
-LIMIT :size OFFSET :offset;
+LIMIT $3 /* size */ OFFSET $4 /* offset */;
 ```
 
-**GET /api/v1/sgi/interface/pending-ack** — รายการ ACK ค้างตาม watchdog rule อายุอย่างน้อย 1 วัน
+**GET /api/v1/sgi/interface/pending-ack** — รายการข้อความขาออกที่ยังไม่ได้ publisher confirm ตาม watchdog rule อายุอย่างน้อย 1 วัน (path คงชื่อเดิม)
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
--- เกณฑ์ watchdog Job 10: เฉพาะขาส่งออกที่ยังไม่มี ACK และอายุ ≥ 1 วัน
---   direction = OUT เท่านั้น — แถว INTERNAL ของ Jobs 7/8/9 จบที่ COMPLETED ทันที ไม่มี ACK ให้รอ
+-- bind ตามลำดับ: $1=thresholdHours
+-- เกณฑ์ watchdog Job 10 (มติ 2026-09-08 ข้อ 2.13): ขาส่งออกที่ broker ยังไม่ publisher confirm และอายุ >= 1 วัน
+--   "ค้าง" = ยังไม่ได้ publisher confirm ไม่ใช่ "STA ยังไม่ ACK" — สเปก STA มีแค่ 3 ข้อความบน RabbitMQ ไม่มี ACK กลับมา
+--   direction = OUT เท่านั้น — แถว INTERNAL ของ Jobs 7/8/9 จบที่ COMPLETED ทันที ไม่มีอะไรให้รอ
 --   (ตรงเจตนาเดิมของ Java: interface_type != 'WS' = เฝ้าเฉพาะ interface แบบไฟล์)
-SELECT data_name, doc_no, sent_at, (CURRENT_DATE - sent_at::date) AS age_days
+SELECT data_name, doc_no, created_at, (CURRENT_DATE - created_at::date) AS age_days
 FROM sgi_interface_transactions
 WHERE direction = 'OUT'
-  AND status NOT IN ('ACKED','COMPLETED')
-  AND return_code IS NULL
-  AND data_name IN (:staDatasets)
-  AND sent_at < CURRENT_DATE - 1
-ORDER BY sent_at;
+  AND (outbox_status IS NULL OR outbox_status <> 'CONFIRMED')
+  AND created_at < CURRENT_TIMESTAMP - ($1 /* thresholdHours */ * INTERVAL '1 hour')
+ORDER BY created_at;
 ```
 
-**POST /api/v1/sgi/interface/sta/ack** — STA ACK callback ให้ Job 10 เป็น safety net
-
-```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
--- callback จากระบบ STA (API key) → บันทึก ACK
-UPDATE sgi_interface_transactions
-SET return_code = :returnCode, acked_at = :receiveDate, status = :statusAcked, completed_at = :receiveDate
-WHERE id = :trackingId;
-```
-
-#### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
 
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |
@@ -771,13 +707,12 @@ WHERE id = :trackingId;
 | 1 | run job |
 | 2 | run duplicate |
 | 3 | interface tracking filter |
-| 4 | pending ACK watchdog |
-| 5 | STA ACK callback |
-| 6 | email preview |
+| 4 | watchdog ข้อความค้างส่ง (ยังไม่ publisher confirm) |
+| 5 | email preview |
 
 ## 14. Unit Test Scope
 
-**5 ชั่วโมง** (30% ของ implementation 14 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
+**3 ชั่วโมง** (30% ของ implementation 8 ชั่วโมง) · เครื่องมือ: Jest + mock repository/DataSource (ไม่ต่อ DB จริง)
 
 หัวข้อนี้คือ **unit test** ที่ต้องเขียนคู่กับโค้ด — ต่างจาก *Developer Test Checklist* ซึ่งเป็น scenario ระดับ end-to-end/manual ที่ใช้ตอนตรวจรับ · รายการด้านล่าง derive จาก field/validation, acceptance criteria, endpoint และตารางที่เอกสารนี้เขียน
 
@@ -793,7 +728,6 @@ WHERE id = :trackingId;
 | business rule | logic | ไม่มี inbound endpoint ของ SRM แล้ว (ตัด 2026-08-07) — เอกสารต้องไม่อ้างถึงอีก |
 | `GET /api/v1/sgi/interface/tracking` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | `GET /api/v1/sgi/interface/pending-ack` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
-| `POST /api/v1/sgi/interface/sta/ack` | handler | คืน {success:true,data} ตามรูปแบบที่ระบุ และคืน {success:false,error:{code,message}} เมื่อ input ผิด — mock repository/lib ไม่แตะ DB จริง |
 | `(application log แบบ structured)`, `sgi_interface_transactions`, `email_sent (SBP)` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | service | error mapping | แปลง error ของ repository/lib เป็น error code ตามสัญญากลาง (LLDD-BE-API-Common-Contracts) |
 

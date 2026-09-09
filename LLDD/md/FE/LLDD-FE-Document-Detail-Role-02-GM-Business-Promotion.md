@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | FE |
 | Estimate | **13 ชั่วโมง** = implementation 10 + unit test 3 (25%) |
-| Owner | Kittisak <New> Kaeowika |
+| Owner | Kittisak &lt;New&gt; Kaeowika |
 | Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Objective | อธิบายหน้าจอ Document Detail สำหรับ role 02 - GM ส่งเสริมธุรกิจฯ |
 
@@ -153,7 +153,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
       "requireComment": false
     },
     {
-      "value": "ส่งกลับฝ่าย SBP DSA",
+      "value": "ส่งกลับ",
       "label": "ส่งกลับฝ่าย SBP DSA",
       "requireComment": false
     }
@@ -232,9 +232,9 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 ```json
 {
   "docNo": "2026/00123",
-  "statusCode": "02",
+  "statusCode": "06",
   "viewerRbacRoleCode": "R-XX",
-  "roleProfileCode": "P-02",
+  "roleProfileCode": "P-06",
   "visibleSections": [
     "doc-header",
     "sec-sales",
@@ -248,23 +248,34 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
     "sec-action"
   ],
   "editableSections": [],
+  "canUploadAttachment": true,
+  "canAction": true,
   "actionOptions": [
-    {
-      "value": "เห็นควรชดเชย",
-      "label": "เห็นควรชดเชย",
-      "requireComment": false
-    },
     {
       "value": "เห็นควรไม่ชดเชย",
       "label": "เห็นควรไม่ชดเชย",
+      "requireComment": true
+    },
+    {
+      "value": "หยุดชดเชยประกันรายได้",
+      "label": "หยุดชดเชยประกันรายได้",
       "requireComment": false
     },
     {
-      "value": "ส่งกลับฝ่าย SBP DSA",
-      "label": "ส่งกลับฝ่าย SBP DSA",
+      "value": "ส่งหน่วยงานส่งเสริมธุรกิจ SBP",
+      "label": "ส่งหน่วยงานส่งเสริมธุรกิจ SBP",
+      "requireComment": false
+    },
+    {
+      "value": "ส่งเจ้าหน้าที่ SBP DSA",
+      "label": "ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ",
       "requireComment": false
     }
-  ]
+  ],
+  "impactedStore": {
+    "storeCode": "01234"
+  },
+  "newStores": []
 }
 ```
 
@@ -276,12 +287,17 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | statusCode | string | Yes | canonical code; do not replace with display label |
 | viewerRbacRoleCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | roleProfileCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| visibleSections | array<string> | Yes | JSON array; element type shown in Type column |
-| editableSections | array<object> | Yes | JSON array; element type shown in Type column |
-| actionOptions | array<object> | Yes | JSON array; element type shown in Type column |
+| visibleSections | array&lt;string&gt; | Yes | JSON array; element type shown in Type column |
+| editableSections | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| canUploadAttachment | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
+| canAction | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
+| actionOptions | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | actionOptions[].value | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | actionOptions[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | actionOptions[].requireComment | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
+| impactedStore | object | Yes | JSON object; nested fields listed below |
+| impactedStore.storeCode | string | Yes | exactly 5 digits; preserve leading zero |
+| newStores | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 
 ### POST /api/v1/sgi/document/{docNo}/actions
 
@@ -292,7 +308,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 ```json
 {
   "result": "เห็นควรชดเชย",
-  "comment": "ส่งดำเนินการตามลำดับ"
+  "comment": "เห็นควรชดเชยตามหลักเกณฑ์"
 }
 ```
 
@@ -307,8 +323,8 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 ```json
 {
-  "statusCode": "03",
-  "nextSection": "03",
+  "statusCode": "02",
+  "nextSection": "02",
   "message": "submitted"
 }
 ```
@@ -325,7 +341,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 โค้ดชุดนี้อิง convention ของ portal เดิม `srm-sps-spsap-web-frontend` (build target `sbpm`): Next.js App Router + `'use client'`, PrimeReact ที่ห่อไว้แล้วใน `@/components/Form` และ `@/components/Table`, react-hook-form + yup, Zustand `permissionStore`, axios instance กลาง `@/lib/apiClient` และ react-query 5 — **โปรเจกต์ไม่มี chart library** จึงไม่มีโค้ดกราฟในเอกสารนี้ คัดลอกไปตั้งต้นได้ทันที แล้วเติมจุดที่กำกับ `TODO:`
 
-#### 8.1 ผังไฟล์ที่ต้องสร้าง
+### 8.1 ผังไฟล์ที่ต้องสร้าง
 
 โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด
 
@@ -340,16 +356,17 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | src/hooks/sgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
 | src/types/sgi/document.ts | types — request/response ตาม API contract ของเอกสารนี้ |
 
-#### 8.2 RoleView component — view เฉพาะบทบาทของหน้า Document Detail
+### 8.2 RoleView component — view เฉพาะบทบาทของหน้า Document Detail
 
 ```tsx
 'use client';
 // RoleView02 — view ของหน้า Document Detail สำหรับ workflow section 02
 // editableSections ตาม contract: (อ่านอย่างเดียว)
 // actionOptions ที่ API ส่งให้ role นี้ (ยัง render จาก doc.actionOptions ห้าม hardcode ใน component):
-//   - เห็นควรชดเชย (ไม่บังคับความคิดเห็น)
-//   - เห็นควรไม่ชดเชย (ไม่บังคับความคิดเห็น)
-//   - ส่งกลับฝ่าย SBP DSA (ไม่บังคับความคิดเห็น)
+//   - เห็นควรไม่ชดเชย (ต้องกรอกความคิดเห็น)
+//   - หยุดชดเชยประกันรายได้ (ไม่บังคับความคิดเห็น)
+//   - ส่งหน่วยงานส่งเสริมธุรกิจ SBP (ไม่บังคับความคิดเห็น)
+//   - ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ (ไม่บังคับความคิดเห็น)
 
 import DocumentSection from '@/components/sgi/document-detail/DocumentSection';
 import ActionPanel from '@/components/sgi/document-detail/ActionPanel';
@@ -387,7 +404,7 @@ export default function RoleView02({ doc, onSubmitAction, submitting }: Props) {
 }
 ```
 
-#### 8.3 service — `src/services/sgi/document.service.ts`
+### 8.3 service — `src/services/sgi/document.service.ts`
 
 ⚠️ `src/services/sgi/document.service.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -412,10 +429,16 @@ export async function createSgiDocumentActions(docNo: string, body: T.CreateSgiD
   return data.data;
 }
 
-// TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
+// ── envelope: อ่าน `data.data` ชั้นเดียว (ยืนยันจากโค้ดจริงของ BFF 2026-09-04) ──
+//   BFF มี ResponseInterceptor ระดับ global (src/common/interceptors/response.interceptor.ts)
+//   ที่ห่อผลลัพธ์ของ controller เป็น { success, data, requestId } ให้เสมอ
+//   ⚠️ ถ้า client service ของ BFF คืน `response.data` ดิบ (= envelope ของ store-backend)
+//      interceptor จะเห็นคีย์ success แล้วห่อซ้ำ → FE ได้ { success, data: { data: <payload> } }
+//      สัญญาที่ตกลง: **BFF ต้อง unwrap ของ store-backend ก่อน 1 ชั้น** (คืน response.data.data)
+//      FE จึงอ่าน data.data ชั้นเดียวตามโค้ดด้านบน · requestId ใช้อ้างอิงตอนแจ้งปัญหา
 ```
 
-#### 8.4 types — `src/types/sgi/document.ts`
+### 8.4 types — `src/types/sgi/document.ts`
 
 ⚠️ `src/types/sgi/document.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -431,11 +454,17 @@ export interface SgiDocumentDetailResponse {
   roleProfileCode: string;
   visibleSections: string[];
   editableSections: unknown[];
+  canUploadAttachment: boolean;
+  canAction: boolean;
   actionOptions: {
     value: string;
     label: string;
     requireComment: boolean;
   }[];
+  impactedStore: {
+    storeCode: string;
+  };
+  newStores: unknown[];
 }
 
 /** POST /api/v1/sgi/document/{docNo}/actions — request */
@@ -454,7 +483,7 @@ export interface CreateSgiDocumentActionsResponse {
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
-#### 8.5 react-query keys + hooks — `src/hooks/sgi/document.query.ts`
+### 8.5 react-query keys + hooks — `src/hooks/sgi/document.query.ts`
 
 ⚠️ `src/hooks/sgi/document.query.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -490,7 +519,7 @@ export function useCreateSgiDocumentActionsMutation(docNo: string) {
 }
 ```
 
-#### 8.6 ฟอร์มพิจารณา + validation — `src/components/sgi/document-detail/ActionForm02.tsx`
+### 8.6 ฟอร์มพิจารณา + validation — `src/components/sgi/document-detail/ActionForm02.tsx`
 
 หน้านี้**ไม่มีการค้นหา** — ฟอร์มเดียวของหน้าคือฟอร์มผลการพิจารณาที่ยิง `POST /api/v1/sgi/document/{docNo}/actions` โดยส่งได้แค่ `result` + `comment`
 
@@ -499,9 +528,10 @@ export function useCreateSgiDocumentActionsMutation(docNo: string) {
 // ActionForm02 — ฟอร์ม "ผลการพิจารณา" ของ workflow section 02
 // payload ที่ส่งจริงมีแค่ 2 field ตาม CreateDocumentsActionsRequest: { result, comment }
 // option ที่ role นี้เห็นตาม contract (render จาก doc.actionOptions ห้าม hardcode ใน JSX):
-//   - เห็นควรชดเชย (value='เห็นควรชดเชย', requireComment=false)
-//   - เห็นควรไม่ชดเชย (value='เห็นควรไม่ชดเชย', requireComment=false)
-//   - ส่งกลับฝ่าย SBP DSA (value='ส่งกลับฝ่าย SBP DSA', requireComment=false)
+//   - เห็นควรไม่ชดเชย (value='เห็นควรไม่ชดเชย', requireComment=true)
+//   - หยุดชดเชยประกันรายได้ (value='หยุดชดเชยประกันรายได้', requireComment=false)
+//   - ส่งหน่วยงานส่งเสริมธุรกิจ SBP (value='ส่งหน่วยงานส่งเสริมธุรกิจ SBP', requireComment=false)
+//   - ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ (value='ส่งเจ้าหน้าที่ SBP DSA', requireComment=false)
 // editableSections ของ role นี้ (ใช้เป็น constant สำหรับ assertion/test เท่านั้น ไม่ใช่เพื่อ hardcode การ render):
 export const EDITABLE_SECTIONS_02 = [] as const;
 
@@ -515,7 +545,7 @@ import type { DocumentActionRequest } from '@/types/sgi/common';
 interface ActionOption { value: string; label: string; requireComment?: boolean }
 
 // ค่าที่ "บังคับกรอกความคิดเห็น" มาจาก contract ของ role นี้
-const REQUIRE_COMMENT: string[] = [/* TODO: ค่าที่บังคับ comment */];
+const REQUIRE_COMMENT: string[] = ['เห็นควรไม่ชดเชย'];
 
 // ⚠️ ข้อความ validation ด้านล่างเป็น verbatim จาก SRS v3.1 — ห้าม paraphrase ห้ามย่อ
 //    (SRS "รายการหน้าจอ" §10/§13 · ตรงกับที่ prototype k2-document.html ใช้)
@@ -579,7 +609,7 @@ export default function ActionForm02({ options, onSubmit, onCancel, submitting }
 }
 ```
 
-- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
+- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `&lt;AccessDenied /&gt;` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
 - payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)

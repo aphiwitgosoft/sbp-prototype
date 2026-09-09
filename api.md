@@ -7,7 +7,7 @@
 
 ## ภาพรวม
 
-- **29 เส้น · 6 กลุ่มตามโดเมน** เป็น reference contract สำหรับ FE/BE alignment (กลุ่มข้อมูลผิดปกติ 2 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ · กลุ่ม System Config และ Email Template รวม 10 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ — ดูท้ายไฟล์)
+- **28 เส้น · 6 กลุ่มตามโดเมน** เป็น reference contract สำหรับ FE/BE alignment (กลุ่มข้อมูลผิดปกติ 2 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ · กลุ่ม System Config และ Email Template รวม 10 เส้น **ยกเลิกและลบทิ้ง 2026-08-06** พร้อมหน้าจอ — ดูท้ายไฟล์)
 - Base URL `/api/v1` · การยืนยันตัวตน: ผ่าน BFF ของระบบ SBP เดิม — SGI รับ user context จาก header (`x-api-key` + `x-user-id`/`x-user-group-id`/`x-user-permissions`) · callback ภายนอกใช้ API key/service token
 - **ตัดสินใจ 2026-08-05:** กลุ่ม Auth & สิทธิ์ผู้ใช้ (เดิมกลุ่ม 1 · 4 เส้น) และ API ผู้ปฏิบัติงาน/roles/menus/สิทธิ์เมนู (เดิมอยู่กลุ่ม Master Data · 14 เส้น) **ตัดออก — ใช้ระบบ SBP เดิม** (Cognito + BFF + auth-backend/ABS) ดูหัวข้อ "เส้นที่ตัดออก" ท้ายไฟล์ · เดิมนับเป็น 62 เส้น 10 กลุ่ม
 - **ตัดสินใจ 2026-08-06 (รอบ 2) — ยึด API/DB ของระบบ SBP เดิมเป็นหลัก:** ตรวจ `SBP/README.md` + `srm-sps-spsap-store-backend` แล้วตัดอีก **3 เส้น** ที่มีของพร้อมใช้อยู่แล้ว (`/stores/search` → `GET /store/search` · `/zones` → `GET /store/all-regions` · `/branch-types` → `GET /common/common-code`) → เหลือ 47 เส้น (ต่อมาลดเหลือ 31 เส้น เมื่อลบกลุ่ม System Config + Email Template และกลุ่ม Batch Job Admin · แล้วเหลือ 30 เส้น เมื่อยกเลิกระบบ `audit_logs` 2026-08-07 · แล้วเหลือ **29 เส้น** เมื่อย้าย `decisions` ไป `common_code` ตามมติ DP-9 (2026-08-10)) · และเปลี่ยนแหล่งข้อมูลของอีก 4 เส้นให้ไปอ่าน/เขียนของระบบเดิมแทนตารางของ SGI (ดูตาราง "เส้นที่เปลี่ยนไปใช้ของระบบ SBP เดิม" ท้ายไฟล์)
@@ -58,7 +58,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 | 3. Master Data | `/api/v1/sgi/master/*` | `/sgi/master/*` | 8 |
 | 4. รายงาน | `/api/v1/sgi/report/*` | `/sgi/report/*` | 2 |
 | 5. Workflow ภายใน | `/api/v1/sgi/workflow/*` | — (service token) | 3 |
-| 6. Interface (tracking / ACK) | `/api/v1/sgi/interface/*` | — (ไม่มีหน้าจอ) | 3 |
+| 6. Interface (tracking) | `/api/v1/sgi/interface/*` | — (ไม่มีหน้าจอ) | 2 |
 
 **ชื่อเดียวกัน 3 ชั้น:** URL ของ API `/api/v1/sgi/<กลุ่ม>/...` · route ของหน้าจอ `/sgi/<กลุ่ม>/...` · โฟลเดอร์ไฟล์ `src/app/(main)/sgi/*` · `src/services/sgi/*` · `src/types/sgi/*`
 
@@ -68,10 +68,10 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 |---|---|---|
 | `/document` · `/statement/...` | `/documents` | ชนเชิงความหมาย · คนอ่าน routing สับสน |
 | `/report` · `/performance-report` · `/statement/report/ej` | `/reports/status-summary` | ชนเชิงความหมาย |
-| **`/interface/sta/upload-cmadd`** · `/interface/add` | **`/interfaces/sta/ack`** | 🔴 เกือบเหมือนกัน — เสี่ยงยิงผิดเส้นจริง |
+| **`/interface/sta/upload-cmadd`** · `/interface/add` | ~~`/interfaces/sta/ack`~~ | ✅ **หมดความเสี่ยงแล้ว** — เส้นของเราถูกตัดเมื่อ 2026-09-08 |
 | `/common` · `/master` · `/store` | `/factors` `/competitors` `/document-statuses` | ปนกับ master ของโมดูลอื่น |
 
-**Batch job ไม่มีกลุ่ม path ของตัวเอง** — Jobs 2-10 + 8b รันด้วย cron/CLI ไม่เปิด endpoint (กลุ่ม Batch Job Admin 6 เส้นถูกตัดทิ้ง 2026-08-06) · ผลการรัน job มองผ่าน **`/sgi/interface/*`** (tracking + ACK ของ `sgi_interface_transactions`) กับ application log เท่านั้น
+**Batch job ไม่มีกลุ่ม path ของตัวเอง** — Jobs 2-10 + 8b + Job 11, 12 (รวม 12 job) รันด้วย AWS Batch/CLI ไม่เปิด endpoint (กลุ่ม Batch Job Admin 6 เส้นถูกตัดทิ้ง 2026-08-06) · ผลการรัน job มองผ่าน **`/sgi/interface/*`** (tracking + ACK ของ `sgi_interface_transactions`) กับ application log เท่านั้น
 
 **กติกา**
 
@@ -83,7 +83,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 
 ## รายการ endpoint ทั้ง 6 กลุ่ม
 
-> **การนับ:** หัวข้อย่อยด้านล่างเลข 1–7 แต่ **หัวข้อ 1 (Auth) ถูกตัดออกทั้งกลุ่มและไม่มี endpoint** — กลุ่มที่นับจริงคือหัวข้อ 2–7 รวม **6 กลุ่ม / 29 เส้น** (11 + 3 + 8 + 2 + 3 + 3) ตรงกับ `GROUPS` ใน `plan-api.html` ที่เรนเดอร์เลขกลุ่ม 1–6 (คงเลขหัวข้อเดิมไว้เพื่อไม่ให้ลิงก์อ้างอิงเดิมเสีย)
+> **การนับ:** หัวข้อย่อยด้านล่างเลข 1–7 แต่ **หัวข้อ 1 (Auth) ถูกตัดออกทั้งกลุ่มและไม่มี endpoint** — กลุ่มที่นับจริงคือหัวข้อ 2–7 รวม **6 กลุ่ม / 28 เส้น** (11 + 2 + 8 + 2 + 3 + 2) ตรงกับ `GROUPS` ใน `plan-api.html` ที่เรนเดอร์เลขกลุ่ม 1–6 (คงเลขหัวข้อเดิมไว้เพื่อไม่ให้ลิงก์อ้างอิงเดิมเสีย)
 
 ### 1. Auth & สิทธิ์ผู้ใช้ — **ตัดออก · ใช้ระบบ SBP เดิม** (ตัดสินใจ 2026-08-05)
 
@@ -139,28 +139,28 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 | POST | `/sgi/workflow/instances` | เปิด workflow (แทน K2 StartInstance) — Gen Flow Gate (service token · มี Flowchart) |
 | GET | `/sgi/workflow/instances/{id}` · `/sgi/workflow/summary` | สถานะ instance · ตัวเลขเฝ้าระวัง W/Y/N + งานค้างต่อ section |
 
-### 7. Interface (tracking / ACK) · FGI/FCS (3 เส้น · ตัด `/dashboard/summary` 2026-08-06 — ชื่อกลุ่มจึงไม่มีคำว่า Dashboard แล้ว)
+### 7. Interface (tracking) · FGI/FCS (2 เส้น · ตัด `/dashboard/summary` 2026-08-06 · **ตัด `POST /sgi/interface/sta/ack` 2026-09-08** ตามมติข้อ 2.13 — สเปก STA ไม่มี ACK แบบ HTTP)
 | Method | Path | ทำอะไร |
 |---|---|---|
-| GET | `/sgi/interface/tracking` · `/sgi/interface/pending-ack` | สถานะรับ–ส่งของ interface (`sgi_interface_transactions`) · ACK ค้าง ≥ 1 วัน (Job 10) — **นับเฉพาะ `direction = 'OUT'`** เพราะแถว `INTERNAL` ของ Jobs 7/8/9 จบที่ `COMPLETED` ทันที ไม่มี ACK ให้รอ (ตรงเจตนาเดิมของ Java ที่กรอง `interface_type != 'WS'`) |
-| POST | `/sgi/interface/sta/ack` | callback ให้ STA ยิง ACK ตรง (API key) |
+| GET | `/sgi/interface/tracking` · `/sgi/interface/pending-ack` | สถานะรับ–ส่งของ interface (`sgi_interface_transactions`) · **ข้อความขาออกที่ broker ยังไม่ publisher confirm ≥ 1 วัน** (Job 10 · มติ 2026-09-08 ข้อ 2.13 — ไม่ใช่การรอ ACK จาก STA · ชื่อ path `pending-ack` คงไว้เพื่อ compatibility) — **นับเฉพาะ `direction = 'OUT'`** เพราะแถว `INTERNAL` ของ Jobs 7/8/9 จบที่ `COMPLETED` ทันที ไม่มี ACK ให้รอ (ตรงเจตนาเดิมของ Java ที่กรอง `interface_type != 'WS'`) |
 | ~~GET~~ | ~~`/dashboard/summary`~~ | **ตัดออกถาวร 2026-08-06** — ถอด stat cards ออกจากหน้ารอดำเนินการ/ที่เกี่ยวข้องแล้ว จึงไม่มีผู้เรียก (เดิมคืนตัวเลข: งานรอดำเนินการของ section · ยอดขายไม่ครบ 60 วัน · รอเกิน 3 วัน · วงเงินเข้าเส้น AVP) |
 
 ## กฎธุรกิจสำคัญที่ผูกกับ API
 
 - **บังคับระบุปี (ค.ศ.)** ใน `/sgi/document` และ `/sgi/report/status-summary` ไม่งั้นตอบ 400 (กติกา SRS · BE ต้องผ่าน `toAD()` ก่อน query เผื่อ client ส่ง พ.ศ. มา)
 - **เส้นทางข้ามขั้นที่ section 06** ใน `/sgi/document/{docNo}/actions`: `result = "ส่งหน่วยงานส่งเสริมธุรกิจ SBP"` → `nextSection = "01"` (**ข้ามขั้น 08**) ใช้เมื่อ**ทราบยอดเงินชดเชยจากเจ้าหน้าที่ SBP DSA แล้ว** (ข้อความอ้างอิง SDD สไลด์ 21: “ส่งต่อ Flow หลังทราบยอดเงินชดเชยรายได้จากเจ้าหน้าที่ SBP DSA ดำเนินการ”) · `result = "ส่งเจ้าหน้าที่ SBP DSA"` → `nextSection = "08"` (เส้นทางปกติ — ยังไม่ทราบยอด ต้องมอบหมายให้คำนวณก่อน) · การส่งกลับจากทุก Section กลับไปที่ 06 เสมอ (ดูตารางเทียบใน `workflow.md`)
+- **มติ 2026-09-01 — เปิดพิจารณาใหม่ต้องแจ้ง STA:** `POST /sgi/document/{docNo}/actions` ที่ section 06 บนเอกสารที่**จบไปแล้ว**ด้วยผล `เห็นควรไม่ชดเชย` หรือ `หยุดชดเชยประกันรายได้` ต้อง **publish message `sgi_reflow`** (RabbitMQ exchange `sgi.interface` · `compensate_status = "R"` · 1 รายการต่อ 1 งวด) ให้ STA ตั้ง flow ของงวดนั้นใหม่ พร้อมเขียนแถว outbox `sgi_interface_transactions` ใน transaction เดียวกับการเปิดรอบพิจารณาใหม่ — สัญญาข้อความเต็มที่ [`STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md`](STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md)
 - **มติ 2026-09-01 — ปลายทางการส่งงาน 3 ข้อ** (ลำดับกลั่นกรอง 5 ขั้นและวงเงิน 100,000 ไม่เปลี่ยน):
   - Section **08** เหลือ **ตัวเลือกเดียว** `result = "คำนวณเงินชดเชยเรียบร้อย"` → `nextSection = "06"` (เดิม `"01"`) — เจ้าหน้าที่ SBP DSA คำนวณยอดแล้วคืนงานให้ฝ่าย SBP DSA เป็นผู้ส่งต่อ · ค่า `"ส่งกลับ"` ที่ Section 08 **ถูกตัดออกจาก `actionOptions`** เพราะซ้ำปลายทางกัน
   - `result = "ส่งกลับ"` ที่ Section **02** และ **03** → `nextSection = "06"` (เดิม `"01"` และ `"02"` ตามลำดับ)
-- **กฎวงเงินอนุมัติ (SDD GI 24/02/2026)** ใน `/sgi/document/{docNo}/actions`: เห็นควรชดเชย < 100,000 → **จบที่ GM (02)** · ≥ 100,000 → AVP (03) แล้วจบ  · เห็นควรไม่ชดเชยที่ 01/02 → **เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น)** · 06 ไม่ชดเชย/หยุด → เสร็จสิ้น · **ตัดขั้นบัญชี 04/05 ตาม SDD v7.5** (ดูตารางเต็มใน `workflow.md`) · เดิมใช้เกณฑ์เดียว 100,000
+- **กฎวงเงินอนุมัติ (SDD GI 24/02/2026)** ใน `/sgi/document/{docNo}/actions`: เห็นควรชดเชย < 100,000 → **จบที่ GM (02)** · ≥ 100,000 → AVP (03) แล้วจบ  · เห็นควรไม่ชดเชยที่ 01/02/03 → **เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น)** — ขั้น 03 ปรับตามมติ 2026-09-02 · 06 ไม่ชดเชย/หยุด → เสร็จสิ้น · **ตัดขั้นบัญชี 04/05 ตาม SDD v7.5** (ดูตารางเต็มใน `workflow.md`) · เดิมใช้เกณฑ์เดียว 100,000
 - **auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48 · ระบุละเอียด 2026-08-20)** — ผูกกับ `POST /sgi/document/{docNo}/actions` และ `GET /sgi/document/tasks`:
   - **06 เห็นควรไม่ชดเชย** → ปิดเอกสาร (`เสร็จสิ้นดำเนินการ`) และ **`GET /sgi/document/tasks` ของ 06 ต้องไม่คืนเอกสารนี้ในเดือนที่ถูกปฏิเสธ** · ระบบตั้งงาน**รอบเดือนถัดไป**ให้ร้านเดิม โดยมอบหมาย**ผู้ดำเนินการคนเดิม**
   - **เคสต่อเนื่อง** (ชดเชยติดกันหลายเดือน) → ระบบส่งงานให้ **เจ้าหน้าที่ SBP DSA คนเดิม** อัตโนมัติ ไม่ต้องแจกงานด้วยมือ
   - **วิธี resolve** — หาเอกสารรอบก่อนของ `impacted_store_code` เดียวกัน แล้วอ่าน `sgi_consideration_logs` แถวล่าสุดที่ `section_code` ตรงกับขั้นที่จะมอบหมาย → **`consider_by`** → ส่งเข้า **`addPreApprover(versionId, referenceId, stateId, approver, seq)`** ของ `@srm/glb-workflow` · **ไม่มีคอลัมน์ assignee ในตารางของ SGI** (`workflow_tasks` ถูกตัดไปแล้ว)
   - **Fallback** — รอบก่อนไม่เคยผ่านขั้นนั้น / พนักงานลาออก → มอบหมายตาม group ของ auth-backend ตามปกติ (พนักงานลาออกยังต้องเปิด SR แก้ชื่อผู้ดำเนินการ · SDD สไลด์ 48)
   - ⚠️ **ต่างจาก "หยุดชดเชยประกันรายได้"** ซึ่ง `GET /sgi/document/tasks` ของ 06 **ต้องคืนทันทีในเดือนนั้น** (ดูข้อถัดไป) — สองปุ่มนี้จบเอกสารเหมือนกันแต่พฤติกรรมหน้ารายการตรงข้ามกัน
-- **เปิดเรื่องซ้ำได้ (SDD GI)** ใน `POST /sgi/document`: 409 เฉพาะกรณีมีเอกสาร **active** ของร้าน+เดือนนั้น — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้ทั้งเดือนเดียวกันและเดือนถัดไป (ยกเลิกการเปิด SR) · กรณีเห็นควรไม่ชดเชย (06) เดือนถัดไประบบสร้างงานเข้า `GET /sgi/document/tasks` อัตโนมัติพร้อม assignee คนเดิม · ยอดชดเชย 0: เดือน 1–3 ส่งต่อ 01 · เดือนที่ 4 หยุดชดเชย
+- **เปิดเรื่องซ้ำได้ (SDD GI)** ใน `POST /sgi/document`: 409 เฉพาะกรณีมีเอกสาร **active** ของร้าน+เดือนนั้น — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้ทั้งเดือนเดียวกันและเดือนถัดไป (ยกเลิกการเปิด SR) · กรณีเห็นควรไม่ชดเชย (06) เดือนถัดไประบบสร้างงานเข้า `GET /sgi/document/tasks` อัตโนมัติพร้อม assignee คนเดิม · ยอดชดเชย 0: เดือน 1–3 ส่งต่อ **08** (มติ 2026-09-01 · เดิม `01`) · เดือนที่ 4 หยุดชดเชย
 - **งานค้าง (SDD GI)** ใน `GET /sgi/document/tasks`: รองรับ filter + เลือกหลายเอกสาร (bulk action) · เจ้าหน้าที่/ฝ่าย SBP DSA เห็นเอกสารได้ทุกสาขา (ไม่จำกัดงานตน) · ทีมส่งเสริม/บัญชีตามสิทธิ์เดิม
 - **เอกสารที่หยุดชดเชยฯ กลับเข้าคิวของ 06 (SDD สไลด์ 46 ข้อ 1.9 · เพิ่ม 2026-08-20)** — `GET /sgi/document/tasks` เมื่อผู้เรียกอยู่ใน **section 06 (ฝ่าย SBP DSA)** ต้องคืน **2 ชุดรวมกัน**: (1) เอกสารสถานะ `รอฝ่าย SBP DSA ดำเนินการ` ตามปกติ + (2) เอกสารสถานะ `เสร็จสิ้นดำเนินการ` ที่**ผลการพิจารณาสุดท้ายเป็น "หยุดชดเชยประกันรายได้"** เพื่อให้ 06 พิจารณาคำขอชดเชยรายได้อีกครั้งได้เองโดยไม่ต้องเปิด SR · **บทบาทอื่น (08/01/02/03) ไม่เห็นชุดที่ (2)**
   - ชุดที่ (2) มาจากการ query `sgi_consideration_logs` แถวล่าสุดของเอกสารที่จบแล้ว (`result_code = หยุดชดเชยประกันรายได้`) — **ไม่ใช่สถานะที่ 7** สถานะเอกสารยังคงเป็น `เสร็จสิ้นดำเนินการ` ตามชุดสถานะ 6 ค่า
@@ -168,13 +168,13 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
   - `GET /sgi/document/{docNo}` ของเอกสารกลุ่มนี้คืนข้อมูลเดิมครบทุกส่วน + `actionOptions` **ชุดเดียวกับ section 06** (เห็นควรไม่ชดเชย · หยุดชดเชยประกันรายได้ · ส่งหน่วยงานส่งเสริมธุรกิจ SBP · ส่งเจ้าหน้าที่ SBP DSA) · การกด `POST /sgi/document/{docNo}/actions` จะเปิดรอบพิจารณาใหม่ให้ร้าน+เดือนนั้น
   - ⚠️ ต้องกันไม่ให้เอกสารกลุ่มนี้ถูกนับซ้ำในตัวเลข "งานค้าง" ของ engine (`getPendingFlowByUser()` ไม่คืนเอกสารที่ instance ปิดแล้ว — ชุดที่ (2) เป็นการ union ฝั่ง SGI เอง)
 - **filter `result`** ใน report = **4 ค่า** (Radio เลือกอย่างใดอย่างหนึ่ง · **ไม่บังคับ** — บังคับเฉพาะ `status`) อิง **ผลพิจารณาล่าสุด** `sgi_consideration_logs.result_category`: `APPROVE` = ประกันรายได้ · `REJECT` = ไม่ประกันรายได้ · **`CANCELLED` = ยกเลิกโดยระบบ (เพิ่ม 2026-08-10)** · `PENDING`/ไม่มีค่า = ยังไม่มีผล — SDD สไลด์ 60 แสดงเพียง 2 ค่าแรก แต่ master จริง (`DecisionProfile.DecisionResultName` ของ `CPA_FRN_FGI`) มี **ยกเลิกโดยระบบ** จาก decision 14 `CancelBySystem` ด้วย จึงแยกเป็นตัวเลือกที่ 4 (ตัดสินใจ 2026-08-10) — ขั้นบัญชี 05 ที่เคยอ้างถูกตัดออกแล้ว
-- **%ชดเชยรวม = 100%** ใน `PUT /sgi/document/{docNo}` · **เงินชดเชยต่อร้านเปิดใหม่ = ยอดชดเชยของร้านถูกกระทบ × %ชดเชย** คำนวณและปัดเศษที่ **BE** แล้วส่งกลับเป็น `compensateAmount` (FE ห้ามคูณเอง — กันยอดปัดเศษไม่ตรงกับที่บัญชีใช้) · ผลรวม `compensateAmount` ทุกร้านต้องเท่ากับยอดชดเชยของร้านถูกกระทบพอดี — แสดงในคอลัมน์ "เงินชดเชย (ร้านใหม่)" ของตารางร้านเปิดใหม่ (**กราฟสัดส่วนเงินชดเชยถูกถอดออก 2026-08-06**)
-- **เพิ่มร้านที่กระทบเพิ่มระหว่างทาง (B5)** — `newStores` ของ `PUT /sgi/document/{docNo}` รับได้ทั้งแถวที่ระบบดึงมาเอง (`sourceSystem = "ALLMAP"`) และแถวที่ผู้ใช้คีย์เอง (`sourceSystem = "USER"`) · **BE ต้อง validate `%ชดเชยรวม = 100%` ใหม่ทุกครั้งที่จำนวนแถวเปลี่ยน** แล้วคำนวณ `compensateAmount` ของทุกแถวใหม่ ไม่ใช่เฉพาะแถวที่เพิ่ม · กันซ้ำด้วย `UNIQUE (doc_no, new_store_code)` → ซ้ำให้คืน `409`
+- **%ชดเชยรวม = 100%** ใน `PUT /sgi/document/{docNo}` · **เงินชดเชยต่อร้านเปิดใหม่ = ยอดชดเชยของร้านถูกกระทบ × %ชดเชย** คำนวณและปัดเศษที่ **BE** แล้วส่งกลับเป็น `compensationAmount` (FE ห้ามคูณเอง — กันยอดปัดเศษไม่ตรงกับที่บัญชีใช้) · ผลรวม `compensationAmount` ทุกร้านต้องเท่ากับยอดชดเชยของร้านถูกกระทบพอดี — แสดงในคอลัมน์ "เงินชดเชย (ร้านใหม่)" ของตารางร้านเปิดใหม่ (**กราฟสัดส่วนเงินชดเชยถูกถอดออก 2026-08-06**)
+- **เพิ่มร้านที่กระทบเพิ่มระหว่างทาง (B5)** — `newStores` ของ `PUT /sgi/document/{docNo}` รับได้ทั้งแถวที่ระบบดึงมาเอง (`sourceSystem = "ALLMAP"`) และแถวที่ผู้ใช้คีย์เอง (`sourceSystem = "USER"`) · **BE ต้อง validate `%ชดเชยรวม = 100%` ใหม่ทุกครั้งที่จำนวนแถวเปลี่ยน** แล้วคำนวณ `compensationAmount` ของทุกแถวใหม่ ไม่ใช่เฉพาะแถวที่เพิ่ม · กันซ้ำด้วย `UNIQUE (doc_no, new_store_code)` → ซ้ำให้คืน `409`
 - API payload ใช้ `newStoreCode` สำหรับรหัสร้านเปิดใหม่ 5 หลัก (เช่น `"00990"`) เพื่อคง leading zero **ทั้งใน response ของ `GET /sgi/document/{docNo}` และ request ของ `PUT /sgi/document/{docNo}`** (ห้ามใช้ `storeCode` ในสองเส้นนี้ — สงวนไว้ให้ร้านถูกกระทบ); internal table `sgi_document_new_stores.id` เป็น key ภายใน ไม่ expose เป็น field code
 - **require field ของแถวที่ผู้ใช้เพิ่มเองในส่วนร้านคู่แข่ง/ปัจจัยอื่นๆ ของ `PUT /sgi/document/{docNo}`** (ตัดสินใจ 2026-08-06): คู่แข่ง = **รหัสแบรนด์คู่แข่ง** (เลือกจาก master `GET /sgi/master/competitors` รหัส `01`–`11` เท่านั้น ไม่ใช่ free text — แถว `source_system = ALLMAP` ที่ pipeline นำเข้ามีรหัสรายสาขาของตัวเองอยู่แล้ว) + **วันที่เปิดกระทบ** · ปัจจัย = **รหัสปัจจัยภายนอก** (เลือกจาก master `GET /sgi/master/factors`) + **วันที่เริ่มต้น** (วันที่สิ้นสุดไม่บังคับ แต่ถ้ามีต้อง ≥ วันที่เริ่มต้น — SRS ข้อ 11) · ไม่ผ่าน → 400 พร้อมข้อความ **verbatim จาก SRS §10**: “กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ” · ส่วนฝั่งปัจจัย “กรุณาเลือกปัจจัยอื่นๆ ที่ท่านต้องการ” **ไม่ได้อยู่ใน SRS** — เราตั้งขึ้นให้ล้อกับข้อความคู่แข่ง (SRS §11 ระบุแต่กฎวันที่ ไม่ได้ให้ข้อความ) **ต้องให้ BA ยืนยันก่อน UAT** · UI: `k2-document.html` แสดง `*` แดงบน require field และไม่มีปุ่ม “บันทึก” ระดับการ์ดแล้ว (บันทึกผ่าน modal เพิ่ม/แก้ไขเท่านั้น)
 - **การบันทึกส่วนร้านคู่แข่ง/ปัจจัยอื่นๆ เป็นแบบ “บันทึกทันทีรายรายการ”** (ตัดสินใจ 2026-08-06 — ไม่มีปุ่มบันทึกระดับการ์ดแล้ว): กด **เพิ่ม/แก้ไข** ใน modal แล้วกดบันทึกใน modal = ยิง `PUT /sgi/document/{docNo}` ทันที 1 ครั้ง · **ลบรายการที่เลือก (bulk remove)** ก็ยิง `PUT` ทันทีหลังผู้ใช้กดยืนยันใน popup (ไม่ค้างเป็น draft) — ไม่มี endpoint ลบแยก · ทุกครั้งส่ง**อาร์เรย์ชุดเต็มของส่วนนั้น** ให้ BE ลบรายการที่หายไป (`DELETE … NOT IN`) ในทรานแซกชันเดียวกัน · ปุ่มเพิ่ม/ลบ/checkbox แสดงเฉพาะ role ที่แก้ส่วนนั้นได้ (ปัจจุบันคือ section 01)
 - **⚠️ ข้อค้าง (2026-08-11): วิว ALLMAP** — `workflow.md` จัด ALLMAP อยู่กลุ่ม interface ที่ใช้ **พ.ศ.** และ argument ของ Job 2/3 ก็เป็น `2569|06` แต่หัวข้อนี้ระบุข้อยกเว้นไว้แค่ STA/IAS · **ยังไม่ยืนยันว่าวิว ALLMAP เก็บปีเป็น พ.ศ. จริงหรือไม่** — ต้องถามเจ้าของ ALLMAP แล้วปรับให้ตรงกันทั้งสองไฟล์
-- **ข้อยกเว้นเดียวของกติกา ค.ศ.:** ไฟล์ที่รับจาก IAS (`AMS06001I_…`) ยังใช้ **พ.ศ. + windows-874** และ **message ที่ส่งไป STA** (RabbitMQ `sta.compensation.result` · JSON UTF-8 · 14 ฟิลด์ตามสัญญา `FRBC0001` เดิม) ยังคง **ฟิลด์วันที่เป็น พ.ศ.** ตามสัญญาเดิมของระบบปลายทาง — แปลงเฉพาะตอนอ่านไฟล์/ประกอบ payload เท่านั้น ห้ามให้ปนเข้ามาใน DB/API · *ตัว windows-874 หายไปพร้อมกับไฟล์ `FRBC0001` เมื่อย้าย STA ไป RabbitMQ (มติ 2026-08-24) — เหลือรอยืนยันว่าจะเปลี่ยนฟิลด์วันที่เป็น ISO ค.ศ. ได้หรือไม่*
+- **ข้อยกเว้นเดียวของกติกา ค.ศ.:** ไฟล์ที่รับจาก IAS (`AMS06001I_…`) ยังใช้ **พ.ศ. + windows-874** และ **message ที่ส่งไป STA** (RabbitMQ exchange `sgi.interface` · JSON UTF-8 · ชุด `sgi_impact_store` / `sgi_reflow` ตามสัญญา `FRBC0001` เดิม) ยังคง **ฟิลด์วันที่เป็น พ.ศ.** ตามสัญญาเดิมของระบบปลายทาง — แปลงเฉพาะตอนอ่านไฟล์/ประกอบ payload เท่านั้น ห้ามให้ปนเข้ามาใน DB/API · *ตัว windows-874 หายไปพร้อมกับไฟล์ `FRBC0001` เมื่อย้าย STA ไป RabbitMQ (มติ 2026-08-24) — เหลือรอยืนยันว่าจะเปลี่ยนฟิลด์วันที่เป็น ISO ค.ศ. ได้หรือไม่*
 - **เลขเอกสาร YYYY/xxxxx** (ปี **ค.ศ.** · running ต่อปี เริ่ม 00001) · **เลขเอกสารและวันที่ทั้งระบบเป็น ค.ศ.** (ตัดสินใจ 2026-08-06 — ยึดตามระบบ SBP ปัจจุบัน: DatePicker ของ FE ตั้งค่า `buddhistEra = false` เป็นค่าเริ่มต้น และ BE มี helper `toAD(y) = y >= 2500 ? y - 543 : y` บังคับแปลงค่าที่หลุดมาเป็น พ.ศ. ให้เป็น ค.ศ. · แสดงผลเป็น พ.ศ. ได้เฉพาะจุดที่เปิด `buddhistEra` ที่ระดับ component เท่านั้น · ภาพหน้าจอ K2 จริงก็ใช้ ค.ศ. เช่นกัน เช่น `2026/01870`)
 - **Gen Flow Gate** ใน `/sgi/workflow/instances` (เกณฑ์คงเดิมทุกข้อ — ดูขั้น 6 ใน `workflow.md`)
 - `POST /sgi/workflow/instances` เป็น BE internal Workflow Engine contract สำหรับ Job 8b เท่านั้น ไม่ใช่งาน FE/Flow page: request `{impactProcessId, sourceJobNo:"8b", requestId}`; ผ่าน gate → สร้าง/คืน `{docNo, instanceId, workflowGenerationStatus:"Y", firstSection:"06", statusCode:"06"}`; fail ถาวร (branch type นอกเซ็ต, ระยะทางเกิน, DV หาย, นิติบุคคลเดียวกัน หรือ growth > −10) → ตั้ง `N`; เฉพาะ distance/juristic/growth เป็น NULL หรือ sales_status ยังไม่พร้อม → คง `W` และคืน 422/reason เพื่อ rerun
@@ -256,7 +256,7 @@ RPA ดึงข้อมูลร้านจาก SBP Mall ให้ทีม
 **เหตุผล:** ทั้ง 6 เส้นมีไว้รองรับ 2 tab ที่ถูกตัดออกจากหน้าจอโดยตรง (`แบบฟอร์มพารามิเตอร์`, `ประวัติการรัน`) — ส่วนที่เหลือของหน้า (Flowchart + Database ที่ใช้) เป็นเนื้อหา static ไม่ต้องเรียก API
 
 **สิ่งที่ยังอยู่:**
-- **batch job ทั้ง 10 entry point (Jobs 2–10 + 8b · ตัด Job 1 ImportQSSI 2026-08-24) ยังทำงานตามปกติ** ตามเอกสาร Batch v4.0 — ไม่กระทบ pipeline FGI/FCS
+- **batch job ทั้ง 12 ตัว (Jobs 2–10 + 8b จาก Batch v4.0 · ตัด Job 1 ImportQSSI 2026-08-24 · + Job 11 ConsumeStaCompensate และ Job 12 NotifyPendingWork ของใหม่ 2026-09-02) ยังทำงานตามปกติ** ตามเอกสาร Batch v4.0 — ไม่กระทบ pipeline FGI/FCS
 - **พารามิเตอร์และตารางเวลา** ย้ายไปกำหนดใน **backend config** (config file/env ของฝั่ง BE) แทนตาราง `job_configs` — แก้ค่าโดยการ deploy config ไม่ใช่ผ่านหน้าจอ
 - **ผลการรัน** เก็บที่ application log ของ BE และ `sgi_interface_transactions` (สถานะรับ–ส่งไฟล์/ACK ซึ่งยังมี endpoint กลุ่ม Interface อยู่) แทนตาราง `job_run_histories`
 - ตาราง `job_configs` และ `job_run_histories` **ถูกลบจาก target schema** (24 → 22 ตาราง)
@@ -311,7 +311,7 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 >   - `sps_auth`: `workflow_transaction` 55 · `route` 41 · `state` 10 (ชุดของ auth-backend คนละเรื่อง)
 >   - → ทุกที่ที่เอกสารนี้อ้างตาราง engine ให้อ่านว่า **`sps_store.<table>`**
 > - ⚠️ **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:** `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index เลย** ทั้งที่มี 19,283 แถว (ตารางชื่อเดียวกันใน `sps_auth` มี PK ปกติ) — กระทบ performance ของ `GET /sgi/document/tasks` / `POST /sgi/document/{docNo}/actions` ที่ต้อง query ตาราง**นี้ทุกครั้ง** · เป็นข้อเท็จจริงที่ตรวจพบ ไม่ใช่ข้อเสนอ · **ยังไม่ตัดสิน**ว่าจะแก้อย่างไร (เพิ่ม index / ขอ library เวอร์ชันใหม่ / อ่านผ่าน view)
-> - **ข้อสังเกต (ยังไม่ตัดสิน):** `workflow_part` + `workflow_part_display` ของ engine คุมการแสดงผล**รายส่วนของหน้าจอ** (READ/WRITE ต่อ state) ซึ่ง**ทับซ้อน**กับกลไก `data-editrole` / `.edit-only` ที่ prototype ทำเอง และกับธง `permissions.canEditSections` ที่ `GET /sgi/document/{docNo}` คืน — ต้องเลือกว่าจะให้ engine เป็นเจ้าของสิทธิ์แก้รายส่วนหรือให้ SGI คำนวณเอง (ดู `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4)
+> - **ข้อสังเกต (SGI ไม่ใช้):** `workflow_part` + `workflow_part_display` ของ engine คุมการแสดงผล**รายส่วนของหน้าจอ** (READ/WRITE ต่อ state) ซึ่ง**ทับซ้อน**กับกลไก `data-editrole` / `.edit-only` ที่ prototype ทำเอง และกับธง `permissions.canEditSections` ที่ `GET /sgi/document/{docNo}` คืน — ต้องเลือกว่าจะให้ engine เป็นเจ้าของสิทธิ์แก้รายส่วนหรือให้ SGI คำนวณเอง (ดู `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4)
 >
 > **✅ ชื่อ function ของ engine — ยึดตาม LLDD ของ lib (ยืนยันแล้ว 2026-08-14)**
 >
@@ -355,7 +355,7 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 ## อีเมล — SGI เป็นคนเรียก lib ส่งเอง (ปิด DP-5 · แก้มติ 2026-08-14)
 
 > แหล่งความจริง: **`SBP/TSM-SRM-LLDD SBP EMAIL1.0.xlsx`** (v1.0 · 15/09/2025 · Sukol K. · reviewed Sudtida J.) — lib กลางสำหรับส่งอีเมล **ทำเสร็จและใช้งานจริงแล้ว** ให้ module อื่น import
-> **ไม่ใช่ REST endpoint ของ SGI** — เป็นการเรียก library ภายใน จึงไม่นับรวมใน 29 เส้น
+> **ไม่ใช่ REST endpoint ของ SGI** — เป็นการเรียก library ภายใน จึงไม่นับรวมใน 28 เส้น
 
 ### สัญญาของ `sendEmail()`
 

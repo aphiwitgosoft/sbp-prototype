@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | FE |
 | Estimate | **35 ชั่วโมง** = implementation 28 + unit test 7 (25%) |
-| Owner | Chidchanok <lin> Saengamnat |
+| Owner | Chidchanok &lt;lin&gt; Saengamnat |
 | Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Objective | เตรียม foundation ฝั่ง Frontend สำหรับ SBP Mall: routing, API client, constants, shared state, formatters, mock mapping และ shared UI primitives; เอกสารนี้ไม่ใช่หน้าจอ Dashboard |
 
@@ -137,7 +137,9 @@ _รูปที่ 2: Sequence diagram: LLDD FE - Application Foundation and Sh
   "items": [
     {
       "code": "06",
-      "label": "รอฝ่าย SBP DSA ดำเนินการ"
+      "label": "รอฝ่าย SBP DSA ดำเนินการ",
+      "statusCode": "06",
+      "statusName": "รอฝ่าย SBP DSA ดำเนินการ"
     }
   ]
 }
@@ -147,15 +149,17 @@ _รูปที่ 2: Sequence diagram: LLDD FE - Application Foundation and Sh
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | items[].code | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].statusCode | string | Yes | canonical code; do not replace with display label |
+| items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ## 8. Skeleton Code (โครงโค้ดตั้งต้นของหน้าจอนี้)
 
 โค้ดชุดนี้อิง convention ของ portal เดิม `srm-sps-spsap-web-frontend` (build target `sbpm`): Next.js App Router + `'use client'`, PrimeReact ที่ห่อไว้แล้วใน `@/components/Form` และ `@/components/Table`, react-hook-form + yup, Zustand `permissionStore`, axios instance กลาง `@/lib/apiClient` และ react-query 5 — **โปรเจกต์ไม่มี chart library** จึงไม่มีโค้ดกราฟในเอกสารนี้ คัดลอกไปตั้งต้นได้ทันที แล้วเติมจุดที่กำกับ `TODO:`
 
-#### 8.1 ผังไฟล์ที่ต้องสร้าง
+### 8.1 ผังไฟล์ที่ต้องสร้าง
 
 โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด
 
@@ -167,7 +171,7 @@ _รูปที่ 2: Sequence diagram: LLDD FE - Application Foundation and Sh
 | src/hooks/sgi/lookup.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
 | src/types/sgi/lookup.ts | types — request/response ตาม API contract ของเอกสารนี้ |
 
-#### 8.2 layout.tsx + route registry ของโมดูล SGI
+### 8.2 layout.tsx + route registry ของโมดูล SGI
 
 ```tsx
 'use client';
@@ -196,7 +200,7 @@ export default function SgiLayout({ children }: { children: ReactNode }) {
 }
 ```
 
-#### 8.3 service — `src/services/sgi/lookup.service.ts`
+### 8.3 service — `src/services/sgi/lookup.service.ts`
 
 ⚠️ `src/services/sgi/lookup.service.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `lookup` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -215,10 +219,16 @@ export async function getSgiLookupDocumentStatuses(): Promise<T.SgiLookupDocumen
   return data.data;
 }
 
-// TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
+// ── envelope: อ่าน `data.data` ชั้นเดียว (ยืนยันจากโค้ดจริงของ BFF 2026-09-04) ──
+//   BFF มี ResponseInterceptor ระดับ global (src/common/interceptors/response.interceptor.ts)
+//   ที่ห่อผลลัพธ์ของ controller เป็น { success, data, requestId } ให้เสมอ
+//   ⚠️ ถ้า client service ของ BFF คืน `response.data` ดิบ (= envelope ของ store-backend)
+//      interceptor จะเห็นคีย์ success แล้วห่อซ้ำ → FE ได้ { success, data: { data: <payload> } }
+//      สัญญาที่ตกลง: **BFF ต้อง unwrap ของ store-backend ก่อน 1 ชั้น** (คืน response.data.data)
+//      FE จึงอ่าน data.data ชั้นเดียวตามโค้ดด้านบน · requestId ใช้อ้างอิงตอนแจ้งปัญหา
 ```
 
-#### 8.4 types — `src/types/sgi/lookup.ts`
+### 8.4 types — `src/types/sgi/lookup.ts`
 
 ⚠️ `src/types/sgi/lookup.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `lookup` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -230,13 +240,15 @@ export async function getSgiLookupDocumentStatuses(): Promise<T.SgiLookupDocumen
 export interface SgiLookupDocumentStatusesItem {
   code: string;
   label: string;
+  statusCode: string;
+  statusName: string;
 }
 export interface SgiLookupDocumentStatusesResponse { items: SgiLookupDocumentStatusesItem[]; }
 
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
-#### 8.5 react-query keys + hooks — `src/hooks/sgi/lookup.query.ts`
+### 8.5 react-query keys + hooks — `src/hooks/sgi/lookup.query.ts`
 
 ⚠️ `src/hooks/sgi/lookup.query.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `lookup` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -260,7 +272,7 @@ export function useSgiLookupDocumentStatusesQuery() {
 }
 ```
 
-- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
+- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `&lt;AccessDenied /&gt;` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
 - payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)

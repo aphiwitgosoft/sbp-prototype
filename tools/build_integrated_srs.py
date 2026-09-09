@@ -291,8 +291,8 @@ SRS_JOB_USER_CATALOG: dict[str, dict[str, str]] = {
         "purpose": "ส่งข้อมูลชดเชยที่ผ่านเงื่อนไขไปยังระบบ Statement/บัญชี",
         "input": "เอกสารหรือรายการชดเชยที่อนุมัติแล้ว, ข้อมูล QSSI ที่เกี่ยวข้อง, และสถานะรายการที่ต้องส่ง Statement",
         "summary": "ระบบคัดรายการที่พร้อมส่ง ตรวจเงื่อนไขสำคัญ สร้างข้อมูลส่งออกไป STA และบันทึก tracking เพื่อรอการตอบกลับ",
-        "output": "รายการชดเชยถูกส่งไป STA/Statement และระบบมีรายการติดตาม ACK สำหรับ reconcile",
-        "visible": "ทีมบัญชีและผู้ดูแลระบบเห็นสถานะส่งออก/รอ ACK ผ่านรายงานและ API ติดตาม interface",
+        "output": "รายการชดเชยถูกส่งไป STA/Statement และระบบมีรายการติดตามสถานะ publish สำหรับ reconcile",
+        "visible": "ทีมบัญชีและผู้ดูแลระบบเห็นสถานะส่งออก/รอ confirm ผ่านรายงานและ API ติดตาม interface",
     },
     "7": {
         "purpose": "บันทึกข้อมูลคู่แข่งที่เกี่ยวข้องเข้าเอกสารประกันรายได้",
@@ -324,9 +324,9 @@ SRS_JOB_USER_CATALOG: dict[str, dict[str, str]] = {
     },
     "10": {
         "purpose": "เฝ้าระวังรายการส่ง Statement ที่ยังไม่ได้รับผลตอบกลับจาก STA",
-        "input": "รายการ interface ที่ส่งไป STA แล้วแต่ยังไม่มี ACK/ผลตอบกลับเกินระยะเวลาที่กำหนด",
+        "input": "รายการ interface ขาออกที่ broker ยังไม่ publisher confirm เกินระยะเวลาที่กำหนด",
         "summary": "ระบบค้นหารายการค้าง จัดกลุ่มตามประเภทข้อมูลและไฟล์/ช่องทางส่ง แล้วส่งแจ้งเตือนให้ผู้เกี่ยวข้องติดตาม",
-        "output": "เกิดอีเมลหรือรายการแจ้งเตือน pending ACK เพื่อให้ทีมงานตรวจสอบกับระบบปลายทาง",
+        "output": "เกิดอีเมลหรือรายการแจ้งเตือนข้อความค้างส่ง เพื่อให้ทีมงานตรวจสอบและ republish จาก outbox",
         "visible": "Admin และทีมบัญชีเห็นรายการค้างผ่าน dashboard/report และได้รับการแจ้งเตือนตาม rule",
     },
 }
@@ -442,7 +442,7 @@ def scrub_srs_text(value: Any) -> str:
     text = str(value)
     for source, target in SRS_ARTIFACT_LABELS.items():
         text = text.replace(source, target)
-    text = text.replace("LLDD/BE/Jobs", "detailed batch design package")
+    text = text.replace("LLDD/Jobs", "detailed batch design package")
     text = text.replace("LLDD API/FE contracts", "API and FE detailed contracts")
     text = text.replace("LLDD-FE-Document-Detail", "Document Detail role design")
     text = text.replace("LLDD", "detailed design")
@@ -639,7 +639,7 @@ def build_model() -> Model:
             ["QSSI", "Inbound", "ระบบ SBP เดิมนำเข้าให้ (fcs_qssi_score)", "SGI อ่านอย่างเดียว; คะแนน 6 หมวด 8,9,12,1,10,16"],
             ["ALLMAP", "Inbound", "SQL Server views / link", "คู่ร้านถูกกระทบ ร้านคู่แข่ง และ POI map"],
             ["IAS/MIS", "Outbound/Inbound", "AMS06001O / AMS06001I", "ยอดขาย 4 windows x 15 days"],
-            ["STA", "Outbound/Inbound", "RabbitMQ sta.compensation.result + ACK/API callback", "ส่งผลชดเชยและเฝ้าระวัง ACK"],
+            ["STA", "Outbound/Inbound", "RabbitMQ sta.compensation.result + publisher confirm", "ส่งผลชดเชยและเฝ้าระวังข้อความที่ broker ยังไม่ confirm"],
             ["SAP", "Downstream via STA", "Accounting posting", "รับรายการเมื่อ STA approve"],
             ["SMTP", "Outbound", "E-mail", "แจ้งผู้ดำเนินการ เตือนงานค้าง และ batch errors"],
         ],
@@ -682,13 +682,13 @@ def build_model() -> Model:
         ["REQ-WFL-002", "ระบบต้องบันทึกผลพิจารณา เหตุผล ผู้กระทำ เวลา สถานะก่อน/หลัง และ correlation id ของทุก transition", "audit trace sample"],
         ["REQ-WFL-003", "ระบบต้องใช้ optimistic concurrency และคืน STALE_VERSION เมื่อ version เอกสารถูกเปลี่ยนแล้ว", "parallel update test"],
         ["REQ-INT-001", "Job 4 ต้องสร้าง durable file สำเร็จก่อน commit W เป็น P และ outbox READY", "failure injection ก่อน/หลัง fsync"],
-        ["REQ-INT-002", "Interface callback ต้องอัปเดต tracking เดิมแบบ compare-and-set และงาน purge ต้องลบเฉพาะ terminal/expired/non-held", "ACK race และ retention test"],
+        ["REQ-INT-002", "publisher confirm ต้องอัปเดต tracking เดิมแบบ compare-and-set และงาน purge ต้องลบเฉพาะ terminal/expired/non-held", "confirm race และ retention test"],
         ["REQ-INT-003", "ระบบต้องใช้ typed FK สำหรับ interface transaction และรักษา business key/idempotency key", "schema constraint/rerun test"],
         ["REQ-SEC-001", "ระบบต้องไม่เก็บ password hash หรือ credential ของ platform identity ภายใน user account ของ SGI", "schema/secret scan"],
         ["REQ-SEC-002", "การเชื่อมต่อภายนอกต้องอ่าน secret จาก Secret Manager และบังคับ TLS/host verification", "deployment/security evidence"],
         ["REQ-FIL-001", "ไฟล์แนบต้องไม่เกิน 5 MB ผ่าน type/AV scan และดาวน์โหลดได้เฉพาะผู้มีสิทธิ์เมื่อสถานะ CLEAN", "upload/download security test"],
         ["REQ-RPT-001", "รายงานหน้าจอและไฟล์ Excel ต้องใช้ filter/dataset เดียวกันและมีข้อมูลครบ 14 คอลัมน์ (SDD สไลด์ 60)", "preview/export reconciliation"],
-        ["REQ-OPS-001", "Jobs 2-10 และ 8b ต้องรองรับ rerun โดยไม่สร้างข้อมูลซ้ำและต้องรายงาน input/success/reject/skipped", "rerun/reconcile evidence"],
+        ["REQ-OPS-001", f"batch job ทั้ง {len(jobs)} ตัว (Job {', '.join(str(j['no']) for j in jobs)}) ต้องรองรับ rerun โดยไม่สร้างข้อมูลซ้ำและต้องรายงาน input/success/reject/skipped", "rerun/reconcile evidence"],
         ["REQ-SCR-001", "ระบบต้องมีหน้าจอ committed SCR-01 ถึง SCR-08 ตาม requirement รายหน้าจอ", "screen/UAT traceability"],
         ["SYS-API-001", f"ระบบต้องมี API capability {endpoint_total} endpoints ใน {api_group_total} กลุ่มตาม catalog", "OpenAPI/contract coverage"],
         ["SYS-DAT-001", f"ระบบต้องมี logical data model {table_total} ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ)", "migration/schema test"],
@@ -717,7 +717,7 @@ def build_model() -> Model:
         ("C3", "GM/AVP อนุมัติ", "Section 02; ยอดตั้งแต่ 100,000 ขึ้นไปผ่าน Section 03 แล้วจบ, ยอดน้อยกว่า 100,000 จบที่ GM"),
         ("C4", "บัญชีตรวจสอบนอก workflow", "เมื่อเอกสารเสร็จสิ้น ทีมบัญชีใช้รายงาน SBP Mall และ Export Excel เพื่อกระทบ SAP"),
         ("D1", "ส่ง Statement", "Job 6 publish RabbitMQ sta.compensation.result ไป STA เวลา 17:00 ทุกวัน"),
-        ("D2", "ติดตาม ACK", "STA callback อัปเดต ACK และ Job 10 เป็น safety net เมื่อค้าง >= 1 วัน"),
+        ("D2", "ติดตามข้อความขาออก", "publisher confirm ของ RabbitMQ ตั้ง outbox_status = CONFIRMED และ Job 10 เตือนเมื่อยังไม่ confirm >= 1 วัน"),
     ]
     model.table(["Step", "Process", "Requirement"], stages, [0.1, 0.28, 0.62])
     model.heading("3.1.2 Gen Flow Gate", 3)
@@ -834,7 +834,7 @@ def build_model() -> Model:
     model.note(
         "ตัดสินใจ 6 สิงหาคม 2026: หน้าจอ Batch Job ย้ายไปอยู่กลุ่มเมนู Flow และเหลือเฉพาะ "
         "ลำดับการทำงาน (Flowchart) กับ ตารางฐานข้อมูลที่ใช้ เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม "
-        "งาน Batch ทั้ง 11 รายการยังทำงานตามปกติ แต่กำหนดตารางเวลาและพารามิเตอร์ที่ backend config "
+        f"งาน Batch ทั้ง {len(jobs)} รายการยังทำงานตามปกติ แต่กำหนดตารางเวลาและพารามิเตอร์ที่ backend config "
         "(config file/env ของฝั่ง Backend) และบันทึกผลการรันไว้ที่ application log แทนตารางในฐานข้อมูล"
     )
     model.table(
@@ -873,7 +873,7 @@ def build_model() -> Model:
         "ผลลัพธ์ของ job ต้องตรวจนับได้ เช่น จำนวนไฟล์ จำนวนรายการที่อ่าน สำเร็จ ข้าม รอข้อมูล หรือผิดพลาด",
         "เมื่อ job ล้มเหลว ต้องมีข้อความสาเหตุที่ผู้ดูแลระบบใช้ติดตามกับทีมที่เกี่ยวข้องได้",
         "เมื่อไม่มีข้อมูลให้ประมวลผล ระบบต้องบันทึกเป็น no data หรือ skipped อย่างชัดเจน ไม่ถือว่าเป็น error โดยอัตโนมัติ",
-        "job ที่ส่งหรือรับข้อมูลจากระบบภายนอกต้องมีสถานะติดตามปลายทาง เช่น รอ ACK, ได้รับ ACK, หรือค้างเกินกำหนด",
+        "job ที่ส่งหรือรับข้อมูลจากระบบภายนอกต้องมีสถานะติดตาม เช่น รอ publish, ได้ publisher confirm แล้ว, หรือค้างเกินกำหนด",
         "การรันซ้ำต้องไม่ทำให้เอกสาร รายการร้าน คู่แข่ง ยอดขาย หรือข้อมูล Statement ซ้ำ",
     ]:
         model.bullet(rule)
@@ -1032,7 +1032,7 @@ def build_model() -> Model:
         [0.2, 0.8],
     )
     for rule in [
-        "รองรับ template EM-01 ถึง EM-08 ครอบคลุม workflow transition, reminder, escalation, batch error และ STA ACK watchdog",
+        "รองรับ template EM-01 ถึง EM-08 ครอบคลุม workflow transition, reminder, escalation, batch error และ watchdog ข้อความขาออกที่ยังไม่ confirm",
         "ตัวแปร merge ที่ใช้ต้องตรงกับที่ template รองรับ และต้องไม่มีตัวแปรที่แทนค่าไม่ได้หลงเหลือในอีเมลที่ส่งออก",
         "From/To/Cc ของ batch job กำหนดใน backend config ไม่ได้มาจากผู้ใช้ · อีเมล workflow เป็นหน้าที่ของ engine",
         "การส่งอีเมลต้องอยู่นอก transaction ของ workflow และการส่งล้มเหลวต้องไม่ทำให้ workflow ล้มเหลว",
@@ -1113,7 +1113,7 @@ def build_model() -> Model:
             ["Availability", "บริการ 7x24 ยกเว้น maintenance window; Batch Scheduler ต้อง resume/reconcile หลัง restart", "restart/failover test และหลักฐาน reconcile งานที่ค้าง"],
             ["Reliability", "Transaction ที่สำเร็จต้อง durable; error ต้องไม่เขียนข้อมูลบางส่วน; file interface ต้อง reconcile row/file/tracking", "failure injection, transaction rollback และ rerun/idempotency test"],
             ["Backup/Recovery", "กำหนด RPO/RTO, backup DB/config/object files และทดสอบ restore อย่างน้อยตามรอบองค์กร", "restore drill พร้อมเวลาจริงและรายการข้อมูลที่ตรวจคืน"],
-            ["Observability", "Metrics/log/trace สำหรับ API, batch, workflow, interface ACK, queue lag และ e-mail failure พร้อม alert threshold", "monitoring dashboard, alert test และ correlation trace"],
+            ["Observability", "Metrics/log/trace สำหรับ API, batch, workflow, publisher confirm, queue lag และ e-mail failure พร้อม alert threshold", "monitoring dashboard, alert test และ correlation trace"],
         ],
         [0.16, 0.52, 0.32],
     )
@@ -1143,7 +1143,7 @@ def build_model() -> Model:
         "หน้า Document Detail แสดง visible/editable/action options ตาม role profile ของผู้ใช้จริงและไม่มี role switcher ใน production",
         "ผลรวม % ชดเชย 100% ถูกตรวจทั้ง FE และ BE",
         "ร้านยอดขายไม่ครบ 60 วันถูก flag ใน inbox/report และมีเหตุผลตรวจสอบย้อนกลับ",
-        "Jobs 2-10/8b รันซ้ำตาม runbook โดยไม่สร้างข้อมูลซ้ำหรือสูญหาย",
+        f"batch job ทั้ง {len(jobs)} ตัว รันซ้ำตาม runbook โดยไม่สร้างข้อมูลซ้ำหรือสูญหาย",
         f"API capability {endpoint_total} endpoints ใน scope ต้องผ่าน authorization, validation, audit, duplicate guard/idempotency, pagination และ error-contract test; Auth Group 1 เป็น platform service",
         "ข้อมูล export/import ทุก interface ผ่าน golden-file test เรื่อง encoding/date/delimiter/field count",
         "หน้าจอรายงานและ CSV Export to Batch ให้ผลตรงกันภายใต้ filter เดียวกัน",
@@ -1158,7 +1158,7 @@ def build_model() -> Model:
         ["REQ-BUS-006", "Approval threshold", "routing ที่ 100,000 บาท", "3.0, 3.1.3, SCR-06"],
         ["REQ-DOC-001/002/003", "Document integrity", "เลขเอกสาร duplicate guard และ data spine", "3.0, 3.2, SCR-02/06"],
         ["REQ-WFL-001/002/003", "Workflow integrity", "ownership, audit และ optimistic concurrency", "3.0, 3.1.3, 3.2"],
-        ["REQ-INT-001/002/003", "Interface reliability", "durable file/outbox, ACK/purge และ typed FK", "3.0, 3.2.4, 3.3"],
+        ["REQ-INT-001/002/003", "Interface reliability", "durable file/outbox, publisher confirm/purge และ typed FK", "3.0, 3.2.4, 3.3"],
         ["REQ-SEC-001/002", "Identity and secrets", "platform identity, Secret Manager และ TLS", "1.5, 3.0, 4.2"],
         ["REQ-FIL-001", "Attachment", "5 MB, type/AV scan และ authorization", "3.0, SCR-06, 3.5"],
         ["REQ-RPT-001", "Report export", "19 columns และ preview/export reconciliation", "3.0, SCR-07"],
@@ -1167,7 +1167,7 @@ def build_model() -> Model:
         ["SYS-API-001", "API capability", f"{endpoint_total} endpoints / {api_group_total} groups", "3.5"],
         ["SYS-DAT-001", "Data model", f"{table_total} tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม)", "3.2"],
         ["SYS-NFR-001", "Observability", "correlation/metrics/alert/audit evidence", "4"],
-        ["FLOW-01", "Batch pipeline", "ขั้นตอนนำเข้า คำนวณ สร้างเอกสาร ส่ง Statement และติดตาม ACK", "3.1, 3.3"],
+        ["FLOW-01", "Batch pipeline", "ขั้นตอนนำเข้า คำนวณ สร้างเอกสาร ส่ง Statement และติดตามสถานะ publish", "3.1, 3.3"],
         ["FLOW-02", "Approval workflow", "Section 06 -> 08 -> 01 -> 02 และ Section 03 ตามวงเงิน", "3.1.1, 3.1.3"],
         ["DATA-01", "Logical data model", "Data subjects, relationships, controls และ remediation", "3.2"],
         ["JOB-01", "Batch Job Console", "11 entry points, common controls และผลลัพธ์ที่ตรวจรับได้", "3.3"],
@@ -1200,7 +1200,7 @@ def build_model() -> Model:
     model.para("รายการต่อไปนี้ยังไม่ถือเป็น requirement ที่อนุมัติ เมื่อได้ข้อยุติต้องบันทึกผล วันที่มีผล และปรับ baseline ก่อนพัฒนาส่วนที่เกี่ยวข้อง")
     open_items = [
         ["OPEN-02 ✅ ปิดแล้ว 2026-08-18", "วงเงินอนุมัติเกิน 300,000", "มติประชุม 2026-08-18 กลับไปใช้เกณฑ์เดียว 100,000 — ข้อค้างเรื่องเกิน 300,000 หมดไปเอง เพราะทุกยอด >= 100,000 ส่ง AVP อยู่แล้ว", "routing ขั้น 03 และ UAT"],
-        ["OPEN-09", "ผลพิจารณา \"เห็นควรไม่ชดเชย\" ที่ขั้น AVP (03)", "SDD GI ระบุเฉพาะขั้น 01/02 ว่าจบทันที — ขั้น 03 ยังคงพฤติกรรมเดิม (ตีกลับ 06) รอยืนยัน", "routing และ UAT"],
+        ["OPEN-09", "ผลพิจารณา \"เห็นควรไม่ชดเชย\" ที่ขั้น AVP (03)", "ปิดแล้ว (มติ 2026-09-02) — ขั้น 03 จบ flow ทันทีเหมือน 01/02", "ปิดแล้ว"],
         ["OPEN-04", "NULL growth_rate", "อนุมัติรอตรวจสอบแทน auto-accept หรือกำหนดกฎใหม่", "การคัดรายการและ workflow generation"],
         ["OPEN-05", "Legacy date routing", "ยืนยันเงื่อนไข routing สำหรับร้านก่อน/หลัง 1/10/2014", "routing และผลพิจารณา"],
         ["OPEN-06", "NFR SLA/RPO/RTO", "กำหนด SLA API/report/batch และ RPO/RTO production", "capacity, HA, backup และ acceptance"],
@@ -1272,7 +1272,14 @@ def make_md(model: Model):
                 lines.append("| " + " | ".join(cells) + " |")
             lines.append("")
         elif block.kind == "image" and block.path:
-            lines.extend([f"![{block.caption}]({block.path.name})", ""])
+            # path ต้องสัมพัทธ์กับที่อยู่ของไฟล์ .md ไม่ใช่ชื่อไฟล์เปล่า ๆ
+            # ⚠️ แก้ 2026-09-07: รูปอยู่ใต้ screenshots/slices|modals แต่เอกสารอ้างแค่ชื่อไฟล์
+            #    ทำให้ลิงก์รูปเสียทั้ง 43 จุด (เปิด .md แล้วไม่เห็นรูปสักรูป) — DOCX/PDF ไม่โดนเพราะฝังรูปเข้าไฟล์
+            try:
+                rel = block.path.resolve().relative_to(MD_OUT.parent.resolve()).as_posix()
+            except ValueError:
+                rel = os.path.relpath(block.path.resolve(), MD_OUT.parent.resolve()).replace(os.sep, "/")
+            lines.extend([f"![{block.caption}]({rel})", ""])
         elif block.kind == "pagebreak":
             lines.extend(["", "---", ""])
     MD_OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -2113,6 +2120,14 @@ def build_pdf(model: Model):
 def main():
     if not DATA_FILE.exists():
         raise SystemExit(f"Missing {DATA_FILE}; run: node tmp/extract_js_data.mjs")
+    # snapshot เก่ากว่าไฟล์ต้นทาง = SRS จะถูกสร้างจากข้อมูลเก่าโดยไม่มีใครรู้
+    # (เจอจริง 2026-09-02: เพิ่ม Job 11/12 แล้ว SRS ยังพิมพ์แค่ 10 job)
+    for _src in ("job-batch.html", "plan-api.html", "plan-database.html", "plan-flow.html"):
+        _p = ROOT / _src
+        if _p.exists() and _p.stat().st_mtime > DATA_FILE.stat().st_mtime:
+            raise SystemExit(
+                f"{_src} ใหม่กว่า {DATA_FILE} — snapshot ล้าสมัย\n"
+                f"  รัน: node tmp/extract_js_data.mjs  แล้วค่อยสร้าง SRS ใหม่")
     if not HEADER_LOGO.exists() or not COVER_BADGE.exists():
         raise SystemExit("Missing extracted PDF template images; run pdfimages first")
     OUT.mkdir(parents=True, exist_ok=True)

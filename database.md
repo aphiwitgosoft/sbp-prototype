@@ -59,7 +59,7 @@
 | ตาราง | ที่มา | ตารางต้นทาง (Migration) | PK | FK / ความสัมพันธ์หลัก | บทบาท |
 |---|---|---|---|---|---|
 | `sgi_fgi_impact_compensations` ★ | FGI/FCS | **ORA** `FGI_IMPACT_STORE_COMPENSATE` (PK `COMPENSATE_I_ID`) | id | `impact_process_id` → sgi_fgi_impact_processes · `impacted_store_code` | **(รับเข้าโครง 2026-08-21 · gap F1)** ยอดชดเชย**รายงวด**ที่เกิดก่อนมีเอกสาร · แยก `forecast_amount` (ระบบคำนวณ) กับ `adjust_amount` (คนปรับ) · UK `(impact_process_id, compensate_month)` · **จำเป็นเพื่อนับ "ยอด 0 ติดกันกี่เดือน"** ตามกติกาเดือน 1–3 / เดือนที่ 4 |
-| `sgi_fgi_impact_stores` | FGI/FCS | **ORA** `FGI_IMPACT_STORE` (PK `IMPACT_STORE_ID` · business key `STORECODE_I`+`MONTH`+`YEAR`) | id | `impact_process_id` → sgi_fgi_impact_processes · `impacted_store_code` → sgi_impacted_stores | คู่ร้านกระทบ–เปิดใหม่ · `verify_status` (W/P/Y/N) · ข้อมูล %/ยอดชดเชยต่อคู่ร้าน |
+| `sgi_fgi_impact_stores` | FGI/FCS | **ORA** `FGI_IMPACT_STORE` (PK `IMPACT_STORE_ID` · business key `STORECODE_I`+`MONTH`+`YEAR`) | id | `impact_process_id` → sgi_fgi_impact_processes · `impacted_store_code` → sgi_impacted_stores | คู่ร้านกระทบ–เปิดใหม่ · **`verify_status` (W/P/N — ผลกฎ DENY/ON_PROCESS ของ Job 2)** แยกจาก **`sales_request_status` (W/P/Y/E — รอบขอยอดขาย IAS ของ Job 4/5)** · `created_by`/`updated_by` (ALM/STA/USER) · ข้อมูล %/ยอดชดเชยต่อคู่ร้าน <br><small>เพิ่ม verify_status + created_by/updated_by/created_at เมื่อ 2026-09-02 (ปิดช่องว่าง G1/G2 ของ LLDD Job 2)</small> |
 | `sgi_fgi_impact_processes` ★ | FGI/FCS | **ORA** `FGI_IMPACT_STORE_ON_PROCESS` (PK `IMPACT_PROCESS_ID` — seq `SEQ_FGI_IMPACT_PROCESS`) | id | `impacted_store_code` · แม่ของตารางรายรอบทั้งหมด | **hub รอบชดเชย** · `action_status` (Y/W/N) · `last_compensation_amount` · source of truth ของ `workflow_generation_status` (W/Y/N) |
 | `sgi_fgi_impact_sales_summaries` | FGI/FCS | **ORA** `FGI_IMPACT_STORE_SALES` (key `STORECODE_I`+`MONTH`+`YEAR`) | id | `impact_process_id` → sgi_fgi_impact_processes · → sgi_sales_transactions (1:N) | หัวยอดขาย · `growth_rate_diff` · `total_working_days` (เกณฑ์ 60 วัน) |
 | `sgi_sales_transactions` | FGI/FCS | **ORA** `FGI_IMPACT_STORE_SALES_TRN` (key เดียวกับหัว + `SEQ`) | id | `sales_summary_id` → sgi_fgi_impact_sales_summaries | ยอดขายรายวันจาก IAS · 4 หน้าต่าง × 15 วัน · sales_diff/outlier ≥ 50 แบบจับคู่ |
@@ -91,7 +91,7 @@
 | `sgi_external_factors` | K2 · SRS 3.1.9 | **MSSQL** `FactorProfile` | `factor_code` | ← sgi_document_external_factors | ปัจจัยภายนอก master · รหัสห้ามซ้ำ |
 | `sgi_competitors` | K2 | **MSSQL** `CompetitionProfile` (+ **ORA** `MAS_STORE_COMPETITOR`) | `competitor_code` | ← sgi_document_competitors | **master แบรนด์ร้านคู่แข่ง 11 รายการ** (รหัส `01`–`11`) · `name_th` + `name_en` (ระบบเดิมเก็บทั้งไทยและอังกฤษ) — จัดการที่หน้าจอ `k2-competitors.html` (เพิ่ม 2026-08-06 ตามหน้าจอ K2 เดิม) · **คนละระดับกับ `sgi_document_competitors`** ที่เก็บ *รายสาขา* ของคู่แข่งพร้อมรหัสจาก ALLMAP (เช่น `4832`, `TD58_08`) + ชื่อสาขา + zone/subzone (ดู `docs/K2-interface-files.md`) |
 
-> **Batch Job — ตัด 2 tab ควบคุมออก (2026-08-06):** ตาราง `job_configs` และ `job_run_histories` **ถูกลบจาก target schema** พร้อมกับลบ API กลุ่ม Batch Job Admin 6 เส้น · หน้า `job-batch.html` **ย้ายไปกลุ่มเมนู `Flow` ชื่อ "Flow Batch Job" และเหลือเฉพาะ 2 แท็บ `Flowchart การทำงาน` + `Database ที่ใช้`** (ตัดแบบฟอร์มพารามิเตอร์ · ประวัติการรัน · ปุ่มสั่งรัน/เปิด-ปิด job · stat cards · กราฟ · การ์ด audit ออกทั้งหมด) — เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม · **batch job ทั้ง 10 entry point (Jobs 2–10 + 8b) ยังทำงานตามปกติ** แต่พารามิเตอร์/ตารางเวลากำหนดใน **backend config** (config file/env ฝั่ง BE) และผลการรันเก็บที่ application log + `sgi_interface_transactions` แทน · ถ้าทำ 2 tab ควบคุมใน phase ถัดไป ให้กลับมาเพิ่ม 2 ตารางนี้พร้อม endpoint กลุ่มเดิม
+> **Batch Job — ตัด 2 tab ควบคุมออก (2026-08-06):** ตาราง `job_configs` และ `job_run_histories` **ถูกลบจาก target schema** พร้อมกับลบ API กลุ่ม Batch Job Admin 6 เส้น · หน้า `job-batch.html` **ย้ายไปกลุ่มเมนู `Flow` ชื่อ "Flow Batch Job" และเหลือเฉพาะ 2 แท็บ `Flowchart การทำงาน` + `Database ที่ใช้`** (ตัดแบบฟอร์มพารามิเตอร์ · ประวัติการรัน · ปุ่มสั่งรัน/เปิด-ปิด job · stat cards · กราฟ · การ์ด audit ออกทั้งหมด) — เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม · **batch job ทั้ง 12 ตัว (Jobs 2–10 + 8b จาก Batch v4.0 · + Job 11, 12 ของใหม่ 2026-09-02) ยังทำงานตามปกติ** แต่พารามิเตอร์กำหนดใน **backend config** (config file/env) และ**ตารางเวลาตั้งที่ AWS Batch scheduled event ของ `sop-sgi-batch`** และผลการรันเก็บที่ application log + `sgi_interface_transactions` แทน · ถ้าทำ 2 tab ควบคุมใน phase ถัดไป ให้กลับมาเพิ่ม 2 ตารางนี้พร้อม endpoint กลุ่มเดิม
 
 > **✅ ปิด DP-5 (แก้มติ 2026-08-14) — workflow ให้ "เลข template" · SGI เป็นคนเรียก lib ส่งเอง**
 >
@@ -136,6 +136,7 @@ SGI **ไม่สร้างตารางใหม่** สำหรับ 3
 | **Email template 8 ฉบับ** (EM-01…EM-08) | `email_template` (เดิม 85 แถว) | **Butsaba \<But\> Podamrong** | `INSERT` แถวใหม่ + `active_flag='Y'` เท่านั้น · ห้าม `UPDATE`/`DELETE` 85 แถวเดิม · ต้องใช้ชื่อคอลัมน์จริง (`email_template_name` · `subject_format` · `body_format` · `sender` · `email_from`) |
 | **Workflow version เริ่มต้น 1 ชุด** | **10 ตารางนิยาม** ของ engine (จาก 13 ตาราง — อีก 3 ตัว `workflow_transaction`/`workflow_history`/`workflow_approver` เป็น runtime ที่ lib เขียนเอง ห้ามแตะ): (`workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_part` · `workflow_part_display`) | **Aphiwit \<Bank\> Khammoon** | `INSERT` **version ใหม่หมายเลขเดียว** ของ SGI · 🔴 ห้ามแตะ version ของระบบอื่นเด็ดขาด (`workflow_transaction` 19,283 แถวใช้ร่วมกันทั้งองค์กร) · `workflow_route.email_id` ผูกเลข template จากชุดบน |
 | **`SGI_APPROVE_LIMIT` + `SGI_DECISION`** | `common_code` (+ `common_code_type`) | **Aphiwit \<Bank\> Khammoon** | `INSERT` เฉพาะ `code_type` ที่ขึ้นต้นด้วย `SGI_` · ห้ามแตะ code_type ของโมดูลอื่น |
+| **`SGI_ALLOW_PENDING_DOWNLOAD`** (เพิ่ม 2026-09-07) | `mas_param` | **ทีม security/infra เป็นผู้ตัดสินค่า** | สวิตช์เดียวที่คุมว่าไฟล์แนบสถานะ `PENDING` ดาวน์โหลดได้หรือไม่ (`Y`/`N`) — จำเป็นเพราะ**ยังไม่มีตัวสแกนไวรัสในระบบใดเลย** ถ้าบังคับ `CLEAN` อย่างเดียววันนี้ ไฟล์แนบทั้งระบบจะดาวน์โหลดไม่ได้ · `BLOCKED`/`FAILED` ปิดตายเสมอไม่ขึ้นกับสวิตช์นี้ · ต้องเปลี่ยนเป็น `N` ในรอบ deploy เดียวกับที่ตัวสแกนขึ้น production · 🔴 รอ sign-off (ดู `DECISIONS-รอตัดสินใจ.md` ข้อ 2.10) |
 
 **กติกาที่ทั้ง 3 ชุดต้องทำตาม:**
 - ทำผ่าน **migration script ของ SGI** (versioned · rerun ได้ · มี rollback) ไม่ใช่คีย์มือบน production
@@ -180,7 +181,7 @@ SGI เป็น backend ใหม่ที่จะเสียบเข้า�
 | `SectionProfile.SectionLimitCost` | `common_code` (`code_type = SGI_APPROVE_LIMIT`) — ตาราง `workflow_sections` ถูกตัดแล้ว | ทำให้วงเงิน เกณฑ์เดียว 100,000 (SDD GI) เป็น data |
 | `CompensateFlow` (84 คอลัมน์) | คอลัมน์เติมใน `sgi_compensation_documents` | `round_no`/`loop_no` · `allmap_url` · `statement_id` · งวดบัญชี **(อยู่ใน DDL แล้ว)** · ⏳ `approver_snapshot` **ยังไม่ได้เติมลง DDL** |
 | `AttachFileProfile` | คอลัมน์เติมใน `sgi_document_attachments` | สถานะอัปโหลด + lifecycle ลบไฟล์บน object storage |
-| `CompTransferSBPDate` | `sgi_impacted_stores.transfer_sbp_date` ⏳ **ยังไม่ได้เติมลง DDL** | เงื่อนไขร้านก่อน/หลัง 1/10/2014 |
+| `CompTransferSBPDate` | `sgi_impacted_stores.transfer_sbp_date` (DATE · nullable · เติมลง DDL แล้ว 2026-09-02) | เงื่อนไขร้านก่อน/หลัง 1/10/2014 |
 
 ### ตรวจแล้ว — มีของเทียบเท่าอยู่แล้ว ไม่ต้องเพิ่ม
 
@@ -291,7 +292,7 @@ SDD GI สไลด์ 17 ระบุว่าข้อมูลร้านท
 |---|---|
 | **สิ่งที่หายไป** | ไม่มีร่องรอยว่าใครแก้ master (ปัจจัยภายนอก / รายชื่อคู่แข่ง) เมื่อไร จากค่าอะไรเป็นอะไร ด้วยเหตุผลใด — เดิมเก็บตารางนี้ไว้เพราะ**ระบบ SBP เดิมไม่มี audit กลางของ master** (มีเฉพาะ `general_upload_data_page_audit_log` ของงาน upload) |
 | **สิ่งที่ยังอยู่** | `sgi_consideration_logs` (ประวัติผลพิจารณารายเอกสาร — คนละเรื่อง) · `sgi_interface_transactions` (tracking รับ–ส่งไฟล์) · audit ของ RBAC/config/email template ที่อยู่ฝั่งระบบ SBP เดิม |
-| **ของที่ต้องย้ายที่เก็บ** | Job 10 (watchdog ACK) เคยใช้ `audit_logs` เป็น marker กันส่งอีเมลซ้ำต่อวัน → ย้ายไปใช้คอลัมน์ใหม่ **`sgi_interface_transactions.last_ack_notified_on`** แทน |
+| **ของที่ต้องย้ายที่เก็บ** | Job 10 (watchdog ข้อความค้างส่ง) เคยใช้ `audit_logs` เป็น marker กันส่งอีเมลซ้ำต่อวัน → ย้ายไปใช้คอลัมน์ใหม่ **`sgi_interface_transactions.last_ack_notified_on`** แทน |
 | **ถ้าต้องการ audit กลับมา** | ให้พิจารณาใช้กลไก audit ของระบบ SBP เดิม แทนการสร้างตารางใหม่ |
 
 ### ตารางที่ตัดออกรอบ 2 — มีอยู่แล้วในระบบ SBP ปัจจุบัน (ตัดสินใจ 2026-08-06)
@@ -537,6 +538,11 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 | `workflow_sections` | `approve_limit_amount` (numeric) | ห้าม hardcode วงเงินใน service — อ่านจากคอลัมน์นี้ |
 | `zones` / `branch_types` / **`decisions` (อยู่ที่ `common_code`)** | `zone_code` · `branch_type_code` · `decision_code` | ห้าม hardcode รายการภาค / ประเภทสาขา / ปุ่มผลพิจารณาใน FE |
 | `sgi_document_running_numbers` | `year`, `last_running_no` | ห้ามใช้ `MAX(running_no)+1` — ต้อง lock แถวปีนั้น |
+| `sgi_document_new_stores` | `compensation_amount` (ยอดชดเชยต่อร้านเปิดใหม่) | `compensate_amount` — ชื่อนี้เป็นของ `sgi_compensation_histories` คนละตาราง |
+
+**`updated_by` ของ 3 ตารางที่ job เขียน (เพิ่ม 2026-09-02):** `sgi_document_running_numbers` · `sgi_fgi_impact_processes` · `sgi_fgi_impact_sales_summaries` เดิม **ไม่มีคอลัมน์นี้ใน DDL** ทั้งที่ SQL ของ Job 4/5/6/8 เขียน `updated_by = 'JOB4'` อยู่แล้ว — รันจริงจะ error ทันที · ตอนนี้ประกาศเป็น `VARCHAR(30)` **ไม่ใส่ CHECK** (เก็บได้ทั้งชื่อ job และ `x-user-id`) ต่างจาก `sgi_fgi_impact_stores.updated_by` ที่จำกัดโดเมน `ALM/STA/USER` ตามระบบเดิม
+
+**entity TypeORM ในเอกสารทุกฉบับ generate จาก DDL ชุดนี้โดยตรง (2026-09-02):** เดิม `tools/lldd_skeleton_be.py` เก็บรายชื่อคอลัมน์ไว้เองคู่ขนานกับ DDL แล้ว **หลุดกันครบทั้ง 18 ตาราง** (บางตารางแทบไม่เหลือคอลัมน์ตรงกันเลย เช่น `sgi_document_competitors` ประกาศ `zone_code`/`subzone_code` ที่ไม่มีอยู่จริง) · ตอนนี้ `COLUMN_HINTS` เหลือแค่ **ชื่อคลาส** และ `check_docs.py` ข้อ 43–44 กันการเขียนคู่ขนาน + กัน SQL อ้างคอลัมน์ที่ไม่มีจริง
 
 > **หมายเหตุ (07/08/2026):** แถว `workflow_instances` และ `workflow_sections` ข้างบนเป็น **สัญญาที่ตกค้างจากก่อนตัดตาราง** — ทั้งสองไม่อยู่ในโครง 19 ตารางแล้ว ของจริงคือ `sps_store.workflow_transaction` / `workflow_state` ของ engine กลาง และวงเงินอนุมัติย้ายไป `common_code` (`SGI_APPROVE_LIMIT`) · **ชื่อคอลัมน์ฝั่ง engine เป็นของ library กลาง แก้เองไม่ได้**
 
@@ -549,10 +555,11 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 4. **`sps_store.workflow_transaction.reference_id → sgi_compensation_documents`** — เปิด instance ของ engine กลางเมื่อผ่าน Gen Flow Gate · สถานะ instance แทน `workflow_generation_status = Y` ของเดิม (ใหม่) · ✅ **มติ DP-1 (2026-08-10) = ทางเลือก B** — `reference_id` ใช้ **surrogate id** (`sgi_compensation_documents.id`) **ไม่ใช่ `doc_no`** ตามที่ระบบเดิมทำจริงทั้ง `cooperation-request` (7 จุด) และ `inform-evaluate` · การแปลง transaction ↔ เอกสาร join ผ่าน `sgi_compensation_documents.id` · **ผลพลอยได้:** ปลดล็อกให้ออกเลข `doc_no` ทีหลังได้และแก้เลขภายหลังได้ (จังหวะการออกเลขจริงยังเป็นคำถามธุรกิจที่ยังไม่ตอบ)
 5. **`sgi_document_competitors.source_system = 'ALLMAP'`** — แถวจาก sgi_fgi_impact_competitors (Jobs 3/7 เดิม) แยกจากที่ผู้ใช้เพิ่มเอง (USER)
 6. **`sgi_document_new_stores.source_system`** — ใช้แพตเทิร์นเดียวกัน: `ALLMAP` = ระบบ default ร้านที่กระทบเพิ่มมาให้ (Job 9) · `USER` = เจ้าหน้าที่ SBP DSA คีย์เองจากเอกสารแจ้งของหน่วยงานส่งเสริม (**B5** · ผัง To-Be · SDD สไลด์ 7) — เพิ่มแถวเมื่อไรต้องเกลี่ย `compensate_percent` ใหม่ให้รวมเป็น 100%
-6. **`sgi_compensation_histories.submit_account_month`** — งวดที่ส่งไป STA ด้วย RabbitMQ `sta.compensation.result` (Job 6 · เดิมเป็นไฟล์ `FRBC0001`) · สถานะ I/C/A/N/S/Z ตามเดิม
-7. **`sgi_interface_transactions`** — FK แยกประเภทเป็นคอลัมน์ (impact_process_id / sales_summary_id / doc_no) + `data_name` เป็น enum ที่ **บังคับด้วย CHECK จริงใน DDL แล้ว (2026-08-25)** — เลิก `parseInt(impacted_store_code)` ที่ทำเลขศูนย์นำหน้าหาย (ใหม่)
+6. **`sgi_compensation_histories.submit_account_month`** — งวดที่ส่งไป STA ด้วย RabbitMQ `sta.compensation.result` (Job 6 · เดิมเป็นไฟล์ `FRBC0001`) · สถานะ I/C/A/N/S/Z ตามเดิม (**C** = ร้านปิด/สัญญายกเลิก · ส่ง STA เป็น `S`)
+7. **นโยบาย `ON DELETE` ของลูก `sgi_compensation_documents` (ระบุชัด 2026-09-02)** — เดิมมี CASCADE 4 ตัว ไม่มี 4 ตัว โดยไม่มีกฎเขียนไว้ ทำให้ดูเหมือนตกหล่น · ของจริงเป็นเจตนา: **CASCADE เฉพาะแถวรายละเอียดของเอกสารใบนั้น** (`sgi_document_new_stores` · `sgi_document_competitors` · `sgi_document_external_factors` · `sgi_document_cost_details`) ส่วน **หลักฐาน/ประวัติไม่ CASCADE และห้ามเติม** (`sgi_consideration_logs` · `sgi_document_attachments` · `sgi_compensation_histories` · `sgi_interface_transactions.doc_no`)
+8. **`sgi_interface_transactions`** — FK แยกประเภทเป็นคอลัมน์ (impact_process_id / sales_summary_id / doc_no) + `data_name` เป็น enum ที่ **บังคับด้วย CHECK จริงใน DDL แล้ว (2026-08-25)** — เลิก `parseInt(impacted_store_code)` ที่ทำเลขศูนย์นำหน้าหาย (ใหม่)
 
-### ชุดค่า `sgi_interface_transactions.data_name` — 9 ค่า (ปิด)
+### ชุดค่า `sgi_interface_transactions.data_name` — 12 ค่า (ปิด · เพิ่ม 3 ค่าเมื่อ 2026-09-02)
 
 `data_name` เป็นส่วนหนึ่งของ `UNIQUE (data_name, direction, business_key, period_key)` ที่กันการส่งซ้ำ และเป็นตัวกรองของ watchdog Job 10 — **พิมพ์ผิดตัวเดียวแปลว่ากันซ้ำไม่ทำงานและ watchdog เงียบ** จึงล็อกด้วย `CHECK` ใน DDL (ค่าทั้งหมดเขียนโดย batch ไม่ใช่ input ของผู้ใช้)
 
@@ -565,13 +572,16 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 | `IMPACT_COMPETITOR` | Job 7 | `INTERNAL` | แทนไฟล์ `BPM06003O` เดิม — เขียน DB ตรง จบที่ `COMPLETED` |
 | `IMPACT_STORE` | Job 8 | `INTERNAL` | แทนไฟล์ `BPM06001O` เดิม |
 | `NEW_STORE` | Job 9 | `INTERNAL` | แทนไฟล์ `BPM06002O` เดิม |
+| `DOCUMENT_CREATE` | Job 8 | `INTERNAL` | บันทึกการสร้างเอกสารประกันรายได้ — **ใช้อยู่ใน LLDD Job 8 มาตลอดแต่ตกหล่นจาก CHECK** (พบและเพิ่ม 2026-09-02) |
+| `STA_UPDATE_COMPENSATE` | **Job 11** | `IN` | STA แจ้งยอดเงินประกันรายได้กลับมา (message `sta_update_compensate`) · กันซ้ำระดับข้อความ |
+| `SGI_REFLOW` | `POST /sgi/document/{docNo}/actions` | `OUT` | แจ้ง STA ว่าเอกสารถูกเปิดพิจารณาใหม่ (message `sgi_reflow` · `compensate_status = R`) |
 
 > **กติกาเมื่อเพิ่ม interface ใหม่:** ต้อง `ALTER TABLE sgi_interface_transactions DROP CONSTRAINT … ADD CONSTRAINT …` **พร้อมกับ**อัปเดตตารางนี้ในการแก้ครั้งเดียวกัน · ค่าเดิมของระบบ legacy ที่ **ไม่ได้ยกมา** เพราะไม่มี job ไหนเขียนแล้ว: `QSSI_CATEG` (ตัดไปกับ Job 1) · `LINK_SMO_IMPACTSTORE` · `FLAG_SENED_FGI_REPORT_UNCONDITIONAL`
 
 ## ข้อปรับปรุงจากระบบเดิม (P0 × 3 · P1 × 4)
 
 1. **เลิก polymorphic FK** — `transaction_key` ของ tracking เดิมชี้คนละตารางตาม data_name (P1) → `sgi_interface_transactions` ใช้ typed FK แยกคอลัมน์
-2. **บังคับ status domain ด้วย enum / check constraint** — W/P/Y/N · I/C/A/N/S/Z · action_status (Y/W/N) · workflow_generation_status (W/Y/N)
+2. **บังคับ status domain ด้วย enum / check constraint** — `verify_status` W/P/N · `sales_request_status` W/P/Y/E · `compensate_status` I/C/A/N/S/Z (**`C` = ร้านปิด/สัญญายกเลิก · ส่ง STA เป็น `S` เหมือน `Z`** · ปิด DP-14 2026-09-02) · action_status (Y/W/N) · workflow_generation_status (W/Y/N)
 3. **ครอบ Job 4 ด้วย transaction (outbox pattern)** — เดิม commit W→P ก่อนเขียนไฟล์ rollback ไม่ได้ (**P0 อันดับหนึ่ง**)
 4. **แก้บั๊ก purge tracking (E20)** — SQL เดิมต่อ data_name สองค่าเป็น string เดียวทำให้ไม่เคยลบ — ต้องทำพร้อม data migration และ test
 5. **ทบทวน NULL → auto-accept ของ Job 5** (P1) — ระบบใหม่ตั้งสถานะ "รอตรวจสอบ" แทน accept อัตโนมัติ · **ต้องขอ business sign-off ก่อนเปลี่ยน**
@@ -582,6 +592,7 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 ## เอกสารที่เกี่ยวข้อง
 
 - Flow ที่ใช้ตารางเหล่านี้: [workflow.md](workflow.md) · `plan-flow.html`
-- API ที่อ่าน/เขียนตาราง: [api.md](api.md) · `plan-api.html` (**29 เส้น 6 กลุ่ม** — Lookup 2 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 3 · กลุ่ม Auth/RBAC · System Config · Email Template · Batch Job Admin ถูกตัดไปใช้ระบบเดิม)
+- API ที่อ่าน/เขียนตาราง: [api.md](api.md) · `plan-api.html` (**28 เส้น 6 กลุ่ม** — Lookup 2 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 2 · กลุ่ม Auth/RBAC · System Config · Email Template · Batch Job Admin ถูกตัดไปใช้ระบบเดิม)
+- **คำอธิบายรายตาราง/รายคอลัมน์ (แต่ละคอลัมน์เก็บอะไร ใช้ทำอะไร ทำไมต้องมี):** [`LLDD/pdf/LLDD-Database-Dictionary.pdf`](LLDD/pdf/LLDD-Database-Dictionary.pdf) — **ส่งมอบเป็น PDF อย่างเดียว** (19 ตารางใหม่ · 223 คอลัมน์) · ไฟล์นี้ตอบว่า *ตารางมาจากไหน* ส่วนฉบับนั้นตอบว่า *แต่ละคอลัมน์ทำอะไร* · เนื้อหาสร้างจาก `tools/lldd_db_dictionary.py`
 - Schema ต้นทางแยกระบบ: `fgi-database.html` (FGI/FCS) · `k2-database.html` (K2, 16 ตาราง + ER diagram)
 - ผลตรวจกับ DB จริง + ข้อค้างตัดสินใจ 12 ข้อ: [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) · หลักฐาน schema: [`SBP/db-schema-sps_store.md`](SBP/db-schema-sps_store.md) · [`SBP/db-schema-sps_auth.md`](SBP/db-schema-sps_auth.md)

@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | 24 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
-| Owner | Aphiwit <Bank> Khammoon |
+| Owner | Peerakorn &lt;Pete&gt; Sakunkaewphithak |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | **สร้างข้อมูลนิยาม workflow ลงฐานข้อมูลของ engine** — ระบุว่า flow ของ SGI มีกี่ step แต่ละ step ทำอะไร ใครทำได้ กดปุ่มไหนแล้วไป state ใด โดย register version/state/status/event/route/group/part ของ `@srm/glb-workflow` ตามสัญญาในเอกสารของ lib เอง (`docs/TSM-SRM-LLDD-SBP-workflow-1.2-full.md` — แปลงจาก `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx`) · **เป็นงานตั้งต้นที่ต้องเสร็จก่อน** ฝั่ง BE คนอื่นจึงจะเรียก `initializeWorkflow` และ `eventWorkflow` (trigger event) ได้ — blocker ของสัปดาห์แรก |
 
@@ -79,7 +79,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Workflow Engine Definition_
 | --- | --- |
 | BE-API-Document-Workflow-Actions | รหัส event ต่อปุ่ม · route ของแต่ละ state · เงื่อนไขแตกสายตามวงเงิน |
 | BE-API-Workflow-Instances | โครง version/state/status ที่จะ query และรูปแบบ payload ของ engine |
-| BE-Job-8b-StartInternalWorkflow | ลำดับเรียก initialize -> addPreApprover และค่า `referenceId` |
+| BE-Job-8b-StartInternalWorkflow | **เรียก `POST /sgi/workflow/instances` ด้วย service token** — ไม่เรียก engine เอง (มติ 2026-09-09) |
 | FE-Document-Detail (5 ฉบับ role) | `workflow_part_display` READ/WRITE ต่อ state ที่คุมการแสดงผลรายส่วน |
 
 ### 5.1 Engine คือของกลาง 13 ตาราง ใน schema `sps_store`
@@ -127,9 +127,10 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Workflow Engine Definition_
 | 08 | รอเจ้าหน้าที่ SBP DSA ดำเนินการ | submit (คำนวณเงินชดเชยเรียบร้อย) — **ปุ่มเดียวของขั้นนี้ (มติ 2026-09-01)** | **06** (ส่งยอดกลับฝ่าย SBP DSA · เดิม 01) |
 | 01 | รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ | approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที) · sendback (ฝ่าย SBP DSA ดำเนินการ) | 02 · จบ flow · 06 |
 | 02 | รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ | approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที) · sendback (ส่งกลับฝ่าย SBP DSA) | จบ flow เมื่อยอด < 100,000 · ไป 03 เมื่อ ≥ 100,000 · **06** (มติ 2026-09-01 · เดิม 01) |
-| 03 | รอผู้บริหารสำนักบริหาร SBP ดำเนินการ | approve (เห็นควรชดเชย) · sendback (ส่งกลับฝ่าย SBP DSA) | จบ flow · **06** (มติ 2026-09-01 · เดิม 02) |
+| 03 | รอผู้บริหารสำนักบริหาร SBP ดำเนินการ | approve (เห็นควรชดเชย) · reject (เห็นควรไม่ชดเชย → จบ flow ทันที · มติ 2026-09-02) · sendback (ส่งกลับฝ่าย SBP DSA) | จบ flow · **06** (มติ 2026-09-01 · เดิม 02) |
 
 ```sql
+-- bind ตามลำดับ: $1=v · $2=state_02 · $3=state_end · $4=status_done · $5=group_none · $6=state_03 · $7=status_wait_avp · $8=group_avp
 -- ⚠️ ตัวอย่างนี้แสดง "รูปแบบ" ของ condition_json เท่านั้น — วงเงินอนุมัติของจริงเก็บที่ common_code
 -- วงเงินเก็บที่ `common_code` (code_type = SGI_APPROVE_LIMIT) ที่เดียว แล้ว "อ่านทุกครั้ง ห้าม hardcode"
 -- ตามที่ LLDD-BE-Integration-SBP-Platform / LLDD-Database ระบุไว้ · **ห้ามเก็บสองที่**
@@ -142,10 +143,10 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Workflow Engine Definition_
 INSERT INTO sps_store.workflow_route
   (version_id, from_state_id, event, to_state_id, to_status_id, seq, condition_json, approver_type, group_id)
 VALUES
-  (:v, :state_02, 'approve', :state_end, :status_done, 1,
-   '{"field":"amount","operator":"<","value":100000}', 'group', :group_none),
-  (:v, :state_02, 'approve', :state_03,  :status_wait_avp, 2,
-   '{"field":"amount","operator":">=","value":100000}', 'group', :group_avp);
+  ($1 /* v */, $2 /* state_02 */, 'approve', $3 /* state_end */, $4 /* status_done */, 1,
+   '{"field":"amount","operator":"<","value":100000}', 'group', $5 /* group_none */),
+  ($1 /* v */, $2 /* state_02 */, 'approve', $6 /* state_03 */,  $7 /* status_wait_avp */, 2,
+   '{"field":"amount","operator":">=","value":100000}', 'group', $8 /* group_avp */);
 -- ✅ เกณฑ์เดียวจึงไม่มีช่องโหว่ปลายบน: ทุกยอดตั้งแต่ 100,000 ขึ้นไปวิ่งเข้า AVP เส้นเดียว
 ```
 
@@ -199,7 +200,7 @@ VALUES
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
-| เปิด workflow | Job 8b / สร้างเอกสาร | initializeWorkflow(versionId, userId, referenceId) | สร้าง workflow_transaction ที่ initial state/status |
+| เปิด workflow | BE `POST /sgi/workflow/instances` (Job 8b เป็นผู้เรียก REST) | initializeWorkflow(versionId, userId, referenceId) | สร้าง workflow_transaction ที่ initial state/status |
 | ระบุผู้อนุมัติล่วงหน้า | หลังเปิด workflow | addPreApprover(versionId, referenceId, stateId, approver, seq, userId) | insert workflow_approver (approver_type = user เสมอ) |
 | กดผลพิจารณา | ปุ่มบนหน้าเอกสาร | eventWorkflow(... event, eventParam ...) | เดิน state ตาม route ที่ตรง condition_json แล้วบันทึก workflow_history |
 | อ่านปุ่ม/สิทธิ์แสดงผล | เปิดหน้าเอกสาร | getPermissionEvents(versionId, referenceId, userData) | คืน event[] + display[] (partId/partDisplayType ต่อ state) |
@@ -208,7 +209,7 @@ VALUES
 
 ## 7. API Contract
 
-**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SGI อยู่ที่ **LLDD-API** และ `api.md`
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 28 เส้นของ SGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 

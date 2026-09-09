@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | **32 ชั่วโมง** = implementation 24 + unit test 8 (30%) |
-| Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Owner | Tunyatorn &lt;Vava&gt; Kiatkongphongsa |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ Workflow Engine ภายในและ POST /api/v1/sgi/workflow/instances สำหรับเปิด workflow จาก Job 8b แทน K2 REST StartInstance โดยเป็นเจ้าของ Gen Flow Gate W/Y/N |
 
@@ -62,7 +62,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Workflow Engine and API Workf
 | --- | --- | --- | --- |
 | impactProcessId | integer/string | required | อ้าง sgi_fgi_impact_processes และ sgi_compensation_documents ที่ Job 8 สร้างแล้ว |
 | sourceJobNo | string | required fixed 8b | ใช้ trace รอบรันใน application log (structured) — ไม่มีตาราง job_run_histories แล้ว |
-| requestId | uuid | required | idempotency key ต่อ impactProcessId + sourceJobNo |
+| requestId | string `job8b-{impactProcessId}-{YYYYMM}` (ค.ศ.) | required | idempotency key ต่อ impactProcessId + sourceJobNo — **ต้องเป็นค่าที่คำนวณซ้ำได้ ไม่ใช่ UUID สุ่ม** เพราะถ้าสุ่มใหม่ทุกครั้งที่ retry จะกันซ้ำไม่ได้เลย (แก้ชนิดจาก `uuid` เมื่อ 2026-09-08 — ตัวอย่างในเอกสารไม่เคยเป็น UUID) |
 | workflow_generation_status | W\|Y\|N | computed | W=ข้อมูลยังไม่พร้อมเพื่อ rerun, Y=เปิด workflow สำเร็จ, N=ไม่เข้าเกณฑ์ถาวร |
 | branchType/distanceKm | enum/number\|null | required by gate | branch นอกเซ็ตหรือระยะเกินตั้ง N; ระยะยังไม่มีค่าคง W |
 | growthRateDiff | number\|null | <= -10 required by gate | NULL คง W; ค่ามากกว่า -10 ตั้ง N แบบถาวร |
@@ -132,7 +132,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Workflow Engine and API Workf
 {
   "impactProcessId": 901234,
   "sourceJobNo": "8b",
-  "requestId": "job8b-901234-256907"
+  "requestId": "job8b-901234-202607"
 }
 ```
 
@@ -184,7 +184,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Workflow Engine and API Workf
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| id | string | No | UTF-8; use value domain described by endpoint purpose |
+| id | string | No | id ของแถวเดิม — **ไม่ส่ง = แถวที่ผู้ใช้เพิ่มใหม่ (INSERT)** · แถวเดิมที่ไม่ถูกส่งมาถือว่าถูกลบ |
 
 #### Response
 
@@ -250,7 +250,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Workflow Engine and API Workf
 | workflowGeneration.W | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | workflowGeneration.Y | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | workflowGeneration.N | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| openTasksBySection | array<object> | Yes | JSON array; element type shown in Type column |
+| openTasksBySection | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | openTasksBySection[].sectionCode | string | Yes | canonical code; do not replace with display label |
 | openTasksBySection[].count | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 
@@ -261,6 +261,8 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Workflow Engine and API Workf
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
 | sgi_fgi_impact_processes / sgi_fgi_impact_stores | R/W | อ่านข้อมูล impact และอัปเดต workflow_generation_status W/Y/N |
+| sgi_fgi_impact_sales_summaries | R | growth_rate_diff / sales_status ที่ Gen Flow Gate ใช้ตัดสิน (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศ) |
+| sgi_impacted_stores | R | opt_dv_user_id ที่ Gen Flow Gate ใช้ตรวจว่ามี DV เจ้าของร้าน (เพิ่ม 2026-09-02) |
 | sgi_compensation_documents | R/W | create-if-missing จาก impact process และผูก docNo |
 | workflow_transaction (@srm/glb-workflow) | W (โดย lib) | initializeWorkflow() แทน K2 StartInstance — ห้าม INSERT ตรง |
 | workflow_approver (@srm/glb-workflow) | W (ผ่าน lib) | addPreApprover() ปักผู้รับงาน state 06 — **ห้าม INSERT ตรง** |
@@ -271,25 +273,25 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Workflow Engine and API Workf
 
 โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
 
-#### 9.1 ผังไฟล์ที่ต้องสร้าง
+### 9.1 ผังไฟล์ที่ต้องสร้าง
 
 | Path | หน้าที่ |
 | --- | --- |
 | store-backend · src/modules/sgi-workflow-instances/sgi-workflow-instances.controller.ts | route ทั้งหมดของเอกสารนี้ (3 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
 | store-backend · src/modules/sgi-workflow-instances/sgi-workflow-instances.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sgi-workflow-instances/sgi-workflow-instances.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-workflow-instances/sgi-workflow-instances.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย · **คีย์ = ชื่อ handler** เช่น `getSgiMasterFactors` · บล็อกที่มีหลาย statement ให้แยกเป็นหลายคีย์ โดยเติมท้ายชื่อให้สื่อความ เช่น DELETE master ที่มี 2 statement → `removeSgiMasterFactorsByCodeInUse` (SELECT ตรวจการใช้งาน) + `removeSgiMasterFactorsByCode` (DELETE) |
 | store-backend · src/modules/sgi-workflow-instances/dto/sgi-workflow-instances.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sgi-workflow-instances/sgi-workflow-instances.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/sgi-fgi-impact-processes.entity.ts | entity ของ `sgi_fgi_impact_processes` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/entitys/sgi-fgi-impact-stores.entity.ts | entity ของ `sgi_fgi_impact_stores` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
-| store-backend · src/entitys/sgi-compensation-documents.entity.ts | entity ของ `sgi_compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
+| store-backend · src/entitys/sgi-fgi-impact-sales-summaries.entity.ts | entity ของ `sgi_fgi_impact_sales_summaries` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/providers/sgi/sgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
 | store-backend · sql/deploy-sgi-workflow-instances.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
 | BFF · src/common/client-services/sgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
 | BFF · src/modules/sgi-workflow-instances/sgi-workflow-instances.controller.ts | route ฝั่ง BFF prefix `/bff/sgi/…` + `@UseGuards(AuthGuard('jwt'))` |
 | BFF · src/modules/sgi-workflow-instances/sgi-workflow-instances.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
 
-#### 9.2 Controller (store-backend)
+### 9.2 Controller (store-backend)
 
 ```ts
 // src/modules/sgi-workflow-instances/sgi-workflow-instances.controller.ts
@@ -301,13 +303,13 @@ import { WorkflowInstancesQueryDto, CreateSgiWorkflowInstancesBodyDto } from './
 
 // LLDD BE - Workflow Engine and API Workflow Instances
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sgi/sgi/workflow')
+@Controller('workflow')
 @UseGuards(HttpHeaderGuard)
 export class SgiWorkflowInstancesController {
   constructor(private readonly service: SgiWorkflowInstancesService) {}
 
   // POST /api/v1/sgi/workflow/instances — เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service t…
-  @Post('workflow/instances')
+  @Post('instances')
   createSgiWorkflowInstances(
     @Body() body: CreateSgiWorkflowInstancesBodyDto,
     @UserId() userId: string,
@@ -317,14 +319,14 @@ export class SgiWorkflowInstancesController {
   }
 
   // GET /api/v1/sgi/workflow/instances/{id} — อ่านสถานะ workflow instance
-  @Get('workflow/instances/:id')
+  @Get('instances/:id')
   getSgiWorkflowInstancesById(@Param('id') id: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiWorkflowInstancesById(id, userId);
   }
 
   // GET /api/v1/sgi/workflow/summary — สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor
-  @Get('workflow/summary')
+  @Get('summary')
   getWorkflowSummary(@Query() query: WorkflowInstancesQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getWorkflowSummary(query, userId);
@@ -332,14 +334,14 @@ export class SgiWorkflowInstancesController {
 }
 ```
 
-#### 9.3 DTO + Validation
+### 9.3 DTO + Validation
 
 ```ts
 // src/modules/sgi-workflow-instances/dto/sgi-workflow-instances.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
-  IsString, Matches, Max, MaxLength, Min,
+  IsString, Matches, Max, MaxLength, Min, ValidateNested,
 } from 'class-validator';
 
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
@@ -368,20 +370,20 @@ export class CreateSgiWorkflowInstancesBodyDto {
   @IsString()
   sourceJobNo: string;
 
-  /** idempotency key ต่อ impactProcessId + sourceJobNo */
+  /** idempotency key ต่อ impactProcessId + sourceJobNo — **ต้องเป็นค่าที่คำนวณซ้ำได้ ไม่ใช่ UU… */
   @IsNotEmpty()
   @IsString()
   requestId: string;
 }
 ```
 
-#### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
+### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
 
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
 // src/modules/sgi-workflow-instances/sgi-workflow-instances.service.ts
-import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { WorkflowService } from '../workflow/workflow.service';
 import { SGI_SQL } from './sgi-workflow-instances.sql';
@@ -406,7 +408,7 @@ export class SgiWorkflowInstancesService {
     await runner.startTransaction();
     try {
       // TODO: lock แถวเป้าหมายของ sgi_fgi_impact_processes ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SGI_SQL.createSgiWorkflowInstancesLock, [body.docNo]);
+      const [current] = await runner.query(SGI_SQL.createSgiWorkflowInstancesLock, [body.impactProcessId]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }
@@ -431,12 +433,13 @@ export class SgiWorkflowInstancesService {
   // GET /api/v1/sgi/workflow/instances/{id} — อ่านสถานะ workflow instance
   async getSgiWorkflowInstancesById(id: string, userId: string) {
     const page = 1;
-    const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
+    // DTO ของเส้นนี้ไม่มี page/size (ดูหัวข้อ DTO) — ไม่แบ่งหน้า
+    const size = 100;
     // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sgi/workflow/instances/{id}')
-    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
-    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
+    // SQL ในเอกสารเป็น positional $1..$n อยู่แล้ว (ตัวสร้างแปลงให้ตั้งแต่ 2026-09-04)
+    //   บรรทัดแรกของบล็อก SQL คือ `-- bind ตามลำดับ: $1=... · $2=...` ให้เรียงอาร์กิวเมนต์ตามนั้น
     const rows = await this.dataSource.query(SGI_SQL.getSgiWorkflowInstancesById, [
-      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
+      // เรียงให้ตรงกับบรรทัด `-- bind ตามลำดับ:` ของ SQL เส้นนี้
       userId, (page - 1) * size, size,
     ]);
     // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
@@ -452,7 +455,7 @@ export class SgiWorkflowInstancesService {
 }
 ```
 
-#### 9.5 Workflow (`@srm/glb-workflow`)
+### 9.5 Workflow (`@srm/glb-workflow`)
 
 ✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ยืนยันแล้ว 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
@@ -495,7 +498,7 @@ export class SgiWorkflowInstancesService {
   // TODO: map currentState -> statusCode/statusName ที่ FE ใช้
 ```
 
-#### 9.6 Entity (TypeORM)
+### 9.6 Entity (TypeORM)
 
 ```ts
 // src/entitys/sgi-fgi-impact-processes.entity.ts
@@ -506,29 +509,62 @@ export class FgiImpactProcess {
   @PrimaryColumn({ name: 'id', type: 'bigint' })
   id: number;
 
-  @Column({ name: 'impacted_store_code', type: 'char', length: 5 })
+  @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
-  @Column({ name: 'period_year', type: 'int' })
-  periodYear: number;
+  @Column({ name: 'impact_month', type: 'char', length: 7 })
+  impactMonth: string;
 
-  @Column({ name: 'period_month', type: 'int' })
-  periodMonth: number;
+  @Column({ name: 'impact_year', type: 'int' })
+  impactYear: number;
 
-  @Column({ name: 'action_status', type: 'char', length: 1 })
-  actionStatus: string;
+  @Column({ name: 'process_status', type: 'varchar', length: 30 })
+  processStatus: string;
 
-  @Column({ name: 'workflow_generation_status', type: 'char', length: 1 })
-  workflowGenerationStatus: string;
+  @Column({ name: 'action_status', type: 'varchar', length: 30, nullable: true })
+  actionStatus?: string;
 
-  @Column({ name: 'last_compensation_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
+  @Column({ name: 'last_compensation_amount', type: 'numeric', precision: 14, scale: 2, nullable: true })
   lastCompensationAmount?: string;
 
-  @Column({ name: 'created_at', type: 'timestamptz', nullable: true })
-  createdAt?: Date;
+  @Column({ name: 'workflow_generation_status', type: 'char', length: 1, default: 'W' })
+  workflowGenerationStatus: string;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  @Column({ name: 'last_compensate_seq', type: 'int', default: 1 })
+  lastCompensateSeq: number;
+
+  @Column({ name: 'last_compensate_seq_no', type: 'int', default: 1 })
+  lastCompensateSeqNo: number;
+
+  @Column({ name: 'start_compensate_month', type: 'char', length: 7, nullable: true })
+  startCompensateMonth?: string;
+
+  @Column({ name: 'start_compensate_year', type: 'int', nullable: true })
+  startCompensateYear?: number;
+
+  @Column({ name: 'end_compensate_month', type: 'char', length: 7, nullable: true })
+  endCompensateMonth?: string;
+
+  @Column({ name: 'end_compensate_year', type: 'int', nullable: true })
+  endCompensateYear?: number;
+
+  @Column({ name: 'flag_action', type: 'char', length: 1, default: 'Y' })
+  flagAction: string;
+
+  @Column({ name: 'datasource', type: 'varchar', length: 5, nullable: true })
+  datasource?: string;
+
+  @Column({ name: 'created_at', type: 'timestamp' })
+  createdAt: Date;
+
+  @Column({ name: 'updated_by', type: 'varchar', length: 30, nullable: true })
+  updatedBy?: string;
+
+  @Column({ name: 'updated_at', type: 'timestamp' })
+  updatedAt: Date;
+
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
@@ -544,30 +580,54 @@ export class FgiImpactStore {
   @Column({ name: 'impact_process_id', type: 'bigint' })
   impactProcessId: number;
 
-  @Column({ name: 'impacted_store_code', type: 'char', length: 5 })
+  @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
-  @Column({ name: 'new_store_code', type: 'char', length: 5 })
+  @Column({ name: 'new_store_code', type: 'varchar', length: 5 })
   newStoreCode: string;
 
-  @Column({ name: 'verify_status', type: 'char', length: 1 })
+  @Column({ name: 'impact_month', type: 'char', length: 7 })
+  impactMonth: string;
+
+  @Column({ name: 'distance_km', type: 'numeric', precision: 8, scale: 3, nullable: true })
+  distanceKm?: string;
+
+  @Column({ name: 'verify_status', type: 'char', length: 1, default: 'W' })
   verifyStatus: string;
 
-  @Column({ name: 'compensate_percent', type: 'numeric', precision: 5, scale: 2, nullable: true })
-  compensatePercent?: string;
+  @Column({ name: 'created_by', type: 'varchar', length: 10, default: 'ALM' })
+  createdBy: string;
 
-  @Column({ name: 'period_year', type: 'int' })
-  periodYear: number;
+  @Column({ name: 'updated_by', type: 'varchar', length: 10, nullable: true })
+  updatedBy?: string;
 
-  @Column({ name: 'period_month', type: 'int' })
-  periodMonth: number;
+  @Column({ name: 'created_at', type: 'timestamp' })
+  createdAt: Date;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  @Column({ name: 'sales_request_status', type: 'char', length: 1, default: 'W' })
+  salesRequestStatus: string;
+
+  @Column({ name: 'forecast_compensate_percent', type: 'numeric', precision: 7, scale: 4, nullable: true })
+  forecastCompensatePercent?: string;
+
+  @Column({ name: 'adjust_compensate_percent', type: 'numeric', precision: 7, scale: 4, nullable: true })
+  adjustCompensatePercent?: string;
+
+  @Column({ name: 'forecast_compensation_amount', type: 'numeric', precision: 14, scale: 2, nullable: true })
+  forecastCompensationAmount?: string;
+
+  @Column({ name: 'adjust_compensation_amount', type: 'numeric', precision: 14, scale: 2, nullable: true })
+  adjustCompensationAmount?: string;
+
+  @Column({ name: 'updated_at', type: 'timestamp' })
+  updatedAt: Date;
+
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`sgi_compensation_documents`, `sgi_interface_transactions`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`sgi_fgi_impact_sales_summaries`, `sgi_impacted_stores`, `sgi_compensation_documents`, `sgi_interface_transactions`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
@@ -578,7 +638,7 @@ export class FgiImpactStore {
 | workflow_status | R | workflow engine @srm/glb-workflow |
 | workflow_state | R | workflow engine @srm/glb-workflow |
 
-#### 9.7 Repository Providers + Module wiring
+### 9.7 Repository Providers + Module wiring
 
 ```ts
 // src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
@@ -590,7 +650,7 @@ export class FgiImpactStore {
 import { DataSource } from 'typeorm';
 import { FgiImpactProcess } from '../../entitys/sgi-fgi-impact-processes.entity';
 import { FgiImpactStore } from '../../entitys/sgi-fgi-impact-stores.entity';
-import { CompensationDocument } from '../../entitys/sgi-compensation-documents.entity';
+import { FgiImpactSalesSummary } from '../../entitys/sgi-fgi-impact-sales-summaries.entity';
 
 export const sgiWorkflowInstancesProviders = [
   {
@@ -604,8 +664,8 @@ export const sgiWorkflowInstancesProviders = [
     inject: ['DATA_SOURCE'],
   },
   {
-    provide: 'SGI_COMPENSATION_DOCUMENT_REPOSITORY',
-    useFactory: (dataSource: DataSource) => dataSource.getRepository(CompensationDocument),
+    provide: 'SGI_FGI_IMPACT_SALES_SUMMARIES_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(FgiImpactSalesSummary),
     inject: ['DATA_SOURCE'],
   },
 ];
@@ -637,7 +697,7 @@ export class SgiWorkflowInstancesModule implements NestModule {
 // TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
-#### 9.8 BFF Proxy (module + controller + client service)
+### 9.8 BFF Proxy (module + controller + client service)
 
 BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
@@ -671,6 +731,9 @@ export class SgiWorkflowInstancesBffService {
   constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  // ⚠️ ต้อง unwrap envelope ของ store-backend 1 ชั้นก่อนคืน (ยืนยันจากโค้ดจริง 2026-09-04):
+  //    ResponseInterceptor ระดับ global ของ BFF ห่อผลลัพธ์เป็น { success, data, requestId } อีกที
+  //    ถ้าคืน { success, data } ดิบมา FE จะได้ data.data.data — SgiClientService จึงต้องคืน .data.data
   private userHeaders(user: any) {
     return {
       'x-user-id': user?.userId,
@@ -696,20 +759,20 @@ export class SgiWorkflowInstancesBffService {
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sgi/workflow-instances')
+// path เดียวกับที่ FE เรียก (apiClient baseURL รวม /api/v1 แล้ว) — ห้ามตั้งตามชื่อเอกสาร LLDD
+@Controller('sgi/workflow')
 @UseGuards(AuthGuard('jwt'))
 export class SgiWorkflowInstancesBffController {
   constructor(private readonly service: SgiWorkflowInstancesBffService) {}
 
   // proxy ของ POST /api/v1/sgi/workflow/instances
-  @Post('sgi/workflow/instances')
+  @Post('instances')
   createSgiWorkflowInstances(@Body() body: any, @Req() req: any) {
     return this.service.createSgiWorkflowInstances(body, req.user);
   }
 
   // proxy ของ GET /api/v1/sgi/workflow/instances/{id}
-  @Get('sgi/workflow/instances/:id')
+  @Get('instances/:id')
   getSgiWorkflowInstancesById(@Param('id') id: string, @Query() query: any, @Req() req: any) {
     return this.service.getSgiWorkflowInstancesById(id, query, req.user);
   }
@@ -719,12 +782,14 @@ export class SgiWorkflowInstancesBffController {
 
 ## 10. Database SQL
 
-#### 10.1 ตารางที่อ่าน/เขียน
+### 10.1 ตารางที่อ่าน/เขียน
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
 | sgi_fgi_impact_processes | R/W | อ่านข้อมูล impact และอัปเดต workflow_generation_status W/Y/N |
 | sgi_fgi_impact_stores | R/W | อ่านข้อมูล impact และอัปเดต workflow_generation_status W/Y/N |
+| sgi_fgi_impact_sales_summaries | R | growth_rate_diff / sales_status ที่ Gen Flow Gate ใช้ตัดสิน (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศ) |
+| sgi_impacted_stores | R | opt_dv_user_id ที่ Gen Flow Gate ใช้ตรวจว่ามี DV เจ้าของร้าน (เพิ่ม 2026-09-02) |
 | sgi_compensation_documents | R/W | create-if-missing จาก impact process และผูก docNo |
 | sgi_interface_transactions | W | บันทึกผลเรียกจาก Job 8b · ตาราง job_run_histories ถูกตัด 2026-08-06 — ผลการรันไปที่ application log |
 | workflow_transaction | W (โดย lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
@@ -732,13 +797,12 @@ export class SgiWorkflowInstancesBffController {
 | workflow_status | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_state | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 
-#### 10.2 SQL จริงต่อ Endpoint
+### 10.2 SQL จริงต่อ Endpoint
 
 **POST /api/v1/sgi/workflow/instances** — เปิด workflow ภายในจาก impact process; เรียกโดย Job 8b ผ่าน service token ไม่ใช่ FE
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=impactProcessId · $2=flagN · $3=flagW · $4=gateDecision · $5=flagY
 -- Gen Flow Gate: workflow_generation_status มี source of truth ที่ sgi_fgi_impact_processes
 SELECT p.id AS impact_process_id, p.workflow_generation_status, ist.opt_dv_user_id,
        -- ⚠️ store ของระบบเดิมไม่มี juristic_name — นิติบุคคลอยู่คนละตาราง (fr_store / franchisee / juristic)
@@ -756,11 +820,11 @@ LEFT JOIN juristic ij  ON ij.juristic_id = ifs.juristic_id
 LEFT JOIN fr_store nfs ON nfs.store_id = ns.store_id
 LEFT JOIN juristic nj  ON nj.juristic_id = nfs.juristic_id
 LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = p.id
-WHERE p.id = :impactProcessId FOR UPDATE OF p;
+WHERE p.id = $1 /* impactProcessId */ FOR UPDATE OF p;
 
 -- fail ถาวร (branch/distance over/missing DV/same juristic/growth > -10) → N; เฉพาะ distance/juristic/growth NULL หรือ sales_status ยังไม่พร้อมจึงคง W
-UPDATE sgi_fgi_impact_processes SET workflow_generation_status = :flagN
-WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagN;
+UPDATE sgi_fgi_impact_processes SET workflow_generation_status = $2 /* flagN */
+WHERE id = $1 /* impactProcessId */ AND workflow_generation_status = $3 /* flagW */ AND $4 /* gateDecision */ = $2 /* flagN */;
 
 -- ผ่าน gate → ใช้เอกสารที่ Job 8 สร้างแล้ว เปิด instance + งานแรกผ่าน @srm/glb-workflow แล้วตั้ง Y ใน transaction เดียว
 -- ⚠️ ไม่ INSERT ตาราง workflow เอง (workflow_instances / workflow_tasks ถูกตัดออกจากโครง 20 ตารางแล้ว)
@@ -770,33 +834,31 @@ WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDec
 --    sps_store.workflow_transaction (ไม่มี PK/index · 19,283 แถว) → กันซ้ำที่ application (DP-2)
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT d.doc_no FROM sgi_compensation_documents d
-WHERE d.impact_process_id = :impactProcessId AND :gateDecision = :flagY;
-UPDATE sgi_fgi_impact_processes SET workflow_generation_status = :flagY
-WHERE id = :impactProcessId AND workflow_generation_status = :flagW AND :gateDecision = :flagY;
+WHERE d.impact_process_id = $1 /* impactProcessId */ AND $4 /* gateDecision */ = $5 /* flagY */;
+UPDATE sgi_fgi_impact_processes SET workflow_generation_status = $5 /* flagY */
+WHERE id = $1 /* impactProcessId */ AND workflow_generation_status = $3 /* flagW */ AND $4 /* gateDecision */ = $5 /* flagY */;
 ```
 
 **GET /api/v1/sgi/workflow/instances/{id}** — อ่านสถานะ workflow instance
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=id · $2=sgiVersionId · $3=referenceId
 -- ✅ DP-1 ปิดแล้ว: referenceId = sgi_compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ห้ามแก้ schema ของ library
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.transaction_id, w.reference_id, w.current_state_id, w.current_status_id, w.current_approver,
        a.state_id AS pending_state_id, a.approver_id, a.approve_seq
 FROM sps_store.workflow_transaction w
 LEFT JOIN sps_store.workflow_approver a ON a.transaction_id = w.transaction_id AND a.state_id = w.current_state_id
-WHERE w.transaction_id = :id AND w.version_id = :sgiVersionId;
+WHERE w.transaction_id = $1 /* id */ AND w.version_id = $2 /* sgiVersionId */;
 
 -- เอกสารที่ผูกกับ instance (join ด้วยsgi_compensation_documents.id (DP-1 ปิดแล้ว))
-SELECT doc_no, status_code, current_section_code FROM sgi_compensation_documents WHERE doc_no = :referenceId;
+SELECT doc_no, status_code, current_section_code FROM sgi_compensation_documents WHERE doc_no = $3 /* referenceId */;
 ```
 
 **GET /api/v1/sgi/workflow/summary** — สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=sgiVersionId · $2=statusDone
 SELECT workflow_generation_status, COUNT(*) AS cnt
 FROM sgi_fgi_impact_processes
 GROUP BY workflow_generation_status;
@@ -805,15 +867,17 @@ GROUP BY workflow_generation_status;
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.current_state_id AS section_code, COUNT(*) AS open_tasks
 FROM sps_store.workflow_transaction w
-WHERE w.version_id = :sgiVersionId AND w.current_status_id <> :statusDone
+WHERE w.version_id = $1 /* sgiVersionId */ AND w.current_status_id <> $2 /* statusDone */
 GROUP BY w.current_state_id;
 ```
 
-#### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
 
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |
+| sgi_impacted_stores | CREATE INDEX idx_sgi_impacted_stores_store_code ON sgi_impacted_stores (store_code); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
 | sgi_fgi_impact_stores | CREATE INDEX idx_sgi_fgi_impact_stores_impact_process_id ON sgi_fgi_impact_stores (impact_process_id); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
+| sgi_fgi_impact_sales_summaries | CREATE INDEX idx_sgi_fgi_impact_sales_summaries_impact_process_id ON sgi_fgi_impact_sales_summaries (impact_process_id); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
 | sgi_compensation_documents | CREATE INDEX idx_sgi_compensation_documents_impact_process_id ON sgi_compensation_documents (impact_process_id); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
 
 ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่
@@ -865,7 +929,7 @@ GROUP BY w.current_state_id;
 | --- | --- | --- |
 | `impactProcessId` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: integer/string |
 | `sourceJobNo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required fixed 8b · รูปแบบ: string |
-| `requestId` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: uuid |
+| `requestId` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: string `job8b-{impactProcessId}-{YYYYMM}` (ค.ศ.) |
 | `workflow_generation_status` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: computed · รูปแบบ: W\|Y\|N |
 | `branchType/distanceKm` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required by gate · รูปแบบ: enum/number\|null |
 | `growthRateDiff` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: <= -10 required by gate · รูปแบบ: number\|null |

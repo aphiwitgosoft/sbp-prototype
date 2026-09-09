@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | FE |
 | Estimate | **35 ชั่วโมง** = implementation 28 + unit test 7 (25%) |
-| Owner | Chidchanok <lin> Saengamnat |
+| Owner | Chidchanok &lt;lin&gt; Saengamnat |
 | Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Objective | สร้างหน้ารายการเอกสารรอดำเนินการและเอกสารที่เกี่ยวข้อง |
 
@@ -69,7 +69,7 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 | --- | --- | --- | --- |
 | docNo | YYYY/xxxxx | optional search | ถ้าคลิก row ส่งไป detail |
 | year | ค.ศ. YYYY | required สำหรับ /sgi/document | default current year (ค.ศ.) |
-| status | status code/string | optional single select | ใช้ filter chip |
+| status | status code/string | optional single select | **เงื่อนไขต่อบทบาท (มติ 2026-09-01 · ทำในโปรโตไทป์แล้ว):** หน้า **รอดำเนินการ** แสดงตัวกรองนี้ **เฉพาะบทบาท 06** เพราะ inbox ของ 08/01/02/03 มีสถานะเดียว (`รอ<บทบาท>ดำเนินการ`) ตัวกรองจึงไม่มีประโยชน์ — ซ่อนไปเลย · ของบทบาท 06 ใส่ **เฉพาะ 3 ตัวเลือกที่บทบาทนี้เห็นจริง** เท่านั้น: `รอฝ่าย SBP DSA ดำเนินการ` · `เสร็จสิ้นดำเนินการ + หยุดชดเชย (เปิดพิจารณาใหม่ได้)` · `เสร็จสิ้นดำเนินการ + ไม่ชดเชย` — **ห้ามยกสถานะของบทบาทอื่นมาให้เลือกลอย ๆ** · หน้า **ที่เกี่ยวข้อง** ไม่ถูกกระทบ ยังแสดงตัวกรองครบทุกค่า · สลับบทบาทแล้วต้อง rebuild ตัวเลือกใหม่และคงค่าที่เลือกไว้ถ้ายังมีอยู่ ไม่งั้น reset เป็น 'ทุกสถานะ' |
 | table.roundNo | integer | column 1 | ครั้งที่ (รอบชดเชยของร้าน) |
 | table.docNo | YYYY/xxxxx | column 2 | เลขที่เอกสารและลิงก์เปิด detail |
 | table.impactedStoreCode | string 5 digits | column 3 | รหัสร้านถูกกระทบ; คง leading zero |
@@ -144,7 +144,8 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 {
   "page": 1,
   "size": 20,
-  "status": "06"
+  "status": "06",
+  "sectionCode": "06"
 }
 ```
 
@@ -155,6 +156,7 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
 | status | string | No | UTF-8; use value domain described by endpoint purpose |
+| sectionCode | string | No | canonical code; do not replace with display label |
 
 #### Response
 
@@ -188,7 +190,7 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 | page | integer | Yes | >= 1; default 1 |
 | size | integer | Yes | 1..100; default 20 |
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | items[].impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
@@ -210,6 +212,8 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 ```json
 {
   "year": 2026,
+  "storeCode": "00788",
+  "status": "06",
   "page": 1,
   "size": 20
 }
@@ -220,6 +224,8 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| storeCode | string | No | exactly 5 digits; preserve leading zero |
+| status | string | No | UTF-8; use value domain described by endpoint purpose |
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
 
@@ -255,7 +261,7 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 | page | integer | Yes | >= 1; default 1 |
 | size | integer | Yes | 1..100; default 20 |
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 | items[].impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
@@ -272,7 +278,7 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 
 โค้ดชุดนี้อิง convention ของ portal เดิม `srm-sps-spsap-web-frontend` (build target `sbpm`): Next.js App Router + `'use client'`, PrimeReact ที่ห่อไว้แล้วใน `@/components/Form` และ `@/components/Table`, react-hook-form + yup, Zustand `permissionStore`, axios instance กลาง `@/lib/apiClient` และ react-query 5 — **โปรเจกต์ไม่มี chart library** จึงไม่มีโค้ดกราฟในเอกสารนี้ คัดลอกไปตั้งต้นได้ทันที แล้วเติมจุดที่กำกับ `TODO:`
 
-#### 8.1 ผังไฟล์ที่ต้องสร้าง
+### 8.1 ผังไฟล์ที่ต้องสร้าง
 
 โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด
 
@@ -285,7 +291,7 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 | src/hooks/sgi/document.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
 | src/types/sgi/document.ts | types — request/response ตาม API contract ของเอกสารนี้ |
 
-#### 8.2 page.tsx — หน้ารายการ (permission gate + react-query + Table กลาง)
+### 8.2 page.tsx — หน้ารายการ (permission gate + react-query + Table กลาง)
 
 ```tsx
 'use client';
@@ -300,6 +306,7 @@ import { Column, Table } from '@/components/Table';
 import AccessDenied from '@/components/Permission/AccessDenied';
 // permissionStore เป็น named export ของ Zustand store (ไม่มี symbol ชื่อ usePermissionStore ในโปรเจกต์)
 import { permissionStore } from '@/stores/permissionStore';
+import DocumentListsForm from '@/components/sgi/document-lists/DocumentListsForm';
 import { apiErrorMessage } from '@/lib/sgi/apiError';
 import { useSgiDocumentTasksQuery } from '@/hooks/sgi/document.query';
 import type { SgiDocumentTasksItem } from '@/types/sgi/document';
@@ -319,8 +326,9 @@ export default function DocumentWaitingPage() {
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <h1 className="text-xl font-semibold">{/* TODO: หัวข้อหน้าจอตาม SRS */}</h1>
-      {/* TODO: <DocumentListsForm onSearch={(v) => setQuery((q) => ({ ...q, ...v, page: 1 }))} /> */}
+      {/* ชื่อหน้าจอมาจาก Objective ของเอกสารฉบับนี้ — ตรงกับ breadcrumb ของ prototype */}
+      <h1 className="text-xl font-semibold">Document Lists</h1>
+      <DocumentListsForm onSubmit={(v) => setQuery((q) => ({ ...q, ...v, page: 1 }))} />
       <Table
         value={data?.items ?? []}
         loading={isLoading}
@@ -351,7 +359,7 @@ export default function DocumentWaitingPage() {
 }
 ```
 
-#### 8.3 service — `src/services/sgi/document.service.ts`
+### 8.3 service — `src/services/sgi/document.service.ts`
 
 ⚠️ `src/services/sgi/document.service.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -376,10 +384,16 @@ export async function getSgiDocument(params: T.SgiDocumentParams): Promise<PageR
   return data.data;
 }
 
-// TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
+// ── envelope: อ่าน `data.data` ชั้นเดียว (ยืนยันจากโค้ดจริงของ BFF 2026-09-04) ──
+//   BFF มี ResponseInterceptor ระดับ global (src/common/interceptors/response.interceptor.ts)
+//   ที่ห่อผลลัพธ์ของ controller เป็น { success, data, requestId } ให้เสมอ
+//   ⚠️ ถ้า client service ของ BFF คืน `response.data` ดิบ (= envelope ของ store-backend)
+//      interceptor จะเห็นคีย์ success แล้วห่อซ้ำ → FE ได้ { success, data: { data: <payload> } }
+//      สัญญาที่ตกลง: **BFF ต้อง unwrap ของ store-backend ก่อน 1 ชั้น** (คืน response.data.data)
+//      FE จึงอ่าน data.data ชั้นเดียวตามโค้ดด้านบน · requestId ใช้อ้างอิงตอนแจ้งปัญหา
 ```
 
-#### 8.4 types — `src/types/sgi/document.ts`
+### 8.4 types — `src/types/sgi/document.ts`
 
 ⚠️ `src/types/sgi/document.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -394,6 +408,7 @@ export interface SgiDocumentTasksParams {
   page?: number;
   size?: number;
   status?: string;
+  sectionCode?: string;
 }
 
 /** GET /api/v1/sgi/document/tasks — 1 แถวในตาราง */
@@ -415,6 +430,8 @@ export type SgiDocumentTasksListResponse = PageResponse<SgiDocumentTasksItem>;
 /** GET /api/v1/sgi/document — request */
 export interface SgiDocumentParams {
   year?: number;
+  storeCode?: string;
+  status?: string;
   page?: number;
   size?: number;
 }
@@ -438,7 +455,7 @@ export type SgiDocumentListResponse = PageResponse<SgiDocumentItem>;
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
-#### 8.5 react-query keys + hooks — `src/hooks/sgi/document.query.ts`
+### 8.5 react-query keys + hooks — `src/hooks/sgi/document.query.ts`
 
 ⚠️ `src/hooks/sgi/document.query.ts` เป็น **ไฟล์ร่วมของโมดูล SGI** (เอกสาร FE หลายฉบับที่ใช้ domain `document` ประกาศไฟล์นี้เหมือนกัน) — เวลา implement ให้ **merge เพิ่ม** เข้าไฟล์เดิม ห้ามเขียนทับทั้งไฟล์ มิฉะนั้น type/function ของเอกสารฉบับก่อนหน้าจะหายไปเงียบ ๆ
 
@@ -473,7 +490,7 @@ export function useSgiDocumentQuery(params?: T.SgiDocumentParams | null) {
 }
 ```
 
-#### 8.6 ฟอร์ม + validation — `src/components/sgi/document-lists/DocumentListsForm.tsx`
+### 8.6 ฟอร์ม + validation — `src/components/sgi/document-lists/DocumentListsForm.tsx`
 
 ```tsx
 'use client';
@@ -496,7 +513,7 @@ export interface DocumentListsFormValue {
 const schema = yup.object({
   docNo: yup.string().matches(/^\d{4}\/\d{5}$/, 'เลขที่เอกสารต้องเป็น YYYY/xxxxx (ค.ศ.)'), // ถ้าคลิก row ส่งไป detail
   year: yup.string().required('กรุณาระบุ year'), // default current year (ค.ศ.)
-  status: yup.string(), // ใช้ filter chip
+  status: yup.string(), // **เงื่อนไขต่อบทบาท (มติ 2026-09-01 · ทำในโปรโตไทป์แล้ว):** หน้า **รอดำ
 });
 
 export default function DocumentListsForm({ defaultValues, onSubmit }: {
@@ -528,7 +545,7 @@ export default function DocumentListsForm({ defaultValues, onSubmit }: {
 }
 ```
 
-- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
+- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `&lt;AccessDenied /&gt;` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
 - payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)

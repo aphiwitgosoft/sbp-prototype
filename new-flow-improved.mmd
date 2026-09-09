@@ -8,101 +8,130 @@
     "primaryTextColor": "#1F2937",
     "lineColor": "#5B6472",
     "actorTextColor": "#111827",
+    "actorLineColor": "#B7C0CC",
     "signalColor": "#3D3D3D",
     "signalTextColor": "#1F2937",
-    "noteBkgColor": "#FFF3C4",
-    "noteBorderColor": "#E0B400",
+    "noteBkgColor": "#FFF6D6",
+    "noteBorderColor": "#D9A800",
     "noteTextColor": "#4A3B00",
     "activationBkgColor": "#BFEFEA",
     "activationBorderColor": "#2BB3A3",
-    "labelBoxBkgColor": "#F1F5F9",
-    "labelBoxBorderColor": "#94A3B8",
-    "altSectionBkgColor": "#F8FAFC"
+    "labelBoxBkgColor": "#EEF2F7",
+    "labelBoxBorderColor": "#8FA0B4",
+    "labelTextColor": "#1F2937",
+    "altSectionBkgColor": "#FBFCFE",
+    "sequenceNumberColor": "#FFFFFF"
   },
   "sequence": {
-    "diagramMarginX": 40,
-    "diagramMarginY": 24,
-    "actorMargin": 90,
-    "boxMargin": 14,
+    "diagramMarginX": 32,
+    "diagramMarginY": 20,
+    "actorMargin": 66,
+    "boxMargin": 12,
     "boxTextMargin": 6,
-    "noteMargin": 12,
-    "messageMargin": 42,
+    "noteMargin": 14,
+    "messageMargin": 46,
     "mirrorActors": true,
     "wrap": true,
-    "width": 200
+    "width": 178
   }
 }}%%
 sequenceDiagram
     autonumber
 
-    box rgb(245,235,255) AllMap
+    %% ── เรียงเลนตาม "ใครคุยกับใคร" ให้ SGI อยู่กลาง ต้นทางอยู่ซ้าย ปลายทางอยู่ขวา
+    %%    ทำให้ลูกศรเกือบทุกเส้นวิ่งระหว่างเลนที่ติดกัน อ่านง่ายกว่าการเรียงตามลำดับเวลา
+    box rgb(249,246,254) ต้นทางข้อมูล
         participant AllMap
+        participant MIS as IAS / MIS<br/>ยอดขาย
     end
-    box rgb(214,245,235) ระบบประกันรายได้ SBP GI
-        participant SGI
+    box rgb(255,250,235) ตัวกลางแลกไฟล์
+        participant S3 as EAI S3
     end
-    box rgb(255,237,213) MIS ยอดขาย
-        participant MIS
+    box rgb(234,250,244) ระบบประกันรายได้
+        participant SGI as SGI
     end
-    box rgb(214,243,252) STA
-        participant STA
+    box rgb(243,247,255) ตัวกลางข้อความ
+        participant MQ as RabbitMQ<br/>exchange sgi.interface
     end
-    box rgb(220,247,224) SAP บัญชี
-        participant SAP
+    box rgb(240,250,254) ปลายทาง
+        participant STA as STA
+        participant SAP as SAP บัญชี
     end
 
-    AllMap->>SGI: ส่งข้อมูลร้านค้าที่ได้รับผลกระทบ
+    rect rgb(248,250,253)
+        Note over AllMap,SAP: ระยะที่ 1 — รับข้อมูลผลกระทบและยอดขาย (Job 2–5)
+        AllMap->>SGI: ข้อมูลร้านที่ได้รับผลกระทบ (Job 2 / Job 3 อ่านวิว ALLMAP)
 
-    opt กรณีร้านค้าได้รับผลกระทบ แต่ไม่ได้ส่งข้อมูลสาขามาให้คำนวณ และต้องการชดเชยย้อนหลัง
-        Note over STA,SAP: API Endpoint /fgiService/updateCompensateFromFS
-        STA->>SGI: ส่งข้อมูลร้านค้าที่ได้รับผลกระทบ (API)
+        opt ร้านถูกกระทบ แต่ไม่ได้ส่งข้อมูลสาขามาให้คำนวณ และต้องการชดเชยย้อนหลัง
+            Note over MQ,STA: message sta_update_compensate · Real Time
+            STA->>MQ: publish ข้อมูลร้านที่ได้รับผลกระทบ
+            MQ->>SGI: consume
+            activate SGI
+            SGI->>SGI: นำเข้าข้อมูลเพื่อใช้ประมวลผล
+            deactivate SGI
+        end
+
+        Note over S3,SGI: Job 4 PrepareImpactStoreToIAS · 16:00 วันที่ 7–16 ของเดือน<br/>ไฟล์ AMS06001O_
+        SGI->>S3: อัปโหลดไฟล์ร้านที่ได้รับผลกระทบ
+        S3->>MIS: IAS/MIS ดึงไฟล์ไปประมวลผล
+        MIS->>MIS: คำนวณยอดขายของร้านที่ได้รับผลกระทบ
+        MIS->>S3: วางไฟล์ยอดขายกลับ (ไฟล์ AMS06001I_)
+        Note over S3,SGI: Job 5 ImportImpactSaleFromIAS · 16:30 วันที่ 7–16 ของเดือน<br/>ไฟล์ AMS06001I_
+        S3->>SGI: ดึงไฟล์ยอดขาย
+        SGI->>SGI: นำเข้ายอดขายจาก IAS/MIS
+    end
+
+    rect rgb(246,252,248)
+        Note over AllMap,SAP: ระยะที่ 2 — ส่งผลให้ STA และบันทึกบัญชี (Job 6)
+        Note over SGI,MQ: Job 6 ExportImpactStoreToFS · ทุกวัน 17:00<br/>message sgi_impact_store · transactional outbox
+        SGI->>SGI: เขียน outbox sgi_interface_transactions (READY)
+        SGI->>MQ: publish ร้านที่ได้รับผลกระทบ + ผลพิจารณาของงวด
+        MQ->>STA: consume
+        STA->>STA: ประมวลผล message sgi_impact_store
+
+        alt compensate_status = A · อนุมัติชดเชย
+            STA->>SAP: บันทึกบัญชี
+            SAP-->>STA: return Success
+        else compensate_status = N · เห็นควรไม่ชดเชย
+            STA->>STA: ไม่บันทึกบัญชีของงวดนั้น
+        else compensate_status = S · หยุดชดเชย
+            STA->>STA: Stop Flow
+        else compensate_status = I · ข้อมูลตั้งต้น
+            STA->>STA: ตั้ง Flow ร้านที่ได้รับผลกระทบ
+        end
+
+        Note over MQ,STA: message sta_update_compensate<br/>impactStatus: Z = ยอดเป็นศูนย์ · W = ยอดไม่เป็นศูนย์
+        STA->>MQ: publish ยอดเงินประกันรายได้ (forecast / adjust)
+        Note over MQ,SGI: Job 11 ConsumeStaCompensate · ทุก 10 นาที<br/>drain-then-exit (AWS Batch รัน one-shot) = near-real-time
+        MQ->>SGI: consume
         activate SGI
-        SGI->>SGI: นำเข้าข้อมูล เพื่อใช้ในการประมวลผล
-        SGI-->>STA: return Success
+        SGI->>SGI: อัปเดตยอดชดเชยของร้านที่ได้รับผลกระทบ (กันซ้ำด้วย outbox ขาเข้า)
         deactivate SGI
+
+        opt มีการ Adjust เงินชดเชยประกันรายได้
+            STA->>MQ: publish ข้อมูล Adjust
+            MQ->>SGI: consume
+            SGI->>SGI: อัปเดตข้อมูล Adjust
+        end
     end
 
-    Note over SGI: Job FGI_ExportImpactStoreToAMS<br/>At 16:00 on every day-of-month from 7 through 16
-    Note over MIS: Filename AMS060010_
-    SGI->>MIS: วางไฟล์ข้อมูลร้านค้าที่ได้รับผลกระทบ
-    MIS->>MIS: ดึงไฟล์ข้อมูลร้านค้าที่ได้รับผลกระทบ
-    MIS->>MIS: ประมวลผล
-
-    Note over AllMap,SGI: Filename AMS06001I_
-    MIS->>SGI: วางไฟล์ยอดขายของร้านค้าที่ได้รับผลกระทบ
-    Note over SGI,MIS: Job FGI_ImportImpactStoreSale.sh<br/>At 16:30 on every day-of-month from 7 through 16<br/>Filename AMS06001I_
-    SGI->>SGI: นำเข้าข้อมูลยอดการขายจาก MIS
-
-    Note over SGI,MIS: Job FGI_ExportImpactStoreToSTA.sh<br/>At 17:00 on every day
-    Note over STA: Filename FRBC0001_
-    SGI->>STA: ประมวลผลวางไฟล์ข้อมูลร้านค้าที่ได้รับผลกระทบ
-    SGI->>SGI: บันทึกข้อมูลส่งออกของร้านค้าที่ได้รับผลกระทบ (STA)
-    STA->>STA: ประมวลผลข้อมูลจากไฟล์ FRBC0001_
-
-    alt กรณีอนุมัติชดเชยประกันรายได้ (Approve = A)
-        Note over STA: ตรวจสอบยอดการอนุมัติ
-        STA->>SAP: บันทึกบัญชี
-        SAP-->>STA: return Success
-    else กรณีหยุดชดเชยประกันรายได้ (Stop Flow = S)
-        STA->>STA: Stop Flow
-    else กรณีเป็นข้อมูลตั้งต้น (Initial = I)
-        STA->>STA: ตั้ง Flow ร้านค้าที่ได้รับผลกระทบ
+    rect rgb(250,248,255)
+        Note over AllMap,SAP: ระยะที่ 3 — เข้าเอกสารและเปิด workflow (Job 8 / 8b)
+        SGI->>SGI: สร้างเอกสารประกันรายได้จากร้านที่ได้รับผลกระทบ (Job 8)
+        SGI->>SGI: เปิด workflow ให้เอกสารผ่าน @srm/glb-workflow (Job 8b)
     end
 
-    Note over AllMap,SGI: Filename RT040035, RT040078
-    STA->>SGI: วางไฟล์ยอดชดเชยประกันรายได้
-    Note over SGI,MIS: API Endpoint /fgiService/updateCompensateFromFS<br/>ยอดเท่ากับศูนย์ = Z<br/>ยอดไม่เท่ากับศูนย์ = w
-    STA->>SGI: ส่งข้อมูล ยอดเงินประกันรายได้
-    activate SGI
-    SGI->>SGI: อัพเดทข้อมูลร้านค้าที่ได้รับผลกระทบ
-    SGI-->>STA: return Success
-    deactivate SGI
+    rect rgb(250,250,240)
+        Note over AllMap,SAP: ระยะที่ 3.5 — เตือนงานค้าง (Job 12)
+        Note over SGI: Job 12 NotifyPendingWork · ทุกวันจันทร์ 10:00<br/>ช่วงอายุงาน 30-36 / 45-51 / 60-66 วัน (ช่วง 7 วัน · นอกช่วงไม่ส่ง)
+        SGI->>SGI: อ่านงานค้างจาก @srm/glb-workflow แล้วส่งอีเมลถึง GM + หน่วยงานส่งเสริมฯ ตามโซน
+    end
 
-    SGI->>SGI: (K2) นำเข้าข้อมูลร้านค้าที่ได้รับผลกระทบ
-    Note over AllMap,SGI: API Endpoint /fgiService/confirmDataFromBPM
-    SGI->>SGI: (K2) ตอบกลับ ได้รับข้อมูลจากระบบประกันรายได้<br/>และอัพเดทสถานะการตอบกลับข้อมูล
-
-    opt กรณีมีการ Adjust เงินชดเชยประกันรายได้
-        STA->>SGI: ส่งข้อมูล Adjust เงินชดเชยประกันรายได้
-        SGI->>SGI: อัพเดทข้อมูล Adjust
+    rect rgb(255,243,243)
+        Note over AllMap,SAP: ระยะที่ 4 — เปิดพิจารณาใหม่ (Reflow)<br/>เอกสารที่จบไปแล้วด้วย "เห็นควรไม่ชดเชย" หรือ "หยุดชดเชยประกันรายได้"
+        SGI->>SGI: ฝ่าย SBP DSA (06) กดพิจารณาใหม่จากเอกสารที่เสร็จสิ้นแล้ว
+        Note over SGI,MQ: message sgi_reflow · compensate_status = R<br/>1 รายการต่อ 1 งวดที่ต้อง reflow · stmt_year_month ว่างเสมอ
+        SGI->>MQ: publish แจ้งว่าเอกสารนี้ถูก reflow
+        MQ->>STA: consume
+        STA->>STA: ตั้ง flow ของงวดที่ระบุใหม่ (หน้าจอ FSG003001)
     end

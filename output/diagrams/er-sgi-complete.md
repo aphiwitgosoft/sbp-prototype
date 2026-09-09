@@ -12,10 +12,10 @@
 
 | ตาราง | คอลัมน์ | PK | ความสัมพันธ์ออก | แถวจริง |
 |---|---|---|---|---|
-| `sgi_fgi_impact_processes` | 18 | id | ออก 2 · เข้า 6 | — |
+| `sgi_fgi_impact_processes` | 19 | id | ออก 2 · เข้า 6 | — |
 | `sgi_fgi_impact_compensations` | 18 | id | ออก 2 · เข้า 0 | — |
-| `sgi_fgi_impact_stores` | 12 | id | ออก 4 · เข้า 0 | — |
-| `sgi_fgi_impact_sales_summaries` | 8 | id | ออก 1 · เข้า 2 | — |
+| `sgi_fgi_impact_stores` | 16 | id | ออก 4 · เข้า 0 | — |
+| `sgi_fgi_impact_sales_summaries` | 9 | id | ออก 1 · เข้า 2 | — |
 | `sgi_sales_transactions` | 9 | id | ออก 1 · เข้า 0 | — |
 | `sgi_fgi_impact_competitors` | 9 | id | ออก 3 · เข้า 0 | — |
 | `fcs_qssi_score` | 7 | id | ออก 1 · เข้า 0 | 23,958,780 |
@@ -28,7 +28,7 @@
 | ตาราง | คอลัมน์ | PK | ความสัมพันธ์ออก | แถวจริง |
 |---|---|---|---|---|
 | `sgi_compensation_documents` | 25 | id | ออก 13 · เข้า 9 | — |
-| `sgi_document_running_numbers` | 3 | year | ออก 1 · เข้า 0 | — |
+| `sgi_document_running_numbers` | 4 | year | ออก 1 · เข้า 0 | — |
 | `sgi_document_new_stores` | 8 | id | ออก 2 · เข้า 1 | — |
 | `sgi_document_cost_details` | 10 | id | ออก 2 · เข้า 0 | — |
 | `sgi_document_competitors` | 12 | id | ออก 2 · เข้า 1 | — |
@@ -43,7 +43,7 @@
 
 | ตาราง | คอลัมน์ | PK | ความสัมพันธ์ออก | แถวจริง |
 |---|---|---|---|---|
-| `sgi_impacted_stores` | 7 | store_code | ออก 5 · เข้า 4 | — |
+| `sgi_impacted_stores` | 8 | store_code | ออก 5 · เข้า 4 | — |
 | `sgi_competitors` | 6 | competitor_code | ออก 0 · เข้า 2 | — |
 | `sgi_external_factors` | 5 | factor_code | ออก 0 · เข้า 1 | — |
 

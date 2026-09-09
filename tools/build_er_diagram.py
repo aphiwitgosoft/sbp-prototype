@@ -563,12 +563,13 @@ def render_html(svg: str, boxes: dict[str, Box], edges: list[dict], schemas: dic
         cat.append(
             f"<h3>schema <code>{schema}</code> — {len(tabs)} ตาราง/วิว "
             f"(บนรูป {sum(1 for k in drawn if k.startswith(schema + '.'))})</h3>"
-            f"<table class='cat'><thead><tr><th>ตาราง</th><th>คอลัมน์</th><th>PK</th>"
-            f"<th>แถว</th><th>บนรูป</th><th>หมายเหตุ (ใช้ใน SGI)</th></tr></thead><tbody>{rows}</tbody></table>"
+            f"<div class='tbl-scroll'><table class='cat'><thead><tr><th>ตาราง</th><th>คอลัมน์</th><th>PK</th>"
+            f"<th>แถว</th><th>บนรูป</th><th>หมายเหตุ (ใช้ใน SGI)</th></tr></thead><tbody>{rows}</tbody></table></div>"
         )
     return f"""<!doctype html>
 <html lang="th"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
 <title>ER Diagram ฉบับสมบูรณ์ · SGI</title>
 <style>
 *{{box-sizing:border-box}}
@@ -593,6 +594,13 @@ svg .tbl.found rect:first-of-type{{stroke:#dc2626;stroke-width:3}}
 #panel.show{{display:block}}
 h2{{font-size:17px;margin:16px 0 6px}} h3{{font-size:14px;margin:18px 0 6px}}
 table{{border-collapse:collapse;width:100%;font-size:11.5px}}
+/* มือถือ: ตารางภาคผนวกกว้าง ~1130px ต้องเลื่อนในกล่องของตัวเอง ไม่ดันทั้งหน้า (แก้ 2026-09-07) */
+.tbl-scroll{{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}}
+@media (max-width:640px){{
+  #tail{{padding-left:12px;padding-right:12px}}
+  th,td{{white-space:nowrap}}
+  code{{overflow-wrap:anywhere}}
+}}
 th,td{{border:1px solid #e2e8f0;padding:3px 6px;text-align:left;vertical-align:top}}
 th{{background:#f1f5f9;position:sticky;top:0}}
 code{{font-family:ui-monospace,Menlo,monospace;font-size:11px}}
@@ -605,6 +613,7 @@ tr.on td{{background:#ecfdf5}}
 #tail{{background:#fff;padding:20px 26px;border-top:2px solid #cbd5e1}}
 </style></head><body>
 <header>
+<a href="../../k2-list-waiting.html" style="text-decoration:none;color:#2f6fed;font-weight:600;white-space:nowrap">← กลับระบบประกันรายได้</a>
 <b>ER Diagram ฉบับสมบูรณ์ · SGI</b>
 <span style="color:#64748b;font-size:12px">{len(boxes)} ตาราง · {len(edges)} ความสัมพันธ์</span>
 <input id="q" placeholder="ค้นหาตาราง/คอลัมน์…" size="22">
@@ -617,8 +626,8 @@ tr.on td{{background:#ecfdf5}}
 <div id="panel"></div>
 <div id="tail">
 <h2>ความสัมพันธ์ทั้งหมด ({len(edges)} เส้น)</h2>
-<table><thead><tr><th>จาก</th><th>ความสัมพันธ์</th><th>ไป</th><th>ชนิด</th><th>ความหมาย</th><th>สถานะ</th><th>หลักฐาน</th></tr></thead>
-<tbody>{rel_rows}</tbody></table>
+<div class="tbl-scroll"><table><thead><tr><th>จาก</th><th>ความสัมพันธ์</th><th>ไป</th><th>ชนิด</th><th>ความหมาย</th><th>สถานะ</th><th>หลักฐาน</th></tr></thead>
+<tbody>{rel_rows}</tbody></table></div>
 <h2>ภาคผนวก — ตารางทั้งหมดของฐานข้อมูลระบบ SBP เดิม</h2>
 <p style="font-size:12.5px;color:#475569">แถวเขียว = ตารางที่ปรากฏบนรูป · ที่เหลือคือตารางอื่นของ schema เดียวกันที่ SGI ไม่ได้ใช้</p>
 {''.join(cat)}

@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | FE |
 | Estimate | 16 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
-| Owner | Chidchanok <lin> Saengamnat |
+| Owner | Chidchanok &lt;lin&gt; Saengamnat |
 | Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Objective | กำหนดสัญญากลางฝั่ง Frontend สำหรับการ consume API ทุกหน้า: auth/session, error handling, pagination, format, document action และ RBAC/menu gating |
 
@@ -60,11 +60,12 @@ _รูปที่ 2: Sequence diagram: LLDD FE - Integration Contracts_
 | --- | --- | --- | --- |
 | Authorization | Bearer JWT | required except /auth/login and /auth/refresh | แนบโดย axios interceptor เท่านั้น; component ห้าม set header เอง |
 | ApiError | {code,message} | message required | แสดง message จาก BE ตรง ๆ; fallback ใช้เฉพาะ network/no response |
-| PageResponse<T> | {page,size,total,items} | page>=1 size<=100 | ใช้กับ DataTable/Pager ทุกหน้า |
+| PageResponse&lt;T&gt; | {page,size,total,items} | page>=1 size<=100 | ใช้กับ DataTable/Pager ทุกหน้า |
 | date/month | ISO ค.ศ. YYYY-MM-DD / YYYY-MM | payload uses CE | แสดงผ่าน formatDateThai/formatMonthThai จุดเดียว — ค่าเริ่มต้นเป็น ค.ศ. |
 | docNo | YYYY/xxxxx ค.ศ. | do not split except route params | route ใช้ /documents/:year/:running แล้วประกอบ docNo |
-| result | verbatim from actionOptions | required before submit action | ส่งเป็น payload `{result, comment}` เท่านั้น |
+| result | actionOptions[].**value** (ไม่ใช่ label) | required before submit action | ส่งเป็น payload `{result, comment}` เท่านั้น · **`result` = `actionOptions[].value`** — `label` เป็นข้อความบนปุ่มที่ยาวกว่า (เช่น label `ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ` → value `ส่งเจ้าหน้าที่ SBP DSA`) ส่ง label ไปจะไม่ตรง 7 ค่าของ enum |
 | ActionResponse | {statusCode,nextSection,message} | required after action | invalidate detail/timeline/tasks แล้ว resolve label จาก /sgi/lookup/document-statuses |
+| envelope | {success, data, requestId} | BFF unwrap ของ store-backend แล้ว 1 ชั้น | FE อ่าน `data.data` ชั้นเดียว (ยืนยันจากโค้ด BFF จริง 2026-09-04 · รายละเอียดเต็มอยู่ใน **LLDD-BE-Integration-SBP-Platform** หัวข้อ 5) |
 | MenuItem | {menuCode,label,route,group} | จาก GET /menus + GET /groups/current-user/permissions ของระบบเดิม (ผ่าน BFF) | sidebar filter ด้วย menuCode จาก API; ไม่ hardcode role |
 | canEditSections | string[] | from document detail | ใช้เปิด/ปิด section editor; FE ไม่คำนวณสิทธิ์เอง |
 
@@ -74,7 +75,7 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 
 | ชั้น | รูปแบบ | ตัวอย่าง |
 | --- | --- | --- |
-| URL ของ API | `/api/v1/sgi/<กลุ่ม>/<resource>` | `/api/v1/sgi/document/{docNo}/actions` |
+| URL ของ API | `/api/v1/sgi/<กลุ่ม>/&lt;resource&gt;` | `/api/v1/sgi/document/{docNo}/actions` |
 | route ของหน้าจอ | `/sgi/<กลุ่ม>/<หน้า>` | `/sgi/document/waiting` · `/sgi/report/status-summary` |
 | โฟลเดอร์ไฟล์ | `**/sgi/*` | `src/app/(main)/sgi/*` · `src/services/sgi/*` · `src/types/sgi/*` |
 
@@ -87,9 +88,11 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 | Master Data | `/sgi/master/*` | 8 | `/factors` (CRUD 4) · `/competitors` (CRUD 4) — master ที่มีหน้าจอดูแลของตัวเอง |
 | รายงาน | `/sgi/report/*` | 2 | `/status-summary` · `/status-summary/export` |
 | Workflow ภายใน | `/sgi/workflow/*` | 3 | `/instances` · `/instances/{id}` · `/summary` |
-| Interface (tracking / ACK) | `/sgi/interface/*` | 3 | `/tracking` · `/pending-ack` · `/sta/ack` |
+| Interface (tracking) | `/sgi/interface/*` | 2 | `/tracking` · `/pending-ack` — **ตัด `/sta/ack` 2026-09-08** (ข้อ 2.13 · สเปก STA ไม่มี ACK แบบ HTTP) |
 
-**Batch job ไม่มีกลุ่ม path ของตัวเอง** — Jobs 2-10 + 8b รันด้วย cron/CLI ไม่ได้เปิด endpoint (กลุ่ม Batch Job Admin 6 เส้นถูกตัดทิ้ง 2026-08-06) · หน้าต่างที่มองเห็นผลของ job คือ **`/sgi/interface/*`** (tracking + ACK ของ `sgi_interface_transactions`) กับ application log เท่านั้น
+**Batch job ไม่มีกลุ่ม path ของตัวเอง** — Jobs 2, 3, 4, 5, 6, 7, 8, 8b, 9, 10, 11, 12 (รวม 12 job) รันด้วย AWS Batch/CLI ไม่ได้เปิด endpoint (กลุ่ม Batch Job Admin 6 เส้นถูกตัดทิ้ง 2026-08-06) · หน้าต่างที่มองเห็นผลของ job คือ **`/sgi/interface/*`** (tracking + ACK ของ `sgi_interface_transactions`) กับ application log เท่านั้น
+
+**repo ปลายทางของ batch job ทุกตัวคือ `SBP/srm-sps-spsap-sop-sgi-batch`** — วิธีลงทะเบียน job, รูปแบบ `INPUT`, publisher ของ RabbitMQ, `S3Service` และ `integration_log` อ่านได้ที่ **`SBP/srm-sps-spsap-sop-sgi-batch.md`** · ห้ามออกแบบ batch ของ SGI โดยไม่อ่านไฟล์นั้นก่อน · ส่วน job ที่ถูก **สั่งจากข้อความ** (Job 5 · Job 11 · มติ 2026-09-08) ตัวรับข้อความคือ **`SBP/srm-sps-spsap-store-consumer`** — ดู `SBP/srm-sps-spsap-store-consumer.md`
 
 #### ทำไมต้องมี prefix (ไม่ใช่แค่ความสวยงาม)
 
@@ -97,7 +100,7 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 | --- | --- | --- |
 | `/document` · `/statement/...` | `/documents` | ชนเชิงความหมาย อ่าน routing แล้วสับสน |
 | `/report` · `/performance-report` · `/statement/report/ej` | `/reports/status-summary` | ชนเชิงความหมาย |
-| **`/interface/sta/upload-cmadd`** · `/interface/add` | **`/interfaces/sta/ack`** | 🔴 เกือบเหมือนกัน — เสี่ยงยิงผิดเส้นจริง |
+| **`/interface/sta/upload-cmadd`** · `/interface/add` | ~~`/interfaces/sta/ack`~~ | ✅ **หมดความเสี่ยงแล้ว** — เส้นของเราถูกตัดเมื่อ 2026-09-08 |
 | `/common` · `/master` · `/store` | `/factors` `/competitors` `/document-statuses` | ปนกับ master ของโมดูลอื่น |
 
 - ฝั่ง NestJS: **`SgiModule` เดียว** ผูก prefix ที่ระดับโมดูล (`RouterModule.register([{ path: 'sgi', module: SgiModule }])`) แล้วแตกเป็น 6 controller ตามกลุ่ม (`DocumentController` `LookupController` `MasterController` `ReportController` `WorkflowController` `InterfaceController`) — **ห้ามเติม `sgi/` ในแต่ละ `@Controller()`**
@@ -121,7 +124,7 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 | C02 | Auth/JWT consumption from platform reference | อ่าน access token จาก platform auth store, แนบ Bearer token และทำ refresh แบบ single-flight | 401 พร้อมกัน refresh ครั้งเดียว, replay request เดิม และไม่สร้างหน้า Login ใหม่ |
 | C03 | Error display and validation message mapping | แปลง HTTP/Axios failure เป็น ApiError พร้อม code, message, fieldErrors และ traceId โดยไม่แก้ข้อความจาก BE | validation banner/inline error แสดงข้อความและ traceId จาก response ได้ครบ |
 | C04 | Date/year/money/docNo formatting | ให้ formatter กลางสำหรับวันที่ (ค.ศ.), เดือน, เงิน, percent และ docNo โดยไม่เปลี่ยนค่าที่ส่ง API | payload และ UI ใช้ ค.ศ. เป็นค่าเริ่มต้น (buddhistEra=false); รูปแบบเงิน/docNo ตรงกันทุกหน้า |
-| C05 | Pagination, list empty/loading/error state | กำหนด PageResponse<T> และ state loading/empty/error/retry สำหรับ list ทุกชนิด | DataTable/Pager รักษา page/filter เดิมและไม่มี list shape เฉพาะหน้า |
+| C05 | Pagination, list empty/loading/error state | กำหนด PageResponse&lt;T&gt; และ state loading/empty/error/retry สำหรับ list ทุกชนิด | DataTable/Pager รักษา page/filter เดิมและไม่มี list shape เฉพาะหน้า |
 | C06 | Document action result enum and response consumption | กำหนด typed action request/response และ consume statusCode/nextSection ที่ BE คำนวณ | FE ส่งเฉพาะ result/comment และไม่มี client-side workflow routing |
 | C07 | RBAC/menu gating and editable section flags | สร้าง sidebar, route guard, visibleSections, editableSections และ actionOptions จาก platform/menu API | ไม่ hardcode RBAC role เป็นสิทธิ์เมนูหรือ section ที่แก้ไขได้ |
 
@@ -140,7 +143,7 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 | Attach token | ทุก API call | shared/api/client.ts | Authorization header จาก auth store |
 | Refresh token | 401 non-auth endpoint | POST /api/v1/auth/refresh | single-flight แล้ว replay request เดิม |
 | Show API error | catch AxiosError | apiErrorMessage() | แสดงข้อความไทยจาก BE ตรง ๆ |
-| Render list | GET list endpoint | PageResponse<T> | DataTable/Pager ใช้ shape เดียวกัน |
+| Render list | GET list endpoint | PageResponse&lt;T&gt; | DataTable/Pager ใช้ shape เดียวกัน |
 | Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/sgi/document/{docNo}/actions | ส่ง `{result, comment}` และ consume `{statusCode,nextSection,message}` |
 | Gate route/menu | login/bootstrap | GET /menus + GET /groups/current-user/permissions (ระบบเดิม ผ่าน BFF) | สร้าง sidebar และ route guard จาก menuCode |
 
@@ -162,7 +165,7 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 | Attach token | ทุก API call | shared/api/client.ts | Authorization header จาก auth store |
 | Refresh token | 401 non-auth endpoint | POST /api/v1/auth/refresh | single-flight แล้ว replay request เดิม |
 | Show API error | catch AxiosError | apiErrorMessage() | แสดงข้อความไทยจาก BE ตรง ๆ |
-| Render list | GET list endpoint | PageResponse<T> | DataTable/Pager ใช้ shape เดียวกัน |
+| Render list | GET list endpoint | PageResponse&lt;T&gt; | DataTable/Pager ใช้ shape เดียวกัน |
 | Submit action | ปุ่มส่งดำเนินการ | POST /api/v1/sgi/document/{docNo}/actions | ส่ง `{result, comment}` และ consume `{statusCode,nextSection,message}` |
 | Gate route/menu | login/bootstrap | GET /menus + GET /groups/current-user/permissions (ระบบเดิม ผ่าน BFF) | สร้าง sidebar และ route guard จาก menuCode |
 
@@ -232,7 +235,7 @@ List/pagination contract กลาง
 | page | integer | Yes | >= 1; default 1 |
 | size | integer | Yes | 1..100; default 20 |
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 
 ### POST /api/v1/sgi/document/{docNo}/actions
 
@@ -276,7 +279,7 @@ Document action contract ตัวอย่างเมื่อ currentSection=
 
 โค้ดชุดนี้อิง convention ของ portal เดิม `srm-sps-spsap-web-frontend` (build target `sbpm`): Next.js App Router + `'use client'`, PrimeReact ที่ห่อไว้แล้วใน `@/components/Form` และ `@/components/Table`, react-hook-form + yup, Zustand `permissionStore`, axios instance กลาง `@/lib/apiClient` และ react-query 5 — **โปรเจกต์ไม่มี chart library** จึงไม่มีโค้ดกราฟในเอกสารนี้ คัดลอกไปตั้งต้นได้ทันที แล้วเติมจุดที่กำกับ `TODO:`
 
-#### 8.1 ผังไฟล์ที่ต้องสร้าง
+### 8.1 ผังไฟล์ที่ต้องสร้าง
 
 โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด
 
@@ -289,7 +292,7 @@ Document action contract ตัวอย่างเมื่อ currentSection=
 | src/hooks/sgi/integration.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
 | src/types/sgi/integration.ts | types — request/response ตาม API contract ของเอกสารนี้ |
 
-#### 8.2 types/helper กลาง (envelope, error message, formatter)
+### 8.2 types/helper กลาง (envelope, error message, formatter)
 
 ```ts
 // src/types/sgi/common.ts — สัญญากลางที่ทุกหน้าในโมดูล SGI ใช้ร่วมกัน
@@ -350,7 +353,7 @@ export const formatAmount = (value: number): string =>
 // TODO: ยืนยันรูปแบบวันที่/เดือนกับ SRS ก่อนใช้จริง (บางหน้าจอแสดง ค.ศ. ตามระบบ SBP เดิม)
 ```
 
-#### 8.3 service — `src/services/sgi/integration.service.ts`
+### 8.3 service — `src/services/sgi/integration.service.ts`
 
 ```ts
 // src/services/sgi/integration.service.ts
@@ -367,10 +370,16 @@ export async function createSgiDocumentActions(docNo: string, body: T.CreateSgiD
   return data.data;
 }
 
-// TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
+// ── envelope: อ่าน `data.data` ชั้นเดียว (ยืนยันจากโค้ดจริงของ BFF 2026-09-04) ──
+//   BFF มี ResponseInterceptor ระดับ global (src/common/interceptors/response.interceptor.ts)
+//   ที่ห่อผลลัพธ์ของ controller เป็น { success, data, requestId } ให้เสมอ
+//   ⚠️ ถ้า client service ของ BFF คืน `response.data` ดิบ (= envelope ของ store-backend)
+//      interceptor จะเห็นคีย์ success แล้วห่อซ้ำ → FE ได้ { success, data: { data: <payload> } }
+//      สัญญาที่ตกลง: **BFF ต้อง unwrap ของ store-backend ก่อน 1 ชั้น** (คืน response.data.data)
+//      FE จึงอ่าน data.data ชั้นเดียวตามโค้ดด้านบน · requestId ใช้อ้างอิงตอนแจ้งปัญหา
 ```
 
-#### 8.4 types — `src/types/sgi/integration.ts`
+### 8.4 types — `src/types/sgi/integration.ts`
 
 ```ts
 // src/types/sgi/integration.ts — ตรงกับตาราง API ในเอกสารนี้
@@ -392,7 +401,7 @@ export interface CreateSgiDocumentActionsResponse {
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
-#### 8.5 react-query keys + hooks — `src/hooks/sgi/integration.query.ts`
+### 8.5 react-query keys + hooks — `src/hooks/sgi/integration.query.ts`
 
 ```ts
 // src/hooks/sgi/integration.query.ts
@@ -416,7 +425,7 @@ export function useCreateSgiDocumentActionsMutation(docNo: string) {
 }
 ```
 
-- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
+- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `&lt;AccessDenied /&gt;` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
 - payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)

@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | **32 ชั่วโมง** = implementation 24 + unit test 8 (30%) |
-| Owner | Butsaba <But> Podamrong |
+| Owner | Butsaba &lt;But&gt; Podamrong |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ aggregate API สำหรับโหลดรายละเอียดเอกสารครบทุก section ให้หน้า FE detail |
 
@@ -202,12 +202,28 @@ Document aggregate API
   "canAction": true,
   "actionOptions": [
     {
+      "value": "เห็นควรไม่ชดเชย",
       "label": "เห็นควรไม่ชดเชย",
       "requireComment": true
+    },
+    {
+      "value": "หยุดชดเชยประกันรายได้",
+      "label": "หยุดชดเชยประกันรายได้",
+      "requireComment": false
+    },
+    {
+      "value": "ส่งหน่วยงานส่งเสริมธุรกิจ SBP",
+      "label": "ส่งหน่วยงานส่งเสริมธุรกิจ SBP",
+      "requireComment": false
+    },
+    {
+      "value": "ส่งเจ้าหน้าที่ SBP DSA",
+      "label": "ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ",
+      "requireComment": false
     }
   ],
   "impactedStore": {
-    "storeCode": "00788"
+    "storeCode": "01234"
   },
   "newStores": []
 }
@@ -221,16 +237,17 @@ Document aggregate API
 | statusCode | string | Yes | canonical code; do not replace with display label |
 | viewerRbacRoleCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | roleProfileCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| visibleSections | array<string> | Yes | JSON array; element type shown in Type column |
-| editableSections | array<object> | Yes | JSON array; element type shown in Type column |
+| visibleSections | array&lt;string&gt; | Yes | JSON array; element type shown in Type column |
+| editableSections | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | canUploadAttachment | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | canAction | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
-| actionOptions | array<object> | Yes | JSON array; element type shown in Type column |
+| actionOptions | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| actionOptions[].value | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | actionOptions[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | actionOptions[].requireComment | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | impactedStore | object | Yes | JSON object; nested fields listed below |
 | impactedStore.storeCode | string | Yes | exactly 5 digits; preserve leading zero |
-| newStores | array<object> | Yes | JSON array; element type shown in Type column |
+| newStores | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 
 ### GET /api/v1/sgi/master/competitors
 
@@ -240,6 +257,7 @@ Document aggregate API
 
 ```json
 {
+  "active": true,
   "q": "lotus"
 }
 ```
@@ -248,16 +266,24 @@ Document aggregate API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| active | boolean | No | UTF-8; use value domain described by endpoint purpose |
 | q | string | No | UTF-8; use value domain described by endpoint purpose |
 
 #### Response
 
 ```json
 {
+  "total": 11,
   "items": [
     {
-      "competitorCode": "C007",
-      "competitorName": "Lotus Express"
+      "competitorCode": "01",
+      "nameTh": "แฟมิลี่มาร์ท",
+      "nameEn": "FamilyMart",
+      "remark": "",
+      "active": true,
+      "competitorName": "Lotus Express",
+      "code": "01",
+      "isActive": true
     }
   ]
 }
@@ -267,9 +293,16 @@ Document aggregate API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].competitorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| items[].competitorCode | string | Yes | รหัสแบรนด์คู่แข่งจาก master 01–11 เท่านั้น (ห้าม free text) |
+| items[].nameTh | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].nameEn | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].remark | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].competitorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].code | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].isActive | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
@@ -284,18 +317,19 @@ Document aggregate API
 | sgi_document_external_factors | R | ปัจจัยภายนอก |
 | sgi_document_attachments | R | metadata ไฟล์แนบ |
 | sgi_consideration_logs | R | timeline/history |
+| sgi_competitors | R | ชื่อแบรนด์คู่แข่ง (join จาก sgi_document_competitors.competitor_code) (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
 โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
 
-#### 9.1 ผังไฟล์ที่ต้องสร้าง
+### 9.1 ผังไฟล์ที่ต้องสร้าง
 
 | Path | หน้าที่ |
 | --- | --- |
 | store-backend · src/modules/sgi-document-detail-aggregate/sgi-document-detail-aggregate.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
 | store-backend · src/modules/sgi-document-detail-aggregate/sgi-document-detail-aggregate.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sgi-document-detail-aggregate/sgi-document-detail-aggregate.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-document-detail-aggregate/sgi-document-detail-aggregate.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย · **คีย์ = ชื่อ handler** เช่น `getSgiMasterFactors` · บล็อกที่มีหลาย statement ให้แยกเป็นหลายคีย์ โดยเติมท้ายชื่อให้สื่อความ เช่น DELETE master ที่มี 2 statement → `removeSgiMasterFactorsByCodeInUse` (SELECT ตรวจการใช้งาน) + `removeSgiMasterFactorsByCode` (DELETE) |
 | store-backend · src/modules/sgi-document-detail-aggregate/dto/sgi-document-detail-aggregate.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sgi-document-detail-aggregate/sgi-document-detail-aggregate.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/sgi-compensation-documents.entity.ts | entity ของ `sgi_compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
@@ -307,7 +341,7 @@ Document aggregate API
 | BFF · src/modules/sgi-document-detail-aggregate/sgi-document-detail-aggregate.controller.ts | route ฝั่ง BFF prefix `/bff/sgi/…` + `@UseGuards(AuthGuard('jwt'))` |
 | BFF · src/modules/sgi-document-detail-aggregate/sgi-document-detail-aggregate.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
 
-#### 9.2 Controller (store-backend)
+### 9.2 Controller (store-backend)
 
 ```ts
 // src/modules/sgi-document-detail-aggregate/sgi-document-detail-aggregate.controller.ts
@@ -319,20 +353,20 @@ import { DocumentDetailAggregateQueryDto } from './dto/sgi-document-detail-aggre
 
 // LLDD BE - API Document Detail Aggregate
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sgi/sgi')
+@Controller('')
 @UseGuards(HttpHeaderGuard)
 export class SgiDocumentDetailAggregateController {
   constructor(private readonly service: SgiDocumentDetailAggregateService) {}
 
   // GET /api/v1/sgi/document/{docNo} — Document aggregate API
-  @Get('sgi/document/:docNo')
+  @Get('document/:docNo')
   getSgiDocumentByDocNo(@Param('docNo') docNo: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiDocumentByDocNo(docNo, userId);
   }
 
-  // GET /api/v1/sgi/master/competitors — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Ma…
-  @Get('sgi/master/competitors')
+  // GET /api/v1/sgi/master/competitors — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data…
+  @Get('master/competitors')
   getSgiMasterCompetitors(
     @Query() query: DocumentDetailAggregateQueryDto,
     @UserId() userId: string,
@@ -343,14 +377,14 @@ export class SgiDocumentDetailAggregateController {
 }
 ```
 
-#### 9.3 DTO + Validation
+### 9.3 DTO + Validation
 
 ```ts
 // src/modules/sgi-document-detail-aggregate/dto/sgi-document-detail-aggregate.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
-  IsString, Matches, Max, MaxLength, Min,
+  IsString, Matches, Max, MaxLength, Min, ValidateNested,
 } from 'class-validator';
 
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
@@ -360,18 +394,24 @@ import {
 export class DocumentDetailAggregateQueryDto {
   /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
   @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  active?: boolean;
+
+  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  @IsOptional()
   @IsString()
   q?: string;
 }
 ```
 
-#### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
+### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
 
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
 // src/modules/sgi-document-detail-aggregate/sgi-document-detail-aggregate.service.ts
-import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { SGI_SQL } from './sgi-document-detail-aggregate.sql';
 
@@ -387,28 +427,29 @@ export class SgiDocumentDetailAggregateService {
   // GET /api/v1/sgi/document/{docNo} — Document aggregate API
   async getSgiDocumentByDocNo(docNo: string, userId: string) {
     const page = 1;
-    const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
+    // DTO ของเส้นนี้ไม่มี page/size (ดูหัวข้อ DTO) — ไม่แบ่งหน้า
+    const size = 100;
     // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sgi/document/{docNo}')
-    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
-    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
+    // SQL ในเอกสารเป็น positional $1..$n อยู่แล้ว (ตัวสร้างแปลงให้ตั้งแต่ 2026-09-04)
+    //   บรรทัดแรกของบล็อก SQL คือ `-- bind ตามลำดับ: $1=... · $2=...` ให้เรียงอาร์กิวเมนต์ตามนั้น
     const rows = await this.dataSource.query(SGI_SQL.getSgiDocumentByDocNo, [
-      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
+      // เรียงให้ตรงกับบรรทัด `-- bind ตามลำดับ:` ของ SQL เส้นนี้
       userId, (page - 1) * size, size,
     ]);
     // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
     return { page, size, total: rows.length, items: rows };
   }
 
-  // GET /api/v1/sgi/master/competitors — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Ma…
+  // GET /api/v1/sgi/master/competitors — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data…
   async getSgiMasterCompetitors(query: DocumentDetailAggregateQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/sgi/master/competitors
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sgi/master/competitors')
-    throw new NotImplementedException('getSgiMasterCompetitors ยังไม่ implement');
+    // master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — SQL รับ $1=q เช่นเดียวกับฝั่งปัจจัย
+    const items = await this.dataSource.query(SGI_SQL.getSgiMasterCompetitors, [null]);
+    return { items, total: items.length };
   }
 }
 ```
 
-#### 9.5 Entity (TypeORM)
+### 9.5 Entity (TypeORM)
 
 ```ts
 // src/entitys/sgi-compensation-documents.entity.ts
@@ -416,20 +457,29 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'sgi_compensation_documents', schema: process.env.DB_SCHEMA })
 export class CompensationDocument {
-  @PrimaryColumn({ name: 'doc_no', type: 'varchar', length: 12 })
-  docNo: string;
+  @PrimaryColumn({ name: 'id', type: 'bigint' })
+  id: number;
 
-  @Column({ name: 'impact_process_id', type: 'bigint', nullable: true })
-  impactProcessId?: number;
+  @Column({ name: 'doc_no', type: 'varchar', length: 10, nullable: true })
+  docNo?: string;
 
-  @Column({ name: 'impacted_store_code', type: 'char', length: 5 })
+  @Column({ name: 'year', type: 'int', nullable: true })
+  year?: number;
+
+  @Column({ name: 'running_no', type: 'int', nullable: true })
+  runningNo?: number;
+
+  @Column({ name: 'impact_process_id', type: 'bigint' })
+  impactProcessId: number;
+
+  @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
-  statusCode: string;
+  @Column({ name: 'impact_month', type: 'char', length: 7, nullable: true })
+  impactMonth?: string;
 
-  @Column({ name: 'current_section_code', type: 'varchar', length: 2 })
-  currentSectionCode: string;
+  @Column({ name: 'new_store_code', type: 'varchar', length: 5, nullable: true })
+  newStoreCode?: string;
 
   @Column({ name: 'round_no', type: 'int', nullable: true })
   roundNo?: number;
@@ -437,7 +487,22 @@ export class CompensationDocument {
   @Column({ name: 'loop_no', type: 'int', nullable: true })
   loopNo?: number;
 
-  @Column({ name: 'statement_id', type: 'varchar', length: 30, nullable: true })
+  @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
+  source: string;
+
+  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  statusCode: string;
+
+  @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })
+  currentSectionCode?: string;
+
+  @Column({ name: 'total_compensation_amount', type: 'numeric', precision: 14, scale: 2, default: 0 })
+  totalCompensationAmount: string;
+
+  @Column({ name: 'allmap_url', type: 'varchar', length: 500, nullable: true })
+  allmapUrl?: string;
+
+  @Column({ name: 'statement_id', type: 'varchar', length: 50, nullable: true })
   statementId?: string;
 
   @Column({ name: 'statement_date', type: 'date', nullable: true })
@@ -449,23 +514,26 @@ export class CompensationDocument {
   @Column({ name: 'account_month', type: 'int', nullable: true })
   accountMonth?: number;
 
-  @Column({ name: 'compensate_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
-  compensateAmount?: string;
-
-  @Column({ name: 'allmap_url', type: 'text', nullable: true })
-  allmapUrl?: string;
-
   @Column({ name: 'approver_snapshot', type: 'jsonb', nullable: true })
   approverSnapshot?: Record<string, unknown>;
 
-  @Column({ name: 'created_at', type: 'timestamptz', nullable: true })
-  createdAt?: Date;
+  @Column({ name: 'version_no', type: 'int', default: 1 })
+  versionNo: number;
 
-  @Column({ name: 'updated_at', type: 'timestamptz', nullable: true })
+  @Column({ name: 'created_by', type: 'varchar', length: 30 })
+  createdBy: string;
+
+  @Column({ name: 'created_at', type: 'timestamp' })
+  createdAt: Date;
+
+  @Column({ name: 'updated_by', type: 'varchar', length: 30, nullable: true })
+  updatedBy?: string;
+
+  @Column({ name: 'updated_at', type: 'timestamp', nullable: true })
   updatedAt?: Date;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
@@ -475,20 +543,20 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'sgi_impacted_stores', schema: process.env.DB_SCHEMA })
 export class ImpactedStore {
-  @PrimaryColumn({ name: 'store_code', type: 'char', length: 5 })
+  @PrimaryColumn({ name: 'store_code', type: 'varchar', length: 5 })
   storeCode: string;
 
-  @Column({ name: 'store_name', type: 'varchar', length: 200 })
-  storeName: string;
+  @Column({ name: 'dv_code', type: 'varchar', length: 20, nullable: true })
+  dvCode?: string;
 
-  @Column({ name: 'zone_code', type: 'varchar', length: 10, nullable: true })
-  zoneCode?: string;
+  @Column({ name: 'opt_dv_user_id', type: 'varchar', length: 30, nullable: true })
+  optDvUserId?: string;
 
-  @Column({ name: 'region_code', type: 'varchar', length: 10, nullable: true })
-  regionCode?: string;
+  @Column({ name: 'latitude', type: 'numeric', precision: 10, scale: 7, nullable: true })
+  latitude?: string;
 
-  @Column({ name: 'store_type', type: 'varchar', length: 5, nullable: true })
-  storeType?: string;
+  @Column({ name: 'longitude', type: 'numeric', precision: 10, scale: 7, nullable: true })
+  longitude?: string;
 
   @Column({ name: 'transfer_sbp_date', type: 'date', nullable: true })
   transferSbpDate?: Date;
@@ -496,14 +564,17 @@ export class ImpactedStore {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  @Column({ name: 'updated_at', type: 'timestamp' })
+  updatedAt: Date;
+
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`sgi_document_new_stores`, `sgi_document_competitors`, `sgi_document_external_factors`, `sgi_document_attachments`, `sgi_consideration_logs`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`sgi_document_new_stores`, `sgi_document_competitors`, `sgi_document_external_factors`, `sgi_document_attachments`, `sgi_consideration_logs`, `sgi_competitors`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
-#### 9.6 Repository Providers + Module wiring
+### 9.6 Repository Providers + Module wiring
 
 ```ts
 // src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
@@ -561,7 +632,7 @@ export class SgiDocumentDetailAggregateModule implements NestModule {
 // TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
-#### 9.7 BFF Proxy (module + controller + client service)
+### 9.7 BFF Proxy (module + controller + client service)
 
 BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
@@ -595,6 +666,9 @@ export class SgiDocumentDetailAggregateBffService {
   constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  // ⚠️ ต้อง unwrap envelope ของ store-backend 1 ชั้นก่อนคืน (ยืนยันจากโค้ดจริง 2026-09-04):
+  //    ResponseInterceptor ระดับ global ของ BFF ห่อผลลัพธ์เป็น { success, data, requestId } อีกที
+  //    ถ้าคืน { success, data } ดิบมา FE จะได้ data.data.data — SgiClientService จึงต้องคืน .data.data
   private userHeaders(user: any) {
     return {
       'x-user-id': user?.userId,
@@ -616,20 +690,20 @@ export class SgiDocumentDetailAggregateBffService {
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sgi/document-detail-aggregate')
+// path เดียวกับที่ FE เรียก (apiClient baseURL รวม /api/v1 แล้ว) — ห้ามตั้งตามชื่อเอกสาร LLDD
+@Controller('sgi')
 @UseGuards(AuthGuard('jwt'))
 export class SgiDocumentDetailAggregateBffController {
   constructor(private readonly service: SgiDocumentDetailAggregateBffService) {}
 
   // proxy ของ GET /api/v1/sgi/document/{docNo}
-  @Get('sgi/document/:docNo')
+  @Get('document/:docNo')
   getSgiDocumentByDocNo(@Param('docNo') docNo: string, @Query() query: any, @Req() req: any) {
     return this.service.getSgiDocumentByDocNo(docNo, query, req.user);
   }
 
   // proxy ของ GET /api/v1/sgi/master/competitors
-  @Get('sgi/master/competitors')
+  @Get('master/competitors')
   getSgiMasterCompetitors(@Query() query: any, @Req() req: any) {
     return this.service.getSgiMasterCompetitors(query, req.user);
   }
@@ -639,7 +713,7 @@ export class SgiDocumentDetailAggregateBffController {
 
 ## 10. Database SQL
 
-#### 10.1 ตารางที่อ่าน/เขียน
+### 10.1 ตารางที่อ่าน/เขียน
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
@@ -650,36 +724,35 @@ export class SgiDocumentDetailAggregateBffController {
 | sgi_document_external_factors | R | ปัจจัยภายนอก |
 | sgi_document_attachments | R | metadata ไฟล์แนบ |
 | sgi_consideration_logs | R | timeline/history |
+| sgi_competitors | R | ชื่อแบรนด์คู่แข่ง (join จาก sgi_document_competitors.competitor_code) (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
 
-#### 10.2 SQL จริงต่อ Endpoint
+### 10.2 SQL จริงต่อ Endpoint
 
 **GET /api/v1/sgi/document/{docNo}** — Document aggregate API
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=docNo
 -- โหลดเอกสารฉบับเต็ม 12 ส่วนในคำขอเดียว
-SELECT * FROM sgi_compensation_documents      WHERE doc_no = :docNo;
-SELECT * FROM sgi_document_new_stores          WHERE doc_no = :docNo;
-SELECT * FROM sgi_document_competitors         WHERE doc_no = :docNo;
-SELECT * FROM sgi_document_external_factors    WHERE doc_no = :docNo;
-SELECT * FROM sgi_document_attachments         WHERE doc_no = :docNo;
-SELECT * FROM sgi_consideration_logs           WHERE doc_no = :docNo ORDER BY action_datetime;
+SELECT * FROM sgi_compensation_documents      WHERE doc_no = $1 /* docNo */;
+SELECT * FROM sgi_document_new_stores          WHERE doc_no = $1 /* docNo */;
+SELECT * FROM sgi_document_competitors         WHERE doc_no = $1 /* docNo */;
+SELECT * FROM sgi_document_external_factors    WHERE doc_no = $1 /* docNo */;
+SELECT * FROM sgi_document_attachments         WHERE doc_no = $1 /* docNo */ AND deleted_flag = 'N';
+SELECT * FROM sgi_consideration_logs           WHERE doc_no = $1 /* docNo */ ORDER BY action_datetime;
 ```
 
 **GET /api/v1/sgi/master/competitors** — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data (Peerakorn)** · เอกสารนี้เป็นผ…
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=q
 -- master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) · ระบบเดิมเก็บชื่อไทยและอังกฤษ
 SELECT competitor_code, name_th, name_en, remark, is_active
 FROM sgi_competitors
-WHERE (:q IS NULL OR name_th LIKE :q OR name_en LIKE :q)
+WHERE ($1 /* q */ IS NULL OR name_th LIKE $1 /* q */ OR name_en LIKE $1 /* q */)
 ORDER BY competitor_code;
 ```
 
-#### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
 
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |

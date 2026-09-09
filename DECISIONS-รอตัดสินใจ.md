@@ -12,10 +12,10 @@
 
 | ชั้นงาน | สถานะ | หมายเหตุ |
 |---|---|---|
-| **แบบ (design)** | ✅ **เสร็จ** | living docs 3 ฉบับ + LLDD **40 ฉบับ** + prototype **21 หน้า** + ชุดแผนภาพ flow 4 รูป |
-| **ระบบจริง (FE/BE/Job)** | ❌ **ยังไม่เริ่มเขียนสักบรรทัด** | ประเมิน **824 ชม.** (implementation 671 + unit test 153) @ **8.5 ชม./วัน** ≈ 97 man-day · เพดานทีม 6 คน × 4 สัปดาห์ × 42.5 ชม. = **1,020 ชม.** |
+| **แบบ (design)** | ✅ **เสร็จ** | living docs 3 ฉบับ + LLDD **43 ฉบับ** (42 ฉบับมี .md = 39 หัวข้อ + 3 อ้างอิง · + พจนานุกรมข้อมูลที่เป็น PDF อย่างเดียว) + prototype **21 หน้า** + ชุดแผนภาพ flow 4 รูป |
+| **ระบบจริง (FE/BE/Job)** | ❌ **ยังไม่เริ่มเขียนสักบรรทัด** | ประเมิน **829 ชม.** (implementation 675 + unit test 154) @ **8.5 ชม./วัน** ≈ 97 man-day · เพดานทีม 6 คน × 4 สัปดาห์ × 42.5 ชม. = **1,020 ชม.** |
 | **ย้ายข้อมูล (migration)** | ❌ **ยังไม่ทำ** | ออกแบบเสร็จใน `LLDD-BE-Data-Migration-Cutover` แต่ยังไม่ได้ลงมือ · **F8/F1 บล็อกอยู่** |
-| **เรื่องที่รอตัดสินใจ** | 🟠 **15 ข้อ** | ในนั้น **1 ข้อบล็อกการเริ่มเขียน BE** |
+| **เรื่องที่รอตัดสินใจ** | 🟠 **16 ข้อ** | ในนั้น **1 ข้อบล็อกการเริ่มเขียน BE** |
 
 ---
 
@@ -29,33 +29,66 @@
 |---|---|---|
 | **FE** | โมดูลใน Next.js portal เดิม (`srm-sps-spsap-web-frontend` · portal `sbpm`) | ยังไม่เริ่ม |
 | **BE** | `srm-sps-spsap-store-backend` (NestJS + TypeORM · **มติ DP-10**) | ยังไม่เริ่ม |
-| **Job 2–10 + 8b** | batch เดิม → ย้ายมา BE ใหม่ (ตัด Job 1 ImportQSSI แล้ว) | ยังไม่เริ่ม |
+| **Job 2–12 + 8b (12 ตัว)** | batch เดิม 10 ตัว (ตัด Job 1 ImportQSSI แล้ว) + Job 11/12 ที่เพิ่ม 2026-09-02 → ย้ายไป repo `srm-sps-spsap-sop-sgi-batch` | ยังไม่เริ่ม |
 | **DDL 19 ตาราง + reuse 1** | `LLDD-Database.md` | เขียนสคริปต์แล้ว · **ยังไม่ deploy** |
 | **Unit test** | ratio BE/Job 30% · FE 25% (ยกเว้น 7 เอกสารใน `NO_UNIT_TEST_DOCS`) | ยังไม่เริ่ม |
 
-## 1.0 🔴 แผน 4 สัปดาห์ยังไม่ลงตัว — งานของ Bank เกินเพดาน 126 ชม.
+## 1.0 🔴 แผน 4 สัปดาห์ยังไม่ลงตัว — งานของ Bank เกินเพดาน 41 ชม.
 
 **มติที่รับมา (2026-08-25):** จบใน **4 สัปดาห์ · 5 วัน/สัปดาห์ · 8.5 ชม./วัน = 170 ชม./คน** · Bank ทำ **migration DB + batch job ทั้งหมด + สร้าง workflow (นิยาม)** · คนอื่นแบ่งงานที่เหลือ · BE บางคนรับ `initializeWorkflow` และ trigger event
 
-| คน | ชม. | = วัน (8.5 ชม.) | สถานะ |
+> **มติ 2026-09-02 (รอบ 4) — Bank ถือ batch job ทั้งหมด · งานที่ไม่ใช่ job ย้ายออก**
+> เพิ่มเอกสาร 2 ฉบับปิดช่องว่าง 2.8 / 2.9 → **LLDD 40 → 42 ฉบับ · batch job 10 → 12 · ยอดรวม 800 → 829 ชม.**
+> Bank ถือ **เฉพาะ job ทั้ง 12 ฉบับ = 211 ชม.** · ย้าย **Database Structure (31) + Workflow Engine Definition (24) → Pete** และ **Data Migration/Cutover (43) → Vava** ออกจาก Bank
+>
+> | คน | ชม. | เพดาน 170 |
+> |---|---|---|
+> | **Bank** (job ทั้งหมด 12 ฉบับ) | **211** | ❌ **เกิน 41 ชม. = 4.96 สัปดาห์** |
+> | Vava | 145 | ✅ |
+> | Pete | 139 | ✅ |
+> | lin | 123 | ✅ · But 108 ✅ · New 103 ✅ |
+>
+> **⚠️ \"job ทั้งหมดให้ Bank + จบใน 4 สัปดาห์\" ยังขัดกันทางเลขอยู่ 41 ชม.** — ย้ายงานที่ไม่ใช่ job ออกหมดแล้ว (98 ชม.) ก็ยังไม่พอ เพราะลำพัง job ก็ 211 ชม. · ต้องเลือกทางใดทางหนึ่ง:
+>
+> | ทาง | ทำอะไร | ผล |
+> |---|---|---|
+> | **A** | คิดตัวคูณ senior+AI **เฉพาะ unit test ×0.6** (ตามมติเดิม · ไม่แตะ impl เพื่อไม่นับส่วนลด reuse ซ้ำ) | **190 ชม. = 4.47 สัปดาห์** — ยังเกิน 20 ชม. |
+> | **B** | Bank ทำ **10.6 ชม./วัน** × 20 วัน | ไม่สมจริง |
+> | **C** | ยอมให้สาย job จบ **สัปดาห์ที่ 5** (ส่วนอื่นจบใน 4 สัปดาห์ตามเดิม) | ✅ ทำได้จริงโดยไม่ต้องแตะขอบเขต |
+> | **D** | ย้าย job ออก ≥ 41 ชม. ให้คนอื่น (เช่น Job 10 + 3 + 7 + 9 = 45) | ขัดกับ \"job ทั้งหมดให้ Bank\" |
+> | **E** | ตัด/เลื่อน job ≥ 41 ชม. ไปเฟสถัดไป | ต้องเลือกว่า job ไหนไม่ต้องมีตอน go-live |
+>
+> **ปรับชั่วโมงตามของที่ reuse ได้ (2026-09-02)** — หลังมติย้าย batch มาทำบน `SBP/srm-sps-spsap-sop-sgi-batch` (มี dispatcher · `integration_log` · `publishMessage` · `S3Service` · `decodeThaiFileContent` · email-lib พร้อมแล้ว) หักลบกับงานใหม่ที่เพิ่งรู้ว่าต้องทำ (join ข้าม schema · INPUT DTO + validation · outbox บน publisher ที่ไม่มี confirm) → **ยอดรวมชุดส่งมอบ 824 → 800 ชม.** · **สาย batch job 217 → 193** · **Bank 296 → 280** · ที่มาของ delta รายฉบับอยู่ในคอมเมนต์ของ `JOB_ESTIMATES` ใน `tools/build_lldd_documents.py`
+
+<details>
+<summary>📦 <b>ตารางรุ่นก่อนมติ 2026-09-02 (รอบ 4) — เก็บไว้ดูที่มาเท่านั้น ห้ามใช้ตัดสินใจ</b></summary>
+
+⚠️ **ตัวเลขชุดนี้ตกยุคแล้ว** — เป็นยอดสมัยที่ Bank ยังถือ migration DB + workflow definition และยอดรวมยังเป็น 800 ชม.
+**ตัวเลขที่ใช้จริงอยู่ในกล่อง "มติ 2026-09-02 (รอบ 4)" ด้านบน** (Bank 211 · Vava 145 · Pete 139 · lin 123 · But 108 · New 103 · รวม 829)
+
+| คน | ชม. *(ตกยุค)* | = วัน (8.5 ชม.) | สถานะ *(ตกยุค)* |
 |---|---|---|---|
-| **Bank** | **296** | **34.8** | ❌ **เกินเพดาน 126 ชม. (~7 สัปดาห์)** |
+| **Bank** | **280** *(ตกยุค)* <small>(เดิม 296)</small> | **32.9** | ❌ **ยังเกินเพดาน 110 ชม. (~6.6 สัปดาห์)** |
 | lin | 123 | 14.5 | ✅ |
 | But | 108 | 12.7 | ✅ |
 | New | 103 | 12.1 | ✅ |
-| Vava | 102 | 12.0 | ✅ |
-| Pete | 92 | 10.8 | ✅ |
+| Vava | 102 *(ตกยุค)* | 12.0 | ✅ |
+| Pete | 84 *(ตกยุค)* <small>(เดิม 92)</small> | 9.9 | ✅ |
 
-ที่มาของ 296 ชม. = migration DB 74 (Database Structure 31 + Data Migration/Cutover 43) + **batch job ทั้งหมด 198** (Jobs 2–10 + 8b) + สร้าง workflow 24
+ที่มาของ 280 ชม. *(ตกยุค)* = migration DB 74 (Database Structure 31 + Data Migration/Cutover 43) + **batch job ทั้งหมด 182** (Jobs 2–12 + 8b รวม 12 ตัว · เดิม 198) + สร้าง workflow 24
 
-**ต้นเหตุคือ batch job 198 ชม.** ไม่ใช่ migration หรือ workflow — สองอย่างหลังรวมกันแค่ 98 ชม. ซึ่งพอดีกับ 4 สัปดาห์อยู่แล้ว
+**ต้นเหตุยังเป็น batch job 182 ชม.** ไม่ใช่ migration หรือ workflow — สองอย่างหลังรวมกันแค่ 98 ชม. ซึ่งพอดีกับ 4 สัปดาห์อยู่แล้ว · **การ reuse ช่วยได้ 16 ชม. แต่ไม่ได้แก้ปัญหาโครงสร้าง** เพราะงานส่วนใหญ่ของ job คือ business logic ไม่ใช่ infra
+
+**ของจริงหลังมติ 2026-09-02 (รอบ 4):** Bank ไม่ได้ถือ migration/workflow แล้ว — `Database Structure (31)` และ `Workflow Engine Definition (24)` เป็นของ **Pete** · `Data Migration/Cutover (43)` เป็นของ **Vava** · Bank ถือเฉพาะ **เอกสาร job 12 ฉบับ = 211 ชม.** (รวม unit test) จึงเกินเพดาน 170 อยู่ **41 ชม.** ไม่ใช่ 110
+
+</details>
 
 | ทางเลือก | ทำอะไร | ผล |
 |---|---|---|
-| **A — แบ่ง job ออก ~126 ชม.** | Bank เก็บ job ที่ผูกกับ workflow/ข้อมูลไว้ (8b 29 + Job 2 19 + Job 3 13 = 61) · ที่เหลือ 137 ชม. กระจายให้ Vava/But/Pete ซึ่งว่างรวมกัน 198 ชม. | Bank เหลือ 159 ชม. ✅ ทุกคนอยู่ใน 4 สัปดาห์ |
+| **A — แบ่ง job ออก ~110 ชม.** | Bank เก็บ job ที่ผูกกับ workflow/ข้อมูลไว้ (8b 28 + Job 2 20 + Job 3 12 = 60) · ที่เหลือ 122 ชม. กระจายให้ Vava/But/Pete ซึ่งว่างรวมกัน ~200 ชม. | Bank เหลือ 158 ชม. ✅ ทุกคนอยู่ใน 4 สัปดาห์ |
 | **B — ขยายเวลาเฉพาะสาย job** | คงตัวคนตามมติ แต่ยอมให้สาย job จบสัปดาห์ที่ 7 | ส่วนอื่นเสร็จใน 4 สัปดาห์ · ระบบใช้งานจริงได้เมื่อ job ครบ |
-| **C — เพิ่มชั่วโมง/วันของ Bank** | 296 ชม. ÷ 20 วัน = **14.8 ชม./วัน** | ไม่สมจริง |
-| **D — ตัดขอบเขต job** | ตัด/เลื่อน job ~126 ชม. ไปเฟสถัดไป | ต้องเลือกว่า job ไหนไม่ต้องมีตอน go-live |
+| **C — เพิ่มชั่วโมง/วันของ Bank** | 280 ชม. ÷ 20 วัน = **14.0 ชม./วัน** | ไม่สมจริง |
+| **D — ตัดขอบเขต job** | ตัด/เลื่อน job ~110 ชม. ไปเฟสถัดไป | ต้องเลือกว่า job ไหนไม่ต้องมีตอน go-live |
 | **E — 4.5 สัปดาห์ (productivity + แบ่ง job)** | คิดตัวคูณ senior+AI **แล้วย้าย 5 job ออก** | Bank เหลือ **185 ชม.จริง = 4.35 สัปดาห์** ✅ |
 
 ### รายละเอียดทางเลือก E — ทำไมต้องทำสองอย่างพร้อมกัน
@@ -64,20 +97,22 @@ Bank เป็น senior และใช้ AI ได้ดี จึงคิ�
 
 | ส่วนงาน | ตัวคูณ | เหตุผล |
 |---|---|---|
-| Unit test (49 ชม. ในสาย job) | ×0.6 | LLDD ระบุ "ขอบเขต unit test" ต่อ job ไว้ครบแล้ว AI generate จากสเปกได้ตรง |
-| Job ที่ 4–10 | ×0.75 | 10 job ใช้ `src/batch/runner.ts` สัญญาเดียวกัน · โครง config→flow→SQL→test ซ้ำกัน · Job 2/3 และ 7/9 เป็นฝาแฝด |
-| Job 3 ตัวแรก | ×1.0 | ยังต้องวาง runner + แพตเทิร์นร่วมให้คนอื่นใช้ต่อ |
+| Unit test (45 ชม. ในสาย job · เดิม 49) | ×0.6 | LLDD ระบุ "ขอบเขต unit test" ต่อ job ไว้ครบแล้ว AI generate จากสเปกได้ตรง |
+| Job ที่ 4–10 | ×0.75 | 10 job ใช้ dispatcher เดียวกันใน `src/main.ts` ของ sop-sgi-batch · โครง config→flow→SQL→test ซ้ำกัน · Job 2/3 และ 7/9 เป็นฝาแฝด <br><small>⚠️ ตัวคูณนี้ทับซ้อนกับส่วนลด reuse ที่หักไปแล้วใน `JOB_ESTIMATES` — อย่านับซ้ำ</small> |
+| Job 3 ตัวแรก | ×1.0 | ยังต้องวางแพตเทิร์นร่วม (`src/modules/sgi/` · DTO · sgi-job.types) ให้คนอื่นใช้ต่อ |
 | Migration (74 ชม.) | ×0.85 | source-to-target mapping เขียนครบใน LLDD แล้ว เหลือ transform + reconcile |
 | สร้าง workflow (24 ชม.) | ×0.85 | seed data ชุดเล็ก |
 
 | ทำอะไร | Bank เหลือ | = สัปดาห์ |
 |---|---|---|
-| productivity อย่างเดียว | 241 ชม. | 5.7 ❌ |
-| ย้าย job อย่างเดียว | 217 ชม. | 5.1 ❌ |
-| **ทั้งสองอย่าง** | **185 ชม.** | **4.35 ✅** |
+| ย้าย job อย่างเดียว | **213 ชม.** <small>(เดิม 217)</small> | 5.0 ❌ |
+| productivity อย่างเดียว | ~230 ชม. <small>(ต้องคำนวณใหม่ — ดูคำเตือนด้านล่าง)</small> | ~5.4 ❌ |
+| **ทั้งสองอย่าง** | ~**175 ชม.** <small>(ต้องคำนวณใหม่)</small> | ~4.1 🟡 |
 
-**5 job ที่ย้ายออก (79 ชม.ประมาณการ):** Job 10 (11) · Job 7 (13) · Job 9 (15) · Job 4 (19) · Job 5 (21) — ย้ายเป็น**คู่** (4+5 คนเดียว · 7+9 คนเดียว) จะได้ผลของการทำซ้ำเหมือนกัน
-**Bank เก็บไว้ (119 ชม.):** migration 74 + สร้าง workflow 24 + Job 2, 3 (ALLMAP · สายข้อมูลเดียวกัน) + Job 6 (STA) + Job 8 (สร้างเอกสาร) + Job 8b (เปิด workflow)
+> ⚠️ **ตัวเลขแถว productivity ต้องคำนวณใหม่** — เดิมคิดบนฐาน 296 ชม. ที่ยังรวมงานสร้าง runner/scheduler/notifier เอง · ตอนนี้ส่วนนั้นถูกหักออกจาก `JOB_ESTIMATES` ไปแล้ว การคูณ ×0.75 ทับอีกรอบจะ**นับส่วนลดซ้ำ** · แถว "ย้าย job อย่างเดียว" เป็นตัวเลขที่คำนวณตรงจากยอดใหม่จึงเชื่อได้
+
+**5 job ที่ย้ายออก (67 ชม. · เดิม 79):** Job 10 (8) · Job 7 (12) · Job 9 (13) · Job 4 (17) · Job 5 (17) — ย้ายเป็น**คู่** (4+5 คนเดียว · 7+9 คนเดียว) จะได้ผลของการทำซ้ำเหมือนกัน
+**Bank เก็บไว้ (213 ชม.):** migration 74 + สร้าง workflow 24 + Job 2 (20), 3 (12) (ALLMAP · สายข้อมูลเดียวกัน) + Job 6 (32 · STA) + Job 8 (23 · สร้างเอกสาร) + Job 8b (28 · เปิด workflow)
 
 > ⚠️ ทางเลือก E เหลือ buffer แค่ ~3 วัน และตั้งบนสมมติฐานว่า Bank ทำได้เร็วกว่าประมาณการจริง — ถ้าสมมติฐานพลาดจะกลับไป 5.7 สัปดาห์ทันที · ถ้าอยากมั่นใจโดยไม่พึ่ง productivity ให้ย้าย Job 8 (24 ชม.) ออกอีกตัว จะเหลือ ~4.0 สัปดาห์
 
@@ -97,7 +132,7 @@ Bank เป็น senior และใช้ AI ได้ดี จึงคิ�
 > ### ✅ มติ 2026-08-24 — Job 6 ส่งค่าชดเชยไป STA ด้วย RabbitMQ แทนไฟล์ + SFTP
 > | เรื่อง | มติ | ผล |
 > |---|---|---|
-> | ช่องทางส่งค่าชดเชยไป STA | **publish RabbitMQ message แทนไฟล์ `FRBC0001` + SFTP** | Job 6 เขียน outbox `sgi_interface_transactions` (`direction = OUT` · `status = READY`) ใน transaction เดียวกับ 10 mutation → publish exchange `sgi.interface` routing `sta.compensation.result` → update `READY → SENT` · เนื้อข้อมูลคงสัญญาเดิม **14 ฟิลด์** แต่เป็น **JSON UTF-8** (ไม่มี windows-874 แล้วเพราะไม่ใช่ไฟล์) · ACK ยังมาทาง `POST /sgi/interface/sta/ack` และ Job 10 ยังเป็น safety net |
+> | ช่องทางส่งค่าชดเชยไป STA | **publish RabbitMQ message แทนไฟล์ `FRBC0001` + SFTP** | Job 6 เขียน outbox `sgi_interface_transactions` (`direction = OUT` · `status = READY`) ใน transaction เดียวกับ 10 mutation → publish exchange `sgi.interface` routing `sta.compensation.result` → update `READY → SENT` · เนื้อข้อมูลคงสัญญาเดิม **14 ฟิลด์** แต่เป็น **JSON UTF-8** (ไม่มี windows-874 แล้วเพราะไม่ใช่ไฟล์) · **ปรับตามมติข้อ 2.13 (2026-09-08): ไม่มี ACK ระดับธุรกิจ** — `outbox_status = CONFIRMED` เมื่อได้ publisher confirm จาก broker และ Job 10 เฝ้าแถวที่ยังไม่ CONFIRMED |
 > | ขอบเขต transaction | **แยก commit — เลิกกติกา "SFTP ล้มเหลว = rollback ทั้ง transaction"** | ใช้ transactional outbox แบบเดียวกับ Job 4 · publish ไม่สำเร็จ = แถวค้าง `READY/FAILED_RETRY` ให้ dispatcher ส่งซ้ำ **โดยไม่ rollback การ sync สถานะ** · ส่งซ้ำปลอดภัยเพราะใช้ `message_id = sgi_interface_transactions.id` เป็น idempotency key ฝั่ง STA |
 >
 > ⏳ **ยังต้องยืนยันกับทีม STA/EAI ก่อนลงมือ:** ชื่อ exchange + routing key จริง (ที่ใส่ไว้เป็นค่าเสนอ) · ใครประกาศ exchange/queue และ binding · **ฟิลด์วันที่ 3/5/6 ยังต้องเป็น พ.ศ. หรือเปลี่ยนเป็น ISO ค.ศ. ได้** (ข้อจำกัด windows-874 หายไปแล้ว แต่รูปแบบวันที่เป็นสัญญาข้อมูล ไม่ใช่ข้อจำกัดของไฟล์) · STA กันรับซ้ำด้วย `message_id` ได้จริงหรือไม่ · นโยบาย DLQ/retry ของ broker · ยังต้องส่งไฟล์คู่ขนานช่วง cutover หรือไม่
@@ -109,7 +144,7 @@ Bank เป็น senior และใช้ AI ได้ดี จึงคิ�
 > |---|---|---|
 > | **DP-4** · `fcs_qssi_score` reuse ตารางเดิม 23.9M แถว หรือสร้างใหม่ | **reuse ตารางเดิมแบบอ่านอย่างเดียว** — ระบบ SBP เดิมนำเข้าให้แล้วผ่าน `POST /performance/import-qssi` | **ตัด Job 1 (ImportQSSI) ทั้ง job** · ไม่ต้อง backfill · ไม่ต้อง `SET NOT NULL` · **ไม่ต้องขอ sign-off เจ้าของ `performance.service.ts`** เพราะ SGI ไม่เขียนตารางนี้เลย |
 > 
-> **ผลต่อชุดส่งมอบ:** LLDD **41 → 40 ฉบับ** · Batch Job **11 → 10 entry point** · ชั่วโมง **845 → 824** (implementation 671 + unit test 153)
+> **ผลต่อชุดส่งมอบ:** LLDD **41 → 40 ฉบับ** · Batch Job **11 → 10 entry point** · ชั่วโมง **845 → 824 → 800 → 829** (implementation 653 + unit test 153)
 
 > ✅ **ทำไปแล้ว 2026-08-24 (7 ข้อ)** — **B5** ร้านกระทบเพิ่ม 2 ทาง (`source_system` = `ALLMAP` auto / `USER` คีย์เอง) + ปุ่ม **เพิ่มร้านกระทบเพิ่ม** ใน `k2-document.html` + กติกาเกลี่ย %ชดเชยใหม่ทั้งชุด · B4 เกณฑ์เลือกปุ่มปฏิเสธ + เหตุผล "Location ที่ไม่เหมาะสม" (`workflow.md` · `k2-document.html`) · B6 ตารางเทียบชื่อ lane ผัง ↔ section (`workflow.md`) · B7 ปลายทางบัญชี → SAP อยู่นอก workflow (`workflow.md`) · B9 `STA-SS` = `STA` ระบบเดียวกัน (`workflow.md` · `k2-flow.html`) · C4 checklist บัญชี 5 ข้อ + สาเหตุยอดไม่ตรง 2 ข้อ (`api.md`) · C5 ตัวเลข sizing/NFR 150–170 ฉบับ/เดือน (`api.md`)
 
@@ -127,9 +162,9 @@ Bank เป็น senior และใช้ AI ได้ดี จึงคิ�
 
 ---
 
-# ส่วนที่ 2 · เรื่องที่ยังต้องตัดสินใจ (15 ข้อ)
+# ส่วนที่ 2 · เรื่องที่ยังต้องตัดสินใจ (16 ข้อ)
 
-**แบ่ง 4 กลุ่มตามความเร่งด่วน** — ต้องตัดสินก่อนเขียนโค้ด **1** · กระทบ schema/สัญญา **6** · ตัดสินทีหลังได้ **3** · ต้องไปถามทีมอื่น **5**
+**แบ่ง 4 กลุ่มตามความเร่งด่วน** — ต้องตัดสินก่อนเขียนโค้ด **1** · กระทบ schema/สัญญา **7** · ตัดสินทีหลังได้ **3** · ต้องไปถามทีมอื่น **5**
 
 ## 🔴 กลุ่ม 1 — ต้องตัดสินก่อนเริ่มเขียนโค้ด (1 ข้อ)
 
@@ -145,15 +180,22 @@ Bank เป็น senior และใช้ AI ได้ดี จึงคิ�
 
 ---
 
-## 🟠 กลุ่ม 2 — ตัดสินได้ระหว่างทาง แต่กระทบ schema / สัญญา API (6 ข้อ)
+## 🟠 กลุ่ม 2 — ตัดสินได้ระหว่างทาง แต่กระทบ schema / สัญญา API (13 ข้อ · เปิดอยู่ 7 · ปิดแล้ว 6)
 
 | # | เรื่อง | ทางเลือก | กระทบ |
 |---|---|---|---|
 | **2.1** | **DP-13** — `BranchTypeFGIName` ของ `Type V(C)` และ `Type V(B)` <br><small>(นิยามอยู่ใน `database.md` · ไม่ใช่ทะเบียน DP-1…DP-12 ของ `SBP/`)</small> | คงเป็น `C` ทั้งคู่ · หรือได้รหัสใหม่คนละตัว | ตัวกรองประเภทร้านในหน้ารายงาน (ตอนนี้ 7 ค่า) · master mapping · **SDD สไลด์ 36 จัดกลุ่มสูตรคำนวณเป็น `Type B, E, V(B)` ซึ่งบ่งว่า V(B) ไม่ใช่ C** |
 | **2.2** | **DP-13b** — ชื่อแสดงผลของ `E` (= B(2)) <br><small>(พบ 2026-08-24 ตอนเติม mock data ประเภทร้าน)</small> | รายการชื่อแสดงผลเป็น **10 ชนิด** (เพิ่ม `SBP Type E`) · หรือ `E` ใช้ชื่อแสดงผลอื่นที่มีอยู่แล้ว | `E` มีจริงใน master `BranchTypeFGIName` (7 ค่า `A B C D E PTT บริษัท`) และมีในตัวกรองหน้ารายการ/รายงาน แต่ **ไม่อยู่ในรายการชื่อแสดงผล 9 ชนิด** ของ `database.md` · prototype ใช้ `SBP Type E` ไปพลางก่อน |
-| **2.3** | **คอลัมน์ที่วิเคราะห์แล้วว่าต้องมี แต่ยังไม่ได้เติมลง DDL** <br><small>(พบ 2026-08-24 ตอนไล่ `table.column` ทุกไฟล์)</small> | เติมลง DDL · หรือยืนยันว่าไม่ต้องมี | **`sgi_compensation_documents.approver_snapshot`** (JSONB — ชื่อ+อีเมล DV/GM/AVP ณ เวลาเปิดเอกสาร · `database.md` สรุปจากไฟล์ `BPM06001O_` ที่มี 24 ฟิลด์ผู้อนุมัติว่า *"ต้องมี"*) · **`sgi_impacted_stores.transfer_sbp_date`** (เงื่อนไขร้านก่อน/หลัง 1/10/2014) · ทั้งคู่ถูกอ้างในตาราง PDPA และ mapping แต่ **ไม่มีใน `CREATE TABLE`** |
-| **2.4** | **DP-6** — `sgi_interface_transactions` ออกแบบใหม่ หรือลอกแพตเทิร์น `statement_summary` | — | DDL + การ track ACK ของ interface |
-| **2.5** | **N1** — "หลังพัฒนา **ไม่มีการเปิด SR เพื่อลบข้อมูล**" (SDD สไลด์ 46 · Note) | **ยังไม่ระบุขอบเขตเลย** — ลบอะไรได้บ้าง (เอกสาร? แถวร้าน?) · ใครลบได้ · ต้องมี audit ไหม | หน้าจอ + endpoint ใหม่ที่ยังไม่มีในแผน · ระบบเดิมมี log `TransectionDeleteStore` + `SRNumber` เป็นหลักฐานว่าเคยต้องเปิด SR |
+| **2.3** ✅ **ปิดแล้ว 2026-09-02** | **คอลัมน์ที่วิเคราะห์แล้วว่าต้องมี แต่ยังไม่ได้เติมลง DDL** <br><small>(พบ 2026-08-24 ตอนไล่ `table.column` ทุกไฟล์)</small> | — | `sgi_compensation_documents.approver_snapshot` (JSONB) อยู่ใน `CREATE TABLE` แล้ว · `sgi_impacted_stores.transfer_sbp_date` (DATE · nullable) เติมลง DDL เมื่อ 2026-09-02 ให้ตรงกับ mapping ใน `database.md` และ entity ที่เอกสาร LLDD 3 ฉบับ map ไว้อยู่แล้ว |
+| **2.4** | **DP-6** — `sgi_interface_transactions` ออกแบบใหม่ หรือลอกแพตเทิร์น `statement_summary` | — | DDL + การ track สถานะขาออกของ interface (ตั้งแต่มติข้อ 2.13 เกณฑ์คือ publisher confirm ไม่ใช่ ACK ระดับธุรกิจ) |
+| **2.7** ✅ **ปิดแล้ว 2026-09-02** | **DP-14** — ค่า `'C'` ของ `sgi_fgi_impact_compensations.compensate_status` | **ตอบจากโค้ดเดิมแล้ว** (`ExportJdbc.insertFgiImpactStoreCompensate` บรรทัด 404/414/452): `C` = **ร้านปิดแล้ว** (`mas_store.close_date <= งวด`) **หรือ สัญญา SBP ถูกยกเลิกด้วย `cancel_type IN ('01','02','03','04','08')` ก่อน/ในงวดนั้น** — ระบบเดิมตั้งค่านี้แทน `I` ตั้งแต่ตอน insert · **ส่ง STA เป็น `S`** (กลุ่มเดียวกับ `Z` — `ExportJdbc` บรรทัด 366/1440 จัด `C`/`S`/`Z` เป็นกลุ่มเดียวกันทุก filter) | ใส่ `CHECK (compensate_status IN ('I','C','A','N','S','Z'))` ลง DDL แล้ว · ตารางโดเมนครบ 6 ค่าอยู่ในหัวข้อ 5.96 ของ `LLDD-BE-Job-6` |
+| **2.13** ✅ **ตัดสินแล้ว 2026-09-08 (ทางเลือก ข.)** | **ตัด `POST /sgi/interface/sta/ack` ทิ้ง** แล้วเปลี่ยนนิยาม "ค้าง" ของ Job 10 เป็น **publisher confirm ของ RabbitMQ** <br><small>(พบ 2026-09-08 ตอนไล่ API/DB เทียบกับ repo ที่เพิ่งวิเคราะห์ · ผู้ใช้เลือกทางเลือก ข.)</small> | **หลักฐาน:** สเปก `STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md` (แปลงจาก .xlsx 3 ชีต) ระบุ **3 ข้อความบน RabbitMQ เท่านั้น** — `sgi_impact_store` (SGI→STA daily) · `sta_update_compensate` (STA→SGI real time) · `sgi_reflow` (SGI→STA) · ค้นคำว่า ack/callback/ตอบรับ ทั้งไฟล์ได้ **0 ครั้ง** <br>**สิ่งที่แก้ตามมติ:** `api.md` + `plan-api.html` **29 → 28 เส้น** (Interface 3 → 2) · `check_docs.py` `CANON_ENDPOINTS = 28` · Job 10 เปลี่ยนเกณฑ์เป็น `direction = 'OUT' AND outbox_status <> 'CONFIRMED' AND created_at < now() - threshold` · DDL ตัดค่า `'ACKED'` ออกจาก `status` และล็อกโดเมน `outbox_status IN (READY,PUBLISHED,CONFIRMED,FAILED)` · partial index `idx_interface_out_pending` เปลี่ยนไปตาม WHERE ใหม่ · purge เหลือ `status = 'COMPLETED'` · Job 5 ขารับกลับใช้ `status = COMPLETED` แทน `ACKED` · `workflow.md` / `plan-flow.html` / `job-batch.html` / `fgi-database.html` / skill md อัปเดตตาม | ✅ **ไม่ต้องรอทีม STA แล้ว** — มติตัดเส้นทิ้ง จึงไม่มีอะไรต้องให้ STA ยืนยัน · ผลพลอยได้: ความเสี่ยงยิงผิดเส้นกับ `/interface/sta/upload-cmadd` ของระบบเดิมหมดไปด้วย |
+| **2.11** ✅ **ตัดสินแล้ว 2026-09-08** | **Job 5 / Job 11 รับข้อมูลผ่าน `srm-sps-spsap-store-consumer`** <br><small>(มติผู้ใช้ · แทนที่ทางเลือกเดิมที่ job ไปหยิบไฟล์/ต่อ MQ เอง)</small> | **สิ่งที่เปลี่ยน:** EAI/STA ส่งข้อความเข้าคิว → consumer อ่าน config จาก S3 → `SubmitJob` มาที่ job พร้อม `INPUT` = envelope · **Job 5** ดาวน์โหลดไฟล์จาก `urls` เอง (consumer ส่งแค่ที่อยู่) · **Job 11** เป็น 1 ข้อความ = 1 การรัน เลิกใช้ `maxMessages`/`stopWhenEmpty`/`queue` และไม่ ack เอง <br>**ขาออกไม่เปลี่ยน** — Job 4 (upload) และ Job 6 (publish) ยังใช้ `S3Service`/publisher ของ `sop-sgi-batch` ตรง ๆ ไม่ผ่าน consumer | `job-batch.html` (Job 5/11) · `JOB_RUN_CONTRACT` 5/11 · `workflow.md` ขั้น 4 และ 12 + ผังระบบ · เอกสาร LLDD Job 5/11 <br>🔴 **ความเสี่ยงที่ยกมาด้วย:** consumer **ยังไม่มี DLQ และไม่เปิดใช้ retry** (C1/C2 ใน `SBP/srm-sps-spsap-store-consumer.md`) — ต้องผลักให้ทีมเจ้าของ repo เพิ่มก่อน UAT ไม่งั้นข้อมูลยอดขาย/ยอดชดเชยหายเงียบ ๆ ได้ · ระหว่างนี้ Job 5 เก็บ cron เดิมไว้เป็น safety net |
+| **2.12** 🔴 **ต้องยืนยันกับทีม consumer** | **`dataName` หายจาก envelope ของ `store-consumer`** <br><small>(พบ 2026-09-08 ตอนตรวจ backend ตามที่ผู้ใช้สั่ง)</small> | ตรวจ 4 แหล่งแล้ว **3 ใน 4 มี `dataName`**: `sop-sgi-batch` ✅ · `store-backend` ✅ (`import_mas_store_organize.service.ts:580` ส่ง `dataName = sps_store_organize_ptt` จริง) · สเปก STA ✅ · แต่ `store-consumer` zod schema **ไม่มีฟิลด์นี้** <br>**ทางเลือก ก.** ขอให้ทีม consumer เพิ่ม `dataName` เข้า schema (ตรงกับทั้งบ้าน) <br>**ทางเลือก ข.** แยก 1 คิวต่อ 1 ชนิดข้อมูล แล้วไม่ต้องใช้ `dataName` (แต่คิวจะบานปลาย) | ถ้าเลือก ข. ต้องขอคิวเพิ่มทุกครั้งที่มีชนิดข้อมูลใหม่ · Job 5/11 ตอนนี้เขียนสเปกให้ตรวจ `dataName` ไว้แล้ว จึงยึดทางเลือก ก. เป็นค่าตั้งต้น |
+| **2.10** 🔴 **รอ security sign-off** | **ดาวน์โหลดไฟล์แนบตอนที่ยังไม่มีตัวสแกนไวรัส** <br><small>(พบ 2026-09-07 · เอกสาร 4 ฉบับเคยเขียนกันคนละอย่าง แก้ให้ตรงกันแล้วแต่ตัวนโยบายยังต้องมีคนเซ็นรับ)</small> | **ข้อเท็จจริง:** ค้น `clamav`/`antivirus`/`GuardDuty`/`malware` ใน `store-backend` · `sbp-bff` · `sop-sgi-batch` แล้ว **ไม่พบตัวสแกนเลย** · `POST /statement/upload-file-aws` แค่รับ base64 แล้ววางลง S3 → `scan_status` จะค้างที่ `PENDING` ตลอด <br>**ทางเลือก ก.** บังคับ `CLEAN` อย่างเดียว = ปลอดภัยที่สุด แต่**ไฟล์แนบทั้งระบบดาวน์โหลดไม่ได้เลยจนกว่าจะมีตัวสแกน** (ฟีเจอร์ตายตั้งแต่วันขึ้นระบบ) <br>**ทางเลือก ข. (เขียนไว้ในเอกสารตอนนี้)** สวิตช์ `SGI_ALLOW_PENDING_DOWNLOAD` ใน `mas_param` — `PENDING` ดาวน์โหลดได้เฉพาะช่วงที่ยังไม่มีตัวสแกน พร้อม header `X-SGI-Scan-Status: PENDING` และคำเตือนบนหน้าจอ · `BLOCKED`/`FAILED` ปิดตายเสมอ · พลิกเป็น `N` ได้ทันทีที่ตัวสแกนขึ้น <br>**ทางเลือก ค.** จัดหาตัวสแกน (S3 event + Lambda/ClamAV หรือ GuardDuty Malware Protection) ให้ทันก่อน UAT แล้วใช้ ก. | **BE:** `LLDD-BE-API-Attachment-Sales-Timeline` §5.4 · **FE:** `LLDD-FE-Document-Detail` C06 · **API:** `LLDD-API` เส้น 9 · `mas_param` 1 คีย์ · test case ของ 3 สถานะ <br>🔴 **ทีมพัฒนาตั้งเองไม่ได้** — เป็นการตัดสินใจด้าน security ต้องให้ security/infra เลือกและเซ็นรับก่อน UAT · ถ้าเลือก ข. ต้องกำหนดวันปิดสวิตช์ไว้ด้วย|
+| **2.9** ✅ **ปิดแล้ว 2026-09-02** | **งานเตือนงานค้าง + escalation** — สร้าง **`LLDD-BE-Job-12-NotifyPendingWork`** (13 ชม.) แล้ว พร้อมกติกาช่วง 7 วันที่อ่านจากโค้ดเดิม · ⚠️ ข้อค้างที่เหลือ **G7** (วันที่ในอีเมลเป็น พ.ศ. หรือ ค.ศ.) และ **G8** (marker กันส่งซ้ำตอน rerun) <br><small>ของเดิม:</small> **งานเตือนงานค้าง + escalation 30/45/60 วัน** <br><small>(พบ 2026-09-02 ตอนเทียบ LLDD กับ Java)</small> | `SendMailReport.java` / `MailReportService.java` ของระบบเดิม **ไม่ถูกอ้างในเอกสาร LLDD ฉบับใดเลย** ทั้งที่ `workflow.md` และการ์ดแจ้งเตือนใน `k2-flow.html` ระบุว่าต้องมี · ทางเลือก: job ใหม่ `sgi-notify-pending-work` หรือผนวกเข้า `LLDD-BE-Job-Batch-Email-SRM` | **ไม่มีชั่วโมงในยอด 800** · สเปกที่อ่านจากโค้ดเดิมได้แล้ว (ช่วง 30-36 / 45-51 / 60-66 วัน · เฉพาะขั้นรอดำเนินการ · จัดกลุ่มตามโซน · ส่ง GM group 38 + OPT group 15 · วันที่ในเมลเป็น พ.ศ.) อยู่ในหัวข้อ 5.96 ของ `LLDD-BE-Job-10` ใช้ตั้งต้นได้ทันที |
+| **2.8** ✅ **ปิดแล้ว 2026-09-02** | **ตัวรับข้อความ `sta_update_compensate` (STA → SGI)** — สร้าง **`LLDD-BE-Job-11-ConsumeStaCompensate`** (16 ชม.) แล้ว · ✅ **ข้อค้างเดิมตกไปแล้วตามมติข้อ 2.11 (2026-09-08)** — เดิมกังวลว่า AWS Batch รัน one-shot จึงต้อง **drain-then-exit ทุก 10 นาที** (near-real-time ไม่ใช่ real-time) · ตอนนี้ `srm-sps-spsap-store-consumer` เป็นผู้ consume คิวแล้ว `SubmitJob` มาที่ Job 11 **1 ข้อความ = 1 การรัน** จึงเป็น real-time ตามสเปก STA และไม่ต้อง confirm เรื่องนี้กับทีม STA อีก <br><small>ของเดิม:</small> **ตัวรับข้อความ `sta_update_compensate`** <br><small>(พบ 2026-09-02 ตอนตรวจ LLDD ของ Job)</small> | สเปก STA · `workflow.md` · `new-flow-improved.mmd` ล้วนบังคับว่า SGI ต้อง **consume** ข้อความนี้เพื่ออัปเดต `forecast_amount`/`adjust_amount` แต่ **ไม่มี LLDD ฉบับไหนรองรับเลย** (RabbitMQ ปรากฏใน 5 ฉบับ ทั้งหมดเป็นฝั่ง publish) · ทางเลือก: ทำเป็นฉบับใหม่ `LLDD-BE-Interface-STA-Consumer` หรือผนวกเข้า Job 5 | **ไม่มีชั่วโมงในยอด 824** · `srm-sps-spsap-sop-sgi-batch` มีแต่ publisher ไม่มีตัวอย่าง consumer ให้ลอก — ต้องออกแบบใหม่จริง |
+| **2.5** | **N1** — "หลังพัฒนา **ไม่มีการเปิด SR เพื่อลบข้อมูล**" (SDD สไลด์ 46 · Note) <br><small>(เพิ่มข้อมูล 2026-09-08: ตรวจแล้วพบว่า `sgi_document_attachments.deleted_flag` **ไม่มีใครเขียนเลย** — ไม่มี endpoint `DELETE` ในชุด 28 เส้น และหน้า `k2-document.html` ก็ไม่มีปุ่มลบไฟล์แนบ จึงเป็นคอลัมน์ที่ query ต้องกรอง (แก้แล้ว 2026-09-08) แต่ยังไม่มีทางตั้งค่าเป็น `Y`)</small> | **ยังไม่ระบุขอบเขตเลย** — ลบอะไรได้บ้าง (เอกสาร? แถวร้าน? **ไฟล์แนบ?**) · ใครลบได้ · ต้องมี audit ไหม · **ถ้าตกลงว่าลบไฟล์แนบได้ ต้องเพิ่ม endpoint + ปุ่ม; ถ้าไม่ได้ ควรตัด `deleted_flag` ออกจาก DDL** | หน้าจอ + endpoint ใหม่ที่ยังไม่มีในแผน · ระบบเดิมมี log `TransectionDeleteStore` + `SRNumber` เป็นหลักฐานว่าเคยต้องเปิด SR |
 
 | **2.6** | **PDPA Requirement (SDD สไลด์ 63)** — SDD ระบุว่างานนี้มี Normal Personal Data (ชื่อ-นามสกุล · ที่อยู่/อีเมล/โทรศัพท์) และสั่งให้ *"เพิ่มเติมรายละเอียดตาม Template ของ PDPA Requirement ตามเอกสารแนบ"* | ยังไม่มีเอกสาร PDPA Requirement ในชุดส่งมอบ · ต้องเคาะ **retention ของข้อมูลบุคคล · การ mask ใน log · สิทธิ์เข้าถึง `approver_snapshot` (ชื่อ+อีเมลผู้อนุมัติ)** | ข้อมูลบุคคลในตารางเรา: `consider_by` · `created_by`/`updated_by` · `approver_snapshot` · `file_name` (รายละเอียดใน `database.md` §PDPA) — ที่เหลืออยู่ในระบบ SBP เดิม |
 
@@ -211,6 +253,6 @@ Bank เป็น senior และใช้ AI ได้ดี จึงคิ�
 > |---|---|
 > | **DP-10** · SGI อยู่ที่ไหน | **ใส่ใน `srm-sps-spsap-store-backend` เดิม** — ไม่แยก backend ใหม่ |
 > | **F8 + F1** · ขนคอลัมน์/ตารางจากระบบเดิม | **ทำ** — เพิ่มตาราง `sgi_fgi_impact_compensations` + 5 กลุ่มคอลัมน์ใน `sgi_fgi_impact_processes` · โครงเป็น **20 ตาราง** |
-> | **ชั่วโมงงาน** | **ใช้ชุด LLDD `845 ชม.` @ 8.5 ชม./วัน (กรอบใหม่ 2026-08-25 · 5 วัน/สัปดาห์ × 4 สัปดาห์ = 170 ชม./คน)** (→ **824 ชม.** หลังตัด Job 1 เมื่อ 2026-08-24) (823 + 22 หลังรับ F8+F1 และงานจุดเข้า flow) · ตรวจแล้วสองชุดขอบเขตเดียวกัน ต่างกันแค่หน่วย (142.0 vs 140.8 man-day = 0.8%) · ไฟล์ estimate เดิมเป็น baseline superseded |
+> | **ชั่วโมงงาน** | **ใช้ชุด LLDD `829 ชม.` @ 8.5 ชม./วัน (กรอบใหม่ 2026-08-25 · 5 วัน/สัปดาห์ × 4 สัปดาห์ = 170 ชม./คน)** (→ **800 ชม.** หลังตัด Job 1 เมื่อ 2026-08-24) (823 + 22 หลังรับ F8+F1 และงานจุดเข้า flow) · ตรวจแล้วสองชุดขอบเขตเดียวกัน ต่างกันแค่หน่วย (142.0 vs 140.8 man-day = 0.8%) · ไฟล์ estimate เดิมเป็น baseline superseded |
 
 > เอกสารนี้รวม**เฉพาะข้อที่ยังไม่ตัดสิน** · ข้อที่ตัดสินไปแล้ว (**DP-1 · DP-3 · DP-4 · DP-5 · DP-7 · DP-8 · DP-9 · DP-10** — ปิด 8 จาก 12 · วงเงิน 100,000 · ลำดับ 06→08→01 · คำเรียกประเภทร้าน) บันทึกอยู่ใน living docs ตามเดิม · **ที่ยังค้างจริงคือ DP-2 · DP-6 · DP-11 · DP-12**

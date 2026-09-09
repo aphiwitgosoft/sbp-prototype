@@ -36,7 +36,7 @@ Version 1.0
 - รายละเอียดเชิงออกแบบต้องไม่เพิ่ม ลด หรือเปลี่ยน requirement โดยไม่มีการอนุมัติ change request
 - รายการที่ระบุ OPEN ยังไม่ถือเป็นขอบเขตที่อนุมัติจนกว่าจะมีข้อยุติและปรับ baseline
 - ข้อมูลตัวอย่างและพฤติกรรม prototype ใช้ยืนยัน UX เท่านั้น ต้องไม่ถูกนำไปใช้เป็นข้อมูล Production
-- ขอบเขต API ใน SRS ประกอบด้วย 29 endpoints / 6 กลุ่ม โดยบริการยืนยันตัวตนเป็นบริการ platform กลาง
+- ขอบเขต API ใน SRS ประกอบด้วย 28 endpoints / 6 กลุ่ม โดยบริการยืนยันตัวตนเป็นบริการ platform กลาง
 
 ## 1.4 How to read this document
 
@@ -120,7 +120,7 @@ Version 1.0
 | QSSI | Inbound | ระบบ SBP เดิมนำเข้าให้ (fcs_qssi_score) | SGI อ่านอย่างเดียว; คะแนน 6 หมวด 8,9,12,1,10,16 |
 | ALLMAP | Inbound | SQL Server views / link | คู่ร้านถูกกระทบ ร้านคู่แข่ง และ POI map |
 | IAS/MIS | Outbound/Inbound | AMS06001O / AMS06001I | ยอดขาย 4 windows x 15 days |
-| STA | Outbound/Inbound | RabbitMQ sta.compensation.result + ACK/API callback | ส่งผลชดเชยและเฝ้าระวัง ACK |
+| STA | Outbound/Inbound | RabbitMQ sta.compensation.result + publisher confirm | ส่งผลชดเชยและเฝ้าระวังข้อความที่ broker ยังไม่ confirm |
 | SAP | Downstream via STA | Accounting posting | รับรายการเมื่อ STA approve |
 | SMTP | Outbound | E-mail | แจ้งผู้ดำเนินการ เตือนงานค้าง และ batch errors |
 
@@ -162,15 +162,15 @@ Version 1.0
 | REQ-WFL-002 | ระบบต้องบันทึกผลพิจารณา เหตุผล ผู้กระทำ เวลา สถานะก่อน/หลัง และ correlation id ของทุก transition | audit trace sample |
 | REQ-WFL-003 | ระบบต้องใช้ optimistic concurrency และคืน STALE_VERSION เมื่อ version เอกสารถูกเปลี่ยนแล้ว | parallel update test |
 | REQ-INT-001 | Job 4 ต้องสร้าง durable file สำเร็จก่อน commit W เป็น P และ outbox READY | failure injection ก่อน/หลัง fsync |
-| REQ-INT-002 | Interface callback ต้องอัปเดต tracking เดิมแบบ compare-and-set และงาน purge ต้องลบเฉพาะ terminal/expired/non-held | ACK race และ retention test |
+| REQ-INT-002 | publisher confirm ต้องอัปเดต tracking เดิมแบบ compare-and-set และงาน purge ต้องลบเฉพาะ terminal/expired/non-held | confirm race และ retention test |
 | REQ-INT-003 | ระบบต้องใช้ typed FK สำหรับ interface transaction และรักษา business key/idempotency key | schema constraint/rerun test |
 | REQ-SEC-001 | ระบบต้องไม่เก็บ password hash หรือ credential ของ platform identity ภายใน user account ของ SGI | schema/secret scan |
 | REQ-SEC-002 | การเชื่อมต่อภายนอกต้องอ่าน secret จาก Secret Manager และบังคับ TLS/host verification | deployment/security evidence |
 | REQ-FIL-001 | ไฟล์แนบต้องไม่เกิน 5 MB ผ่าน type/AV scan และดาวน์โหลดได้เฉพาะผู้มีสิทธิ์เมื่อสถานะ CLEAN | upload/download security test |
 | REQ-RPT-001 | รายงานหน้าจอและไฟล์ Excel ต้องใช้ filter/dataset เดียวกันและมีข้อมูลครบ 14 คอลัมน์ (SDD สไลด์ 60) | preview/export reconciliation |
-| REQ-OPS-001 | Jobs 2-10 และ 8b ต้องรองรับ rerun โดยไม่สร้างข้อมูลซ้ำและต้องรายงาน input/success/reject/skipped | rerun/reconcile evidence |
+| REQ-OPS-001 | batch job ทั้ง 12 ตัว (Job 2, 3, 4, 5, 6, 7, 8, 8b, 9, 10, 11, 12) ต้องรองรับ rerun โดยไม่สร้างข้อมูลซ้ำและต้องรายงาน input/success/reject/skipped | rerun/reconcile evidence |
 | REQ-SCR-001 | ระบบต้องมีหน้าจอ committed SCR-01 ถึง SCR-08 ตาม requirement รายหน้าจอ | screen/UAT traceability |
-| SYS-API-001 | ระบบต้องมี API capability 29 endpoints ใน 6 กลุ่มตาม catalog | OpenAPI/contract coverage |
+| SYS-API-001 | ระบบต้องมี API capability 28 endpoints ใน 6 กลุ่มตาม catalog | OpenAPI/contract coverage |
 | SYS-DAT-001 | ระบบต้องมี logical data model 20 ตารางพร้อม PK/FK/constraint ที่บังคับกฎสำคัญ (ตารางที่ระบบ SBP เดิมมีอยู่แล้วให้ใช้ของเดิม ห้ามสร้างซ้ำ) | migration/schema test |
 | SYS-NFR-001 | ระบบต้องมี correlation log, metrics, alert และ audit ที่เชื่อม request/job/interface กับผลธุรกิจได้ | observability trace |
 
@@ -179,31 +179,31 @@ Version 1.0
 
 > รูป Flow ในหัวข้อนี้เป็นส่วนหนึ่งของ SRS ใช้อธิบายลำดับการทำงานและเงื่อนไขทางธุรกิจ แต่ไม่ใช่หน้าจอผู้ใช้งานที่ต้องพัฒนา
 
-![รูปที่ 1: Flow FGI/FCS - Batch Pipeline - ส่วนที่ 1/2](flow-fgi-01.png)
+![รูปที่ 1: Flow FGI/FCS - Batch Pipeline - ส่วนที่ 1/2](screenshots/slices/flow-fgi-01.png)
 
-![รูปที่ 2: Flow FGI/FCS - Batch Pipeline - ส่วนที่ 2/2](flow-fgi-02.png)
+![รูปที่ 2: Flow FGI/FCS - Batch Pipeline - ส่วนที่ 2/2](screenshots/slices/flow-fgi-02.png)
 
-![รูปที่ 3: Flow การพิจารณาและอนุมัติ - ส่วนที่ 1/7](k2-flow-01.png)
+![รูปที่ 3: Flow การพิจารณาและอนุมัติ - ส่วนที่ 1/7](screenshots/slices/k2-flow-01.png)
 
-![รูปที่ 4: Flow การพิจารณาและอนุมัติ - ส่วนที่ 2/7](k2-flow-02.png)
+![รูปที่ 4: Flow การพิจารณาและอนุมัติ - ส่วนที่ 2/7](screenshots/slices/k2-flow-02.png)
 
-![รูปที่ 5: Flow การพิจารณาและอนุมัติ - ส่วนที่ 3/7](k2-flow-03.png)
+![รูปที่ 5: Flow การพิจารณาและอนุมัติ - ส่วนที่ 3/7](screenshots/slices/k2-flow-03.png)
 
-![รูปที่ 6: Flow การพิจารณาและอนุมัติ - ส่วนที่ 4/7](k2-flow-04.png)
+![รูปที่ 6: Flow การพิจารณาและอนุมัติ - ส่วนที่ 4/7](screenshots/slices/k2-flow-04.png)
 
-![รูปที่ 7: Flow การพิจารณาและอนุมัติ - ส่วนที่ 5/7](k2-flow-05.png)
+![รูปที่ 7: Flow การพิจารณาและอนุมัติ - ส่วนที่ 5/7](screenshots/slices/k2-flow-05.png)
 
-![รูปที่ 8: Flow การพิจารณาและอนุมัติ - ส่วนที่ 6/7](k2-flow-06.png)
+![รูปที่ 8: Flow การพิจารณาและอนุมัติ - ส่วนที่ 6/7](screenshots/slices/k2-flow-06.png)
 
-![รูปที่ 9: Flow การพิจารณาและอนุมัติ - ส่วนที่ 7/7](k2-flow-07.png)
+![รูปที่ 9: Flow การพิจารณาและอนุมัติ - ส่วนที่ 7/7](screenshots/slices/k2-flow-07.png)
 
-![รูปที่ 10: Flow ระบบเป้าหมายแบบรวม - ส่วนที่ 1/4](plan-flow-01.png)
+![รูปที่ 10: Flow ระบบเป้าหมายแบบรวม - ส่วนที่ 1/4](screenshots/slices/plan-flow-01.png)
 
-![รูปที่ 11: Flow ระบบเป้าหมายแบบรวม - ส่วนที่ 2/4](plan-flow-02.png)
+![รูปที่ 11: Flow ระบบเป้าหมายแบบรวม - ส่วนที่ 2/4](screenshots/slices/plan-flow-02.png)
 
-![รูปที่ 12: Flow ระบบเป้าหมายแบบรวม - ส่วนที่ 3/4](plan-flow-03.png)
+![รูปที่ 12: Flow ระบบเป้าหมายแบบรวม - ส่วนที่ 3/4](screenshots/slices/plan-flow-03.png)
 
-![รูปที่ 13: Flow ระบบเป้าหมายแบบรวม - ส่วนที่ 4/4](plan-flow-04.png)
+![รูปที่ 13: Flow ระบบเป้าหมายแบบรวม - ส่วนที่ 4/4](screenshots/slices/plan-flow-04.png)
 
 
 ---
@@ -224,7 +224,7 @@ Version 1.0
 | C3 | GM/AVP อนุมัติ | Section 02; ยอดตั้งแต่ 100,000 ขึ้นไปผ่าน Section 03 แล้วจบ, ยอดน้อยกว่า 100,000 จบที่ GM |
 | C4 | บัญชีตรวจสอบนอก workflow | เมื่อเอกสารเสร็จสิ้น ทีมบัญชีใช้รายงาน SBP Mall และ Export Excel เพื่อกระทบ SAP |
 | D1 | ส่ง Statement | Job 6 publish RabbitMQ sta.compensation.result ไป STA เวลา 17:00 ทุกวัน |
-| D2 | ติดตาม ACK | STA callback อัปเดต ACK และ Job 10 เป็น safety net เมื่อค้าง >= 1 วัน |
+| D2 | ติดตามข้อความขาออก | publisher confirm ของ RabbitMQ ตั้ง outbox_status = CONFIRMED และ Job 10 เตือนเมื่อยังไม่ confirm >= 1 วัน |
 
 
 ### 3.1.2 Gen Flow Gate
@@ -269,7 +269,7 @@ Version 1.0
 - งานเตือนรายสัปดาห์ทำงานวันจันทร์ 10:00 และ escalation งานค้าง 30/45/60 วันต้องอ่านค่าจาก config
 - การเปลี่ยนกฎธุรกิจ เช่น -10, 50, 60 วัน และ 100,000 บาท ต้องผ่าน Business sign-off
 - ทุก action ต้องบันทึก sgi_consideration_logs, ผู้กระทำ, เวลา, สถานะก่อน/หลัง และ correlation id
-![รูปที่ 14: Approve Flow เดิม ใช้ประกอบการเทียบพฤติกรรม](Flow ประกันรายได้.png)
+![รูปที่ 14: Approve Flow เดิม ใช้ประกอบการเทียบพฤติกรรม](../../Flow ประกันรายได้.png)
 
 
 ---
@@ -334,20 +334,22 @@ Version 1.0
 
 ### 3.3.1 รายการงาน Batch
 
-> ตัดสินใจ 6 สิงหาคม 2026: หน้าจอ Batch Job ย้ายไปอยู่กลุ่มเมนู Flow และเหลือเฉพาะ ลำดับการทำงาน (Flowchart) กับ ตารางฐานข้อมูลที่ใช้ เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม งาน Batch ทั้ง 11 รายการยังทำงานตามปกติ แต่กำหนดตารางเวลาและพารามิเตอร์ที่ backend config (config file/env ของฝั่ง Backend) และบันทึกผลการรันไว้ที่ application log แทนตารางในฐานข้อมูล
+> ตัดสินใจ 6 สิงหาคม 2026: หน้าจอ Batch Job ย้ายไปอยู่กลุ่มเมนู Flow และเหลือเฉพาะ ลำดับการทำงาน (Flowchart) กับ ตารางฐานข้อมูลที่ใช้ เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา ไม่ใช่หน้าจอควบคุม งาน Batch ทั้ง 12 รายการยังทำงานตามปกติ แต่กำหนดตารางเวลาและพารามิเตอร์ที่ backend config (config file/env ของฝั่ง Backend) และบันทึกผลการรันไว้ที่ application log แทนตารางในฐานข้อมูล
 
 | Job | Name | Thai name | Phase | Schedule | Output |
 | --- | --- | --- | --- | --- | --- |
 | 2 | ImportImpactStore | นำเข้าคู่ร้านถูกกระทบจาก ALLMAP | A | 0 07 7 * * (ทุกวันที่ 7 เวลา 07:00) | sgi_fgi_impact_stores |
 | 3 | ImportImpactCompetitor | นำเข้าร้านคู่แข่งจาก ALLMAP | A | 0 07 7 * * (ทุกวันที่ 7 เวลา 07:00) | sgi_fgi_impact_competitors |
 | 4 | PrepareImpactStoreToIAS | เตรียมและส่งคำขอยอดขายไป IAS | B | 0 16 7-16 * * (วันที่ 7-16 เวลา 16:00) | AMS06001O (UTF-8) |
-| 5 | ImportImpactSaleFromIAS | รับยอดขายจาก IAS + คำนวณ Growth | B | 30 16 7-16 * * (วันที่ 7-16 เวลา 16:30) | AMS06001I (รับเข้า) |
-| 6 | ExportImpactStoreToFS | ซิงก์สถานะ + ส่งค่าชดเชยไป STA | D | 0 17 * * * (ทุกวัน 17:00) | RabbitMQ message (sgi.interface / sta.compensation.result) |
+| 5 | ImportImpactSaleFromIAS | รับยอดขายจาก IAS + คำนวณ Growth | B | 30 16 7-16 * * (วันที่ 7-16 เวลา 16:30 - **เป็นตารางของโหมด safety-net เท่านั้น** (ทางปกติคือ consumer SubmitJob เมื่อ EAI แจ้งว่าไฟล์พร้อม · มติ 2026-09-08)) | AMS06001I (รับเข้า) |
+| 6 | ExportImpactStoreToFS | ซิงก์สถานะ + ส่งค่าชดเชยไป STA | D | 0 17 * * * (ทุกวัน 17:00) | RabbitMQ message sgi_impact_store (exchange sgi.interface) |
 | 7 | SyncCompetitorToDocument | บันทึกข้อมูลคู่แข่งเข้าเอกสาร | C | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | sgi_document_competitors (DB) |
 | 8 | CreateCompensationDocument | สร้างเอกสารประกันรายได้อัตโนมัติ | C | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | sgi_compensation_documents (DB) |
 | 8b | StartInternalWorkflow | เปิด Workflow ภายใน | D | after-job-8 (trigger หลัง Job 8 สร้างเอกสารสำเร็จ; manual rerun ได้ตาม period) | sps_store.workflow_transaction / workflow_approver ของ @srm/glb-workflow (ไม่ใช่ตารางของ SGI) |
 | 9 | SyncNewStoreToDocument | บันทึกร้านเปิดใหม่เข้าเอกสาร | C | 30 17 7-31 * * (วันที่ 7-31 เวลา 17:30) | sgi_document_new_stores (DB) |
-| 10 | NotifyNoReceiveData | Watchdog เฝ้าระวัง ACK ค้าง | E | 0 07 * * * (ทุกวัน 07:00) | อีเมลเตือน UTF-8 + pending ACK dashboard |
+| 10 | NotifyNoReceiveData | Watchdog เฝ้าระวังข้อความขาออกที่ค้างส่ง | E | 0 07 * * * (ทุกวัน 07:00) | อีเมลเตือน UTF-8 + หน้ารายการค้างส่ง (pending-ack) |
+| 11 | ConsumeStaCompensate | รับยอดชดเชยจาก STA (RabbitMQ) | B | event-driven (ไม่มีตารางเวลา - consumer SubmitJob ให้ทุกครั้งที่มีข้อความเข้าคิว (มติ 2026-09-08 · 1 ข้อความ = 1 การรัน)) | sgi_fgi_impact_compensations (forecast_amount / adjust_amount) |
+| 12 | NotifyPendingWork | เตือนงานค้าง + escalation (ช่วง 30-36 / 45-51 / 60-66 วัน) | E | 0 10 * * 1 (ทุกวันจันทร์ 10:00 น.) | อีเมลเตือนงานค้าง แยกตามโซน 3 ช่วงอายุงาน |
 
 
 ### 3.3.2 Common controls
@@ -413,8 +415,8 @@ Version 1.0
 | เป้าหมาย | ส่งข้อมูลชดเชยที่ผ่านเงื่อนไขไปยังระบบ Statement/บัญชี |
 | รับข้อมูล/เงื่อนไข | เอกสารหรือรายการชดเชยที่อนุมัติแล้ว, ข้อมูล QSSI ที่เกี่ยวข้อง, และสถานะรายการที่ต้องส่ง Statement |
 | ระบบทำอะไรโดยสรุป | ระบบคัดรายการที่พร้อมส่ง ตรวจเงื่อนไขสำคัญ สร้างข้อมูลส่งออกไป STA และบันทึก tracking เพื่อรอการตอบกลับ |
-| ผลลัพธ์ที่ต้องได้ | รายการชดเชยถูกส่งไป STA/Statement และระบบมีรายการติดตาม ACK สำหรับ reconcile |
-| ผู้ใช้ติดตามได้จาก | ทีมบัญชีและผู้ดูแลระบบเห็นสถานะส่งออก/รอ ACK ผ่านรายงานและ API ติดตาม interface |
+| ผลลัพธ์ที่ต้องได้ | รายการชดเชยถูกส่งไป STA/Statement และระบบมีรายการติดตามสถานะ publish สำหรับ reconcile |
+| ผู้ใช้ติดตามได้จาก | ทีมบัญชีและผู้ดูแลระบบเห็นสถานะส่งออก/รอ confirm ผ่านรายงานและ API ติดตาม interface |
 
 
 #### 3.3.3.6 Job 7 - บันทึกข้อมูลคู่แข่งเข้าเอกสาร
@@ -461,15 +463,37 @@ Version 1.0
 | ผู้ใช้ติดตามได้จาก | ผู้พิจารณาเห็นร้านเปิดใหม่ในหน้าเอกสาร; Admin เห็นจำนวนรายการ sync สำเร็จหรือรอเอกสาร |
 
 
-#### 3.3.3.10 Job 10 - Watchdog เฝ้าระวัง ACK ค้าง
+#### 3.3.3.10 Job 10 - Watchdog เฝ้าระวังข้อความขาออกที่ค้างส่ง
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
 | เป้าหมาย | เฝ้าระวังรายการส่ง Statement ที่ยังไม่ได้รับผลตอบกลับจาก STA |
-| รับข้อมูล/เงื่อนไข | รายการ interface ที่ส่งไป STA แล้วแต่ยังไม่มี ACK/ผลตอบกลับเกินระยะเวลาที่กำหนด |
+| รับข้อมูล/เงื่อนไข | รายการ interface ขาออกที่ broker ยังไม่ publisher confirm เกินระยะเวลาที่กำหนด |
 | ระบบทำอะไรโดยสรุป | ระบบค้นหารายการค้าง จัดกลุ่มตามประเภทข้อมูลและไฟล์/ช่องทางส่ง แล้วส่งแจ้งเตือนให้ผู้เกี่ยวข้องติดตาม |
-| ผลลัพธ์ที่ต้องได้ | เกิดอีเมลหรือรายการแจ้งเตือน pending ACK เพื่อให้ทีมงานตรวจสอบกับระบบปลายทาง |
+| ผลลัพธ์ที่ต้องได้ | เกิดอีเมลหรือรายการแจ้งเตือนข้อความค้างส่ง เพื่อให้ทีมงานตรวจสอบและ republish จาก outbox |
 | ผู้ใช้ติดตามได้จาก | Admin และทีมบัญชีเห็นรายการค้างผ่าน dashboard/report และได้รับการแจ้งเตือนตาม rule |
+
+
+#### 3.3.3.11 Job 11 - รับยอดชดเชยจาก STA (RabbitMQ)
+
+| หัวข้อ | รายละเอียด |
+| --- | --- |
+| เป้าหมาย | **ไม่ต่อ RabbitMQ เอง** (มติ 2026-09-08) - `srm-sps-spsap-store-consumer` เป็นผู้ consume คิว `sta_update_compensate` แล้ว SubmitJob มาที่ job นี้พร้อม `INPUT` = ข้อความทั้ง envelope · job มีหน้าที่ **อัปเดตยอดเงินประกันรายได้ของงวดที่ระบุ** อย่างเดียว - ปิดช่องว่างที่สเปก STA บังคับให้ SGI consume แต่ยังไม่มีเอกสารรองรับ (มติ 2026-09-02) |
+| รับข้อมูล/เงื่อนไข | งวดข้อมูลและพารามิเตอร์ของงาน |
+| ระบบทำอะไรโดยสรุป | **ไม่ต่อ RabbitMQ เอง** (มติ 2026-09-08) - `srm-sps-spsap-store-consumer` เป็นผู้ consume คิว `sta_update_compensate` แล้ว SubmitJob มาที่ job นี้พร้อม `INPUT` = ข้อความทั้ง envelope · job มีหน้าที่ **อัปเดตยอดเงินประกันรายได้ของงวดที่ระบุ** อย่างเดียว - ปิดช่องว่างที่สเปก STA บังคับให้ SGI consume แต่ยังไม่มีเอกสารรองรับ (มติ 2026-09-02) |
+| ผลลัพธ์ที่ต้องได้ | sgi_fgi_impact_compensations (forecast_amount / adjust_amount) |
+| ผู้ใช้ติดตามได้จาก | ติดตามได้จาก application log ของงาน Batch |
+
+
+#### 3.3.3.12 Job 12 - เตือนงานค้าง + escalation (ช่วง 30-36 / 45-51 / 60-66 วัน)
+
+| หัวข้อ | รายละเอียด |
+| --- | --- |
+| เป้าหมาย | อ่านงานที่ค้างในขั้นรอดำเนินการของ workflow engine แล้วส่งอีเมลเตือนตามช่วงอายุงาน 30-36 / 45-51 / 60-66 วัน จัดกลุ่มตามโซนของร้านที่ถูกกระทบ ส่งถึง GM และหน่วยงานส่งเสริมธุรกิจ - ปิดช่องว่างที่ไม่มีเอกสารรองรับมาก่อน (มติ 2026-09-02) |
+| รับข้อมูล/เงื่อนไข | งวดข้อมูลและพารามิเตอร์ของงาน |
+| ระบบทำอะไรโดยสรุป | อ่านงานที่ค้างในขั้นรอดำเนินการของ workflow engine แล้วส่งอีเมลเตือนตามช่วงอายุงาน 30-36 / 45-51 / 60-66 วัน จัดกลุ่มตามโซนของร้านที่ถูกกระทบ ส่งถึง GM และหน่วยงานส่งเสริมธุรกิจ - ปิดช่องว่างที่ไม่มีเอกสารรองรับมาก่อน (มติ 2026-09-02) |
+| ผลลัพธ์ที่ต้องได้ | อีเมลเตือนงานค้าง แยกตามโซน 3 ช่วงอายุงาน |
+| ผู้ใช้ติดตามได้จาก | ติดตามได้จาก application log ของงาน Batch |
 
 
 ### 3.3.4 Required job outcomes
@@ -478,7 +502,7 @@ Version 1.0
 - ผลลัพธ์ของ job ต้องตรวจนับได้ เช่น จำนวนไฟล์ จำนวนรายการที่อ่าน สำเร็จ ข้าม รอข้อมูล หรือผิดพลาด
 - เมื่อ job ล้มเหลว ต้องมีข้อความสาเหตุที่ผู้ดูแลระบบใช้ติดตามกับทีมที่เกี่ยวข้องได้
 - เมื่อไม่มีข้อมูลให้ประมวลผล ระบบต้องบันทึกเป็น no data หรือ skipped อย่างชัดเจน ไม่ถือว่าเป็น error โดยอัตโนมัติ
-- job ที่ส่งหรือรับข้อมูลจากระบบภายนอกต้องมีสถานะติดตามปลายทาง เช่น รอ ACK, ได้รับ ACK, หรือค้างเกินกำหนด
+- job ที่ส่งหรือรับข้อมูลจากระบบภายนอกต้องมีสถานะติดตาม เช่น รอ publish, ได้ publisher confirm แล้ว, หรือค้างเกินกำหนด
 - การรันซ้ำต้องไม่ทำให้เอกสาร รายการร้าน คู่แข่ง ยอดขาย หรือข้อมูล Statement ซ้ำ
 
 ---
@@ -491,7 +515,7 @@ Version 1.0
 
 ### SCR-01 สร้างเอกสาร
 
-![รูปที่ 15: สร้างเอกสาร](k2-create-01.png)
+![รูปที่ 15: สร้างเอกสาร](screenshots/slices/k2-create-01.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -511,9 +535,9 @@ Version 1.0
 
 ### SCR-02 เอกสารรอดำเนินการ
 
-![รูปที่ 16: เอกสารรอดำเนินการ - ส่วนที่ 1/2](k2-list-waiting-01.png)
+![รูปที่ 16: เอกสารรอดำเนินการ - ส่วนที่ 1/2](screenshots/slices/k2-list-waiting-01.png)
 
-![รูปที่ 17: เอกสารรอดำเนินการ - ส่วนที่ 2/2](k2-list-waiting-02.png)
+![รูปที่ 17: เอกสารรอดำเนินการ - ส่วนที่ 2/2](screenshots/slices/k2-list-waiting-02.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -547,9 +571,9 @@ Version 1.0
 
 ### SCR-03 เอกสารที่เกี่ยวข้อง
 
-![รูปที่ 18: เอกสารที่เกี่ยวข้อง - ส่วนที่ 1/2](k2-list-related-01.png)
+![รูปที่ 18: เอกสารที่เกี่ยวข้อง - ส่วนที่ 1/2](screenshots/slices/k2-list-related-01.png)
 
-![รูปที่ 19: เอกสารที่เกี่ยวข้อง - ส่วนที่ 2/2](k2-list-related-02.png)
+![รูปที่ 19: เอกสารที่เกี่ยวข้อง - ส่วนที่ 2/2](screenshots/slices/k2-list-related-02.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -583,11 +607,11 @@ Version 1.0
 
 ### SCR-04 เอกสารข้อมูลร้านถูกกระทบ
 
-![รูปที่ 20: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 1/3](k2-document-01.png)
+![รูปที่ 20: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 1/3](screenshots/slices/k2-document-01.png)
 
-![รูปที่ 21: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 2/3](k2-document-02.png)
+![รูปที่ 21: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 2/3](screenshots/slices/k2-document-02.png)
 
-![รูปที่ 22: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 3/3](k2-document-03.png)
+![รูปที่ 22: เอกสารข้อมูลร้านถูกกระทบ - ส่วนที่ 3/3](screenshots/slices/k2-document-03.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -628,9 +652,9 @@ Version 1.0
 
 ### SCR-05 รายงานสรุปสถานะ
 
-![รูปที่ 23: รายงานสรุปสถานะ - ส่วนที่ 1/2](k2-report-01.png)
+![รูปที่ 23: รายงานสรุปสถานะ - ส่วนที่ 1/2](screenshots/slices/k2-report-01.png)
 
-![รูปที่ 24: รายงานสรุปสถานะ - ส่วนที่ 2/2](k2-report-02.png)
+![รูปที่ 24: รายงานสรุปสถานะ - ส่วนที่ 2/2](screenshots/slices/k2-report-02.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -665,7 +689,7 @@ Version 1.0
 
 ### SCR-06 กำหนดปัจจัยภายนอก
 
-![รูปที่ 25: กำหนดปัจจัยภายนอก](k2-factors-01.png)
+![รูปที่ 25: กำหนดปัจจัยภายนอก](screenshots/slices/k2-factors-01.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -693,7 +717,7 @@ Version 1.0
 
 ### SCR-07 กำหนดรายชื่อคู่แข่ง
 
-![รูปที่ 26: กำหนดรายชื่อคู่แข่ง](k2-competitors-01.png)
+![รูปที่ 26: กำหนดรายชื่อคู่แข่ง](screenshots/slices/k2-competitors-01.png)
 
 | Item | Requirement |
 | --- | --- |
@@ -729,7 +753,7 @@ Version 1.0
 | Purpose | ส่งอีเมลแจ้งเตือนตามสถานะเอกสารและงาน Batch โดยใช้ template และบริการส่งอีเมลของระบบ SBP เดิม |
 | Scope status | Committed - ครอบคลุมเฉพาะพฤติกรรม Notification Service ไม่มีหน้าจอจัดการ template ในระบบนี้ |
 
-- รองรับ template EM-01 ถึง EM-08 ครอบคลุม workflow transition, reminder, escalation, batch error และ STA ACK watchdog
+- รองรับ template EM-01 ถึง EM-08 ครอบคลุม workflow transition, reminder, escalation, batch error และ watchdog ข้อความขาออกที่ยังไม่ confirm
 - ตัวแปร merge ที่ใช้ต้องตรงกับที่ template รองรับ และต้องไม่มีตัวแปรที่แทนค่าไม่ได้หลงเหลือในอีเมลที่ส่งออก
 - From/To/Cc ของ batch job กำหนดใน backend config ไม่ได้มาจากผู้ใช้ · อีเมล workflow เป็นหน้าที่ของ engine
 - การส่งอีเมลต้องอยู่นอก transaction ของ workflow และการส่งล้มเหลวต้องไม่ทำให้ workflow ล้มเหลว
@@ -775,7 +799,7 @@ Version 1.0
 | งาน & เอกสารประกันรายได้ | POST | /api/v1/sgi/document/{docNo}/actions | เจ้าของ task ปัจจุบัน | ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน - หัวใจ workflow 5 ขั้น · วงเงิน เกณฑ์เดียว 100,000 (SDD GI 24/02/2026) |
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/sgi/document/{docNo}/timeline | ตามสิทธิ์เมนู | ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร) |
 | งาน & เอกสารประกันรายได้ | POST | /api/v1/sgi/document/{docNo}/attachments | ตาม section ปัจจุบัน | แนบไฟล์เข้าเอกสาร - จำกัด 5MB ต่อไฟล์ตาม SRS |
-| งาน & เอกสารประกันรายได้ | GET | /api/v1/sgi/document/{docNo}/attachments/{attachId}/download | ตามสิทธิ์อ่านเอกสาร | ดาวน์โหลดไฟล์แนบผ่าน BE stream โดยตรวจสิทธิ์เอกสารและ scanStatus=CLEAN ก่อนส่ง binary |
+| งาน & เอกสารประกันรายได้ | GET | /api/v1/sgi/document/{docNo}/attachments/{attachId}/download | ตามสิทธิ์อ่านเอกสาร | ดาวน์โหลดไฟล์แนบผ่าน BE stream - ตรวจสิทธิ์เอกสาร แล้วตัดสินตามนโยบายเดียว: CLEAN ได้เสมอ · BLOCKED/FAILED คืน 422 FILE_SCAN_BLOCKED · PENDING ขึ้นกับสวิตช์ SGI_ALLOW_PENDING_DOWNLOAD ใน mas_param (ยังไม่มีตัวสแกนในระบบ - รอ security sign-off) |
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/sgi/document/{docNo}/attachments/download-all | ตามสิทธิ์อ่านเอกสาร | ดาวน์โหลดไฟล์แนบทั้งหมดของเอกสารเป็นไฟล์ .zip - ปุ่ม "ดาวน์โหลดทั้งหมด" ระดับการ์ด (เทียบเท่าปุ่ม Download ของ K2 เดิม) |
 | งาน & เอกสารประกันรายได้ | GET | /api/v1/sgi/document/{docNo}/sales | ตามสิทธิ์เมนู | ข้อมูลยอดขายเพิ่มเติมของเอกสาร (4 หน้าต่าง x 15 วัน) - ปุ่ม "ข้อมูลยอดขายเพิ่มเติม" ในหน้าเอกสาร Document Detail |
 | ข้อมูล Lookup | GET | /api/v1/sgi/lookup/document-statuses | ทุก role | รายการสถานะเอกสารทั้งหมด - เติม dropdown ตัวกรองสถานะในหน้าค้นหาเอกสาร (เอกสารที่เกี่ยวข้อง) และรายงาน (รายงานสรุปสถานะ) |
@@ -793,9 +817,8 @@ Version 1.0
 | Workflow ภายใน | POST | /api/v1/sgi/workflow/instances | service token (ภายใน) | เปิด workflow ให้รายการที่ผ่าน Gen Flow Gate - เส้นภายในที่ Batch Scheduler เรียกแทนการยิง K2 REST เดิม |
 | Workflow ภายใน | GET | /api/v1/sgi/workflow/instances/{id} | 01 Admin / เจ้าของงาน | สถานะ instance และงานขั้นปัจจุบัน (ใช้ debug/ติดตาม) |
 | Workflow ภายใน | GET | /api/v1/sgi/workflow/summary | 01 Admin | ตัวเลขเฝ้าระวังตามเอกสาร: นับ workflow_generation_status W/Y/N, จำนวน start ล้มเหลว, งานค้างต่อขั้น |
-| Interface (tracking / ACK) | GET | /api/v1/sgi/interface/tracking | 01 Admin | สถานะการรับ-ส่งไฟล์กับระบบภายนอก (sgi_interface_transactions ใหม่ แทน FGI_CONFIRM_RECEIVE_DATA) |
-| Interface (tracking / ACK) | POST | /api/v1/sgi/interface/sta/ack | API key ของระบบ STA | Callback ให้ระบบ STA ยิงตอบรับ (ACK) ตรง - แทนการรออัปเดต return_code ฝั่งเดียว |
-| Interface (tracking / ACK) | GET | /api/v1/sgi/interface/pending-ack | 01 Admin | รายการ ACK ค้างเกิน 1 วัน (เกณฑ์เดียวกับ watchdog) - ใช้ทั้งหน้า dashboard และอีเมลเตือน |
+| Interface (tracking) | GET | /api/v1/sgi/interface/tracking | 01 Admin | สถานะการรับ-ส่งไฟล์กับระบบภายนอก (sgi_interface_transactions ใหม่ แทน FGI_CONFIRM_RECEIVE_DATA) |
+| Interface (tracking) | GET | /api/v1/sgi/interface/pending-ack | 01 Admin | รายการข้อความขาออกที่ broker ยังไม่ publisher confirm เกิน 1 วัน (เกณฑ์เดียวกับ watchdog Job 10 · มติ 2026-09-08 ข้อ 2.13) - ใช้ทั้งหน้า dashboard และอีเมลเตือน |
 
 
 ### 3.5.3 API contract requirements
@@ -825,7 +848,7 @@ Version 1.0
 | Availability | บริการ 7x24 ยกเว้น maintenance window; Batch Scheduler ต้อง resume/reconcile หลัง restart | restart/failover test และหลักฐาน reconcile งานที่ค้าง |
 | Reliability | Transaction ที่สำเร็จต้อง durable; error ต้องไม่เขียนข้อมูลบางส่วน; file interface ต้อง reconcile row/file/tracking | failure injection, transaction rollback และ rerun/idempotency test |
 | Backup/Recovery | กำหนด RPO/RTO, backup DB/config/object files และทดสอบ restore อย่างน้อยตามรอบองค์กร | restore drill พร้อมเวลาจริงและรายการข้อมูลที่ตรวจคืน |
-| Observability | Metrics/log/trace สำหรับ API, batch, workflow, interface ACK, queue lag และ e-mail failure พร้อม alert threshold | monitoring dashboard, alert test และ correlation trace |
+| Observability | Metrics/log/trace สำหรับ API, batch, workflow, publisher confirm, queue lag และ e-mail failure พร้อม alert threshold | monitoring dashboard, alert test และ correlation trace |
 
 
 ## 4.2 Security and product quality
@@ -854,8 +877,8 @@ Version 1.0
 - หน้า Document Detail แสดง visible/editable/action options ตาม role profile ของผู้ใช้จริงและไม่มี role switcher ใน production
 - ผลรวม % ชดเชย 100% ถูกตรวจทั้ง FE และ BE
 - ร้านยอดขายไม่ครบ 60 วันถูก flag ใน inbox/report และมีเหตุผลตรวจสอบย้อนกลับ
-- Jobs 2-10/8b รันซ้ำตาม runbook โดยไม่สร้างข้อมูลซ้ำหรือสูญหาย
-- API capability 29 endpoints ใน scope ต้องผ่าน authorization, validation, audit, duplicate guard/idempotency, pagination และ error-contract test; Auth Group 1 เป็น platform service
+- batch job ทั้ง 12 ตัว รันซ้ำตาม runbook โดยไม่สร้างข้อมูลซ้ำหรือสูญหาย
+- API capability 28 endpoints ใน scope ต้องผ่าน authorization, validation, audit, duplicate guard/idempotency, pagination และ error-contract test; Auth Group 1 เป็น platform service
 - ข้อมูล export/import ทุก interface ผ่าน golden-file test เรื่อง encoding/date/delimiter/field count
 - หน้าจอรายงานและ CSV Export to Batch ให้ผลตรงกันภายใต้ filter เดียวกัน
 
@@ -870,16 +893,16 @@ Version 1.0
 | REQ-BUS-006 | Approval threshold | routing ที่ 100,000 บาท | 3.0, 3.1.3, SCR-06 |
 | REQ-DOC-001/002/003 | Document integrity | เลขเอกสาร duplicate guard และ data spine | 3.0, 3.2, SCR-02/06 |
 | REQ-WFL-001/002/003 | Workflow integrity | ownership, audit และ optimistic concurrency | 3.0, 3.1.3, 3.2 |
-| REQ-INT-001/002/003 | Interface reliability | durable file/outbox, ACK/purge และ typed FK | 3.0, 3.2.4, 3.3 |
+| REQ-INT-001/002/003 | Interface reliability | durable file/outbox, publisher confirm/purge และ typed FK | 3.0, 3.2.4, 3.3 |
 | REQ-SEC-001/002 | Identity and secrets | platform identity, Secret Manager และ TLS | 1.5, 3.0, 4.2 |
 | REQ-FIL-001 | Attachment | 5 MB, type/AV scan และ authorization | 3.0, SCR-06, 3.5 |
 | REQ-RPT-001 | Report export | 19 columns และ preview/export reconciliation | 3.0, SCR-07 |
 | REQ-OPS-001 | Batch rerun | idempotency และ run reconciliation | 3.0, 3.3 |
 | REQ-SCR-001 | Committed screens | SCR-01..04 และ SCR-06..11 | 3.4 |
-| SYS-API-001 | API capability | 29 endpoints / 6 groups | 3.5 |
+| SYS-API-001 | API capability | 28 endpoints / 6 groups | 3.5 |
 | SYS-DAT-001 | Data model | 20 tables and integrity controls (workflow engine / store-zone-employee master / email template / config ใช้ของระบบ SBP เดิม) | 3.2 |
 | SYS-NFR-001 | Observability | correlation/metrics/alert/audit evidence | 4 |
-| FLOW-01 | Batch pipeline | ขั้นตอนนำเข้า คำนวณ สร้างเอกสาร ส่ง Statement และติดตาม ACK | 3.1, 3.3 |
+| FLOW-01 | Batch pipeline | ขั้นตอนนำเข้า คำนวณ สร้างเอกสาร ส่ง Statement และติดตามสถานะ publish | 3.1, 3.3 |
 | FLOW-02 | Approval workflow | Section 06 -> 08 -> 01 -> 02 และ Section 03 ตามวงเงิน | 3.1.1, 3.1.3 |
 | DATA-01 | Logical data model | Data subjects, relationships, controls และ remediation | 3.2 |
 | JOB-01 | Batch Job Console | 11 entry points, common controls และผลลัพธ์ที่ตรวจรับได้ | 3.3 |
@@ -892,7 +915,7 @@ Version 1.0
 | K2-07 | Competitor Master | Competitor brand master 01-11 (Thai/English) | SCR-07 |
 | K2-08 | Global Config | Global system configuration (ตาราง mas_param ของระบบ SBP เดิม) | SCR-08 |
 | EMAIL-01 | Email Template | หน้าจอผู้ดูแล template และกฎ Notification Service | 3.4.13 |
-| API-01 | REST API | Capability catalog 29 endpoints และข้อกำหนด contract กลาง | 3.5 |
+| API-01 | REST API | Capability catalog 28 endpoints และข้อกำหนด contract กลาง | 3.5 |
 
 
 ---
@@ -918,7 +941,7 @@ Version 1.0
 | ID | Topic | Decision required | Impact if unresolved |
 | --- | --- | --- | --- |
 | OPEN-02 ✅ ปิดแล้ว 2026-08-18 | วงเงินอนุมัติเกิน 300,000 | มติประชุม 2026-08-18 กลับไปใช้เกณฑ์เดียว 100,000 - ข้อค้างเรื่องเกิน 300,000 หมดไปเอง เพราะทุกยอด >= 100,000 ส่ง AVP อยู่แล้ว | routing ขั้น 03 และ UAT |
-| OPEN-09 | ผลพิจารณา "เห็นควรไม่ชดเชย" ที่ขั้น AVP (03) | SDD GI ระบุเฉพาะขั้น 01/02 ว่าจบทันที - ขั้น 03 ยังคงพฤติกรรมเดิม (ตีกลับ 06) รอยืนยัน | routing และ UAT |
+| OPEN-09 | ผลพิจารณา "เห็นควรไม่ชดเชย" ที่ขั้น AVP (03) | ปิดแล้ว (มติ 2026-09-02) - ขั้น 03 จบ flow ทันทีเหมือน 01/02 | ปิดแล้ว |
 | OPEN-04 | NULL growth_rate | อนุมัติรอตรวจสอบแทน auto-accept หรือกำหนดกฎใหม่ | การคัดรายการและ workflow generation |
 | OPEN-05 | Legacy date routing | ยืนยันเงื่อนไข routing สำหรับร้านก่อน/หลัง 1/10/2014 | routing และผลพิจารณา |
 | OPEN-06 | NFR SLA/RPO/RTO | กำหนด SLA API/report/batch และ RPO/RTO production | capacity, HA, backup และ acceptance |

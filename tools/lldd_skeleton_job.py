@@ -13,7 +13,9 @@ convention ที่ยึด (ตัดสินใจ 2026-08-06):
   * runner กันรันซ้อนด้วย PostgreSQL advisory lock (ไม่ใช่แถว RUNNING ในตาราง)
   * job error → ส่งอีเมลผ่าน ``@gosoft-sbp/email-lib`` ของระบบเดิม
   * ไฟล์ interface ยังใช้กลไกเดิม (fixed-width + encoding เดิม)
-  * โครง NestJS ตาม ``srm-sps-spsap-store-backend``: custom provider ``DATA_SOURCE``,
+  * โครง NestJS ตาม ``srm-sps-spsap-sop-sgi-batch``: ``@Inject('DATA_SOURCE')`` (token เดียวกับที่
+    repo จริงใช้ใน entity provider ``inject: ["DATA_SOURCE"]`` และที่ store-backend ใช้ในทุก service —
+    **ไม่ใช่ decorator ``InjectDataSource`` ของ @nestjs/typeorm ซึ่งไม่มีใน repo ทั้งสองตัว** · แก้ 2026-09-04),
     repository provider แบบ factory token string, entity ใน ``src/entitys/``,
     workflow ผ่าน ``@srm/glb-workflow``
 
@@ -22,6 +24,8 @@ convention ที่ยึด (ตัดสินใจ 2026-08-06):
 
 from __future__ import annotations
 
+import io
+import os
 import re
 from typing import Any
 
@@ -61,6 +65,9 @@ def table(headers: list[str], rows: list[list[Any]]) -> dict[str, Any]:
 
 
 def code(text: str, lang: str = "") -> dict[str, Any]:
+    if lang == "sql":
+        import build_lldd_documents as _BA   # import ตอนเรียก (โมดูลนั้น import ไฟล์นี้ตอนโหลด)
+        text = _BA.to_positional_sql(text)
     return {"type": "code", "text": text, "lang": lang}
 
 
@@ -366,54 +373,113 @@ _REPLACED_TABLES: dict[str, str] = {
 
 
 def _file_map_blocks(no: str, folder: str, base: str, pascal: str, job: dict[str, Any]) -> list[dict[str, Any]]:
-    root = f"src/batch/sgi/{folder}"
+    """ผังไฟล์บน SBP/srm-sps-spsap-sop-sgi-batch (มติ 2026-09-02 — ย้ายมาจาก store-backend)
+
+    repo นี้วาง module เป็น src/modules/<กลุ่ม>/<งาน>.service.ts + <กลุ่ม>.module.ts
+    และ dispatch job ด้วย switch ใน src/main.ts — ไม่มี runner/scheduler แยก
+    """
+    job_name = f"sgi-{folder}"
+    root = "src/modules/sgi"
     rows = [
         [
-            f"{root}/{base}.job.ts",
-            f"คลาส `{pascal}Job` — `run(ctx)` เรียงตาม flow ของ Job {no} ทีละขั้น, ครอบ transaction, จบด้วย structured log",
-        ],
-        [
             f"{root}/{base}.service.ts",
-            f"คลาส `{pascal}Service` — logic ต่อขั้น (อ่าน/parse/คำนวณ/เขียน) + repository token ที่ inject จาก `DATA_SOURCE`",
+            f"คลาส `{pascal}Service` — **`execute(input)` เป็น entry point เดียว** เรียงตาม flow ของ Job {no} ทีละขั้น "
+            "ครอบ transaction เอง และจบด้วย structured log สรุป metrics (แบบเดียวกับ `ImportQssiService.execute(body)` ที่มีอยู่)",
         ],
         [
-            f"{root}/{base}.config.ts",
-            f"คลาส `SgiJob{_job_slug(no)}Config` (แบบเดียวกับ `src/config/app.config.ts` — โปรเจกต์นี้ไม่ใช้ `registerAs`) "
-            f"— cron และพารามิเตอร์ทั้ง {len(job.get('params', []) or [])} ตัวของ Job {no} อ่านจาก env/config file (ไม่มีตาราง job_configs)",
+            f"{root}/{base}.service.spec.ts",
+            "unit test ของ service — repo นี้วาง spec ไว้ข้างไฟล์จริงเสมอ (`jest` + `npm run test:ci` มี coverage/SonarQube)",
         ],
         [
-            f"{root}/{base}.module.ts",
-            "NestJS module ผูก job + service + repository provider (factory token string) เข้ากับ `DatabaseModule`",
+            f"{root}/dto/{base}-input.dto.ts",
+            f"DTO ของ `INPUT` (JSON) พร้อม `class-validator` ตามตารางในหัวข้อ 5.95 — parse ไม่ผ่านต้อง fail ก่อนแตะ DB",
         ],
         [
-            "src/batch/runner.ts",
-            "ตัวรันกลาง: resolve job ตาม jobNo, กันรันซ้อนด้วย advisory lock, จับ error → แจ้งเตือน, เขียน structured log สรุป (ใช้ร่วมทั้ง 11 job)",
+            f"{root}/sgi.module.ts",
+            "NestJS module ของกลุ่มงานประกันรายได้ — ผูก service ทุกตัวของ SGI เข้ากับ `TypeOrmModule` (ไฟล์ร่วมของทุก job ให้ merge ไม่ใช่เขียนทับ)",
         ],
         [
-            "src/batch/scheduler.ts",
-            f"ลงทะเบียน cron จาก config (`SGI_JOB{_job_slug(no)}_CRON` = `{job.get('cron', '-')}`) และรองรับสั่งรันนอกรอบผ่าน CLI/runbook",
+            "src/main.ts",
+            f"**เพิ่ม `case '{job_name}':`** ในสวิตช์เดิม → `await import('./modules/sgi/{base}.service')` แล้ว `app.get({pascal}Service).execute(input)` "
+            "(ไฟล์กลางของทุก job — เป็นจุด merge conflict ที่ต้องระวัง)",
         ],
         [
-            "src/batch/job-failure.notifier.ts",
-            "ส่งอีเมลแจ้งผู้ดูแลเมื่อ job ล้มเหลว ผ่าน `EmailLibService` ของ `@gosoft-sbp/email-lib` (log ลง `email_sent` ให้อัตโนมัติ)",
+            "src/entities/sgi-*.entity.ts",
+            "entity ของตาราง `sgi_*` ที่หัวข้อ Reference DB Mapping อ้างถึง — **ยังไม่มีใน repo เลยสักตัว** ต้องสร้างใหม่ทั้งหมด",
+        ],
+        [
+            "src/config/config.ts",
+            f"เพิ่ม `export const sgiJob{_job_slug(no)}Config` ตามแบบของไฟล์นี้ (โปรเจกต์ไม่ใช้ `registerAs`) — ค่าคงที่ทางธุรกิจของ Job {no}",
         ],
     ]
     return [
-        h(2, f"5.94 ผังไฟล์ที่ต้องสร้าง (Job {no})"),
+        h(2, f"5.94 ผังไฟล์ที่ต้องสร้าง (Job {no}) — บน `srm-sps-spsap-sop-sgi-batch`"),
         p(
-            f"โครงไฟล์ของ Job {no} ({job.get('cls', '-')} เดิม) วางใต้ `src/batch/sgi/` ของ store-backend "
-            "โดยใช้ convention เดียวกับ module ธุรกิจอื่น: inject custom provider `DATA_SOURCE` แล้วยิง raw SQL, "
-            "repository ประกาศเป็น factory provider ที่ใช้ token string, entity อยู่ใน `src/entitys/`"
+            f"โครงไฟล์ของ Job {no} ({job.get('cls', '-')} เดิม) วางใต้ `src/modules/sgi/` ตาม convention ที่ repo นี้ใช้อยู่จริง "
+            "(ดูตัวอย่างที่ `src/modules/performance/import-qssi.service.ts`): service ถือ logic ทั้งหมด, inject `DataSource`/repository "
+            "ผ่าน TypeORM, ยิง raw SQL ได้ตรง, และ **ไม่มี controller** เพราะ repo นี้ไม่เปิด HTTP"
         ),
         p(
-            "**หมายเหตุสำคัญ — `src/batch/*` ทั้งชุดเป็นของใหม่ที่ยังไม่มีใน store-backend**: ปัจจุบัน repo "
-            "ไม่มีโฟลเดอร์ `src/batch` เลย และแม้จะติดตั้ง `@nestjs/schedule` ไว้แล้วก็ยัง**ไม่มี `@Cron`/"
-            "`@Interval` แม้แต่จุดเดียว** ดังนั้น `runner.ts` / `scheduler.ts` / `cli.js` / "
-            "`job-failure.notifier.ts` คือ **งานตั้งต้นของ Phase แรก** ที่ต้องสร้างเองทั้งหมด พร้อม register "
-            "`ScheduleModule.forRoot()` ใน `app.module.ts` — ไม่ใช่ของเดิมที่ reuse ได้"
+            "**สิ่งที่ reuse ได้ทันที ไม่ต้องเขียนใหม่** — ต่างจากแผนเดิมที่ตั้งไว้บน store-backend ซึ่งต้องสร้าง runner ทั้งชุดเอง: "
+            "`src/main.ts` (dispatcher + `BATCH_START`/`BATCH_END` + `runId` + log ลง `integration_log` อัตโนมัติ) · "
+            "`src/modules/rabbitMQ/rabbitmq.service.ts` (`publishMessage`) · `src/shared/services/s3.service.ts` · "
+            "`StatementService.decodeThaiFileContent()` (WINDOWS-874 auto-detect) · `@gosoft-sbp/email-lib` · `@srm/glb-log`"
+        ),
+        p(
+            "⚠️ **สิ่งที่ repo นี้ยังไม่มี และเป็นงานตั้งต้นจริง**: (1) ไม่มี `@Cron` เลย — ตารางเวลาต้องตั้งเป็น **AWS Batch scheduled event** "
+            "(2) ไม่มี distributed lock (`pg_try_advisory_lock`) — การกันรันซ้อนพึ่ง AWS Batch queue ถ้างานไหนรับความเสี่ยงนี้ไม่ได้ต้องเพิ่มเอง "
+            "(3) `publishMessage` เป็น fire-and-forget ไม่มี publisher confirm/outbox — งานที่ต้องการ **transactional outbox + ACK** (Job 6) ต้องสร้างกลไกเพิ่ม ไม่ใช่ reuse ตรง ๆ "
+            "(4) ยังไม่มี entity/ตาราง `sgi_*` แม้แต่ตัวเดียว"
         ),
         table(["Path", "หน้าที่"], rows),
+        h(3, f"การลงทะเบียนใน `src/main.ts` (job `{job_name}`)"),
+        code(
+            f"""// src/main.ts — เพิ่มเคสนี้ในสวิตช์เดิม (เรียงต่อจาก job ของ SGI ตัวก่อนหน้า)
+      case '{job_name}': {{
+        const {{ {pascal}Service }} = await import('./modules/sgi/{base}.service');
+        const {base.replace('-', '')}Service = app.get({pascal}Service);
+        await {base.replace('-', '')}Service.execute(input);   // input = JSON ที่ parse จาก INPUT/argv[2] แล้ว
+        break;
+      }}""",
+            "js",
+        ),
+        p(
+            f"`main.ts` เรียก `StatementService.logInterfest('{job_name}', input)` ให้อยู่แล้วก่อนเข้าสวิตช์ "
+            "→ **ไม่ต้องเขียน log ลง `integration_log` เองซ้ำ** · และ `BATCH_END` ที่ท้ายไฟล์จะสรุป `batchStatus` + `durationMs` ให้อัตโนมัติ "
+            "หน้าที่ของ service คือ throw เมื่อทำงานไม่สำเร็จเท่านั้น"
+        ),
     ]
+
+
+def _decision_rule_hint(no: str, text: str) -> list[str]:
+    """ดึงเงื่อนไขจริงของ job นั้นจากหัวข้อ 5.96 มาแปะไว้เหนือ method ที่ต้องเขียน
+
+    เพิ่ม 2026-09-07: เดิม method ตัดสินใจมีแต่ `// TODO: เงื่อนไขจริงตามผัง` ทั้งที่เอกสาร
+    ฉบับเดียวกันมีตารางเงื่อนไขอยู่แล้ว — dev ต้องเลื่อนหาเอง จึงยกมาไว้ตรงจุดที่ต้องใช้
+    """
+    try:
+        import build_lldd_documents as _BA
+        rules = (_BA.JOB_DECISION_RULES.get(str(no)) or {}).get("rules") or []
+    except Exception:  # pragma: no cover
+        return []
+    if not rules:
+        return ["เงื่อนไขจริง: ดูหัวข้อ \"เงื่อนไขตัดสิน (Decision Rules)\" ของเอกสารฉบับนี้"]
+    words = {w for w in re.split(r"[\s·/()]+", text) if len(w) > 3}
+    best, score = None, 0
+    for row in rules:
+        cand = {w for w in re.split(r"[\s·/()]+", str(row[0])) if len(w) > 3}
+        hit = len(words & cand)
+        if hit > score:
+            best, score = row, hit
+    if not best:
+        return ["เงื่อนไขจริง: ดูตารางในหัวข้อ \"เงื่อนไขตัดสิน (Decision Rules)\" ของเอกสารฉบับนี้"]
+    clean = lambda t: " ".join(re.sub(r"\*\*|`", "", str(t)).split())
+    return [
+        f"เงื่อนไขจริง (จากหัวข้อเงื่อนไขตัดสิน): {clean(best[0])}",
+        f"  ตัดสินจาก: {clean(best[1])}",
+        f"  ผ่านเมื่อ: {clean(best[2])}",
+        f"  ไม่ผ่านแล้วทำอะไร: {clean(best[3])}" if len(best) > 3 else "",
+    ][:4]
 
 
 def _runner_contract_blocks(no: str, pascal: str, steps: list[dict[str, Any]], service_var: str) -> list[dict[str, Any]]:
@@ -433,19 +499,27 @@ def _runner_contract_blocks(no: str, pascal: str, steps: list[dict[str, Any]], s
         if kind == "d":
             name = f"check{order:02d}{_verb(text + ' ' + detail, 'Condition')}"
             sig = f"  async {name}(state: JobState): Promise<boolean> {{"
-            ret = "    return true; // TODO: เงื่อนไขจริงตามผัง"
+            # 🔴 ห้ามคืน true ทิ้งไว้ (แก้ 2026-09-07) — stub ที่ "ผ่านเสมอ" คือ stub ที่ deploy ขึ้น prod
+            #    ได้โดยไม่มีใครรู้ · ให้ throw เพื่อให้ล้มดังตั้งแต่รอบรันแรก แล้วแนบเงื่อนไขจริงจาก 5.96 ไว้ให้
+            ret = (f"    throw new Error('{name}: ยังไม่ได้ implement — "
+                   f"ห้าม deploy ทั้งที่ยังไม่เขียนเงื่อนไขจริง');")
         elif kind == "err":
             continue
         else:
             name = f"step{order:02d}{_verb(text + ' ' + detail, 'Process')}"
             sig = f"  async {name}(state: JobState, manager?: EntityManager): Promise<void> {{"
-            ret = "    // TODO: implement"
+            # ขั้นที่ไม่ทำอะไรเลยแต่ job รายงานว่าสำเร็จ = ข้อมูลหายเงียบ ๆ · ให้ throw เหมือนกัน
+            ret = (f"    throw new Error('{name}: ยังไม่ได้ implement — "
+                   f"ดู SQL ที่หัวข้อ Repository / SQL และกติกาที่หัวข้อเงื่อนไขตัดสิน');")
         if name in seen:
             continue
         seen.add(name)
-        methods += [f"  // {text}", sig, ret, "  }", ""]
+        head = [f"  // {text}"]
+        if kind == "d":
+            head += [f"  //   {line}" for line in _decision_rule_hint(no, text + " " + detail)]
+        methods += head + [sig, ret, "  }", ""]
     runner = "\n".join([
-        "// src/batch/runner.ts — สัญญากลางของทุก job (ประกาศครั้งเดียว ใช้ร่วมทั้ง 10 ฉบับ)",
+        "// src/modules/sgi/sgi-job.types.ts — สัญญากลางของทุก job ของ SGI (ประกาศครั้งเดียว ใช้ร่วมทั้ง 10 ฉบับ)",
         "",
         "export interface JobRunContext {",
         "  jobNo: string;",
@@ -501,9 +575,9 @@ def _runner_contract_blocks(no: str, pascal: str, steps: list[dict[str, Any]], s
     ])
     return [
         h(3, f"5.96.1 สัญญาของชั้นกลาง (`runner.ts`) + โครง service ของ Job {no}"),
-        p("job class อ้าง `JobRunContext` / `JobRunResult` / `JobState` / `JobFailedError` — ทั้งหมดนิยาม "
-          "ครั้งเดียวใน `src/batch/runner.ts` (ไฟล์ร่วมของทุก job ให้ merge ไม่ใช่เขียนทับ) และ service "
-          "ต้องมี method ครบตามตารางขั้นตอนด้านล่าง มิฉะนั้น job class จะเรียก method ที่ไม่มีอยู่"),
+        p("service อ้าง `JobRunContext` / `JobRunResult` / `JobState` / `JobFailedError` — ทั้งหมดนิยาม "
+          "ครั้งเดียวใน `src/modules/sgi/sgi-job.types.ts` (ไฟล์ร่วมของทุก job ให้ merge ไม่ใช่เขียนทับ) และ service "
+          "ต้องมี method ครบตามตารางขั้นตอนด้านล่าง มิฉะนั้น `execute(input)` จะเรียก method ที่ไม่มีอยู่"),
         code(runner, "ts"),
         code(service, "ts"),
     ]
@@ -523,7 +597,7 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
         f"  enabled = (process.env.SGI_JOB{slug}_ENABLED ?? 'true') === 'true';",
         f"  cron = process.env.SGI_JOB{slug}_CRON ?? {_ts_string(job.get('cron', ''))};",
     ]
-    iface.append("  /** cron ของ job นี้ (อ่านตอน bootstrap ของ scheduler.ts) */")
+    iface.append("  /** ตารางเวลาของ job นี้ — บันทึกไว้เพื่ออ้างอิงเท่านั้น ตัวจริงตั้งที่ AWS Batch scheduled event */")
     iface.append("  cron: string;")
     for key, row in zip(keys, params[:12]):
         label = str(row[0])
@@ -553,8 +627,8 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
     iface.append("  mailTo: string;")
 
     text = "\n".join([
-        f"// {'src/batch/sgi/' + folder + '/' + base + '.config.ts'}",
-        "// convention จริงของ store-backend คือคลาส config (`src/config/app.config.ts` ที่ export ผ่าน",
+        f"// src/config/config.ts — เพิ่มบล็อกนี้ต่อท้าย (repo ใช้ export const ไม่ใช้ registerAs)",
+        "// convention จริงของ sop-sgi-batch คือ `export const` ใน `src/config/config.ts` (ไม่ใช้ registerAs · ดูของเดิมที่",
         "// `AppConfigModule` แบบ @Global แล้วอ่าน process.env ตรง ๆ) — โปรเจกต์นี้ **ไม่ได้ใช้ registerAs**",
         "// แม้แต่จุดเดียว จึงประกาศเป็นคลาสให้รีวิว/ทดสอบเหมือน config ตัวอื่น",
         "import { Injectable } from '@nestjs/common';",
@@ -575,9 +649,10 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
     return [
         h(2, f"5.95 Config Schema ของ Job {no} (backend config / env)"),
         p(
-            f"cron ปัจจุบันของ Job {no} คือ `{job.get('cron', '-')}` ({job.get('cronTh', '-')}) — "
-            f"ประกาศเป็น `SGI_JOB{slug}_CRON` และอ่านตอน bootstrap ของ `scheduler.ts`; "
-            "ถ้า `enabled=false` scheduler ต้องไม่ลงทะเบียน cron ของ job นี้"
+            f"ตารางเวลาของ Job {no} คือ `{job.get('cron', '-')}` ({job.get('cronTh', '-')}) — "
+            "⚠️ **ตัวจริงตั้งที่ AWS Batch scheduled event ไม่ใช่ในโค้ด** (repo นี้ไม่มี `@Cron` เลย) "
+            f"ค่า `SGI_JOB{slug}_CRON` เก็บไว้เป็นเอกสารประกอบ/ตรวจสอบเท่านั้น · "
+            f"`SGI_JOB{slug}_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล (กันกรณี AWS Batch ยังยิงเข้ามา)"
         ),
         code(text, "ts"),
     ]
@@ -681,11 +756,11 @@ def _job_class_blocks(
     slug = _job_slug(no)
 
     lines: list[str] = [
-        f"// src/batch/sgi/{folder}/{base}.job.ts",
+        f"// src/modules/sgi/{base}.service.ts — execute(input) เป็น entry point เดียว",
         "import { Inject, Injectable, Logger } from '@nestjs/common';",
         "import type { DataSource, EntityManager } from 'typeorm';",
         f"import {{ {pascal}Service, type JobState }} from './{base}.service';",
-        "// 4 symbol นี้นิยามใน src/batch/runner.ts (ดูหัวข้อ 5.96.1)",
+        "// 4 symbol นี้นิยามใน src/modules/sgi/sgi-job.types.ts (ไฟล์ร่วมของทุก job — ดูหัวข้อก่อนหน้า)",
         "import { JobFailedError, JobSkippedError, JobRunContext, JobRunResult } from '../../runner';",
         "",
         "@Injectable()",
@@ -694,7 +769,7 @@ def _job_class_blocks(
         f"  private readonly logger = new Logger({pascal}Job.name);",
         "",
         "  constructor(",
-        "    // TODO: DATA_SOURCE = custom provider ที่ route SELECT/WITH ไป slave pool และ write ไป master",
+        "    // TODO: repo นี้ตั้ง replication ใน typeorm.config.ts อยู่แล้ว — SELECT ไป slave, write ไป master อัตโนมัติ",
         "    @Inject('DATA_SOURCE') private readonly dataSource: DataSource,",
         f"    private readonly {service_var}: {pascal}Service,",
         "  ) {}",
@@ -768,14 +843,14 @@ def _lock_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, An
     suffix = "1" if re.search(r"[a-zA-Z]", str(no)) else "0"
     lock_key = f"{digits}{suffix}"
     text = "\n".join([
-        "// src/batch/runner.ts (ส่วนกันรันซ้อน)",
+        "// src/modules/sgi/sgi-job.lock.ts (ของใหม่ — repo นี้ยังไม่มีกลไกกันรันซ้อนใด ๆ)",
         "import { Inject, Injectable, Logger } from '@nestjs/common';",
         "import type { DataSource } from 'typeorm';",
         "",
         "// TODO: ห้ามใช้แถวสถานะ RUNNING ในตารางเป็นตัวกัน (ไม่มีตาราง job_run_histories แล้ว)",
         "//       ใช้ PostgreSQL advisory lock ระดับ session แทน — ปลดอัตโนมัติเมื่อ connection หลุด",
         "export const SGI_JOB_LOCK_CLASS_ID = 861000; // namespace ของระบบ SGI",
-        f"export const JOB_LOCK_KEYS: Record<string, number> = {{ '{no}': {lock_key} /* TODO: เพิ่มครบทั้ง 11 job */ }};",
+        f"export const JOB_LOCK_KEYS: Record<string, number> = {{ '{no}': {lock_key} /* TODO: เพิ่มให้ครบทุก job */ }};",
         "",
         "@Injectable()",
         "export class BatchRunner {",
@@ -814,7 +889,7 @@ def _lock_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, An
         else f"Job {no} ต้องกันรันซ้อนทั้งกรณี cron ซ้อนกับ manual rerun และกรณีหลาย pod"
     )
     return [
-        h(2, f"5.97 การกันรันซ้อนของ Job {no} (PostgreSQL advisory lock)"),
+        h(2, f"5.97 การกันรันซ้อนของ Job {no} (PostgreSQL advisory lock — **ของใหม่**)"),
         p(
             f"{note} — runner ล็อกด้วย `pg_try_advisory_lock` ก่อนเริ่มขั้นแรกเสมอ "
             "และรอบที่ล็อกไม่ได้ให้จบด้วยสถานะ SKIPPED_LOCKED (ไม่ใช่ FAILED)"
@@ -828,20 +903,290 @@ def _lock_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, An
 # ---------------------------------------------------------------------------
 
 
+# ตารางของระบบ SBP เดิมที่ SGI **อ่านอย่างเดียว** — ห้าม generate INSERT/UPDATE ให้เด็ดขาด
+#   (เจอจริง 2026-09-04: Job 10 ถูก generate `INSERT INTO email_sent ...` ทั้งที่คอมเมนต์บรรทัดบน
+#    เขียนไว้เองว่า "lib เขียน log ให้เอง · SGI ไม่ INSERT เอง")
+EXISTING_SYSTEM_READONLY: dict[str, str] = {
+    "email_template": "อ่าน template ผ่าน `@gosoft-sbp/email-lib` เท่านั้น — ระบบ SBP เดิมเป็นเจ้าของ",
+    "email_sent": "**`@gosoft-sbp/email-lib` เขียนให้เอง** — SGI ห้าม INSERT/UPDATE ตารางนี้",
+    "business_user": "master ผู้ใช้ของ auth-backend — อ่านอีเมล/กลุ่มเท่านั้น",
+    "mas_param": "runtime = read-only · เขียนได้เฉพาะตอน seed/cutover",
+    "common_code": "runtime = read-only · เขียนได้เฉพาะตอน seed/cutover",
+    "common_code_type": "runtime = read-only · เขียนได้เฉพาะตอน seed/cutover",
+    "mas_store": "master ร้านของระบบเดิม — อ่านอย่างเดียว",
+    "store": "master ร้านของระบบเดิม — อ่านอย่างเดียว",
+    "sevenshop": "master ร้านของระบบเดิม — อ่านอย่างเดียว",
+    "mas_zone": "master ภาคของระบบเดิม — อ่านอย่างเดียว",
+    "fcs_qssi_score": "ระบบ SBP เดิม import ให้แล้ว (23.9 ล้านแถว) — อ่านอย่างเดียว ห้ามแก้ constraint/index",
+}
+
+_DDL_COLS_CACHE: dict[str, set[str]] | None = None
+
+
+def _ddl_columns() -> dict[str, set[str]]:
+    """คอลัมน์จริงของแต่ละตารางจาก DDL — ใช้ตัดสินว่าตารางนั้น "มีงวด" จริงไหม"""
+    global _DDL_COLS_CACHE
+    if _DDL_COLS_CACHE is not None:
+        return _DDL_COLS_CACHE
+    out: dict[str, set[str]] = {}
+    try:
+        import build_lldd_documents as _BA  # import ตอนเรียก เพราะ _BA import ไฟล์นี้ตอนโหลด
+        ddl = "\n\n".join(sql for _t, sql in _BA.database_ddl_sections())
+        for m in re.finditer(r"CREATE TABLE (?:IF NOT EXISTS )?([a-z_0-9]+)\s*\(([\s\S]*?)\n\);", ddl):
+            body = re.sub(r"--[^\n]*", "", m.group(2))
+            cols, depth, buf = set(), 0, ""
+            for ch in body:
+                if ch == "(":
+                    depth += 1
+                elif ch == ")":
+                    depth -= 1
+                if ch == "," and depth == 0:
+                    parts, buf = buf, ""
+                    w = re.match(r"([a-z_][a-z_0-9]*)\s+\S", parts.strip())
+                    if w and w.group(1).upper() not in ("CONSTRAINT", "PRIMARY", "UNIQUE", "CHECK", "FOREIGN"):
+                        cols.add(w.group(1))
+                else:
+                    buf += ch
+            w = re.match(r"([a-z_][a-z_0-9]*)\s+\S", buf.strip())
+            if w and w.group(1).upper() not in ("CONSTRAINT", "PRIMARY", "UNIQUE", "CHECK", "FOREIGN"):
+                cols.add(w.group(1))
+            out[m.group(1)] = cols
+    except Exception:  # pragma: no cover
+        pass
+    _DDL_COLS_CACHE = out
+    return out
+
+
+_DDL_PK_CACHE: dict[str, list[str]] | None = None
+
+
+def _ddl_primary_keys() -> dict[str, list[str]]:
+    """PK จริงของแต่ละตาราง — ใช้เป็น ORDER BY ที่ทำให้ลำดับคงที่ (แทน TODO เดิม)"""
+    global _DDL_PK_CACHE
+    if _DDL_PK_CACHE is not None:
+        return _DDL_PK_CACHE
+    out: dict[str, list[str]] = {}
+    try:
+        import build_lldd_documents as _BA
+        ddl = "\n\n".join(sql for _t, sql in _BA.database_ddl_sections())
+        for m in re.finditer(r"CREATE TABLE (?:IF NOT EXISTS )?([a-z_0-9]+)\s*\(([\s\S]*?)\n\);", ddl):
+            body = re.sub(r"--[^\n]*", "", m.group(2))
+            inline = re.search(r"^\s*([a-z_][a-z_0-9]*)\s+[^,\n]*PRIMARY KEY", body, re.M)
+            table_level = re.search(r"PRIMARY KEY\s*\(([^)]*)\)", body)
+            if inline:
+                out[m.group(1)] = [inline.group(1)]
+            elif table_level:
+                out[m.group(1)] = [c.strip() for c in table_level.group(1).split(",")]
+    except Exception:  # pragma: no cover
+        pass
+    _DDL_PK_CACHE = out
+    return out
+
+
+# คอลัมน์ที่ห้ามปรากฏในตัวอย่าง SELECT ของเอกสาร (เอกสารถูกแจกทั้งทีม)
+SENSITIVE_COLUMNS: set[str] = {"password", "passwd", "secret", "token", "id_card", "citizen_id"}
+
+# WHERE ที่ "รู้อยู่แล้ว" ของตารางระบบเดิม — ไม่ต้องปล่อยเป็น 1 = 1
+#   ที่มา: FgiConstant (GM_GROUP_ID=38 · OPT_GROUP_ID=15) และ db-schema-sps_store.md
+LEGACY_WHERE: dict[str, str] = {
+    "business_user": "group_id IN ($1 /* GM_GROUP_ID = 38 */, $2 /* OPT_GROUP_ID = 15 */)\n"
+                     "   AND email IS NOT NULL AND email <> ''",
+    "email_template": "email_template_id = $1  -- เลข template มาจาก workflow_route.email_id ห้าม hardcode",
+    "mas_param": "active_flag = 'Y' AND param_code = $1\n"
+                 "   -- ⚠️ ตารางนี้ไม่มี PK/unique (93,752 แถว) — ต้อง LIMIT 1 เสมอ",
+    "common_code": "code_type = $1 AND active_flag = 'Y'",
+    "fcs_qssi_score": "category = $1 AND score_period = $2\n"
+                      "   -- ⚠️ ต้องวนตรวจ **ทีละหมวด** ตาม categoryQssi = 8,9,12,1,10,16\n"
+                      "   --    ห้ามใช้ category IN (...) รวบเดียว (ดูหัวข้อ SQL ตรวจความครบของ QSSI)",
+    "workflow_transaction": "version_id = $1 AND current_state_id = ANY($2)\n"
+                            "   -- ⚠️ ตารางนี้ไม่มี PK และไม่มี index เลย (19,283 แถว) — ประเมินต้นทุน query ก่อนใช้",
+}
+
+_LEGACY_COLS_CACHE: dict[str, list[str]] | None = None
+
+
+def _legacy_columns() -> dict[str, list[str]]:
+    """คอลัมน์จริงของตารางระบบเดิม อ่านจาก `SBP/db-schema-sps_store.md` (ตารางฐานจริงที่ dump ไว้)
+
+    เพิ่ม 2026-09-04: เดิม skeleton ของตารางระบบเดิมออกมาเป็น `SELECT /* TODO: columns */`
+    ทั้งที่โครงจริงมีให้อ่านอยู่แล้วในไฟล์นี้ — ไม่มีเหตุผลจะปล่อยเป็นช่องว่าง
+    """
+    global _LEGACY_COLS_CACHE  # noqa: PLW0603
+    if _LEGACY_COLS_CACHE is not None:
+        return _LEGACY_COLS_CACHE
+    out: dict[str, list[str]] = {}
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "SBP", "db-schema-sps_store.md")
+    try:
+        text = io.open(path, encoding="utf-8").read()
+    except Exception:  # pragma: no cover
+        _LEGACY_COLS_CACHE = out
+        return out
+    for m in re.finditer(r"^#+ +`?([a-z_][a-z_0-9]*)`?[^\n]*\n([\s\S]*?)(?=\n#+ |\Z)", text, re.M):
+        cols = re.findall(r"^\| *\d+ *\| *`([a-z_][a-z_0-9]*)`", m.group(2), re.M)
+        if cols:
+            out.setdefault(m.group(1), cols)
+    _LEGACY_COLS_CACHE = out
+    return out
+
+
+def _column_list(name: str, limit: int = 12) -> str:
+    """รายชื่อคอลัมน์จริงสำหรับ SELECT — ตัดที่ limit แล้วบอกให้ตัดต่อเองถ้าไม่ได้ใช้ครบ"""
+    cols = sorted(_ddl_columns().get(name, set()))
+    if not cols:
+        # ชื่อที่มี schema prefix เช่น sps_store.workflow_transaction ต้องตัด prefix ก่อนค้น
+        legacy = _legacy_columns().get(name) or _legacy_columns().get(name.split(".")[-1])
+        # 🔴 คอลัมน์อ่อนไหวห้ามโผล่ในตัวอย่าง SELECT ของเอกสาร
+        legacy = [c for c in (legacy or []) if c not in SENSITIVE_COLUMNS] or None
+        if legacy:
+            shown = legacy[:limit]
+            return (", ".join(shown)
+                    + f"   -- คอลัมน์จริงจาก SBP/db-schema-sps_store.md (ทั้งตารางมี {len(legacy)} คอลัมน์) "
+                      "· ตัดที่ job นี้ไม่ได้ใช้ออก")
+        return "/* TODO: ตารางของระบบเดิม — เปิด db-schema-sps_store.md แล้วเลือกเฉพาะคอลัมน์ที่ใช้ */"
+    pk = _ddl_primary_keys().get(name, [])
+    ordered = pk + [c for c in cols if c not in pk]
+    shown = ordered[:limit]
+    tail = f"   -- ตัดคอลัมน์ที่ job นี้ไม่ได้ใช้ออก (ทั้งตารางมี {len(cols)} คอลัมน์)"
+    return ", ".join(shown) + tail
+
+
+_DDL_REQUIRED_CACHE: dict[str, list[str]] | None = None
+
+
+def _ddl_required_columns() -> dict[str, list[str]]:
+    """คอลัมน์ NOT NULL ที่ไม่มี DEFAULT — INSERT ขาดตัวไหนก็พังทันที จึงต้องอยู่ในลิสต์เสมอ"""
+    global _DDL_REQUIRED_CACHE
+    if _DDL_REQUIRED_CACHE is not None:
+        return _DDL_REQUIRED_CACHE
+    out: dict[str, list[str]] = {}
+    try:
+        import build_lldd_documents as _BA
+        ddl = "\n\n".join(sql for _t, sql in _BA.database_ddl_sections())
+        for m in re.finditer(r"CREATE TABLE (?:IF NOT EXISTS )?([a-z_0-9]+)\s*\(([\s\S]*?)\n\);", ddl):
+            body = re.sub(r"--[^\n]*", "", m.group(2))
+            need: list[str] = []
+            depth, buf = 0, ""
+            for ch in body + ",":
+                if ch == "(":
+                    depth += 1
+                elif ch == ")":
+                    depth -= 1
+                if ch == "," and depth == 0:
+                    part = " ".join(buf.split())
+                    buf = ""
+                    w = re.match(r"([a-z_][a-z_0-9]*)\s+(\S+)(.*)$", part)
+                    if not w or w.group(1).upper() in ("CONSTRAINT", "PRIMARY", "UNIQUE", "CHECK", "FOREIGN"):
+                        continue
+                    rest = w.group(3).upper()
+                    if "NOT NULL" in rest and "DEFAULT" not in rest and "SERIAL" not in w.group(2).upper():
+                        need.append(w.group(1))
+                else:
+                    buf += ch
+            out[m.group(1)] = need
+    except Exception:  # pragma: no cover
+        pass
+    _DDL_REQUIRED_CACHE = out
+    return out
+
+
+def _writable_columns(name: str, limit: int = 14) -> list[str]:
+    """คอลัมน์ที่ job เขียนได้จริง — ตัด serial PK และคอลัมน์เวลาที่มี DEFAULT ออก
+
+    ⚠️ คอลัมน์ NOT NULL ที่ไม่มี DEFAULT ต้องอยู่ในลิสต์เสมอ ต่อให้เกิน limit
+    (ไม่งั้น INSERT ที่ generate ออกมาจะพังตอนรัน — เจอจริง 2026-09-04)
+    """
+    cols = sorted(_ddl_columns().get(name, set()))
+    pk = _ddl_primary_keys().get(name, [])
+    skip = {"id", "created_at", "updated_at"}
+    required = [c for c in _ddl_required_columns().get(name, []) if c not in skip]
+    head = [c for c in pk if c not in skip and c not in required]
+    rest = [c for c in cols if c not in skip and c not in pk and c not in required]
+    return required + head + rest[: max(0, limit - len(required) - len(head))]
+
+
+def _insert_columns(name: str) -> str:
+    cols = _writable_columns(name)
+    return ", ".join(cols) if cols else "/* TODO: ตารางของระบบเดิม — ดู db-schema-sps_store.md */"
+
+
+def _insert_values(name: str) -> str:
+    cols = _writable_columns(name)
+    if not cols:
+        return "/* TODO: bind params */"
+    return ", ".join(f"${i + 1} /* {c} */" for i, c in enumerate(cols))
+
+
+def _do_update_set(name: str) -> str:
+    """คอลัมน์ที่ยอมให้ทับตอน upsert = คอลัมน์ที่เขียนได้ ลบคีย์ที่ใช้ชน conflict ออก"""
+    keys = {c.strip() for c in (BUSINESS_UNIQUE_KEYS.get(name) or "").split(",") if c.strip()}
+    cols = [c for c in _writable_columns(name, limit=20) if c not in keys]
+    if not cols:
+        return "/* TODO: คอลัมน์ที่ยอมให้ทับ */"
+    return ", ".join(f"{c} = EXCLUDED.{c}" for c in cols) + ","
+
+
+def _updated_by(name: str, no: str) -> str:
+    """เติม updated_by ให้เฉพาะตารางที่มีคอลัมน์นี้จริง — ไม่งั้น SQL พังตอนรัน"""
+    return f", updated_by = 'JOB{_job_slug(no)}'" if "updated_by" in _ddl_columns().get(name, set()) else ""
+
+
+def _order_by(name: str) -> str:
+    pk = _ddl_primary_keys().get(name) or []
+    if pk:
+        return ", ".join(pk) + "   -- PK ทำให้ลำดับคงที่ระหว่างแบ่งหน้า"
+    uniq = BUSINESS_UNIQUE_KEYS.get(name)
+    if uniq:
+        return uniq + "   -- business unique key (ตารางนี้ไม่มี PK คอลัมน์เดียว)"
+    legacy = _legacy_columns().get(name) or _legacy_columns().get(name.split(".")[-1])
+    if legacy:
+        # ตารางระบบเดิมส่วนใหญ่ไม่มี PK ที่ dump ไว้ — ใช้คอลัมน์ id ตัวแรกที่เจอเป็นคีย์เรียง
+        for candidate in legacy:
+            if candidate.endswith("_id") or candidate == "id":
+                return candidate + "   -- ตารางระบบเดิมไม่มี PK ที่ประกาศไว้ · ใช้คอลัมน์นี้ให้ลำดับคงที่"
+        return legacy[0] + "   -- ตารางระบบเดิมไม่มี PK ที่ประกาศไว้ · ยืนยันคีย์เรียงกับเจ้าของระบบก่อนใช้"
+    return "/* TODO: คีย์ที่ทำให้ลำดับคงที่ */"
+
+
+def _bare_table(name: str) -> str:
+    """ตัดคำอธิบายในวงเล็บออกจากชื่อตาราง — ป้ายกำกับอย่าง `(ระบบ SBP เดิม)` ห้ามหลุดเข้า SQL
+
+    เจอจริง 2026-09-04: skeleton ออกมาเป็น `FROM email_template (ระบบ SBP เดิม)` ซึ่งรันไม่ได้
+    """
+    return str(name).split(" (")[0].strip()
+
+
 def _sql_for_table(name: str, mode: str, usage: str, no: str, job: dict[str, Any]) -> list[str]:
     mode = (mode or "R").upper()
-    lines = [f"-- [{mode}] {name} : {usage}"]
+    label = str(name)
+    name = _bare_table(name)
+    lines = [f"-- [{mode}] {label} : {usage}"]
+    if name.startswith("("):
+        # ไม่ใช่ตารางจริง เช่น "(application log แบบ structured)" หรือ "(backend config)"
+        # ⚠️ เดิมเช็คทีหลัง `mode == "R"` จึงไม่เคยทำงาน — skeleton ออกมาเป็น `FROM (backend config)`
+        lines.extend([
+            f"-- {label} ไม่ใช่ตารางในฐานข้อมูล — ไม่มี SQL",
+            "-- อ่านค่าจาก config/env ตอน bootstrap · บันทึกผลการรันเป็น structured log บรรทัดเดียวจบ",
+            "-- (jobNo · runId · period · counts · durationMs · outcome)",
+            "",
+        ])
+        return lines
+    if name in EXISTING_SYSTEM_READONLY and mode != "R":
+        lines.append(f"-- 🔴 ห้ามเขียนตารางนี้ — {EXISTING_SYSTEM_READONLY[name]}")
+        lines.append("--    ถ้าต้องบันทึกร่องรอย ให้ลงที่ `sgi_interface_transactions` หรือ structured log ของ job แทน")
+        lines.append("")
+        return lines
     if name in _REPLACED_TABLES:
         lines.append(f"-- TODO: ห้ามเขียน SQL ตรงกับตารางนี้ — {_REPLACED_TABLES[name]}")
         lines.append("")
         return lines
     if name == "sgi_interface_transactions" and mode == "R":
         lines.extend([
-            "-- TODO: อ่านรายการที่ยังไม่ได้ ACK (safety net) — ยืนยันชื่อสถานะ/คอลัมน์เวลากับ database.md",
+            "-- อ่านรายการขาออกที่ broker ยังไม่ publisher confirm (มติ 2026-09-08 ข้อ 2.13 — ไม่ใช่การรอ ACK จาก STA)",
             "SELECT id, data_name, direction, status, business_key, period_key, file_name, created_at",
             "  FROM sgi_interface_transactions",
             f" WHERE data_name = ANY($1)  -- TODO: รายการ interface ที่ Job {no} เฝ้าดู (ไม่ใช่ job_no ของตัวเอง)",
-            "   AND status IN ('READY', 'SENT')  -- TODO: สถานะที่ถือว่ายังไม่มี ACK",
+            "   AND (outbox_status IS NULL OR outbox_status <> 'CONFIRMED')  -- ยังไม่ได้ publisher confirm",
             "   AND created_at < NOW() - ($2 || ' hours')::interval  -- TODO: threshold จาก config",
             " ORDER BY created_at;",
             "",
@@ -860,53 +1205,72 @@ def _sql_for_table(name: str, mode: str, usage: str, no: str, job: dict[str, Any
             "",
         ])
         return lines
-    has_period = "impact" in name or name.startswith("fgi_") or name.startswith("fcs_")
-    period_filter = (
-        " WHERE impact_year = $1 AND impact_month = $2  -- TODO: ยืนยันชื่อคอลัมน์งวดกับ database.md"
-        if has_period
-        else " WHERE /* TODO: เงื่อนไขงวด/สถานะที่ job นี้คัดแถว */ 1 = 1"
-    )
+    # ⚠️ เดิมเดา "มีงวด" จากชื่อตาราง (`"impact" in name`) ทำให้ sgi_impacted_stores ซึ่ง**ไม่มี**
+    #    impact_year/impact_month ถูก generate WHERE ที่คอลัมน์ไม่มีจริง — ตอนนี้ดูจาก DDL จริง
+    _cols = _ddl_columns().get(name, set())
+    _period = [c for c in ("impact_year", "impact_month", "impact_month_key", "period_key") if c in _cols]
+    has_period = len(_period) >= 1
+    if has_period:
+        period_filter = " WHERE " + " AND ".join(
+            f"{c} = ${i + 1}" for i, c in enumerate(_period[:2])) + "  -- คอลัมน์งวดจริงของตารางนี้ตาม DDL"
+    elif (name.split(".")[-1]) in LEGACY_WHERE:
+        period_filter = " WHERE " + LEGACY_WHERE[name.split(".")[-1]]
+    elif name in EXISTING_SYSTEM_READONLY:
+        period_filter = f" WHERE /* เงื่อนไขคัดแถว — {EXISTING_SYSTEM_READONLY[name]} */ 1 = 1"
+    else:
+        # ⚠️ เดิมปล่อย `1 = 1` เปล่า ๆ (แก้ 2026-09-07) — ถ้าตารางมีคอลัมน์ที่ใช้คัดแถวได้จริง
+        #    ให้เขียนเงื่อนไขนั้นลงไปเลย เหลือแค่ค่าที่ job ตัดสิน ไม่ใช่ให้ dev ไปหาเองว่าจะกรองด้วยอะไร
+        _pk = [c for c in _ddl_primary_keys().get(name, []) if c != "id"]
+        _pick = next((c for c in ("doc_no", "impact_process_id", "sales_summary_id",
+                                  "impacted_store_code", "store_code", "ref_doc_no",
+                                  "status_code", "accounting_status", "is_active") if c in _cols),
+                     _pk[0] if _pk else None)
+        if _pick == "is_active":
+            period_filter = " WHERE is_active = TRUE   -- คัดเฉพาะร้านที่ยัง active (ตารางนี้ไม่มีคอลัมน์งวด)"
+        elif _pick:
+            period_filter = (f" WHERE {_pick} = $1"
+                             f"   -- คีย์ที่ job นี้ใช้คัดแถว (ตารางนี้ไม่มีคอลัมน์งวดของตัวเอง)")
+        else:
+            period_filter = (f" WHERE /* ตารางนี้ไม่มีทั้งคอลัมน์งวดและคีย์คัดแถว — เลือกจาก: "
+                             f"{', '.join(sorted(_cols)[:6]) or 'ดู DDL'} */ 1 = 1")
+    _n_period = min(len(_period), 2) if has_period else 0
+    if not has_period:
+        # WHERE ของตารางระบบเดิมอาจใช้ $n ไปแล้ว — LIMIT/OFFSET ต้องต่อเลขจากตรงนั้น
+        _used = re.findall(r"\$(\d+)", period_filter)
+        _n_period = max((int(x) for x in _used), default=0)
     if mode == "R":
-        page_params = "$3 OFFSET $4" if has_period else "$1 OFFSET $2"
+        page_params = f"${_n_period + 1} OFFSET ${_n_period + 2}"
         lines.extend([
-            "-- TODO: เติมเฉพาะคอลัมน์ที่ job ใช้จริง (ห้าม SELECT *) และตรวจว่ามี index รองรับ WHERE นี้",
-            "SELECT /* TODO: columns */",
+            "-- คอลัมน์มาจาก DDL จริงของตารางนี้ (ห้าม SELECT *) · ตรวจว่ามี index รองรับ WHERE ก่อนขึ้น prod",
+            f"SELECT {_column_list(name)}",
             f"  FROM {name}",
             period_filter,
-            " ORDER BY /* TODO: คีย์ที่ทำให้ลำดับคงที่ */",
-            f" LIMIT {page_params};  -- TODO: อ่านเป็น chunk กัน memory บวม",
+            f" ORDER BY {_order_by(name)}",
+            f" LIMIT {page_params};  -- อ่านเป็น chunk กัน memory บวม",
             "",
         ])
         return lines
     if mode in {"R/W", "RW"}:
         lines.extend([
-            "-- TODO: อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน",
-            "SELECT /* TODO: PK + คอลัมน์ที่ต้องใช้ */",
+            "-- อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน",
+            f"SELECT {_column_list(name, limit=8)}",
             f"  FROM {name}",
             period_filter,
             "   FOR UPDATE SKIP LOCKED;",
             "",
             f"UPDATE {name}",
             "   SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */",
-            f"       updated_at = NOW(), updated_by = 'JOB{_job_slug(no)}'",
-            " WHERE /* TODO: PK ที่ล็อกไว้ */ id = ANY($1);",
-            "",
-        ])
-        return lines
-    if name.startswith("("):
-        # ไม่ใช่ตารางจริง (เช่น "(application log แบบ structured)" ที่มาแทน job_run_histories ที่ถูกตัด)
-        lines.extend([
-            f"-- {name} ไม่ใช่ตารางในฐานข้อมูล — ไม่มี SQL",
-            "-- บันทึกผลการรันเป็น structured log บรรทัดเดียวจบ (jobNo · runId · period · counts · durationMs · outcome)",
+            f"       updated_at = NOW(){_updated_by(name, no)}",
+            " WHERE /* id ที่ล็อกไว้จาก SELECT ... FOR UPDATE ข้างบน */ id = ANY($1);",
             "",
         ])
         return lines
     conflict = BUSINESS_UNIQUE_KEYS.get(name)
     lines.extend([
-        "-- TODO: เติมคอลัมน์ payload จริงจาก database.md",
+        "-- คอลัมน์มาจาก DDL จริง — ตัดคอลัมน์ที่ job นี้ไม่ได้เขียนออก แล้วเลื่อนเลข $n ให้ตรง",
         f"INSERT INTO {name}",
-        "  (/* TODO: business key + payload + created_by, created_at */)",
-        "VALUES (/* TODO: bind params ตามลำดับคอลัมน์ด้านบน */)",
+        f"  ({_insert_columns(name)})",
+        f"VALUES ({_insert_values(name)})",
         (f"ON CONFLICT ({conflict})   -- unique key จริงตาม DDL ของ {name} (ห้ามเดา)"
          if conflict else (
              "-- ⚠️ ตารางของ @srm/glb-workflow — SGI ห้าม INSERT/UPDATE ตรง ต้องเรียกผ่าน engine เท่านั้น\n"
@@ -918,8 +1282,8 @@ def _sql_for_table(name: str, mode: str, usage: str, no: str, job: dict[str, Any
              "--    ระหว่างยังไม่ปิด: ลบงวดเดิมก่อนแล้ว INSERT ใหม่ใน transaction เดียว\n"
              "ON CONFLICT (/* ยังใช้ไม่ได้ — ดูหมายเหตุด้านบน */)"
          )),
-        "DO UPDATE SET /* TODO: คอลัมน์ที่ยอมให้ทับ */",
-        f"       updated_at = NOW(), updated_by = 'JOB{_job_slug(no)}';",
+        f"DO UPDATE SET {_do_update_set(name)}",
+        f"       updated_at = NOW(){_updated_by(name, no)};",
         "",
     ])
     return lines
@@ -942,7 +1306,7 @@ def _sql_blocks(no: str, pascal: str, tables: list[list[Any]], job: dict[str, An
     ]
     blocks.append(p(
         f"repository ของ Job {no} ประกาศเป็น factory provider "
-        f"(`{{provide: '{_upper_snake(_camel(_tokens(pascal)))}_REPOSITORY', useFactory: (ds) => ds.getRepository(Entity), inject: ['DATA_SOURCE']}}`) "
+        f"(`{{provide: '{_upper_snake(_camel(_tokens(pascal)))}_REPOSITORY', useFactory: (ds) => ds.getRepository(Entity), inject: [DataSource]}}`) "
         "แล้วยิง raw SQL ตามแบบ module ธุรกิจอื่นของ store-backend (schema `sps_store` มาจาก search_path)"
     ))
     blocks.append(table(["ตาราง", "R/W", "การใช้งานตามผัง", "หมายเหตุ target design"], rows))
@@ -971,9 +1335,9 @@ def _notify_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, 
     slug = _job_slug(no)
     meta = job.get("meta", {}) or {}
     text = "\n".join([
-        "// src/batch/job-failure.notifier.ts",
+        "// src/modules/sgi/sgi-job-failure.notifier.ts (ใช้ @gosoft-sbp/email-lib ที่ repo มีอยู่แล้ว)",
         "import { Injectable, Logger } from '@nestjs/common';",
-        "// ชื่อ method ของ lib ที่ store-backend เรียกจริงคือ `sendMail` (ไม่ใช่ sendEmail) และ",
+        "// ชื่อ method ของ lib ที่ repo นี้เรียกจริงคือ `sendMail` (ไม่ใช่ sendEmail) และ",
         "// `mailTo` / `mailCc` เป็น **string** คั่นด้วย comma — ดู evaluation-process.service.ts,",
         "// external-audit.service.ts, statement.service.ts, inform-evaluate.service.ts, performance.service.ts",
         "import { EmailLibService } from '@gosoft-sbp/email-lib';",
@@ -983,7 +1347,7 @@ def _notify_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, 
         "export class JobFailureNotifier {",
         "  private readonly logger = new Logger(JobFailureNotifier.name);",
         "  // TODO: ใช้ lib อีเมลของระบบเดิม — template อยู่ในตาราง email_template และ log ลง email_sent อัตโนมัติ",
-        "  //       (ตั้งชื่อ property ว่า mailService ตาม call site เดิมทุกที่ใน store-backend)",
+        "  //       (ตั้งชื่อ property ว่า mailService ตาม call site เดิมของ sop-sgi-batch)",
         "  constructor(private readonly mailService: EmailLibService) {}",
         "",
         "  async notifyFailure(jobNo: string, ctx: JobRunContext, error: Error): Promise<void> {",

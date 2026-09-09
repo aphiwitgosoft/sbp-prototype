@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | **34 ชั่วโมง** = implementation 26 + unit test 8 (30%) |
-| Owner | Peerakorn <Pete> Sakunkaewphithak |
+| Owner | Peerakorn &lt;Pete&gt; Sakunkaewphithak |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ APIs สำหรับไฟล์แนบ ข้อมูลยอดขายเพิ่มเติม และ timeline/history |
 
@@ -84,9 +84,10 @@ Attachment API จัดการ binary file จริง ไม่ใช่บ
 | Bucket/container | **bucket ของระบบเดิม** (ทีม SBP เป็นผู้กำหนด) | ไฟล์ของ SGI ใช้ prefix ของตัวเองใต้ bucket เดียวกับระบบเดิม — lifecycle/backup เป็นของ infra ฝั่งนั้น ไม่ใช่ของ SGI |
 | Object key | `documents/{year}/{docNoSafe}/{attachId}/{sha256Prefix}-{safeFileName}` | `docNoSafe` แทน `/` ด้วย `-`; sanitize filename ก่อนใช้ใน key |
 | Quarantine / AV | **แยกสถานะสแกนออกจากสถานะไฟล์** | 🔴 ไม่พบ AV scanner ในเอกสารวิเคราะห์ระบบเดิมเลย · จนกว่าจะยืนยัน ให้ `scan_status` เริ่มที่ `PENDING` และ **ตัดสินร่วมกับทีม infra** ว่าจะสแกนที่ไหน (ฝั่ง S3 event · ฝั่ง SGI · หรือยอมรับความเสี่ยง) — ห้ามสมมติว่ามีของให้ใช้แล้ว |
-| Allowed extension | vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv | ตรวจทั้ง extension และ content type/magic bytes เท่าที่ platform รองรับ |
-| AV scan status | PENDING -> CLEAN หรือ BLOCKED/FAILED | download อนุญาตเฉพาะ CLEAN; BLOCKED/FAILED คืน FILE_SCAN_BLOCKED |
-| Max size | 5 MB ต่อไฟล์ | เกินให้คืน 413 FILE_TOO_LARGE ก่อน upload เข้า storage |
+| Allowed extension | vsd, dwg, afp, pdf, mda, zip, wav, mp3, gif, jpg, tif, tiff, htm, html, txt, xml, mpg, mov, ivs, doc, docx, xls, xlsx, pps, ppt, pot, csv | ตรวจทั้ง extension และ content type/magic bytes เท่าที่ platform รองรับ · ไม่อยู่ใน allowlist → **415 `FILE_TYPE_UNSUPPORTED`** |
+| AV scan status | PENDING -> CLEAN หรือ BLOCKED/FAILED | `CLEAN` ดาวน์โหลดได้เสมอ · `BLOCKED`/`FAILED` คืน 422 `FILE_SCAN_BLOCKED` เสมอ · `PENDING` ขึ้นกับสวิตช์ `SGI_ALLOW_PENDING_DOWNLOAD` (`mas_param`) — รายละเอียดเต็มที่หัวข้อ Download Flow |
+| Max size | 5 MB ต่อไฟล์ | เกินให้คืน **413 `FILE_TOO_LARGE`** ก่อน upload เข้า storage |
+| ต้องเลือกไฟล์ก่อน | กดปุ่มแนบเอกสารโดยยังไม่เลือกไฟล์ | คืน **422 `ATTACHMENT_FILE_REQUIRED`** พร้อมข้อความ verbatim "กรุณาเลือกไฟล์ที่ต้องการแนบ ก่อนกดแนบเอกสาร" — FE ต้องกันไว้ก่อนยิง API ด้วย |
 
 ### 5.2 Attachment Metadata Fields
 
@@ -100,7 +101,7 @@ Attachment API จัดการ binary file จริง ไม่ใช่บ
 | fileSizeBytes | ขนาดไฟล์ | ต้อง <= 5 MB |
 | storageProvider/bucketName/objectKey | ตำแหน่ง binary | ห้าม expose objectKey ตรงให้ FE |
 | sha256 | checksum | ใช้ตรวจ duplicate/corruption |
-| scanStatus/scannedAt/scanMessage | ผล AV scan | download ได้เฉพาะ CLEAN |
+| scanStatus/scannedAt/scanMessage | ผล AV scan · เริ่มที่ `PENDING` เสมอตอนอัปโหลด | `CLEAN` ดาวน์โหลดได้เสมอ · `BLOCKED`/`FAILED` คืน 422 `FILE_SCAN_BLOCKED` เสมอ · `PENDING` ขึ้นกับสวิตช์ `SGI_ALLOW_PENDING_DOWNLOAD` (`mas_param`) |
 | uploadedBy/uploadedAt/deletedFlag | audit metadata | soft delete เท่านั้นเมื่อมีการลบภายหลัง |
 
 ### 5.3 Upload Flow
@@ -116,11 +117,23 @@ Attachment API จัดการ binary file จริง ไม่ใช่บ
 
 ### 5.4 Download Flow and Authorization
 
+**นโยบายเดียวของทั้งระบบ (ปิดข้อขัดแย้ง 2026-09-07 · ยังรอ security sign-off — ดู `DECISIONS-รอตัดสินใจ.md` ข้อ 2.10):**
+
+| `scan_status` | ดาวน์โหลดได้ไหม | ทำอะไร |
+| --- | --- | --- |
+| `CLEAN` | ✅ ได้เสมอ | stream ไฟล์ตามปกติ |
+| `BLOCKED` · `FAILED` | ❌ ไม่ได้เสมอ | คืน **422 `FILE_SCAN_BLOCKED`** — ห้ามมีทางลัดใด ๆ |
+| `PENDING` | ⚠️ ขึ้นกับสวิตช์ | อ่าน `SGI_ALLOW_PENDING_DOWNLOAD` จาก `mas_param` · `Y` = ให้ดาวน์โหลดได้ แต่ต้องแนบ header `X-SGI-Scan-Status: PENDING` และ FE ต้องขึ้นคำเตือนว่ายังไม่ผ่านการสแกน · `N` = คืน 422 `FILE_SCAN_BLOCKED` เหมือน BLOCKED |
+
+**ทำไมต้องมีสวิตช์แทนที่จะบังคับ `CLEAN` ตรง ๆ:** ตรวจแล้วว่า**ยังไม่มีตัวสแกนไวรัสในระบบใดเลย** (ไม่พบ clamav/antivirus/GuardDuty ใน `store-backend` · `sbp-bff` · `sop-sgi-batch` · `POST /statement/upload-file-aws` แค่วางไฟล์ลง S3) ถ้าบังคับ `CLEAN` วันนี้ `scan_status` จะค้างที่ `PENDING` ตลอด **แล้วไฟล์แนบทั้งระบบจะดาวน์โหลดไม่ได้เลย** · การมีสวิตช์ทำให้เลือกได้โดยไม่ต้องแก้โค้ด และ**พลิกกลับเป็นเข้มได้ทันที**
+
+**ค่าตั้งต้นและเงื่อนไขปิด:** ตั้ง `SGI_ALLOW_PENDING_DOWNLOAD = 'Y'` เฉพาะช่วงที่ยังไม่มีตัวสแกน · **วันที่ตัวสแกนขึ้น production ต้องเปลี่ยนเป็น `'N'` ทันทีในรอบ deploy เดียวกัน** และตัดสวิตช์ทิ้งในเฟสถัดไป · 🔴 ค่านี้เป็นการตัดสินใจด้าน security — **ต้องให้ทีม security/infra เซ็นรับก่อน UAT** ห้ามทีมพัฒนาตั้งเอง
+
 | Step | Backend behavior | Error / response |
 | --- | --- | --- |
 | 1. Validate path | ตรวจ docNo/attachId และ attachment belongs to docNo | ไม่พบคืน 404 |
 | 2. Authorize read | สิทธิ์เท่ากับ document read หรือ report/admin ที่ได้รับสิทธิ์ | ไม่มีสิทธิ์คืน 403 |
-| 3. Check scan | อนุญาตเฉพาะ `scan_status` ที่นโยบายกำหนดว่าดาวน์โหลดได้ และ `deleted_flag = false` | 🔴 **อนุญาต `PENDING` ให้ดาวน์โหลดได้ด้วย** — ถ้าบังคับ `CLEAN` อย่างเดียวและตัวสแกนยังไม่อัปเดตสถานะ จะดาวน์โหลดไม่ได้เลยทั้งระบบ · BLOCKED/FAILED คืน 422 FILE_SCAN_BLOCKED เสมอ |
+| 3. Check scan | ตัดสินตามนโยบายเดียวด้านล่าง และ `deleted_flag = 'N'` (คอลัมน์เป็น CHAR(1) ไม่ใช่ boolean) | `CLEAN` ดาวน์โหลดได้เสมอ · `BLOCKED`/`FAILED` คืน 422 `FILE_SCAN_BLOCKED` เสมอ · `PENDING` ขึ้นกับสวิตช์ `SGI_ALLOW_PENDING_DOWNLOAD` (`mas_param`) — **ห้าม hardcode รายการสถานะในโค้ด** ให้อ่านสวิตช์จาก `mas_param` ทุกครั้ง |
 | 4. Stream | เรียก `POST /statement/download-file-aws` ได้ **base64** แล้ว decode เป็น buffer ก่อน stream ออกไป | 🔴 **ไม่มี signed URL ให้ใช้** — wrapper ของระบบเดิมไม่คืน presigned url · ตั้ง Content-Type และ Content-Disposition จาก metadata |
 | 5. Audit | บันทึกร่องรอยการดาวน์โหลดที่ **application log** (structured) | 🔴 ตาราง `audit_logs` ถูกตัดไปแล้ว 2026-08-07 — ห้ามอ้างตารางนี้ · ต้อง trace userId/docNo/attachId/requestId ได้จาก log |
 
@@ -133,15 +146,18 @@ Attachment API จัดการ binary file จริง ไม่ใช่บ
 ### 5.6 Attachment Repository SQL Reference
 
 ```sql
+-- bind ตามลำดับ: $1=docNo · $2=sectionCode · $3=fileName · $4=mimeType · $5=fileSize · $6=storageProvider · $7=bucket · $8=objectKey · $9=sha256 · $10=userId · $11=attachId
 -- Insert metadata after storage write and AV scan pass.
 INSERT INTO sgi_document_attachments (
     doc_no, section_code, file_name, mime_type, file_size,
     storage_provider, bucket, object_key, sha256,
     scan_status, scanned_at, uploaded_by, uploaded_at, deleted_flag
 ) VALUES (
-    :docNo, :sectionCode, :fileName, :mimeType, :fileSize,
-    :storageProvider, :bucket, :objectKey, :sha256,
-    'CLEAN', CURRENT_TIMESTAMP, :userId, CURRENT_TIMESTAMP, 'N'
+    $1 /* docNo */, $2 /* sectionCode */, $3 /* fileName */, $4 /* mimeType */, $5 /* fileSize */,
+    $6 /* storageProvider */, $7 /* bucket */, $8 /* objectKey */, $9 /* sha256 */,
+    'PENDING', NULL, $10 /* userId */, CURRENT_TIMESTAMP, 'N'
+    -- ⚠️ scan_status เริ่มที่ PENDING เสมอ · scanned_at เป็น NULL จนกว่าตัวสแกนจะอัปเดต
+    --    (เขียน CLEAN ตอน insert = ประกาศว่าสแกนผ่านทั้งที่ยังไม่มีตัวสแกนในระบบ)
 )
 RETURNING attach_id;
 
@@ -150,8 +166,8 @@ SELECT
     attach_id, doc_no, file_name, mime_type, file_size,
     storage_provider, bucket, object_key, sha256, scan_status
 FROM sgi_document_attachments
-WHERE doc_no = :docNo
-  AND attach_id = :attachId
+WHERE doc_no = $1 /* docNo */
+  AND attach_id = $11 /* attachId */
   AND deleted_flag = 'N';
 ```
 
@@ -168,7 +184,7 @@ WHERE doc_no = :docNo
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
 | POST /api/v1/sgi/document/{docNo}/attachments | Upload attachment API | Validate docNo/permission | file >5MB returns 413 |
-| GET /api/v1/sgi/document/{docNo}/attachments/{attachId}/download | ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน stream | Validate file size/type | unsupported file type returns 415 |
+| GET /api/v1/sgi/document/{docNo}/attachments/{attachId}/download | ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo แล้วตัดสิน scan_status ตามนโยบายเดียว (`CLEAN` ดาวน์โหลดได้เสมอ · `BLOCKED`/`FAILED` คืน 422 `FILE_SCAN_BLOCKED` เสมอ · `PENDING` ขึ้นกับสวิตช์ `SGI_ALLOW_PENDING_DOWNLOAD` (`mas_param`)) | Validate file size/type | unsupported file type returns 415 |
 | GET /api/v1/sgi/document/{docNo}/attachments/download-all | ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (ไม่คืน zip เปล่า) | Store file metadata | sales windows are ordered |
 | GET /api/v1/sgi/document/{docNo}/sales | Sales detail API | Load sales summary and transactions | timeline newest/oldest order matches FE expectation |
 | GET /api/v1/sgi/document/{docNo}/timeline | Timeline/history API | Return timeline ordered by action time | file >5MB returns 413 |
@@ -243,7 +259,7 @@ Upload attachment API
 
 ### GET /api/v1/sgi/document/{docNo}/attachments/{attachId}/download
 
-ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน stream
+ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo แล้วตัดสิน scan_status ตามนโยบายเดียว (`CLEAN` ดาวน์โหลดได้เสมอ · `BLOCKED`/`FAILED` คืน 422 `FILE_SCAN_BLOCKED` เสมอ · `PENDING` ขึ้นกับสวิตช์ `SGI_ALLOW_PENDING_DOWNLOAD` (`mas_param`))
 
 #### Query Params
 
@@ -344,9 +360,9 @@ Sales detail API
 | --- | --- | --- | --- |
 | growthRateDiff | number | Yes | UTF-8; use value domain described by endpoint purpose |
 | totalWorkingDays | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| windows | array<object> | Yes | JSON array; element type shown in Type column |
+| windows | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | windows[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| windows[].rows | array<object> | Yes | JSON array; element type shown in Type column |
+| windows[].rows | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 
 ### GET /api/v1/sgi/document/{docNo}/timeline
 
@@ -370,7 +386,12 @@ Timeline/history API
 
 ```json
 {
-  "items": []
+  "items": [
+    {
+      "section": "06",
+      "result": "ชดเชย"
+    }
+  ]
 }
 ```
 
@@ -378,7 +399,9 @@ Timeline/history API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| items[].section | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].result | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
@@ -396,13 +419,13 @@ Timeline/history API
 
 โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
 
-#### 9.1 ผังไฟล์ที่ต้องสร้าง
+### 9.1 ผังไฟล์ที่ต้องสร้าง
 
 | Path | หน้าที่ |
 | --- | --- |
 | store-backend · src/modules/sgi-attachment-sales-timeline/sgi-attachment-sales-timeline.controller.ts | route ทั้งหมดของเอกสารนี้ (4 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
 | store-backend · src/modules/sgi-attachment-sales-timeline/sgi-attachment-sales-timeline.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sgi-attachment-sales-timeline/sgi-attachment-sales-timeline.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-attachment-sales-timeline/sgi-attachment-sales-timeline.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย · **คีย์ = ชื่อ handler** เช่น `getSgiMasterFactors` · บล็อกที่มีหลาย statement ให้แยกเป็นหลายคีย์ โดยเติมท้ายชื่อให้สื่อความ เช่น DELETE master ที่มี 2 statement → `removeSgiMasterFactorsByCodeInUse` (SELECT ตรวจการใช้งาน) + `removeSgiMasterFactorsByCode` (DELETE) |
 | store-backend · src/modules/sgi-attachment-sales-timeline/dto/sgi-attachment-sales-timeline.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sgi-attachment-sales-timeline/sgi-attachment-sales-timeline.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/sgi-document-attachments.entity.ts | entity ของ `sgi_document_attachments` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
@@ -420,7 +443,7 @@ Timeline/history API
 | --- | --- | --- |
 | GET /api/v1/sgi/document/{docNo}/timeline | Timeline/history API | **reference — implement ที่เอกสาร `LLDD-BE-API-Document-Workflow-Actions`** (1 เส้น = 1 เจ้าของ ไม่ประกาศ controller ซ้ำ ไม่งั้น NestJS จะ register ทับกันเงียบ ๆ) |
 
-#### 9.2 Controller (store-backend)
+### 9.2 Controller (store-backend)
 
 ```ts
 // src/modules/sgi-attachment-sales-timeline/sgi-attachment-sales-timeline.controller.ts
@@ -432,13 +455,13 @@ import { CreateSgiDocumentAttachmentsBodyDto } from './dto/sgi-attachment-sales-
 
 // LLDD BE - API Attachment Sales and Timeline
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sgi/sgi/document')
+@Controller('document')
 @UseGuards(HttpHeaderGuard)
 export class SgiAttachmentSalesTimelineController {
   constructor(private readonly service: SgiAttachmentSalesTimelineService) {}
 
   // POST /api/v1/sgi/document/{docNo}/attachments — Upload attachment API
-  @Post('document/:docNo/attachments')
+  @Post(':docNo/attachments')
   createSgiDocumentAttachments(
     @Param('docNo') docNo: string,
     @Body() body: CreateSgiDocumentAttachmentsBodyDto,
@@ -449,7 +472,7 @@ export class SgiAttachmentSalesTimelineController {
   }
 
   // GET /api/v1/sgi/document/{docNo}/attachments/{attachId}/download — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป…
-  @Get('document/:docNo/attachments/:attachId/download')
+  @Get(':docNo/attachments/:attachId/download')
   getSgiDocumentAttachmentsDownload(
     @Param('docNo') docNo: string,
     @Param('attachId') attachId: string,
@@ -460,14 +483,14 @@ export class SgiAttachmentSalesTimelineController {
   }
 
   // GET /api/v1/sgi/document/{docNo}/attachments/download-all — ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (…
-  @Get('document/:docNo/attachments/download-all')
+  @Get(':docNo/attachments/download-all')
   getSgiDocumentAttachmentsDownloadAll(@Param('docNo') docNo: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiDocumentAttachmentsDownloadAll(docNo, userId);
   }
 
   // GET /api/v1/sgi/document/{docNo}/sales — Sales detail API
-  @Get('document/:docNo/sales')
+  @Get(':docNo/sales')
   getSgiDocumentSales(@Param('docNo') docNo: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiDocumentSales(docNo, userId);
@@ -475,14 +498,14 @@ export class SgiAttachmentSalesTimelineController {
 }
 ```
 
-#### 9.3 DTO + Validation
+### 9.3 DTO + Validation
 
 ```ts
 // src/modules/sgi-attachment-sales-timeline/dto/sgi-attachment-sales-timeline.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
-  IsString, Matches, Max, MaxLength, Min,
+  IsString, Matches, Max, MaxLength, Min, ValidateNested,
 } from 'class-validator';
 
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
@@ -501,13 +524,13 @@ export class CreateSgiDocumentAttachmentsBodyDto {
 }
 ```
 
-#### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
+### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
 
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
 // src/modules/sgi-attachment-sales-timeline/sgi-attachment-sales-timeline.service.ts
-import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { SGI_SQL } from './sgi-attachment-sales-timeline.sql';
 
@@ -547,12 +570,13 @@ export class SgiAttachmentSalesTimelineService {
   // GET /api/v1/sgi/document/{docNo}/attachments/{attachId}/download — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป…
   async getSgiDocumentAttachmentsDownload(docNo: string, attachId: string, userId: string) {
     const page = 1;
-    const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
+    // DTO ของเส้นนี้ไม่มี page/size (ดูหัวข้อ DTO) — ไม่แบ่งหน้า
+    const size = 100;
     // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sgi/document/{docNo}/attachments/{attachId}/download')
-    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
-    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
+    // SQL ในเอกสารเป็น positional $1..$n อยู่แล้ว (ตัวสร้างแปลงให้ตั้งแต่ 2026-09-04)
+    //   บรรทัดแรกของบล็อก SQL คือ `-- bind ตามลำดับ: $1=... · $2=...` ให้เรียงอาร์กิวเมนต์ตามนั้น
     const rows = await this.dataSource.query(SGI_SQL.getSgiDocumentAttachmentsDownload, [
-      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
+      // เรียงให้ตรงกับบรรทัด `-- bind ตามลำดับ:` ของ SQL เส้นนี้
       userId, (page - 1) * size, size,
     ]);
     // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
@@ -575,7 +599,7 @@ export class SgiAttachmentSalesTimelineService {
 }
 ```
 
-#### 9.5 Entity (TypeORM)
+### 9.5 Entity (TypeORM)
 
 ```ts
 // src/entitys/sgi-document-attachments.entity.ts
@@ -583,10 +607,10 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'sgi_document_attachments', schema: process.env.DB_SCHEMA })
 export class DocumentAttachment {
-  @PrimaryColumn({ name: 'id', type: 'bigint' })
-  id: number;
+  @PrimaryColumn({ name: 'attach_id', type: 'bigint' })
+  attachId: number;
 
-  @Column({ name: 'doc_no', type: 'varchar', length: 12 })
+  @Column({ name: 'doc_no', type: 'varchar', length: 10 })
   docNo: string;
 
   @Column({ name: 'section_code', type: 'varchar', length: 2 })
@@ -595,32 +619,44 @@ export class DocumentAttachment {
   @Column({ name: 'file_name', type: 'varchar', length: 255 })
   fileName: string;
 
-  @Column({ name: 'file_path', type: 'varchar', length: 1000 })
-  filePath: string;
+  @Column({ name: 'mime_type', type: 'varchar', length: 100 })
+  mimeType: string;
 
-  @Column({ name: 'file_size', type: 'int' })
+  @Column({ name: 'file_size', type: 'bigint' })
   fileSize: number;
 
-  @Column({ name: 'content_type', type: 'varchar', length: 100, nullable: true })
-  contentType?: string;
+  @Column({ name: 'storage_provider', type: 'varchar', length: 30 })
+  storageProvider: string;
 
-  @Column({ name: 'upload_status', type: 'varchar', length: 1, nullable: true })
-  uploadStatus?: string;
+  @Column({ name: 'bucket', type: 'varchar', length: 120 })
+  bucket: string;
 
-  @Column({ name: 'upload_message', type: 'varchar', length: 500, nullable: true })
-  uploadMessage?: string;
+  @Column({ name: 'object_key', type: 'varchar', length: 500 })
+  objectKey: string;
 
-  @Column({ name: 'purge_flag', type: 'char', length: 1, nullable: true })
-  purgeFlag?: string;
+  @Column({ name: 'sha256', type: 'varchar', length: 64 })
+  sha256: string;
 
-  @Column({ name: 'uploaded_by', type: 'varchar', length: 50 })
+  @Column({ name: 'scan_status', type: 'varchar', length: 20 })
+  scanStatus: string;
+
+  @Column({ name: 'scanned_at', type: 'timestamp', nullable: true })
+  scannedAt?: Date;
+
+  @Column({ name: 'scan_message', type: 'varchar', length: 500, nullable: true })
+  scanMessage?: string;
+
+  @Column({ name: 'uploaded_by', type: 'varchar', length: 30 })
   uploadedBy: string;
 
-  @Column({ name: 'uploaded_at', type: 'timestamptz' })
+  @Column({ name: 'uploaded_at', type: 'timestamp' })
   uploadedAt: Date;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  @Column({ name: 'deleted_flag', type: 'char', length: 1, default: 'N' })
+  deletedFlag: string;
+
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
@@ -630,20 +666,29 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'sgi_compensation_documents', schema: process.env.DB_SCHEMA })
 export class CompensationDocument {
-  @PrimaryColumn({ name: 'doc_no', type: 'varchar', length: 12 })
-  docNo: string;
+  @PrimaryColumn({ name: 'id', type: 'bigint' })
+  id: number;
 
-  @Column({ name: 'impact_process_id', type: 'bigint', nullable: true })
-  impactProcessId?: number;
+  @Column({ name: 'doc_no', type: 'varchar', length: 10, nullable: true })
+  docNo?: string;
 
-  @Column({ name: 'impacted_store_code', type: 'char', length: 5 })
+  @Column({ name: 'year', type: 'int', nullable: true })
+  year?: number;
+
+  @Column({ name: 'running_no', type: 'int', nullable: true })
+  runningNo?: number;
+
+  @Column({ name: 'impact_process_id', type: 'bigint' })
+  impactProcessId: number;
+
+  @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
-  statusCode: string;
+  @Column({ name: 'impact_month', type: 'char', length: 7, nullable: true })
+  impactMonth?: string;
 
-  @Column({ name: 'current_section_code', type: 'varchar', length: 2 })
-  currentSectionCode: string;
+  @Column({ name: 'new_store_code', type: 'varchar', length: 5, nullable: true })
+  newStoreCode?: string;
 
   @Column({ name: 'round_no', type: 'int', nullable: true })
   roundNo?: number;
@@ -651,7 +696,22 @@ export class CompensationDocument {
   @Column({ name: 'loop_no', type: 'int', nullable: true })
   loopNo?: number;
 
-  @Column({ name: 'statement_id', type: 'varchar', length: 30, nullable: true })
+  @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
+  source: string;
+
+  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  statusCode: string;
+
+  @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })
+  currentSectionCode?: string;
+
+  @Column({ name: 'total_compensation_amount', type: 'numeric', precision: 14, scale: 2, default: 0 })
+  totalCompensationAmount: string;
+
+  @Column({ name: 'allmap_url', type: 'varchar', length: 500, nullable: true })
+  allmapUrl?: string;
+
+  @Column({ name: 'statement_id', type: 'varchar', length: 50, nullable: true })
   statementId?: string;
 
   @Column({ name: 'statement_date', type: 'date', nullable: true })
@@ -663,29 +723,32 @@ export class CompensationDocument {
   @Column({ name: 'account_month', type: 'int', nullable: true })
   accountMonth?: number;
 
-  @Column({ name: 'compensate_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
-  compensateAmount?: string;
-
-  @Column({ name: 'allmap_url', type: 'text', nullable: true })
-  allmapUrl?: string;
-
   @Column({ name: 'approver_snapshot', type: 'jsonb', nullable: true })
   approverSnapshot?: Record<string, unknown>;
 
-  @Column({ name: 'created_at', type: 'timestamptz', nullable: true })
-  createdAt?: Date;
+  @Column({ name: 'version_no', type: 'int', default: 1 })
+  versionNo: number;
 
-  @Column({ name: 'updated_at', type: 'timestamptz', nullable: true })
+  @Column({ name: 'created_by', type: 'varchar', length: 30 })
+  createdBy: string;
+
+  @Column({ name: 'created_at', type: 'timestamp' })
+  createdAt: Date;
+
+  @Column({ name: 'updated_by', type: 'varchar', length: 30, nullable: true })
+  updatedBy?: string;
+
+  @Column({ name: 'updated_at', type: 'timestamp', nullable: true })
   updatedAt?: Date;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
 ตารางที่เหลือของเอกสารนี้ (`sgi_fgi_impact_sales_summaries`, `sgi_sales_transactions`, `sgi_consideration_logs`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
-#### 9.6 Repository Providers + Module wiring
+### 9.6 Repository Providers + Module wiring
 
 ```ts
 // src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
@@ -743,7 +806,7 @@ export class SgiAttachmentSalesTimelineModule implements NestModule {
 // TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
-#### 9.7 BFF Proxy (module + controller + client service)
+### 9.7 BFF Proxy (module + controller + client service)
 
 BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
@@ -777,6 +840,9 @@ export class SgiAttachmentSalesTimelineBffService {
   constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  // ⚠️ ต้อง unwrap envelope ของ store-backend 1 ชั้นก่อนคืน (ยืนยันจากโค้ดจริง 2026-09-04):
+  //    ResponseInterceptor ระดับ global ของ BFF ห่อผลลัพธ์เป็น { success, data, requestId } อีกที
+  //    ถ้าคืน { success, data } ดิบมา FE จะได้ data.data.data — SgiClientService จึงต้องคืน .data.data
   private userHeaders(user: any) {
     return {
       'x-user-id': user?.userId,
@@ -802,20 +868,20 @@ export class SgiAttachmentSalesTimelineBffService {
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sgi/attachment-sales-timeline')
+// path เดียวกับที่ FE เรียก (apiClient baseURL รวม /api/v1 แล้ว) — ห้ามตั้งตามชื่อเอกสาร LLDD
+@Controller('sgi/document')
 @UseGuards(AuthGuard('jwt'))
 export class SgiAttachmentSalesTimelineBffController {
   constructor(private readonly service: SgiAttachmentSalesTimelineBffService) {}
 
   // proxy ของ POST /api/v1/sgi/document/{docNo}/attachments
-  @Post('sgi/document/:docNo/attachments')
+  @Post(':docNo/attachments')
   createSgiDocumentAttachments(@Param('docNo') docNo: string, @Body() body: any, @Req() req: any) {
     return this.service.createSgiDocumentAttachments(docNo, body, req.user);
   }
 
   // proxy ของ GET /api/v1/sgi/document/{docNo}/attachments/{attachId}/download
-  @Get('sgi/document/:docNo/attachments/:attachId/download')
+  @Get(':docNo/attachments/:attachId/download')
   getSgiDocumentAttachmentsDownload(@Param('docNo') docNo: string, @Param('attachId') attachId: string, @Query() query: any, @Req() req: any) {
     return this.service.getSgiDocumentAttachmentsDownload(docNo, attachId, query, req.user);
   }
@@ -825,7 +891,7 @@ export class SgiAttachmentSalesTimelineBffController {
 
 ## 10. Database SQL
 
-#### 10.1 ตารางที่อ่าน/เขียน
+### 10.1 ตารางที่อ่าน/เขียน
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
@@ -835,65 +901,72 @@ export class SgiAttachmentSalesTimelineBffController {
 | sgi_sales_transactions | R | ยอดขายรายวัน 4 windows |
 | sgi_consideration_logs | R | timeline/history |
 
-#### 10.2 SQL จริงต่อ Endpoint
+### 10.2 SQL จริงต่อ Endpoint
 
 **POST /api/v1/sgi/document/{docNo}/attachments** — Upload attachment API
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
--- ตรวจขนาด ≤ 5MB, sanitize filename, sha256, AV scan=CLEAN ก่อน commit metadata
+-- bind ตามลำดับ: $1=docNo · $2=sectionCode · $3=fileName · $4=mimeType · $5=fileSize · $6=storageProvider · $7=bucket · $8=objectKey · $9=sha256 · $10=scanClean · $11=empId · $12=now
+-- ตรวจขนาด ≤ 5MB, sanitize filename, sha256 ก่อน commit metadata
+-- ⚠️ scan_status เริ่มที่ 'PENDING' เสมอ — ระบบยังไม่มีตัวสแกน ให้ตัวสแกนอัปเดตเป็น CLEAN/BLOCKED ทีหลัง
+--    (เขียน CLEAN ตอน insert = ประกาศว่าสแกนผ่านทั้งที่ไม่เคยสแกน)
 INSERT INTO sgi_document_attachments (doc_no, section_code, file_name, mime_type, file_size, storage_provider, bucket, object_key, sha256, scan_status, uploaded_by, uploaded_at)
-VALUES (:docNo, :sectionCode, :fileName, :mimeType, :fileSize, :storageProvider, :bucket, :objectKey, :sha256, :scanClean, :empId, :now);
+VALUES ($1 /* docNo */, $2 /* sectionCode */, $3 /* fileName */, $4 /* mimeType */, $5 /* fileSize */, $6 /* storageProvider */, $7 /* bucket */, $8 /* objectKey */, $9 /* sha256 */, $10 /* scanClean */, $11 /* empId */, $12 /* now */);
 ```
 
-**GET /api/v1/sgi/document/{docNo}/attachments/{attachId}/download** — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน str…
+**GET /api/v1/sgi/document/{docNo}/attachments/{attachId}/download** — ดาวน์โหลดไฟล์แนบรายไฟล์ผ่าน BE — ตรวจสิทธิ์เอกสาร + attachment ต้องเป็นของ docNo แล้วตัดสิน scan_status ตามนโ…
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
--- ตรวจสิทธิ์อ่านเอกสาร + attachment ต้องเป็นของ docNo + scan_status=CLEAN ก่อน stream ผ่าน BE
+-- bind ตามลำดับ: $1=docNo · $2=attachId
+-- ตรวจสิทธิ์อ่านเอกสาร + attachment ต้องเป็นของ docNo แล้วตัดสิน scan_status ตามนโยบายเดียว
+--    สวิตช์ SGI_ALLOW_PENDING_DOWNLOAD ใน mas_param (Y/N) ส่งเข้ามาเป็นพารามิเตอร์ boolean
+--    CLEAN ได้เสมอ · BLOCKED/FAILED ไม่ได้เสมอ (422 FILE_SCAN_BLOCKED) · PENDING ขึ้นกับสวิตช์
+--    รายละเอียดเต็ม: LLDD-BE-Integration-SBP-Platform หัวข้อ 5
 SELECT attach_id, bucket, object_key, file_name, mime_type, scan_status
 FROM sgi_document_attachments
-WHERE doc_no = :docNo AND attach_id = :attachId;
+WHERE doc_no = $1 /* docNo */ AND attach_id = $2 /* attachId */
+  AND deleted_flag = 'N';   -- ไฟล์ที่ถูกลบแบบ soft delete ห้ามดาวน์โหลด
 ```
 
 **GET /api/v1/sgi/document/{docNo}/attachments/download-all** — ดาวน์โหลดไฟล์แนบทั้งหมดเป็น .zip — ไม่มีไฟล์ที่ผ่าน scan เลยตอบ 404 (ไม่คืน zip เปล่า)
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=docNo · $2=allowPendingDownload
 -- รวมไฟล์แนบทั้งหมดเป็น .zip — ตรวจสิทธิ์อ่านเอกสารก่อน แล้วรวมเฉพาะไฟล์ที่ scan ผ่าน
--- ⚠️ นโยบาย AV ยังไม่เคาะ (ดู LLDD-BE-API-Attachment-Sales-Timeline 5.1) — ถ้ายังไม่มีตัวสแกน การบังคับ CLEAN จะทำให้ดาวน์โหลดไม่ได้เลย
+-- ⚠️ นโยบาย AV เคาะแล้ว 2026-09-07 (ดู LLDD-BE-Integration-SBP-Platform หัวข้อ 5) — ยังไม่มีตัวสแกนในระบบ จึงใช้สวิตช์ SGI_ALLOW_PENDING_DOWNLOAD คุมว่าจะให้ PENDING ดาวน์โหลดได้หรือไม่
 -- ไม่มีไฟล์ที่ดาวน์โหลดได้เลย -> 404 (ไม่คืน zip เปล่า)
 SELECT attach_id, bucket, object_key, file_name, mime_type, file_size
 FROM sgi_document_attachments
-WHERE doc_no = :docNo AND scan_status = 'CLEAN'
+WHERE doc_no = $1 /* docNo */
+  AND deleted_flag = 'N'                                    -- ไฟล์ที่ถูกลบแบบ soft delete ห้ามรวมลง zip
+  AND (scan_status = 'CLEAN'
+       OR (scan_status = 'PENDING' AND $2 /* allowPendingDownload */))   -- สวิตช์ SGI_ALLOW_PENDING_DOWNLOAD
+  AND scan_status NOT IN ('BLOCKED', 'FAILED')                    -- ปิดตายเสมอ ไม่ขึ้นกับสวิตช์
 ORDER BY section_code, attach_id;
 ```
 
 **GET /api/v1/sgi/document/{docNo}/sales** — Sales detail API
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=docNo · $2=salesSummaryId
 -- หา impact_process_id ของเอกสาร แล้วอ่านยอดขาย 4 หน้าต่าง × 15 วัน
 SELECT ss.id AS sales_summary_id, ss.growth_rate_diff, ss.total_working_days
 FROM sgi_compensation_documents d
 JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
-WHERE d.doc_no = :docNo;
+WHERE d.doc_no = $1 /* docNo */;
 
 SELECT window_no, txn_date, sales_amount, sales_diff, is_outlier
 FROM sgi_sales_transactions
-WHERE sales_summary_id = :salesSummaryId
+WHERE sales_summary_id = $2 /* salesSummaryId */
 ORDER BY window_no, txn_date;
 ```
 
-#### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
 
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |
 | sgi_fgi_impact_sales_summaries | CREATE INDEX idx_sgi_fgi_impact_sales_summaries_impact_process_id ON sgi_fgi_impact_sales_summaries (impact_process_id); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
+| sgi_compensation_documents | CREATE INDEX idx_sgi_compensation_documents_doc_no ON sgi_compensation_documents (doc_no); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
 
 ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่
 

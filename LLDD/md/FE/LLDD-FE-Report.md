@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | FE |
 | Estimate | **25 ชั่วโมง** = implementation 20 + unit test 5 (25%) |
-| Owner | Chidchanok <lin> Saengamnat |
+| Owner | Chidchanok &lt;lin&gt; Saengamnat |
 | Target repository | `SBP/srm-sps-spsap-web-frontend` (sbp-portal · Next.js · `NEXT_PUBLIC_APP_TARGET=sbpm`) — เรียก API ผ่าน `SBP/srm-sps-spsap-sbp-bff` เท่านั้น ห้ามยิง store-backend ตรง |
 | Objective | สร้างรายงานตรวจสอบประกันรายได้ตาม SDD สไลด์ 60 (7 ตัวกรอง / 14 คอลัมน์) พร้อมค้นหาข้อมูลและ Export Excel |
 
@@ -189,7 +189,7 @@ Popup เลือกร้านที่ถูกกระทบ
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | items[].storeCode | string | Yes | exactly 5 digits; preserve leading zero |
 | items[].storeName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].region | string | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -218,7 +218,14 @@ Popup เลือกร้านที่ถูกกระทบ
   ],
   "result": "APPROVE",
   "page": 1,
-  "size": 20
+  "size": 20,
+  "year": 2026,
+  "region": [
+    "RSU"
+  ],
+  "storeType": [
+    "A"
+  ]
 }
 ```
 
@@ -231,11 +238,14 @@ Popup เลือกร้านที่ถูกกระทบ
 | newStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | periodStatementFrom | string | No | UTF-8; use value domain described by endpoint purpose |
 | periodStatementTo | string | No | UTF-8; use value domain described by endpoint purpose |
-| storeTypes | array<string> | No | JSON array; element type shown in Type column |
-| regions | array<string> | No | JSON array; element type shown in Type column |
+| storeTypes | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| regions | array&lt;string&gt; | No | JSON array; element type shown in Type column |
 | result | string | No | UTF-8; use value domain described by endpoint purpose |
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
+| year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| region | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| storeType | array&lt;string&gt; | No | JSON array; element type shown in Type column |
 
 #### Response
 
@@ -283,7 +293,7 @@ Popup เลือกร้านที่ถูกกระทบ
 | summary.totalCompensationAmount | number | Yes | number >= 0 with 2 decimals |
 | summary.overThresholdItems | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | summary.abnormalSalesItems | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | items[].impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | items[].impactedStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].impactedRegion | string | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -307,6 +317,17 @@ Export Excel ด้วย filter เดียวกับการค้นห�
 
 ```json
 {
+  "year": 2026,
+  "status": "06",
+  "result": "APPROVE",
+  "region": [
+    "RSU"
+  ],
+  "storeType": [
+    "A"
+  ],
+  "impactedStoreCode": "00788",
+  "newStoreCode": "00990",
   "sameAsSearch": true,
   "format": "xlsx"
 }
@@ -316,6 +337,13 @@ Export Excel ด้วย filter เดียวกับการค้นห�
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| status | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| result | string | No | UTF-8; use value domain described by endpoint purpose |
+| region | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| storeType | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
+| newStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | sameAsSearch | boolean | No | UTF-8; use value domain described by endpoint purpose |
 | format | string | No | ISO-8601 ค.ศ.; nullable only when type includes null |
 
@@ -339,7 +367,7 @@ Export Excel ด้วย filter เดียวกับการค้นห�
 
 โค้ดชุดนี้อิง convention ของ portal เดิม `srm-sps-spsap-web-frontend` (build target `sbpm`): Next.js App Router + `'use client'`, PrimeReact ที่ห่อไว้แล้วใน `@/components/Form` และ `@/components/Table`, react-hook-form + yup, Zustand `permissionStore`, axios instance กลาง `@/lib/apiClient` และ react-query 5 — **โปรเจกต์ไม่มี chart library** จึงไม่มีโค้ดกราฟในเอกสารนี้ คัดลอกไปตั้งต้นได้ทันที แล้วเติมจุดที่กำกับ `TODO:`
 
-#### 8.1 ผังไฟล์ที่ต้องสร้าง
+### 8.1 ผังไฟล์ที่ต้องสร้าง
 
 โครงไฟล์อิง portal เดิม (`srm-sps-spsap-web-frontend`, target `sbpm`) — โมดูล SGI อยู่ใต้ `src/app/(main)/sgi/*` และ import ผ่าน alias `@/*` ทุกจุด
 
@@ -351,7 +379,7 @@ Export Excel ด้วย filter เดียวกับการค้นห�
 | src/hooks/sgi/report.query.ts | hook — query key factory + useQuery/useMutation + invalidate |
 | src/types/sgi/report.ts | types — request/response ตาม API contract ของเอกสารนี้ |
 
-#### 8.2 page.tsx — หน้ารายงาน (filter ที่กดค้นหาแล้วค่อยยิง + Export Excel)
+### 8.2 page.tsx — หน้ารายงาน (filter ที่กดค้นหาแล้วค่อยยิง + Export Excel)
 
 ```tsx
 'use client';
@@ -421,7 +449,7 @@ export default function ReportStatusSummaryPage() {
 }
 ```
 
-#### 8.3 service — `src/services/sgi/report.service.ts`
+### 8.3 service — `src/services/sgi/report.service.ts`
 
 ```ts
 // src/services/sgi/report.service.ts
@@ -450,10 +478,16 @@ export async function getSgiReportStatusSummaryExport(params: T.SgiReportStatusS
   return data; // TODO: ตั้งชื่อไฟล์จาก content-disposition แล้วบันทึกด้วย file-saver
 }
 
-// TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)
+// ── envelope: อ่าน `data.data` ชั้นเดียว (ยืนยันจากโค้ดจริงของ BFF 2026-09-04) ──
+//   BFF มี ResponseInterceptor ระดับ global (src/common/interceptors/response.interceptor.ts)
+//   ที่ห่อผลลัพธ์ของ controller เป็น { success, data, requestId } ให้เสมอ
+//   ⚠️ ถ้า client service ของ BFF คืน `response.data` ดิบ (= envelope ของ store-backend)
+//      interceptor จะเห็นคีย์ success แล้วห่อซ้ำ → FE ได้ { success, data: { data: <payload> } }
+//      สัญญาที่ตกลง: **BFF ต้อง unwrap ของ store-backend ก่อน 1 ชั้น** (คืน response.data.data)
+//      FE จึงอ่าน data.data ชั้นเดียวตามโค้ดด้านบน · requestId ใช้อ้างอิงตอนแจ้งปัญหา
 ```
 
-#### 8.4 types — `src/types/sgi/report.ts`
+### 8.4 types — `src/types/sgi/report.ts`
 
 ```ts
 // src/types/sgi/report.ts — ตรงกับตาราง API ในเอกสารนี้
@@ -488,6 +522,9 @@ export interface SgiReportStatusSummaryParams {
   result?: string;
   page?: number;
   size?: number;
+  year?: number;
+  region?: string[];
+  storeType?: string[];
 }
 
 /** GET /api/v1/sgi/report/status-summary — 1 แถวในตาราง */
@@ -512,7 +549,7 @@ export type SgiReportStatusSummaryListResponse = PageResponse<SgiReportStatusSum
 // TODO: ใส่ nullable / required ให้ตรงกับ contract ฉบับล่าสุดของ BE
 ```
 
-#### 8.5 react-query keys + hooks — `src/hooks/sgi/report.query.ts`
+### 8.5 react-query keys + hooks — `src/hooks/sgi/report.query.ts`
 
 ```ts
 // src/hooks/sgi/report.query.ts
@@ -554,7 +591,7 @@ export function useSgiReportStatusSummaryExportDownload() {
 }
 ```
 
-#### 8.6 ฟอร์ม + validation — `src/components/sgi/report/ReportForm.tsx`
+### 8.6 ฟอร์ม + validation — `src/components/sgi/report/ReportForm.tsx`
 
 ```tsx
 'use client';
@@ -616,7 +653,7 @@ export default function ReportForm({ defaultValues, onSubmit }: {
 }
 ```
 
-- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `<AccessDenied />` เมื่อไม่มีสิทธิ์
+- ทุกหน้าเช็คสิทธิ์ด้วย `permissionStore.hasPermission(url, 'canView'|'canManage'|'canExport'|'canOther')` แล้ว render `&lt;AccessDenied /&gt;` เมื่อไม่มีสิทธิ์
 - เมนู/สิทธิ์มาจาก `GET /menus` และ `GET /groups/current-user/permissions` — ห้าม hardcode role หรือรายการเมนูใน FE
 - session อยู่ใน httpOnly cookie ของ BFF (`withCredentials: true`) — FE ไม่เก็บและไม่แนบ token เอง
 - payload และการแสดงผลใช้วันที่ ค.ศ. เสมอ ผ่าน formatter กลางจุดเดียว — ไม่แปลงเป็น พ.ศ. (มติ 2026-08-06)

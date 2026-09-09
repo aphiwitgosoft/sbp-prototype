@@ -2,6 +2,8 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
 <title>ภาพรวมการทำงานเบื้องหลัง — แนวนอนสำหรับสไลด์</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -70,10 +72,23 @@
 
   .foot{margin-top:16px; font-size:13.5px; color:#6b7885; line-height:1.6;}
   .foot b{color:#2b3440; font-weight:600;}
+
+/* ── เปิดอ่านบนจอเล็กได้ โดยไม่เปลี่ยนหน้ากระดาษ (แก้ 2026-09-07) ─────────────────
+   หน้านี้เป็น "แผ่นโปสเตอร์" ความกว้างตายตัวสำหรับ export/print — จะทำให้ responsive
+   แบบพับเนื้อหาไม่ได้เพราะเลย์เอาต์ทั้งใบผูกกับความกว้างนั้น
+   วิธีที่ถูกคือ **ให้กล่องเลื่อน ไม่ใช่ให้ทั้งหน้าเลื่อน**: กระดาษคงขนาดเดิมเป๊ะ
+   ส่วนคนอ่านบนจอเล็กเลื่อนดูในกรอบได้ · ตอน print ยังได้ขนาดเดิมทุกมิลลิเมตร */
+html, body { max-width: 100%; overflow-x: hidden; }
+body { display: flow-root; }
+.sheet-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+@media print {
+  html, body { overflow: visible; }
+  .sheet-scroll { overflow: visible; }
+}
 </style>
 </head>
 <body>
-<div class="sheet" id="sheet">
+<div class="sheet-scroll"><div class="sheet" id="sheet">
 
   <div class="head">
     <div class="eyebrow">ระบบประกันรายได้ · Store Business Partner</div>
@@ -154,6 +169,7 @@
   <p class="foot"><b>สรุปสั้น ๆ:</b> ช่วง 1–2 เก็บข้อมูลและพิสูจน์ว่ายอดขายตกจริง · ช่วง 3–4 ทำเอกสาร อนุมัติ และจ่ายเงิน ·
     ช่วง 5 เป็นตาข่ายนิรภัย <b>หากงานใดทำงานไม่สำเร็จ ระบบจะส่งอีเมลแจ้งผู้ดูแลทันที</b></p>
 
+</div>
 </div>
 </body>
 </html>

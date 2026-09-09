@@ -78,6 +78,44 @@ def plain(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _write_xlsx(path, rows: list[dict[str, object]]):
+    """เขียน .xlsx คู่กับ .csv — เพราะ Numbers เปิด .csv เป็น **อ่านอย่างเดียว** เสมอ
+
+    เพิ่ม 2026-09-07 หลังผู้ใช้แจ้งว่าเปิด `output/tobe-work.csv` แล้วแก้อะไรไม่ได้
+    สาเหตุไม่ใช่สิทธิ์ไฟล์ (เป็น rw- ปกติ) แต่เป็นพฤติกรรมของ Numbers ที่ถือ CSV เป็น
+    ไฟล์นำเข้า จึงเซฟกลับเป็น CSV ไม่ได้ · .xlsx เปิดแล้วพิมพ์ทับได้ทันที
+    ⚠️ ทั้งสองไฟล์อยู่ใน `output/` ซึ่งเป็นผลลัพธ์ที่ build ทับได้ — แก้เพื่อดู/ทำงานชั่วคราวได้
+       แต่ถ้าต้องการให้ค่าเปลี่ยนถาวร ต้องแก้ที่ต้นทาง (ชั่วโมงใน LLDD / BULLET_DOCS) แล้ว build ใหม่
+    """
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Font, PatternFill
+        from openpyxl.utils import get_column_letter
+    except ImportError:      # pragma: no cover — ไม่มี openpyxl ก็ยังได้ CSV ตามเดิม
+        return None
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "To-Be work"
+    ws.append(FIELDS)
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="2F6FED")
+        cell.alignment = Alignment(vertical="center", wrap_text=True)
+    for row in rows:
+        ws.append([row.get(k, "") for k in FIELDS])
+    widths = {"SDD สไลด์": 20, "ข้อ": 10, "ทำอะไร": 90,
+              "ใครทำ / กี่ชั่วโมง": 34, "รวม (ชม.)": 11, "เอกสาร LLDD": 42}
+    for i, name in enumerate(FIELDS, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = widths.get(name, 24)
+    for row in ws.iter_rows(min_row=2):
+        for cell in row:
+            cell.alignment = Alignment(vertical="top", wrap_text=True)
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(FIELDS))}{ws.max_row}"
+    wb.save(path)
+    return path
+
+
 def main() -> None:
     topics = {t.file.rsplit("/", 1)[-1]: t for t in B.topics()}
     meta = {c: (title, slides, bullets) for c, title, slides, bullets in B.TOBE_ITEMS}
@@ -207,9 +245,14 @@ def main() -> None:
         w.writeheader()
         w.writerows(rows)
 
+    xlsx_path = _write_xlsx(out / "tobe-work.xlsx", rows)
+
     n_items = sum(len(meta[c][2]) for c in codes)
     print(f"{path.relative_to(ROOT)} · {n_items} ข้อที่ SDD สั่ง + แถวสรุป · "
           f"FE {fe_all} + BE {be_all} = {fe_all + be_all} ชม. (กัน job ออก {job_hours} ชม.)")
+    if xlsx_path:
+        print(f"{xlsx_path.relative_to(ROOT)} · ไฟล์ที่ **แก้ไขได้จริง** ใน Numbers/Excel "
+              "(CSV เปิดใน Numbers จะเป็นอ่านอย่างเดียวเสมอ)")
 
 
 if __name__ == "__main__":

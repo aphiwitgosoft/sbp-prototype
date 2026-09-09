@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DB FGI/FCS · SBP Management System</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/sbp.css">
 <style>
   .er-wrap{overflow-x:auto;border:1px solid #e8eef6;border-radius:14px;background:#fbfcfe;padding:10px;}
@@ -23,7 +24,7 @@
       <div class="page-head">
         <div>
           <h1 class="page-title">ฐานข้อมูล FGI/FCS</h1>
-          <p class="page-sub">Impact Pipeline · Batch Jobs 2–10 และ Start Workflow · Target Logical Schema</p>
+          <p class="page-sub">Impact Pipeline · Batch Jobs 2–12 และ Start Workflow · Target Logical Schema</p>
         </div>
         <div class="page-actions"><span class="pill info" style="align-self:center;">7 Core Tables · Zone A</span></div>
       </div>
@@ -80,7 +81,7 @@
               <line x1="88" y1="128" x2="330" y2="128" stroke="#e6ebf2"/>
               <text x="102" y="148" fill="#56606c" font-size="10.5">impact_process_id ◄ FK</text>
               <text x="102" y="167" fill="#56606c" font-size="10.5">impacted_store_code · new_store_code</text>
-              <text x="102" y="186" fill="#56606c" font-size="10.5">sales_request_status · distance_km</text>
+              <text x="102" y="186" fill="#56606c" font-size="10.5">verify_status · sales_request_status · distance_km</text>
 
               <rect x="88" y="318" width="242" height="104" rx="10" fill="#fff" stroke="#16a34a" stroke-width="1.6"/>
               <text x="102" y="339" fill="#15803d" font-size="11.5" font-weight="700">fcs_qssi_score</text>
@@ -150,7 +151,10 @@
               <tr><td>impacted_store_code · new_store_code</td><td>varchar(5)</td><td>Business key</td></tr>
               <tr><td>impact_month</td><td>char(7)</td><td>งวดกระทบ (ปีอยู่บน hub)</td></tr>
               <tr><td>distance_km</td><td>decimal(8,3)</td><td>ระยะห่างร้านกระทบ–ร้านใหม่</td></tr>
-              <tr><td>sales_request_status</td><td>char(1)</td><td>W / P / Y / N <b>(เดิมเรียก verify_status)</b></td></tr>
+              <tr><td><b>verify_status</b></td><td>char(1)</td><td><b>W / P / N</b> — ผลกฎ DENY/ON_PROCESS ของ Job 2 (ORA <code>FLAG_VERIFY</code>) <small>เพิ่ม 2026-09-02</small></td></tr>
+              <tr><td>sales_request_status</td><td>char(1)</td><td>W / P / Y / E — รอบขอยอดขาย IAS ของ Job 4/5 <b>(คนละเรื่องกับ verify_status)</b></td></tr>
+              <tr><td><b>created_by · updated_by</b></td><td>varchar(10)</td><td>ALM / STA / USER — เงื่อนไขของกฎ Job 2 <small>เพิ่ม 2026-09-02</small></td></tr>
+              <tr><td><b>created_at</b></td><td>timestamp</td><td>กฎ "ตัดทิ้งเมื่อเก่ากว่า 12 เดือน" อ้างคอลัมน์นี้ <small>เพิ่ม 2026-09-02</small></td></tr>
               <tr><td>forecast_compensate_percent · adjust_compensate_percent</td><td>decimal(7,4)</td><td>%ชดเชยฝั่งร้านใหม่</td></tr>
               <tr><td>forecast_compensation_amount · adjust_compensation_amount</td><td>decimal(14,2)</td><td>ยอดชดเชย</td></tr>
               <tr><td>updated_at</td><td>timestamp</td><td>UTC ใน DB</td></tr>
@@ -165,7 +169,7 @@
               <tr><td>total_working_days</td><td>smallint</td><td>ผิดปกติเมื่อ &lt; 60 วัน</td></tr>
               <tr><td>growth_rate_before · growth_rate_after</td><td>decimal(9,4)</td><td>ก่อน/หลังร้านใหม่เปิด</td></tr>
               <tr><td>growth_rate_diff</td><td>decimal(9,4)</td><td>Gen Flow Gate ≤ -10</td></tr>
-              <tr><td>sales_status</td><td>char(1)</td><td>Y / N</td></tr>
+              <tr><td>sales_status</td><td>char(1)</td><td>W / Y / N / E</td></tr>
               <tr><td>updated_at</td><td>timestamp</td><td>ผลคำนวณล่าสุดของ Job 5</td></tr>
             </tbody></table></div>
           </div>
@@ -223,7 +227,7 @@
               <tr><td>sales_summary_id</td><td>bigint</td><td><span class="db-key fk">FK</span> nullable</td></tr>
               <tr><td>doc_no</td><td>varchar(10)</td><td><span class="db-key fk">FK</span> เมื่อเชื่อม K2</td></tr>
               <tr><td>return_code</td><td>varchar(20)</td><td>ACK จากปลายทาง</td></tr>
-              <tr><td>sent_at · acked_at</td><td>timestamp</td><td>Monitoring / watchdog (Job 10)</td></tr>
+              <tr><td>sent_at · acked_at</td><td>timestamp</td><td>Monitoring / watchdog (Job 10) — <code>acked_at</code> = เวลาที่ได้ publisher confirm (มติ 2026-09-08 ข้อ 2.13 · คงชื่อคอลัมน์เดิม)</td></tr>
             </tbody></table></div>
             <p class="db-note">ใช้ typed FK แทน <code>FGI_CONFIRM_RECEIVE_DATA.transaction_key</code> แบบ polymorphic เพื่อรักษา leading zero และ enforce referential integrity</p>
           </div>
@@ -248,7 +252,7 @@
               <tr><td>QSSI</td><td>— (ระบบ SBP เดิมนำเข้าให้)</td><td><code>fcs_qssi_score</code> <b>อ่านอย่างเดียว</b></td><td>Job 6 ตรวจครบ 6 หมวดจากงวดเดียวในกรอบ 3 เดือน</td></tr>
               <tr><td>ALLMAP</td><td>SQL Server Views</td><td><code>sgi_fgi_impact_stores</code> · <code>sgi_fgi_impact_competitors</code></td><td>Dedup ต่อร้านและงวด · ช่องทางต้นทาง <code>sgi_fgi_impact_processes.datasource</code> = ALM</td></tr>
               <tr><td>IAS</td><td>AMS06001O / AMS06001I</td><td><code>sgi_fgi_impact_sales_summaries</code> · <code>sgi_sales_transactions</code></td><td>4 หน้าต่าง × 15 วัน · outlier ≥ 50</td></tr>
-              <tr><td>STA</td><td>RabbitMQ <code>sta.compensation.result</code> + ACK</td><td><code>sgi_interface_transactions</code> (outbox READY → SENT → ACKED)</td><td>callback ก่อน · Job 10 เป็น safety net เมื่อค้าง ≥ 1 วัน</td></tr>
+              <tr><td>STA</td><td>RabbitMQ <code>sta.compensation.result</code> + publisher confirm</td><td><code>sgi_interface_transactions</code> (outbox_status READY → PUBLISHED → CONFIRMED · มติ 2026-09-08 ข้อ 2.13 ไม่มี ACK ระดับธุรกิจ)</td><td>callback ก่อน · Job 10 เป็น safety net เมื่อค้าง ≥ 1 วัน</td></tr>
             </tbody>
           </table>
         </div>

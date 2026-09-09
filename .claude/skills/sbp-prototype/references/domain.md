@@ -10,14 +10,15 @@
 
 ## ค่าคงที่ธุรกิจ (ห้ามเปลี่ยนโดยไม่มี business sign-off)
 
-- เลขที่เอกสาร `YYYY/xxxxx` — **ปี พ.ศ.** เช่น `2026/00123` (running เริ่ม 00001)
-- วงเงินอนุมัติ (**มติประชุม 2026-08-18 — กลับมาใช้เกณฑ์เดียว 100,000** ยกเลิกแนวคิด 50,000/300,000 ของ SDD GI): ชดเชย **< 100,000 บาท จบที่ GM (02)** · **≥ 100,000 ต้องผ่าน AVP สำนัก SBPM (03) แล้วจบ** · เกิน 300,000 รอ confirm · เปิดเรื่องซ้ำได้เองหลังหยุด/ไม่เห็นควรชดเชย (ไม่ต้องเปิด SR) · ยอด 0: เดือน 1–3 ส่งต่อ 01, เดือนที่ 4 หยุดชดเชย
+- เลขที่เอกสาร `YYYY/xxxxx` — **ปี ค.ศ.** เช่น `2026/00123` (running เริ่ม 00001) · **มติ 2026-08-06: วันที่และเลขเอกสารเป็น ค.ศ. ทั้งระบบ** (ยกเว้นไฟล์ interface `FRBC0001_*` / `AMS06001I_*` ที่ยังเป็น พ.ศ. + windows-874 แปลงตอนอ่าน/เขียนไฟล์เท่านั้น) · DDL บังคับไว้แล้วที่ `sgi_document_running_numbers.year` = "ปี ค.ศ. เท่านั้น ห้ามเก็บ พ.ศ."
+- วงเงินอนุมัติ (**มติประชุม 2026-08-18 — กลับมาใช้เกณฑ์เดียว 100,000** ยกเลิกแนวคิด 50,000/300,000 ของ SDD GI): ชดเชย **< 100,000 บาท จบที่ GM (02)** · **≥ 100,000 ต้องผ่าน AVP สำนัก SBPM (03) แล้วจบ** (ไม่มีข้อค้าง "> 300,000" อีกแล้ว — เกณฑ์เดียวครอบคลุมทุกยอด) · **เห็นควรไม่ชดเชยที่ 01/02/03 = จบทันที** (ขั้น 03 ตามมติ 2026-09-02) · เปิดเรื่องซ้ำได้เองหลังหยุด/ไม่เห็นควรชดเชย (ไม่ต้องเปิด SR) · ยอด 0: เดือน 1–3 ส่งต่อ **08** (มติ 2026-09-01 · เดิม 01), เดือนที่ 4 หยุดชดเชย
 - **คำเรียกหน่วยงาน (SDD GI · ตัดสินใจ 2026-08-06):** ใช้ **"หน่วยงานส่งเสริมธุรกิจ"** แทน "ฝ่ายส่งเสริม" **ทุกจุด** — ทั้งปุ่ม/ค่า enum และ**ชื่อสถานะเอกสาร** ("รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ") · ขั้น 01 เพิ่มบทบาท **เจ้าหน้าที่อาวุโส (Senior Officer)** ใช้งานร่วมกับผู้จัดการฝ่าย/ผู้เชี่ยวชาญ
 - **%ชดเชยของร้านเปิดใหม่ทุกร้านในเอกสารรวมกันต้อง = 100%**
 - ข้อมูลยอดขาย **< 60 วัน = "ผิดปกติ"** → แถวแดง `tr.flag-red` (เป็น flag ของข้อมูล **ไม่ใช่สถานะ workflow**)
 - หน้าต่างคำนวณยอดขาย **4 × 15 วัน** · outlier เมื่อ |sales_diff| **≥ 50** แบบจับคู่
 - Gen Flow Gate (เกณฑ์เปิด workflow — คงเดิมทุกข้อ): workflow_generation_status=W · branch type FAM/FB1/FC1/FB2/FVB/FVC · DV ไม่ว่าง · juristic ต่างกัน · growth_rate_diff ≤ −10 · sales_status ∈ {Y,N}
 - QSSI ต้องครบ **6 หมวด (8, 9, 12, 1, 10, 16)** ก่อนส่งผลเข้า Statement
+- **ดาวน์โหลดไฟล์แนบ (นโยบายเดียวทั้งระบบ · 2026-09-07):** `CLEAN` ได้เสมอ · `BLOCKED`/`FAILED` คืน **422 `FILE_SCAN_BLOCKED`** เสมอ · `PENDING` ขึ้นกับสวิตช์ **`SGI_ALLOW_PENDING_DOWNLOAD`** ใน `mas_param` — จำเป็นเพราะ**ยังไม่มีตัวสแกนไวรัสในระบบใดเลย** ถ้าบังคับ `CLEAN` วันนี้ไฟล์แนบทั้งระบบจะดาวน์โหลดไม่ได้ · `scan_status` ตอน upload ต้องเป็น **`PENDING`** ห้ามเขียน `CLEAN` (🔴 รอ security sign-off — ข้อค้าง 2.10)
 - ไฟล์แนบ ≤ **5MB/ไฟล์** · ชนิดที่รับ: vsd,dwg,afp,pdf,mda,zip,wav,mp3,gif,jpg,tif,tiff,htm,html,txt,xml,mpg,mov,ivs,doc,docx,xls,xlsx,pps,ppt,pot,csv
 
 ## Workflow 5 ขั้น (section_code) — SDD v7.5 ตัดขั้นบัญชี 04/05
@@ -37,7 +38,7 @@
 | 08 | เจ้าหน้าที่ SBP DSA (Officer Franchise) | มี view **คำนวณเงินชดเชย** (เฉพาะขั้นนี้) · **ปุ่มเดียว** "คำนวณเงินชดเชยเรียบร้อย" → ส่งยอดกลับ **06** (มติ 2026-09-01) |
 | 01 | หน่วยงานส่งเสริมธุรกิจฯ (SDD GI: เดิม "ฝ่ายส่งเสริม" · ผู้จัดการฝ่าย/ผู้เชี่ยวชาญ + **เจ้าหน้าที่อาวุโส** + เจ้าหน้าที่ · ยกเว้น GM) | แก้ร้านเปิดใหม่/คู่แข่ง/ปัจจัยภายนอกได้ (%รวม = 100%) · เห็นควรไม่ชดเชย = จบทันที |
 | 02 | GM ส่งเสริมธุรกิจฯ (GM OPT) | แยกเส้นตามวงเงินเกณฑ์เดียว · **< 100,000 อนุมัติ = จบ workflow** · เห็นควรไม่ชดเชย = จบทันที · **ส่งกลับ → 06** (มติ 2026-09-01 · เดิม 01) |
-| 03 | ผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) | เฉพาะยอด ≥ 100,000 · อนุมัติ = **จบ workflow** (รอ confirm) · **ส่งกลับ → 06** (มติ 2026-09-01 · เดิม 02) |
+| 03 | ผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) | เฉพาะยอด ≥ 100,000 · อนุมัติ = **จบ workflow** · **เห็นควรไม่ชดเชย = จบทันที** (มติ 2026-09-02 · เดิมตีกลับ 06) · **ส่งกลับ → 06** (มติ 2026-09-01 · เดิม 02) |
 
 ขั้นบัญชี 04 (ฝ่ายบัญชี SBP) / 05 (บัญชีปฏิบัติการภาค) **ถูกตัดตาม SDD v7.5** — บัญชีตรวจสอบผ่านรายงาน SBP Mall (Preview + Export CSV to Batch) แล้วกระทบยอด SAP นอกระบบ
 
@@ -83,10 +84,10 @@ inbox ของแต่ละ role = เอกสารสถานะ "รอ\
 | EM-02 | จบ workflow (ไม่ชดเชย/หยุดชดเชย · GM อนุมัติ < 100,000 · AVP อนุมัติ ≥ 100,000) | ผู้เกี่ยวข้องทั้งหมด |
 | EM-03 | ถูกส่งกลับ (back-flow) | ผู้ถูกส่งกลับหา + CC ผู้ส่งกลับ |
 | EM-04 | เตือนงานค้างรายสัปดาห์ (จันทร์ 10:00 แก้ได้) | ผู้มีงานค้าง (จาก `sps_store.workflow_approver` / `workflow_transaction` ของ `@srm/glb-workflow`) |
-| EM-05 | Escalation งานค้าง 30/45/60 วัน | หัวหน้า Section / GM OPT |
+| EM-05 | Escalation งานค้าง — **ช่วง 30-36 / 45-51 / 60-66 วัน** (ช่วง 7 วัน ไม่ใช่ "ครบ n วันขึ้นไป") | หัวหน้า Section / GM OPT |
 | EM-06 | สรุปเปิด workflow ราย DV (เดิม Job 8b) | DV/GM user |
-| EM-07 | Batch job จบด้วย Error (Jobs 2–10 + 8b) | ผู้ดูแลระบบ (กำหนดผู้รับใน backend config ต่อ job) |
-| EM-08 | Watchdog ACK จาก STA ค้าง ≥ 1 วัน (Job 10, 07:00) | ผู้ดูแลระบบ |
+| EM-07 | Batch job จบด้วย Error (ทั้ง 12 job — Jobs 2–10 + 8b + 11, 12) | ผู้ดูแลระบบ (กำหนดผู้รับใน backend config ต่อ job) |
+| EM-08 | Watchdog ข้อความขาออกยังไม่ได้ publisher confirm ≥ 1 วัน (Job 10, 07:00 · มติ 2026-09-08 ข้อ 2.13 — ไม่ใช่ ACK ระดับธุรกิจ สเปก STA ไม่มี ACK) | ผู้ดูแลระบบ |
 
 EM-04/05 รับพฤติกรรมมาจาก Approve Flow เดิม (จุด 10.1, 20.2, 20.3, 30.1, 70.1, 80.1, 110.2)
 
@@ -97,4 +98,7 @@ EM-04/05 รับพฤติกรรมมาจาก Approve Flow เดิ
 - Workflow engine `@srm/glb-workflow` มี **API 8 ตัว** (ชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx`): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` (= หน้ารอดำเนินการ) · `getWorkflowsByUser` (= หน้าที่เกี่ยวข้อง) · `addPreApprover` — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` ไม่ใช่ชื่อ API
 - Flow 12 ขั้น 4 Stage (A รับข้อมูล Jobs 2–5 · B สร้างเอกสาร+เปิด workflow · C พิจารณา 5 ขั้น · D ส่งออก+watchdog Jobs 6/10) → `workflow.md`
 - Schema **20 ตาราง 3 โซน (A 8 · B 9 · C 3)** — 19 CREATE + `fcs_qssi_score` ที่ reuse ของระบบเดิม (A=FGI/FCS · B=K2 docs/workflow · C=shared master/config · RBAC/ผู้ปฏิบัติงาน + workflow engine + master/config ที่ระบบ SBP มีอยู่แล้ว ใช้ของเดิม) + Data Spine 4 ID (`impact_process_id` → `doc_no` → `transaction_id`/`approver_id` ของ `sps_store.workflow_transaction` / `workflow_approver` ใน `@srm/glb-workflow`) → `database.md`
+- **Batch job 12 ตัว (Jobs 2–12 + 8b)** — repo ปลายทาง **`SBP/srm-sps-spsap-sop-sgi-batch`** (AWS Batch · ไม่มี `@Cron`) · 2 ตัวใหม่ 2026-09-02: **Job 11** ConsumeStaCompensate (รับยอดกลับจาก STA) · **Job 12** NotifyPendingWork (เตือนงานค้าง 30-36/45-51/60-66 วัน แทน `SendMailReport` เดิม)
+- **รับข้อมูลจาก EAI/RabbitMQ ผ่าน `SBP/srm-sps-spsap-store-consumer`** (มติ 2026-09-08) — consumer รับข้อความ → อ่าน config จาก S3 → `SubmitJob` ให้ **Job 5** (ไฟล์ `AMS06001I`) และ **Job 11** (`sta_update_compensate`) · **job ดาวน์โหลดไฟล์จาก S3 URI เอง** · **ขาออกไม่ผ่าน consumer** (Job 4 upload · Job 6 publish ใช้ของ `sop-sgi-batch` ตรง ๆ) · ⚠️ consumer ยังไม่มี DLQ/retry — ข้อค้าง 2.11/2.12
+- **Envelope RabbitMQ มาตรฐานบ้านนี้** — `dataType` · **`dataName`** · `dataMessage` · `sender` · `sentAt` (ยืนยันตรงกัน 3 แหล่ง: `sop-sgi-batch` · `store-backend` `import_mas_store_organize.service.ts` · สเปก STA) · exchange เป็น **topic** · routing key รูปแบบ `<exchange>.<entity>.<variant>`
 - P0 สำคัญ: ครอบ Job 4 ด้วย transaction · ย้าย credential ไป Secret Manager · ห้ามเก็บ secret ใน config ของระบบ (`mas_param`/backend config)

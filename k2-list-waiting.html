@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>เอกสารรอดำเนินการ · SBP Management System</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/sbp.css">
 <style>
   /* stat 8 ใบ + คลิกเป็น filter */
@@ -86,7 +87,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM19 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 8v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3 3M9 4h8a2 2 0 0 1 2 2v6"/></svg>
             ขั้นตอน Workflow ตามบทบาท
           </div>
-          <select id="roleSwitch" style="min-width:360px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;"></select>
+          <select id="roleSwitch" aria-label="สลับบทบาทเพื่อดูมุมมองของแต่ละขั้น workflow" style="min-width:min(360px,100%);padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;"></select>
           <span class="rb-hint" style="color:var(--muted);font-size:12.5px;flex:1;min-width:220px;">งานรอดำเนินการและการ์ดสถานะด้านล่างจะแสดงเฉพาะที่อยู่ในสิทธิ์ของบทบาทนี้</span>
         </div>
         <div class="wf-steps" id="wfSteps"></div>
@@ -404,10 +405,33 @@
     } else {
       document.body.setAttribute('data-crumb', 'เอกสาร · รอดำเนินการ');
       document.title = 'เอกสารรอดำเนินการ · SBP Management System';
-      // inbox ของบทบาท = สถานะ "รอ<role>ดำเนินการ" ค่าเดียว → ไม่ต้องมี filter สถานะ
-      var fsField = document.getElementById('fStatus').closest('.ffield');
-      if (fsField) fsField.style.display = 'none';
     }
+
+    /* ---- ตัวกรองสถานะของหน้า "รอดำเนินการ" (เพิ่ม 2026-09-01) ----
+       บทบาท 08 / 01 / 02 / 03: inbox มีสถานะเดียวคือ "รอ<บทบาท>ดำเนินการ" ตัวกรองไม่มีประโยชน์ จึงซ่อนไว้เหมือนเดิม
+       บทบาท 06 ฝ่าย SBP DSA: เห็น 3 สถานะในหน้าเดียว (inbox ของตัวเอง + เอกสารที่จบด้วยหยุดชดเชย / ไม่ชดเชย)
+       จึงเปิดตัวกรองให้ และใส่เฉพาะ 3 ตัวเลือกที่บทบาทนี้เห็นจริง ไม่ยกสถานะของบทบาทอื่นมาให้เลือกลอย ๆ
+       หน้า "ที่เกี่ยวข้อง" ไม่ถูกกระทบ — ยังแสดงตัวกรองสถานะครบทุกค่าตามเดิม */
+    var syncStatusFilter = function () {
+      var sel = document.getElementById('fStatus');
+      if (!sel) return;
+      var field = sel.closest('.ffield');
+      if (MODE !== 'waiting') { if (field) field.style.display = ''; return; }
+      var show = currentRole.code === '06';
+      if (field) field.style.display = show ? '' : 'none';
+      if (!show) { sel.value = ''; return; }
+      var keep = sel.value;
+      sel.innerHTML = '';
+      [['', 'ทุกสถานะ'],
+       [currentRole.wait, currentRole.wait],
+       [DONE + ' หยุดชดเชย', DONE + ' หยุดชดเชย (เปิดพิจารณาใหม่ได้)'],
+       [DONE + ' ไม่ชดเชย', DONE + ' ไม่ชดเชย']].forEach(function (pair) {
+        var o = document.createElement('option');
+        o.value = pair[0]; o.textContent = pair[1];
+        sel.appendChild(o);
+      });
+      sel.value = Array.prototype.some.call(sel.options, function (o) { return o.value === keep; }) ? keep : '';
+    };
 
     /* ---- สถานะเอกสาร 6 ค่า (ตัดบัญชี 04/05 ตาม SDD v7.5) ตาม SRS 3.1.6 / workflow_status_document.md (ดู workflow.md) ---- */
     var STATUSES = [
@@ -506,16 +530,11 @@
 
     // ไฮไลต์การ์ด stat: โหมดรอดำเนินการเทียบกับ special filter ที่เลือก · โหมดที่เกี่ยวข้องเทียบกับ dropdown สถานะ
     var specialKey = '', relatedKey = '';
-    function syncStatActive() {
-      var v = MODE === 'related' ? relatedKey : specialKey;
-      Array.prototype.forEach.call(document.querySelectorAll('#statGrid .stat[data-fstatus]'), function (s) {
-        s.classList.toggle('active', s.getAttribute('data-fstatus') === v);
-      });
-      // โหมดที่เกี่ยวข้อง: ไฮไลต์แถว legend ของกราฟวงกลมที่ถูกเลือกด้วย
-      Array.prototype.forEach.call(document.querySelectorAll('#statGrid [data-lstatus]'), function (s) {
-        s.classList.toggle('active', s.getAttribute('data-lstatus') === v);
-      });
-    }
+    /* syncStatActive — no-op ตั้งแต่ถอด stat card ออกจากหน้า (2026-08-06)
+       เดิมไฮไลต์การ์ดใน #statGrid ตาม filter ที่เลือก · element นั้นไม่มีแล้ว
+       คงชื่อฟังก์ชันและจุดเรียก onApply ไว้เป็น hook เผื่อ stat card กลับมา (แบบเดียวกับ
+       renderWaitingStats / renderRelatedStats ด้านล่าง) — ห้ามใส่โค้ดที่ query #statGrid อีก */
+    function syncStatActive() { /* no-op */ }
 
     /*
      * สร้างตารางแบบครบวงจร: mock rows (deterministic — ไม่สุ่ม) + filter + sort + pagination
@@ -1026,6 +1045,7 @@
         var sh = document.getElementById('stoppedHint');
         if (sh) sh.hidden = currentRole.code !== '06';
         specialKey = ''; relatedKey = '';
+        syncStatusFilter();          // สร้างตัวเลือกสถานะให้ตรงบทบาทก่อน แล้วค่อยล้างค่า
         activeTbl.clearFilters();
         renderSteps();
         activeTbl.setSpecial(null);

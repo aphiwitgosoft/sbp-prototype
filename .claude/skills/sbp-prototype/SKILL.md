@@ -29,8 +29,8 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 | 1 | `RDM-SRS ประกันรายได้-K2.pdf` | SRS v3.1 — แหล่งความจริงสูงสุดฝั่งหน้าจอ K2 |
 | 2 | `RDM-SRS-ประกันรายได้-K2-รายการหน้าจอ.md` (455 บรรทัด) | รายละเอียดต่อหน้าจอ: ฟิลด์ validation ข้อความ popup ตาราง role |
 | 3 | `ประกันรายได้-K2-รายการหน้าจอ.md` (160 บรรทัด) | ฉบับย่อ keyed ตามเลข section SRS + section_code + 8 role — **ไม่ใช่ไฟล์ซ้ำ** กับข้อ 2 |
-| 4 | `FGI_FCS_Batch_Job_Technical_Document_Improved_v4.0.pdf` | แหล่งความจริงเดียวของ batch Jobs 1–10 + 8b (หน้า `job-batch.html` = **“Flow Batch Job” ในกลุ่มเมนู Flow ตั้งแต่ 2026-08-06** เหลือแค่ Flowchart + Database ที่ใช้ — เอกสารนี้ยังเป็นแหล่งความจริงของทั้งหน้าและงาน BE ของ job) |
-| 5 | `database.md` / `workflow.md` / `api.md` | **living docs** — การออกแบบระบบใหม่ (schema **20 ตาราง** — 19 CREATE + `fcs_qssi_score` ที่ reuse / flow 12 ขั้น (ขั้น 1 เป็นหมายเหตุว่าตัด Job 1 แล้ว จึงทำจริง 11 ขั้น) / API **29 เส้น 6 กลุ่ม** — RBAC/ผู้ปฏิบัติงาน + workflow engine + store/zone/employee master + email template + config **ใช้ของระบบ SBP เดิม** · ตัดสินใจ 2026-08-05 และ 2026-08-06) canonical กว่า HTML เมื่อขัดแย้ง |
+| 4 | `FGI_FCS_Batch_Job_Technical_Document_Improved_v4.0.pdf` | แหล่งความจริงของ batch **Jobs 2–10 + 8b** (**ตัด Job 1 ImportQSSI 2026-08-24** — ระบบ SBP เดิม import `fcs_qssi_score` ให้แล้ว · **Jobs 11–12 ไม่ได้มาจากเอกสารนี้** เพิ่ม 2026-09-02 · รวมปัจจุบัน **12 job**) (หน้า `job-batch.html` = **“Flow Batch Job” ในกลุ่มเมนู Flow ตั้งแต่ 2026-08-06** เหลือแค่ Flowchart + Database ที่ใช้ — เอกสารนี้ยังเป็นแหล่งความจริงของทั้งหน้าและงาน BE ของ job) |
+| 5 | `database.md` / `workflow.md` / `api.md` | **living docs** — การออกแบบระบบใหม่ (schema **20 ตาราง** — 19 CREATE + `fcs_qssi_score` ที่ reuse / flow 12 ขั้น (ขั้น 1 เป็นหมายเหตุว่าตัด Job 1 แล้ว จึงทำจริง 11 ขั้น) / API **28 เส้น 6 กลุ่ม** — RBAC/ผู้ปฏิบัติงาน + workflow engine + store/zone/employee master + email template + config **ใช้ของระบบ SBP เดิม** · ตัดสินใจ 2026-08-05 และ 2026-08-06) canonical กว่า HTML เมื่อขัดแย้ง |
 | 6 | `PLAN-checklist-prototype.md` | checklist สถานะ implement — **ภายในขัดแย้งกันเอง** เช็ค HTML จริงก่อนเชื่อ |
 | 7 | **`SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI(2402026).pptx`** (แปลงไว้ที่ `SDD-GI-Compensation/SDD-ปรับปรุงการชดเชยรายได้-SBP-GI.md`) | **"SDD GI" — SDD ฉบับเดียวที่เหลือใน repo · ใหม่สุด 24/02/2026 · ชนะเมื่อขัดแย้งกับเอกสารเก่า** (วงเงินเกณฑ์เดียว 100,000/AVP 300,000 · เจ้าหน้าที่อาวุโส · เปิดเรื่องซ้ำ · auto-assign งานค้าง) · SDD v7.5 (08102025) **ถูกลบออกจาก repo 2026-08-06** ข้อกำหนดรวมเข้าการออกแบบแล้ว |
 
@@ -47,6 +47,17 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 
 **แก้เรื่อง API** — อ่าน `api.md` → แก้ `api.md` + `plan-api.html` คู่กัน → ถ้ากระทบตาราง/flow แก้ `database.md`/`workflow.md` ด้วย
 โครง modal ต่อ endpoint ใน `plan-api.html`: Flow อธิบาย**นอกแท็บ** · แท็บ 1 Request/Response · แท็บ 2 Database + SQL (ตัวอย่าง SQL ต่อเส้นใน `SQL_BY_PATH` keyed `'METHOD path'` ครบทุกเส้น) · แท็บ 3 Flowchart **เฉพาะ 3 เส้นซับซ้อน** (spec ใน `FLOWCHART_BY_PATH` เรนเดอร์ด้วย `renderFlow()` inline SVG) — ดูรายละเอียดใน [references/architecture.md](references/architecture.md) §plan-api
+
+**แก้เรื่อง batch job** — **repo ปลายทางคือ `SBP/srm-sps-spsap-sop-sgi-batch`** (NestJS 11 บน AWS Batch · 42 job เดิม)
+อ่าน **`SBP/srm-sps-spsap-sop-sgi-batch.md`** ก่อนเสมอ — วิธีลงทะเบียน job ใน `src/main.ts` · รับ argument ผ่าน `JOB_NAME`/`INPUT` (local) หรือ `argv[3]`/`argv[2]` (AWS Batch) · publisher RabbitMQ · `S3Service` · `integration_log`
+· job ทั้ง 12 ตัวนิยามที่ `JOBS` ใน `job-batch.html` แล้ว generate ต่อเป็นเอกสาร LLDD (`JOB_RUN_CONTRACT` = 5.95 args · `JOB_DECISION_RULES` = 5.96 เงื่อนไข)
+· **ห้ามใช้ `@Cron`** — repo นั้นไม่มีเลย ตารางเวลาเป็น AWS Batch scheduled event
+
+**แก้เรื่องรับข้อมูลจาก EAI / RabbitMQ** — **ตัวรับคือ `SBP/srm-sps-spsap-store-consumer`** (มติ 2026-09-08)
+อ่าน **`SBP/srm-sps-spsap-store-consumer.md`** ก่อน · consumer รับข้อความ → อ่าน config จาก S3 → `SubmitJob` ให้ job ของเรา
+· **Job 5** (รับ `AMS06001I`) และ **Job 11** (รับ `sta_update_compensate`) ถูกสั่งด้วยวิธีนี้ — job **ดาวน์โหลดไฟล์จาก S3 URI เอง**
+· **ขาออกไม่ผ่าน consumer** — Job 4 (upload) และ Job 6 (publish ให้ STA) ใช้ `S3Service`/publisher ของ `sop-sgi-batch` ตรง ๆ
+· ⚠️ consumer **ยังไม่มี DLQ และไม่เปิดใช้ retry** — ดูข้อค้าง 2.11/2.12 ใน `DECISIONS-รอตัดสินใจ.md`
 
 **แก้ email template / ค่ากำหนดกลาง** — **ไม่มีหน้าจอใน SGI แล้ว (ลบทั้งฟีเจอร์ 2026-08-06)** · template 8 ฉบับ (EM-01–08) อยู่ในตาราง `email_template` และค่ากำหนดกลางอยู่ใน `mas_param` ของ**ระบบ SBP เดิม** ซึ่งมีหน้าจอบริหารจัดการอยู่แล้ว · SGI อ่านอย่างเดียวแล้วส่งผ่าน `@gosoft-sbp/email-lib` (log ลง `email_sent`)
 

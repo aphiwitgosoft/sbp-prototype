@@ -6,7 +6,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 ตอบคำถามเดียว: **SDD สั่งให้ทำอะไรเพิ่ม · ใช้เวลากี่ชั่วโมง · ใครทำฝั่ง FE ใครทำฝั่ง BE · รายละเอียดอยู่ใน LLDD ฉบับไหน** — ใช้คู่กับ SDD ปรับปรุงการชดเชยรายได้ในระบบ SBP GI (24/02/2026) หัวข้อ 1.9 To-Be Business Process
 
-⚠️ **กติกาการนับเวลา (มติ 2026-08-25):** นับ**เฉพาะงานที่ To-Be เพิ่มเข้ามาใหม่ = 501 ชั่วโมง** เท่านั้น · งานฐานรากที่ต้องทำอยู่แล้วไม่ว่าจะมี To-Be หรือไม่ (323 ชั่วโมง — โครงฐานข้อมูล, pipeline FGI/FCS, สัญญากลาง API/FE, shell ของ portal, งานทดสอบ/ส่งมอบ) แยกไว้ท้ายเอกสารและ**ไม่นับรวมเป็นเวลาของ To-Be**
+⚠️ **กติกาการนับเวลา (มติ 2026-08-25):** นับ**เฉพาะงานที่ To-Be เพิ่มเข้ามาใหม่ = 496 ชั่วโมง** เท่านั้น · งานฐานรากที่ต้องทำอยู่แล้วไม่ว่าจะมี To-Be หรือไม่ (333 ชั่วโมง — โครงฐานข้อมูล, pipeline FGI/FCS, สัญญากลาง API/FE, shell ของ portal, งานทดสอบ/ส่งมอบ) แยกไว้ท้ายเอกสารและ**ไม่นับรวมเป็นเวลาของ To-Be**
 
 ชั่วโมงที่แสดงคือชั่วโมงเดียวกับที่ประกาศในแต่ละฉบับ (implementation + unit test) · เอกสารที่รับใช้ To-Be หลายข้อจะถูกแบ่งตามสัดส่วนในคอลัมน์ *สัดส่วนของฉบับ* จึงไม่มีการนับซ้ำ
 
@@ -14,15 +14,15 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 | ข้อ | SDD สไลด์ | ทำอะไร | FE (ชม.) | BE (ชม.) | รวม (ชม.) |
 | --- | --- | --- | --- | --- | --- |
-| TB-1 | สไลด์ 43 · 46-51 | แก้ไขระบบการสร้างเอกสารชดเชยรายได้ | 88 | 236 | **324** |
+| TB-1 | สไลด์ 43 · 46-51 | แก้ไขระบบการสร้างเอกสารชดเชยรายได้ | 88 | 231 | **319** |
 | TB-2 | สไลด์ 52-58 | ปรับสิทธิ์การตรวจสอบยอดชดเชยรายได้และกระบวนการทำงานของทีมส่งเสริม | 30 | 95 | **125** |
 | TB-3 | สไลด์ 59-62 | ยกเลิก Process บัญชี SBP ในการ Approve ค่าใช้จ่าย + เมนูรายงานใน SBP Mall | 25 | 27 | **52** |
-|  |  | **รวมงานที่ To-Be เพิ่ม** | **143** | **358** | **501** |
-| TB-0 | — | *(ฐานราก — ไม่นับเป็นเวลาของ To-Be)* | *83* | *240* | *323* |
+|  |  | **รวมงานที่ To-Be เพิ่ม** | **143** | **353** | **496** |
+| TB-0 | — | *(ฐานราก — ไม่นับเป็นเวลาของ To-Be)* | *83* | *250* | *333* |
 
 ## 3. TB-1 · SDD สไลด์ 43 · 46-51 — แก้ไขระบบการสร้างเอกสารชดเชยรายได้
 
-**ใช้เวลา 324 ชั่วโมง** (FE 88 + BE 236)  ·  FE: **New** 53 ชม. · **lin** 35 ชม.   |  BE: **But** 90 ชม. · **Bank** 81 ชม. · **Pete** 34 ชม. · **Vava** 31 ชม.
+**ใช้เวลา 319 ชั่วโมง** (FE 88 + BE 231)  ·  FE: **New** 53 ชม. · **lin** 35 ชม.   |  BE: **But** 90 ชม. · **Bank** 76 ชม. · **Pete** 34 ชม. · **Vava** 31 ชม.
 
 ### 3.1 SDD สั่งให้ทำอะไร
 
@@ -46,18 +46,18 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | `LLDD-BE-API-Attachment-Sales-Timeline` | BE | Pete | **34** | เต็มฉบับ |
 | `LLDD-BE-API-Document-Create-Update` | BE | But | **32** | เต็มฉบับ |
 | `LLDD-BE-API-Document-Detail-Aggregate` | BE | But | **32** | เต็มฉบับ |
-| `LLDD-BE-Job-8b-StartInternalWorkflow` | BE | Bank | **29** | เต็มฉบับ |
+| `LLDD-BE-Job-8b-StartInternalWorkflow` | BE | Bank | **28** | เต็มฉบับ |
 | `LLDD-BE-API-Document-List-Search` | BE | But | **26** | เต็มฉบับ |
-| `LLDD-BE-Job-8-CreateCompensationDocument` | BE | Bank | **24** | เต็มฉบับ |
+| `LLDD-BE-Job-8-CreateCompensationDocument` | BE | Bank | **23** | เต็มฉบับ |
 | `LLDD-BE-API-Workflow-Instances` | BE | Vava | **16** | 50% ของฉบับ |
-| `LLDD-BE-Job-9-SyncNewStoreToDocument` | BE | Bank | **15** | เต็มฉบับ |
 | `LLDD-BE-API-Document-Workflow-Actions` | BE | Vava | **15** | 40% ของฉบับ |
-| `LLDD-BE-Job-7-SyncCompetitorToDocument` | BE | Bank | **13** | เต็มฉบับ |
+| `LLDD-BE-Job-9-SyncNewStoreToDocument` | BE | Bank | **13** | เต็มฉบับ |
+| `LLDD-BE-Job-7-SyncCompetitorToDocument` | BE | Bank | **12** | เต็มฉบับ |
 | `LLDD-FE-Create-Document` | FE | New | **8** | เต็มฉบับ |
 
 ## 4. TB-2 · SDD สไลด์ 52-58 — ปรับสิทธิ์การตรวจสอบยอดชดเชยรายได้และกระบวนการทำงานของทีมส่งเสริม
 
-**ใช้เวลา 125 ชั่วโมง** (FE 30 + BE 95)  ·  FE: **New** 30 ชม.   |  BE: **Vava** 71 ชม. · **Bank** 24 ชม.
+**ใช้เวลา 125 ชั่วโมง** (FE 30 + BE 95)  ·  FE: **New** 30 ชม.   |  BE: **Vava** 71 ชม. · **Pete** 24 ชม.
 
 ### 4.1 SDD สั่งให้ทำอะไร
 
@@ -73,7 +73,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | เอกสาร LLDD | สาย | ผู้รับผิดชอบ | ชม. | สัดส่วนของฉบับ |
 | --- | --- | --- | --- | --- |
 | `LLDD-FE-Document-Detail` | FE | New | **30** | 40% ของฉบับ |
-| `LLDD-BE-Workflow-Engine-Definition` | BE | Bank | **24** | เต็มฉบับ |
+| `LLDD-BE-Workflow-Engine-Definition` | BE | Pete | **24** | เต็มฉบับ |
 | `LLDD-BE-API-Document-Workflow-Actions` | BE | Vava | **22** | 60% ของฉบับ |
 | `LLDD-BE-Integration-SBP-Platform` | BE | Vava | **20** | เต็มฉบับ |
 | `LLDD-BE-API-Workflow-Instances` | BE | Vava | **16** | 50% ของฉบับ |
@@ -87,7 +87,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 - ยกเลิกขั้นบัญชี Approve ยอดชดเชยรายได้ออกจาก workflow
 - Step 3 — สร้าง **เมนูใหม่ใน SBP Mall: รายงานตรวจสอบประกันรายได้** ให้ทีมบัญชีดึงข้อมูลไปใช้ต่อเอง
-- ตัวกรอง 7 ตัว — สถานะ (บังคับ) · รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ · Period Statement (ค.ศ.) · ประเภทร้าน (checkbox) · ภาค (checkbox เพิ่มอัตโนมัติเมื่อมีภาคใหม่) · ผลการพิจารณา (radio)
+- ตัวกรอง 7 ตัว — สถานะ (บังคับ · ไม่เลือกแล้วกดค้นหา → 400 **REPORT_STATUS_REQUIRED**) · รหัสร้านถูกกระทบ · รหัสร้านเปิดกระทบ · Period Statement (ค.ศ.) · ประเภทร้าน (checkbox) · ภาค (checkbox เพิ่มอัตโนมัติเมื่อมีภาคใหม่) · ผลการพิจารณา (radio)
 - ปุ่ม ค้นหาข้อมูล · Export Excel · เคลียร์ค่าเริ่มต้น · Preview Report · Export CSV to Batch
 
 ### 5.2 ทำที่เอกสาร LLDD ฉบับไหน
@@ -99,30 +99,32 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 ## 6. TB-0 · งานฐานราก — **ไม่นับเป็นเวลาของ To-Be**
 
-งานชุดนี้ (323 ชั่วโมง · FE 83 + BE 240) ต้องทำอยู่แล้วไม่ว่าจะมี To-Be หรือไม่ — SDD ไม่ได้ระบุเป็นข้อ และไม่ควรนับเป็นต้นทุนของการเปลี่ยนแปลงตาม To-Be · แสดงไว้เพื่อให้เห็นภาพรวมของชุดส่งมอบทั้งหมดเท่านั้น
+งานชุดนี้ (333 ชั่วโมง · FE 83 + BE 250) ต้องทำอยู่แล้วไม่ว่าจะมี To-Be หรือไม่ — SDD ไม่ได้ระบุเป็นข้อ และไม่ควรนับเป็นต้นทุนของการเปลี่ยนแปลงตาม To-Be · แสดงไว้เพื่อให้เห็นภาพรวมของชุดส่งมอบทั้งหมดเท่านั้น
 
 - โครงฐานข้อมูลเป้าหมาย 20 ตาราง + migration/cutover จากระบบเดิม
-- pipeline FGI/FCS ที่ป้อนข้อมูลให้ทุก To-Be (Job 2-6, Job 10 และงาน interface/อีเมล)
+- pipeline FGI/FCS ที่ป้อนข้อมูลให้ทุก To-Be — **batch job ทั้งหมด** Jobs 2, 3, 4, 5, 6, 7, 8, 8b, 9, 10, 11, 12 (รวม 12 job) และงาน interface/อีเมล
 - สัญญากลาง API/FE (envelope · error · auth · pagination) และ shell ของ portal
 - master ที่ SGI ดูแลเอง (ปัจจัยภายนอก · แบรนด์คู่แข่ง) และงานทดสอบ/ส่งมอบ
 
 | เอกสาร LLDD | สาย | ผู้รับผิดชอบ | ชม. | สัดส่วนของฉบับ |
 | --- | --- | --- | --- | --- |
-| `LLDD-BE-Data-Migration-Cutover` | BE | Bank | 43 | เต็มฉบับ |
+| `LLDD-BE-Data-Migration-Cutover` | BE | Vava | 43 | เต็มฉบับ |
 | `LLDD-FE-Foundation` | FE | lin | 35 | เต็มฉบับ |
-| `LLDD-BE-Job-6-ExportImpactStoreToFS` | BE | Bank | 34 | เต็มฉบับ |
-| `LLDD-BE-Database-Structure` | BE | Bank | 31 | เต็มฉบับ |
-| `LLDD-BE-Job-5-ImportImpactSaleFromIAS` | BE | Bank | 21 | เต็มฉบับ |
+| `LLDD-BE-Job-6-ExportImpactStoreToFS` | BE | Bank | 32 | เต็มฉบับ |
+| `LLDD-BE-Database-Structure` | BE | Pete | 31 | เต็มฉบับ |
 | `LLDD-FE-Master-Data` | FE | New | 20 | เต็มฉบับ |
-| `LLDD-BE-Job-2-ImportImpactStore` | BE | Bank | 19 | เต็มฉบับ |
-| `LLDD-BE-Job-4-PrepareImpactStoreToIAS` | BE | Bank | 19 | เต็มฉบับ |
-| `LLDD-BE-Job-Batch-Email-SRM` | BE | Pete | 19 | เต็มฉบับ |
+| `LLDD-BE-Job-2-ImportImpactStore` | BE | Bank | 20 | เต็มฉบับ |
 | `LLDD-BE-API-Common-Contracts` | BE | But | 18 | เต็มฉบับ |
+| `LLDD-BE-Job-4-PrepareImpactStoreToIAS` | BE | Bank | 17 | เต็มฉบับ |
+| `LLDD-BE-Job-5-ImportImpactSaleFromIAS` | BE | Bank | 17 | เต็มฉบับ |
 | `LLDD-FE-Integration-Contracts` | FE | lin | 16 | เต็มฉบับ |
-| `LLDD-BE-Job-3-ImportImpactCompetitor` | BE | Bank | 13 | เต็มฉบับ |
+| `LLDD-BE-Job-11-ConsumeStaCompensate` | BE | Bank | 16 | เต็มฉบับ |
+| `LLDD-BE-Job-12-NotifyPendingWork` | BE | Bank | 13 | เต็มฉบับ |
 | `LLDD-BE-API-Report-and-Master-Data` | BE | Pete | 12 | 30% ของฉบับ |
 | `LLDD-FE-Testing-Delivery` | FE | lin | 12 | เต็มฉบับ |
-| `LLDD-BE-Job-10-NotifyNoReceiveData` | BE | Bank | 11 | เต็มฉบับ |
+| `LLDD-BE-Job-3-ImportImpactCompetitor` | BE | Bank | 12 | เต็มฉบับ |
+| `LLDD-BE-Job-Batch-Email-SRM` | BE | Pete | 11 | เต็มฉบับ |
+| `LLDD-BE-Job-10-NotifyNoReceiveData` | BE | Bank | 8 | เต็มฉบับ |
 
 ## 7. เอกสารที่รับใช้ To-Be มากกว่าหนึ่งข้อ
 

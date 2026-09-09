@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | 18 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
-| Owner | Butsaba <But> Podamrong |
+| Owner | Butsaba &lt;But&gt; Podamrong |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | กำหนดสัญญากลางของ REST API ทุกเส้นเพื่อไม่ให้ endpoint รายตัวตีความต่างกัน: transport/auth/error/format/pagination/action/RBAC/audit/idempotency |
 
@@ -63,17 +63,17 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Common Contracts_
 | --- | --- | --- | --- |
 | Base URL | /api/v1 | required | ทุก endpoint ใช้ prefix นี้ |
 | Content-Type | application/json; charset=utf-8 | required for JSON | multipart เฉพาะ attachments |
-| Authorization | Bearer <JWT> | required for user endpoints | validate signature/expiry/role; platform provides token |
+| Authorization | Bearer &lt;JWT&gt; | required for user endpoints | validate signature/expiry/role; platform provides token |
 | X-Service-Token | opaque service token | required for internal workflow/batch callbacks | ใช้กับ /sgi/workflow/instances และ external callback ที่ไม่ใช่ user JWT |
 | X-Request-Id | uuid/string | optional but logged | ถ้าไม่ส่ง BE generate แล้วคืนใน log/trace |
 | ErrorEnvelope | {code,message} | message Thai verbatim | ห้ามเพิ่ม error shape อื่นใน endpoint รายตัว |
-| PageResponse<T> | {page,size,total,items} | page>=1 size<=100 | ใช้กับทุก GET list |
+| PageResponse&lt;T&gt; | {page,size,total,items} | page>=1 size<=100 | ใช้กับทุก GET list |
 | MutationResponse | {message} | message optional for simple save | ถ้า workflow action ใช้ ActionResponse แทน |
 | docNo | YYYY/xxxxx ค.ศ. | path/query | URL encode slash ตาม client/router; service ประกอบกลับเป็น docNo |
 | storeCode/newStoreCode | string 5 digits | preserve leading zero | ห้ามใช้ numeric id แทนรหัสร้านใน payload |
 | date/month | ISO-8601 ค.ศ. | YYYY-MM-DD / YYYY-MM | FE แสดง ค.ศ. เป็นค่าเริ่มต้น (buddhistEra=false) · แปลง พ.ศ. เฉพาะ component ที่เปิด flag |
 | amount/percent | number | 2 decimal | format display อยู่ FE; BE validate precision/range |
-| result | verbatim from actionOptions | required for /actions | ต้องเป็นค่าที่ BE ส่งมาใน role profile ของเอกสารนั้น |
+| result | actionOptions[].**value** (ไม่ใช่ label) | required for /actions | ต้องเป็นค่า `value` ที่ BE ส่งมาใน `actionOptions` ของ role profile เอกสารนั้น — ไม่ใช่ `label` ที่ใช้แสดงผล |
 | ActionResponse | {statusCode,nextSection,message} | required for /actions | FE resolve label จาก /sgi/lookup/document-statuses; mutation response ไม่คืน label ไทยซ้ำ |
 | reason | text | ไม่บังคับแล้ว (ยกเลิกระบบ audit ของ master 2026-08-07) | ไม่มีปลายทางเก็บ — ถ้าส่งมาให้ละเว้น |
 
@@ -83,7 +83,7 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 
 | ชั้น | รูปแบบ | ตัวอย่าง |
 | --- | --- | --- |
-| URL ของ API | `/api/v1/sgi/<กลุ่ม>/<resource>` | `/api/v1/sgi/document/{docNo}/actions` |
+| URL ของ API | `/api/v1/sgi/<กลุ่ม>/&lt;resource&gt;` | `/api/v1/sgi/document/{docNo}/actions` |
 | route ของหน้าจอ | `/sgi/<กลุ่ม>/<หน้า>` | `/sgi/document/waiting` · `/sgi/report/status-summary` |
 | โฟลเดอร์ไฟล์ | `**/sgi/*` | `src/app/(main)/sgi/*` · `src/services/sgi/*` · `src/types/sgi/*` |
 
@@ -96,9 +96,11 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 | Master Data | `/sgi/master/*` | 8 | `/factors` (CRUD 4) · `/competitors` (CRUD 4) — master ที่มีหน้าจอดูแลของตัวเอง |
 | รายงาน | `/sgi/report/*` | 2 | `/status-summary` · `/status-summary/export` |
 | Workflow ภายใน | `/sgi/workflow/*` | 3 | `/instances` · `/instances/{id}` · `/summary` |
-| Interface (tracking / ACK) | `/sgi/interface/*` | 3 | `/tracking` · `/pending-ack` · `/sta/ack` |
+| Interface (tracking) | `/sgi/interface/*` | 2 | `/tracking` · `/pending-ack` — **ตัด `/sta/ack` 2026-09-08** (ข้อ 2.13 · สเปก STA ไม่มี ACK แบบ HTTP) |
 
-**Batch job ไม่มีกลุ่ม path ของตัวเอง** — Jobs 2-10 + 8b รันด้วย cron/CLI ไม่ได้เปิด endpoint (กลุ่ม Batch Job Admin 6 เส้นถูกตัดทิ้ง 2026-08-06) · หน้าต่างที่มองเห็นผลของ job คือ **`/sgi/interface/*`** (tracking + ACK ของ `sgi_interface_transactions`) กับ application log เท่านั้น
+**Batch job ไม่มีกลุ่ม path ของตัวเอง** — Jobs 2, 3, 4, 5, 6, 7, 8, 8b, 9, 10, 11, 12 (รวม 12 job) รันด้วย AWS Batch/CLI ไม่ได้เปิด endpoint (กลุ่ม Batch Job Admin 6 เส้นถูกตัดทิ้ง 2026-08-06) · หน้าต่างที่มองเห็นผลของ job คือ **`/sgi/interface/*`** (tracking + ACK ของ `sgi_interface_transactions`) กับ application log เท่านั้น
+
+**repo ปลายทางของ batch job ทุกตัวคือ `SBP/srm-sps-spsap-sop-sgi-batch`** — วิธีลงทะเบียน job, รูปแบบ `INPUT`, publisher ของ RabbitMQ, `S3Service` และ `integration_log` อ่านได้ที่ **`SBP/srm-sps-spsap-sop-sgi-batch.md`** · ห้ามออกแบบ batch ของ SGI โดยไม่อ่านไฟล์นั้นก่อน · ส่วน job ที่ถูก **สั่งจากข้อความ** (Job 5 · Job 11 · มติ 2026-09-08) ตัวรับข้อความคือ **`SBP/srm-sps-spsap-store-consumer`** — ดู `SBP/srm-sps-spsap-store-consumer.md`
 
 #### ทำไมต้องมี prefix (ไม่ใช่แค่ความสวยงาม)
 
@@ -106,7 +108,7 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 | --- | --- | --- |
 | `/document` · `/statement/...` | `/documents` | ชนเชิงความหมาย อ่าน routing แล้วสับสน |
 | `/report` · `/performance-report` · `/statement/report/ej` | `/reports/status-summary` | ชนเชิงความหมาย |
-| **`/interface/sta/upload-cmadd`** · `/interface/add` | **`/interfaces/sta/ack`** | 🔴 เกือบเหมือนกัน — เสี่ยงยิงผิดเส้นจริง |
+| **`/interface/sta/upload-cmadd`** · `/interface/add` | ~~`/interfaces/sta/ack`~~ | ✅ **หมดความเสี่ยงแล้ว** — เส้นของเราถูกตัดเมื่อ 2026-09-08 |
 | `/common` · `/master` · `/store` | `/factors` `/competitors` `/document-statuses` | ปนกับ master ของโมดูลอื่น |
 
 - ฝั่ง NestJS: **`SgiModule` เดียว** ผูก prefix ที่ระดับโมดูล (`RouterModule.register([{ path: 'sgi', module: SgiModule }])`) แล้วแตกเป็น 6 controller ตามกลุ่ม (`DocumentController` `LookupController` `MasterController` `ReportController` `WorkflowController` `InterfaceController`) — **ห้ามเติม `sgi/` ในแต่ละ `@Controller()`**
@@ -126,6 +128,8 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 | COMPETITOR_REQUIRED | 422 | บันทึกร้านคู่แข่งโดยไม่เลือก competitorCode | กรุณาเลือกร้านคู่แข่งก่อนบันทึก |
 | EXTERNAL_FACTOR_REQUIRED | 422 | บันทึกปัจจัยอื่นโดยไม่เลือก factorCode | กรุณาเลือกปัจจัยอื่นก่อนบันทึก |
 | REPORT_DATE_RANGE_INVALID | 422 | impactMonthFrom มากกว่า impactMonthTo | เดือนเริ่มต้นต้องไม่มากกว่าเดือนสิ้นสุด |
+| REPORT_STATUS_REQUIRED | 400 | กดค้นหาในหน้ารายงานโดยไม่เลือกสถานะ (สถานะเป็น filter บังคับเพียงตัวเดียว · SDD สไลด์ 60) | กรุณาเลือกสถานะก่อนค้นหาข้อมูล |
+| ATTACHMENT_FILE_REQUIRED | 422 | กดปุ่มแนบเอกสารโดยยังไม่ได้เลือกไฟล์ | กรุณาเลือกไฟล์ที่ต้องการแนบ ก่อนกดแนบเอกสาร |
 | FILE_TOO_LARGE | 413 | attachment > 5 MB | ไฟล์แนบมีขนาดเกิน 5 MB |
 | FILE_TYPE_UNSUPPORTED | 415 | extension/content type ไม่อยู่ใน allowlist | ชนิดไฟล์ไม่อนุญาตให้อัปโหลด |
 | FILE_SCAN_BLOCKED | 422 | AV scan พบไวรัสหรือ scan failed | ไฟล์แนบไม่ผ่านการตรวจสอบความปลอดภัย |
@@ -135,6 +139,8 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 | STALE_VERSION | 409 | versionNo ที่ส่งมาไม่ตรงกับ sgi_compensation_documents.version_no | ข้อมูลถูกแก้ไขโดยผู้ใช้อื่น กรุณาโหลดข้อมูลล่าสุดแล้วลองอีกครั้ง |
 | FS_BRIDGE_UNAVAILABLE | FE | hidden iframe ไม่ตอบ FS_FORM_READY ภายในเวลาที่กำหนด | ไม่สามารถเชื่อมต่อแบบฟอร์ม FS ได้ กรุณาลองอีกครั้ง |
 | FS_BRIDGE_ORIGIN_INVALID | FE | event.origin ไม่ตรง allowlist | ไม่สามารถยืนยันแหล่งที่มาของแบบฟอร์ม FS ได้ |
+| CODE_DUPLICATE | 409 | บันทึก master ด้วยรหัสที่มีอยู่แล้ว (`factorCode` / `competitorCode`) | รหัสนี้ถูกใช้แล้ว กรุณาระบุรหัสอื่น |
+| FS_PROTOCOL_VERSION_UNSUPPORTED | FE | ข้อความจาก FS iframe ส่ง `protocolVersion` ที่ไม่ใช่ `1.0` | เวอร์ชันของแบบฟอร์ม FS ไม่รองรับ กรุณาติดต่อผู้ดูแลระบบ |
 | FS_BRIDGE_SCHEMA_INVALID | FE | FS_FIELD_SCHEMA ไม่ตรง message schema หรือมี field type ที่ไม่รองรับ | ข้อมูลแบบฟอร์ม FS ไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ |
 | FS_BRIDGE_SUBMIT_FAILED | FE | FS_SUBMIT_RESULT ไม่สำเร็จหรือ FS_ERROR ตอน submit | ส่งแบบฟอร์ม FS ไม่สำเร็จ กรุณาตรวจสอบข้อมูลแล้วลองอีกครั้ง |
 
@@ -149,12 +155,12 @@ Matrix นี้เป็น baseline สำหรับ BE authorization guard;
 | Document read/list/timeline/sales | GET /sgi/document*, GET /sgi/document/{docNo}/timeline, GET /sgi/document/{docNo}/sales | document participant or report/admin role explicitly granted |
 | Document create | POST /sgi/document | 🔴 **service token / pipeline เท่านั้น** — มติ 2026-08-06 ตัดฟอร์มสร้างเอกสารใน FE ออกแล้ว (ต้นทางสร้างที่ระบบ FS แล้ว SBP Statement ส่งข้อมูลกลับ) · ห้ามระบุเป็นรหัสกลุ่มสิทธิ์ เพราะเลข 01/02/03 ชนกับ section_code ของ workflow |
 | Document update/action/attachment upload | PUT /sgi/document/{docNo}, POST /sgi/document/{docNo}/actions, POST /sgi/document/{docNo}/attachments | current action owner; admin override only with policy and audit reason |
-| Attachment download | GET /sgi/document/{docNo}/attachments/{attachId}/download | สิทธิ์เท่ากับอ่านเอกสาร + attachment ต้องเป็นของ docNo นั้น · ⚠️ เงื่อนไข `scan_status` ขึ้นกับนโยบาย AV ที่ยังไม่เคาะ (ดู `LLDD-BE-API-Attachment-Sales-Timeline` 5.1) — บังคับ CLEAN อย่างเดียวตอนนี้จะดาวน์โหลดไม่ได้เลย |
+| Attachment download | GET /sgi/document/{docNo}/attachments/{attachId}/download | สิทธิ์เท่ากับอ่านเอกสาร + attachment ต้องเป็นของ docNo นั้น · เงื่อนไข `scan_status` ใช้**นโยบายเดียวของทั้งระบบ** — `CLEAN` ดาวน์โหลดได้เสมอ · `BLOCKED`/`FAILED` คืน 422 `FILE_SCAN_BLOCKED` เสมอ · `PENDING` ขึ้นกับสวิตช์ `SGI_ALLOW_PENDING_DOWNLOAD` (`mas_param`) · รายละเอียดเต็มที่ `LLDD-BE-Integration-SBP-Platform` หัวข้อ 5 |
 | Lookup | /sgi/lookup/document-statuses, /sgi/lookup/workflow-sections (ร้าน/ภาค/ประเภทสาขา ใช้ /store/* + /common/common-code ของระบบ SBP เดิม · 2026-08-06) | authenticated user with related menu access |
 | Master (SGI) | /sgi/master/factors*, /sgi/master/competitors* | admin/HQ ตามสิทธิ์เมนูที่มากับ header x-user-permissions |
 | RBAC/ผู้ปฏิบัติงาน | ไม่ใช่ endpoint ของ SGI — ตัด /operators* /roles* /menus* /menu-permissions* /employees/search รวม 14 เส้น (2026-08-05) ใช้ auth-backend เดิม จัดการที่หน้า /setting/manage-user-rights | - |
 | Reports | /sgi/report/status-summary* | admin/HQ/report roles and accounting service user |
-| Internal workflow/interface | /sgi/workflow/instances · /sgi/interface/* (tracking · pending-ack · sta/ack callback) | service token หรือ API key เท่านั้น — ไม่ผ่านสิทธิ์เมนูของผู้ใช้ |
+| Internal workflow/interface | /sgi/workflow/instances · /sgi/interface/* (tracking · pending-ack) | service token หรือ API key เท่านั้น — ไม่ผ่านสิทธิ์เมนูของผู้ใช้ |
 
 ### 5.9 Input / Progress / Output Contract
 
@@ -204,7 +210,7 @@ Matrix นี้เป็น baseline สำหรับ BE authorization guard;
 | Authenticate user endpoint | middleware | auth.verifyJwt | req.user = employeeId/roleCode/sectionCode |
 | Authorize menu/role | middleware/service | rbac.requireMenu/requireRole | 403 FORBIDDEN เมื่อไม่มีสิทธิ์ |
 | Validate request | controller | zod schema | 400 VALIDATION envelope |
-| Return list | repository/service | PageResponse<T> | pagination shape เดียวกัน |
+| Return list | repository/service | PageResponse&lt;T&gt; | pagination shape เดียวกัน |
 | Submit document action | service | documentAction.service.submit | return ActionResponse |
 | Write audit | transaction | audit.service.write | reason/updated_by/old_value/new_value |
 | Handle idempotency | service | requestId/business key | duplicate returns existing result or 409 per endpoint rule |
@@ -275,7 +281,7 @@ Standard list envelope เมื่อ endpoint เป็นรายการ
 | page | integer | Yes | >= 1; default 1 |
 | size | integer | Yes | 1..100; default 20 |
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 
 ### POST /api/v1/sgi/document/{docNo}/actions
 
@@ -319,7 +325,7 @@ Standard list envelope เมื่อ endpoint เป็นรายการ
 
 โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
 
-#### 8.1 ผังไฟล์ที่ต้องสร้าง
+### 8.1 ผังไฟล์ที่ต้องสร้าง
 
 **เอกสารฉบับนี้ไม่ต้องสร้างไฟล์ใหม่** — ทุก endpoint ที่อยู่ในตาราง API เป็น contract กลาง หรือถูก implement ที่เอกสารอื่น/ระบบ SBP เดิมแล้ว (ดูตารางด้านล่าง) การสร้าง controller ซ้ำจะทำให้ NestJS มี 2 controller จอง route เดียวกันแล้ว register ตัวแรกชนะเงียบ ๆ
 
@@ -327,9 +333,9 @@ Standard list envelope เมื่อ endpoint เป็นรายการ
 | --- | --- | --- |
 | ALL /api/v1/sgi/* | Standard error envelope | contract กลาง/wildcard — ไม่ผูกกับ controller ใดเส้นเดียว |
 | GET /api/v1/sgi/* | Standard list envelope เมื่อ endpoint เป็นรายการ | contract กลาง/wildcard — ไม่ผูกกับ controller ใดเส้นเดียว |
-| POST /api/v1/sgi/document/{docNo}/actions | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Doc… | **reference — implement ที่เอกสาร `LLDD-BE-API-Document-Workflow-Actions`** (1 เส้น = 1 เจ้าของ ไม่ประกาศ controller ซ้ำ ไม่งั้น NestJS จะ register ทับกันเงียบ ๆ) |
+| POST /api/v1/sgi/document/{docNo}/actions | **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Document-Workflow-Actions… | **reference — implement ที่เอกสาร `LLDD-BE-API-Document-Workflow-Actions`** (1 เส้น = 1 เจ้าของ ไม่ประกาศ controller ซ้ำ ไม่งั้น NestJS จะ register ทับกันเงียบ ๆ) |
 
-#### 8.2 สัญญากลางที่ต้องยึด
+### 8.2 สัญญากลางที่ต้องยึด
 
 ```ts
 // src/common/interceptors/response.interceptor.ts (มีอยู่แล้ว — ห้ามห่อซ้ำใน service)

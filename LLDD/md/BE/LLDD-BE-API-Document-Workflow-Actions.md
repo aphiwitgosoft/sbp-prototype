@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | **37 ชั่วโมง** = implementation 28 + unit test 9 (30%) |
-| Owner | Tunyatorn <Vava> Kiatkongphongsa |
+| Owner | Tunyatorn &lt;Vava&gt; Kiatkongphongsa |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ APIs สำหรับรับผลพิจารณา ตรวจสิทธิ์ action และบันทึก audit/consideration log |
 
@@ -69,7 +69,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Document Workflow Actions
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | docNo | YYYY/xxxxx | required | path param |
-| result | verbatim from actionOptions | required | ต้องเป็นค่าที่ API detail ส่งมาให้ผู้ใช้ในเอกสารนั้น |
+| result | actionOptions[].**value** (ไม่ใช่ label) | required | ต้องเป็นค่า `value` จาก `actionOptions` ที่ API detail ส่งมา — validate ซ้ำฝั่ง BE ว่าอยู่ใน 7 ค่าของ enum |
 | comment | text | required for return/reject | trim ก่อนบันทึก |
 
 ### 5.1 Canonical Workflow Transition Matrix
@@ -88,8 +88,21 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 | 02 | เห็นควรชดเชย และ totalCompensationAmount < 100,000 (มติ 2026-08-18) | 99 | null | close 02; complete instance |
 | 02 | เห็นควรไม่ชดเชย (SDD GI — **จบ flow ทันที** ไม่ตีกลับเป็นทอด ๆ) | 99 | null | close 02; complete instance |
 | 03 | เห็นควรชดเชย | 99 | null | close 03; complete instance |
-| 03 | เห็นควรไม่ชดเชย | 06 | 06 | close 03; reopen 06 |
+| 03 | เห็นควรไม่ชดเชย (มติ 2026-09-02 — **จบ flow ทันที** เหมือน 01/02 · เดิมตีกลับ 06) | 99 | null | close 03; complete instance |
 | ทุก section ที่รองรับ | ส่งกลับฝ่าย SBP DSA | **06 เสมอ** (มติ 2026-09-01 — เดิม 02→01 · 03→02 · ขั้น 08 ตัดปุ่มส่งกลับทิ้งเพราะปุ่มเดียวที่เหลือก็กลับ 06 อยู่แล้ว) | 06 | close current; reopen 06 with new task id |
+
+### 5.1c แจ้ง STA เมื่อเปิดพิจารณาใหม่ (reflow) — มติ 2026-09-01
+
+เมื่อ **ฝ่าย SBP DSA (section 06)** กด action บนเอกสารที่**จบไปแล้ว** (statusCode 99) ด้วยผล **เห็นควรไม่ชดเชย** หรือ **หยุดชดเชยประกันรายได้** เพื่อเปิดรอบพิจารณาใหม่ endpoint นี้ต้อง **publish message `sgi_reflow`** ให้ระบบ STA ด้วย — ถ้าไม่แจ้ง STA จะปิดงวดนั้นค้างไว้และยอดชดเชยรอบใหม่จะไม่ถูกคำนวณ · สัญญาข้อความเต็มดู `STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md`
+
+| รายการ | ข้อกำหนดที่ต้องทำตาม |
+| --- | --- |
+| ช่องทาง | RabbitMQ exchange `sgi.interface` (topic · durable) — ชื่อ exchange อ่านจาก backend config `SGI_MQ_EXCHANGE` |
+| ชื่อชุดข้อมูล | `dataName = "sgi_reflow"` · `sender = "SGI"` · โครงสร้างฟิลด์ชุดเดียวกับ `sgi_impact_store` |
+| ค่าที่บังคับ | `compensate_status = "R"` ทุกรายการ · `stmt_year_month` ว่างเสมอ (ยังไม่ทราบงวด statement ใหม่) |
+| จำนวนรายการ | **1 รายการต่อ 1 งวด** (`compensate_year_month`) ที่ต้อง reflow — ส่งครบทุกงวดที่เอกสารเดิมครอบคลุม |
+| Transaction boundary | insert แถว outbox `sgi_interface_transactions` (**`data_name = 'SGI_REFLOW'`** · `direction = 'OUT'` · `status = 'READY'`) **ใน transaction เดียวกับการเปิดรอบพิจารณาใหม่** แล้ว publish นอก transaction · ได้ publisher confirm จึง update เป็น `SENT` <br>⚠️ `SGI_REFLOW` เพิ่งถูกเพิ่มเข้า `CHECK` ของ `data_name` เมื่อ 2026-09-02 — ก่อนหน้านั้น INSERT นี้จะถูก constraint ปฏิเสธ |
+| Idempotency | `message_id` = `sgi_interface_transactions.id` · กดเปิดพิจารณาใหม่ซ้ำบนเอกสารเดิมต้องไม่เกิดแถว outbox ที่สอง |
 
 ### 5.1b Auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48 · 64)
 
@@ -112,13 +125,14 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 | 5 | พนักงานลาออกยังต้องเปิด SR เพื่อแก้ชื่อผู้ดำเนินการ (ข้อจำกัดที่ SDD สไลด์ 48 ระบุ ไม่แก้ในเฟสนี้) |
 
 ```sql
+-- bind ตามลำดับ: $1=impactedStoreCode · $2=currentDocNo · $3=sectionCode
 -- resolve เจ้าของงานคนเดิมของขั้น :sectionCode จากเอกสารรอบก่อนของร้านเดียวกัน
 SELECT cl.consider_by
 FROM sgi_compensation_documents d
 JOIN sgi_consideration_logs cl ON cl.doc_no = d.doc_no
-WHERE d.impacted_store_code = :impactedStoreCode
-  AND d.doc_no <> :currentDocNo
-  AND cl.section_code = :sectionCode
+WHERE d.impacted_store_code = $1 /* impactedStoreCode */
+  AND d.doc_no <> $2 /* currentDocNo */
+  AND cl.section_code = $3 /* sectionCode */
 ORDER BY d.round_no DESC, d.loop_no DESC, cl.action_datetime DESC
 LIMIT 1;
 -- ได้ค่าแล้วส่งเข้า addPreApprover(...) ตอนเปิดงานรอบใหม่ ห้าม INSERT sps_store.workflow_approver เอง
@@ -268,7 +282,7 @@ Document action API ตัวอย่างเมื่อ currentSection=01 �
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | items[].section | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].result | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
@@ -281,30 +295,33 @@ Document action API ตัวอย่างเมื่อ currentSection=01 �
 | workflow_transaction / workflow_history / workflow_approver (@srm/glb-workflow) | R (เขียนผ่าน lib) | eventWorkflow() เดิน state + บันทึก history |
 | sgi_compensation_documents | W | อัปเดต status/current_section/result |
 | sgi_consideration_logs | W | บันทึกผลพิจารณาและ comment |
+| workflow_route (@srm/glb-workflow · sps_store) | R | อ่าน `email_id` ของ route ที่เพิ่งเดิน เพื่อเลือก template อีเมล (ปิด DP-5) (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
+| business_user (ระบบ SBP เดิม) | R | resolve อีเมล/ชื่อของผู้ดำเนินการถัดไปที่ engine คืนมา (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
 | workflow_transaction (@srm/glb-workflow) | R (เขียนผ่าน lib) | กัน action ซ้ำด้วย getTransaction/getPermissionEvents ก่อน eventWorkflow — ห้าม UPDATE ตรง |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
 โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
 
-#### 9.1 ผังไฟล์ที่ต้องสร้าง
+### 9.1 ผังไฟล์ที่ต้องสร้าง
 
 | Path | หน้าที่ |
 | --- | --- |
 | store-backend · src/modules/sgi-document-workflow-actions/sgi-document-workflow-actions.controller.ts | route ทั้งหมดของเอกสารนี้ (2 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
 | store-backend · src/modules/sgi-document-workflow-actions/sgi-document-workflow-actions.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sgi-document-workflow-actions/sgi-document-workflow-actions.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-document-workflow-actions/sgi-document-workflow-actions.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย · **คีย์ = ชื่อ handler** เช่น `getSgiMasterFactors` · บล็อกที่มีหลาย statement ให้แยกเป็นหลายคีย์ โดยเติมท้ายชื่อให้สื่อความ เช่น DELETE master ที่มี 2 statement → `removeSgiMasterFactorsByCodeInUse` (SELECT ตรวจการใช้งาน) + `removeSgiMasterFactorsByCode` (DELETE) |
 | store-backend · src/modules/sgi-document-workflow-actions/dto/sgi-document-workflow-actions.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sgi-document-workflow-actions/sgi-document-workflow-actions.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/sgi-compensation-documents.entity.ts | entity ของ `sgi_compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
 | store-backend · src/entitys/sgi-consideration-logs.entity.ts | entity ของ `sgi_consideration_logs` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
+| store-backend · src/entitys/business-user.entity.ts | entity ของ `business_user` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/providers/sgi/sgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
 | store-backend · sql/deploy-sgi-document-workflow-actions.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
 | BFF · src/common/client-services/sgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
 | BFF · src/modules/sgi-document-workflow-actions/sgi-document-workflow-actions.controller.ts | route ฝั่ง BFF prefix `/bff/sgi/…` + `@UseGuards(AuthGuard('jwt'))` |
 | BFF · src/modules/sgi-document-workflow-actions/sgi-document-workflow-actions.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
 
-#### 9.2 Controller (store-backend)
+### 9.2 Controller (store-backend)
 
 ```ts
 // src/modules/sgi-document-workflow-actions/sgi-document-workflow-actions.controller.ts
@@ -316,13 +333,13 @@ import { SubmitActionBodyDto } from './dto/sgi-document-workflow-actions.dto';
 
 // LLDD BE - API Document Workflow Actions
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sgi/sgi/document')
+@Controller('document')
 @UseGuards(HttpHeaderGuard)
 export class SgiDocumentWorkflowActionsController {
   constructor(private readonly service: SgiDocumentWorkflowActionsService) {}
 
   // POST /api/v1/sgi/document/{docNo}/actions — Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02
-  @Post('document/:docNo/actions')
+  @Post(':docNo/actions')
   submitAction(
     @Param('docNo') docNo: string,
     @Body() body: SubmitActionBodyDto,
@@ -332,8 +349,8 @@ export class SgiDocumentWorkflowActionsController {
     return this.service.submitAction(docNo, body, userId);
   }
 
-  // GET /api/v1/sgi/document/{docNo}/timeline — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sa…
-  @Get('document/:docNo/timeline')
+  // GET /api/v1/sgi/document/{docNo}/timeline — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline…
+  @Get(':docNo/timeline')
   getTimeline(@Param('docNo') docNo: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getTimeline(docNo, userId);
@@ -341,14 +358,14 @@ export class SgiDocumentWorkflowActionsController {
 }
 ```
 
-#### 9.3 DTO + Validation
+### 9.3 DTO + Validation
 
 ```ts
 // src/modules/sgi-document-workflow-actions/dto/sgi-document-workflow-actions.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
-  IsString, Matches, Max, MaxLength, Min,
+  IsString, Matches, Max, MaxLength, Min, ValidateNested,
 } from 'class-validator';
 
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
@@ -356,7 +373,7 @@ import {
 
 // body ของ POST /api/v1/sgi/document/{docNo}/actions
 export class SubmitActionBodyDto {
-  /** ต้องเป็นค่าที่ API detail ส่งมาให้ผู้ใช้ในเอกสารนั้น */
+  /** ต้องเป็นค่า `value` จาก `actionOptions` ที่ API detail ส่งมา — validate ซ้ำฝั่ง BE ว่าอยู… */
   @IsNotEmpty()
   @IsString()
   result: string;
@@ -368,13 +385,13 @@ export class SubmitActionBodyDto {
 }
 ```
 
-#### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
+### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
 
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
 // src/modules/sgi-document-workflow-actions/sgi-document-workflow-actions.service.ts
-import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { WorkflowService } from '../workflow/workflow.service';
 import { SGI_SQL } from './sgi-document-workflow-actions.sql';
@@ -421,15 +438,16 @@ export class SgiDocumentWorkflowActionsService {
     }
   }
 
-  // GET /api/v1/sgi/document/{docNo}/timeline — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sa…
+  // GET /api/v1/sgi/document/{docNo}/timeline — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline…
   async getTimeline(docNo: string, userId: string) {
     const page = 1;
-    const size = 100; // endpoint นี้ไม่มี query param — ไม่แบ่งหน้า
+    // DTO ของเส้นนี้ไม่มี page/size (ดูหัวข้อ DTO) — ไม่แบ่งหน้า
+    const size = 100;
     // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sgi/document/{docNo}/timeline')
-    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
-    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
+    // SQL ในเอกสารเป็น positional $1..$n อยู่แล้ว (ตัวสร้างแปลงให้ตั้งแต่ 2026-09-04)
+    //   บรรทัดแรกของบล็อก SQL คือ `-- bind ตามลำดับ: $1=... · $2=...` ให้เรียงอาร์กิวเมนต์ตามนั้น
     const rows = await this.dataSource.query(SGI_SQL.getTimeline, [
-      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
+      // เรียงให้ตรงกับบรรทัด `-- bind ตามลำดับ:` ของ SQL เส้นนี้
       userId, (page - 1) * size, size,
     ]);
     // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
@@ -438,7 +456,7 @@ export class SgiDocumentWorkflowActionsService {
 }
 ```
 
-#### 9.5 Workflow (`@srm/glb-workflow`)
+### 9.5 Workflow (`@srm/glb-workflow`)
 
 ✅ **ชื่อ function ของ engine — ยึด LLDD ของ lib (ยืนยันแล้ว 2026-08-14)** · API จริงคือ 8 ตัวตามชีต `Detail` ของ `SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx` (เอกสารของ lib เอง): `initializeWorkflow` · `eventWorkflow` · `getPermissionEvents` · `getHistory` · `getTransaction` · `getPendingFlowByUser` · `getWorkflowsByUser` · `addPreApprover` · ชื่อที่เคยขัดกันไม่ใช่ชื่อ API — *Trigger Event* เป็นชื่อหัวข้อขั้นตอนภายใน `eventWorkflow` และ `*UseCase` เป็น class ที่ store-backend ห่อไว้ใช้เอง (ดู `LLDD-BE-Workflow-Engine-Definition` หัวข้อ 5.3)
 
@@ -473,7 +491,7 @@ export class SgiDocumentWorkflowActionsService {
   // TODO: merge กับ sgi_consideration_logs (engine history ไม่มี decision_code/ไฟล์แนบ)
 ```
 
-#### 9.6 Entity (TypeORM)
+### 9.6 Entity (TypeORM)
 
 ```ts
 // src/entitys/sgi-compensation-documents.entity.ts
@@ -481,20 +499,29 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'sgi_compensation_documents', schema: process.env.DB_SCHEMA })
 export class CompensationDocument {
-  @PrimaryColumn({ name: 'doc_no', type: 'varchar', length: 12 })
-  docNo: string;
+  @PrimaryColumn({ name: 'id', type: 'bigint' })
+  id: number;
 
-  @Column({ name: 'impact_process_id', type: 'bigint', nullable: true })
-  impactProcessId?: number;
+  @Column({ name: 'doc_no', type: 'varchar', length: 10, nullable: true })
+  docNo?: string;
 
-  @Column({ name: 'impacted_store_code', type: 'char', length: 5 })
+  @Column({ name: 'year', type: 'int', nullable: true })
+  year?: number;
+
+  @Column({ name: 'running_no', type: 'int', nullable: true })
+  runningNo?: number;
+
+  @Column({ name: 'impact_process_id', type: 'bigint' })
+  impactProcessId: number;
+
+  @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
-  statusCode: string;
+  @Column({ name: 'impact_month', type: 'char', length: 7, nullable: true })
+  impactMonth?: string;
 
-  @Column({ name: 'current_section_code', type: 'varchar', length: 2 })
-  currentSectionCode: string;
+  @Column({ name: 'new_store_code', type: 'varchar', length: 5, nullable: true })
+  newStoreCode?: string;
 
   @Column({ name: 'round_no', type: 'int', nullable: true })
   roundNo?: number;
@@ -502,7 +529,22 @@ export class CompensationDocument {
   @Column({ name: 'loop_no', type: 'int', nullable: true })
   loopNo?: number;
 
-  @Column({ name: 'statement_id', type: 'varchar', length: 30, nullable: true })
+  @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
+  source: string;
+
+  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  statusCode: string;
+
+  @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })
+  currentSectionCode?: string;
+
+  @Column({ name: 'total_compensation_amount', type: 'numeric', precision: 14, scale: 2, default: 0 })
+  totalCompensationAmount: string;
+
+  @Column({ name: 'allmap_url', type: 'varchar', length: 500, nullable: true })
+  allmapUrl?: string;
+
+  @Column({ name: 'statement_id', type: 'varchar', length: 50, nullable: true })
   statementId?: string;
 
   @Column({ name: 'statement_date', type: 'date', nullable: true })
@@ -514,23 +556,26 @@ export class CompensationDocument {
   @Column({ name: 'account_month', type: 'int', nullable: true })
   accountMonth?: number;
 
-  @Column({ name: 'compensate_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
-  compensateAmount?: string;
-
-  @Column({ name: 'allmap_url', type: 'text', nullable: true })
-  allmapUrl?: string;
-
   @Column({ name: 'approver_snapshot', type: 'jsonb', nullable: true })
   approverSnapshot?: Record<string, unknown>;
 
-  @Column({ name: 'created_at', type: 'timestamptz', nullable: true })
-  createdAt?: Date;
+  @Column({ name: 'version_no', type: 'int', default: 1 })
+  versionNo: number;
 
-  @Column({ name: 'updated_at', type: 'timestamptz', nullable: true })
+  @Column({ name: 'created_by', type: 'varchar', length: 30 })
+  createdBy: string;
+
+  @Column({ name: 'created_at', type: 'timestamp' })
+  createdAt: Date;
+
+  @Column({ name: 'updated_by', type: 'varchar', length: 30, nullable: true })
+  updatedBy?: string;
+
+  @Column({ name: 'updated_at', type: 'timestamp', nullable: true })
   updatedAt?: Date;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
@@ -543,34 +588,36 @@ export class ConsiderationLog {
   @PrimaryColumn({ name: 'id', type: 'bigint' })
   id: number;
 
-  @Column({ name: 'doc_no', type: 'varchar', length: 12 })
+  @Column({ name: 'doc_no', type: 'varchar', length: 10 })
   docNo: string;
 
   @Column({ name: 'section_code', type: 'varchar', length: 2 })
   sectionCode: string;
 
-  @Column({ name: 'decision_code', type: 'varchar', length: 10, nullable: true })
-  decisionCode?: string;
-
-  @Column({ name: 'result', type: 'varchar', length: 200 })
+  @Column({ name: 'result', type: 'varchar', length: 100 })
   result: string;
 
-  @Column({ name: 'result_category', type: 'varchar', length: 10 })
-  resultCategory: string;
+  @Column({ name: 'result_category', type: 'varchar', length: 50, nullable: true })
+  resultCategory?: string;
 
   @Column({ name: 'detail', type: 'text', nullable: true })
   detail?: string;
 
-  @Column({ name: 'consider_by', type: 'varchar', length: 50 })
+  @Column({ name: 'consider_by', type: 'varchar', length: 30 })
   considerBy: string;
 
-  @Column({ name: 'action_datetime', type: 'timestamptz' })
+  @Column({ name: 'action_datetime', type: 'timestamp' })
   actionDatetime: Date;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  @Column({ name: 'request_id', type: 'varchar', length: 80, nullable: true })
+  requestId?: string;
+
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
+
+ตารางที่เหลือของเอกสารนี้ (`business_user`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
@@ -579,8 +626,9 @@ export class ConsiderationLog {
 | workflow_transaction | R (เขียนผ่าน lib) | workflow engine @srm/glb-workflow |
 | workflow_history | R (เขียนผ่าน lib) | workflow engine @srm/glb-workflow |
 | workflow_approver | R (เขียนผ่าน lib) | workflow engine @srm/glb-workflow |
+| workflow_route | R | workflow engine @srm/glb-workflow |
 
-#### 9.7 Repository Providers + Module wiring
+### 9.7 Repository Providers + Module wiring
 
 ```ts
 // src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
@@ -592,6 +640,7 @@ export class ConsiderationLog {
 import { DataSource } from 'typeorm';
 import { CompensationDocument } from '../../entitys/sgi-compensation-documents.entity';
 import { ConsiderationLog } from '../../entitys/sgi-consideration-logs.entity';
+import { BusinessUser } from '../../entitys/business-user.entity';
 
 export const sgiDocumentWorkflowActionsProviders = [
   {
@@ -602,6 +651,11 @@ export const sgiDocumentWorkflowActionsProviders = [
   {
     provide: 'SGI_CONSIDERATION_LOG_REPOSITORY',
     useFactory: (dataSource: DataSource) => dataSource.getRepository(ConsiderationLog),
+    inject: ['DATA_SOURCE'],
+  },
+  {
+    provide: 'BUSINESS_USER_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(BusinessUser),
     inject: ['DATA_SOURCE'],
   },
 ];
@@ -633,7 +687,7 @@ export class SgiDocumentWorkflowActionsModule implements NestModule {
 // TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
-#### 9.8 BFF Proxy (module + controller + client service)
+### 9.8 BFF Proxy (module + controller + client service)
 
 BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
@@ -667,6 +721,9 @@ export class SgiDocumentWorkflowActionsBffService {
   constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  // ⚠️ ต้อง unwrap envelope ของ store-backend 1 ชั้นก่อนคืน (ยืนยันจากโค้ดจริง 2026-09-04):
+  //    ResponseInterceptor ระดับ global ของ BFF ห่อผลลัพธ์เป็น { success, data, requestId } อีกที
+  //    ถ้าคืน { success, data } ดิบมา FE จะได้ data.data.data — SgiClientService จึงต้องคืน .data.data
   private userHeaders(user: any) {
     return {
       'x-user-id': user?.userId,
@@ -688,20 +745,20 @@ export class SgiDocumentWorkflowActionsBffService {
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sgi/document-workflow-actions')
+// path เดียวกับที่ FE เรียก (apiClient baseURL รวม /api/v1 แล้ว) — ห้ามตั้งตามชื่อเอกสาร LLDD
+@Controller('sgi/document')
 @UseGuards(AuthGuard('jwt'))
 export class SgiDocumentWorkflowActionsBffController {
   constructor(private readonly service: SgiDocumentWorkflowActionsBffService) {}
 
   // proxy ของ POST /api/v1/sgi/document/{docNo}/actions
-  @Post('sgi/document/:docNo/actions')
+  @Post(':docNo/actions')
   submitAction(@Param('docNo') docNo: string, @Body() body: any, @Req() req: any) {
     return this.service.submitAction(docNo, body, req.user);
   }
 
   // proxy ของ GET /api/v1/sgi/document/{docNo}/timeline
-  @Get('sgi/document/:docNo/timeline')
+  @Get(':docNo/timeline')
   getTimeline(@Param('docNo') docNo: string, @Query() query: any, @Req() req: any) {
     return this.service.getTimeline(docNo, query, req.user);
   }
@@ -711,23 +768,24 @@ export class SgiDocumentWorkflowActionsBffController {
 
 ## 10. Database SQL
 
-#### 10.1 ตารางที่อ่าน/เขียน
+### 10.1 ตารางที่อ่าน/เขียน
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
 | sgi_compensation_documents | W | อัปเดต status/current_section/result |
 | sgi_consideration_logs | W | บันทึกผลพิจารณาและ comment |
+| business_user | R | resolve อีเมล/ชื่อของผู้ดำเนินการถัดไปที่ engine คืนมา (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
 | workflow_transaction | R (เขียนผ่าน lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_history | R (เขียนผ่าน lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 | workflow_approver | R (เขียนผ่าน lib) | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
+| workflow_route | R | ใช้ของระบบเดิม: workflow engine @srm/glb-workflow |
 
-#### 10.2 SQL จริงต่อ Endpoint
+### 10.2 SQL จริงต่อ Endpoint
 
 **POST /api/v1/sgi/document/{docNo}/actions** — Document action API ตัวอย่างเมื่อ currentSection=01 จึงเปลี่ยนไป 02
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=docNo · $2=curSection · $3=empId · $4=result · $5=comment · $6=now · $7=nextStatus · $8=nextSection · $9=versionNo · $10=versionId · $11=prevStateId · $12=event · $13=nextStateId · $14=transactionId · $15=emailId · $16=since
 -- ตรวจเป็นเจ้าของงานขั้นปัจจุบัน + ต้องเลือก result แล้ว (ไม่งั้น 422)
 -- result รับ 7-enum verbatim เท่านั้น: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI) / ส่งเจ้าหน้าที่ SBP DSA / คำนวณเงินชดเชยเรียบร้อย (Section 08 · เพิ่ม 2026-09-01) / ส่งกลับ
 -- มติ 2026-09-01: Section 08 คืน nextSection = 06 (เดิม 01) · ส่งกลับทุก Section คืน 06 (เดิม 02→01 · 03→02)
@@ -737,11 +795,11 @@ export class SgiDocumentWorkflowActionsBffController {
 -- referenceId = sgi_compensation_documents.id (surrogate · DP-1 ปิดแล้ว 2026-08-17)
 
 INSERT INTO sgi_consideration_logs (doc_no, section_code, consider_by, result, detail, action_datetime)
-VALUES (:docNo, :curSection, :empId, :result, :comment, :now);
+VALUES ($1 /* docNo */, $2 /* curSection */, $3 /* empId */, $4 /* result */, $5 /* comment */, $6 /* now */);
 
 -- คำนวณขั้นถัดไป (วงเงิน เกณฑ์เดียว 100,000 · SDD GI) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock
-UPDATE sgi_compensation_documents SET status_code = :nextStatus, current_section_code = :nextSection, version_no = version_no + 1, updated_at = :now, updated_by = :empId
-WHERE doc_no = :docNo AND version_no = :versionNo;
+UPDATE sgi_compensation_documents SET status_code = $7 /* nextStatus */, current_section_code = $8 /* nextSection */, version_no = version_no + 1, updated_at = $6 /* now */, updated_by = $3 /* empId */
+WHERE doc_no = $1 /* docNo */ AND version_no = $9 /* versionNo */;
 -- งานขั้นถัดไปเปิดโดย engine (addPreApprover) ไม่ใช่ INSERT ของ SGI
 
 -- ✅ ปิด DP-5 (แก้มติ 2026-08-14): workflow ให้ "เลข template" · SGI เรียก lib ส่งเอง (ไม่มีตาราง status_email_rules)
@@ -751,21 +809,21 @@ WHERE doc_no = :docNo AND version_no = :versionNo;
 --    :prevStateId เก็บจาก getTransaction() "ก่อน" เรียก eventWorkflow · :nextStateId อ่านจาก getTransaction() "หลัง" สำเร็จ
 SELECT r.email_id
 FROM sps_store.workflow_route r
-WHERE r.version_id = :versionId
-  AND r.from_state_id = :prevStateId
-  AND r.event = :event
-  AND r.to_state_id = :nextStateId;
+WHERE r.version_id = $10 /* versionId */
+  AND r.from_state_id = $11 /* prevStateId */
+  AND r.event = $12 /* event */
+  AND r.to_state_id = $13 /* nextStateId */;
 
 -- 2) หาอีเมลผู้อนุมัติลำดับถัดไปที่ engine resolve ให้แล้ว
 SELECT string_agg(DISTINCT u.email, ',') AS mail_to
 FROM sps_store.workflow_approver a
 JOIN sps_store.business_user u ON u.user_id = a.current_approver
-WHERE a.transaction_id = :transactionId AND a.state_id = :nextStateId AND u.email IS NOT NULL;
+WHERE a.transaction_id = $14 /* transactionId */ AND a.state_id = $13 /* nextStateId */ AND u.email IS NOT NULL;
 
 -- 2b) ผู้รับ CC — ระบบเดิมมีกลไกอยู่แล้ว (fml_email_account.template_id)
 SELECT string_agg(email, ',') AS mail_cc
 FROM fml_email_account
-WHERE template_id = :emailId;
+WHERE template_id = $15 /* emailId */;
 
 -- 3) เรียก lib "นอก transaction" (อีเมลล้มต้องไม่ rollback การอนุมัติ · lib ไม่ retry ให้)
 --    emailService.sendEmail({ emailId, mailTo, mailCc, param:{docNo, storeName, amount}, userId })
@@ -774,25 +832,24 @@ WHERE template_id = :emailId;
 -- 4) รายงานตามเก็บเมลที่ส่งไม่สำเร็จ (⚠️ คอลัมน์จริงคือ send_by ไม่ใช่ sent_by)
 SELECT email_sent_id, email_id, mail_to, mail_cc, is_sent, error, sent_date, send_by
 FROM email_sent
-WHERE is_sent = 'N' AND sent_date >= :since
+WHERE is_sent = 'N' AND sent_date >= $16 /* since */
 ORDER BY sent_date DESC;
 ```
 
 **GET /api/v1/sgi/document/{docNo}/timeline** — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Attachment-Sales-Timeline (Peerakorn)** · เอกสารนี้อ้…
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=docNo
 -- ✅ DP-7 ปิดแล้ว 2026-08-24: sgi_consideration_logs เป็น timeline เต็มของ SGI (ตารางของเราเอง)
 --    engine เก็บ timeline แต่ไม่มีรหัสผลพิจารณา/ไฟล์แนบ จึงไม่ join getHistory() (DP-1 กำหนดคีย์ที่ใช้ค้น)
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT section_code, consider_by, result, detail, action_datetime
 FROM sgi_consideration_logs
-WHERE doc_no = :docNo
+WHERE doc_no = $1 /* docNo */
 ORDER BY action_datetime;
 ```
 
-#### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
 
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |
@@ -839,7 +896,7 @@ ORDER BY action_datetime;
 | สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
 | --- | --- | --- |
 | `docNo` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: YYYY/xxxxx |
-| `result` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: verbatim from actionOptions |
+| `result` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required · รูปแบบ: actionOptions[].**value** (ไม่ใช่ label) |
 | `comment` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required for return/reject · รูปแบบ: text |
 | business rule | logic | non-owner returns 403 |
 | business rule | logic | missing result returns exact SRS message |

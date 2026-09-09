@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | **39 ชั่วโมง** = implementation 30 + unit test 9 (30%) |
-| Owner | Peerakorn <Pete> Sakunkaewphithak |
+| Owner | Peerakorn &lt;Pete&gt; Sakunkaewphithak |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบ APIs สำหรับรายงานตรวจสอบประกันรายได้ และ Master Data ที่ SGI ดูแลเอง (ปัจจัยภายนอก + รายชื่อคู่แข่ง) |
 
@@ -122,19 +122,29 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Report and Master Data_
 
 ```json
 {
-  "year": 2026,
   "status": "06",
+  "impactedStoreCode": "00788",
+  "newStoreCode": "00990",
+  "periodStatementFrom": "2026-06-01",
+  "periodStatementTo": "2026-06-30",
+  "storeTypes": [
+    "A",
+    "B"
+  ],
+  "regions": [
+    "RSU",
+    "BN"
+  ],
   "result": "APPROVE",
+  "page": 1,
+  "size": 20,
+  "year": 2026,
   "region": [
     "RSU"
   ],
   "storeType": [
     "A"
-  ],
-  "impactedStoreCode": "00788",
-  "newStoreCode": "00990",
-  "page": 1,
-  "size": 20
+  ]
 }
 ```
 
@@ -142,15 +152,19 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Report and Master Data_
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | status | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| result | string | No | UTF-8; use value domain described by endpoint purpose |
-| region | array<string> | No | JSON array; element type shown in Type column |
-| storeType | array<string> | No | JSON array; element type shown in Type column |
 | impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | newStoreCode | string | No | exactly 5 digits; preserve leading zero |
+| periodStatementFrom | string | No | UTF-8; use value domain described by endpoint purpose |
+| periodStatementTo | string | No | UTF-8; use value domain described by endpoint purpose |
+| storeTypes | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| regions | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| result | string | No | UTF-8; use value domain described by endpoint purpose |
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
+| year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| region | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| storeType | array&lt;string&gt; | No | JSON array; element type shown in Type column |
 
 #### Response
 
@@ -158,8 +172,31 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Report and Master Data_
 {
   "page": 1,
   "size": 20,
-  "total": 0,
-  "items": []
+  "total": 10,
+  "summary": {
+    "totalItems": 10,
+    "totalCompensationAmount": 439100.0,
+    "overThresholdItems": 3,
+    "abnormalSalesItems": 2
+  },
+  "items": [
+    {
+      "impactedStoreCode": "00788",
+      "impactedStoreName": "รัตนอุทิศ ซ.13",
+      "impactedRegion": "RSU",
+      "impactedStoreType": "B",
+      "impactMonth": "2026-05",
+      "periodStatement": "2026-06-07",
+      "newStoreCode": "00990",
+      "newStoreName": "เซเว่นฯ รัตนาธิเบศร์ 12",
+      "newRegion": "RSU",
+      "newStoreType": "A",
+      "compensationAmount": 48200.0,
+      "roundNo": 1,
+      "createdDate": "2026-06-12",
+      "docNo": "2026/00123"
+    }
+  ]
 }
 ```
 
@@ -170,7 +207,26 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Report and Master Data_
 | page | integer | Yes | >= 1; default 1 |
 | size | integer | Yes | 1..100; default 20 |
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
+| summary | object | Yes | JSON object; nested fields listed below |
+| summary.totalItems | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| summary.totalCompensationAmount | number | Yes | number >= 0 with 2 decimals |
+| summary.overThresholdItems | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| summary.abnormalSalesItems | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| items[].impactedStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
+| items[].impactedStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].impactedRegion | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].impactedStoreType | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].impactMonth | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| items[].periodStatement | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].newStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
+| items[].newStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].newRegion | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].newStoreType | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].compensationAmount | number | Yes | number >= 0 with 2 decimals |
+| items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].createdDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
 
 ### GET /api/v1/sgi/report/status-summary/export
 
@@ -190,7 +246,9 @@ Export Excel
     "A"
   ],
   "impactedStoreCode": "00788",
-  "newStoreCode": "00990"
+  "newStoreCode": "00990",
+  "sameAsSearch": true,
+  "format": "xlsx"
 }
 ```
 
@@ -201,15 +259,18 @@ Export Excel
 | year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | status | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | result | string | No | UTF-8; use value domain described by endpoint purpose |
-| region | array<string> | No | JSON array; element type shown in Type column |
-| storeType | array<string> | No | JSON array; element type shown in Type column |
+| region | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| storeType | array&lt;string&gt; | No | JSON array; element type shown in Type column |
 | impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | newStoreCode | string | No | exactly 5 digits; preserve leading zero |
+| sameAsSearch | boolean | No | UTF-8; use value domain described by endpoint purpose |
+| format | string | No | ISO-8601 ค.ศ.; nullable only when type includes null |
 
 #### Response
 
 ```json
 {
+  "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "fileName": "insurance-verification-2026.xlsx"
 }
 ```
@@ -218,6 +279,7 @@ Export Excel
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| contentType | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### GET /api/v1/sgi/master/factors
@@ -228,7 +290,7 @@ Export Excel
 
 ```json
 {
-  "q": "ก่อสร้าง",
+  "q": "ถนน",
   "active": true,
   "page": 1,
   "size": 20
@@ -253,9 +315,9 @@ Export Excel
   "total": 1,
   "items": [
     {
-      "factorCode": "ROAD",
+      "factorCode": "F001",
       "factorName": "ก่อสร้างถนน",
-      "description": "ปิดช่องทางจราจร",
+      "description": "ผลกระทบจากการก่อสร้าง",
       "active": true
     }
   ]
@@ -269,8 +331,8 @@ Export Excel
 | page | integer | Yes | >= 1; default 1 |
 | size | integer | Yes | 1..100; default 20 |
 | total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].factorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| items[].factorCode | string | Yes | รหัสปัจจัยภายนอกจาก master (sgi_external_factors.factor_code) |
 | items[].factorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].description | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -295,7 +357,7 @@ Export Excel
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| factorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| factorCode | string | Yes | รหัสปัจจัยภายนอกจาก master (sgi_external_factors.factor_code) |
 | factorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | description | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -307,7 +369,8 @@ Export Excel
 {
   "factorCode": "ROAD",
   "factorName": "ก่อสร้างถนน",
-  "active": true
+  "active": true,
+  "created": true
 }
 ```
 
@@ -315,9 +378,10 @@ Export Excel
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| factorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| factorCode | string | Yes | รหัสปัจจัยภายนอกจาก master (sgi_external_factors.factor_code) |
 | factorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
+| created | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### PUT /api/v1/sgi/master/factors/{code}
 
@@ -349,7 +413,8 @@ Export Excel
 {
   "factorCode": "ROAD",
   "factorName": "ก่อสร้างและปิดถนน",
-  "active": true
+  "active": true,
+  "updated": true
 }
 ```
 
@@ -357,9 +422,10 @@ Export Excel
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| factorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| factorCode | string | Yes | รหัสปัจจัยภายนอกจาก master (sgi_external_factors.factor_code) |
 | factorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
+| updated | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### GET /api/v1/sgi/master/competitors
 
@@ -369,7 +435,8 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 ```json
 {
-  "q": "108"
+  "active": true,
+  "q": "lotus"
 }
 ```
 
@@ -377,18 +444,23 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| active | boolean | No | UTF-8; use value domain described by endpoint purpose |
 | q | string | No | UTF-8; use value domain described by endpoint purpose |
 
 #### Response
 
 ```json
 {
+  "total": 11,
   "items": [
     {
-      "code": "01",
-      "nameTh": "108 Shop",
-      "nameEn": "108 Shop",
+      "competitorCode": "01",
+      "nameTh": "แฟมิลี่มาร์ท",
+      "nameEn": "FamilyMart",
       "remark": "",
+      "active": true,
+      "competitorName": "Lotus Express",
+      "code": "01",
       "isActive": true
     }
   ]
@@ -399,11 +471,15 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| items | array<object> | Yes | JSON array; element type shown in Type column |
-| items[].code | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| total | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| items[].competitorCode | string | Yes | รหัสแบรนด์คู่แข่งจาก master 01–11 เท่านั้น (ห้าม free text) |
 | items[].nameTh | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].nameEn | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].remark | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].competitorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].code | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].isActive | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### POST /api/v1/sgi/master/competitors
@@ -414,10 +490,12 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 ```json
 {
-  "code": "12",
-  "nameTh": "ร้านคู่แข่งรายใหม่",
-  "nameEn": "New Competitor",
-  "remark": ""
+  "competitorCode": "12",
+  "nameTh": "ร้านตัวอย่าง",
+  "nameEn": "Sample Shop",
+  "remark": "",
+  "active": true,
+  "code": "12"
 }
 ```
 
@@ -425,15 +503,19 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| code | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| competitorCode | string | Yes | รหัสแบรนด์คู่แข่งจาก master 01–11 เท่านั้น (ห้าม free text) |
 | nameTh | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | nameEn | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | remark | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
+| code | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 #### Response
 
 ```json
 {
+  "competitorCode": "12",
+  "created": true,
   "code": "12",
   "message": "saved"
 }
@@ -443,6 +525,8 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| competitorCode | string | Yes | รหัสแบรนด์คู่แข่งจาก master 01–11 เท่านั้น (ห้าม free text) |
+| created | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | code | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
@@ -454,9 +538,10 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 ```json
 {
-  "nameTh": "ลอว์สัน 108",
-  "nameEn": "Lawson 108",
-  "remark": "",
+  "nameTh": "แฟมิลี่มาร์ท",
+  "nameEn": "FamilyMart",
+  "remark": "ปรับชื่อ",
+  "active": true,
   "isActive": true
 }
 ```
@@ -468,12 +553,15 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 | nameTh | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | nameEn | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | remark | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| active | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | isActive | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
 #### Response
 
 ```json
 {
+  "competitorCode": "01",
+  "updated": true,
   "message": "saved"
 }
 ```
@@ -482,6 +570,8 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| competitorCode | string | Yes | รหัสแบรนด์คู่แข่งจาก master 01–11 เท่านั้น (ห้าม free text) |
+| updated | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### DELETE /api/v1/sgi/master/competitors/{code}
@@ -504,6 +594,8 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 ```json
 {
+  "competitorCode": "12",
+  "deleted": true,
   "message": "deleted"
 }
 ```
@@ -512,6 +604,8 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| competitorCode | string | Yes | รหัสแบรนด์คู่แข่งจาก master 01–11 เท่านั้น (ห้าม free text) |
+| deleted | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 | message | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### DELETE /api/v1/sgi/master/factors/{code}
@@ -536,7 +630,7 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 ```json
 {
-  "factorCode": "ROAD",
+  "factorCode": "F001",
   "deleted": true
 }
 ```
@@ -545,7 +639,7 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| factorCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| factorCode | string | Yes | รหัสปัจจัยภายนอกจาก master (sgi_external_factors.factor_code) |
 | deleted | boolean | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ## 8. Reference DB Mapping (No Database Page Work)
@@ -561,19 +655,22 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 | sgi_external_factors | R/W | master ปัจจัยภายนอก |
 | sgi_competitors | R/W | master แบรนด์คู่แข่ง 11 รายการ (code 01-11 · name_th · name_en · remark) — feed dropdown ร้านคู่แข่งของหน้าเอกสาร |
 | sgi_document_competitors | R | ตรวจว่าแบรนด์ถูกอ้างในเอกสารก่อนลบ (409) |
+| sgi_document_external_factors | R | ตรวจว่าปัจจัยภายนอกถูกอ้างในเอกสารก่อนลบ (409) (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
+| sgi_document_new_stores | R | ยอด/%ชดเชยต่อร้านเปิดใหม่ในรายงาน (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
+| sgi_fgi_impact_processes | R | รอบชดเชย (roundNo) และงวดในรายงาน (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
 | mas_param (SBP) | R | ค่ากำหนดกลางของระบบ SBP เดิม — **อ่านอย่างเดียว** (หน้า Global Config ของ SGI ถูกลบ 2026-08-06 · ระบบเดิมเป็นผู้แก้) |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
 โครงโค้ดตั้งต้นของเอกสารฉบับนี้ ยึด convention จริงของ `srm-sps-spsap-store-backend` (NestJS 11 + TypeORM, schema `sps_store`, custom provider `DATA_SOURCE` ที่ route SELECT ไป slave pool) และ `srm-sps-spsap-sbp-bff` (ไม่มี DB, forward ผ่าน client service). ทุกจุดที่ต้องเติมกำกับด้วย `// TODO:` และ response ทุกเส้นถูกห่อเป็น `{success, data}` โดย ResponseInterceptor อยู่แล้ว จึงห้าม service ห่อซ้ำ
 
-#### 9.1 ผังไฟล์ที่ต้องสร้าง
+### 9.1 ผังไฟล์ที่ต้องสร้าง
 
 | Path | หน้าที่ |
 | --- | --- |
 | store-backend · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.controller.ts | route ทั้งหมดของเอกสารนี้ (10 เส้น) + `@UseGuards(HttpHeaderGuard)` + `@UserId()` |
 | store-backend · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.service.ts | business logic — inject `'DATA_SOURCE'` แล้วยิง raw SQL, mutation ใช้ QueryRunner transaction |
-| store-backend · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย |
+| store-backend · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.sql.ts | เก็บ SQL ต่อ endpoint (คัดจากหัวข้อ 10) แยกออกจาก service ให้ทดสอบ/รีวิวง่าย · **คีย์ = ชื่อ handler** เช่น `getSgiMasterFactors` · บล็อกที่มีหลาย statement ให้แยกเป็นหลายคีย์ โดยเติมท้ายชื่อให้สื่อความ เช่น DELETE master ที่มี 2 statement → `removeSgiMasterFactorsByCodeInUse` (SELECT ตรวจการใช้งาน) + `removeSgiMasterFactorsByCode` (DELETE) |
 | store-backend · src/modules/sgi-report-and-master-data/dto/sgi-report-and-master-data.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/sgi-compensation-documents.entity.ts | entity ของ `sgi_compensation_documents` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) — **entity ร่วมหลายเอกสาร: ประกาศครั้งเดียวแล้วอ้างอิง อย่าสร้างซ้ำ** |
@@ -585,7 +682,7 @@ master แบรนด์คู่แข่ง 11 รายการ (รหั�
 | BFF · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.controller.ts | route ฝั่ง BFF prefix `/bff/sgi/…` + `@UseGuards(AuthGuard('jwt'))` |
 | BFF · src/modules/sgi-report-and-master-data/sgi-report-and-master-data.service.ts | แนบ `x-user-id` / `x-user-group-id` / `x-user-permissions` แล้ว forward ไป backend |
 
-#### 9.2 Controller (store-backend)
+### 9.2 Controller (store-backend)
 
 ```ts
 // src/modules/sgi-report-and-master-data/sgi-report-and-master-data.controller.ts  (ส่วนที่ 1/3 — คลาสเดียวกัน)
@@ -597,34 +694,34 @@ import { ReportAndMasterDataQueryDto, CreateSgiMasterFactorsBodyDto } from './dt
 
 // LLDD BE - API Report and Master Data
 // BFF เรียกด้วย x-api-key และแนบ x-user-id / x-user-group-id / x-user-permissions มาให้
-@Controller('sgi/sgi')
+@Controller('')
 @UseGuards(HttpHeaderGuard)
 export class SgiReportAndMasterDataController {
   constructor(private readonly service: SgiReportAndMasterDataService) {}
 
   // GET /api/v1/sgi/report/status-summary — รายงานตรวจสอบประกันรายได้
-  @Get('sgi/report/status-summary')
+  @Get('report/status-summary')
   getSgiReportStatusSummary(@Query() query: ReportAndMasterDataQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiReportStatusSummary(query, userId);
   }
 
   // GET /api/v1/sgi/report/status-summary/export — Export Excel
-  @Get('sgi/report/status-summary/export')
+  @Get('report/status-summary/export')
   exportStatusSummary(@Query() query: ReportAndMasterDataQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.exportStatusSummary(query, userId);
   }
 
   // GET /api/v1/sgi/master/factors — อ่านปัจจัยภายนอก
-  @Get('sgi/master/factors')
+  @Get('master/factors')
   getSgiMasterFactors(@Query() query: ReportAndMasterDataQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiMasterFactors(query, userId);
   }
 
   // POST /api/v1/sgi/master/factors — สร้างปัจจัยภายนอก
-  @Post('sgi/master/factors')
+  @Post('master/factors')
   createSgiMasterFactors(@Body() body: CreateSgiMasterFactorsBodyDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.createSgiMasterFactors(body, userId);
@@ -637,7 +734,7 @@ export class SgiReportAndMasterDataController {
 // (method ต่อไปนี้อยู่ในคลาส SgiReportAndMasterDataController เดียวกับส่วนที่ 1)
 
   // PUT /api/v1/sgi/master/factors/{code} — แก้ปัจจัยภายนอก
-  @Put('sgi/master/factors/:code')
+  @Put('master/factors/:code')
   updateSgiMasterFactorsByCode(
     @Param('code') code: string,
     @Body() body: UpdateSgiMasterFactorsByCodeBodyDto,
@@ -648,14 +745,14 @@ export class SgiReportAndMasterDataController {
   }
 
   // GET /api/v1/sgi/master/competitors — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร…
-  @Get('sgi/master/competitors')
+  @Get('master/competitors')
   getSgiMasterCompetitors(@Query() query: ReportAndMasterDataQueryDto, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.getSgiMasterCompetitors(query, userId);
   }
 
   // POST /api/v1/sgi/master/competitors — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
-  @Post('sgi/master/competitors')
+  @Post('master/competitors')
   createSgiMasterCompetitors(
     @Body() body: CreateSgiMasterCompetitorsBodyDto,
     @UserId() userId: string,
@@ -665,7 +762,7 @@ export class SgiReportAndMasterDataController {
   }
 
   // PUT /api/v1/sgi/master/competitors/{code} — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก sgi_document_competitors
-  @Put('sgi/master/competitors/:code')
+  @Put('master/competitors/:code')
   updateSgiMasterCompetitorsByCode(
     @Param('code') code: string,
     @Body() body: Record<string, unknown>,
@@ -681,14 +778,14 @@ export class SgiReportAndMasterDataController {
 // (method ต่อไปนี้อยู่ในคลาส SgiReportAndMasterDataController เดียวกับส่วนที่ 1)
 
   // DELETE /api/v1/sgi/master/competitors/{code} — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
-  @Delete('sgi/master/competitors/:code')
+  @Delete('master/competitors/:code')
   removeSgiMasterCompetitorsByCode(@Param('code') code: string, @UserId() userId: string) {
     // TODO: ตรวจ x-user-permissions ก่อนเรียก service ถ้า endpoint นี้จำกัดสิทธิ์เมนู
     return this.service.removeSgiMasterCompetitorsByCode(code, userId);
   }
 
   // DELETE /api/v1/sgi/master/factors/{code} — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
-  @Delete('sgi/master/factors/:code')
+  @Delete('master/factors/:code')
   removeSgiMasterFactorsByCode(
     @Param('code') code: string,
     @Body() body: Record<string, unknown>,
@@ -700,14 +797,14 @@ export class SgiReportAndMasterDataController {
 }
 ```
 
-#### 9.3 DTO + Validation
+### 9.3 DTO + Validation
 
 ```ts
 // src/modules/sgi-report-and-master-data/dto/sgi-report-and-master-data.dto.ts
 import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional,
-  IsString, Matches, Max, MaxLength, Min,
+  IsString, Matches, Max, MaxLength, Min, ValidateNested,
 } from 'class-validator';
 
 // ValidationPipe ระดับ global ตั้ง whitelist + forbidNonWhitelisted + transform ไว้แล้ว (main.ts)
@@ -715,40 +812,38 @@ import {
 
 // query ร่วมของ GET ทุกเส้นในโมดูลนี้ (path param ใช้ @Param แยก)
 export class ReportAndMasterDataQueryDto {
-  /** return 400 if missing · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. · required เฉพาะบาง endpoint… */
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  year?: number;
-
   /** 6 สถานะเอกสาร; verbatim จาก sps_store.workflow_status ของ @srm/glb-workflow · required เฉ… */
   @IsOptional()
   @IsString()
   status?: string;
-
-  /** maps to sgi_consideration_logs.result_category ล่าสุด · CANCELLED = ยกเลิกโดยระบบ (เพิ่ม … */
-  @IsOptional()
-  @IsString()
-  @IsIn(['APPROVE', 'REJECT', 'CANCELLED', 'PENDING'])
-  result?: string;
-
-  /** 13 region codes; multi-select */
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  region?: string[];
-
-  /** **7 ค่า** `A B C D E PTT บริษัท` (ยืนยันจาก master `BranchTypeProfile` ของ `CPA_FRN_FGI` … */
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  storeType?: string[];
 
   /** คง leading zero */
   @IsOptional()
   @IsString()
   @Matches(/^\d{5}$/, { message: 'รหัสร้านต้องเป็นตัวเลข 5 หลัก และคงเลขศูนย์นำหน้า' })
   impactedStoreCode?: string;
+
+  /** คง leading zero */
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{5}$/, { message: 'รหัสร้านต้องเป็นตัวเลข 5 หลัก และคงเลขศูนย์นำหน้า' })
+  newStoreCode?: string;
+
+  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  @IsOptional()
+  @IsString()
+  periodStatementFrom?: string;
+
+  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  @IsOptional()
+  @IsString()
+  periodStatementTo?: string;
+
+  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  storeTypes?: string[];
 
   // TODO: เพิ่ม property ที่เหลือของ payload นี้ให้ครบตามหัวข้อฟิลด์ของเอกสารนี้
 }
@@ -811,7 +906,7 @@ export class UpdateSgiMasterFactorsByCodeBodyDto {
 export class CreateSgiMasterCompetitorsBodyDto {
   @IsNotEmpty()
   @IsString()
-  code: string;
+  competitorCode: string;
 
   @IsNotEmpty()
   @IsString()
@@ -824,18 +919,27 @@ export class CreateSgiMasterCompetitorsBodyDto {
   @IsNotEmpty()
   @IsString()
   remark: string;
+
+  @IsNotEmpty()
+  @Type(() => Boolean)
+  @IsBoolean()
+  active: boolean;
+
+  @IsNotEmpty()
+  @IsString()
+  code: string;
 }
 
 // TODO: สร้าง BodyDto ของ endpoint ที่เหลือด้วยรูปแบบเดียวกัน: PUT /api/v1/sgi/master/competitors/{code}, DELETE /api/v1/sgi/master/factors/{code}
 ```
 
-#### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
+### 9.4 Service (inject `DATA_SOURCE` + raw SQL)
 
 service ประกาศ method ครบทุกเส้นที่ controller เรียก และ **signature มาจากแหล่งเดียวกับ controller** (จำนวน/ลำดับพารามิเตอร์จึงตรงกันเสมอ) — เส้นที่ยังไม่ได้ implement เป็น stub ที่ `throw new NotImplementedException(...)` ให้ TypeScript compile ผ่านตั้งแต่วันแรก
 
 ```ts
 // src/modules/sgi-report-and-master-data/sgi-report-and-master-data.service.ts
-import { Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, NotImplementedException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { SGI_SQL } from './sgi-report-and-master-data.sql';
 
@@ -853,10 +957,10 @@ export class SgiReportAndMasterDataService {
     const page = Number(query.page ?? 1);
     const size = Math.min(Number(query.size ?? 20), 100);
     // SQL เต็มอยู่ในหัวข้อ Database SQL ของเอกสารนี้ (คีย์ 'GET /api/v1/sgi/report/status-summary')
-    // ⚠️ SQL ตัวอย่างบางเส้นเขียนด้วย named parameter (:size/:offset) แต่ dataSource.query()
-    //    รับเฉพาะ positional $1..$n — ต้องแปลงชื่อเป็นลำดับก่อน หรือใช้ QueryBuilder แทน
+    // SQL ในเอกสารเป็น positional $1..$n อยู่แล้ว (ตัวสร้างแปลงให้ตั้งแต่ 2026-09-04)
+    //   บรรทัดแรกของบล็อก SQL คือ `-- bind ตามลำดับ: $1=... · $2=...` ให้เรียงอาร์กิวเมนต์ตามนั้น
     const rows = await this.dataSource.query(SGI_SQL.getSgiReportStatusSummary, [
-      // TODO: เรียงพารามิเตอร์ให้ตรงกับ $1..$n ของ SQL จริง
+      // เรียงให้ตรงกับบรรทัด `-- bind ตามลำดับ:` ของ SQL เส้นนี้
       userId, (page - 1) * size, size,
     ]);
     // TODO: total ต้องมาจาก COUNT(*) แยก query หรือ window function ไม่ใช่ rows.length
@@ -865,16 +969,30 @@ export class SgiReportAndMasterDataService {
 
   // GET /api/v1/sgi/report/status-summary/export — Export Excel
   async exportStatusSummary(query: ReportAndMasterDataQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/sgi/report/status-summary/export
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sgi/report/status-summary/export')
-    throw new NotImplementedException('exportStatusSummary ยังไม่ implement');
+    // ใช้ SELECT ชุดเดียวกับ status-summary แต่ **ไม่ตัดหน้า** (ไม่มี LIMIT/OFFSET) ตาม SQL ในเอกสาร
+    // สถานะเป็น filter บังคับตัวเดียว (SDD สไลด์ 60) — ไม่ส่งมาให้ 400 REPORT_STATUS_REQUIRED
+    if (!query.status) {
+      throw new BadRequestException({ code: 'REPORT_STATUS_REQUIRED', message: 'กรุณาเลือกสถานะก่อนค้นหา' });
+    }
+    // bind ตามลำดับของ SQL: $1=year $2=status $3=impactedStoreCode $4=newStoreCode $5=psFrom $6=psTo $7=storeTypes
+    // year แยกจาก Period Statement (ค.ศ.) — DTO ส่งเป็นช่วง `periodStatementFrom/To` รูปแบบ YYYY-MM
+    const year = Number((query.periodStatementFrom ?? '').slice(0, 4)) || undefined;
+    const rows = await this.dataSource.query(SGI_SQL.exportStatusSummary, [
+      year, query.status, query.impactedStoreCode ?? null, query.newStoreCode ?? null,
+      query.periodStatementFrom ?? null, query.periodStatementTo ?? null, query.storeTypes ?? null,
+    ]);
+    // 14 คอลัมน์ตาม SDD สไลด์ 60 — หัวคอลัมน์ใช้ชื่อบนหน้าจอรายงาน ไม่ใช่ชื่อคอลัมน์ DB
+    // ไฟล์ .xlsx สร้างที่ชั้น controller (StreamableFile) — service คืนข้อมูลดิบเท่านั้น
+    return { fileName: `sgi-report-${year ?? 'all'}-${query.status}.xlsx`, rows };
   }
 
   // GET /api/v1/sgi/master/factors — อ่านปัจจัยภายนอก
   async getSgiMasterFactors(query: ReportAndMasterDataQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/sgi/master/factors
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sgi/master/factors')
-    throw new NotImplementedException('getSgiMasterFactors ยังไม่ implement');
+    // master ปัจจัยภายนอก — ไม่แบ่งหน้าเพราะเป็น master ขนาดเล็ก
+    // SQL รับ $1=q (คำค้นชื่อ) · สัญญาปัจจุบันยังไม่มีช่องค้นหาในหน้าจอ จึงส่ง null = เอาทั้งหมด
+    // ถ้าเพิ่มช่องค้นหาเมื่อไร ให้เพิ่มฟิลด์ใน DTO ก่อน แล้วค่อยส่ง `%${query.q}%` ที่นี่
+    const items = await this.dataSource.query(SGI_SQL.getSgiMasterFactors, [null]);
+    return { items, total: items.length };
   }
 
   // POST /api/v1/sgi/master/factors — สร้างปัจจัยภายนอก
@@ -885,7 +1003,7 @@ export class SgiReportAndMasterDataService {
     await runner.startTransaction();
     try {
       // TODO: lock แถวเป้าหมายของ sgi_external_factors ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SGI_SQL.createSgiMasterFactorsLock, [body.docNo]);
+      const [current] = await runner.query(SGI_SQL.createSgiMasterFactorsLock, [body.nameEn]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }
@@ -903,49 +1021,110 @@ export class SgiReportAndMasterDataService {
 
   // PUT /api/v1/sgi/master/factors/{code} — แก้ปัจจัยภายนอก
   async updateSgiMasterFactorsByCode(code: string, body: UpdateSgiMasterFactorsByCodeBodyDto, userId: string) {
-    // TODO: implement ตาม business rule ของ PUT /api/v1/sgi/master/factors/{code}
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'PUT /api/v1/sgi/master/factors/{code}')
-    throw new NotImplementedException('updateSgiMasterFactorsByCode ยังไม่ implement');
+    // ห้ามแก้ factor_code (เป็น PK และถูกอ้างจาก sgi_document_external_factors)
+    // bind: $1=factorName $2=factorRemark $3=code
+    //   ⚠️ ชื่อฟิลด์ต่างกันสองฝั่ง — DTO ใช้ `description` ส่วนคอลัมน์/พารามิเตอร์ SQL คือ factor_remark
+    const result = await this.dataSource.query(SGI_SQL.updateSgiMasterFactorsByCode, [
+      body.factorName, body.description ?? null, code,
+    ]);
+    // pg คืน [rows, affectedRows] สำหรับ UPDATE ที่ไม่มี RETURNING
+    if (Number(result?.[1] ?? 0) === 0) {
+      throw new NotFoundException('ไม่พบปัจจัยภายนอกรหัสนี้');
+    }
+    return { message: 'saved' };
   }
 
   // GET /api/v1/sgi/master/competitors — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร…
   async getSgiMasterCompetitors(query: ReportAndMasterDataQueryDto, userId: string) {
-    // TODO: implement ตาม business rule ของ GET /api/v1/sgi/master/competitors
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'GET /api/v1/sgi/master/competitors')
-    throw new NotImplementedException('getSgiMasterCompetitors ยังไม่ implement');
+    // master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — SQL รับ $1=q เช่นเดียวกับฝั่งปัจจัย
+    const items = await this.dataSource.query(SGI_SQL.getSgiMasterCompetitors, [null]);
+    return { items, total: items.length };
   }
 
   // POST /api/v1/sgi/master/competitors — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
   async createSgiMasterCompetitors(body: CreateSgiMasterCompetitorsBodyDto, userId: string) {
-    // TODO: implement ตาม business rule ของ POST /api/v1/sgi/master/competitors
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'POST /api/v1/sgi/master/competitors')
-    throw new NotImplementedException('createSgiMasterCompetitors ยังไม่ implement');
+    // bind: $1=code $2=nameTh $3=nameEn $4=remark · ชื่อไทย/อังกฤษบังคับทั้งคู่ (DTO ตรวจแล้วอีกชั้น)
+    try {
+      await this.dataSource.query(SGI_SQL.createSgiMasterCompetitors, [
+        body.competitorCode, body.nameTh, body.nameEn, body.remark ?? null,
+      ]);
+    } catch (error: any) {
+      // 23505 = unique_violation ของ PostgreSQL — รหัสซ้ำต้องเป็น 409 ไม่ใช่ 500
+      if (error?.code === '23505') {
+        throw new ConflictException({ code: 'CODE_DUPLICATE', message: 'รหัสคู่แข่งนี้มีอยู่แล้ว' });
+      }
+      throw error;
+    }
+    return { message: 'created', code: body.competitorCode };
   }
 
   // PUT /api/v1/sgi/master/competitors/{code} — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก sgi_document_competitors
   async updateSgiMasterCompetitorsByCode(code: string, body: Record<string, unknown>, userId: string) {
-    // TODO: implement ตาม business rule ของ PUT /api/v1/sgi/master/competitors/{code}
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'PUT /api/v1/sgi/master/competitors/{code}')
-    throw new NotImplementedException('updateSgiMasterCompetitorsByCode ยังไม่ implement');
+    // ห้ามแก้ competitor_code (เป็น PK และถูกอ้างจาก sgi_document_competitors)
+    // bind: $1=nameTh $2=nameEn $3=remark $4=isActive $5=code
+    const result = await this.dataSource.query(SGI_SQL.updateSgiMasterCompetitorsByCode, [
+      body.nameTh, body.nameEn, body.remark ?? null, body.active ?? true, code,
+    ]);
+    if (Number(result?.[1] ?? 0) === 0) {
+      throw new NotFoundException('ไม่พบคู่แข่งรหัสนี้');
+    }
+    return { message: 'saved' };
   }
 
   // DELETE /api/v1/sgi/master/competitors/{code} — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
   async removeSgiMasterCompetitorsByCode(code: string, userId: string) {
-    // TODO: implement ตาม business rule ของ DELETE /api/v1/sgi/master/competitors/{code}
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'DELETE /api/v1/sgi/master/competitors/{code}')
-    throw new NotImplementedException('removeSgiMasterCompetitorsByCode ยังไม่ implement');
+    // เหมือนฝั่งปัจจัย — ถูกอ้างในเอกสารแล้วต้อง 409
+    const runner = this.dataSource.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      const used = await runner.query(SGI_SQL.removeSgiMasterCompetitorsByCodeInUse, [code]);
+      if (used.length > 0) {
+        throw new ConflictException({ code: 'MASTER_IN_USE', message: 'คู่แข่งรายนี้ถูกใช้ในเอกสารแล้ว ลบไม่ได้' });
+      }
+      const result = await runner.query(SGI_SQL.removeSgiMasterCompetitorsByCode, [code]);
+      if (Number(result?.[1] ?? 0) === 0) {
+        throw new NotFoundException('ไม่พบคู่แข่งรหัสนี้');
+      }
+      await runner.commitTransaction();
+      return { message: 'deleted' };
+    } catch (error) {
+      await runner.rollbackTransaction();
+      throw error;
+    } finally {
+      await runner.release();
+    }
   }
 
   // DELETE /api/v1/sgi/master/factors/{code} — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
   async removeSgiMasterFactorsByCode(code: string, body: Record<string, unknown>, userId: string) {
-    // TODO: implement ตาม business rule ของ DELETE /api/v1/sgi/master/factors/{code}
-    //       (SQL อยู่ในหัวข้อ Database SQL คีย์ 'DELETE /api/v1/sgi/master/factors/{code}')
-    throw new NotImplementedException('removeSgiMasterFactorsByCode ยังไม่ implement');
+    // SQL ของเส้นนี้มี 2 statement → แยกเป็น 2 คีย์: ...InUse (SELECT ตรวจ) และตัวลบ
+    // ถูกอ้างในเอกสารแล้วต้อง 409 ไม่ใช่ลบทิ้ง
+    const runner = this.dataSource.createQueryRunner();
+    await runner.connect();
+    await runner.startTransaction();
+    try {
+      const used = await runner.query(SGI_SQL.removeSgiMasterFactorsByCodeInUse, [code]);
+      if (used.length > 0) {
+        throw new ConflictException({ code: 'MASTER_IN_USE', message: 'ปัจจัยนี้ถูกใช้ในเอกสารแล้ว ลบไม่ได้' });
+      }
+      const result = await runner.query(SGI_SQL.removeSgiMasterFactorsByCode, [code]);
+      if (Number(result?.[1] ?? 0) === 0) {
+        throw new NotFoundException('ไม่พบปัจจัยภายนอกรหัสนี้');
+      }
+      await runner.commitTransaction();
+      return { message: 'deleted' };
+    } catch (error) {
+      await runner.rollbackTransaction();
+      throw error;
+    } finally {
+      await runner.release();
+    }
   }
 }
 ```
 
-#### 9.5 Entity (TypeORM)
+### 9.5 Entity (TypeORM)
 
 ```ts
 // src/entitys/sgi-compensation-documents.entity.ts
@@ -953,20 +1132,29 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity({ name: 'sgi_compensation_documents', schema: process.env.DB_SCHEMA })
 export class CompensationDocument {
-  @PrimaryColumn({ name: 'doc_no', type: 'varchar', length: 12 })
-  docNo: string;
+  @PrimaryColumn({ name: 'id', type: 'bigint' })
+  id: number;
 
-  @Column({ name: 'impact_process_id', type: 'bigint', nullable: true })
-  impactProcessId?: number;
+  @Column({ name: 'doc_no', type: 'varchar', length: 10, nullable: true })
+  docNo?: string;
 
-  @Column({ name: 'impacted_store_code', type: 'char', length: 5 })
+  @Column({ name: 'year', type: 'int', nullable: true })
+  year?: number;
+
+  @Column({ name: 'running_no', type: 'int', nullable: true })
+  runningNo?: number;
+
+  @Column({ name: 'impact_process_id', type: 'bigint' })
+  impactProcessId: number;
+
+  @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
-  statusCode: string;
+  @Column({ name: 'impact_month', type: 'char', length: 7, nullable: true })
+  impactMonth?: string;
 
-  @Column({ name: 'current_section_code', type: 'varchar', length: 2 })
-  currentSectionCode: string;
+  @Column({ name: 'new_store_code', type: 'varchar', length: 5, nullable: true })
+  newStoreCode?: string;
 
   @Column({ name: 'round_no', type: 'int', nullable: true })
   roundNo?: number;
@@ -974,7 +1162,22 @@ export class CompensationDocument {
   @Column({ name: 'loop_no', type: 'int', nullable: true })
   loopNo?: number;
 
-  @Column({ name: 'statement_id', type: 'varchar', length: 30, nullable: true })
+  @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
+  source: string;
+
+  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  statusCode: string;
+
+  @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })
+  currentSectionCode?: string;
+
+  @Column({ name: 'total_compensation_amount', type: 'numeric', precision: 14, scale: 2, default: 0 })
+  totalCompensationAmount: string;
+
+  @Column({ name: 'allmap_url', type: 'varchar', length: 500, nullable: true })
+  allmapUrl?: string;
+
+  @Column({ name: 'statement_id', type: 'varchar', length: 50, nullable: true })
   statementId?: string;
 
   @Column({ name: 'statement_date', type: 'date', nullable: true })
@@ -986,23 +1189,26 @@ export class CompensationDocument {
   @Column({ name: 'account_month', type: 'int', nullable: true })
   accountMonth?: number;
 
-  @Column({ name: 'compensate_amount', type: 'numeric', precision: 15, scale: 2, nullable: true })
-  compensateAmount?: string;
-
-  @Column({ name: 'allmap_url', type: 'text', nullable: true })
-  allmapUrl?: string;
-
   @Column({ name: 'approver_snapshot', type: 'jsonb', nullable: true })
   approverSnapshot?: Record<string, unknown>;
 
-  @Column({ name: 'created_at', type: 'timestamptz', nullable: true })
-  createdAt?: Date;
+  @Column({ name: 'version_no', type: 'int', default: 1 })
+  versionNo: number;
 
-  @Column({ name: 'updated_at', type: 'timestamptz', nullable: true })
+  @Column({ name: 'created_by', type: 'varchar', length: 30 })
+  createdBy: string;
+
+  @Column({ name: 'created_at', type: 'timestamp' })
+  createdAt: Date;
+
+  @Column({ name: 'updated_by', type: 'varchar', length: 30, nullable: true })
+  updatedBy?: string;
+
+  @Column({ name: 'updated_at', type: 'timestamp', nullable: true })
   updatedAt?: Date;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
@@ -1015,33 +1221,33 @@ export class CompensationHistory {
   @PrimaryColumn({ name: 'id', type: 'bigint' })
   id: number;
 
-  @Column({ name: 'store_code', type: 'char', length: 5 })
+  @Column({ name: 'store_code', type: 'varchar', length: 5 })
   storeCode: string;
 
-  @Column({ name: 'ref_doc_no', type: 'varchar', length: 12, nullable: true })
+  @Column({ name: 'ref_doc_no', type: 'varchar', length: 10, nullable: true })
   refDocNo?: string;
 
-  @Column({ name: 'compensate_year', type: 'int' })
-  compensateYear: number;
+  @Column({ name: 'submit_account_month', type: 'char', length: 7 })
+  submitAccountMonth: string;
 
-  @Column({ name: 'compensate_month', type: 'int' })
-  compensateMonth: number;
-
-  @Column({ name: 'compensate_amount', type: 'numeric', precision: 15, scale: 2 })
+  @Column({ name: 'compensate_amount', type: 'numeric', precision: 14, scale: 2 })
   compensateAmount: string;
 
-  @Column({ name: 'submit_account_month', type: 'varchar', length: 7, nullable: true })
-  submitAccountMonth?: string;
+  @Column({ name: 'accounting_status', type: 'varchar', length: 30, nullable: true })
+  accountingStatus?: string;
 
-  @Column({ name: 'submit_status', type: 'char', length: 1, nullable: true })
-  submitStatus?: string;
+  @Column({ name: 'external_ref', type: 'varchar', length: 100, nullable: true })
+  externalRef?: string;
 
-  // TODO: ตรวจความยาว/precision กับ DDL จริงใน sql/deploy-sgi-*.sql ก่อน merge
-  //       entity ชุดนี้ไม่ประกาศ relation ตาม convention (join ด้วย raw SQL)
+  @Column({ name: 'created_at', type: 'timestamp' })
+  createdAt: Date;
+
+  // entity ชุดนี้ generate จาก DDL ใน LLDD-Database §5.2–5.4 โดยตรง — คอลัมน์/ชนิด/nullable ตรงกันเสมอ
+  // ไม่ประกาศ relation ตาม convention ของทีม (join ด้วย raw SQL)
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`sgi_consideration_logs`, `glb-workflow`, `sgi_external_factors`, `sgi_competitors`, `sgi_document_competitors`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`sgi_consideration_logs`, `glb-workflow`, `sgi_external_factors`, `sgi_competitors`, `sgi_document_competitors`, `sgi_document_external_factors`, `sgi_document_new_stores`, `sgi_fgi_impact_processes`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
@@ -1049,7 +1255,7 @@ export class CompensationHistory {
 | --- | --- | --- |
 | mas_param | R | mas_param (store-backend) |
 
-#### 9.6 Repository Providers + Module wiring
+### 9.6 Repository Providers + Module wiring
 
 ```ts
 // src/providers/sgi/sgi.ts — repository provider แบบ factory (ไม่ใช้ TypeOrmModule.forFeature)
@@ -1107,7 +1313,7 @@ export class SgiReportAndMasterDataModule implements NestModule {
 // TODO: register module นี้ใน app.module.ts (imports) พร้อมกับโมดูล SGI ตัวอื่น
 ```
 
-#### 9.7 BFF Proxy (module + controller + client service)
+### 9.7 BFF Proxy (module + controller + client service)
 
 BFF ยังไม่มีฟีเจอร์ประกันรายได้เลย จึงต้องสร้าง module ใหม่ + client service ใหม่ทั้งชุด และเลือก prefix แบบเดียวทั้งโมดูล (ที่นี่ใช้ `/bff/sgi/…`) เพื่อไม่ให้ปนแบบที่มี/ไม่มี `/bff` เหมือนโมดูลเดิม
 
@@ -1141,6 +1347,9 @@ export class SgiReportAndMasterDataBffService {
   constructor(private readonly client: SgiClientService) {}
 
   // BFF ไม่มี DB — หน้าที่เดียวคือแนบ user context แล้ว forward
+  // ⚠️ ต้อง unwrap envelope ของ store-backend 1 ชั้นก่อนคืน (ยืนยันจากโค้ดจริง 2026-09-04):
+  //    ResponseInterceptor ระดับ global ของ BFF ห่อผลลัพธ์เป็น { success, data, requestId } อีกที
+  //    ถ้าคืน { success, data } ดิบมา FE จะได้ data.data.data — SgiClientService จึงต้องคืน .data.data
   private userHeaders(user: any) {
     return {
       'x-user-id': user?.userId,
@@ -1166,20 +1375,20 @@ export class SgiReportAndMasterDataBffService {
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
-// เลือก prefix แบบเดียวทั้งโมดูล: ใช้ '/bff/sgi/...' (ห้ามปนกับแบบไม่มี /bff)
-@Controller('bff/sgi/report-and-master-data')
+// path เดียวกับที่ FE เรียก (apiClient baseURL รวม /api/v1 แล้ว) — ห้ามตั้งตามชื่อเอกสาร LLDD
+@Controller('sgi')
 @UseGuards(AuthGuard('jwt'))
 export class SgiReportAndMasterDataBffController {
   constructor(private readonly service: SgiReportAndMasterDataBffService) {}
 
   // proxy ของ GET /api/v1/sgi/report/status-summary
-  @Get('sgi/report/status-summary')
+  @Get('report/status-summary')
   getSgiReportStatusSummary(@Query() query: any, @Req() req: any) {
     return this.service.getSgiReportStatusSummary(query, req.user);
   }
 
   // proxy ของ GET /api/v1/sgi/report/status-summary/export
-  @Get('sgi/report/status-summary/export')
+  @Get('report/status-summary/export')
   exportStatusSummary(@Query() query: any, @Req() req: any) {
     return this.service.exportStatusSummary(query, req.user);
   }
@@ -1189,7 +1398,7 @@ export class SgiReportAndMasterDataBffController {
 
 ## 10. Database SQL
 
-#### 10.1 ตารางที่อ่าน/เขียน
+### 10.1 ตารางที่อ่าน/เขียน
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
@@ -1200,17 +1409,17 @@ export class SgiReportAndMasterDataBffController {
 | sgi_external_factors | R/W | master ปัจจัยภายนอก |
 | sgi_competitors | R/W | master แบรนด์คู่แข่ง 11 รายการ (code 01-11 · name_th · name_en · remark) — feed dropdown ร้านคู่แข่งของหน้าเอกสาร |
 | sgi_document_competitors | R | ตรวจว่าแบรนด์ถูกอ้างในเอกสารก่อนลบ (409) |
+| sgi_document_external_factors | R | ตรวจว่าปัจจัยภายนอกถูกอ้างในเอกสารก่อนลบ (409) (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
+| sgi_document_new_stores | R | ยอด/%ชดเชยต่อร้านเปิดใหม่ในรายงาน (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
+| sgi_fgi_impact_processes | R | รอบชดเชย (roundNo) และงวดในรายงาน (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
 | mas_param | R | ใช้ของระบบเดิม: mas_param (store-backend) |
 
-#### 10.2 SQL จริงต่อ Endpoint
+### 10.2 SQL จริงต่อ Endpoint
 
 **GET /api/v1/sgi/report/status-summary** — รายงานตรวจสอบประกันรายได้
 
 ```sql
--- ⚠️ ชื่อคอลัมน์ต่อไปนี้ไม่ตรงกับ entity ที่หัวข้อ Entity ของเอกสารนี้ประกาศไว้:
---      d.year  ->  d.account_year
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=year · $2=status · $3=impactedStoreCode · $4=newStoreCode · $5=psFrom · $6=psTo · $7=storeTypes · $8=regions · $9=result · $10=size · $11=offset
 -- 14 คอลัมน์ตาม SDD สไลด์ 60 ; ต้องระบุ :year และ :status เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว
 -- ⚠️ ตาราง stores ของ SGI ถูกตัด 2026-08-06 — ใช้ store ของระบบ SBP เดิม (sps_store 19,402 แถว): คีย์ store_id · ภาค zone_cd
 SELECT si.store_id   AS impacted_store_code, si.store_name   AS impacted_store_name,
@@ -1229,16 +1438,16 @@ LEFT JOIN LATERAL (
   SELECT result_category FROM sgi_consideration_logs
   WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1
 ) cl ON TRUE
-WHERE d.year = :year
-  AND d.status_code = :status                                   -- Drop-down บังคับ (SDD สไลด์ 60)
-  AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)
-  AND (:newStoreCode      IS NULL OR dns.new_store_code    = :newStoreCode)
-  AND (:psFrom IS NULL OR d.statement_date BETWEEN :psFrom AND :psTo)  -- ค.ศ. ; บังคับเมื่อ status = เสร็จสิ้นดำเนินการ
-  AND (:storeTypes IS NULL OR si.store_type  = ANY(:storeTypes))       -- 7 ค่า `A B C D E PTT บริษัท` (BranchTypeProfile.BranchTypeFGIName · ห้าม hardcode)
-  AND (:regions    IS NULL OR si.zone_cd = ANY(:regions))          -- 13 ภาค + ภาคใหม่อัตโนมัติ
-  AND (:result     IS NULL OR cl.result_category = :result)            -- APPROVE / REJECT (ไม่บังคับ)
+WHERE d.year = $1 /* year */
+  AND d.status_code = $2 /* status */                                   -- Drop-down บังคับ (SDD สไลด์ 60)
+  AND ($3 /* impactedStoreCode */ IS NULL OR d.impacted_store_code = $3 /* impactedStoreCode */)
+  AND ($4 /* newStoreCode */      IS NULL OR dns.new_store_code    = $4 /* newStoreCode */)
+  AND ($5 /* psFrom */ IS NULL OR d.statement_date BETWEEN $5 /* psFrom */ AND $6 /* psTo */)  -- ค.ศ. ; บังคับเมื่อ status = เสร็จสิ้นดำเนินการ
+  AND ($7 /* storeTypes */ IS NULL OR si.store_type  = ANY($7 /* storeTypes */))       -- 7 ค่า `A B C D E PTT บริษัท` (BranchTypeProfile.BranchTypeFGIName · ห้าม hardcode)
+  AND ($8 /* regions */    IS NULL OR si.zone_cd = ANY($8 /* regions */))          -- 13 ภาค + ภาคใหม่อัตโนมัติ
+  AND ($9 /* result */     IS NULL OR cl.result_category = $9 /* result */)            -- APPROVE / REJECT (ไม่บังคับ)
 ORDER BY d.doc_no
-LIMIT :size OFFSET :offset;
+LIMIT $10 /* size */ OFFSET $11 /* offset */;
 ```
 
 **GET /api/v1/sgi/report/status-summary/export** — Export Excel
@@ -1252,95 +1461,88 @@ ORDER BY d.doc_no;
 **GET /api/v1/sgi/master/factors** — อ่านปัจจัยภายนอก
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=q
 SELECT factor_code, factor_name, factor_remark
 FROM sgi_external_factors
-WHERE :q IS NULL OR factor_name LIKE :q
+WHERE $1 /* q */ IS NULL OR factor_name LIKE $1 /* q */
 ORDER BY factor_code;
 ```
 
 **POST /api/v1/sgi/master/factors** — สร้างปัจจัยภายนอก
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=factorCode · $2=factorName · $3=factorRemark
 -- factor_code ห้ามซ้ำ (ไม่งั้น 409)
 INSERT INTO sgi_external_factors (factor_code, factor_name, factor_remark)
-VALUES (:factorCode, :factorName, :factorRemark);
+VALUES ($1 /* factorCode */, $2 /* factorName */, $3 /* factorRemark */);
 ```
 
 **PUT /api/v1/sgi/master/factors/{code}** — แก้ปัจจัยภายนอก
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=factorName · $2=factorRemark · $3=code
 -- ไม่มี audit/เหตุผลแล้ว (ยกเลิก audit_logs 2026-08-07)
-UPDATE sgi_external_factors SET factor_name = :factorName, factor_remark = :factorRemark
-WHERE factor_code = :code;
+UPDATE sgi_external_factors SET factor_name = $1 /* factorName */, factor_remark = $2 /* factorRemark */
+WHERE factor_code = $3 /* code */;
 ```
 
 **GET /api/v1/sgi/master/competitors** — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร้านคู่แข่งในหน้าเอกสารด้วย
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=q
 -- master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) · ระบบเดิมเก็บชื่อไทยและอังกฤษ
 SELECT competitor_code, name_th, name_en, remark, is_active
 FROM sgi_competitors
-WHERE (:q IS NULL OR name_th LIKE :q OR name_en LIKE :q)
+WHERE ($1 /* q */ IS NULL OR name_th LIKE $1 /* q */ OR name_en LIKE $1 /* q */)
 ORDER BY competitor_code;
 ```
 
 **POST /api/v1/sgi/master/competitors** — เพิ่มแบรนด์คู่แข่ง — code/nameTh/nameEn บังคับ · รหัสซ้ำตอบ 409
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=code · $2=nameTh · $3=nameEn · $4=remark
 -- competitor_code ห้ามซ้ำ (ไม่งั้น 409) · ชื่อไทยและอังกฤษบังคับทั้งคู่
 INSERT INTO sgi_competitors (competitor_code, name_th, name_en, remark, is_active)
-VALUES (:code, :nameTh, :nameEn, :remark, TRUE);
+VALUES ($1 /* code */, $2 /* nameTh */, $3 /* nameEn */, $4 /* remark */, TRUE);
 ```
 
 **PUT /api/v1/sgi/master/competitors/{code}** — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก sgi_document_competitors
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=nameTh · $2=nameEn · $3=remark · $4=isActive · $5=code
 -- ห้ามแก้ competitor_code (เป็น PK และถูกอ้างจาก sgi_document_competitors)
 UPDATE sgi_competitors
-   SET name_th = :nameTh, name_en = :nameEn, remark = :remark, is_active = :isActive,
+   SET name_th = $1 /* nameTh */, name_en = $2 /* nameEn */, remark = $3 /* remark */, is_active = $4 /* isActive */,
        updated_at = CURRENT_TIMESTAMP
- WHERE competitor_code = :code;
+ WHERE competitor_code = $5 /* code */;
 ```
 
 **DELETE /api/v1/sgi/master/competitors/{code}** — ลบแบรนด์คู่แข่ง — ถูกอ้างในเอกสารแล้วตอบ 409
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=code
 -- ตรวจไม่ถูกอ้างในเอกสารก่อนลบ (ไม่งั้น 409)
-SELECT 1 FROM sgi_document_competitors WHERE competitor_code = :code;
+SELECT 1 FROM sgi_document_competitors WHERE competitor_code = $1 /* code */;
 
-DELETE FROM sgi_competitors WHERE competitor_code = :code;
+DELETE FROM sgi_competitors WHERE competitor_code = $1 /* code */;
 ```
 
 **DELETE /api/v1/sgi/master/factors/{code}** — ลบปัจจัยภายนอกที่ไม่ถูกใช้งาน
 
 ```sql
--- ⚠️ SQL นี้ใช้ named parameter (:name) แต่ `dataSource.query()` ของ store-backend
---    รับเฉพาะ positional $1..$n — ต้องแปลงเป็นลำดับ หรือรันผ่าน QueryBuilder
+-- bind ตามลำดับ: $1=code
 -- ตรวจไม่ถูกอ้างในเอกสารก่อนลบ (ไม่งั้น 409)
-SELECT 1 FROM sgi_document_external_factors WHERE factor_code = :code;
+SELECT 1 FROM sgi_document_external_factors WHERE factor_code = $1 /* code */;
 
-DELETE FROM sgi_external_factors WHERE factor_code = :code;
+DELETE FROM sgi_external_factors WHERE factor_code = $1 /* code */;
 ```
 
-#### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
+### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
 
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |
 | sgi_compensation_histories | CREATE INDEX idx_sgi_compensation_histories_ref_doc_no ON sgi_compensation_histories (ref_doc_no); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
+| sgi_document_new_stores | CREATE INDEX idx_sgi_document_new_stores_doc_no_new_store_code ON sgi_document_new_stores (doc_no, new_store_code); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
 | sgi_compensation_documents | CREATE INDEX idx_sgi_compensation_documents_year_status_code_impacted_store_ ON sgi_compensation_documents (year, status_code, impacted_store_code); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
 
 ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่

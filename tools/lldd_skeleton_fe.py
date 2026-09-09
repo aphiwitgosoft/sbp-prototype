@@ -46,6 +46,9 @@ def table(headers: Iterable[str], rows: Iterable[Iterable[Any]]) -> dict[str, An
 
 
 def code(text: str, lang: str = "ts") -> dict[str, Any]:
+    if lang == "sql":
+        import build_lldd_documents as _BA   # import ตอนเรียก (โมดูลนั้น import ไฟล์นี้ตอนโหลด)
+        text = _BA.to_positional_sql(text)
     return {"type": "code", "text": text.strip("\n"), "lang": lang}
 
 
@@ -712,8 +715,9 @@ def _file_plan_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-def _page_head(route: str, purpose: str, router: bool = False, table_extra: str = "") -> str:
+def _page_head(route: str, purpose: str, router: bool = False, table_extra: str = "", form: str = "") -> str:
     router_import = "\nimport { useRouter } from 'next/navigation';" if router else ""
+    form_import = form or ""
     table_syms = ", ".join(sorted({"Column", "Table"} | ({table_extra} if table_extra else set())))
     return f"""'use client';
 // {purpose}
@@ -725,13 +729,33 @@ import {{ useState }} from 'react';{router_import}
 import {{ {table_syms} }} from '@/components/Table';
 import AccessDenied from '@/components/Permission/AccessDenied';
 // permissionStore เป็น named export ของ Zustand store (ไม่มี symbol ชื่อ usePermissionStore ในโปรเจกต์)
-import {{ permissionStore }} from '@/stores/permissionStore';"""
+import {{ permissionStore }} from '@/stores/permissionStore';{form_import}"""
+
+
+def _form_import(prof: dict) -> str:
+    """import ของฟอร์มที่หน้าเพจใช้จริง — ตัวคอมโพเนนต์อยู่ในหัวข้อฟอร์ม + validation ของเอกสารเดียวกัน"""
+    pascal = _pascal(prof["key"])
+    # โฟลเดอร์ในผังไฟล์เป็นตัวพิมพ์เล็กทั้งหมด — ถ้า import ไม่ตรงตัวพิมพ์จะพังบน filesystem ที่ case-sensitive
+    return (f"\nimport {pascal}Form from "
+            f"'@/components/sgi/{str(prof['key']).lower()}/{pascal}Form';")
 
 
 # ปุ่มของ portal เดิมเป็น <button className="btn ..."> ตรง ๆ (ดู report-sp-cooperation/page.tsx)
 # ไม่มีโมดูล '@/components/Form/Button' — โฟลเดอร์นั้นมีแค่ text-button.tsx / dropdown-button.tsx
 BTN_PRIMARY = 'className="btn btn-primary"'
 BTN_SECONDARY = 'className="btn btn-secondary"'
+
+
+def _screen_title(topic: Any) -> str:
+    """ชื่อหน้าจอที่แสดงจริง — ดึงจาก title/objective ของเอกสาร ไม่ปล่อยเป็น TODO
+
+    เพิ่ม 2026-09-07: เดิมเป็น `<h1>{/* TODO */}</h1>` ทั้งที่ชื่อหน้าจออยู่ในเอกสารฉบับเดียวกันแล้ว
+    """
+    raw = str(getattr(topic, "title", "") or "")
+    for prefix in ("LLDD FE - ", "LLDD BE - ", "LLDD - "):
+        if raw.startswith(prefix):
+            raw = raw[len(prefix):]
+    return raw.strip() or "หน้าจอ SGI"
 
 
 def _permission_gate(page_url_const: str = "PAGE_URL", extra: str = "") -> str:
@@ -775,7 +799,7 @@ def _list_page(nx: dict[str, Any]) -> str:
         f"\n        rowClassName={{(row: {item}) => (row.salesDataDays < 60 ? 'flag-red' : '')}} // ยอดขายไม่ครบ 60 วัน = แถวผิดปกติ"
         if red_flag else ""
     )
-    return f"""{_page_head(route, purpose, router=True)}
+    return f"""{_page_head(route, purpose, router=True, form=_form_import(prof))}
 import {{ apiErrorMessage }} from '@/lib/sgi/apiError';
 import {{ {hook} }} from '@/hooks/sgi/{domain}.query';
 import type {{ {item} }} from '@/types/sgi/{domain}';
@@ -793,8 +817,9 @@ export default function {_pascal(route)}Page() {{
 
   return (
     <div className="flex flex-col gap-4 p-4">
-      <h1 className="text-xl font-semibold">{{/* TODO: หัวข้อหน้าจอตาม SRS */}}</h1>
-      {{/* TODO: <{_pascal(prof['key'])}Form onSearch={{(v) => setQuery((q) => ({{ ...q, ...v, page: 1 }}))}} /> */}}
+      {{/* ชื่อหน้าจอมาจาก Objective ของเอกสารฉบับนี้ — ตรงกับ breadcrumb ของ prototype */}}
+      <h1 className="text-xl font-semibold">{_screen_title(topic)}</h1>
+      <{_pascal(prof['key'])}Form onSubmit={{(v) => setQuery((q) => ({{ ...q, ...v, page: 1 }}))}} />
       <Table
         value={{data?.items ?? []}}
         loading={{isLoading}}
@@ -1336,7 +1361,14 @@ def _service_blocks(nx: dict[str, Any], num: str) -> list[dict[str, Any]]:
     if cut:
         lines.append("// NOTE: เส้น %s ถูกตัดจากดีไซน์แล้ว (ใช้ระบบ SBP เดิม) — ห้ามสร้าง service ให้"
                      % ", ".join(row[0] for row in cut))
-    lines.append("// TODO: ยืนยันกับทีม BFF ว่า unwrap envelope { success, data } ที่ชั้นไหน (BFF หรือ FE)")
+    # ปิด TODO เดิมเมื่อ 2026-09-04 — อ่านโค้ดจริงของ BFF แล้วตอบได้เอง ไม่ต้องถามทีม
+    lines.append("// ── envelope: อ่าน `data.data` ชั้นเดียว (ยืนยันจากโค้ดจริงของ BFF 2026-09-04) ──")
+    lines.append("//   BFF มี ResponseInterceptor ระดับ global (src/common/interceptors/response.interceptor.ts)")
+    lines.append("//   ที่ห่อผลลัพธ์ของ controller เป็น { success, data, requestId } ให้เสมอ")
+    lines.append("//   ⚠️ ถ้า client service ของ BFF คืน `response.data` ดิบ (= envelope ของ store-backend)")
+    lines.append("//      interceptor จะเห็นคีย์ success แล้วห่อซ้ำ → FE ได้ { success, data: { data: <payload> } }")
+    lines.append("//      สัญญาที่ตกลง: **BFF ต้อง unwrap ของ store-backend ก่อน 1 ชั้น** (คืน response.data.data)")
+    lines.append("//      FE จึงอ่าน data.data ชั้นเดียวตามโค้ดด้านบน · requestId ใช้อ้างอิงตอนแจ้งปัญหา")
     text = "\n".join(lines)
     imports = ["ApiResponse"] if "ApiResponse<" in text else []
     if "PageResponse<" in text:

@@ -8,7 +8,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | --- | --- |
 | Track | BE |
 | Estimate | 43 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
-| Owner | Aphiwit <Bank> Khammoon |
+| Owner | Tunyatorn &lt;Vava&gt; Kiatkongphongsa |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
 | Objective | ออกแบบการย้ายข้อมูลจากระบบเดิม (Oracle FCS_FRN ฝั่ง FGI/FCS + SQL Server CPA_FRN_FGI ฝั่ง K2) เข้าสู่ target schema ของ SGI พร้อมแผน cutover, reconcile และ rollback |
 
@@ -71,8 +71,8 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Data Migration and Cutover_
 | ต้นทาง | ระบบ | ปลายทาง (SGI) | กฎแปลงที่ต้องระวัง |
 | --- | --- | --- | --- |
 | FGI_IMPACT_STORE_ON_PROCESS | ORA FCS_FRN | sgi_fgi_impact_processes | PK IMPACT_PROCESS_ID (seq SEQ_FGI_IMPACT_PROCESS) เป็น hub ของทั้งโซน A · **ต้อง migrate คอลัมน์รอบชดเชยด้วย (gap F8 · รับเข้าโครง 2026-08-21)**: `LAST_COMPENSATE_SEQ/_SEQ_NO -> last_compensate_seq/_seq_no` · `START/END_COMPENSATE_MONTH-YEAR -> start/end_compensate_month/year` · `FLAG_ACTION -> flag_action` · `DATASOURCE -> datasource` · ⚠️ `FLAG_ACTION` โดเมนจริงคือ **Y/W/N** (active = `IN ('Y','W')`) ไม่ใช่ Y/N — Job 6 เขียน `Y->W` ตอนพัก/รอจ่าย ถ้า CHECK ปลายทางรับแค่ Y/N แถวกลุ่มนี้จะ migrate ไม่ผ่าน · ทั้ง 4 กลุ่มนี้คือค่าที่ Job 8b ใช้ตัดสินจุดเข้า flow |
-| FGI_IMPACT_STORE | ORA FCS_FRN | sgi_fgi_impact_stores + sgi_impacted_stores | แถวฝั่ง `_I` ทำ distinct เข้า sgi_impacted_stores · ที่เหลือเป็นคู่ร้าน |
-| FGI_IMPACT_STORE_COMPENSATE | ORA FCS_FRN | **sgi_fgi_impact_compensations** (รับเข้าโครง 2026-08-21 · gap F1) | `COMPENSATE_FORECAST -> forecast_amount` · `COMPENSATE_ADJUST -> adjust_amount` · `COMPENSATE_SEQ/_SEQ_NO -> compensate_seq/_seq_no` · UK (impact_process_id, compensate_month) · ใช้นับยอด 0 ติดกันกี่งวดด้วย `COALESCE(adjust_amount, forecast_amount) = 0` — เป็น input ของ Job 8b เคส ③ |
+| FGI_IMPACT_STORE | ORA FCS_FRN | sgi_fgi_impact_stores + sgi_impacted_stores | แถวฝั่ง `_I` ทำ distinct เข้า sgi_impacted_stores · ที่เหลือเป็นคู่ร้าน · **คอลัมน์ที่รับเข้าโครง 2026-09-02**: `FLAG_VERIFY -> verify_status` (W/P/N ตรงตัว) · `CREATE_BY -> created_by` / `UPDATE_BY -> updated_by` (โดเมน `ALM`/`STA`/`USER` — ค่าอื่นในข้อมูลเดิมต้อง map เป็น `USER` และรายงานจำนวน) · `CREATE_DATE -> created_at` (กฎ "ตัดทิ้งเมื่อเก่ากว่า 12 เดือน" ของ Job 2 อ้างคอลัมน์นี้ — ห้ามใส่ค่า sysdate ตอน migrate ไม่งั้นแถวเก่าจะไม่ถูกตัดทิ้ง) |
+| FGI_IMPACT_STORE_COMPENSATE | ORA FCS_FRN | **sgi_fgi_impact_compensations** (รับเข้าโครง 2026-08-21 · gap F1) | `COMPENSATE_FORECAST -> forecast_amount` · `COMPENSATE_ADJUST -> adjust_amount` · `COMPENSATE_SEQ/_SEQ_NO -> compensate_seq/_seq_no` · UK (impact_process_id, compensate_month) · ใช้นับยอด 0 ติดกันกี่งวดด้วย `COALESCE(adjust_amount, forecast_amount) = 0` — เป็น input ของ Job 8b ชั้นที่ 2 ของเคส ② ต่อเนื่อง |
 | FGI_IMPACT_STORE_SALES | ORA FCS_FRN | sgi_fgi_impact_sales_summaries | key STORECODE_I + MONTH + YEAR |
 | FGI_IMPACT_STORE_SALES_TRN | ORA FCS_FRN | sgi_sales_transactions | 4 หน้าต่าง × 15 วัน — ห้ามใช้ fcs_monthly_sales แทน (รายเดือน ย้อนกลับเป็นรายวันไม่ได้) |
 | FGI_IMPACT_COMPETITOR | ORA FCS_FRN | sgi_fgi_impact_competitors | data_source = ALM |
@@ -93,6 +93,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Data Migration and Cutover_
 
 | เรื่อง | อาการถ้าไม่ทำ | กฎที่ต้องใช้ |
 | --- | --- | --- |
+| **ค่าที่ติด CHECK constraint** | **load ล้มทั้ง batch** — DDL มี `CHECK` 23 จุด ถ้าข้อมูลเดิมมีค่านอกโดเมนแม้แถวเดียว INSERT จะถูกปฏิเสธ | **profile ค่าจริงของทุกคอลัมน์ที่มี CHECK ก่อน full load** (`SELECT DISTINCT col, COUNT(*) ... GROUP BY col`) แล้วเทียบกับโดเมนใน DDL · จุดที่เสี่ยงที่สุด: `compensate_status` (`I/C/A/N/S/Z`) · `verify_status` จาก `FLAG_VERIFY` (`W/P/N` — ⚠️ `FgiConstant` ยังมีค่า `Y`/`Z` ประกาศไว้ ถ้าข้อมูลจริงมีต้องตัดสินว่า map เป็นอะไร) · `created_by`/`updated_by` จาก `CREATE_BY`/`UPDATE_BY` (`ALM/STA/USER` — ค่าอื่นให้ map เป็น `USER` แล้วรายงานจำนวน) · `flag_action` (`Y/W/N`) · `data_name` (12 ค่า) · **ห้ามแก้ด้วยการถอด CHECK ออก** — ให้แก้ค่าหรือขยายโดเมนอย่างตั้งใจพร้อมอัปเดต `database.md` |
 | leading zero ของรหัสร้าน | ร้าน 00788 กลายเป็น 788 แล้ว join ไม่ติด | lpad(store_code, 5, '0') ทุกจุด · ปลายทางเป็น VARCHAR(5) |
 | ปี พ.ศ./ค.ศ. | วันที่เพี้ยน 543 ปี | เก็บ ค.ศ. ใน DB และ `doc_no` เป็นปี **ค.ศ.** ด้วย (มติ 2026-08-06) · ถ้าของเดิมเป็น พ.ศ. ต้องแปลงตอน migrate ด้วย toAD() |
 | polymorphic key | FK ชี้ผิดตาราง | แตก TRANSACTION_PK ตาม DATA_NAME เป็น impact_process_id / sales_summary_id / doc_no |
@@ -175,7 +176,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Data Migration and Cutover_
 
 ## 7. API Contract
 
-**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 29 เส้นของ SGI อยู่ที่ **LLDD-API** และ `api.md`
+**เอกสารฉบับนี้ไม่มี endpoint ของตัวเอง** — เป็นสัญญา/งานภายในที่เอกสารอื่นเรียกใช้ (ดูขอบเขตใน 5.90 Endpoint Implementation Contract) · รายการ endpoint ทั้ง 28 เส้นของ SGI อยู่ที่ **LLDD-API** และ `api.md`
 
 ## 8. Reference DB Mapping (No Database Page Work)
 
