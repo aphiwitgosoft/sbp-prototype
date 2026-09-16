@@ -1,10 +1,10 @@
 # ER Diagram ฉบับสมบูรณ์ — SGI + ฐานข้อมูลระบบ SBP เดิม
 
 > สร้างอัตโนมัติด้วย `python3 tools/build_er_diagram.py` — **ห้ามแก้ไฟล์นี้ด้วยมือ**  
-> แหล่งข้อมูล: `LLDD/md/LLDD-Database.md` (DDL 20 ตาราง) · `SBP/db-schema-sps_store.md` · `SBP/db-schema-sps_auth.md` (ดึงฐานจริง 07/08/2026) · `database.md` (Cross-System Keys)  
+> แหล่งข้อมูล: `LLDD/md/LLDD-Database.md` (DDL 21 ตาราง) · `SBP/db-schema-sps_store.md` · `SBP/db-schema-sps_auth.md` (ดึงฐานจริง 07/08/2026) · `database.md` (Cross-System Keys)  
 > รูป: `er-sgi-complete.svg` (เวกเตอร์) · `er-sgi-complete.png` · `er-sgi-complete.html` (โต้ตอบได้ · มีภาคผนวกตารางครบทุกตาราง)
 
-**บนรูป:** 70 ตาราง (20 SGI · 39 sps_store · 11 sps_auth) · 153 ความสัมพันธ์
+**บนรูป:** 70 ตาราง (20 SGI · 39 sps_store · 11 sps_auth) · 155 ความสัมพันธ์
 
 ## โซน A · FGI/FCS Impact Pipeline
 
@@ -13,13 +13,13 @@
 | ตาราง | คอลัมน์ | PK | ความสัมพันธ์ออก | แถวจริง |
 |---|---|---|---|---|
 | `sgi_fgi_impact_processes` | 19 | id | ออก 2 · เข้า 6 | — |
-| `sgi_fgi_impact_compensations` | 18 | id | ออก 2 · เข้า 0 | — |
+| `sgi_fgi_impact_compensations` | 18 | id | ออก 2 · เข้า 1 | — |
 | `sgi_fgi_impact_stores` | 16 | id | ออก 4 · เข้า 0 | — |
 | `sgi_fgi_impact_sales_summaries` | 9 | id | ออก 1 · เข้า 2 | — |
-| `sgi_sales_transactions` | 9 | id | ออก 1 · เข้า 0 | — |
-| `sgi_fgi_impact_competitors` | 9 | id | ออก 3 · เข้า 0 | — |
+| `sgi_sales_transactions` | 10 | id | ออก 1 · เข้า 0 | — |
+| `sgi_fgi_impact_competitors` | 14 | id | ออก 3 · เข้า 1 | — |
 | `fcs_qssi_score` | 7 | id | ออก 1 · เข้า 0 | 23,958,780 |
-| `sgi_interface_transactions` | 24 | id | ออก 4 · เข้า 0 | — |
+| `sgi_interface_transactions` | 26 | id | ออก 4 · เข้า 0 | — |
 
 ## โซน B · K2 เอกสารประกันรายได้
 
@@ -27,11 +27,11 @@
 
 | ตาราง | คอลัมน์ | PK | ความสัมพันธ์ออก | แถวจริง |
 |---|---|---|---|---|
-| `sgi_compensation_documents` | 25 | id | ออก 13 · เข้า 9 | — |
+| `sgi_compensation_documents` | 26 | id | ออก 14 · เข้า 9 | — |
 | `sgi_document_running_numbers` | 4 | year | ออก 1 · เข้า 0 | — |
-| `sgi_document_new_stores` | 8 | id | ออก 2 · เข้า 1 | — |
+| `sgi_document_new_stores` | 9 | id | ออก 2 · เข้า 1 | — |
 | `sgi_document_cost_details` | 10 | id | ออก 2 · เข้า 0 | — |
-| `sgi_document_competitors` | 12 | id | ออก 2 · เข้า 1 | — |
+| `sgi_document_competitors` | 18 | id | ออก 3 · เข้า 1 | — |
 | `sgi_document_external_factors` | 8 | id | ออก 2 · เข้า 0 | — |
 | `sgi_consideration_logs` | 9 | id | ออก 5 · เข้า 0 | — |
 | `sgi_document_attachments` | 16 | attach_id | ออก 4 · เข้า 0 | — |
@@ -130,6 +130,7 @@ SGI รับผ่าน header ของ BFF ไม่ query ตรง
 | `sgi.sgi_compensation_documents.created_by` | N:1 | `sps_auth.users.username` | api | ตัวตนมาทาง header x-user-id ของ BFF ไม่ query ตรง | confirmed | database.md §ตารางที่ตัดออก 2026-08-05 |
 | `sgi.sgi_compensation_documents.current_section_code` | N:1 | `sps_store.workflow_state.state_id` | logical | ขั้น 06/08/01/02/03 = state ของ engine | confirmed | LLDD-Database.md §5.3 |
 | `sgi.sgi_compensation_documents.id` | 1:1 | `sps_store.workflow_transaction.reference_id` | api | referenceId = surrogate id (มติ DP-1 = B) | confirmed | database.md §กุญแจเชื่อมข้ามระบบ ข้อ 4 |
+| `sgi.sgi_compensation_documents.impact_compensation_id` | N:1 | `sgi.sgi_fgi_impact_compensations.id` | fk | FK | confirmed | sgi · DDL/dump |
 | `sgi.sgi_compensation_documents.impact_process_id` | N:1 | `sgi.sgi_fgi_impact_processes.id` | fk | FK | confirmed | sgi · DDL/dump |
 | `sgi.sgi_compensation_documents.impacted_store_code` | N:1 | `sgi.sgi_impacted_stores.store_code` | fk | FK | confirmed | sgi · DDL/dump |
 | `sgi.sgi_compensation_documents.impacted_store_code` | N:1 | `sps_store.statement.store_id` | logical | ใบแจ้งยอดของร้าน/งวด — Period Statement ของรายงาน (SDD สไลด์ 60) | proposed | database.md §โซน B |
@@ -149,8 +150,9 @@ SGI รับผ่าน header ของ BFF ไม่ query ตรง
 | `sgi.sgi_document_attachments.object_key` | N:1 | `sps_store.upload_general.key` | api | ใช้ service S3 ของระบบเดิม (upload/download-file-aws) | undecided · DP-8 | database.md §ตารางที่คล้ายแต่ไม่ใช่ · DP-8 |
 | `sgi.sgi_document_attachments.section_code` | N:1 | `sps_store.workflow_state.state_id` | logical | ไฟล์แนบแยกตามขั้น | confirmed | LLDD-Database.md §5.3 |
 | `sgi.sgi_document_attachments.uploaded_by` | N:1 | `sps_store.business_user.user_id` | logical | ผู้แนบไฟล์ | confirmed | LLDD-Database.md §5.3 |
-| `sgi.sgi_document_competitors.competitor_code` | N:1 | `sgi.sgi_competitors.competitor_code` | fk | FK | confirmed | sgi · DDL/dump |
+| `sgi.sgi_document_competitors.brand_code` | N:1 | `sgi.sgi_competitors.competitor_code` | fk | FK | confirmed | sgi · DDL/dump |
 | `sgi.sgi_document_competitors.doc_no` | N:1 | `sgi.sgi_compensation_documents.doc_no` | fk | FK | confirmed | sgi · DDL/dump |
+| `sgi.sgi_document_competitors.source_row_id` | N:1 | `sgi.sgi_fgi_impact_competitors.id` | fk | FK | confirmed | sgi · DDL/dump |
 | `sgi.sgi_document_cost_details.doc_no` | N:1 | `sgi.sgi_compensation_documents.doc_no` | fk | FK | confirmed | sgi · DDL/dump |
 | `sgi.sgi_document_cost_details.new_store_code` | N:1 | `sps_store.store.store_id` | logical | ยอดชดเชยรายเดือนต่อร้านใหม่ | confirmed | LLDD-Database.md §5.3 |
 | `sgi.sgi_document_external_factors.doc_no` | N:1 | `sgi.sgi_compensation_documents.doc_no` | fk | FK | confirmed | sgi · DDL/dump |
@@ -160,7 +162,7 @@ SGI รับผ่าน header ของ BFF ไม่ query ตรง
 | `sgi.sgi_document_running_numbers.year` | 1:N | `sgi.sgi_compensation_documents.year` | logical | ออกเลข YYYY/xxxxx แบบ atomic ต่อปี ค.ศ. | confirmed | LLDD-Database.md §5.3 · database.md §Canonical |
 | `sgi.sgi_fgi_impact_compensations.impact_process_id` | N:1 | `sgi.sgi_fgi_impact_processes.id` | fk | FK | confirmed | sgi · DDL/dump |
 | `sgi.sgi_fgi_impact_compensations.impacted_store_code` | N:1 | `sgi.sgi_impacted_stores.store_code` | fk | FK | confirmed | sgi · DDL/dump |
-| `sgi.sgi_fgi_impact_competitors.competitor_code` | N:1 | `sgi.sgi_competitors.competitor_code` | fk | FK | confirmed | sgi · DDL/dump |
+| `sgi.sgi_fgi_impact_competitors.brand_code` | N:1 | `sgi.sgi_competitors.competitor_code` | fk | FK | confirmed | sgi · DDL/dump |
 | `sgi.sgi_fgi_impact_competitors.competitor_code` | 1:N | `sgi.sgi_document_competitors.source_system` | logical | นำเข้าเป็นแถว source_system=ALLMAP (แยกจาก USER ที่ผู้ใช้เพิ่มเอง) | confirmed | database.md §กุญแจเชื่อมข้ามระบบ ข้อ 5 |
 | `sgi.sgi_fgi_impact_competitors.impact_process_id` | N:1 | `sgi.sgi_fgi_impact_processes.id` | fk | FK | confirmed | sgi · DDL/dump |
 | `sgi.sgi_fgi_impact_processes.impacted_store_code` | N:1 | `sgi.sgi_impacted_stores.store_code` | fk | FK | confirmed | sgi · DDL/dump |
@@ -185,7 +187,7 @@ SGI รับผ่าน header ของ BFF ไม่ query ตรง
 | `sps_auth.app_menus.updated_by` | N:1 | `sps_auth.users.id` | fk | FK | confirmed | sps_auth · DDL/dump |
 | `sps_auth.business_user.franchisee_id` | N:1 | `sps_auth.franchisee.franchisee_id` | logical | ผู้ใช้ที่เป็น Store Partner | proposed | db-schema-sps_auth.md §business_user |
 | `sps_auth.business_user.group_id` | N:1 | `sps_auth.user_groups.id` | logical | กลุ่มของผู้ใช้ระดับ business — ยังไม่ยืนยันว่าชี้ user_groups | proposed | db-schema-sps_auth.md §business_user |
-| `sps_auth.business_user.user_id` | 1:1 | `sps_store.business_user.user_id` | logical | ตารางชื่อเดียวกันคนละ schema (22,057 vs 12,752 แถว) | confirmed | db-schema ทั้งสองไฟล์ |
+| `sps_auth.business_user.user_id` | 1:1 | `sps_store.business_user.user_id` | logical | ตารางชื่อเดียวกันคนละ schema (22,057 vs 12,759 แถว) | confirmed | db-schema ทั้งสองไฟล์ |
 | `sps_auth.employee_store.store_id` | N:1 | `sps_auth.mas_store.branch_id` | logical | พนักงานประจำร้าน | proposed | db-schema-sps_auth.md §employee_store |
 | `sps_auth.fr_store.store_id` | N:1 | `sps_auth.mas_store.branch_id` | logical | สัญญาร้าน (สำเนาฝั่ง auth) | proposed | db-schema-sps_auth.md §fr_store |
 | `sps_auth.group_permissions.created_by` | N:1 | `sps_auth.users.id` | fk | FK | confirmed | sps_auth · DDL/dump |
@@ -217,7 +219,7 @@ SGI รับผ่าน header ของ BFF ไม่ query ตรง
 | `sps_store.business_user_group.group_id` | N:1 | `sps_store.business_group.group_id` | logical | (store_type, store_area) = คีย์ resolve ผู้อนุมัติ | confirmed | database.md §ขอบเขต V_FGI_SBP_APPROVER |
 | `sps_store.business_user_group.user_id` | N:1 | `sps_store.business_user.user_id` | logical | ผู้ใช้อยู่ได้หลายกลุ่ม | confirmed | db-schema-sps_store.md §business_user_group |
 | `sps_store.common_code.code_type` | N:1 | `sps_store.common_code_type.code_type` | logical | ต้องลงทะเบียน code_type ก่อนใช้ | confirmed | database.md §มติ DP-9 |
-| `sps_store.email_sent.email_id` | N:1 | `sps_store.email_template.email_template_id` | logical | log อีเมลทุกฉบับ 5,214 แถว | confirmed | db-schema-sps_store.md §email_sent |
+| `sps_store.email_sent.email_id` | N:1 | `sps_store.email_template.email_template_id` | logical | log อีเมลทุกฉบับ 5,392 แถว | confirmed | db-schema-sps_store.md §email_sent |
 | `sps_store.fcs_monthly_sales.store_id` | N:1 | `sps_store.store.store_id` | logical | ยอดขายรายเดือน 711,384 แถว | confirmed | db-schema-sps_store.md §fcs_monthly_sales |
 | `sps_store.fml_responsible_sbp.region` | N:1 | `sps_store.mas_zone.zone_cd` | logical | ผู้รับผิดชอบ SBP รายภาค | proposed | db-schema-sps_store.md §fml_responsible_sbp |
 | `sps_store.fml_sbp_stmt.report_type` | N:1 | `sps_store.statement.report_type` | logical | ทะเบียน SBP ↔ ไฟล์ statement รอบเดียวกัน (store_id+year+month+day) | proposed | db-schema-sps_store.md |
@@ -279,7 +281,7 @@ SGI รับผ่าน header ของ BFF ไม่ query ตรง
 
 ## ข้อควรระวังบนรูป
 
-- `sps_store.workflow_transaction` — ไม่มี PK และไม่มี index เลย ทั้งที่มี 19,283 แถว — DP-2 ยังไม่ตัดสิน
+- `sps_store.workflow_transaction` — ไม่มี PK และไม่มี index เลย ทั้งที่มี 19,327 แถว — DP-2 ยังไม่ตัดสิน
 - `sps_store.fcs_qssi_score` — 23.9 ล้านแถว · ห้าม CREATE ใหม่ · ห้ามใช้ชื่อพหูพจน์ · DP-4
 - `sps_store.common_code` — ไม่มี PK/unique — กันรหัสซ้ำที่ระดับแอป
 - `sgi.sgi_compensation_documents` — PK = id (surrogate) · doc_no เป็น UNIQUE · referenceId = id (DP-1 = B)
@@ -304,16 +306,18 @@ erDiagram
     sgi__sgi_fgi_impact_sales_summaries }o--|| sgi__sgi_fgi_impact_processes : "impact_process_id→id"
     sgi__sgi_sales_transactions }o--|| sgi__sgi_fgi_impact_sales_summaries : "sales_summary_id→id"
     sgi__sgi_fgi_impact_competitors }o--|| sgi__sgi_fgi_impact_processes : "impact_process_id→id"
-    sgi__sgi_fgi_impact_competitors }o--|| sgi__sgi_competitors : "competitor_code→competitor_code"
+    sgi__sgi_fgi_impact_competitors }o--|| sgi__sgi_competitors : "brand_code→competitor_code"
     sgi__sgi_interface_transactions }o--|| sgi__sgi_fgi_impact_processes : "impact_process_id→id"
     sgi__sgi_interface_transactions }o--|| sgi__sgi_fgi_impact_sales_summaries : "sales_summary_id→id"
     sgi__sgi_interface_transactions }o--|| sgi__sgi_compensation_documents : "doc_no→doc_no"
     sgi__sgi_compensation_documents }o--|| sgi__sgi_fgi_impact_processes : "impact_process_id→id"
+    sgi__sgi_compensation_documents }o--|| sgi__sgi_fgi_impact_compensations : "impact_compensation_id→id"
     sgi__sgi_compensation_documents }o--|| sgi__sgi_impacted_stores : "impacted_store_code→store_code"
     sgi__sgi_document_new_stores }o--|| sgi__sgi_compensation_documents : "doc_no→doc_no"
     sgi__sgi_document_cost_details }o--|| sgi__sgi_compensation_documents : "doc_no→doc_no"
     sgi__sgi_document_competitors }o--|| sgi__sgi_compensation_documents : "doc_no→doc_no"
-    sgi__sgi_document_competitors }o--|| sgi__sgi_competitors : "competitor_code→competitor_code"
+    sgi__sgi_document_competitors }o--|| sgi__sgi_competitors : "brand_code→competitor_code"
+    sgi__sgi_document_competitors }o--|| sgi__sgi_fgi_impact_competitors : "source_row_id→id"
     sgi__sgi_document_external_factors }o--|| sgi__sgi_compensation_documents : "doc_no→doc_no"
     sgi__sgi_document_external_factors }o--|| sgi__sgi_external_factors : "factor_code→factor_code"
     sgi__sgi_consideration_logs }o--|| sgi__sgi_compensation_documents : "doc_no→doc_no"

@@ -59,7 +59,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job 9 SyncNewStoreToDocument_
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| กำหนดการรัน (Cron) | 30 17 7-31 * * | แก้ไขได้ | ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน |
+| กำหนดการรัน (Cron) | 0 18 7-31 * * | แก้ไขได้ | เหลื่อมหลัง Job 8 (17:30) เพราะต้องรอ doc_no · **เวลาเหลื่อมไม่ใช่การรับประกัน — ต้องตั้ง dependency ที่ AWS Batch** |
 | Target table | sgi_document_new_stores | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | upsert ด้วย doc_no / new_store_code |
 | กฎ Forecast / Percent | COALESCE(adjust_amount, forecast_amount) จาก sgi_fgi_impact_compensations | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | ค่า adjust มาก่อน forecast เสมอ; NULL หรือค่านอกช่วง 0..100 ต้อง reject ก่อน upsert |
 | เงื่อนไขเลือกข้อมูล | ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ |  |
@@ -101,7 +101,7 @@ query eligible new-store rows, filter process errors, write outbound new-store p
 | fcsJar/src/th/co/gosoft/fgi/controller/ExportController.java | 404-516, 893-961 | Query new stores, create payload content, upload, backup, notification. |
 | fcsJar/src/th/co/gosoft/fgi/dao/jdbc/ExportJdbc.java | 1558-1594 | Query new-store rows eligible for export. |
 
-Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft/java/SBP/fcsJar. Use these ranges to preserve business behavior while implementing the target Node job.
+Line ranges refer to the legacy Java implementation under `batchjob/fcsJar/` (path นับจากราก `sbp-prototype/`). Use these ranges to preserve business behavior while implementing the target Node job.
 
 ### 5.93 Target Repository and SQL Contract
 
@@ -278,15 +278,15 @@ Job 9 คัดลอกร้านเปิดใหม่เข้าเอ�
 | src/modules/sgi/job-9-sync-new-store-to-document.service.spec.ts | unit test ของ service — repo นี้วาง spec ไว้ข้างไฟล์จริงเสมอ (`jest` + `npm run test:ci` มี coverage/SonarQube) |
 | src/modules/sgi/dto/job-9-sync-new-store-to-document-input.dto.ts | DTO ของ `INPUT` (JSON) พร้อม `class-validator` ตามตารางในหัวข้อ 9.2 — parse ไม่ผ่านต้อง fail ก่อนแตะ DB |
 | src/modules/sgi/sgi.module.ts | NestJS module ของกลุ่มงานประกันรายได้ — ผูก service ทุกตัวของ SGI เข้ากับ `TypeOrmModule` (ไฟล์ร่วมของทุก job ให้ merge ไม่ใช่เขียนทับ) |
-| src/main.ts | **เพิ่ม `case 'sgi-job-9-sync-new-store-to-document':`** ในสวิตช์เดิม → `await import('./modules/sgi/job-9-sync-new-store-to-document.service')` แล้ว `app.get(SyncNewStoreToDocumentService).execute(input)` (ไฟล์กลางของทุก job — เป็นจุด merge conflict ที่ต้องระวัง) |
+| src/main.ts | **เพิ่ม `case 'sgi-sync-new-store-to-document':`** ในสวิตช์เดิม → `await import('./modules/sgi/job-9-sync-new-store-to-document.service')` แล้ว `app.get(SyncNewStoreToDocumentService).execute(input)` (ไฟล์กลางของทุก job — เป็นจุด merge conflict ที่ต้องระวัง) |
 | src/entities/sgi-*.entity.ts | entity ของตาราง `sgi_*` ที่หัวข้อ Reference DB Mapping อ้างถึง — **ยังไม่มีใน repo เลยสักตัว** ต้องสร้างใหม่ทั้งหมด |
 | src/config/config.ts | เพิ่ม `export const sgiJob9Config` ตามแบบของไฟล์นี้ (โปรเจกต์ไม่ใช้ `registerAs`) — ค่าคงที่ทางธุรกิจของ Job 9 |
 
-#### การลงทะเบียนใน `src/main.ts` (job `sgi-job-9-sync-new-store-to-document`)
+#### การลงทะเบียนใน `src/main.ts` (job `sgi-sync-new-store-to-document`)
 
 ```js
 // src/main.ts — เพิ่มเคสนี้ในสวิตช์เดิม (เรียงต่อจาก job ของ SGI ตัวก่อนหน้า)
-      case 'sgi-job-9-sync-new-store-to-document': {
+      case 'sgi-sync-new-store-to-document': {
         const { SyncNewStoreToDocumentService } = await import('./modules/sgi/job-9-sync-new-store-to-document.service');
         const job9syncnewstoretodocumentService = app.get(SyncNewStoreToDocumentService);
         await job9syncnewstoretodocumentService.execute(input);   // input = JSON ที่ parse จาก INPUT/argv[2] แล้ว
@@ -294,11 +294,11 @@ Job 9 คัดลอกร้านเปิดใหม่เข้าเอ�
       }
 ```
 
-`main.ts` เรียก `StatementService.logInterfest('sgi-job-9-sync-new-store-to-document', input)` ให้อยู่แล้วก่อนเข้าสวิตช์ → **ไม่ต้องเขียน log ลง `integration_log` เองซ้ำ** · และ `BATCH_END` ที่ท้ายไฟล์จะสรุป `batchStatus` + `durationMs` ให้อัตโนมัติ หน้าที่ของ service คือ throw เมื่อทำงานไม่สำเร็จเท่านั้น
+`main.ts` เรียก `StatementService.logInterfest('sgi-sync-new-store-to-document', input)` ให้อยู่แล้วก่อนเข้าสวิตช์ → **ไม่ต้องเขียน log ลง `integration_log` เองซ้ำ** · และ `BATCH_END` ที่ท้ายไฟล์จะสรุป `batchStatus` + `durationMs` ให้อัตโนมัติ หน้าที่ของ service คือ throw เมื่อทำงานไม่สำเร็จเท่านั้น
 
 ### 9.2 Config Schema ของ Job 9 (backend config / env)
 
-ตารางเวลาของ Job 9 คือ `30 17 7-31 * *` (วันที่ 7–31 เวลา 17:30) — ⚠️ **ตัวจริงตั้งที่ AWS Batch scheduled event ไม่ใช่ในโค้ด** (repo นี้ไม่มี `@Cron` เลย) ค่า `SGI_JOB9_CRON` เก็บไว้เป็นเอกสารประกอบ/ตรวจสอบเท่านั้น · `SGI_JOB9_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล (กันกรณี AWS Batch ยังยิงเข้ามา)
+ตารางเวลาของ Job 9 คือ `0 18 7-31 * *` (วันที่ 7–31 เวลา 18:00 — **เหลื่อมหลัง Job 8 (17:30) เพราะต้องรอ doc_no** · ⚠️ ต้องตั้ง dependency ที่ AWS Batch) — ⚠️ **ตัวจริงตั้งที่ AWS Batch scheduled event ไม่ใช่ในโค้ด** (repo นี้ไม่มี `@Cron` เลย) ค่า `SGI_JOB9_CRON` เก็บไว้เป็นเอกสารประกอบ/ตรวจสอบเท่านั้น · `SGI_JOB9_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล (กันกรณี AWS Batch ยังยิงเข้ามา)
 
 ```ts
 // src/config/config.ts — เพิ่มบล็อกนี้ต่อท้าย (repo ใช้ export const ไม่ใช้ registerAs)
@@ -313,8 +313,6 @@ export interface Job9Config {
   /** เปิด/ปิด job รอบถัดไปโดยไม่ต้อง deploy โค้ด */
   enabled: boolean;
   /** ตารางเวลาของ job นี้ — บันทึกไว้เพื่ออ้างอิงเท่านั้น ตัวจริงตั้งที่ AWS Batch scheduled event */
-  cron: string;
-  /** กำหนดการรัน (Cron) — ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน */
   cron: string;
   /** Target table — upsert ด้วย doc_no / new_store_code */
   targetTable: string;
@@ -331,8 +329,7 @@ export interface Job9Config {
 export class SgiJob9Config implements Job9Config {
   // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)
   enabled = (process.env.SGI_JOB9_ENABLED ?? 'true') === 'true';
-  cron = process.env.SGI_JOB9_CRON ?? '30 17 7-31 * *';
-  cron = process.env.SGI_JOB9_CRON ?? '30 17 7-31 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
+  cron = process.env.SGI_JOB9_CRON ?? '0 18 7-31 * *';
   targetTable = process.env.SGI_JOB9_TARGET_TABLE ?? 'sgi_document_new_stores'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   forecastPercent = process.env.SGI_JOB9_FORECAST_PERCENT ?? 'COALESCE(adjust_amount, forecast_amount) จาก sgi_fgi_impact_compensations'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   condition = process.env.SGI_JOB9_CONDITION ?? 'ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
@@ -444,7 +441,7 @@ export class SyncNewStoreToDocumentService {
 | --- | --- | --- | --- | --- |
 | 1 | start | เริ่ม | createState() | - |
 | 2 | process | query ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync | step02Query() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 3 | decision | มี sgi_compensation_documents ของ impact_process_id แล้ว? | check03Document() | [err] คงสถานะรอ sync / log pending |
+| 3 | decision | มี sgi_compensation_documents ของ impact_process_id แล้ว? | check03Document() | [บันทึกผลแล้วไป record ถัดไป] คงสถานะรอ sync / log pending |
 | 4 | decision | compensate_percent ครบและอยู่ในช่วง 0..100 ทุกแถว? | check04Condition() | [err] COMPENSATE_PERCENT_INVALID + rollback ก่อน upsert/prune |
 | 5 | process | upsert sgi_document_new_stores | step05Upsert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | process | validate allocation percent รวมต่อ doc_no | step06Workflow() | throw JobFailedError เมื่อทำไม่สำเร็จ |
@@ -472,14 +469,23 @@ export class SyncNewStoreToDocumentJob {
 
   async run(ctx: JobRunContext): Promise<JobRunResult> {
     const startedAt = Date.now();
-    // TODO: state ถือ counter (read/written/skipped/rejected) และค่าจาก job9Config
+    // TODO: state ถือ candidates ที่อ่านมา + counter (read/written/skipped/rejected/marked)
+    //       และค่าจาก job9Config — ทุก counter ต้องถูกอัปเดตจาก record จริง ไม่ใช่ค่าคงที่
     const state = this.service.createState(ctx);
     try {
       // ขั้นที่ 2: query ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync
       await this.service.step02Query(state);
+      // TODO: candidate มาจากขั้นอ่านข้อมูลด้านบน — ลูปนี้จำเป็นเพราะมี branch ระดับ record
+      //       (ขั้นที่ตัดสินรายแถวจะ `continue`/`return` ออกจากรอบของ record นั้น)
+      //       เยื้องบรรทัดในลูปให้เรียบร้อยตอนคัดลอกเข้าโปรเจกต์จริง
+      for (const record of state.candidates) {
       // ขั้นที่ 3 (decision): มี sgi_compensation_documents ของ impact_process_id แล้ว?
       const ok03 = await this.service.check03Document(state);
-      if (!ok03) throw new JobFailedError('JOB9_STEP03', 'คงสถานะรอ sync / log pending');
+      if (!ok03) { // NO → คงสถานะรอ sync / log pending
+        await this.service.mark03(state);
+        state.marked += 1;
+        continue; // ไป record ถัดไป — ไม่ใช่ error ของทั้ง job
+      }
       // ขั้นที่ 4 (decision): compensate_percent ครบและอยู่ในช่วง 0..100 ทุกแถว? · TODO: COALESCE(adjust_compensate_percent, forecast_compensate_percent) ต้องไม่เป็น NULL
       const ok04 = await this.service.check04Condition(state);
       if (!ok04) throw new JobFailedError('JOB9_STEP04', 'COMPENSATE_PERCENT_INVALID + rollback ก่อน upsert/prune');
@@ -492,6 +498,7 @@ export class SyncNewStoreToDocumentJob {
         // ขั้นที่ 7: insert sgi_interface_transactions: data_name = NEW_STORE · direction = INTERNAL · status = COMPLETED · TODO: ไม่สร้างไฟล์ BPM06002O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ
         await this.service.step07WriteFile(state, manager);
       });
+      }
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
       // TODO: error path ของ Job 9 — ห้าม re-implement การเขียนไฟล์ BPM06002O หรือ SFTP ไป BPM; legacy file เป็น reference เท่านั้น
@@ -535,12 +542,21 @@ export class BatchRunner {
   private readonly logger = new Logger(BatchRunner.name);
   constructor(@Inject('DATA_SOURCE') private readonly dataSource: DataSource) {}
 
-  async runExclusive<T>(jobNo: string, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {
+  // period = งวดที่รอบนี้ทำงาน ('YYYY-MM') — เป็นส่วนหนึ่งของคีย์ล็อก ไม่ใช่แค่หมายเลข job
+  // (เจอจริง 2026-09-09: ล็อกด้วย jobNo อย่างเดียว = คนละงวดก็รันพร้อมกันไม่ได้
+  //  ทั้งที่เอกสารระบุว่าคนละงวดต้องรันขนานกันได้ · ส่ง period = null ถ้าต้องการล็อกทั้ง job)
+  async runExclusive<T>(jobNo: string, period: string | null, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {
     // TODO: ต้องใช้ QueryRunner (connection เดียวบน master) — dataSource.query() ของโปรเจกต์นี้
     //       route SQL ที่ขึ้นต้นด้วย SELECT ไป slave pool ทำให้ lock ไปตกที่ replica คนละ connection
     const runner = this.dataSource.createQueryRunner('master');
     await runner.connect();
-    const objectId = JOB_LOCK_KEYS[jobNo];
+    // pg_try_advisory_lock(int4, int4) — objectId ต้องอยู่ในช่วง int4
+    //   ล็อกทั้ง job : objectId = JOB_LOCK_KEYS[jobNo]
+    //   ล็อกรายงวด  : ผสมงวดเข้าไปด้วย hashtext() แล้วบีบให้อยู่ในช่วงที่ปลอดภัย
+    const baseId = JOB_LOCK_KEYS[jobNo];
+    const objectId = period === null ? baseId
+      : (await runner.query('SELECT (hashtext($1) & 2147483647) % 1000000 + $2 * 1000000 AS id',
+                            [period, baseId]))[0].id;
     try {
       const [{ locked }] = await runner.query(
         'SELECT pg_try_advisory_lock($1, $2) AS locked',
@@ -548,7 +564,7 @@ export class BatchRunner {
       );
       if (!locked) {
         // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล
-        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo }));
+        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo, period }));
         return { status: 'SKIPPED_LOCKED' };
       }
       return await fn();
@@ -596,7 +612,7 @@ SELECT id, adjust_compensate_percent, adjust_compensation_amount, created_at, cr
 
 -- [R] sgi_compensation_documents : หา doc_no จาก impact_process_id
 -- คอลัมน์มาจาก DDL จริงของตารางนี้ (ห้าม SELECT *) · ตรวจว่ามี index รองรับ WHERE ก่อนขึ้น prod
-SELECT id, account_month, account_year, allmap_url, approver_snapshot, created_at, created_by, current_section_code, doc_no, impact_month, impact_process_id, impacted_store_code   -- ตัดคอลัมน์ที่ job นี้ไม่ได้ใช้ออก (ทั้งตารางมี 25 คอลัมน์)
+SELECT id, account_month, account_year, allmap_url, approver_snapshot, created_at, created_by, current_section_code, doc_no, impact_compensation_id, impact_month, impact_process_id   -- ตัดคอลัมน์ที่ job นี้ไม่ได้ใช้ออก (ทั้งตารางมี 26 คอลัมน์)
   FROM sgi_compensation_documents
  WHERE impact_month = $1  -- คอลัมน์งวดจริงของตารางนี้ตาม DDL
  ORDER BY id   -- PK ทำให้ลำดับคงที่ระหว่างแบ่งหน้า
@@ -605,10 +621,10 @@ SELECT id, account_month, account_year, allmap_url, approver_snapshot, created_a
 -- [W] sgi_document_new_stores : บันทึกร้านเปิดใหม่เข้าเอกสารโดยตรง
 -- คอลัมน์มาจาก DDL จริง — ตัดคอลัมน์ที่ job นี้ไม่ได้เขียนออก แล้วเลื่อนเลข $n ให้ตรง
 INSERT INTO sgi_document_new_stores
-  (doc_no, new_store_code, compensate_percent, source_system, compensation_amount, distance_km)
-VALUES ($1 /* doc_no */, $2 /* new_store_code */, $3 /* compensate_percent */, $4 /* source_system */, $5 /* compensation_amount */, $6 /* distance_km */)
+  (doc_no, new_store_code, compensate_percent, source_system, compensation_amount, distance_km, source_row_id)
+VALUES ($1 /* doc_no */, $2 /* new_store_code */, $3 /* compensate_percent */, $4 /* source_system */, $5 /* compensation_amount */, $6 /* distance_km */, $7 /* source_row_id */)
 ON CONFLICT (doc_no, new_store_code)   -- unique key จริงตาม DDL ของ sgi_document_new_stores (ห้ามเดา)
-DO UPDATE SET compensate_percent = EXCLUDED.compensate_percent, source_system = EXCLUDED.source_system, compensation_amount = EXCLUDED.compensation_amount, distance_km = EXCLUDED.distance_km,
+DO UPDATE SET compensate_percent = EXCLUDED.compensate_percent, source_system = EXCLUDED.source_system, compensation_amount = EXCLUDED.compensation_amount, distance_km = EXCLUDED.distance_km, source_row_id = EXCLUDED.source_row_id,
        updated_at = NOW();
 ```
 
@@ -670,7 +686,7 @@ export class JobFailureNotifier {
 - ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: validate percent ไม่เป็น NULL และอยู่ 0..100 ก่อน; DB transaction ครอบ upsert sgi_document_new_stores + tracking; พบค่าผิดให้ rollback ก่อน prune
 - ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: ห้าม re-implement การเขียนไฟล์ BPM06002O หรือ SFTP ไป BPM; legacy file เป็น reference เท่านั้น
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
-- สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=9 --period=&lt;YYYYMM&gt;`
+- สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API) — local: `JOB_NAME=sgi-sync-new-store-to-document INPUT='{"year":2026,"month":6}' npm run start` · AWS Batch: `node dist/main.js '{"year":2026,"month":6}' sgi-sync-new-store-to-document` (quote เดี่ยวครอบ JSON เสมอ) · ตรวจผลด้วย `echo $?` ต้องเป็น 0 เมื่อสำเร็จ
 - หลังรันซ้ำ ตรวจ output `sgi_document_new_stores (DB)` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
 - ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 

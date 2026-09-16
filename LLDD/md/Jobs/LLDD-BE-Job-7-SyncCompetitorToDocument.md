@@ -60,8 +60,8 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job 7 SyncCompetitorToDocumen
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| กำหนดการรัน (Cron) | 30 17 7-31 * * | แก้ไขได้ | ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน |
-| Target table | sgi_document_competitors | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | upsert ด้วย doc_no / competitor_code / source_system=ALM |
+| กำหนดการรัน (Cron) | 0 18 7-31 * * | แก้ไขได้ | เหลื่อมหลัง Job 8 (17:30) เพราะต้องรอ doc_no · **เวลาเหลื่อมไม่ใช่การรับประกัน — ต้องตั้ง dependency ที่ AWS Batch** |
+| Target table | sgi_document_competitors | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | upsert ด้วย doc_no / competitor_store_code · source_system = ALLMAP (ค่า canonical ค่าเดียวทั้งระบบ) |
 | เงื่อนไขเลือกข้อมูล | งวดคู่แข่งล่าสุดต่อร้าน + forecast เริ่มต้น + ยังไม่ sync | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | คง business rule เดิม |
 
 ### 5.9 Input / Progress / Output Contract
@@ -89,7 +89,7 @@ query latest competitor rows, skip already-confirmed transactions, create outbou
 | --- | --- | --- |
 | Input identity | FGI_IMPACT_COMPETITOR rows linked to active impact-process records and BPM/export confirmation state. | snapshot input file/business key/period in run record |
 | Output identity | Competitor sync payload/output for downstream workflow; confirm-receive rows prevent duplicate export. | reconcile input, success, reject and skipped counts |
-| Dedup proof | UNIQUE(doc_no,competitor_code); upsert และ prune เฉพาะ source_system=ALLMAP ให้ target ตรง source ปัจจุบันโดยไม่ลบแถว USER | rerun fixture produces no duplicate target business key |
+| Dedup proof | UNIQUE(doc_no,competitor_store_code) — **คีย์เป็นสาขา ไม่ใช่แบรนด์** (แก้ 2026-09-09); upsert และ prune เฉพาะ source_system=ALLMAP ให้ target ตรง source ปัจจุบันโดยไม่ลบแถว USER | rerun fixture produces no duplicate target business key |
 | Transaction proof | upsert + prune sgi_document_competitors และ tracking (direction=INTERNAL) ใน transaction เดียวต่อ doc_no | injected failure leaves no partial committed state outside documented boundary |
 | Security proof | service account ภายในมีสิทธิ์ SELECT source และ INSERT/UPDATE target เท่านั้น; ไม่มี external credential | config/log/error contains no plaintext secret |
 
@@ -101,14 +101,14 @@ query latest competitor rows, skip already-confirmed transactions, create outbou
 | fcsJar/src/th/co/gosoft/fgi/controller/ExportController.java | 659-760 | Query competitor data, generate file content, upload, backup, notification. |
 | fcsJar/src/th/co/gosoft/fgi/dao/jdbc/ExportJdbc.java | 1596-1628 | Query latest competitor rows eligible for export. |
 
-Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft/java/SBP/fcsJar. Use these ranges to preserve business behavior while implementing the target Node job.
+Line ranges refer to the legacy Java implementation under `batchjob/fcsJar/` (path นับจากราก `sbp-prototype/`). Use these ranges to preserve business behavior while implementing the target Node job.
 
 ### 5.93 Target Repository and SQL Contract
 
 | Contract | Target implementation |
 | --- | --- |
 | Repository | documentCompetitorRepository |
-| Idempotency / dedup | UNIQUE(doc_no,competitor_code); upsert และ prune เฉพาะ source_system=ALLMAP ให้ target ตรง source ปัจจุบันโดยไม่ลบแถว USER |
+| Idempotency / dedup | UNIQUE(doc_no,competitor_store_code) — **คีย์เป็นสาขา ไม่ใช่แบรนด์** (แก้ 2026-09-09); upsert และ prune เฉพาะ source_system=ALLMAP ให้ target ตรง source ปัจจุบันโดยไม่ลบแถว USER |
 | Transaction boundary | upsert + prune sgi_document_competitors และ tracking (direction=INTERNAL) ใน transaction เดียวต่อ doc_no |
 | Security | service account ภายในมีสิทธิ์ SELECT source และ INSERT/UPDATE target เท่านั้น; ไม่มี external credential |
 
@@ -116,7 +116,9 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 
 ```sql
 -- bind ตามลำดับ: $1=period_key
-SELECT d.doc_no, c.competitor_code, c.name_th, c.branch_th, c.opened_date, c.closed_date
+-- คัดลอกทั้ง "รหัสสาขา" และ "รหัสแบรนด์" — คัดลอกอย่างใดอย่างหนึ่งข้อมูลจะหาย
+SELECT d.doc_no, c.competitor_store_code, c.brand_code, c.name_th, c.name_en, c.branch_th,
+       c.zone_code, c.subzone_code, c.opened_date, c.closed_date
 FROM sgi_fgi_impact_competitors c
 JOIN sgi_compensation_documents d ON d.impact_process_id = c.impact_process_id
 WHERE c.period_key = $1 /* period_key */;
@@ -125,12 +127,16 @@ WHERE c.period_key = $1 /* period_key */;
 #### Write / upsert query
 
 ```sql
--- bind ตามลำดับ: $1=doc_no · $2=competitor_code · $3=name_th · $4=branch_th · $5=opened_date · $6=closed_date · $7=period_key
+-- bind ตามลำดับ: $1=doc_no · $2=competitor_store_code · $3=brand_code · $4=name_th · $5=name_en · $6=branch_th · $7=zone_code · $8=subzone_code · $9=opened_date · $10=closed_date · $11=period_key
 INSERT INTO sgi_document_competitors
-    (doc_no, competitor_code, name_th, branch_th, opened_date, closed_date, source_system, updated_at)
-VALUES ($1 /* doc_no */, $2 /* competitor_code */, $3 /* name_th */, $4 /* branch_th */, $5 /* opened_date */, $6 /* closed_date */, 'ALLMAP', CURRENT_TIMESTAMP)
-ON CONFLICT (doc_no, competitor_code)
-DO UPDATE SET name_th = EXCLUDED.name_th, branch_th = EXCLUDED.branch_th,
+    (doc_no, competitor_store_code, brand_code, name_th, name_en, branch_th,
+     zone_code, subzone_code, opened_date, closed_date, source_system, updated_at)
+VALUES ($1 /* doc_no */, $2 /* competitor_store_code */, $3 /* brand_code */, $4 /* name_th */, $5 /* name_en */, $6 /* branch_th */,
+        $7 /* zone_code */, $8 /* subzone_code */, $9 /* opened_date */, $10 /* closed_date */, 'ALLMAP', CURRENT_TIMESTAMP)
+ON CONFLICT (doc_no, competitor_store_code)
+DO UPDATE SET brand_code = EXCLUDED.brand_code, name_th = EXCLUDED.name_th,
+              name_en = EXCLUDED.name_en, branch_th = EXCLUDED.branch_th,
+              zone_code = EXCLUDED.zone_code, subzone_code = EXCLUDED.subzone_code,
               opened_date = EXCLUDED.opened_date, closed_date = EXCLUDED.closed_date,
               updated_at = CURRENT_TIMESTAMP;
 
@@ -142,8 +148,8 @@ WHERE dc.doc_no = $1 /* doc_no */
       FROM sgi_fgi_impact_competitors src
       JOIN sgi_compensation_documents d ON d.impact_process_id = src.impact_process_id
       WHERE d.doc_no = dc.doc_no
-        AND src.period_key = $7 /* period_key */
-        AND src.competitor_code = dc.competitor_code
+        AND src.period_key = $11 /* period_key */
+        AND src.competitor_store_code IS NOT DISTINCT FROM dc.competitor_store_code
   );
 ```
 
@@ -211,7 +217,7 @@ Job 7 คัดลอกคู่แข่งจากโซน A เข้า�
 | --- | --- | --- | --- |
 | เอกสารนี้ต้อง sync หรือไม่ | `sgi_compensation_documents` (`doc_no` · สถานะเอกสาร) + `sgi_fgi_impact_competitors` ของรอบเดียวกัน | เอกสารที่ยังไม่จบและมีข้อมูลคู่แข่งของรอบนั้นอยู่ · ส่ง `docNo` มาก็จำกัดเฉพาะเอกสารนั้น (ดู 5.95) | ไม่มีข้อมูลต้นทาง = ข้ามเอกสารนั้น ไม่ลบของเดิมทิ้ง |
 | แถวนี้ลบได้หรือไม่ (prune) | `sgi_document_competitors.source_system` | ลบได้เฉพาะแถวที่ `source_system = 'ALLMAP'` และไม่มีอยู่ในชุดต้นทางปัจจุบันแล้ว | ⛔ **แถว `source_system = 'USER'` (คนคีย์เอง) ห้ามลบทุกกรณี** — รวมถึงตอนส่ง `docNo` มาเจาะจง |
-| แถวซ้ำ | `UNIQUE (doc_no, competitor_code)` | upsert ด้วยคีย์นี้ — ค่าจากต้นทางชนะค่าที่ระบบเคยใส่ไว้ | ชน unique = อัปเดตแถวเดิม ไม่ใช่ error |
+| แถวซ้ำ | `UNIQUE (doc_no, competitor_store_code)` | upsert ด้วยคีย์นี้ — ค่าจากต้นทางชนะค่าที่ระบบเคยใส่ไว้ | ชน unique = อัปเดตแถวเดิม ไม่ใช่ error |
 
 #### ค่าคงที่และโดเมนที่ใช้ในเงื่อนไขข้างบน
 
@@ -261,15 +267,15 @@ Job 7 คัดลอกคู่แข่งจากโซน A เข้า�
 | src/modules/sgi/job-7-sync-competitor-to-document.service.spec.ts | unit test ของ service — repo นี้วาง spec ไว้ข้างไฟล์จริงเสมอ (`jest` + `npm run test:ci` มี coverage/SonarQube) |
 | src/modules/sgi/dto/job-7-sync-competitor-to-document-input.dto.ts | DTO ของ `INPUT` (JSON) พร้อม `class-validator` ตามตารางในหัวข้อ 9.2 — parse ไม่ผ่านต้อง fail ก่อนแตะ DB |
 | src/modules/sgi/sgi.module.ts | NestJS module ของกลุ่มงานประกันรายได้ — ผูก service ทุกตัวของ SGI เข้ากับ `TypeOrmModule` (ไฟล์ร่วมของทุก job ให้ merge ไม่ใช่เขียนทับ) |
-| src/main.ts | **เพิ่ม `case 'sgi-job-7-sync-competitor-to-document':`** ในสวิตช์เดิม → `await import('./modules/sgi/job-7-sync-competitor-to-document.service')` แล้ว `app.get(SyncCompetitorToDocumentService).execute(input)` (ไฟล์กลางของทุก job — เป็นจุด merge conflict ที่ต้องระวัง) |
+| src/main.ts | **เพิ่ม `case 'sgi-sync-competitor-to-document':`** ในสวิตช์เดิม → `await import('./modules/sgi/job-7-sync-competitor-to-document.service')` แล้ว `app.get(SyncCompetitorToDocumentService).execute(input)` (ไฟล์กลางของทุก job — เป็นจุด merge conflict ที่ต้องระวัง) |
 | src/entities/sgi-*.entity.ts | entity ของตาราง `sgi_*` ที่หัวข้อ Reference DB Mapping อ้างถึง — **ยังไม่มีใน repo เลยสักตัว** ต้องสร้างใหม่ทั้งหมด |
 | src/config/config.ts | เพิ่ม `export const sgiJob7Config` ตามแบบของไฟล์นี้ (โปรเจกต์ไม่ใช้ `registerAs`) — ค่าคงที่ทางธุรกิจของ Job 7 |
 
-#### การลงทะเบียนใน `src/main.ts` (job `sgi-job-7-sync-competitor-to-document`)
+#### การลงทะเบียนใน `src/main.ts` (job `sgi-sync-competitor-to-document`)
 
 ```js
 // src/main.ts — เพิ่มเคสนี้ในสวิตช์เดิม (เรียงต่อจาก job ของ SGI ตัวก่อนหน้า)
-      case 'sgi-job-7-sync-competitor-to-document': {
+      case 'sgi-sync-competitor-to-document': {
         const { SyncCompetitorToDocumentService } = await import('./modules/sgi/job-7-sync-competitor-to-document.service');
         const job7synccompetitortodocumentService = app.get(SyncCompetitorToDocumentService);
         await job7synccompetitortodocumentService.execute(input);   // input = JSON ที่ parse จาก INPUT/argv[2] แล้ว
@@ -277,11 +283,11 @@ Job 7 คัดลอกคู่แข่งจากโซน A เข้า�
       }
 ```
 
-`main.ts` เรียก `StatementService.logInterfest('sgi-job-7-sync-competitor-to-document', input)` ให้อยู่แล้วก่อนเข้าสวิตช์ → **ไม่ต้องเขียน log ลง `integration_log` เองซ้ำ** · และ `BATCH_END` ที่ท้ายไฟล์จะสรุป `batchStatus` + `durationMs` ให้อัตโนมัติ หน้าที่ของ service คือ throw เมื่อทำงานไม่สำเร็จเท่านั้น
+`main.ts` เรียก `StatementService.logInterfest('sgi-sync-competitor-to-document', input)` ให้อยู่แล้วก่อนเข้าสวิตช์ → **ไม่ต้องเขียน log ลง `integration_log` เองซ้ำ** · และ `BATCH_END` ที่ท้ายไฟล์จะสรุป `batchStatus` + `durationMs` ให้อัตโนมัติ หน้าที่ของ service คือ throw เมื่อทำงานไม่สำเร็จเท่านั้น
 
 ### 9.2 Config Schema ของ Job 7 (backend config / env)
 
-ตารางเวลาของ Job 7 คือ `30 17 7-31 * *` (วันที่ 7–31 เวลา 17:30) — ⚠️ **ตัวจริงตั้งที่ AWS Batch scheduled event ไม่ใช่ในโค้ด** (repo นี้ไม่มี `@Cron` เลย) ค่า `SGI_JOB7_CRON` เก็บไว้เป็นเอกสารประกอบ/ตรวจสอบเท่านั้น · `SGI_JOB7_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล (กันกรณี AWS Batch ยังยิงเข้ามา)
+ตารางเวลาของ Job 7 คือ `0 18 7-31 * *` (วันที่ 7–31 เวลา 18:00 — **เหลื่อมหลัง Job 8 (17:30) เพราะต้องรอ doc_no** · ⚠️ ต้องตั้ง dependency ที่ AWS Batch) — ⚠️ **ตัวจริงตั้งที่ AWS Batch scheduled event ไม่ใช่ในโค้ด** (repo นี้ไม่มี `@Cron` เลย) ค่า `SGI_JOB7_CRON` เก็บไว้เป็นเอกสารประกอบ/ตรวจสอบเท่านั้น · `SGI_JOB7_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล (กันกรณี AWS Batch ยังยิงเข้ามา)
 
 ```ts
 // src/config/config.ts — เพิ่มบล็อกนี้ต่อท้าย (repo ใช้ export const ไม่ใช้ registerAs)
@@ -297,9 +303,7 @@ export interface Job7Config {
   enabled: boolean;
   /** ตารางเวลาของ job นี้ — บันทึกไว้เพื่ออ้างอิงเท่านั้น ตัวจริงตั้งที่ AWS Batch scheduled event */
   cron: string;
-  /** กำหนดการรัน (Cron) — ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน */
-  cron: string;
-  /** Target table — upsert ด้วย doc_no / competitor_code / source_system=ALM */
+  /** Target table — upsert ด้วย doc_no / competitor_store_code · source_system = ALLMAP (ค่า canonical ค่าเดียวทั้งระบบ) */
   targetTable: string;
   /** เงื่อนไขเลือกข้อมูล — คง business rule เดิม */
   condition: string;
@@ -312,8 +316,7 @@ export interface Job7Config {
 export class SgiJob7Config implements Job7Config {
   // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)
   enabled = (process.env.SGI_JOB7_ENABLED ?? 'true') === 'true';
-  cron = process.env.SGI_JOB7_CRON ?? '30 17 7-31 * *';
-  cron = process.env.SGI_JOB7_CRON ?? '30 17 7-31 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
+  cron = process.env.SGI_JOB7_CRON ?? '0 18 7-31 * *';
   targetTable = process.env.SGI_JOB7_TARGET_TABLE ?? 'sgi_document_competitors'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   condition = process.env.SGI_JOB7_CONDITION ?? 'งวดคู่แข่งล่าสุดต่อร้าน + forecast เริ่มต้น + ยังไม่ sync'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   mailTo = process.env.SGI_JOB7_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: ส่ง error ผ่าน email-lib กลาง (sendEmail) เมื่อ sync ล้มเหลว)
@@ -413,7 +416,7 @@ export class SyncCompetitorToDocumentService {
 | --- | --- | --- | --- | --- |
 | 1 | start | เริ่ม | createState() | - |
 | 2 | process | อ่านคู่แข่งงวดล่าสุดต่อร้านจาก sgi_fgi_impact_competitors | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 3 | decision | มี sgi_compensation_documents ของ impact_process_id แล้ว? | check03Document() | [err] คงสถานะรอ sync / log pending |
+| 3 | decision | มี sgi_compensation_documents ของ impact_process_id แล้ว? | check03Document() | [บันทึกผลแล้วไป record ถัดไป] คงสถานะรอ sync / log pending |
 | 4 | process | upsert sgi_document_competitors | step04Upsert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 5 | process | insert sgi_interface_transactions: data_name = IMPACT_COMPETITOR · direction = INTERNAL · status = COMPLETED | step05WriteFile() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | end | จบ | summarize() | - |
@@ -439,21 +442,31 @@ export class SyncCompetitorToDocumentJob {
 
   async run(ctx: JobRunContext): Promise<JobRunResult> {
     const startedAt = Date.now();
-    // TODO: state ถือ counter (read/written/skipped/rejected) และค่าจาก job7Config
+    // TODO: state ถือ candidates ที่อ่านมา + counter (read/written/skipped/rejected/marked)
+    //       และค่าจาก job7Config — ทุก counter ต้องถูกอัปเดตจาก record จริง ไม่ใช่ค่าคงที่
     const state = this.service.createState(ctx);
     try {
       // ขั้นที่ 2: อ่านคู่แข่งงวดล่าสุดต่อร้านจาก sgi_fgi_impact_competitors · TODO: dense rank ตามงวดต้นทางของคู่แข่ง
       await this.service.step02Read(state);
+      // TODO: candidate มาจากขั้นอ่านข้อมูลด้านบน — ลูปนี้จำเป็นเพราะมี branch ระดับ record
+      //       (ขั้นที่ตัดสินรายแถวจะ `continue`/`return` ออกจากรอบของ record นั้น)
+      //       เยื้องบรรทัดในลูปให้เรียบร้อยตอนคัดลอกเข้าโปรเจกต์จริง
+      for (const record of state.candidates) {
       // ขั้นที่ 3 (decision): มี sgi_compensation_documents ของ impact_process_id แล้ว?
       const ok03 = await this.service.check03Document(state);
-      if (!ok03) throw new JobFailedError('JOB7_STEP03', 'คงสถานะรอ sync / log pending');
+      if (!ok03) { // NO → คงสถานะรอ sync / log pending
+        await this.service.mark03(state);
+        state.marked += 1;
+        continue; // ไป record ถัดไป — ไม่ใช่ error ของทั้ง job
+      }
       // === transaction boundary === TODO: DB transaction ครอบการ upsert sgi_document_competitors + tracking
       await this.dataSource.transaction(async (manager: EntityManager) => {
-        // ขั้นที่ 4: upsert sgi_document_competitors · TODO: source_system=ALM, ผูก doc_no และ competitor_code
+        // ขั้นที่ 4: upsert sgi_document_competitors · TODO: source_system = ALLMAP · ผูก doc_no และ competitor_store_code · คัดลอก brand_code มาด้วย
         await this.service.step04Upsert(state, manager);
         // ขั้นที่ 5: insert sgi_interface_transactions: data_name = IMPACT_COMPETITOR · direction = INTERNAL · status = COMPLETED · TODO: ไม่สร้างไฟล์ BPM06003O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ
         await this.service.step05WriteFile(state, manager);
       });
+      }
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
       // TODO: error path ของ Job 7 — ห้าม re-implement การเขียนไฟล์ BPM06003O หรือ SFTP ไป BPM; legacy file เป็น reference เท่านั้น
@@ -497,12 +510,21 @@ export class BatchRunner {
   private readonly logger = new Logger(BatchRunner.name);
   constructor(@Inject('DATA_SOURCE') private readonly dataSource: DataSource) {}
 
-  async runExclusive<T>(jobNo: string, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {
+  // period = งวดที่รอบนี้ทำงาน ('YYYY-MM') — เป็นส่วนหนึ่งของคีย์ล็อก ไม่ใช่แค่หมายเลข job
+  // (เจอจริง 2026-09-09: ล็อกด้วย jobNo อย่างเดียว = คนละงวดก็รันพร้อมกันไม่ได้
+  //  ทั้งที่เอกสารระบุว่าคนละงวดต้องรันขนานกันได้ · ส่ง period = null ถ้าต้องการล็อกทั้ง job)
+  async runExclusive<T>(jobNo: string, period: string | null, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {
     // TODO: ต้องใช้ QueryRunner (connection เดียวบน master) — dataSource.query() ของโปรเจกต์นี้
     //       route SQL ที่ขึ้นต้นด้วย SELECT ไป slave pool ทำให้ lock ไปตกที่ replica คนละ connection
     const runner = this.dataSource.createQueryRunner('master');
     await runner.connect();
-    const objectId = JOB_LOCK_KEYS[jobNo];
+    // pg_try_advisory_lock(int4, int4) — objectId ต้องอยู่ในช่วง int4
+    //   ล็อกทั้ง job : objectId = JOB_LOCK_KEYS[jobNo]
+    //   ล็อกรายงวด  : ผสมงวดเข้าไปด้วย hashtext() แล้วบีบให้อยู่ในช่วงที่ปลอดภัย
+    const baseId = JOB_LOCK_KEYS[jobNo];
+    const objectId = period === null ? baseId
+      : (await runner.query('SELECT (hashtext($1) & 2147483647) % 1000000 + $2 * 1000000 AS id',
+                            [period, baseId]))[0].id;
     try {
       const [{ locked }] = await runner.query(
         'SELECT pg_try_advisory_lock($1, $2) AS locked',
@@ -510,7 +532,7 @@ export class BatchRunner {
       );
       if (!locked) {
         // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล
-        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo }));
+        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo, period }));
         return { status: 'SKIPPED_LOCKED' };
       }
       return await fn();
@@ -541,7 +563,7 @@ repository ของ Job 7 ประกาศเป็น factory provider (`{pr
 
 -- [R] sgi_fgi_impact_competitors : ข้อมูลคู่แข่งล่าสุดจาก Job 3
 -- คอลัมน์มาจาก DDL จริงของตารางนี้ (ห้าม SELECT *) · ตรวจว่ามี index รองรับ WHERE ก่อนขึ้น prod
-SELECT id, branch_th, closed_date, competitor_code, impact_process_id, name_th, opened_date, period_key, updated_at   -- ตัดคอลัมน์ที่ job นี้ไม่ได้ใช้ออก (ทั้งตารางมี 9 คอลัมน์)
+SELECT id, branch_th, brand_code, closed_date, competitor_key, competitor_store_code, impact_process_id, name_en, name_th, opened_date, period_key, subzone_code   -- ตัดคอลัมน์ที่ job นี้ไม่ได้ใช้ออก (ทั้งตารางมี 14 คอลัมน์)
   FROM sgi_fgi_impact_competitors
  WHERE period_key = $1  -- คอลัมน์งวดจริงของตารางนี้ตาม DDL
  ORDER BY id   -- PK ทำให้ลำดับคงที่ระหว่างแบ่งหน้า
@@ -549,7 +571,7 @@ SELECT id, branch_th, closed_date, competitor_code, impact_process_id, name_th, 
 
 -- [R] sgi_compensation_documents : หา doc_no จาก impact_process_id
 -- คอลัมน์มาจาก DDL จริงของตารางนี้ (ห้าม SELECT *) · ตรวจว่ามี index รองรับ WHERE ก่อนขึ้น prod
-SELECT id, account_month, account_year, allmap_url, approver_snapshot, created_at, created_by, current_section_code, doc_no, impact_month, impact_process_id, impacted_store_code   -- ตัดคอลัมน์ที่ job นี้ไม่ได้ใช้ออก (ทั้งตารางมี 25 คอลัมน์)
+SELECT id, account_month, account_year, allmap_url, approver_snapshot, created_at, created_by, current_section_code, doc_no, impact_compensation_id, impact_month, impact_process_id   -- ตัดคอลัมน์ที่ job นี้ไม่ได้ใช้ออก (ทั้งตารางมี 26 คอลัมน์)
   FROM sgi_compensation_documents
  WHERE impact_month = $1  -- คอลัมน์งวดจริงของตารางนี้ตาม DDL
  ORDER BY id   -- PK ทำให้ลำดับคงที่ระหว่างแบ่งหน้า
@@ -558,10 +580,10 @@ SELECT id, account_month, account_year, allmap_url, approver_snapshot, created_a
 -- [W] sgi_document_competitors : บันทึกคู่แข่งเข้าเอกสารโดยตรง
 -- คอลัมน์มาจาก DDL จริง — ตัดคอลัมน์ที่ job นี้ไม่ได้เขียนออก แล้วเลื่อนเลข $n ให้ตรง
 INSERT INTO sgi_document_competitors
-  (doc_no, competitor_code, source_system, branch_th, closed_date, detail, impact_date, name_th, opened_date, remark)
-VALUES ($1 /* doc_no */, $2 /* competitor_code */, $3 /* source_system */, $4 /* branch_th */, $5 /* closed_date */, $6 /* detail */, $7 /* impact_date */, $8 /* name_th */, $9 /* opened_date */, $10 /* remark */)
-ON CONFLICT (doc_no, competitor_code)   -- unique key จริงตาม DDL ของ sgi_document_competitors (ห้ามเดา)
-DO UPDATE SET source_system = EXCLUDED.source_system, branch_th = EXCLUDED.branch_th, closed_date = EXCLUDED.closed_date, detail = EXCLUDED.detail, impact_date = EXCLUDED.impact_date, name_th = EXCLUDED.name_th, opened_date = EXCLUDED.opened_date, remark = EXCLUDED.remark,
+  (doc_no, source_system, branch_th, brand_code, closed_date, competitor_key, competitor_store_code, detail, impact_date, name_en, name_th, opened_date, remark, source_row_id)
+VALUES ($1 /* doc_no */, $2 /* source_system */, $3 /* branch_th */, $4 /* brand_code */, $5 /* closed_date */, $6 /* competitor_key */, $7 /* competitor_store_code */, $8 /* detail */, $9 /* impact_date */, $10 /* name_en */, $11 /* name_th */, $12 /* opened_date */, $13 /* remark */, $14 /* source_row_id */)
+ON CONFLICT (doc_no, competitor_store_code)   -- unique key จริงตาม DDL ของ sgi_document_competitors (ห้ามเดา)
+DO UPDATE SET source_system = EXCLUDED.source_system, branch_th = EXCLUDED.branch_th, brand_code = EXCLUDED.brand_code, closed_date = EXCLUDED.closed_date, competitor_key = EXCLUDED.competitor_key, detail = EXCLUDED.detail, impact_date = EXCLUDED.impact_date, name_en = EXCLUDED.name_en, name_th = EXCLUDED.name_th, opened_date = EXCLUDED.opened_date, remark = EXCLUDED.remark, source_row_id = EXCLUDED.source_row_id, subzone_code = EXCLUDED.subzone_code, zone_code = EXCLUDED.zone_code,
        updated_at = NOW();
 
 -- [W] sgi_interface_transactions : tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง)
@@ -616,7 +638,7 @@ export class JobFailureNotifier {
           period: ctx.period, triggeredBy: ctx.triggeredBy,
           output: 'sgi_document_competitors (DB)',
           errorMessage: error.message,
-          rerunNote: 'idempotent ด้วย doc_no + competitor_code + source_system',
+          rerunNote: 'idempotent ด้วย doc_no + competitor_store_code + source_system (ALLMAP)',
         },
       });
     } catch (mailError) {
@@ -629,11 +651,11 @@ export class JobFailureNotifier {
 
 #### 9.6.2 Checklist การ rerun
 
-- กติกา rerun ของ Job 7: idempotent ด้วย doc_no + competitor_code + source_system
+- กติกา rerun ของ Job 7: idempotent ด้วย doc_no + competitor_store_code + source_system (ALLMAP)
 - ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: DB transaction ครอบการ upsert sgi_document_competitors + tracking
 - ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: ห้าม re-implement การเขียนไฟล์ BPM06003O หรือ SFTP ไป BPM; legacy file เป็น reference เท่านั้น
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
-- สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=7 --period=&lt;YYYYMM&gt;`
+- สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API) — local: `JOB_NAME=sgi-sync-competitor-to-document INPUT='{"year":2026,"month":6}' npm run start` · AWS Batch: `node dist/main.js '{"year":2026,"month":6}' sgi-sync-competitor-to-document` (quote เดี่ยวครอบ JSON เสมอ) · ตรวจผลด้วย `echo $?` ต้องเป็น 0 เมื่อสำเร็จ
 - หลังรันซ้ำ ตรวจ output `sgi_document_competitors (DB)` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
 - ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 
@@ -644,7 +666,7 @@ export class JobFailureNotifier {
 | 1 | เริ่ม |
 | 2 | อ่านคู่แข่งงวดล่าสุดต่อร้านจาก sgi_fgi_impact_competitors (dense rank ตามงวดต้นทางของคู่แข่ง) |
 | 3 | มี sgi_compensation_documents ของ impact_process_id แล้ว? \| No: คงสถานะรอ sync / log pending |
-| 4 | upsert sgi_document_competitors (source_system=ALM, ผูก doc_no และ competitor_code) |
+| 4 | upsert sgi_document_competitors (source_system = ALLMAP · ผูก doc_no และ competitor_store_code · คัดลอก brand_code มาด้วย) |
 | 5 | insert sgi_interface_transactions: data_name = IMPACT_COMPETITOR · direction = INTERNAL · status = COMPLETED (ไม่สร้างไฟล์ BPM06003O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ) |
 | 6 | จบ |
 

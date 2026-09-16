@@ -1004,7 +1004,8 @@ SERVICE_BODIES: dict[str, list[str]] = {
         "return { message: 'created', code: body.competitorCode };",
     ],
     "PUT /api/v1/sgi/master/competitors/{code}": [
-        "// ห้ามแก้ competitor_code (เป็น PK และถูกอ้างจาก sgi_document_competitors)",
+        "// ห้ามแก้ competitor_code (เป็น PK · ถูกอ้างเป็น brand_code จาก sgi_document_competitors",
+        "//   และ sgi_fgi_impact_competitors — แก้แล้วแถวเดิมจะหา master ไม่เจอ)",
         "// bind: $1=nameTh $2=nameEn $3=remark $4=isActive $5=code",
         "const result = await this.dataSource.query(SGI_SQL.updateSgiMasterCompetitorsByCode, [",
         "  body.nameTh, body.nameEn, body.remark ?? null, body.active ?? true, code,",
@@ -1127,7 +1128,14 @@ def _service_code(topic: Any, endpoints: list[_Endpoint], own: list[tuple[str, s
             if ep.params:
                 first_key = _camel(ep.params[0])
             else:
-                _first = next(iter(dto.get("body_props", []) or []), None)
+                # ⚠️ body_props เป็น set — ห้ามใช้ next(iter(...)) ตรง ๆ เพราะลำดับไม่คงที่
+                #    (เจอจริง 2026-09-12: build ติดกันสองครั้งได้ body.impactMonth กับ body.roundNo สลับกัน)
+                #    เลือกคีย์ที่ "ดูเป็นคีย์" ก่อน แล้วค่อย fallback เป็นตัวแรกตามลำดับตัวอักษร
+                _props = sorted(dto.get("body_props", []) or [])
+                _first = next((p for p in _props if p.lower().endswith("code")), None) \
+                    or next((p for p in _props if p.lower().endswith("no")), None) \
+                    or next((p for p in _props if p.lower().endswith("id")), None) \
+                    or (_props[0] if _props else None)
                 first_key = f"body.{_first}" if _first else "/* TODO: คีย์ที่ใช้ล็อกแถว — ดู DTO ของเส้นนี้ */"
             lines += [
                 f"  // mutation ต้องอยู่ใน transaction เดียว (ไม่มี audit ของ master แล้ว · 2026-08-07)",

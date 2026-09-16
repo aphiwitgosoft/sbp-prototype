@@ -98,7 +98,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
-| sps_store.workflow_transaction / workflow_approver | R | งานค้างจาก @srm/glb-workflow (engine 13 ตาราง · schema sps_store · workflow_transaction 19,283 แถว ไม่มี PK/index — ดูการ์ดด้านบน) |
+| sps_store.workflow_transaction / workflow_approver | R | งานค้างจาก @srm/glb-workflow (engine 13 ตาราง · schema sps_store · workflow_transaction 19,327 แถว ไม่มี PK/index — ดูการ์ดด้านบน) |
 | sgi_compensation_documents | R | ข้อมูลเอกสาร |
 | store (SBP เดิม) | R | ชื่อและภาคของร้าน — ตาราง stores ของ SGI ถูกตัด 2026-08-06 · คีย์ store_id · ภาค zone_cd |
 | sgi_fgi_impact_sales_summaries | R | อัตรายอดขายลดลงและจำนวนวันข้อมูลยอดขาย |
@@ -131,7 +131,7 @@ Query: ?page=1&size=20&q=00788
     "stoppedReopenable": false
   }, {
     "docNo": "2026/00036",
-    "statusCode": "END",
+    "statusCode": "99",
     "currentSection": null,
     "stoppedReopenable": true
   }]
@@ -146,10 +146,10 @@ Query: ?page=1&size=20&q=00788
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=sectionFromJwt · $2=sgiVersionId · $3=size · $4=offset
+-- bind ตามลำดับ: $1=sectionFromJwt · $2=sgiVersionId · $3=status · $4=keyword · $5=regionCode · $6=storeType · $7=createdFrom · $8=createdTo · $9=compensationMin · $10=compensationMax · $11=salesDeclineMin · $12=salesDeclineMax · $13=daysPendingMin · $14=daysPendingMax · $15=size · $16=offset
 -- ⚠️ ไม่มีตาราง workflow_tasks ของ SGI แล้ว — กล่องงานอ่านจาก engine กลาง (schema sps_store)
 --    getPendingFlowByUser({userData}) 
--- ✅ DP-1 ปิดแล้ว: reference_id = sgi_compensation_documents.id (surrogate · varchar(255)) · ⚠️ DP-2 workflow_transaction ไม่มี PK/index (19,283 แถว → seq-scan) ห้ามแก้ schema ของ library
+-- ✅ DP-1 ปิดแล้ว: reference_id = sgi_compensation_documents.id (surrogate · varchar(255)) · ⚠️ DP-2 workflow_transaction ไม่มี PK/index (19,327 แถว → seq-scan) ห้ามแก้ schema ของ library
 --    ห้ามแก้ schema ของ library — กันซ้ำที่ระดับ application ของ SGI
 WITH wh AS (
   -- workflow_transaction ไม่มี created_date — ใช้เวลา event แรกจาก workflow_history แทน
@@ -165,6 +165,7 @@ SELECT d.round_no AS "roundNo",
        d.total_compensation_amount AS "totalCompensationAmount",
        d.status_code AS "statusCode",
        d.current_section_code AS "currentSection",
+       w.current_approver AS "currentOwner",   -- คอลัมน์ "ผู้ดำเนินการ (เจ้าของงาน)" บนหน้าจอ · เจ้าของงานอยู่ที่ engine ไม่ใช่ตารางของ SGI
        GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) AS "daysPending",
        ss.total_working_days AS "salesDataDays"
 FROM sps_store.workflow_approver a
@@ -172,9 +173,24 @@ JOIN sps_store.workflow_transaction w ON w.transaction_id = a.transaction_id
 JOIN sgi_compensation_documents d ON d.id::text = w.reference_id   -- DP-1 = surrogate id   -- DP-1
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
+-- ⚠️ ตัวกรองบนหน้าจอต้องส่งขึ้นมาที่นี่ด้วย ไม่ใช่กรองฝั่ง client (มี LIMIT/OFFSET · เพิ่ม 2026-09-09)
 WHERE a.state_id = $1 /* sectionFromJwt */ AND a.state_id = w.current_state_id AND w.version_id = $2 /* sgiVersionId */
+  AND ($3 /* status */           IS NULL OR d.status_code = $3 /* status */)
+  AND ($4 /* keyword */          IS NULL OR d.doc_no ILIKE '%' || $4 /* keyword */ || '%'
+                                 OR s.store_name ILIKE '%' || $4 /* keyword */ || '%'
+                                 OR d.impacted_store_code ILIKE '%' || $4 /* keyword */ || '%')
+  AND ($5 /* regionCode */       IS NULL OR s.zone_cd = $5 /* regionCode */)
+  AND ($6 /* storeType */        IS NULL OR s.store_type = $6 /* storeType */)
+  AND ($7 /* createdFrom */      IS NULL OR d.created_at >= $7 /* createdFrom */::date)
+  AND ($8 /* createdTo */        IS NULL OR d.created_at <  $8 /* createdTo */::date + 1)
+  AND ($9 /* compensationMin */  IS NULL OR d.total_compensation_amount >= $9 /* compensationMin */)
+  AND ($10 /* compensationMax */  IS NULL OR d.total_compensation_amount <= $10 /* compensationMax */)
+  AND ($11 /* salesDeclineMin */  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) >= $11 /* salesDeclineMin */)
+  AND ($12 /* salesDeclineMax */  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) <= $12 /* salesDeclineMax */)
+  AND ($13 /* daysPendingMin */   IS NULL OR GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) >= $13 /* daysPendingMin */)
+  AND ($14 /* daysPendingMax */   IS NULL OR GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) <= $14 /* daysPendingMax */)
 ORDER BY w.update_date
-LIMIT $3 /* size */ OFFSET $4 /* offset */;
+LIMIT $15 /* size */ OFFSET $16 /* offset */;
 ```
 
 #### 6.1.2 GET /api/v1/sgi/document
@@ -205,7 +221,7 @@ LIMIT $3 /* size */ OFFSET $4 /* offset */;
 #### Request / Query / Header
 
 ```json
-Query: ?year=2026&impactedStoreCode=00788&status=06&result=APPROVE&page=1
+Query: ?year=2026&impactedStoreCode=00788&status=06&result=APPROVE&page=1&size=20&keyword=&regionCode=&storeType=&createdFrom=&createdTo=&salesDeclineMin=&salesDeclineMax=&compensationMin=&compensationMax=
 (status = section ที่รออยู่ 06/08/01/02/03 หรือ END)
 (result = APPROVE | REJECT | CANCELLED | NONE — ประกันรายได้ / ไม่ประกันรายได้ / ยกเลิกโดยระบบ / ยังไม่มีผล · CANCELLED เพิ่ม 2026-08-10 ตาม master DecisionProfile)
 ```
@@ -229,7 +245,7 @@ items[] ใช้ field ชุดเดียวกับ §6.2.1 GET /api/v1/sg
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=statusDone · $2=year · $3=impactedStoreCode · $4=status · $5=size · $6=offset
+-- bind ตามลำดับ: $1=statusDone · $2=year · $3=impactedStoreCode · $4=status · $5=result · $6=keyword · $7=regionCode · $8=storeType · $9=createdFrom · $10=createdTo · $11=compensationMin · $12=compensationMax · $13=salesDeclineMin · $14=salesDeclineMax · $15=size · $16=offset
 -- ต้องระบุ :year เสมอ ไม่งั้นตอบ 400 (กติกา SRS)
 SELECT d.round_no AS "roundNo",
        d.doc_no AS "docNo",
@@ -240,6 +256,7 @@ SELECT d.round_no AS "roundNo",
        d.total_compensation_amount AS "totalCompensationAmount",
        d.status_code AS "statusCode",
        d.current_section_code AS "currentSection",
+       w.current_approver AS "currentOwner",   -- คอลัมน์ "ผู้ดำเนินการ (เจ้าของงาน)" บนหน้าจอ
        -- workflow_transaction ไม่มี created_date (มีแค่ update_date) — วันที่เริ่มงานเอาจาก workflow_history
        CASE WHEN w.current_status_id <> $1 /* statusDone */ THEN GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) ELSE 0 END AS "daysPending",
        ss.total_working_days AS "salesDataDays"
@@ -247,11 +264,30 @@ FROM sgi_compensation_documents d
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
 LEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.id::text   -- DP-1 = surrogate id (reference_id เป็น varchar(255)) AND w.version_id = :sgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)
+-- ⚠️ ตัวกรองทุกตัวบนหน้าจอต้องมาที่นี่ ไม่ใช่กรองฝั่ง client — เพราะมี LIMIT/OFFSET
+--    ถ้ากรองฝั่ง client ตัวกรองจะทำงานแค่แถวในหน้านั้น (เพิ่มครบ 2026-09-09)
 WHERE d.year = $2 /* year */
   AND ($3 /* impactedStoreCode */ IS NULL OR d.impacted_store_code = $3 /* impactedStoreCode */)
   AND ($4 /* status */            IS NULL OR d.status_code = $4 /* status */)
+  -- result ไม่ได้อยู่ที่หัวเอกสาร — ต้องดูผลพิจารณา *ล่าสุด* ของเอกสารจาก sgi_consideration_logs
+  AND ($5 /* result */            IS NULL OR EXISTS (
+        SELECT 1 FROM sgi_consideration_logs cl
+         WHERE cl.doc_no = d.doc_no AND cl.result_category = $5 /* result */
+           AND cl.action_datetime = (SELECT MAX(action_datetime) FROM sgi_consideration_logs
+                                      WHERE doc_no = d.doc_no)))
+  AND ($6 /* keyword */          IS NULL OR d.doc_no ILIKE '%' || $6 /* keyword */ || '%'
+                                 OR s.store_name ILIKE '%' || $6 /* keyword */ || '%'
+                                 OR d.impacted_store_code ILIKE '%' || $6 /* keyword */ || '%')
+  AND ($7 /* regionCode */       IS NULL OR s.zone_cd = $7 /* regionCode */)
+  AND ($8 /* storeType */        IS NULL OR s.store_type = $8 /* storeType */)   -- 7 ค่า A B C D E PTT บริษัท (เหมือนตัวกรองในรายงาน)
+  AND ($9 /* createdFrom */      IS NULL OR d.created_at >= $9 /* createdFrom */::date)
+  AND ($10 /* createdTo */        IS NULL OR d.created_at <  $10 /* createdTo */::date + 1)
+  AND ($11 /* compensationMin */  IS NULL OR d.total_compensation_amount >= $11 /* compensationMin */)
+  AND ($12 /* compensationMax */  IS NULL OR d.total_compensation_amount <= $12 /* compensationMax */)
+  AND ($13 /* salesDeclineMin */  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) >= $13 /* salesDeclineMin */)
+  AND ($14 /* salesDeclineMax */  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) <= $14 /* salesDeclineMax */)
 ORDER BY d.doc_no DESC
-LIMIT $5 /* size */ OFFSET $6 /* offset */;
+LIMIT $15 /* size */ OFFSET $16 /* offset */;
 ```
 
 #### 6.1.3 GET /api/v1/sgi/document/{docNo}
@@ -318,13 +354,20 @@ SQL Reference
 
 ```sql
 -- bind ตามลำดับ: $1=docNo
--- โหลดเอกสารฉบับเต็ม 12 ส่วนในคำขอเดียว
+-- โหลดเอกสารฉบับเต็มในคำขอเดียว — 1 result set ต่อ 1 การ์ดบนหน้าจอ (k2-document.html)
+-- ⚠️ เพิ่ม 2 ชุดท้ายเมื่อ 2026-09-09: การ์ด 'ประวัติการชดเชย' และ 'คำนวณเงินชดเชย'
+--    เดิม SQL ไม่ได้อ่าน 2 ตารางนี้เลย ทั้งที่หน้าจอมีการ์ดทั้งคู่
 SELECT * FROM sgi_compensation_documents      WHERE doc_no = $1 /* docNo */;
 SELECT * FROM sgi_document_new_stores          WHERE doc_no = $1 /* docNo */;
 SELECT * FROM sgi_document_competitors         WHERE doc_no = $1 /* docNo */;
 SELECT * FROM sgi_document_external_factors    WHERE doc_no = $1 /* docNo */;
 SELECT * FROM sgi_document_attachments         WHERE doc_no = $1 /* docNo */ AND deleted_flag = 'N';
 SELECT * FROM sgi_consideration_logs           WHERE doc_no = $1 /* docNo */ ORDER BY action_datetime;
+SELECT * FROM sgi_compensation_histories
+ WHERE store_code = (SELECT impacted_store_code FROM sgi_compensation_documents WHERE doc_no = $1 /* docNo */)
+ ORDER BY submit_account_month DESC;   -- การ์ด 'ประวัติการชดเชย' (รายร้าน ข้ามเอกสาร)
+SELECT * FROM sgi_document_cost_details        WHERE doc_no = $1 /* docNo */
+                                                 ORDER BY cost_year, cost_month, new_store_code;   -- การ์ด 'คำนวณเงินชดเชย'
 ```
 
 #### 6.1.4 POST /api/v1/sgi/document
@@ -381,14 +424,14 @@ SELECT * FROM sgi_consideration_logs           WHERE doc_no = $1 /* docNo */ ORD
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=impactProcessId · $2=statusDone · $3=docNo · $4=year · $5=runningNo · $6=storeCode · $7=month · $8=statusInit · $9=section06 · $10=empId
+-- bind ตามลำดับ: $1=impactProcessId · $2=statusDone · $3=docNo · $4=year · $5=runningNo · $6=impactCompensationId · $7=storeCode · $8=month · $9=statusInit · $10=section06 · $11=empId
 -- กันซ้ำเฉพาะเอกสาร active (SDD GI): เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้
 SELECT 1 FROM sgi_compensation_documents
 WHERE impact_process_id = $1 /* impactProcessId */ AND status_code <> $2 /* statusDone */;
 
 -- ออกเลขที่ YYYY/xxxxx (running ต่อปี) แล้วสร้างเอกสาร + เปิด workflow งานแรก (Section 06)
-INSERT INTO sgi_compensation_documents (doc_no, year, running_no, impact_process_id, impacted_store_code, impact_month, status_code, current_section_code, created_by)
-VALUES ($3 /* docNo */, $4 /* year */, $5 /* runningNo */, $1 /* impactProcessId */, $6 /* storeCode */, $7 /* month */, $8 /* statusInit */, $9 /* section06 */, $10 /* empId */);
+INSERT INTO sgi_compensation_documents (doc_no, year, running_no, impact_process_id, impact_compensation_id, impacted_store_code, impact_month, status_code, current_section_code, created_by)
+VALUES ($3 /* docNo */, $4 /* year */, $5 /* runningNo */, $1 /* impactProcessId */, $6 /* impactCompensationId */, $7 /* storeCode */, $8 /* month */, $9 /* statusInit */, $10 /* section06 */, $11 /* empId */);
 -- ⚠️ ไม่ INSERT ตาราง workflow เอง — เรียก @srm/glb-workflow (schema sps_store) ให้ library เขียนให้
 --    initialize(versionId=:sgiVersionId, referenceId=:referenceId, userId=:empId)
 --    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
@@ -454,7 +497,7 @@ VALUES ($3 /* docNo */, $4 /* year */, $5 /* runningNo */, $1 /* impactProcessId
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=now · $2=empId · $3=docNo · $4=versionNo · $5=pct · $6=amount · $7=newStoreCode · $8=date · $9=competitorId · $10=from · $11=to · $12=factorId · $13=competitorCode · $14=impactDate · $15=factorCode · $16=dateFrom · $17=dateTo · $18=keepCompetitorIds · $19=keepFactorIds
+-- bind ตามลำดับ: $1=now · $2=empId · $3=docNo · $4=versionNo · $5=pct · $6=amount · $7=newStoreCode · $8=date · $9=competitorId · $10=from · $11=to · $12=factorId · $13=competitorStoreCode · $14=brandCode · $15=impactDate · $16=factorCode · $17=dateFrom · $18=dateTo · $19=keepCompetitorIds · $20=keepFactorIds
 -- ตรวจสิทธิ์ตาม role + current_section ก่อน · %ชดเชยร้านใหม่รวมกันต้อง = 100% (ไม่งั้น 422)
 -- optimistic concurrency: mutation ทุกชุดต้องส่ง versionNo ล่าสุด; ไม่ตรงคืน 409 STALE_VERSION
 UPDATE sgi_compensation_documents SET version_no = version_no + 1, updated_at = $1 /* now */, updated_by = $2 /* empId */
@@ -465,18 +508,18 @@ UPDATE sgi_document_competitors      SET impact_date = $8 /* date */         WHE
 UPDATE sgi_document_external_factors SET date_from = $10 /* from */, date_to = $11 /* to */ WHERE id = $12 /* factorId */ AND doc_no = $3 /* docNo */;
 
 -- แถวที่ผู้ใช้ "เพิ่มเอง" (element ที่ไม่มี id) ต้อง INSERT ไม่ใช่ UPDATE — ของเดิมมีแต่ UPDATE/DELETE
---   competitorCode ต้องเป็นรหัสแบรนด์ใน master 01-11 เท่านั้น (ไม่ใช่ free text) · source_system = USER
-INSERT INTO sgi_document_competitors (doc_no, competitor_code, impact_date, source_system)
-VALUES ($3 /* docNo */, $13 /* competitorCode */, $14 /* impactDate */, 'USER')
+--   brandCode ต้องเป็นรหัสแบรนด์ใน master 01-11 (ไม่ใช่ free text) · competitorStoreCode คือรหัสสาขา (ว่างได้) · source_system = USER
+INSERT INTO sgi_document_competitors (doc_no, competitor_store_code, brand_code, impact_date, source_system)
+VALUES ($3 /* docNo */, $13 /* competitorStoreCode */, $14 /* brandCode */, $15 /* impactDate */, 'USER')
 ON CONFLICT ON CONSTRAINT uq_doc_competitor DO UPDATE SET impact_date = EXCLUDED.impact_date;
 
 INSERT INTO sgi_document_external_factors (doc_no, factor_code, date_from, date_to)
-VALUES ($3 /* docNo */, $15 /* factorCode */, $16 /* dateFrom */, $17 /* dateTo */)
+VALUES ($3 /* docNo */, $16 /* factorCode */, $17 /* dateFrom */, $18 /* dateTo */)
 ON CONFLICT ON CONSTRAINT uq_doc_factor DO UPDATE SET date_to = EXCLUDED.date_to;
 
 -- ลบรายการที่ผู้ใช้เอาออก (ปุ่ม "ลบที่เลือก" ส่งอาร์เรย์ชุดใหม่มาแทนทั้งชุด)
-DELETE FROM sgi_document_competitors      WHERE doc_no = $3 /* docNo */ AND id NOT IN ($18 /* keepCompetitorIds */);
-DELETE FROM sgi_document_external_factors WHERE doc_no = $3 /* docNo */ AND id NOT IN ($19 /* keepFactorIds */);
+DELETE FROM sgi_document_competitors      WHERE doc_no = $3 /* docNo */ AND id NOT IN ($19 /* keepCompetitorIds */);
+DELETE FROM sgi_document_external_factors WHERE doc_no = $3 /* docNo */ AND id NOT IN ($20 /* keepFactorIds */);
 ```
 
 #### 6.1.6 POST /api/v1/sgi/document/{docNo}/actions
@@ -913,11 +956,11 @@ ORDER BY window_no, txn_date;
 
 | Step | Flow |
 | --- | --- |
-| 1 | อ่าน sps_store.workflow_status ของ @srm/glb-workflow เรียงตามลำดับ workflow (ตาราง document_statuses ของ SGI ถูกตัดไปแล้ว 2026-08-06) |
+| 1 | อ่าน common_code ของระบบเดิม (code_type = &#39;SGI_DOC_STATUS&#39;) 6 แถว เรียงตาม seq_no — **ไม่ใช่ sps_store.workflow_status** เพราะตารางนั้นมีแค่ status_id (integer surrogate) กับ status_name **ไม่มีคอลัมน์รหัส 2 ตัวอักษร** (มติ 2026-09-13 · DECISIONS 2.31) · ตาราง document_statuses ของ SGI ถูกตัดไปแล้ว 2026-08-06 |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
-| sps_store.workflow_status | R | สถานะเอกสาร (06/08/01/02/03/99; 99=เสร็จสิ้น) — ของ engine กลาง ไม่ใช่ตารางของ SGI |
+| common_code (ระบบเดิม · SGI_DOC_STATUS) | R | สถานะเอกสาร 6 ค่า (06/08/01/02/03/99; 99=เสร็จสิ้น) — รหัสเป็นของ SGI · sps_store.workflow_status เก็บแค่ชื่อไทยผูกกับ status_id ของ engine |
 
 #### Request / Query / Header
 
@@ -940,12 +983,14 @@ ORDER BY window_no, txn_date;
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=sgiVersionId
--- ตาราง document_statuses ของ SGI ถูกตัดแล้ว — อ่านจาก workflow_status ของ engine กลาง
-SELECT status_id AS status_code, status_name, seq AS sort_order
-FROM sps_store.workflow_status
-WHERE version_id = $1 /* sgiVersionId */
-ORDER BY seq;
+-- 🔴 แก้ 2026-09-16 — ของเดิมรันไม่ได้: sps_store.workflow_status **ไม่มีคอลัมน์ seq**
+--    (ตารางจริงมีแค่ status_id · status_name · create_date · version_id)
+--    และ status_id เป็น integer surrogate ต่างกันตาม environment ใช้เป็น statusCode ไม่ได้
+--    รหัส 2 ตัวอักษร (06/08/01/02/03/99) เป็นของ SGI อยู่ที่ common_code · seed แล้ว
+SELECT code_value AS status_code, code_name AS status_name, seq_no AS sort_order
+FROM sps_store.common_code
+WHERE code_type = 'SGI_DOC_STATUS' AND active_flag = 'Y'
+ORDER BY seq_no;
 ```
 
 #### 6.2.2 GET /api/v1/sgi/lookup/workflow-sections
@@ -963,14 +1008,14 @@ ORDER BY seq;
 
 | Step | Flow |
 | --- | --- |
-| 1 | อ่าน sps_store.workflow_state ของ engine เรียงตามลำดับ 06→08→01→02→03 (ตาราง workflow_sections ของ SGI ถูกตัดแล้ว) |
-| 2 | คืน approve_limit_amount ต่อขั้น (= SectionLimitCost ของ K2 เดิม · ขั้น 02 = 100,000 · ขั้น 03 = null ไม่มีเพดาน · มติ 2026-08-18) |
+| 1 | อ่าน common_code ของระบบเดิม (code_type = &#39;SGI_DOC_STATUS&#39;) ตัด 99 ออก เหลือ 5 ขั้น เรียงตาม seq_no — **ไม่ใช่ sps_store.workflow_state** เพราะ state_id เป็น integer surrogate ต่างกันตาม environment |
+| 2 | วงเงินอ่านจาก common_code (code_type = &#39;SGI_APPROVE_LIMIT&#39; · code_value = &#39;THRESHOLD&#39;) ที่ **code_name** — เป็นค่าเดียวทั้งระบบตามมติ 2026-08-18 ไม่ใช่ค่าแยกรายขั้น |
+| 3 | BE ต้อง fail-fast เมื่อ threshold หาย/ซ้ำ/แปลงเป็นตัวเลขไม่ได้ |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
-| workflow_state (@srm/glb-workflow · sps_store) | R | ขั้นตอน 06/08/01/02/03 — ตาราง workflow_sections ของ SGI ถูกตัดแล้ว |
-| workflow_route (@srm/glb-workflow · sps_store) | R | ลำดับขั้น (seq) — workflow_state ไม่มีคอลัมน์ลำดับ |
-| common_code (SBP เดิม) | R | approve_limit_amount ต่อขั้น (code_type = SGI_APPROVE_LIMIT) |
+| common_code (ระบบเดิม · SGI_DOC_STATUS) | R | รหัสขั้น 5 ค่า (06/08/01/02/03) + ชื่อไทย เรียงตาม seq_no |
+| common_code (ระบบเดิม · SGI_APPROVE_LIMIT) | R | วงเงินอนุมัติที่ code_name — เกณฑ์เดียว 100,000 |
 
 #### Request / Query / Header
 
@@ -997,20 +1042,20 @@ ORDER BY seq;
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=sgiVersionId
--- ตาราง workflow_sections ของ SGI ถูกตัดแล้ว — อ่าน state จาก engine กลาง และวงเงินจาก common_code ของระบบเดิม
--- (approve_limit_amount = SectionLimitCost ของ K2 เดิม · เกณฑ์เดียว 100,000 ตามมติ 2026-08-18 — เป็น data ไม่ hardcode · ขั้น 03 เป็น null = ไม่มีเพดาน)
--- ⚠️ sps_store.workflow_state ไม่มีคอลัมน์ลำดับ (มีแค่ version_id · state_id · state_name · create_date)
---    ลำดับขั้นต้องเอาจาก workflow_route.seq · วงเงินจับคู่ด้วย common_code.code_value (ไม่มี code_id)
-SELECT s.state_id AS section_code, s.state_name AS section_name,
-       MIN(r.seq) AS sort_order,
-       CAST(c.other_value AS NUMERIC) AS approve_limit_amount
-FROM sps_store.workflow_state s
-LEFT JOIN sps_store.workflow_route r ON r.version_id = s.version_id AND r.from_state_id = s.state_id
-LEFT JOIN common_code c ON c.code_type = 'SGI_APPROVE_LIMIT' AND c.code_value = s.state_id
-WHERE s.version_id = $1 /* sgiVersionId */
-GROUP BY s.state_id, s.state_name, c.other_value
-ORDER BY sort_order;
+-- 🔴 แก้ 2026-09-16 — ของเดิมรันไม่ได้ 2 จุด:
+--    (1) c.code_value = s.state_id เทียบ varchar กับ integer · seed ใส่ code_value = '100000' ไม่ใช่รหัสขั้น
+--    (2) อ่านยอดจาก other_value ซึ่งไม่ได้ seed — contract อยู่ที่ code_name
+-- วงเงินเป็นค่าเดียวทั้งระบบ (เกณฑ์เดียว 100,000 · มติ 2026-08-18) ไม่ใช่ค่าแยกรายขั้น
+-- ⚠️ BE ต้อง fail-fast เมื่อ threshold หาย/ซ้ำ/แปลงเป็นตัวเลขไม่ได้ — SQL อย่างเดียวทำแทนไม่ได้
+SELECT c.code_value AS section_code, c.code_name AS section_name, c.seq_no AS sort_order,
+       (SELECT CAST(l.code_name AS NUMERIC)
+          FROM sps_store.common_code l
+         WHERE l.code_type = 'SGI_APPROVE_LIMIT'
+           AND l.code_value = '100000' AND l.active_flag = 'Y') AS approve_limit_amount
+FROM sps_store.common_code c
+WHERE c.code_type = 'SGI_DOC_STATUS' AND c.active_flag = 'Y'
+  AND c.code_value <> '99'          -- 99 = เสร็จสิ้น ไม่ใช่ขั้นที่รอคนทำ
+ORDER BY c.seq_no;
 ```
 
 ### 6.3 Master Data
@@ -1069,11 +1114,12 @@ Query: ?q=lotus
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=q
+-- bind ตามลำดับ: $1=q · $2=active
 -- master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) · ระบบเดิมเก็บชื่อไทยและอังกฤษ
 SELECT competitor_code, name_th, name_en, remark, is_active
 FROM sgi_competitors
-WHERE ($1 /* q */ IS NULL OR name_th LIKE $1 /* q */ OR name_en LIKE $1 /* q */)
+WHERE ($1 /* q */      IS NULL OR name_th LIKE $1 /* q */ OR name_en LIKE $1 /* q */)
+  AND ($2 /* active */ IS NULL OR is_active = $2 /* active */)   -- dropdown ส่ง active=true · หน้าดูแล master ส่ง NULL
 ORDER BY competitor_code;
 ```
 
@@ -1274,10 +1320,11 @@ Query: ?q=ถนน
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=q
-SELECT factor_code, factor_name, factor_remark
+-- bind ตามลำดับ: $1=q · $2=active
+SELECT factor_code, factor_name, factor_remark, is_active
 FROM sgi_external_factors
-WHERE $1 /* q */ IS NULL OR factor_name LIKE $1 /* q */
+WHERE ($1 /* q */      IS NULL OR factor_name LIKE $1 /* q */)
+  AND ($2 /* active */ IS NULL OR is_active = $2 /* active */)   -- dropdown ส่ง active=true · หน้าดูแล master ส่ง NULL เพื่อเห็นทั้งหมด
 ORDER BY factor_code;
 ```
 
@@ -1495,7 +1542,7 @@ Query: ?year=2026&status=เสร็จสิ้นดำเนินการ&
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=year · $2=status · $3=impactedStoreCode · $4=newStoreCode · $5=psFrom · $6=psTo · $7=storeTypes · $8=regions · $9=result · $10=size · $11=offset
+-- bind ตามลำดับ: $1=year · $2=status · $3=impactedStoreCode · $4=newStoreCode · $5=periodStatementFrom · $6=periodStatementTo · $7=storeTypes · $8=regions · $9=result · $10=size · $11=offset
 -- 14 คอลัมน์ตาม SDD สไลด์ 60 ; ต้องระบุ :year และ :status เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว
 -- ⚠️ ตาราง stores ของ SGI ถูกตัด 2026-08-06 — ใช้ store ของระบบ SBP เดิม (sps_store 19,402 แถว): คีย์ store_id · ภาค zone_cd
 SELECT si.store_id   AS impacted_store_code, si.store_name   AS impacted_store_name,
@@ -1518,7 +1565,7 @@ WHERE d.year = $1 /* year */
   AND d.status_code = $2 /* status */                                   -- Drop-down บังคับ (SDD สไลด์ 60)
   AND ($3 /* impactedStoreCode */ IS NULL OR d.impacted_store_code = $3 /* impactedStoreCode */)
   AND ($4 /* newStoreCode */      IS NULL OR dns.new_store_code    = $4 /* newStoreCode */)
-  AND ($5 /* psFrom */ IS NULL OR d.statement_date BETWEEN $5 /* psFrom */ AND $6 /* psTo */)  -- ค.ศ. ; บังคับเมื่อ status = เสร็จสิ้นดำเนินการ
+  AND ($5 /* periodStatementFrom */ IS NULL OR d.statement_date BETWEEN $5 /* periodStatementFrom */ AND $6 /* periodStatementTo */)  -- ค.ศ. ; บังคับเมื่อ status = เสร็จสิ้นดำเนินการ
   AND ($7 /* storeTypes */ IS NULL OR si.store_type  = ANY($7 /* storeTypes */))       -- 7 ค่า `A B C D E PTT บริษัท` (BranchTypeProfile.BranchTypeFGIName · ห้าม hardcode)
   AND ($8 /* regions */    IS NULL OR si.zone_cd = ANY($8 /* regions */))          -- 13 ภาค + ภาคใหม่อัตโนมัติ
   AND ($9 /* result */     IS NULL OR cl.result_category = $9 /* result */)            -- APPROVE / REJECT (ไม่บังคับ)
@@ -1672,7 +1719,7 @@ WHERE id = $1 /* impactProcessId */ AND workflow_generation_status = $3 /* flagW
 --    initialize(versionId=:sgiVersionId, referenceId=:referenceId, userId=:serviceActor)
 --    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
 -- referenceId = sgi_compensation_documents.id (DP-1 ปิดแล้ว) · ไม่มี UNIQUE กันซ้ำจริงบน
---    sps_store.workflow_transaction (ไม่มี PK/index · 19,283 แถว) → กันซ้ำที่ application (DP-2)
+--    sps_store.workflow_transaction (ไม่มี PK/index · 19,327 แถว) → กันซ้ำที่ application (DP-2)
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT d.doc_no FROM sgi_compensation_documents d
 WHERE d.impact_process_id = $1 /* impactProcessId */ AND $4 /* gateDecision */ = $5 /* flagY */;
@@ -1696,7 +1743,7 @@ WHERE id = $1 /* impactProcessId */ AND workflow_generation_status = $3 /* flagW
 | Step | Flow |
 | --- | --- |
 | 1 | อ่าน sps_store.workflow_transaction (instance ปัจจุบัน) + workflow_approver (ผู้รับผิดชอบขั้นปัจจุบัน) ของ @srm/glb-workflow แล้ว join เอกสารของ SGI |
-| 2 | คีย์ที่ใช้ค้น = sgi_compensation_documents.id (DP-1 ปิดแล้ว) · DP-2 ตารางนี้ไม่มี PK/index (19,283 แถว) จึงเป็น seq-scan — จำกัดเงื่อนไขด้วย version_id + reference_id เสมอ · ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4 |
+| 2 | คีย์ที่ใช้ค้น = sgi_compensation_documents.id (DP-1 ปิดแล้ว) · DP-2 ตารางนี้ไม่มี PK/index (19,327 แถว) จึงเป็น seq-scan — จำกัดเงื่อนไขด้วย version_id + reference_id เสมอ · ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4 |
 
 | DB Object | R/W | Usage |
 | --- | --- | --- |
@@ -1730,7 +1777,7 @@ SQL Reference
 
 ```sql
 -- bind ตามลำดับ: $1=id · $2=sgiVersionId · $3=referenceId
--- ✅ DP-1 ปิดแล้ว: referenceId = sgi_compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ห้ามแก้ schema ของ library
+-- ✅ DP-1 ปิดแล้ว: referenceId = sgi_compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,327 แถว → seq-scan) ห้ามแก้ schema ของ library
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.transaction_id, w.reference_id, w.current_state_id, w.current_status_id, w.current_approver,
        a.state_id AS pending_state_id, a.approver_id, a.approve_seq
@@ -1789,16 +1836,17 @@ SELECT doc_no, status_code, current_section_code FROM sgi_compensation_documents
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=sgiVersionId · $2=statusDone
+-- bind ตามลำดับ: $1=period · $2=sgiVersionId · $3=statusDone
 SELECT workflow_generation_status, COUNT(*) AS cnt
 FROM sgi_fgi_impact_processes
+WHERE ($1 /* period */ IS NULL OR impact_month = $1 /* period */)   -- YYYY-MM (ค.ศ.) · ไม่ระบุ = ทุกงวด
 GROUP BY workflow_generation_status;
 
--- ✅ DP-1 ปิดแล้ว: referenceId = sgi_compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ห้ามแก้ schema ของ library
+-- ✅ DP-1 ปิดแล้ว: referenceId = sgi_compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,327 แถว → seq-scan) ห้ามแก้ schema ของ library
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.current_state_id AS section_code, COUNT(*) AS open_tasks
 FROM sps_store.workflow_transaction w
-WHERE w.version_id = $1 /* sgiVersionId */ AND w.current_status_id <> $2 /* statusDone */
+WHERE w.version_id = $2 /* sgiVersionId */ AND w.current_status_id <> $3 /* statusDone */
 GROUP BY w.current_state_id;
 ```
 
@@ -1857,14 +1905,17 @@ Query: ?dataName=COMPENSATE_INIT_I&pending=true&page=1
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=dataName · $2=pending · $3=size · $4=offset
+-- bind ตามลำดับ: $1=dataName · $2=pending · $3=status · $4=sentFrom · $5=sentTo · $6=size · $7=offset
 -- pending = ยังไม่ได้ publisher confirm (มติ 2026-09-08 ข้อ 2.13) — ไม่ใช่ "รอ return_code จาก STA"
 SELECT id AS tracking_id, data_name, doc_no, sent_at, outbox_status, acked_at AS confirmed_date
 FROM sgi_interface_transactions
 WHERE ($1 /* dataName */ IS NULL OR data_name = $1 /* dataName */)
   AND ($2 /* pending */  IS NULL OR outbox_status IS DISTINCT FROM 'CONFIRMED')
+  AND ($3 /* status */   IS NULL OR outbox_status = $3 /* status */)   -- READY / PUBLISHED / CONFIRMED / FAILED
+  AND ($4 /* sentFrom */ IS NULL OR sent_at >= $4 /* sentFrom */)
+  AND ($5 /* sentTo */   IS NULL OR sent_at <  $5 /* sentTo */ + INTERVAL '1 day')
 ORDER BY sent_at DESC
-LIMIT $3 /* size */ OFFSET $4 /* offset */;
+LIMIT $6 /* size */ OFFSET $7 /* offset */;
 ```
 
 #### 6.6.2 GET /api/v1/sgi/interface/pending-ack
@@ -1912,7 +1963,7 @@ LIMIT $3 /* size */ OFFSET $4 /* offset */;
 SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=thresholdHours
+-- bind ตามลำดับ: $1=thresholdHours · $2=dataName
 -- เกณฑ์ watchdog Job 10 (มติ 2026-09-08 ข้อ 2.13): ขาส่งออกที่ broker ยังไม่ publisher confirm และอายุ >= 1 วัน
 --   "ค้าง" = ยังไม่ได้ publisher confirm ไม่ใช่ "STA ยังไม่ ACK" — สเปก STA มีแค่ 3 ข้อความบน RabbitMQ ไม่มี ACK กลับมา
 --   direction = OUT เท่านั้น — แถว INTERNAL ของ Jobs 7/8/9 จบที่ COMPLETED ทันที ไม่มีอะไรให้รอ
@@ -1922,6 +1973,7 @@ FROM sgi_interface_transactions
 WHERE direction = 'OUT'
   AND (outbox_status IS NULL OR outbox_status <> 'CONFIRMED')
   AND created_at < CURRENT_TIMESTAMP - ($1 /* thresholdHours */ * INTERVAL '1 hour')
+  AND ($2 /* dataName */ IS NULL OR data_name = $2 /* dataName */)   -- จำกัดชุดข้อมูลที่เฝ้า (ไม่ระบุ = ทุกชุดขาออก)
 ORDER BY created_at;
 ```
 

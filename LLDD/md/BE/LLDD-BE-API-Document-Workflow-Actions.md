@@ -114,7 +114,7 @@ BE ต้องคำนวณ transition จาก currentSection, result แ�
 | หยุดชดเชยประกันรายได้ | ปิดเอกสาร (99) แต่ GET /sgi/document/tasks ของ 06 **ต้องคืนทันที** พร้อม stoppedReopenable=true | ไม่มีการตั้งงานอัตโนมัติ | ฝ่าย SBP DSA (06) |
 | เคสต่อเนื่อง (ไม่ใช่ปุ่ม — เงื่อนไขของงานรอบถัดไป) | ระบบสร้างงานให้เอง ไม่ต้องแจกงานด้วยมือ | เหมือนกันทุกเดือนที่ยังต่อเนื่อง | **คนเดิม** — เจ้าหน้าที่ SBP DSA รอบก่อนหน้า |
 
-**วิธี resolve เจ้าของงานคนเดิม** — ไม่มีคอลัมน์ assignee ในตารางของ SGI (ตาราง workflow_tasks ถูกตัดออกจากโครง 20 ตารางแล้ว) ผู้รับผิดชอบเป็นข้อมูลของ engine
+**วิธี resolve เจ้าของงานคนเดิม** — ไม่มีคอลัมน์ assignee ในตารางของ SGI (ตาราง workflow_tasks ถูกตัดออกจากโครง 21 ตารางแล้ว) ผู้รับผิดชอบเป็นข้อมูลของ engine
 
 | ขั้น | การทำงาน |
 | --- | --- |
@@ -155,7 +155,7 @@ LIMIT 1;
 | --- | --- | --- |
 | แหล่งข้อมูลของ `GET /sgi/document/{docNo}/timeline` | อ่าน **`sgi_consideration_logs` ของ SGI** เป็น timeline เต็ม (ผูก `transaction_id` ของ engine) — ไม่เรียก `getHistory()` ของ engine | engine ไม่มีรหัสผลพิจารณาและไฟล์แนบใน history (ปิด 2026-08-24) |
 | `referenceId` ที่ส่งเข้า engine | ส่ง **`sgi_compensation_documents.id`** (surrogate) เป็น string | `reference_id` เป็น varchar(255) · ระบบเดิมส่ง surrogate id ทุกจุด (ปิด 2026-08-17) |
-| ตาราง `sps_store.workflow_transaction` | **ห้ามแก้ schema ของ library** — กันซ้ำระดับ application และประเมินต้นทุน query ก่อนเปิดใช้ทุกเส้นที่อ้างตารางนี้ | 19,283 แถวโดยไม่มี PK/index (ตรวจฐานจริง 2026-08-07) ทุก action จึงเป็น seq-scan |
+| ตาราง `sps_store.workflow_transaction` | **ห้ามแก้ schema ของ library** — กันซ้ำระดับ application และประเมินต้นทุน query ก่อนเปิดใช้ทุกเส้นที่อ้างตารางนี้ | 19,327 แถวโดยไม่มี PK/index (ตรวจฐานจริง 2026-08-07) ทุก action จึงเป็น seq-scan |
 | อีเมลหลังเปลี่ยนสถานะ | SGI เรียก `sendEmail()` ของ email-lib เอง โดยใช้ `emailId` จาก `workflow_route.email_id` ของ route ที่เพิ่งเดิน | `triggerEvent` ของ engine ไม่มี `mailTo`/`mailCc`/`param` (ปิด 2026-08-14) |
 
 ### 5.9 Input / Progress / Output Contract
@@ -226,7 +226,7 @@ Document action API ตัวอย่างเมื่อ currentSection=01 �
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| result | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| result | string | Yes | ช่อง **ผลการพิจารณา** (มีเฉพาะหน้า *ที่เกี่ยวข้อง*) — `APPROVE` / `REJECT` / `CANCELLED` / `NONE` · ดูจากผลพิจารณา **ล่าสุด** ของเอกสารใน `sgi_consideration_logs` ไม่ได้อยู่ที่หัวเอกสาร |
 | comment | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
 
 #### Response
@@ -514,6 +514,9 @@ export class CompensationDocument {
   @Column({ name: 'impact_process_id', type: 'bigint' })
   impactProcessId: number;
 
+  @Column({ name: 'impact_compensation_id', type: 'bigint' })
+  impactCompensationId: number;
+
   @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
@@ -532,7 +535,7 @@ export class CompensationDocument {
   @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
   source: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  @Column({ name: 'status_code', type: 'varchar', length: 2, default: '06' })
   statusCode: string;
 
   @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })

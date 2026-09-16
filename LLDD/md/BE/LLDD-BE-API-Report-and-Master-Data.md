@@ -61,7 +61,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Report and Master Data_
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| year | ค.ศ. YYYY | required for report | return 400 if missing · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. |
+| year | ค.ศ. YYYY | required for report | ⚠️ **หน้าจอรายงานไม่มีช่อง "ปี"** (SDD สไลด์ 60 มี 7 ตัวกรอง ไม่รวมปี) — **FE เป็นผู้ใส่ให้เสมอ: ปีของ `periodStatementFrom` ถ้าระบุ · ไม่ระบุใช้ปีปัจจุบัน (ค.ศ.)** · BE ยังคง return 400 ถ้าไม่มี (กติกา SRS) และผ่าน toAD() เผื่อ client ส่ง พ.ศ. |
 | status | statusCode string | required | 6 สถานะเอกสาร; verbatim จาก sps_store.workflow_status ของ @srm/glb-workflow |
 | result | APPROVE\|REJECT\|CANCELLED\|PENDING | optional for report (บังคับเฉพาะ status) | maps to sgi_consideration_logs.result_category ล่าสุด · CANCELLED = ยกเลิกโดยระบบ (เพิ่ม 2026-08-10) |
 | region | array/string | optional | 13 region codes; multi-select |
@@ -122,29 +122,21 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Report and Master Data_
 
 ```json
 {
-  "status": "06",
-  "impactedStoreCode": "00788",
-  "newStoreCode": "00990",
-  "periodStatementFrom": "2026-06-01",
-  "periodStatementTo": "2026-06-30",
-  "storeTypes": [
-    "A",
-    "B"
-  ],
-  "regions": [
-    "RSU",
-    "BN"
-  ],
-  "result": "APPROVE",
-  "page": 1,
-  "size": 20,
   "year": 2026,
-  "region": [
+  "status": "06",
+  "result": "APPROVE",
+  "regions": [
     "RSU"
   ],
-  "storeType": [
+  "storeTypes": [
     "A"
-  ]
+  ],
+  "periodStatementFrom": "2026-06-01",
+  "periodStatementTo": "2026-06-30",
+  "impactedStoreCode": "00788",
+  "newStoreCode": "00990",
+  "page": 1,
+  "size": 20
 }
 ```
 
@@ -152,19 +144,17 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Report and Master Data_
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | status | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
-| newStoreCode | string | No | exactly 5 digits; preserve leading zero |
+| result | string | No | ช่อง **ผลการพิจารณา** (มีเฉพาะหน้า *ที่เกี่ยวข้อง*) — `APPROVE` / `REJECT` / `CANCELLED` / `NONE` · ดูจากผลพิจารณา **ล่าสุด** ของเอกสารใน `sgi_consideration_logs` ไม่ได้อยู่ที่หัวเอกสาร |
+| regions | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| storeTypes | array&lt;string&gt; | No | JSON array; element type shown in Type column |
 | periodStatementFrom | string | No | UTF-8; use value domain described by endpoint purpose |
 | periodStatementTo | string | No | UTF-8; use value domain described by endpoint purpose |
-| storeTypes | array&lt;string&gt; | No | JSON array; element type shown in Type column |
-| regions | array&lt;string&gt; | No | JSON array; element type shown in Type column |
-| result | string | No | UTF-8; use value domain described by endpoint purpose |
+| impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
+| newStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
-| year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| region | array&lt;string&gt; | No | JSON array; element type shown in Type column |
-| storeType | array&lt;string&gt; | No | JSON array; element type shown in Type column |
 
 #### Response
 
@@ -223,7 +213,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Report and Master Data_
 | items[].newStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].newRegion | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].newStoreType | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].compensationAmount | number | Yes | number >= 0 with 2 decimals |
+| items[].compensationAmount | number | Yes | number >= 0 with 2 decimals · ⚠️ มาจากคนละคอลัมน์ตามที่อยู่: ใน `newStores[]` = `sgi_document_new_stores.compensation_amount` · ใน `compensationHistories[]` = `sgi_compensation_histories.compensate_amount` |
 | items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].createdDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
 | items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
@@ -258,9 +248,9 @@ Export Excel
 | --- | --- | --- | --- |
 | year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | status | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| result | string | No | UTF-8; use value domain described by endpoint purpose |
+| result | string | No | ช่อง **ผลการพิจารณา** (มีเฉพาะหน้า *ที่เกี่ยวข้อง*) — `APPROVE` / `REJECT` / `CANCELLED` / `NONE` · ดูจากผลพิจารณา **ล่าสุด** ของเอกสารใน `sgi_consideration_logs` ไม่ได้อยู่ที่หัวเอกสาร |
 | region | array&lt;string&gt; | No | JSON array; element type shown in Type column |
-| storeType | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| storeType | array&lt;string&gt; | No | ช่อง **ประเภทร้าน** — 7 ค่า `A B C D E PTT บริษัท` (`store.store_type`) ชุดเดียวกับตัวกรองในรายงาน |
 | impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | newStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | sameAsSearch | boolean | No | UTF-8; use value domain described by endpoint purpose |
@@ -812,38 +802,39 @@ import {
 
 // query ร่วมของ GET ทุกเส้นในโมดูลนี้ (path param ใช้ @Param แยก)
 export class ReportAndMasterDataQueryDto {
+  /** ⚠️ **หน้าจอรายงานไม่มีช่อง "ปี"** (SDD สไลด์ 60 มี 7 ตัวกรอง ไม่รวมปี) — **FE เป็นผู้ใส่ใ… */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  year?: number;
+
   /** 6 สถานะเอกสาร; verbatim จาก sps_store.workflow_status ของ @srm/glb-workflow · required เฉ… */
   @IsOptional()
   @IsString()
   status?: string;
 
-  /** คง leading zero */
+  /** maps to sgi_consideration_logs.result_category ล่าสุด · CANCELLED = ยกเลิกโดยระบบ (เพิ่ม … */
   @IsOptional()
   @IsString()
-  @Matches(/^\d{5}$/, { message: 'รหัสร้านต้องเป็นตัวเลข 5 หลัก และคงเลขศูนย์นำหน้า' })
-  impactedStoreCode?: string;
-
-  /** คง leading zero */
-  @IsOptional()
-  @IsString()
-  @Matches(/^\d{5}$/, { message: 'รหัสร้านต้องเป็นตัวเลข 5 หลัก และคงเลขศูนย์นำหน้า' })
-  newStoreCode?: string;
+  @IsIn(['APPROVE', 'REJECT', 'CANCELLED', 'PENDING'])
+  result?: string;
 
   /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
   @IsOptional()
-  @IsString()
-  periodStatementFrom?: string;
-
-  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
-  @IsOptional()
-  @IsString()
-  periodStatementTo?: string;
+  @IsArray()
+  @IsString({ each: true })
+  regions?: string[];
 
   /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   storeTypes?: string[];
+
+  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
+  @IsOptional()
+  @IsString()
+  periodStatementFrom?: string;
 
   // TODO: เพิ่ม property ที่เหลือของ payload นี้ให้ครบตามหัวข้อฟิลด์ของเอกสารนี้
 }
@@ -1003,7 +994,7 @@ export class SgiReportAndMasterDataService {
     await runner.startTransaction();
     try {
       // TODO: lock แถวเป้าหมายของ sgi_external_factors ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SGI_SQL.createSgiMasterFactorsLock, [body.reason]);
+      const [current] = await runner.query(SGI_SQL.createSgiMasterFactorsLock, [body.code]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }
@@ -1060,7 +1051,8 @@ export class SgiReportAndMasterDataService {
 
   // PUT /api/v1/sgi/master/competitors/{code} — แก้ชื่อ/สถานะ — ห้ามแก้ code เพราะถูกอ้างจาก sgi_document_competitors
   async updateSgiMasterCompetitorsByCode(code: string, body: Record<string, unknown>, userId: string) {
-    // ห้ามแก้ competitor_code (เป็น PK และถูกอ้างจาก sgi_document_competitors)
+    // ห้ามแก้ competitor_code (เป็น PK · ถูกอ้างเป็น brand_code จาก sgi_document_competitors
+    //   และ sgi_fgi_impact_competitors — แก้แล้วแถวเดิมจะหา master ไม่เจอ)
     // bind: $1=nameTh $2=nameEn $3=remark $4=isActive $5=code
     const result = await this.dataSource.query(SGI_SQL.updateSgiMasterCompetitorsByCode, [
       body.nameTh, body.nameEn, body.remark ?? null, body.active ?? true, code,
@@ -1147,6 +1139,9 @@ export class CompensationDocument {
   @Column({ name: 'impact_process_id', type: 'bigint' })
   impactProcessId: number;
 
+  @Column({ name: 'impact_compensation_id', type: 'bigint' })
+  impactCompensationId: number;
+
   @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
@@ -1165,7 +1160,7 @@ export class CompensationDocument {
   @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
   source: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  @Column({ name: 'status_code', type: 'varchar', length: 2, default: '06' })
   statusCode: string;
 
   @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })
@@ -1419,7 +1414,7 @@ export class SgiReportAndMasterDataBffController {
 **GET /api/v1/sgi/report/status-summary** — รายงานตรวจสอบประกันรายได้
 
 ```sql
--- bind ตามลำดับ: $1=year · $2=status · $3=impactedStoreCode · $4=newStoreCode · $5=psFrom · $6=psTo · $7=storeTypes · $8=regions · $9=result · $10=size · $11=offset
+-- bind ตามลำดับ: $1=year · $2=status · $3=impactedStoreCode · $4=newStoreCode · $5=periodStatementFrom · $6=periodStatementTo · $7=storeTypes · $8=regions · $9=result · $10=size · $11=offset
 -- 14 คอลัมน์ตาม SDD สไลด์ 60 ; ต้องระบุ :year และ :status เสมอ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว
 -- ⚠️ ตาราง stores ของ SGI ถูกตัด 2026-08-06 — ใช้ store ของระบบ SBP เดิม (sps_store 19,402 แถว): คีย์ store_id · ภาค zone_cd
 SELECT si.store_id   AS impacted_store_code, si.store_name   AS impacted_store_name,
@@ -1442,7 +1437,7 @@ WHERE d.year = $1 /* year */
   AND d.status_code = $2 /* status */                                   -- Drop-down บังคับ (SDD สไลด์ 60)
   AND ($3 /* impactedStoreCode */ IS NULL OR d.impacted_store_code = $3 /* impactedStoreCode */)
   AND ($4 /* newStoreCode */      IS NULL OR dns.new_store_code    = $4 /* newStoreCode */)
-  AND ($5 /* psFrom */ IS NULL OR d.statement_date BETWEEN $5 /* psFrom */ AND $6 /* psTo */)  -- ค.ศ. ; บังคับเมื่อ status = เสร็จสิ้นดำเนินการ
+  AND ($5 /* periodStatementFrom */ IS NULL OR d.statement_date BETWEEN $5 /* periodStatementFrom */ AND $6 /* periodStatementTo */)  -- ค.ศ. ; บังคับเมื่อ status = เสร็จสิ้นดำเนินการ
   AND ($7 /* storeTypes */ IS NULL OR si.store_type  = ANY($7 /* storeTypes */))       -- 7 ค่า `A B C D E PTT บริษัท` (BranchTypeProfile.BranchTypeFGIName · ห้าม hardcode)
   AND ($8 /* regions */    IS NULL OR si.zone_cd = ANY($8 /* regions */))          -- 13 ภาค + ภาคใหม่อัตโนมัติ
   AND ($9 /* result */     IS NULL OR cl.result_category = $9 /* result */)            -- APPROVE / REJECT (ไม่บังคับ)
@@ -1461,10 +1456,11 @@ ORDER BY d.doc_no;
 **GET /api/v1/sgi/master/factors** — อ่านปัจจัยภายนอก
 
 ```sql
--- bind ตามลำดับ: $1=q
-SELECT factor_code, factor_name, factor_remark
+-- bind ตามลำดับ: $1=q · $2=active
+SELECT factor_code, factor_name, factor_remark, is_active
 FROM sgi_external_factors
-WHERE $1 /* q */ IS NULL OR factor_name LIKE $1 /* q */
+WHERE ($1 /* q */      IS NULL OR factor_name LIKE $1 /* q */)
+  AND ($2 /* active */ IS NULL OR is_active = $2 /* active */)   -- dropdown ส่ง active=true · หน้าดูแล master ส่ง NULL เพื่อเห็นทั้งหมด
 ORDER BY factor_code;
 ```
 
@@ -1489,11 +1485,12 @@ WHERE factor_code = $3 /* code */;
 **GET /api/v1/sgi/master/competitors** — master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) — เป็นแหล่งของ dropdown ร้านคู่แข่งในหน้าเอกสารด้วย
 
 ```sql
--- bind ตามลำดับ: $1=q
+-- bind ตามลำดับ: $1=q · $2=active
 -- master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) · ระบบเดิมเก็บชื่อไทยและอังกฤษ
 SELECT competitor_code, name_th, name_en, remark, is_active
 FROM sgi_competitors
-WHERE ($1 /* q */ IS NULL OR name_th LIKE $1 /* q */ OR name_en LIKE $1 /* q */)
+WHERE ($1 /* q */      IS NULL OR name_th LIKE $1 /* q */ OR name_en LIKE $1 /* q */)
+  AND ($2 /* active */ IS NULL OR is_active = $2 /* active */)   -- dropdown ส่ง active=true · หน้าดูแล master ส่ง NULL
 ORDER BY competitor_code;
 ```
 

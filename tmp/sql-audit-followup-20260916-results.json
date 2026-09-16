@@ -1,0 +1,100 @@
+{
+  "misclassified_pg_queries": [
+    {
+      "file": "job-12-notify-pending-work.service.ts",
+      "returncode": 0,
+      "error": ""
+    },
+    {
+      "file": "job-7-sync-competitor-to-document.service.ts",
+      "returncode": 0,
+      "error": ""
+    },
+    {
+      "file": "job-8-create-compensation-document.service.ts",
+      "returncode": 0,
+      "error": ""
+    },
+    {
+      "file": "job-9-sync-new-store-to-document.service.ts",
+      "returncode": 0,
+      "error": ""
+    }
+  ],
+  "seed_on_stricter_dump_columns": "PASS: dump NOT NULL and non-sequence defaults applied, seed rerun succeeded",
+  "null_type_name_rejected": "ERROR:  null value in column \"code_type_name\" of relation \"common_code_type\" violates not-null constraint\nDETAIL:  Failing row contains (AUDIT_BAD, null, null, null, Y, null, null, null, null).",
+  "repeat_schema": "ERROR:  มีตาราง sgi_ อยู่แล้ว 20 ตาราง — สคริปต์นี้สำหรับติดตั้งครั้งแรกเท่านั้น (ถ้าต้องการติดตั้งใหม่ ให้รัน sgi_schema_rollback.sql ก่อน)\nCONTEXT:  PL/pgSQL function inline_code_block line 13 at RAISE",
+  "pending_false_truth_table": "f|PUBLISHED\nt|PUBLISHED",
+  "typed_api_prepare": [
+    {
+      "endpoint": "GET /api/v1/sgi/master/competitors",
+      "binds": {
+        "q": 1,
+        "active": 2
+      },
+      "returncode": 0,
+      "error": ""
+    },
+    {
+      "endpoint": "GET /api/v1/sgi/master/factors",
+      "binds": {
+        "q": 1,
+        "active": 2
+      },
+      "returncode": 0,
+      "error": ""
+    },
+    {
+      "endpoint": "GET /api/v1/sgi/workflow/summary",
+      "binds": {
+        "period": 1,
+        "sgiVersionId": 2,
+        "statusDone": 3
+      },
+      "returncode": 3,
+      "error": "ERROR:  there is no parameter $2\nLINE 3: WHERE w.version_id = $2 AND w.current_status_id <> $3\n                             ^"
+    },
+    {
+      "endpoint": "GET /api/v1/sgi/interface/tracking",
+      "binds": {
+        "dataName": 1,
+        "pending": 2,
+        "status": 3,
+        "sentFrom": 4,
+        "sentTo": 5,
+        "size": 6,
+        "offset": 7
+      },
+      "returncode": 0,
+      "error": ""
+    },
+    {
+      "endpoint": "GET /api/v1/sgi/interface/pending-ack",
+      "binds": {
+        "thresholdHours": 1,
+        "dataName": 2
+      },
+      "returncode": 0,
+      "error": ""
+    },
+    {
+      "endpoint": "GET /api/v1/sgi/report/status-summary",
+      "binds": {
+        "year": 1,
+        "status": 2,
+        "impactedStoreCode": 3,
+        "newStoreCode": 4,
+        "periodStatementFrom": 5,
+        "periodStatementTo": 6,
+        "storeTypes": 7,
+        "regions": 8,
+        "result": 9,
+        "size": 10,
+        "offset": 11
+      },
+      "returncode": 0,
+      "error": ""
+    }
+  ],
+  "container_removed": true
+}

@@ -192,7 +192,7 @@
       cron:'0 07 7 * *',
       cronTh:'ทุกวันที่ 7 เวลา 07:00',
       out:'sgi_fgi_impact_stores',
-      desc:'นำคู่ร้านถูกกระทบ–ร้านเปิดใหม่จากวิว ALLMAP เข้า sgi_fgi_impact_stores เติมข้อมูลจากตาราง master แล้วใช้กฎ DENY และ ON_PROCESS ตั้งค่า sales_request_status เป็น W / N / P',
+      desc:'นำคู่ร้านถูกกระทบ–ร้านเปิดใหม่จากวิว ALLMAP เข้า sgi_fgi_impact_stores เติมข้อมูลจากตาราง master แล้วใช้กฎ DENY และ ON_PROCESS ตั้งค่า verify_status จาก W เป็น P หรือ N',
       params:[
         ['กำหนดการรัน (Cron)', '0 07 7 * *', 'text', 1, 'ทุกวันที่ 7 ของเดือน เวลา 07:00'],
         ['Argument (ขอบเขต|งวด)', 'ALL|2569|06', 'text', 1, 'รูปแบบ ZONES|YYYY|MM หรือ ALL|YYYY|MM — ไม่ระบุจะใช้งวดตาม modifyDateToString · ⚠️ ปีในตัวอย่างเป็น พ.ศ. (2569) ตามค่าที่ระบบเดิมใช้กับวิว ALLMAP ซึ่งขัดกับกติกา ค.ศ. ทั้งระบบ (มติ 2026-08-06) — ค่าที่ส่งเข้าวิว ALLMAP คงรูปแบบเดิมของวิว ส่วนค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง'],
@@ -205,19 +205,21 @@
         { k:'start', t:'เริ่ม' },
         { k:'io', t:'อ่าน SEVEN_IMPACT_VIEW จาก ALLMAP (ROW_NUMBER dedup)', d:'เชื่อม SQL Server GSMALLMAP ด้วย user allmapssa' },
         { k:'d', t:'มีข้อมูลต้นทาง?', no:'จบการทำงาน', noKind:'end', d:'' },
-        { k:'d', t:'เป็นคู่ร้านใหม่ (ยังไม่มีใน Oracle)?', no:'ข้ามรายการ — ของเดิมไม่ถูกอัปเดต (updateList เป็น dead code)', d:'Errata E4: รันซ้ำจะไม่อัปเดตคู่เดิม' },
-        { k:'p', t:'insert คู่ใหม่ sales_request_status = W', d:'ช่องทางต้นทางเก็บที่ sgi_fgi_impact_processes.datasource = ALM (sgi_fgi_impact_stores ไม่มีคอลัมน์ created_by/datasource)' },
+        { k:'d', t:'เป็นคู่ร้านใหม่ (ยังไม่มีใน Oracle)?', no:'ข้ามรายการ — ของเดิมไม่ถูกอัปเดต (updateList เป็น dead code)', noKind:'mark', d:'Errata E4: รันซ้ำจะไม่อัปเดตคู่เดิม' },
+        { k:'p', t:'insert คู่ใหม่ verify_status = W (ค่า DEFAULT)', d:'created_by = ALM (คอลัมน์ของ sgi_fgi_impact_stores เอง) · ช่องทางต้นทางระดับรอบชดเชยอยู่ที่ sgi_fgi_impact_processes.datasource' },
         { k:'p', t:'เติมข้อมูล master และ enrichment data', d:'INNER JOIN — ถ้า master ไม่ครบ แถวจะหลุดหายเงียบ ๆ' },
-        { k:'d', t:'ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS)', no:'sales_request_status = N (Deny)', noKind:'err', d:'DENY: สาขา N=F / juristic เดียวกัน / สัญญา SBP ไม่คลุมงวด / เก่ากว่า 12 เดือน' },
-        { k:'d', t:'เข้าเงื่อนไข ON_PROCESS หรือ sgi_fgi_impact_processes.datasource = STA?', no:'คงค่า W (รอตรวจสอบ)', d:'แหล่ง STA เข้าสถานะ P ได้อัตโนมัติ' },
-        { k:'p', t:'sales_request_status = P (On Process) แล้ววนจนครบทุกแถว', d:'' },
+        { k:'d', t:'ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS)', no:'verify_status = N (Deny)', noKind:'mark', d:'DENY: สาขา N=F / juristic เดียวกัน / สัญญา SBP ไม่คลุมงวด / เก่ากว่า 12 เดือน' },
+        { k:'d', t:'เข้าเงื่อนไข ON_PROCESS หรือ sgi_fgi_impact_stores.created_by = STA?', no:'คงค่า verify_status = W (รอตรวจสอบ)', noKind:'mark', d:'แถวที่ created_by = STA เข้าสถานะ P ได้อัตโนมัติ' },
+        { k:'p', t:'verify_status = P (On Process) แล้ววนจนครบทุกแถว', d:'sales_request_status ไม่ถูกแตะเลย — คงเป็น W ตาม DEFAULT ให้ Job 4 หยิบต่อ' },
         { k:'end', t:'จบ' }
       ],
       tables:[
-        ['sgi_fgi_impact_stores', 'W', 'insert คู่ร้านกระทบ–ร้านใหม่ / ตั้ง sales_request_status = W · N · P (ตารางนี้ไม่มี created_by — ช่องทางต้นทางอยู่ที่ sgi_fgi_impact_processes.datasource)']
+        ['sgi_impacted_stores', 'R/W', 'upsert ร้านที่ถูกกระทบก่อน (FK ต้นทาง) — ห้ามเขียนทับค่าที่ Job 2 ไม่มีข้อมูล เช่น opt_dv_user_id / latitude / longitude'],
+        ['sgi_fgi_impact_processes', 'R/W', 'upsert แถวแม่ของ (ร้าน + งวด) แล้วอ่าน id กลับมาใส่ impact_process_id — ON CONFLICT DO NOTHING ไม่คืนแถว ต้อง SELECT ซ้ำ'],
+        ['sgi_fgi_impact_stores', 'W', 'insert คู่ร้านกระทบ–ร้านใหม่ (verify_status = W ตาม DEFAULT) / ตั้ง verify_status เป็น P หรือ N · sales_request_status คงเป็น W ให้ Job 4 หยิบต่อ']
       ],
       rels:['sgi_fgi_impact_stores (business key impacted_store_code + impact_month · impact_year อยู่บน hub sgi_fgi_impact_processes) → พี่น้องกับ sgi_fgi_impact_sales_summaries, sgi_fgi_impact_competitors และ hub sgi_fgi_impact_processes', 'PK id เป็น BIGSERIAL (PostgreSQL) — ระบบเดิมใช้ named sequence SEQ_fgi_impact_stores', 'growth_rate_diff และ sales_status อยู่บน sgi_fgi_impact_sales_summaries (ไม่ใช่ตารางนี้) — เป็นเงื่อนไข Gen Flow Gate ของ Job 8b'],
-      meta:{ trans:'หนึ่ง transaction + savepoint', rerun:'คู่เดิมถูกข้าม — รันซ้ำไม่อัปเดตของเดิม ต้องลบ/แก้คู่ที่ต้องการอย่างจงใจก่อน', mail:'go-sbp (hardcoded, template 34)', risk:'E4: updateList เป็น dead code / INNER JOIN ทำแถวที่ master ไม่ครบหายเงียบ (P1)' },
+      meta:{ trans:'ทั้ง 3 ขั้น (impacted_stores → impact_processes → impact_stores) ของ candidate หนึ่งราย อยู่ใน transaction เดียวกัน · chunk ล้ม rollback เฉพาะ chunk · ห้ามซ้อน transaction สองชั้นแบบระบบเดิม', rerun:'คู่เดิมถูกข้าม — รันซ้ำไม่อัปเดตของเดิม ต้องลบ/แก้คู่ที่ต้องการอย่างจงใจก่อน', mail:'go-sbp (hardcoded, template 34)', risk:'E4: updateList เป็น dead code / INNER JOIN ทำแถวที่ master ไม่ครบหายเงียบ (P1)' },
       hist:[
         ['07/06/2026 07:00', '58 วิ', '312', '—', 'ok', 'คู่ใหม่ 312 / ข้ามของเดิม 1,840'],
         ['07/05/2026 07:00', '1 นาที 04 วิ', '287', '—', 'ok', ''],
@@ -234,30 +236,30 @@
       phase:'A',
       cls:'th.co.gosoft.fgi.main.ImportImpactCompetitor',
       script:'/appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh',
-      cron:'0 07 7 * *',
-      cronTh:'ทุกวันที่ 7 เวลา 07:00',
+      cron:'30 07 7 * *',
+      cronTh:'ทุกวันที่ 7 เวลา 07:30 — **เหลื่อมหลัง Job 2 (07:00) เพราะต้องรอแถวแม่** · ⚠️ เวลาเหลื่อมไม่ใช่การรับประกัน ต้องตั้ง dependency ที่ AWS Batch',
       out:'sgi_fgi_impact_competitors',
       desc:'นำข้อมูลร้านคู่แข่งรายงวดจากวิว COMPETITOR_IMPACT_VIEW **ของ ALLMAP (SQL Server GSMALLMAP — ระบบภายนอก คงกลไกเดิม)** เข้า sgi_fgi_impact_competitors ทีละ 10,000 แถว กันซ้ำระดับงวด (ถ้างวดมีข้อมูลแล้วจะข้ามทั้งงวด ไม่มี upsert)',
       params:[
-        ['กำหนดการรัน (Cron)', '0 07 7 * *', 'text', 1, 'ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh; Operations ตรวจ deployment path และ owner permission ก่อนขึ้น production'],
+        ['กำหนดการรัน (Cron)', '30 07 7 * *', 'text', 1, 'เหลื่อมหลัง Job 2 (07:00) เพราะ Job 3 ต้องรอแถวแม่ · **เวลาเหลื่อมไม่ใช่การรับประกันลำดับ — ต้องตั้ง dependency ที่ AWS Batch** · ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh'],
         ['Argument (งวด)', '2569|06', 'text', 1, 'รูปแบบ YYYY|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง'],
         ['Chunk Size', '10000', 'number', 1, 'จำนวนแถวต่อรอบ insert'],
         ['Source View', 'COMPETITOR_IMPACT_VIEW', 'text', 0, 'SELECT DISTINCT / map คอลัมน์ NAMT -> NAME_TH, BRANCHT -> BRANCH_TH']
       ],
       flow:[
         { k:'start', t:'เริ่ม' },
-        { k:'d', t:'เป็นงวดใหม่ (ยังไม่เคยนำเข้า)?', no:'ข้ามทั้งงวด — ไม่มี upsert ต้องลบงวดก่อนจึงนำเข้าใหม่ได้', d:'กันซ้ำระดับงวด (Errata E15)' },
+        { k:'d', t:'เป็นงวดใหม่ (ยังไม่เคยนำเข้า)?', no:'ข้ามทั้งงวดแล้วจบด้วยสถานะ SKIPPED — ไม่ query ไม่ insert', noKind:'end', d:'กันซ้ำระดับงวด (Errata E15) · บันทึก existingRowCount + skippedPeriod=true · alert เมื่อ existingRowCount ไม่สมเหตุสมผล' },
         { k:'io', t:'SELECT DISTINCT จาก COMPETITOR_IMPACT_VIEW', d:'' },
         { k:'d', t:'พบข้อมูลต้นทาง?', no:'จบการทำงาน', noKind:'end', d:'' },
-        { k:'p', t:'insert ทีละ 10,000 แถว (ผูก impact_process_id)', d:'ช่องทางต้นทาง ALM เก็บที่ sgi_fgi_impact_processes.datasource — sgi_fgi_impact_competitors ไม่มีคอลัมน์นี้ · map คอลัมน์ NAMT → name_th และ BRANCHT → branch_th (NAMT/BRANCHT เป็นคอลัมน์ของวิวฝั่ง ALLMAP)' },
-        { k:'d', t:'จำนวนที่ insert = จำนวนต้นทาง?', no:'Rollback + ส่งเมลแจ้งล้มเหลว', noKind:'err', d:'ตรวจ reconcile จำนวนแถวก่อน commit' },
+        { k:'p', t:'insert ทีละ 10,000 แถว (ผูก impact_process_id)', d:'map COMPET_ID → competitor_store_code (ว่าง → NULL) · map ชื่อแบรนด์ → brand_code (map ไม่ได้ = NULL + นับ unmapped) · NAMT → name_th · BRANCHT → branch_th (NAMT/BRANCHT เป็นชื่อคอลัมน์จริงของวิว ALLMAP)' },
+        { k:'d', t:'reconcile: inserted + rejected + deduplicated = จำนวนต้นทาง?', no:'throw ภายใน transaction เพื่อให้ rollback ทั้งงวด', noKind:'err', d:'⚠️ ต้องตรวจ **ภายใน** transaction ก่อน commit — ถ้าตรวจหลัง commit ข้อความ Rollback จะไม่เป็นความจริง' },
         { k:'end', t:'Commit / จบ' }
       ],
       tables:[
         ['sgi_fgi_impact_competitors', 'W', 'insert รายงวด (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP · ช่องทางต้นทาง ALM เก็บที่ sgi_fgi_impact_processes.datasource']
       ],
-      rels:['sgi_fgi_impact_competitors (impact_process_id + competitor_code + period_key) → ผูกร้านถูกกระทบผ่าน hub sgi_fgi_impact_processes ไม่ได้เก็บ impacted_store_code ซ้ำ', 'PK id เป็น BIGSERIAL / Job 7 อ่านตารางนี้ไปบันทึกเข้า sgi_document_competitors (ระบบเดิม export เป็นไฟล์ BPM06003O'],
-      meta:{ trans:'หนึ่ง transaction + savepoint (insert เป็น chunk ละ 10,000)', rerun:'ต้องลบข้อมูลงวดเองก่อน re-import แล้วตรวจจำนวนแถวเทียบต้นทาง', mail:'config mailTo / storeretention', risk:'กันซ้ำระดับงวดเท่านั้น — ไม่ใช่ upsert (E15)' },
+      rels:['sgi_fgi_impact_competitors (impact_process_id + competitor_store_code + period_key) → ผูกร้านถูกกระทบผ่าน hub sgi_fgi_impact_processes ไม่ได้เก็บ impacted_store_code ซ้ำ · competitor_store_code = รหัสสาขาจาก ALLMAP (ไม่มี FK) · brand_code = รหัสแบรนด์ master', 'PK id เป็น BIGSERIAL / Job 7 อ่านตารางนี้ไปบันทึกเข้า sgi_document_competitors (ระบบเดิม export เป็นไฟล์ BPM06003O'],
+      meta:{ trans:'transaction เดียวคลุมทั้งงวด (insert เป็น chunk ละ 10,000 แต่ commit ครั้งเดียวตอนจบ) · reconcile ต้องอยู่ในขอบเขต transaction · chunk ใดล้ม = rollback ทั้งงวด · ห้ามซ้อน transaction สองชั้นแบบระบบเดิม', rerun:'งวดที่มีข้อมูลแล้วถูกข้าม (ไม่อัปเดตของเดิม) — ต้องลบข้อมูลงวดเองก่อน re-import แล้วตรวจจำนวนแถวเทียบต้นทาง', mail:'config mailTo / storeretention', risk:'กันซ้ำระดับงวดเท่านั้น — ไม่ใช่ upsert (E15)' },
       hist:[
         ['07/06/2026 07:05', '42 วิ', '2,410', '—', 'ok', ''],
         ['07/05/2026 07:05', '40 วิ', '2,377', '—', 'ok', ''],
@@ -321,9 +323,9 @@
       cron:'30 16 7-16 * *',
       cronTh:'วันที่ 7–16 เวลา 16:30 — **เป็นตารางของโหมด safety-net เท่านั้น** (ทางปกติคือ consumer SubmitJob เมื่อ EAI แจ้งว่าไฟล์พร้อม · มติ 2026-09-08)',
       out:'AMS06001I (รับเข้า)',
-      desc:'ถูก **สั่งให้ทำงานโดย `srm-sps-spsap-store-consumer`** (มติ 2026-09-08) — EAI ส่งข้อความเข้า RabbitMQ ว่าไฟล์ตอบกลับ AMS06001I พร้อมแล้ว consumer อ่าน config จาก S3 แล้ว SubmitJob มาที่ job นี้พร้อม `INPUT` ที่มี `dataType`/`urls` · job **ดาวน์โหลดไฟล์จาก S3 URI ที่ได้รับเอง** (consumer ไม่ดาวน์โหลดให้) · ไม่ใช่ cron ที่ไปไล่หาไฟล์เองอีกต่อไป · แทนการรับผ่าน SFTP ตามมติ 2026-08-24 บันทึกยอดขายรายวันลง sgi_sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff',
+      desc:'**consume คิวของ EAI เองใน `srm-sps-spsap-sop-sgi-batch`** (มติ 2026-09-12 — ตัด repo `store-consumer` ออกจากขอบเขต) — EAI ส่งข้อความเข้า RabbitMQ ว่าไฟล์ตอบกลับ AMS06001I พร้อมแล้ว · job อ่าน `dataType`/`urls` จาก envelope แล้ว **ดาวน์โหลดไฟล์จาก S3 URI เอง** · ⚠️ repo ปลายทางมีแต่ `publishMessage` **ยังไม่มี consumer** ต้องสร้างใหม่ · cron เป็น safety net · แทนการรับผ่าน SFTP ตามมติ 2026-08-24 บันทึกยอดขายรายวันลง sgi_sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff',
       params:[
-        ['ตัวกระตุ้น (Trigger)', 'ข้อความจาก EAI ผ่าน srm-sps-spsap-store-consumer', 'text', 1, 'มติ 2026-09-08 — consumer bind คิวของ SGI แล้ว SubmitJob มาที่ job นี้ · cron เดิม 30 16 7-16 * * เก็บไว้เป็น **safety net** เผื่อข้อความหาย (รันแล้วไม่เจอไฟล์ใหม่ = จบทันที ไม่ error)'],
+        ['ตัวกระตุ้น (Trigger)', 'ข้อความจาก EAI ผ่าน RabbitMQ (job consume เอง)', 'text', 1, 'มติ 2026-09-12 — job bind คิวเองใน sop-sgi-batch (ตัด repo store-consumer ออก) · cron เดิม 30 16 7-16 * * เก็บไว้เป็น **safety net** เผื่อข้อความหาย (รันแล้วไม่เจอไฟล์ใหม่ = จบทันที ไม่ error)'],
         ['Input File', 'AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์)', 'text', 0, 'impacted_store_code | วันเปิดร้านใหม่ | วันที่ขาย | ยอดขาย (4 ฟิลด์ตามสัญญาไฟล์ของ IAS)'],
         ['หน้าต่างคำนวณ', '4 ช่วง × 15 วัน รอบวันเปิดร้านใหม่ (ไม่รวมวันเปิด) — วันเปิดร้านอ่านจาก master ของระบบ SBP เดิม', 'text', 0, ''],
         ['เกณฑ์ Outlier', '|sales_diff| ≥ 50', 'number', 0, 'literal ในโค้ด — เปลี่ยนต้องอนุมัติธุรกิจ (8.2)'],
@@ -332,7 +334,7 @@
       ],
       flow:[
         { k:'start', t:'เริ่ม' },
-        { k:'io', t:'ดาวน์โหลดไฟล์จาก S3 URI ที่ได้รับใน INPUT (store-consumer ส่งแค่ที่อยู่ · มติ 2026-09-08) แล้วอ่าน WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิดร้านใหม่', d:'' },
+        { k:'io', t:'consume ข้อความจากคิว → ได้ S3 URI → ดาวน์โหลดไฟล์เอง แล้วอ่าน WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิดร้านใหม่', d:'job bind คิวเอง (มติ 2026-09-12) · ข้อความบอกแค่ที่อยู่ไฟล์' },
         { k:'d', t:'เป็นงวดที่ยังไม่นำเข้า?', no:'จบ (idempotency guard กันนำเข้าซ้ำ)', noKind:'end', d:'' },
         { k:'p', t:'เปิด transaction ต่อไฟล์ แล้ว insert sgi_sales_transactions แถวดิบ', d:'ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน' },
         { k:'p', t:'insert sgi_interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = COMPLETED', d:'บันทึก*การรับไฟล์* — ทำทันทีที่อ่านไฟล์สำเร็จ ไม่ผูกกับผล Y/N เพราะไฟล์มาถึงแล้วไม่ว่าผลจะเป็นอะไร (ถ้าผูกกับสาขา Y งวดที่ผลเป็น N จะไม่มีบันทึก แล้ว Job 10 จะเข้าใจว่า IAS ไม่ตอบกลับ) · เป็นขารับกลับของรอบที่ Job 4 ส่งออก จึงใช้ data_name เดิม — UNIQUE (data_name, direction, business_key, period_key) แยกขา OUT/IN ให้อยู่แล้ว · typed FK = sales_summary_id · acked_at = now' },
@@ -391,7 +393,7 @@
         { k:'p', t:'ประกอบ payload JSON UTF-8 14 ฟิลด์ (วันที่ พ.ศ. ตามสัญญาเดิม)', d:'ฟิลด์ผิด/แปลงวันที่ไม่ได้แม้แถวเดียว = ยกเลิกทั้งรอบ (คงพฤติกรรม mapData เดิม)' },
         { k:'p', t:'insert outbox: I,C → COMPENSATE_INIT_I/N · A,N,S,Z → COMPENSATE_APPROVE_I/N (direction = OUT · status = READY)', d:'อยู่ใน transaction เดียวกับ 10 mutation — commit แล้วข้อมูลจะไม่หาย แม้ broker ล่ม' },
         { k:'io', tx:0, t:'publish ไป RabbitMQ exchange sgi.interface (routing sta.compensation.result)', d:'นอก DB transaction · persistent + publisher confirm + mandatory' },
-        { k:'d', tx:0, t:'ได้ publisher confirm?', no:'คง outbox เป็น READY/FAILED_RETRY ให้ dispatcher ส่งซ้ำ — ไม่ rollback การ sync', noKind:'err', d:'เลี่ยง dual-write: การ sync สถานะกับการส่ง message แยก commit กัน · ส่งซ้ำได้เพราะ STA กันซ้ำด้วย message_id' },
+        { k:'d', tx:0, t:'ได้ publisher confirm?', no:'คง outbox เป็น READY/FAILED_RETRY ให้ dispatcher ส่งซ้ำ — ไม่ rollback การ sync', noKind:'mark', d:'เลี่ยง dual-write: การ sync สถานะกับการส่ง message แยก commit กัน · ส่งซ้ำได้เพราะ STA กันซ้ำด้วย message_id' },
         { k:'p', tx:0, t:'update outbox: outbox_status READY → PUBLISHED → CONFIRMED (บันทึก sent_at)', d:'CONFIRMED ตั้งได้เฉพาะเมื่อได้ publisher confirm จาก broker · Job 10 เฝ้าแถวที่ยังไม่ CONFIRMED ≥ 1 วัน' },
         { k:'end', t:'จบ' }
       ],
@@ -423,20 +425,20 @@
       phase:'C',
       cls:'document.service.syncCompetitors',
       script:'(internal scheduler / service)',
-      cron:'30 17 7-31 * *',
-      cronTh:'วันที่ 7–31 เวลา 17:30',
+      cron:'0 18 7-31 * *',
+      cronTh:'วันที่ 7–31 เวลา 18:00 — **เหลื่อมหลัง Job 8 (17:30) เพราะต้องรอ doc_no** · ⚠️ ต้องตั้ง dependency ที่ AWS Batch',
       out:'sgi_document_competitors (DB)',
       desc:'อ่านข้อมูลคู่แข่งล่าสุดจาก sgi_fgi_impact_competitors แล้วบันทึกเข้า sgi_document_competitors ผ่าน Document Service โดยตรง แทนการเขียนไฟล์ BPM06003O และ SFTP ไป BPM',
       params:[
-        ['กำหนดการรัน (Cron)', '30 17 7-31 * *', 'text', 1, 'ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน'],
-        ['Target table', 'sgi_document_competitors', 'text', 0, 'upsert ด้วย doc_no / competitor_code / source_system=ALM'],
+        ['กำหนดการรัน (Cron)', '0 18 7-31 * *', 'text', 1, 'เหลื่อมหลัง Job 8 (17:30) เพราะต้องรอ doc_no · **เวลาเหลื่อมไม่ใช่การรับประกัน — ต้องตั้ง dependency ที่ AWS Batch**'],
+        ['Target table', 'sgi_document_competitors', 'text', 0, 'upsert ด้วย doc_no / competitor_store_code · source_system = ALLMAP (ค่า canonical ค่าเดียวทั้งระบบ)'],
         ['เงื่อนไขเลือกข้อมูล', 'งวดคู่แข่งล่าสุดต่อร้าน + forecast เริ่มต้น + ยังไม่ sync', 'text', 0, 'คง business rule เดิม']
       ],
       flow:[
         { k:'start', t:'เริ่ม' },
         { k:'p', t:'อ่านคู่แข่งงวดล่าสุดต่อร้านจาก sgi_fgi_impact_competitors', d:'dense rank ตามงวดต้นทางของคู่แข่ง' },
-        { k:'d', t:'มี sgi_compensation_documents ของ impact_process_id แล้ว?', no:'คงสถานะรอ sync / log pending', noKind:'err', d:'' },
-        { k:'p', t:'upsert sgi_document_competitors', d:'source_system=ALM, ผูก doc_no และ competitor_code' },
+        { k:'d', t:'มี sgi_compensation_documents ของ impact_process_id แล้ว?', no:'คงสถานะรอ sync / log pending', noKind:'mark', d:'' },
+        { k:'p', t:'upsert sgi_document_competitors', d:'source_system = ALLMAP · ผูก doc_no และ competitor_store_code · คัดลอก brand_code มาด้วย' },
         { k:'p', t:'insert sgi_interface_transactions: data_name = IMPACT_COMPETITOR · direction = INTERNAL · status = COMPLETED', d:'ไม่สร้างไฟล์ BPM06003O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ' },
         { k:'end', t:'จบ' }
       ],
@@ -447,7 +449,7 @@
         ['sgi_interface_transactions', 'W', 'tracking ภายใน: direction=INTERNAL · status=COMPLETED (ไม่มี ACK ให้รอเพราะเขียน DB ตรง)']
       ],
       rels:['แทน legacy BPM06003O ด้วย sgi_document_competitors.doc_no -> sgi_compensation_documents', 'ไม่มี SFTP/EAI/BPM ภายในใน target architecture'],
-      meta:{ trans:'DB transaction ครอบการ upsert sgi_document_competitors + tracking', rerun:'idempotent ด้วย doc_no + competitor_code + source_system', mail:'ส่ง error ผ่าน email-lib กลาง (sendEmail) เมื่อ sync ล้มเหลว', risk:'ห้าม re-implement การเขียนไฟล์ BPM06003O หรือ SFTP ไป BPM; legacy file เป็น reference เท่านั้น' },
+      meta:{ trans:'DB transaction ครอบการ upsert sgi_document_competitors + tracking', rerun:'idempotent ด้วย doc_no + competitor_store_code + source_system (ALLMAP)', mail:'ส่ง error ผ่าน email-lib กลาง (sendEmail) เมื่อ sync ล้มเหลว', risk:'ห้าม re-implement การเขียนไฟล์ BPM06003O หรือ SFTP ไป BPM; legacy file เป็น reference เท่านั้น' },
       hist:[
         ['30/06/2026 17:30', '-', '-', 'sgi_document_competitors (DB)', 'ok', 'target design - DB/internal workflow']
       ],
@@ -475,7 +477,7 @@
       flow:[
         { k:'start', t:'เริ่ม' },
         { k:'p', t:'query impact profile สถานะ I + forecast + ยังไม่สร้างเอกสาร', d:'ใช้ impact_process_id เป็น idempotency key' },
-        { k:'d', t:'ข้อมูลผู้อนุมัติ/ร้าน/ยอดชดเชยครบ?', no:'บันทึก reject reason / ไม่สร้างเอกสาร', noKind:'err', d:'' },
+        { k:'d', t:'ข้อมูลผู้อนุมัติ/ร้าน/ยอดชดเชยครบ?', no:'บันทึก reject reason / ไม่สร้างเอกสาร', noKind:'mark', d:'' },
         { k:'p', t:'generate doc_no YYYY/xxxxx', d:'running ต่อปี ค.ศ. (มติ 2026-08-06)' },
         { k:'p', t:'insert sgi_compensation_documents', d:'ผูก impact_process_id และสถานะเริ่มต้น' },
         { k:'p', t:'insert sgi_interface_transactions: data_name = IMPACT_STORE · direction = INTERNAL · status = COMPLETED', d:'ไม่สร้างไฟล์ BPM06001O แล้ว — เขียน DB ตรงจึงไม่มี ACK ให้รอ' },
@@ -554,12 +556,12 @@
       phase:'C',
       cls:'document.service.syncNewStores',
       script:'(internal scheduler / service)',
-      cron:'30 17 7-31 * *',
-      cronTh:'วันที่ 7–31 เวลา 17:30',
+      cron:'0 18 7-31 * *',
+      cronTh:'วันที่ 7–31 เวลา 18:00 — **เหลื่อมหลัง Job 8 (17:30) เพราะต้องรอ doc_no** · ⚠️ ต้องตั้ง dependency ที่ AWS Batch',
       out:'sgi_document_new_stores (DB)',
       desc:'อ่านโปรไฟล์ร้านเปิดใหม่และค่า forecast/adjust แล้วบันทึกเข้า sgi_document_new_stores ผ่าน Document Service โดยตรง แทนการเขียนไฟล์ BPM06002O และ SFTP ไป impactprofile',
       params:[
-        ['กำหนดการรัน (Cron)', '30 17 7-31 * *', 'text', 1, 'ใช้รอบเดิม แต่ปลายทางเป็น DB ภายใน'],
+        ['กำหนดการรัน (Cron)', '0 18 7-31 * *', 'text', 1, 'เหลื่อมหลัง Job 8 (17:30) เพราะต้องรอ doc_no · **เวลาเหลื่อมไม่ใช่การรับประกัน — ต้องตั้ง dependency ที่ AWS Batch**'],
         ['Target table', 'sgi_document_new_stores', 'text', 0, 'upsert ด้วย doc_no / new_store_code'],
         ['กฎ Forecast / Percent', 'COALESCE(adjust_amount, forecast_amount) จาก sgi_fgi_impact_compensations', 'text', 0, 'ค่า adjust มาก่อน forecast เสมอ; NULL หรือค่านอกช่วง 0..100 ต้อง reject ก่อน upsert'],
         ['เงื่อนไขเลือกข้อมูล', 'ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync', 'text', 0, '']
@@ -567,7 +569,7 @@
       flow:[
         { k:'start', t:'เริ่ม' },
         { k:'p', t:'query ร้านเปิดใหม่ สถานะ I + forecast + ยังไม่ sync', d:'' },
-        { k:'d', t:'มี sgi_compensation_documents ของ impact_process_id แล้ว?', no:'คงสถานะรอ sync / log pending', noKind:'err', d:'' },
+        { k:'d', t:'มี sgi_compensation_documents ของ impact_process_id แล้ว?', no:'คงสถานะรอ sync / log pending', noKind:'mark', d:'' },
         { k:'d', t:'compensate_percent ครบและอยู่ในช่วง 0..100 ทุกแถว?', no:'COMPENSATE_PERCENT_INVALID + rollback ก่อน upsert/prune', noKind:'err', d:'COALESCE(adjust_compensate_percent, forecast_compensate_percent) ต้องไม่เป็น NULL' },
         { k:'p', t:'upsert sgi_document_new_stores', d:'compensate_percent = COALESCE(adjust_compensate_percent, forecast_compensate_percent) · compensation_amount = COALESCE(adjust_amount, forecast_amount)' },
         { k:'p', t:'validate allocation percent รวมต่อ doc_no', d:'ต้องรวมได้ 100 ก่อน submit workflow' },
@@ -640,21 +642,21 @@
       cron:'event-driven',
       cronTh:'ไม่มีตารางเวลา — consumer SubmitJob ให้ทุกครั้งที่มีข้อความเข้าคิว (มติ 2026-09-08 · 1 ข้อความ = 1 การรัน)',
       out:'sgi_fgi_impact_compensations (forecast_amount / adjust_amount)',
-      desc:'**ไม่ต่อ RabbitMQ เอง** (มติ 2026-09-08) — `srm-sps-spsap-store-consumer` เป็นผู้ consume คิว `sta_update_compensate` แล้ว SubmitJob มาที่ job นี้พร้อม `INPUT` = ข้อความทั้ง envelope · job มีหน้าที่ **อัปเดตยอดเงินประกันรายได้ของงวดที่ระบุ** อย่างเดียว — ปิดช่องว่างที่สเปก STA บังคับให้ SGI consume แต่ยังไม่มีเอกสารรองรับ (มติ 2026-09-02)',
+      desc:'**consume คิว `sta_update_compensate` เองใน `srm-sps-spsap-sop-sgi-batch`** (มติ 2026-09-12 — ตัด repo `store-consumer` ออกจากขอบเขต) · job รับผิดชอบทั้ง **bind คิว · ack/nack · DLQ · retry** และ **อัปเดตยอดเงินประกันรายได้ของงวดที่ระบุ** · ⚠️ repo ปลายทางมีแต่ `publishMessage` **ยังไม่มี consumer** ต้องสร้างใหม่ — ปิดช่องว่างที่สเปก STA บังคับให้ SGI consume แต่ยังไม่มีเอกสารรองรับ (มติ 2026-09-02)',
       params:[
-        ['ตัวกระตุ้น (Trigger)', 'ข้อความจาก STA ผ่าน srm-sps-spsap-store-consumer', 'text', 1, 'มติ 2026-09-08 — 1 ข้อความ = 1 การรัน (ไม่ใช่ cron ทุก 10 นาที) · consumer คุม prefetch/ack ให้'],
-        ['Queue', 'srm.sgi.sta-update-compensate.queue', 'text', 0, '**consumer เป็นผู้ bind/consume คิวนี้ ไม่ใช่ job** — ระบุไว้เพื่ออ้างอิง · ชื่อ queue/routing key ต้อง confirm กับทีม STA'],
+        ['ตัวกระตุ้น (Trigger)', 'ข้อความจาก STA ผ่าน RabbitMQ (job consume เอง)', 'text', 1, 'มติ 2026-09-12 — job bind คิวเองใน sop-sgi-batch · 1 ข้อความ = 1 หน่วยงาน (ไม่ใช่ cron) · job คุม prefetch/ack เอง'],
+        ['Queue', 'srm.sgi.sta-update-compensate.queue', 'text', 0, '**job เป็นผู้ bind/consume คิวนี้เอง** (มติ 2026-09-12) · ชื่อ queue/routing key ต้อง confirm กับทีม STA'],
         ['dataName ที่รับ', 'sta_update_compensate', 'text', 0, 'ข้ามข้อความที่ dataName ไม่ตรง (log warn + ack ทิ้ง)'],
-        ['DLQ', 'srm.sgi.sta-update-compensate.dlq', 'text', 0, '**เป็นหน้าที่ของ consumer ไม่ใช่ job** — ⚠️ ทั้ง DLQ และ retry ยังไม่มีในโค้ด consumer (ข้อ C1/C2) ต้องผลักให้ทีมนั้นเพิ่มก่อน UAT']
+        ['DLQ', 'srm.sgi.sta-update-compensate.dlq', 'text', 0, '🔴 **เป็นหน้าที่ของ job นี้เอง** (มติ 2026-09-12) — repo ปลายทางยังไม่มีทั้ง consumer · DLQ · retry policy ต้องสร้างใหม่ทั้งชุด']
       ],
       flow:[
         { k:'start', t:'เริ่ม' },
-        { k:'io', t:'รับ INPUT = envelope ที่ store-consumer ส่งมา (ไม่ต่อ RabbitMQ เอง · มติ 2026-09-08)', d:'exchange sgi.interface' },
+        { k:'io', t:'consume ข้อความจากคิว sta_update_compensate เอง (มติ 2026-09-12)', d:'exchange sgi.interface · job คุม prefetch/ack/nack เอง' },
         { k:'d', t:'dataName ตรง sta_update_compensate ไหม?', no:'จบการทำงาน', noKind:'end', d:'คิวว่าง = จบแบบ SUCCESS' },
         { k:'p', t:'ตรวจ envelope: dataType/dataName/sender/sentAt + schema ของ dataMessage', d:'ผิดรูป = เข้า DLQ' },
         { k:'p', t:'กันซ้ำด้วย sgi_interface_transactions (direction IN)', d:'business_key + period_key เดิม = ack ทิ้ง' },
         { k:'p', t:'อัปเดต forecast_amount / adjust_amount ของงวดที่ระบุ ใน transaction', d:'impactStatus Z = ยอดศูนย์ · W = ไม่ศูนย์' },
-        { k:'io', t:'จบงาน — exit code บอกผลให้ AWS Batch (ack/nack เป็นหน้าที่ของ consumer)', d:'commit ไม่ผ่าน = nack + requeue' },
+        { k:'io', t:'commit สำเร็จ = ack · ล้มเหลว = nack + requeue หรือส่งเข้า DLQ', d:'job เป็นผู้ตัดสินใจ ack/nack เอง (มติ 2026-09-12)' },
         { k:'end', t:'จบ' }
       ],
       tables:[

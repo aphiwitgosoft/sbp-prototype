@@ -408,7 +408,7 @@ export class SgiWorkflowInstancesService {
     await runner.startTransaction();
     try {
       // TODO: lock แถวเป้าหมายของ sgi_fgi_impact_processes ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SGI_SQL.createSgiWorkflowInstancesLock, [body.requestId]);
+      const [current] = await runner.query(SGI_SQL.createSgiWorkflowInstancesLock, [body.sourceJobNo]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }
@@ -518,7 +518,7 @@ export class FgiImpactProcess {
   @Column({ name: 'impact_year', type: 'int' })
   impactYear: number;
 
-  @Column({ name: 'process_status', type: 'varchar', length: 30 })
+  @Column({ name: 'process_status', type: 'varchar', length: 30, default: 'IMPORTED' })
   processStatus: string;
 
   @Column({ name: 'action_status', type: 'varchar', length: 30, nullable: true })
@@ -831,7 +831,7 @@ WHERE id = $1 /* impactProcessId */ AND workflow_generation_status = $3 /* flagW
 --    initialize(versionId=:sgiVersionId, referenceId=:referenceId, userId=:serviceActor)
 --    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
 -- referenceId = sgi_compensation_documents.id (DP-1 ปิดแล้ว) · ไม่มี UNIQUE กันซ้ำจริงบน
---    sps_store.workflow_transaction (ไม่มี PK/index · 19,283 แถว) → กันซ้ำที่ application (DP-2)
+--    sps_store.workflow_transaction (ไม่มี PK/index · 19,327 แถว) → กันซ้ำที่ application (DP-2)
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT d.doc_no FROM sgi_compensation_documents d
 WHERE d.impact_process_id = $1 /* impactProcessId */ AND $4 /* gateDecision */ = $5 /* flagY */;
@@ -843,7 +843,7 @@ WHERE id = $1 /* impactProcessId */ AND workflow_generation_status = $3 /* flagW
 
 ```sql
 -- bind ตามลำดับ: $1=id · $2=sgiVersionId · $3=referenceId
--- ✅ DP-1 ปิดแล้ว: referenceId = sgi_compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ห้ามแก้ schema ของ library
+-- ✅ DP-1 ปิดแล้ว: referenceId = sgi_compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,327 แถว → seq-scan) ห้ามแก้ schema ของ library
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.transaction_id, w.reference_id, w.current_state_id, w.current_status_id, w.current_approver,
        a.state_id AS pending_state_id, a.approver_id, a.approve_seq
@@ -858,16 +858,17 @@ SELECT doc_no, status_code, current_section_code FROM sgi_compensation_documents
 **GET /api/v1/sgi/workflow/summary** — สรุป W/Y/N และงานค้างต่อ section สำหรับ monitor
 
 ```sql
--- bind ตามลำดับ: $1=sgiVersionId · $2=statusDone
+-- bind ตามลำดับ: $1=period · $2=sgiVersionId · $3=statusDone
 SELECT workflow_generation_status, COUNT(*) AS cnt
 FROM sgi_fgi_impact_processes
+WHERE ($1 /* period */ IS NULL OR impact_month = $1 /* period */)   -- YYYY-MM (ค.ศ.) · ไม่ระบุ = ทุกงวด
 GROUP BY workflow_generation_status;
 
--- ✅ DP-1 ปิดแล้ว: referenceId = sgi_compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,283 แถว → seq-scan) ห้ามแก้ schema ของ library
+-- ✅ DP-1 ปิดแล้ว: referenceId = sgi_compensation_documents.id (surrogate) · ⚠️ DP-2 (sps_store.workflow_transaction ไม่มี PK/index · 19,327 แถว → seq-scan) ห้ามแก้ schema ของ library
 --    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4
 SELECT w.current_state_id AS section_code, COUNT(*) AS open_tasks
 FROM sps_store.workflow_transaction w
-WHERE w.version_id = $1 /* sgiVersionId */ AND w.current_status_id <> $2 /* statusDone */
+WHERE w.version_id = $2 /* sgiVersionId */ AND w.current_status_id <> $3 /* statusDone */
 GROUP BY w.current_state_id;
 ```
 

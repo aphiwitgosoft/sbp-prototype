@@ -280,7 +280,69 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
   "impactedStore": {
     "storeCode": "01234"
   },
-  "newStores": []
+  "newStores": [],
+  "competitors": [
+    {
+      "competitorCode": "01",
+      "nameTh": "โลตัสเอ็กซ์เพรส",
+      "branchTh": "สาขารัตนอุทิศ",
+      "openedDate": "2023-10-10",
+      "impactDate": "2026-06-01",
+      "detail": "",
+      "sourceSystem": "ALLMAP"
+    }
+  ],
+  "externalFactors": [
+    {
+      "factorCode": "F003",
+      "factorName": "การก่อสร้าง / ปิดถนน",
+      "dateFrom": "2026-05-01",
+      "dateTo": null,
+      "detail": ""
+    }
+  ],
+  "attachments": [
+    {
+      "attachId": 4471,
+      "fileName": "impact_report.pdf",
+      "fileSize": 1887436,
+      "mimeType": "application/pdf",
+      "sectionCode": "06",
+      "scanStatus": "CLEAN",
+      "uploadedBy": "somchai.k",
+      "uploadedAt": "2026-06-12T09:31:00"
+    }
+  ],
+  "costDetails": [
+    {
+      "newStoreCode": "00990",
+      "costYear": 2026,
+      "costMonth": 6,
+      "costTargetN": 250000.0,
+      "costAmountN": 232000.0,
+      "costTargetNc": 0,
+      "costAmountNc": 0
+    }
+  ],
+  "compensationHistories": [
+    {
+      "submitAccountMonth": "2026-05",
+      "compensationAmount": 18000.0,
+      "refDocNo": "2026/00098",
+      "accountingStatus": "POSTED"
+    }
+  ],
+  "considerationLogs": [
+    {
+      "sectionCode": "06",
+      "result": "ส่งเจ้าหน้าที่ SBP DSA",
+      "resultCategory": "PENDING",
+      "detail": "",
+      "considerBy": "somchai.k",
+      "actionDatetime": "2026-06-12T10:02:00"
+    }
+  ],
+  "allmapUrl": "https://allmap.example/store/01234"
 }
 ```
 
@@ -303,6 +365,50 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 | impactedStore | object | Yes | JSON object; nested fields listed below |
 | impactedStore.storeCode | string | Yes | exactly 5 digits; preserve leading zero |
 | newStores | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| competitors | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| competitors[].competitorCode | string | Yes | รหัสแบรนด์คู่แข่งจาก master 01–11 เท่านั้น (ห้าม free text) |
+| competitors[].nameTh | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| competitors[].branchTh | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| competitors[].openedDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| competitors[].impactDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| competitors[].detail | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| competitors[].sourceSystem | string | Yes | ALLMAP = ระบบดึงมาเอง · USER = ผู้ใช้คีย์เพิ่ม |
+| externalFactors | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| externalFactors[].factorCode | string | Yes | รหัสปัจจัยภายนอกจาก master (sgi_external_factors.factor_code) |
+| externalFactors[].factorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| externalFactors[].dateFrom | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| externalFactors[].dateTo | string \| null | No | UTF-8; use value domain described by endpoint purpose |
+| externalFactors[].detail | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| attachments[].attachId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].fileSize | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].mimeType | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].sectionCode | string | Yes | canonical code; do not replace with display label |
+| attachments[].scanStatus | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].uploadedBy | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].uploadedAt | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| costDetails | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| costDetails[].newStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
+| costDetails[].costYear | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| costDetails[].costMonth | integer | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| costDetails[].costTargetN | number | Yes | UTF-8; use value domain described by endpoint purpose |
+| costDetails[].costAmountN | number | Yes | number >= 0 with 2 decimals |
+| costDetails[].costTargetNc | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| costDetails[].costAmountNc | integer | Yes | number >= 0 with 2 decimals |
+| compensationHistories | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| compensationHistories[].submitAccountMonth | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| compensationHistories[].compensationAmount | number | Yes | number >= 0 with 2 decimals · ⚠️ มาจากคนละคอลัมน์ตามที่อยู่: ใน `newStores[]` = `sgi_document_new_stores.compensation_amount` · ใน `compensationHistories[]` = `sgi_compensation_histories.compensate_amount` |
+| compensationHistories[].refDocNo | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| compensationHistories[].accountingStatus | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| considerationLogs | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| considerationLogs[].sectionCode | string | Yes | canonical code; do not replace with display label |
+| considerationLogs[].result | string | Yes | ช่อง **ผลการพิจารณา** (มีเฉพาะหน้า *ที่เกี่ยวข้อง*) — `APPROVE` / `REJECT` / `CANCELLED` / `NONE` · ดูจากผลพิจารณา **ล่าสุด** ของเอกสารใน `sgi_consideration_logs` ไม่ได้อยู่ที่หัวเอกสาร |
+| considerationLogs[].resultCategory | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| considerationLogs[].detail | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| considerationLogs[].considerBy | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| considerationLogs[].actionDatetime | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| allmapUrl | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### POST /api/v1/sgi/document/{docNo}/actions
 
@@ -321,7 +427,7 @@ FE ต้อง render ตัวเลือกจาก `actionOptions` ที�
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| result | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| result | string | Yes | ช่อง **ผลการพิจารณา** (มีเฉพาะหน้า *ที่เกี่ยวข้อง*) — `APPROVE` / `REJECT` / `CANCELLED` / `NONE` · ดูจากผลพิจารณา **ล่าสุด** ของเอกสารใน `sgi_consideration_logs` ไม่ได้อยู่ที่หัวเอกสาร |
 | comment | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
 
 #### Response
@@ -470,6 +576,33 @@ export interface SgiDocumentDetailResponse {
     storeCode: string;
   };
   newStores: unknown[];
+  competitors: {
+    competitorCode: string;
+    nameTh: string;
+    branchTh: string;
+    openedDate: string;
+    impactDate: string;
+    detail: string;
+    sourceSystem: string;
+  }[];
+  externalFactors: {
+    factorCode: string;
+    factorName: string;
+    dateFrom: string;
+    dateTo: string | null;
+    detail: string;
+  }[];
+  attachments: {
+    attachId: number;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    sectionCode: string;
+    scanStatus: string;
+    uploadedBy: string;
+    uploadedAt: string;
+  }[];
+  // TODO: field ที่เหลือดูจากตาราง API ในเอกสารนี้
 }
 
 /** POST /api/v1/sgi/document/{docNo}/actions — request */

@@ -681,6 +681,9 @@ export class CompensationDocument {
   @Column({ name: 'impact_process_id', type: 'bigint' })
   impactProcessId: number;
 
+  @Column({ name: 'impact_compensation_id', type: 'bigint' })
+  impactCompensationId: number;
+
   @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
@@ -699,7 +702,7 @@ export class CompensationDocument {
   @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
   source: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  @Column({ name: 'status_code', type: 'varchar', length: 2, default: '06' })
   statusCode: string;
 
   @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })

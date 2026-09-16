@@ -109,7 +109,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Document Create and Updat
 ### 5.4 docNo Generator SQL Reference
 
 ```sql
--- bind ตามลำดับ: $1=year · $2=docNo · $3=runningNo · $4=impactProcessId · $5=impactedStoreCode · $6=impactMonth · $7=newStoreCode · $8=roundNo · $9=source · $10=statusInit · $11=userId
+-- bind ตามลำดับ: $1=year · $2=docNo · $3=runningNo · $4=impactProcessId · $5=impactCompensationId · $6=impactedStoreCode · $7=impactMonth · $8=newStoreCode · $9=roundNo · $10=source · $11=statusInit · $12=userId
 -- ออกเลขเอกสาร YYYY/xxxxx แบบ atomic ต่อ "ปี ค.ศ." (ห้ามใช้ พ.ศ. — ดู api.md มติ 2026-08-06)
 -- ตารางจริงคือ sgi_document_running_numbers (year · last_running_no · updated_at) ไม่มีคอลัมน์ created_at
 
@@ -130,12 +130,12 @@ RETURNING last_running_no;          -- → :runningNo
 --    ⚠️ ต้องใส่ impact_process_id ทุกครั้ง — เป็น NOT NULL UNIQUE (หนึ่ง impact process = หนึ่งเอกสาร)
 INSERT INTO sgi_compensation_documents (
     doc_no, year, running_no,
-    impact_process_id, impacted_store_code, impact_month, new_store_code,
+    impact_process_id, impact_compensation_id, impacted_store_code, impact_month, new_store_code,
     round_no, source, status_code, current_section_code, created_by
 ) VALUES (
     $2 /* docNo */, $1 /* year */, $3 /* runningNo */,
-    $4 /* impactProcessId */, $5 /* impactedStoreCode */, $6 /* impactMonth */, $7 /* newStoreCode */,
-    $8 /* roundNo */, $9 /* source */, $10 /* statusInit */, '06', $11 /* userId */
+    $4 /* impactProcessId */, $5 /* impactCompensationId */, $6 /* impactedStoreCode */, $7 /* impactMonth */, $8 /* newStoreCode */,
+    $9 /* roundNo */, $10 /* source */, $11 /* statusInit */, '06', $12 /* userId */
 );
 -- created_at / total_compensation_amount / version_no มี DEFAULT อยู่แล้ว ไม่ต้องส่ง
 ```
@@ -297,7 +297,7 @@ Update document partial sections
 | newStores | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | newStores[].newStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
 | newStores[].compensatePercent | integer | Yes | number 0..100 with 2 decimals |
-| newStores[].compensationAmount | number | Yes | number >= 0 with 2 decimals |
+| newStores[].compensationAmount | number | Yes | number >= 0 with 2 decimals · ⚠️ มาจากคนละคอลัมน์ตามที่อยู่: ใน `newStores[]` = `sgi_document_new_stores.compensation_amount` · ใน `compensationHistories[]` = `sgi_compensation_histories.compensate_amount` |
 | newStores[].sourceSystem | string | Yes | ALLMAP = ระบบดึงมาเอง · USER = ผู้ใช้คีย์เพิ่ม |
 | competitors | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
 | competitors[].id | integer | No | id ของแถวเดิม — **ไม่ส่ง = แถวที่ผู้ใช้เพิ่มใหม่ (INSERT)** · แถวเดิมที่ไม่ถูกส่งมาถือว่าถูกลบ |
@@ -563,7 +563,7 @@ export class SgiDocumentCreateUpdateService {
     await runner.startTransaction();
     try {
       // TODO: lock แถวเป้าหมายของ sgi_compensation_documents ด้วย SELECT ... FOR UPDATE ก่อนเขียน
-      const [current] = await runner.query(SGI_SQL.createSgiDocumentLock, [body.impactMonth]);
+      const [current] = await runner.query(SGI_SQL.createSgiDocumentLock, [body.impactedStoreCode]);
       if (!current) {
         throw new NotFoundException('ไม่พบข้อมูลที่ต้องการ');
       }
@@ -635,6 +635,9 @@ export class CompensationDocument {
   @Column({ name: 'impact_process_id', type: 'bigint' })
   impactProcessId: number;
 
+  @Column({ name: 'impact_compensation_id', type: 'bigint' })
+  impactCompensationId: number;
+
   @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
@@ -653,7 +656,7 @@ export class CompensationDocument {
   @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
   source: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  @Column({ name: 'status_code', type: 'varchar', length: 2, default: '06' })
   statusCode: string;
 
   @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })
@@ -726,6 +729,9 @@ export class DocumentNewStore {
 
   @Column({ name: 'source_system', type: 'varchar', length: 30 })
   sourceSystem: string;
+
+  @Column({ name: 'source_row_id', type: 'bigint', nullable: true })
+  sourceRowId?: number;
 
   @Column({ name: 'updated_at', type: 'timestamp' })
   updatedAt: Date;
@@ -902,14 +908,14 @@ export class SgiDocumentCreateUpdateBffController {
 **POST /api/v1/sgi/document** — Create document API
 
 ```sql
--- bind ตามลำดับ: $1=impactProcessId · $2=statusDone · $3=docNo · $4=year · $5=runningNo · $6=storeCode · $7=month · $8=statusInit · $9=section06 · $10=empId
+-- bind ตามลำดับ: $1=impactProcessId · $2=statusDone · $3=docNo · $4=year · $5=runningNo · $6=impactCompensationId · $7=storeCode · $8=month · $9=statusInit · $10=section06 · $11=empId
 -- กันซ้ำเฉพาะเอกสาร active (SDD GI): เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้
 SELECT 1 FROM sgi_compensation_documents
 WHERE impact_process_id = $1 /* impactProcessId */ AND status_code <> $2 /* statusDone */;
 
 -- ออกเลขที่ YYYY/xxxxx (running ต่อปี) แล้วสร้างเอกสาร + เปิด workflow งานแรก (Section 06)
-INSERT INTO sgi_compensation_documents (doc_no, year, running_no, impact_process_id, impacted_store_code, impact_month, status_code, current_section_code, created_by)
-VALUES ($3 /* docNo */, $4 /* year */, $5 /* runningNo */, $1 /* impactProcessId */, $6 /* storeCode */, $7 /* month */, $8 /* statusInit */, $9 /* section06 */, $10 /* empId */);
+INSERT INTO sgi_compensation_documents (doc_no, year, running_no, impact_process_id, impact_compensation_id, impacted_store_code, impact_month, status_code, current_section_code, created_by)
+VALUES ($3 /* docNo */, $4 /* year */, $5 /* runningNo */, $1 /* impactProcessId */, $6 /* impactCompensationId */, $7 /* storeCode */, $8 /* month */, $9 /* statusInit */, $10 /* section06 */, $11 /* empId */);
 -- ⚠️ ไม่ INSERT ตาราง workflow เอง — เรียก @srm/glb-workflow (schema sps_store) ให้ library เขียนให้
 --    initialize(versionId=:sgiVersionId, referenceId=:referenceId, userId=:empId)
 --    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)
@@ -922,7 +928,7 @@ VALUES ($3 /* docNo */, $4 /* year */, $5 /* runningNo */, $1 /* impactProcessId
 **PUT /api/v1/sgi/document/{docNo}** — Update document partial sections
 
 ```sql
--- bind ตามลำดับ: $1=now · $2=empId · $3=docNo · $4=versionNo · $5=pct · $6=amount · $7=newStoreCode · $8=date · $9=competitorId · $10=from · $11=to · $12=factorId · $13=competitorCode · $14=impactDate · $15=factorCode · $16=dateFrom · $17=dateTo · $18=keepCompetitorIds · $19=keepFactorIds
+-- bind ตามลำดับ: $1=now · $2=empId · $3=docNo · $4=versionNo · $5=pct · $6=amount · $7=newStoreCode · $8=date · $9=competitorId · $10=from · $11=to · $12=factorId · $13=competitorStoreCode · $14=brandCode · $15=impactDate · $16=factorCode · $17=dateFrom · $18=dateTo · $19=keepCompetitorIds · $20=keepFactorIds
 -- ตรวจสิทธิ์ตาม role + current_section ก่อน · %ชดเชยร้านใหม่รวมกันต้อง = 100% (ไม่งั้น 422)
 -- optimistic concurrency: mutation ทุกชุดต้องส่ง versionNo ล่าสุด; ไม่ตรงคืน 409 STALE_VERSION
 UPDATE sgi_compensation_documents SET version_no = version_no + 1, updated_at = $1 /* now */, updated_by = $2 /* empId */
@@ -933,18 +939,18 @@ UPDATE sgi_document_competitors      SET impact_date = $8 /* date */         WHE
 UPDATE sgi_document_external_factors SET date_from = $10 /* from */, date_to = $11 /* to */ WHERE id = $12 /* factorId */ AND doc_no = $3 /* docNo */;
 
 -- แถวที่ผู้ใช้ "เพิ่มเอง" (element ที่ไม่มี id) ต้อง INSERT ไม่ใช่ UPDATE — ของเดิมมีแต่ UPDATE/DELETE
---   competitorCode ต้องเป็นรหัสแบรนด์ใน master 01-11 เท่านั้น (ไม่ใช่ free text) · source_system = USER
-INSERT INTO sgi_document_competitors (doc_no, competitor_code, impact_date, source_system)
-VALUES ($3 /* docNo */, $13 /* competitorCode */, $14 /* impactDate */, 'USER')
+--   brandCode ต้องเป็นรหัสแบรนด์ใน master 01-11 (ไม่ใช่ free text) · competitorStoreCode คือรหัสสาขา (ว่างได้) · source_system = USER
+INSERT INTO sgi_document_competitors (doc_no, competitor_store_code, brand_code, impact_date, source_system)
+VALUES ($3 /* docNo */, $13 /* competitorStoreCode */, $14 /* brandCode */, $15 /* impactDate */, 'USER')
 ON CONFLICT ON CONSTRAINT uq_doc_competitor DO UPDATE SET impact_date = EXCLUDED.impact_date;
 
 INSERT INTO sgi_document_external_factors (doc_no, factor_code, date_from, date_to)
-VALUES ($3 /* docNo */, $15 /* factorCode */, $16 /* dateFrom */, $17 /* dateTo */)
+VALUES ($3 /* docNo */, $16 /* factorCode */, $17 /* dateFrom */, $18 /* dateTo */)
 ON CONFLICT ON CONSTRAINT uq_doc_factor DO UPDATE SET date_to = EXCLUDED.date_to;
 
 -- ลบรายการที่ผู้ใช้เอาออก (ปุ่ม "ลบที่เลือก" ส่งอาร์เรย์ชุดใหม่มาแทนทั้งชุด)
-DELETE FROM sgi_document_competitors      WHERE doc_no = $3 /* docNo */ AND id NOT IN ($18 /* keepCompetitorIds */);
-DELETE FROM sgi_document_external_factors WHERE doc_no = $3 /* docNo */ AND id NOT IN ($19 /* keepFactorIds */);
+DELETE FROM sgi_document_competitors      WHERE doc_no = $3 /* docNo */ AND id NOT IN ($19 /* keepCompetitorIds */);
+DELETE FROM sgi_document_external_factors WHERE doc_no = $3 /* docNo */ AND id NOT IN ($20 /* keepFactorIds */);
 ```
 
 ### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)

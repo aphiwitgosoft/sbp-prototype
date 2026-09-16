@@ -10,7 +10,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | **20 ชั่วโมง** = implementation 15 + unit test 5 (30%) |
 | Owner | Aphiwit &lt;Bank&gt; Khammoon |
 | Target repository | **`SBP/srm-sps-spsap-sop-sgi-batch`** (NestJS 11 + TypeORM · schema `sps_store` · **มติ 2026-09-02 — ย้ายมาจาก store-backend**) — batch runner ของ SBP ที่รันอยู่แล้ว 42 job บน **AWS Batch** · ลงทะเบียน job ใน `src/main.ts` แล้วรับ argument ผ่าน `JOB_NAME`/`INPUT` (local) หรือ `argv[3]`/`argv[2]` (AWS Batch) · **ไม่ผ่าน BFF และไม่เปิด HTTP** · ตารางเวลาเป็น AWS Batch scheduled event ไม่ใช่ `@Cron` · ดู `SBP/srm-sps-spsap-sop-sgi-batch.md` |
-| Objective | นำเข้าคู่ร้านถูกกระทบจาก ALLMAP: นำคู่ร้านถูกกระทบ–ร้านเปิดใหม่จากวิว ALLMAP เข้า sgi_fgi_impact_stores เติมข้อมูลจากตาราง master แล้วใช้กฎ DENY และ ON_PROCESS ตั้งค่า sales_request_status เป็น W / N / P |
+| Objective | นำเข้าคู่ร้านถูกกระทบจาก ALLMAP: นำคู่ร้านถูกกระทบ–ร้านเปิดใหม่จากวิว ALLMAP เข้า sgi_fgi_impact_stores เติมข้อมูลจากตาราง master แล้วใช้กฎ DENY และ ON_PROCESS ตั้งค่า verify_status จาก W เป็น P หรือ N |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -91,7 +91,7 @@ query candidate impacted stores, deduplicate by store/month, batch insert impact
 | Input identity | Period year/month, optional zone filter, and ALLMAP SEVEN_IMPACT_VIEW rows. | snapshot input file/business key/period in run record |
 | Output identity | FGI_IMPACT_STORE and related impact/new-store tables contain imported candidates for the requested period with duplicate-safe status. | reconcile input, success, reject and skipped counts |
 | Dedup proof | UNIQUE(impacted_store_code, new_store_code, impact_month) + `ON CONFLICT DO NOTHING`; คู่ร้านที่มีอยู่แล้วต้อง **ข้ามเงียบและนับเป็น `skipped`** ห้ามอัปเดตทับ (พฤติกรรมเดิมของระบบ) | rerun fixture produces no duplicate target business key |
-| Transaction proof | สร้าง/หา sgi_fgi_impact_processes และ upsert candidate ทีละ chunk ใน transaction; chunk fail rollback เฉพาะ chunk | injected failure leaves no partial committed state outside documented boundary |
+| Transaction proof | **ทั้ง 3 ขั้น (impacted_stores -> impact_processes -> impact_stores) ของ candidate หนึ่งราย ต้องอยู่ใน transaction เดียวกัน** — ห้าม commit แถวแม่แยกจากคู่ร้าน ไม่งั้นจะเหลือแถวแม่ที่ไม่มีลูก; chunk fail rollback เฉพาะ chunk แล้วนับเข้า failedCount; **ห้ามซ้อน transaction สองชั้นแบบระบบเดิม** | injected failure leaves no partial committed state outside documented boundary |
 | Security proof | ALLMAP connection ใช้ datasource secretRef และ TLS verify-full; job parameter เก็บได้เฉพาะ datasource alias ไม่เก็บ username/password | config/log/error contains no plaintext secret |
 
 ### 5.92 Legacy Java Source Reference
@@ -101,7 +101,7 @@ query candidate impacted stores, deduplicate by store/month, batch insert impact
 | fcsJar/src/th/co/gosoft/fgi/main/ImportImpactStore.java | 24-186 | Legacy main entrypoint for impacted-store import. |
 | fcsJar/src/th/co/gosoft/fgi/dao/jdbc/ImportStoreJdbc.java | 30-84, 170-484 | Query SEVEN_IMPACT_VIEW and insert/update FGI impact/new-store records. |
 
-Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft/java/SBP/fcsJar. Use these ranges to preserve business behavior while implementing the target Node job.
+Line ranges refer to the legacy Java implementation under `batchjob/fcsJar/` (path นับจากราก `sbp-prototype/`). Use these ranges to preserve business behavior while implementing the target Node job.
 
 ### 5.93 Target Repository and SQL Contract
 
@@ -109,38 +109,86 @@ Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft
 | --- | --- |
 | Repository | impactStoreRepository |
 | Idempotency / dedup | UNIQUE(impacted_store_code, new_store_code, impact_month) + `ON CONFLICT DO NOTHING`; คู่ร้านที่มีอยู่แล้วต้อง **ข้ามเงียบและนับเป็น `skipped`** ห้ามอัปเดตทับ (พฤติกรรมเดิมของระบบ) |
-| Transaction boundary | สร้าง/หา sgi_fgi_impact_processes และ upsert candidate ทีละ chunk ใน transaction; chunk fail rollback เฉพาะ chunk |
+| Transaction boundary | **ทั้ง 3 ขั้น (impacted_stores -> impact_processes -> impact_stores) ของ candidate หนึ่งราย ต้องอยู่ใน transaction เดียวกัน** — ห้าม commit แถวแม่แยกจากคู่ร้าน ไม่งั้นจะเหลือแถวแม่ที่ไม่มีลูก; chunk fail rollback เฉพาะ chunk แล้วนับเข้า failedCount; **ห้ามซ้อน transaction สองชั้นแบบระบบเดิม** |
 | Security | ALLMAP connection ใช้ datasource secretRef และ TLS verify-full; job parameter เก็บได้เฉพาะ datasource alias ไม่เก็บ username/password |
 
 #### Input / candidate query
 
 ```sql
--- bind ตามลำดับ: $1=impact_month · $2=zone_code · $3=bangkok_metro_region_codes
-SELECT impacted_store_code, new_store_code, impact_month, distance_km, region_code, zone_code, branch_type
-FROM allmap_seven_impact_view
-WHERE impact_month = $1 /* impact_month */
-  AND ($2 /* zone_code */ IS NULL OR zone_code = $2 /* zone_code */)
-  AND distance_km <= CASE
-        WHEN region_code = ANY($3 /* bangkok_metro_region_codes */) THEN 1.000
-        ELSE 2.000
-      END;
+-- ⚠️ วิวต้นทางอยู่บน **SQL Server** (GSMALLMAP) ไม่ใช่ PostgreSQL
+--    ชื่อคอลัมน์เป็นของวิวจริง (ตัวพิมพ์ใหญ่) · placeholder เป็น ? ของ JDBC/mssql ไม่ใช่ $n/:name
+--    และ **ห้ามใช้ ANY()/CASE แบบ PostgreSQL** ที่นี่ — ต้องรันได้บน SQL Server
+SELECT STORECODE_I, NAME_I, OPENDATE_I, ZONE_I, SUBZONE_I, BRANCHTYPE_I,
+       STORECODE_N, NAME_N, OPENDATE_N, ZONE_N, SUBZONE_N, BRANCHTYPE_N,
+       RADIUS, RADIUS_UNIT, DISTANCE, DISTANCE_UNIT, URL_EMBEDDED,
+       PERIOD_YEAR, PERIOD_MONTH
+  FROM (
+    SELECT *,
+           ROW_NUMBER() OVER (
+             PARTITION BY STORECODE_I, STORECODE_N, PERIOD_YEAR, PERIOD_MONTH
+             -- 🔴 ORDER BY ของระบบเดิมใช้คอลัมน์ที่อยู่ใน PARTITION BY อยู่แล้ว จึงเลือกแถวแบบ
+             --    non-deterministic · ต้องกำหนด tie-breaker จริง (เช่น DISTANCE ASC) ก่อนใช้งาน
+             ORDER BY DISTANCE ASC, STORECODE_N ASC
+           ) AS ROW_NUM
+      FROM allmapssa.SEVEN_IMPACT_VIEW
+     WHERE PERIOD_MONTH = ? AND PERIOD_YEAR = ?      -- ✅ ปีเป็น **ค.ศ.** (ยืนยันจากข้อมูลจริง 2026-09-12 · ข้อ 4.4 ปิดแล้ว)
+       -- โซน: ระบบเดิมต่อสตริงเข้า IN (...) ตรง ๆ = ช่อง SQL injection
+       --      ระบบใหม่ต้อง bind ทีละค่า + whitelist โซนจาก master
+       AND (? IS NULL OR ZONE_I IN (/* bind ทีละค่า */))
+  ) A
+ WHERE ROW_NUM = 1;
+
+-- 🔴 ระบบเดิม **ไม่ได้กรองรัศมี 1/2 กม. ซ้ำในคิวรีนี้** — ถือว่า ALLMAP คัดมาให้แล้ว
+--    ถ้าจะเพิ่มการกรองในระบบใหม่ = requirement ใหม่ ต้องขอ business sign-off ก่อน
+--    (และต้องแปลง DISTANCE ตาม DISTANCE_UNIT ก่อนเทียบ — วิวส่งหน่วยมาแยกคอลัมน์)
 ```
 
 #### Write / upsert query
 
 ```sql
--- bind ตามลำดับ: $1=impact_process_id · $2=impacted_store_code · $3=new_store_code · $4=impact_month · $5=distance_km · $6=created_by
+-- bind ตามลำดับ: $1=impacted_store_code · $2=impact_month · $3=impact_year · $4=process_status · $5=impact_process_id · $6=new_store_code · $7=distance_km · $8=created_by
 -- ⚠️ ต้องเป็น DO NOTHING ไม่ใช่ DO UPDATE — ระบบเดิมไม่อัปเดตคู่ร้านที่มีอยู่แล้วเลย
 --    (ImpactStoreService บรรทัด 45-51 สร้าง updateList ขึ้นมาแต่ manageImpactStore() เรียกเฉพาะ insertList)
 --    เขียนเป็น DO UPDATE จะทับค่าที่คนแก้ไว้ในเอกสารรอบก่อน — ดูหัวข้อเงื่อนไขตัดสินข้อ ข.
+-- FK บังคับลำดับ 3 ขั้น — ข้ามขั้นไหนก็ insert ไม่ผ่าน
+--   sgi_impacted_stores -> sgi_fgi_impact_processes -> sgi_fgi_impact_stores
+
+-- ขั้นที่ 1: ร้านที่ถูกกระทบต้องมีก่อน (FK ของอีกสองตาราง)
+--   Job 2 มีแค่ store_code · คอลัมน์อื่น (dv_code · opt_dv_user_id · latitude/longitude ·
+--   transfer_sbp_date) ไม่มีข้อมูล จึง **ห้ามเขียนทับของเดิมด้วยค่าว่าง** -> DO NOTHING
+INSERT INTO sgi_impacted_stores (store_code, is_active, updated_at)
+VALUES ($1 /* impacted_store_code */, TRUE, CURRENT_TIMESTAMP)
+ON CONFLICT (store_code) DO NOTHING;   -- ตารางนี้ไม่มี created_at (มีแค่ updated_at)
+
+-- ขั้นที่ 2: แถวแม่ของ (ร้าน + งวด) แล้วเอา id กลับมาใช้เป็น FK
+--   impact_year · process_status เป็น NOT NULL และไม่มี DEFAULT -> ต้องใส่ค่าเองทั้งคู่
+--   ✅ process_status เคาะแล้ว (มติ 2026-09-12) — Job 2 ใส่ 'IMPORTED' เสมอ
+INSERT INTO sgi_fgi_impact_processes
+    (impacted_store_code, impact_month, impact_year, process_status, flag_action, datasource,
+     created_at, updated_at)
+VALUES ($1 /* impacted_store_code */, $2 /* impact_month */, $3 /* impact_year */,
+        $4 /* process_status */,  -- 'IMPORTED' — สถานะเริ่มต้นของวงจร (DDL มี DEFAULT ให้แล้วแต่ใส่ชัดเจนดีกว่า)
+        'N',              -- ยังไม่มีรอบชดเชย (มติ 2026-09-13) · Job 6 เปลี่ยนเป็น 'Y' เมื่อรอบเริ่มจริง
+        'ALM',            -- ช่องทางต้นทาง · โดเมนจริง ALM/STA/PRO/REA
+        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+-- ⚠️ ต้องเป็น DO UPDATE ไม่ใช่ DO NOTHING — DO NOTHING ไม่คืนแถวเมื่อคีย์ชน
+--    ทำให้ RETURNING id ได้ NULL แล้วขั้นที่ 3 ไม่มี FK จะใส่ (FK violation)
+--    DO UPDATE ที่แตะเฉพาะ updated_at จึงได้ id กลับมาเสมอโดยไม่ทับข้อมูลธุรกิจ
+ON CONFLICT (impacted_store_code, impact_month) DO UPDATE
+   SET updated_at = CURRENT_TIMESTAMP
+RETURNING id;   -- ใช้เป็น impact_process_id ของขั้นที่ 3
+
+-- ขั้นที่ 3: คู่ร้าน (ใช้ id จากขั้นที่ 2 เป็น impact_process_id)
 INSERT INTO sgi_fgi_impact_stores
     (impact_process_id, impacted_store_code, new_store_code, impact_month, distance_km,
      verify_status, created_by, created_at, updated_at)
-VALUES ($1 /* impact_process_id */, $2 /* impacted_store_code */, $3 /* new_store_code */, $4 /* impact_month */, $5 /* distance_km */,
+VALUES ($5 /* impact_process_id */, $1 /* impacted_store_code */, $6 /* new_store_code */, $2 /* impact_month */,
+        $7 /* distance_km */,     -- แปลงเป็นกิโลเมตรแล้วเท่านั้น (DDL ไม่มีคอลัมน์หน่วย)
         'W',              -- รอตรวจ · กฎ DENY/ON_PROCESS จะเปลี่ยนเป็น N/P ในขั้นถัดไป
-        $6 /* created_by */,      -- 'ALM' เมื่อมาจากวิว ALLMAP · 'STA' เมื่อระบบ Statement ส่งเข้ามา (ห้ามพึ่ง DEFAULT)
+        $8 /* created_by */,      -- 'ALM' เมื่อมาจากวิว ALLMAP · 'STA' เมื่อระบบ Statement ส่งเข้ามา (ห้ามพึ่ง DEFAULT)
         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (impacted_store_code, new_store_code, impact_month) DO NOTHING;
+-- sales_request_status ไม่ต้องใส่ — DEFAULT 'W' ของ DDL ให้ค่าอยู่แล้ว และ Job 2 ไม่แตะคอลัมน์นี้
 ```
 
 ### 5.94 Target Node Implementation
@@ -198,7 +246,7 @@ export async function runLlddBeJob2Importimpactstore(ctx, services) {
 
 **กติกาการ validate ที่ทุก job ต้องทำเหมือนกัน** — parse `INPUT` ไม่สำเร็จ หรือฟิลด์ไม่ผ่าน validation ให้ log `BATCH_END` ด้วย `batchStatus: 'FAILED'` แล้ว `exit(1)` **ก่อนแตะฐานข้อมูล** (ห้าม fallback ไปค่า default เงียบ ๆ เมื่อผู้ใช้ตั้งใจส่งค่ามาแล้วผิด) · ฟิลด์ที่ไม่รู้จักให้ log warn แล้วข้าม ไม่ทำให้ job ล้ม
 
-- ⚠️ legacy ส่ง **ปี พ.ศ.** เข้าวิว `SEVEN_IMPACT_VIEW` (ตัวอย่างในเอกสารเดิมคือ `ALL|2569|06`) — ค่าที่ยิงเข้าวิว ALLMAP คงรูปแบบเดิมของวิว แต่ `INPUT` ของ job ใหม่รับเป็น **ค.ศ.** และแปลงตอนประกอบ query เท่านั้น
+- ✅ **ปิดแล้ว 2026-09-12 — `PERIOD_YEAR` เป็น ค.ศ.** ตรวจฐานเดิมจริง (`FGI_IMPACT_STORE_BK_20250515` 26,264 แถว) พบปี **2016-2025 เท่านั้น ไม่มีค่า 25xx เลย** และคอลัมน์นี้คัดลอกตรงจาก `PERIOD_YEAR` ของวิว (`ImportStoreMapper.java:39`) · โค้ดเดิมก็ส่ง ค.ศ. (`Locale.US` = Gregorian ที่ `DateUtils.java:356`) ไม่มีการแปลง 543 ที่ใดเลย · ตัวอย่าง `ALL|2569|06` ในเอกสารเก่า**เป็นตัวอย่างที่เขียนผิด** ไม่ใช่พฤติกรรมจริง · `INPUT` ของ job ใหม่รับ ค.ศ. และยิง ค.ศ. ตรง ๆ (env `SGI_JOB2_ALLMAP_YEAR_ERA=AD`)
 
 ### 5.96 เงื่อนไขตัดสิน (Decision Rules) — ตัดสินจากอะไร
 
@@ -211,15 +259,15 @@ Job 2 ตัดสิน 3 เรื่องต่อกันเป็นท�
 | ค1. คู่นี้ต้อง **ถูกตัดทิ้ง** หรือไม่ (`verify_status = 'N'`) | **ตารางของระบบ SBP เดิม (อ่านอย่างเดียว)**: `mas_store` (`branch_id` · `status_type` · `open_date` · `region`) · `fr_store` (`store_id` · `juristic_id` · `start_date` · `cancel_date` · `cancel_type` · `status` · `order_id`) · `juristic` (`juristic_id` · `juristic_name`) | ตัดทิ้งเมื่อ **ข้อใดข้อหนึ่ง** จริง: ประเภทสาขาฝั่ง I ไม่อยู่ในรายการที่รับได้ · ฝั่ง N เป็น `F` · **นิติบุคคลสองฝั่งเป็นรายเดียวกัน** · สัญญา SBP ของร้าน I ไม่คลุมงวด · หรือแถวเก่ากว่า 12 เดือน (SQL ด้านล่าง) | ตั้ง **`verify_status = 'N'`** + `updated_at` และ **ไม่ลบแถว** (เก็บไว้ตรวจย้อนหลัง) |
 | ค2. คู่นี้ **เข้ากระบวนการ** หรือไม่ (`verify_status = 'P'`) | ชุดคอลัมน์เดียวกับ ค1 + **`sgi_fgi_impact_stores.created_by` / `.updated_by`** | เข้ากระบวนการเมื่อ มาจาก ALLMAP **และ** ผ่านเกณฑ์ประเภทสาขาทั้งสองฝั่ง **และ** นิติบุคคลคนละราย **และ** สัญญา SBP คลุมงวด — **หรือ** มาจาก STA (เคสที่ระบบ Statement ส่งเข้ามาเอง ผ่านทันทีโดยไม่ตรวจเกณฑ์) | ตั้ง **`verify_status = 'P'`** + `updated_at` · แถวที่ไม่เข้าทั้ง ค1 และ ค2 ค้างเป็น `'W'` ให้รอบถัดไปหยิบ |
 
-#### ⚠️ ช่องว่างของ schema ที่ต้องปิดก่อน implement เงื่อนไขข้างบนได้จริง
+#### ช่องว่างที่เคยค้างของหัวข้อนี้ — ปิดครบแล้ว (เก็บไว้เป็นประวัติ)
 
-แถวในตารางนี้ไม่ใช่ "ข้อควรระวัง" แต่เป็น **ของที่ยังไม่มีในโครง 20 ตาราง** — เขียนโค้ดตามเงื่อนไขด้านบนแล้วจะ compile ไม่ผ่าน/คิวรีพังทันที
+ทุกข้อปิดแล้ว — เก็บตารางไว้เพื่อให้ตามรอยได้ว่าเคยค้างอะไรและปิดด้วยอะไร
 
 | # | สิ่งที่ขาด | ต้องทำอะไรก่อน |
 | --- | --- | --- |
 | **G1** ✅ ปิดแล้ว 2026-09-02 | เดิม `sales_request_status` (`W/P/Y/E`) ไม่มีที่เก็บผล DENY | เพิ่มคอลัมน์ **`verify_status CHAR(1) CHECK IN ('W','P','N')`** แยกจาก `sales_request_status` — legacy มีสองสถานะคนละเรื่อง (ตรวจคู่ร้าน vs ขอยอดขาย) ที่โครงเดิมยุบเหลือคอลัมน์เดียว |
 | **G2** ✅ ปิดแล้ว 2026-09-02 | เดิมไม่มี `created_by` / `updated_by` | เพิ่ม **`created_by` / `updated_by VARCHAR(10) CHECK IN ('ALM','STA','USER')`** และ **`created_at`** (กฎ "เก่ากว่า 12 เดือน" อ้างคอลัมน์นี้) |
-| **G3** ⏳ ยังค้าง | ไม่มีคอลัมน์วันเปิดร้าน / ประเภทสาขา / นิติบุคคล / วันสัญญา SBP ใน `sgi_*` เลย — **และจะไม่เพิ่ม** | ทุกเงื่อนไขของ ค1/ค2 **join ออกไปที่ `mas_store` · `fr_store` · `juristic` ของ schema `sps_store`** (อ่านอย่างเดียว · ห้ามคัดลอกมาเก็บซ้ำเพราะจะ stale) — สิ่งที่ต้องทำก่อน implement คือ **ยืนยันสิทธิ์อ่านข้าม schema + index บน `mas_store.branch_id` / `fr_store.store_id`** |
+| **G3** ✅ ปิดแล้ว 2026-09-12 | ไม่มีคอลัมน์วันเปิดร้าน / ประเภทสาขา / นิติบุคคล / วันสัญญา SBP ใน `sgi_*` เลย — **และจะไม่เพิ่ม** | ทุกเงื่อนไขของ ค1/ค2 **join ออกไปที่ `mas_store` · `fr_store` · `juristic` ของ schema `sps_store`** (อ่านอย่างเดียว) · **วัดผลกระทบจากข้อมูลจริงแล้ว**: แถว ALM 23,120 แถวที่หาร้านใน master เจอ เปลี่ยนจาก snapshot มาใช้ `mas_store.status_type` ปัจจุบันแล้ว**ผลตัดสินพลิกแค่ 19 แถว (0.08%)** และฝั่งร้านใหม่ (`branchtype_n = F`) **พลิก 0 แถว** — จึงไม่คุ้มที่จะเพิ่มคอลัมน์ snapshot · สิ่งที่เหลือคือ **ยืนยันสิทธิ์อ่านข้าม schema + index บน `mas_store.branch_id` / `fr_store.store_id`** (ข้อมูลจริง: ร้าน 1,056 ร้านมีสัญญา `fr_store` มากกว่า 1 ฉบับ — ชั้น `dense_rank() = 1` จำเป็นจริง ไม่ใช่ทฤษฎี) |
 
 #### ค่าคงที่และโดเมนที่ใช้ในเงื่อนไขข้างบน
 
@@ -227,10 +275,11 @@ Job 2 ตัดสิน 3 เรื่องต่อกันเป็นท�
 
 | ค่า | โดเมน / ค่าที่ระบบเดิมใช้ | ที่มา |
 | --- | --- | --- |
-| `verify_status` (เดิม `FLAG_VERIFY`) | `W` = รอตรวจ (ค่าตั้งต้นตอน insert) · `P` = เข้ากระบวนการ · `N` = ถูกตัดทิ้ง | `FgiConstant.FLAG_VERIFY_WAIT` / `_ON_PROCESS` / `_DENY` |
-| `created_by` / `updated_by` (เดิม `CREATE_BY`/`UPDATE_BY`) | `ALM` = ALLMAP · `STA` = ระบบ Statement ส่งเข้ามา · `USER` = คนคีย์เอง | `FgiConstant.ALLMAP` / `FRANCHISE_STATEMENT` |
+| `verify_status` (เดิม `FLAG_VERIFY`) | `W` = รอตรวจ (ค่าตั้งต้นตอน insert) · `P` = เข้ากระบวนการ · `N` = ถูกตัดทิ้ง<br>**ข้อมูลจริง (26,264 แถว):** `N` 14,424 · `Y` 8,556 · `W` 3,064 · `P` 220 — `Y` ของเดิมคือ "ยอดขายผ่านแล้ว" ซึ่งโครงใหม่แยกไป `sales_request_status` **migration ต้องแมป ไม่ใช่คัดลอกตรง** | `FgiConstant.FLAG_VERIFY_WAIT` / `_ON_PROCESS` / `_DENY` · ตรวจฐาน stqa 2026-09-12 |
+| `created_by` / `updated_by` (เดิม `CREATE_BY`/`UPDATE_BY`) | `ALM` = ALLMAP · `STA` = ระบบ Statement ส่งเข้ามา · `USER` = คนคีย์เอง<br>**ข้อมูลจริง:** `CREATE_BY` = ALM 23,126 · STA 3,138 (**ไม่มี `USER` เลย**) · `UPDATE_BY` = **NULL ทั้ง 26,264 แถว** → เงื่อนไข `'ALM' IN (created_by, updated_by)` ของกฎตัดทิ้ง ในทางปฏิบัติเท่ากับ `created_by = 'ALM'` | `FgiConstant.ALLMAP` / `FRANCHISE_STATEMENT` · ตรวจฐาน stqa 2026-09-12 |
 | ประเภทสาขาฝั่ง I ที่รับได้ | `B` · `FAM` · `FB1` · `FB2` · `FC1` · `FVB` · `FVC` — และ `FPT1` **เฉพาะเมื่อ** ประเภทการยกเลิก SBP = `'06'` | SQL ของ `updateImpactStoreByJuristicMeetCondition()` |
 | ประเภทสาขาฝั่ง N ที่ห้าม | `F` | เงื่อนไข `a.branchtype_n in ('F')` ในกฎตัดทิ้ง |
+| หน่วยของ `DISTANCE_UNIT` ที่ ALLMAP ส่งมาจริง | **`กิโลเมตร` (ภาษาไทย) ค่าเดียวเท่านั้น** — 23,127 แถวของ `CREATE_BY = 'ALM'` ทั้งหมด · ไม่เคยส่ง `KM`/`M` ภาษาอังกฤษเลย · แถว `STA` ส่ง `DISTANCE = 0` และหน่วยเป็น NULL<br>ระยะทางจริงอยู่ในช่วง **0.03–1.52 กม.** และคอลัมน์เดิมเป็น `NUMBER(3,2)` = เก็บเป็นกิโลเมตรอยู่แล้ว | ตรวจฐาน stqa 2026-09-12 — whitelist การแปลงหน่วยต้องมี `กิโลเมตร` เป็นอย่างน้อย |
 | อายุแถวสูงสุดก่อนถูกตัดทิ้ง | 12 เดือนนับจากวันที่สร้างแถว | `FgiConstant.INTERVAL_MONTH = 12` |
 | ค่าแทน "ไม่มีวันยกเลิก" | `4000-01-01` (`to_date('01/4000','mm/yyyy')`) | ใช้กับ `COALESCE(cancel_date, ...)` ทั้ง ค1 และ ค2 |
 
@@ -269,6 +318,28 @@ WHERE fis.verify_status <> 'N'               -- แถวที่ถูกต�
 #### ค. กฎตัดทิ้ง และกฎเข้ากระบวนการ — **ต้องรันตามลำดับนี้เท่านั้น** (ตัดทิ้งก่อนเสมอ)
 
 ```sql
+-- 🔴 อ่านสองข้อนี้ก่อนใช้ SQL ด้านล่าง — ทั้งคู่ยังไม่ตรงกับระบบเดิม 100%
+--
+-- (1) แหล่งของ branchtype — SQL นี้ใช้ ms_i.status_type / ms_n.status_type จาก mas_store
+--     แต่ระบบเดิมใช้ decode(fis.create_by,'STA', ms_i.status_type, fis.branchtype_i)
+--     (ImportStoreJdbc.java:229) => แถว 'ALM' ซึ่งเป็นแถวที่ Job 2 สร้าง **ใช้ค่าจาก ALLMAP ไม่ใช่ master**
+--     การเปลี่ยนมา join master เป็นการ **เปลี่ยนพฤติกรรมทางธุรกิจ** (ผล P/N อาจต่างจากเดิม)
+--     ไม่ใช่แค่ปรับโครงสร้าง — ช่องว่าง G3 จึงยังไม่ปิด ต้องเคาะก่อน (DECISIONS ข้อ 2.15)
+--
+-- (2) การเลือกสัญญา fr_store — LEFT JOIN ตรง ๆ ข้างล่างยัง **ไม่รักษากติกาเดิม**
+--     ร้านหนึ่งร้านมีหลายสัญญาในงวดเดียวได้ ระบบเดิมจึงคัดเหลือฉบับเดียวก่อนเสมอ:
+--
+--       dense_rank() OVER (PARTITION BY store_id, งวด
+--                          ORDER BY start_date DESC, cancel_type, order_id DESC) = 1
+--       WHERE COALESCE(status,'-') <> 'D'
+--         AND store_id <> '00000'
+--         AND cancel_type IS NOT NULL
+--         AND TRUNC(start_date)  <= วันสุดท้ายของงวด
+--         AND COALESCE(cancel_date, DATE '4000-01-01') >= วันแรกของงวด
+--
+--     ถ้าไม่ใส่ชั้นนี้ JOIN จะได้หลายแถวต่อร้าน => นิติบุคคล/วันสัญญาที่เอามาตัดสินอาจเป็นคนละฉบับ
+--     กับที่ระบบเดิมใช้ และ UPDATE จะได้ผล P/N ไม่คงที่ **ต้องทำเป็น CTE คัดให้เหลือ rank 1 ก่อน join**
+
 -- ค1. ตัดทิ้ง : รันก่อน (updateImpactStoreByJuristicNotMeetCondition · บรรทัด 344-380)
 UPDATE sgi_fgi_impact_stores a
    SET verify_status = 'N', updated_by = 'ALM', updated_at = CURRENT_TIMESTAMP
@@ -328,7 +399,9 @@ UPDATE sgi_fgi_impact_stores a
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| sgi_fgi_impact_stores | W | insert คู่ร้านกระทบ–ร้านใหม่ / ตั้ง sales_request_status = W · N · P (ตารางนี้ไม่มี created_by — ช่องทางต้นทางอยู่ที่ sgi_fgi_impact_processes.datasource) |
+| sgi_impacted_stores | R/W | upsert ร้านที่ถูกกระทบก่อน (FK ต้นทาง) — ห้ามเขียนทับค่าที่ Job 2 ไม่มีข้อมูล เช่น opt_dv_user_id / latitude / longitude |
+| sgi_fgi_impact_processes | R/W | upsert แถวแม่ของ (ร้าน + งวด) แล้วอ่าน id กลับมาใส่ impact_process_id — ON CONFLICT DO NOTHING ไม่คืนแถว ต้อง SELECT ซ้ำ |
+| sgi_fgi_impact_stores | W | insert คู่ร้านกระทบ–ร้านใหม่ (verify_status = W ตาม DEFAULT) / ตั้ง verify_status เป็น P หรือ N · sales_request_status คงเป็น W ให้ Job 4 หยิบต่อ |
 
 ## 9. Skeleton Code (Batch Job 2)
 
@@ -346,15 +419,15 @@ UPDATE sgi_fgi_impact_stores a
 | src/modules/sgi/job-2-import-impact-store.service.spec.ts | unit test ของ service — repo นี้วาง spec ไว้ข้างไฟล์จริงเสมอ (`jest` + `npm run test:ci` มี coverage/SonarQube) |
 | src/modules/sgi/dto/job-2-import-impact-store-input.dto.ts | DTO ของ `INPUT` (JSON) พร้อม `class-validator` ตามตารางในหัวข้อ 9.2 — parse ไม่ผ่านต้อง fail ก่อนแตะ DB |
 | src/modules/sgi/sgi.module.ts | NestJS module ของกลุ่มงานประกันรายได้ — ผูก service ทุกตัวของ SGI เข้ากับ `TypeOrmModule` (ไฟล์ร่วมของทุก job ให้ merge ไม่ใช่เขียนทับ) |
-| src/main.ts | **เพิ่ม `case 'sgi-job-2-import-impact-store':`** ในสวิตช์เดิม → `await import('./modules/sgi/job-2-import-impact-store.service')` แล้ว `app.get(ImportImpactStoreService).execute(input)` (ไฟล์กลางของทุก job — เป็นจุด merge conflict ที่ต้องระวัง) |
+| src/main.ts | **เพิ่ม `case 'sgi-import-impact-store':`** ในสวิตช์เดิม → `await import('./modules/sgi/job-2-import-impact-store.service')` แล้ว `app.get(ImportImpactStoreService).execute(input)` (ไฟล์กลางของทุก job — เป็นจุด merge conflict ที่ต้องระวัง) |
 | src/entities/sgi-*.entity.ts | entity ของตาราง `sgi_*` ที่หัวข้อ Reference DB Mapping อ้างถึง — **ยังไม่มีใน repo เลยสักตัว** ต้องสร้างใหม่ทั้งหมด |
 | src/config/config.ts | เพิ่ม `export const sgiJob2Config` ตามแบบของไฟล์นี้ (โปรเจกต์ไม่ใช้ `registerAs`) — ค่าคงที่ทางธุรกิจของ Job 2 |
 
-#### การลงทะเบียนใน `src/main.ts` (job `sgi-job-2-import-impact-store`)
+#### การลงทะเบียนใน `src/main.ts` (job `sgi-import-impact-store`)
 
 ```js
 // src/main.ts — เพิ่มเคสนี้ในสวิตช์เดิม (เรียงต่อจาก job ของ SGI ตัวก่อนหน้า)
-      case 'sgi-job-2-import-impact-store': {
+      case 'sgi-import-impact-store': {
         const { ImportImpactStoreService } = await import('./modules/sgi/job-2-import-impact-store.service');
         const job2importimpactstoreService = app.get(ImportImpactStoreService);
         await job2importimpactstoreService.execute(input);   // input = JSON ที่ parse จาก INPUT/argv[2] แล้ว
@@ -362,7 +435,7 @@ UPDATE sgi_fgi_impact_stores a
       }
 ```
 
-`main.ts` เรียก `StatementService.logInterfest('sgi-job-2-import-impact-store', input)` ให้อยู่แล้วก่อนเข้าสวิตช์ → **ไม่ต้องเขียน log ลง `integration_log` เองซ้ำ** · และ `BATCH_END` ที่ท้ายไฟล์จะสรุป `batchStatus` + `durationMs` ให้อัตโนมัติ หน้าที่ของ service คือ throw เมื่อทำงานไม่สำเร็จเท่านั้น
+`main.ts` เรียก `StatementService.logInterfest('sgi-import-impact-store', input)` ให้อยู่แล้วก่อนเข้าสวิตช์ → **ไม่ต้องเขียน log ลง `integration_log` เองซ้ำ** · และ `BATCH_END` ที่ท้ายไฟล์จะสรุป `batchStatus` + `durationMs` ให้อัตโนมัติ หน้าที่ของ service คือ throw เมื่อทำงานไม่สำเร็จเท่านั้น
 
 ### 9.2 Config Schema ของ Job 2 (backend config / env)
 
@@ -382,10 +455,9 @@ export interface Job2Config {
   enabled: boolean;
   /** ตารางเวลาของ job นี้ — บันทึกไว้เพื่ออ้างอิงเท่านั้น ตัวจริงตั้งที่ AWS Batch scheduled event */
   cron: string;
-  /** กำหนดการรัน (Cron) — ทุกวันที่ 7 ของเดือน เวลา 07:00 */
-  cron: string;
-  /** Argument (ขอบเขต|งวด) — รูปแบบ ZONES|YYYY|MM หรือ ALL|YYYY|MM — ไม่ระบุจะใช้งวดตาม modifyDateToString · ⚠️ ปีในตัวอย่างเป็น พ.ศ. (2569) ตามค่าที่ระบบเดิมใช้กับวิว ALLMAP ซึ่งขัดกับกติกา ค.ศ. ทั้งระบบ (มติ 2026-08-06) — ค่าที่ส่งเข้าวิว ALLMAP คงรูปแบบเดิมของวิว ส่วนค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง */
-  argument: string;
+  /** ⚠️ ไม่มีฟิลด์นี้โดยตั้งใจ — argument ของระบบใหม่มาจาก `INPUT` (JSON) ตามหัวข้อ 9.2
+   *  ไม่ใช่ env สตริงแบบ `ZONES|YYYY|MM` ของระบบเดิม (และค่านั้นเป็นปี พ.ศ.)
+   *  ถ้าต้องการค่าตั้งต้นของงวด ให้คำนวณ "เดือนที่แล้ว" ตามเวลา Asia/Bangkok ในโค้ด */
   /** Source View — dedup ด้วย ROW_NUMBER */
   sourceView: string;
   /** Branch Type ที่เข้าเกณฑ์ — FPT1 เข้าเกณฑ์เฉพาะเมื่อ SBP_CANCEL_TYPE_I = 06 */
@@ -404,8 +476,6 @@ export class SgiJob2Config implements Job2Config {
   // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)
   enabled = (process.env.SGI_JOB2_ENABLED ?? 'true') === 'true';
   cron = process.env.SGI_JOB2_CRON ?? '0 07 7 * *';
-  cron = process.env.SGI_JOB2_CRON ?? '0 07 7 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  argument = process.env.SGI_JOB2_ARGUMENT ?? 'ALL|2569|06'; // TODO: ปีในตัวอย่างเป็น พ.ศ. (2569) ตามค่าที่ระบบเดิมใช้กับวิว ALLMAP ซึ่งขัดกับกติกา ค.ศ. ทั้งระบบ (มติ 2026-08-06) — ค่าที่ส่งเข้าวิว ALLMAP คงรูปแบบเดิมของวิว ส่วนค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง (⚠️)
   sourceView = process.env.SGI_JOB2_SOURCE_VIEW ?? 'allmapssa.SEVEN_IMPACT_VIEW (SQL Server GSMALLMAP)'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   branchType = process.env.SGI_JOB2_BRANCH_TYPE ?? 'B, FAM, FB1, FB2, FC1, FVB, FVC, FPT1'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   denyOnProcess = process.env.SGI_JOB2_DENY_ON_PROCESS ?? 'สาขา N=F / juristic เดียวกัน / สัญญาไม่คลุมงวด / เก่ากว่า 12 เดือน'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
@@ -492,7 +562,7 @@ export class ImportImpactStoreService {
     throw new Error('check04Update: ยังไม่ได้ implement — ห้าม deploy ทั้งที่ยังไม่เขียนเงื่อนไขจริง');
   }
 
-  // insert คู่ใหม่ sales_request_status = W
+  // insert คู่ใหม่ verify_status = W (ค่า DEFAULT)
   async step05Insert(state: JobState, manager?: EntityManager): Promise<void> {
     throw new Error('step05Insert: ยังไม่ได้ implement — ดู SQL ที่หัวข้อ Repository / SQL และกติกาที่หัวข้อเงื่อนไขตัดสิน');
   }
@@ -508,13 +578,13 @@ export class ImportImpactStoreService {
     throw new Error('check07Validate: ยังไม่ได้ implement — ห้าม deploy ทั้งที่ยังไม่เขียนเงื่อนไขจริง');
   }
 
-  // เข้าเงื่อนไข ON_PROCESS หรือ sgi_fgi_impact_processes.datasource = STA?
+  // เข้าเงื่อนไข ON_PROCESS หรือ sgi_fgi_impact_stores.created_by = STA?
   //   เงื่อนไขจริง: ดูตารางในหัวข้อ "เงื่อนไขตัดสิน (Decision Rules)" ของเอกสารฉบับนี้
   async check08Condition(state: JobState): Promise<boolean> {
     throw new Error('check08Condition: ยังไม่ได้ implement — ห้าม deploy ทั้งที่ยังไม่เขียนเงื่อนไขจริง');
   }
 
-  // sales_request_status = P (On Process) แล้ววนจนครบทุกแถว
+  // verify_status = P (On Process) แล้ววนจนครบทุกแถว
   async step09Process(state: JobState, manager?: EntityManager): Promise<void> {
     throw new Error('step09Process: ยังไม่ได้ implement — ดู SQL ที่หัวข้อ Repository / SQL และกติกาที่หัวข้อเงื่อนไขตัดสิน');
   }
@@ -531,12 +601,12 @@ export class ImportImpactStoreService {
 | 1 | start | เริ่ม | createState() | - |
 | 2 | io | อ่าน SEVEN_IMPACT_VIEW จาก ALLMAP (ROW_NUMBER dedup) | step02Read() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 3 | decision | มีข้อมูลต้นทาง? | check03Condition() | [end] จบการทำงาน |
-| 4 | decision | เป็นคู่ร้านใหม่ (ยังไม่มีใน Oracle)? | check04Update() | [branch] ข้ามรายการ — ของเดิมไม่ถูกอัปเดต (updateList เป็น dead code) |
-| 5 | process | insert คู่ใหม่ sales_request_status = W | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 4 | decision | เป็นคู่ร้านใหม่ (ยังไม่มีใน Oracle)? | check04Update() | [บันทึกผลแล้วไป record ถัดไป] ข้ามรายการ — ของเดิมไม่ถูกอัปเดต (updateList เป็น dead code) |
+| 5 | process | insert คู่ใหม่ verify_status = W (ค่า DEFAULT) | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 6 | process | เติมข้อมูล master และ enrichment data | step06Enrich() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 7 | decision | ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS) | check07Validate() | [err] sales_request_status = N (Deny) |
-| 8 | decision | เข้าเงื่อนไข ON_PROCESS หรือ sgi_fgi_impact_processes.datasource = STA? | check08Condition() | [branch] คงค่า W (รอตรวจสอบ) |
-| 9 | process | sales_request_status = P (On Process) แล้ววนจนครบทุกแถว | step09Process() | throw JobFailedError เมื่อทำไม่สำเร็จ |
+| 7 | decision | ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS) | check07Validate() | [บันทึกผลแล้วไป record ถัดไป] verify_status = N (Deny) |
+| 8 | decision | เข้าเงื่อนไข ON_PROCESS หรือ sgi_fgi_impact_stores.created_by = STA? | check08Condition() | [บันทึกผลแล้วไป record ถัดไป] คงค่า verify_status = W (รอตรวจสอบ) |
+| 9 | process | verify_status = P (On Process) แล้ววนจนครบทุกแถว | step09Process() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 10 | end | จบ | summarize() | - |
 
 ```ts
@@ -560,7 +630,8 @@ export class ImportImpactStoreJob {
 
   async run(ctx: JobRunContext): Promise<JobRunResult> {
     const startedAt = Date.now();
-    // TODO: state ถือ counter (read/written/skipped/rejected) และค่าจาก job2Config
+    // TODO: state ถือ candidates ที่อ่านมา + counter (read/written/skipped/rejected/marked)
+    //       และค่าจาก job2Config — ทุก counter ต้องถูกอัปเดตจาก record จริง ไม่ใช่ค่าคงที่
     const state = this.service.createState(ctx);
     try {
       // ขั้นที่ 2: อ่าน SEVEN_IMPACT_VIEW จาก ALLMAP (ROW_NUMBER dedup) · TODO: เชื่อม SQL Server GSMALLMAP ด้วย user allmapssa
@@ -570,34 +641,41 @@ export class ImportImpactStoreJob {
       if (!ok03) { // NO → จบการทำงาน
         return this.summarize(state, 'SKIPPED', startedAt);
       }
+      // TODO: candidate มาจากขั้นอ่านข้อมูลด้านบน — ลูปนี้จำเป็นเพราะมี branch ระดับ record
+      //       (ขั้นที่ตัดสินรายแถวจะ `continue`/`return` ออกจากรอบของ record นั้น)
+      //       เยื้องบรรทัดในลูปให้เรียบร้อยตอนคัดลอกเข้าโปรเจกต์จริง
+      for (const record of state.candidates) {
       // ขั้นที่ 4 (decision): เป็นคู่ร้านใหม่ (ยังไม่มีใน Oracle)? · TODO: Errata E4: รันซ้ำจะไม่อัปเดตคู่เดิม
       const ok04 = await this.service.check04Update(state);
       if (!ok04) { // NO → ข้ามรายการ — ของเดิมไม่ถูกอัปเดต (updateList เป็น dead code)
-        // TODO: เส้น NO ของขั้นนี้เป็น branch ระดับ record — ผังไม่ได้ระบุว่าหยุดหรือไปต่อ
-        //   ถ้าเป็น 'ข้ามรายการ'      -> state.skipped += 1; แล้ว continue ในลูปของ record
-        //   ถ้าเป็น 'ตั้งค่าแล้วไปต่อ' -> เรียก service ตั้งค่าสถานะ แล้วเดินขั้นถัดไป (ห้าม return)
-        //   ถ้าเป็น 'คงสถานะเดิม/ไม่เปิดงาน' -> หยุดเฉพาะ record นี้ ห้ามไหลไปขั้นถัดไป
+        await this.service.mark04(state);
+        state.marked += 1;
+        continue; // ไป record ถัดไป — ไม่ใช่ error ของทั้ง job
       }
-      // === transaction boundary === TODO: หนึ่ง transaction + savepoint
+      // === transaction boundary === TODO: ทั้ง 3 ขั้น (impacted_stores → impact_processes → impact_stores) ของ candidate หนึ่งราย อยู่ใน transaction เดียวกัน · chunk ล้ม rollback เฉพาะ chunk · ห้ามซ้อน transaction สองชั้นแบบระบบเดิม
       await this.dataSource.transaction(async (manager: EntityManager) => {
-        // ขั้นที่ 5: insert คู่ใหม่ sales_request_status = W · TODO: ช่องทางต้นทางเก็บที่ sgi_fgi_impact_processes.datasource = ALM (sgi_fgi_impact_stores ไม่มีคอลัมน์ created_by/datasource)
+        // ขั้นที่ 5: insert คู่ใหม่ verify_status = W (ค่า DEFAULT) · TODO: created_by = ALM (คอลัมน์ของ sgi_fgi_impact_stores เอง) · ช่องทางต้นทางระดับรอบชดเชยอยู่ที่ sgi_fgi_impact_processes.datasource
         await this.service.step05Insert(state, manager);
+        // ขั้นที่ 6: เติมข้อมูล master และ enrichment data · TODO: INNER JOIN — ถ้า master ไม่ครบ แถวจะหลุดหายเงียบ ๆ
+        await this.service.step06Enrich(state, manager);
+        // ขั้นที่ 7 (decision): ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS) · TODO: DENY: สาขา N=F / juristic เดียวกัน / สัญญา SBP ไม่คลุมงวด / เก่ากว่า 12 เดือน
+        const ok07 = await this.service.check07Validate(state);
+        if (!ok07) { // NO → verify_status = N (Deny)
+          await this.service.mark07(state, manager);
+          state.marked += 1;
+          return; // ออกจาก transaction แบบ commit — ผล mark ต้องถูกบันทึก
+        }
+        // ขั้นที่ 8 (decision): เข้าเงื่อนไข ON_PROCESS หรือ sgi_fgi_impact_stores.created_by = STA? · TODO: แถวที่ created_by = STA เข้าสถานะ P ได้อัตโนมัติ
+        const ok08 = await this.service.check08Condition(state);
+        if (!ok08) { // NO → คงค่า verify_status = W (รอตรวจสอบ)
+          await this.service.mark08(state, manager);
+          state.marked += 1;
+          return; // ออกจาก transaction แบบ commit — ผล mark ต้องถูกบันทึก
+        }
+        // ขั้นที่ 9: verify_status = P (On Process) แล้ววนจนครบทุกแถว · TODO: sales_request_status ไม่ถูกแตะเลย — คงเป็น W ตาม DEFAULT ให้ Job 4 หยิบต่อ
+        await this.service.step09Process(state, manager);
       });
-      // ขั้นที่ 6: เติมข้อมูล master และ enrichment data · TODO: INNER JOIN — ถ้า master ไม่ครบ แถวจะหลุดหายเงียบ ๆ
-      await this.service.step06Enrich(state);
-      // ขั้นที่ 7 (decision): ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS) · TODO: DENY: สาขา N=F / juristic เดียวกัน / สัญญา SBP ไม่คลุมงวด / เก่ากว่า 12 เดือน
-      const ok07 = await this.service.check07Validate(state);
-      if (!ok07) throw new JobFailedError('JOB2_STEP07', 'sales_request_status = N (Deny)');
-      // ขั้นที่ 8 (decision): เข้าเงื่อนไข ON_PROCESS หรือ sgi_fgi_impact_processes.datasource = STA? · TODO: แหล่ง STA เข้าสถานะ P ได้อัตโนมัติ
-      const ok08 = await this.service.check08Condition(state);
-      if (!ok08) { // NO → คงค่า W (รอตรวจสอบ)
-        // TODO: เส้น NO ของขั้นนี้เป็น branch ระดับ record — ผังไม่ได้ระบุว่าหยุดหรือไปต่อ
-        //   ถ้าเป็น 'ข้ามรายการ'      -> state.skipped += 1; แล้ว continue ในลูปของ record
-        //   ถ้าเป็น 'ตั้งค่าแล้วไปต่อ' -> เรียก service ตั้งค่าสถานะ แล้วเดินขั้นถัดไป (ห้าม return)
-        //   ถ้าเป็น 'คงสถานะเดิม/ไม่เปิดงาน' -> หยุดเฉพาะ record นี้ ห้ามไหลไปขั้นถัดไป
       }
-      // ขั้นที่ 9: sales_request_status = P (On Process) แล้ววนจนครบทุกแถว
-      await this.service.step09Process(state);
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
       // TODO: error path ของ Job 2 — E4: updateList เป็น dead code / INNER JOIN ทำแถวที่ master ไม่ครบหายเงียบ (P1)
@@ -641,12 +719,21 @@ export class BatchRunner {
   private readonly logger = new Logger(BatchRunner.name);
   constructor(@Inject('DATA_SOURCE') private readonly dataSource: DataSource) {}
 
-  async runExclusive<T>(jobNo: string, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {
+  // period = งวดที่รอบนี้ทำงาน ('YYYY-MM') — เป็นส่วนหนึ่งของคีย์ล็อก ไม่ใช่แค่หมายเลข job
+  // (เจอจริง 2026-09-09: ล็อกด้วย jobNo อย่างเดียว = คนละงวดก็รันพร้อมกันไม่ได้
+  //  ทั้งที่เอกสารระบุว่าคนละงวดต้องรันขนานกันได้ · ส่ง period = null ถ้าต้องการล็อกทั้ง job)
+  async runExclusive<T>(jobNo: string, period: string | null, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {
     // TODO: ต้องใช้ QueryRunner (connection เดียวบน master) — dataSource.query() ของโปรเจกต์นี้
     //       route SQL ที่ขึ้นต้นด้วย SELECT ไป slave pool ทำให้ lock ไปตกที่ replica คนละ connection
     const runner = this.dataSource.createQueryRunner('master');
     await runner.connect();
-    const objectId = JOB_LOCK_KEYS[jobNo];
+    // pg_try_advisory_lock(int4, int4) — objectId ต้องอยู่ในช่วง int4
+    //   ล็อกทั้ง job : objectId = JOB_LOCK_KEYS[jobNo]
+    //   ล็อกรายงวด  : ผสมงวดเข้าไปด้วย hashtext() แล้วบีบให้อยู่ในช่วงที่ปลอดภัย
+    const baseId = JOB_LOCK_KEYS[jobNo];
+    const objectId = period === null ? baseId
+      : (await runner.query('SELECT (hashtext($1) & 2147483647) % 1000000 + $2 * 1000000 AS id',
+                            [period, baseId]))[0].id;
     try {
       const [{ locked }] = await runner.query(
         'SELECT pg_try_advisory_lock($1, $2) AS locked',
@@ -654,7 +741,7 @@ export class BatchRunner {
       );
       if (!locked) {
         // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล
-        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo }));
+        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo, period }));
         return { status: 'SKIPPED_LOCKED' };
       }
       return await fn();
@@ -673,21 +760,47 @@ repository ของ Job 2 ประกาศเป็น factory provider (`{pr
 
 | ตาราง | R/W | การใช้งานตามผัง | หมายเหตุ target design |
 | --- | --- | --- | --- |
-| sgi_fgi_impact_stores | W | insert คู่ร้านกระทบ–ร้านใหม่ / ตั้ง sales_request_status = W · N · P (ตารางนี้ไม่มี created_by — ช่องทางต้นทางอยู่ที่ sgi_fgi_impact_processes.datasource) | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_impacted_stores | R/W | upsert ร้านที่ถูกกระทบก่อน (FK ต้นทาง) — ห้ามเขียนทับค่าที่ Job 2 ไม่มีข้อมูล เช่น opt_dv_user_id / latitude / longitude | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_fgi_impact_processes | R/W | upsert แถวแม่ของ (ร้าน + งวด) แล้วอ่าน id กลับมาใส่ impact_process_id — ON CONFLICT DO NOTHING ไม่คืนแถว ต้อง SELECT ซ้ำ | เขียน SQL ตรงผ่าน DATA_SOURCE |
+| sgi_fgi_impact_stores | W | insert คู่ร้านกระทบ–ร้านใหม่ (verify_status = W ตาม DEFAULT) / ตั้ง verify_status เป็น P หรือ N · sales_request_status คงเป็น W ให้ Job 4 หยิบต่อ | เขียน SQL ตรงผ่าน DATA_SOURCE |
 
 ```sql
 -- Job 2 ImportImpactStore — query หลักที่ต้อง implement
 -- TODO: ทุก statement รันผ่าน DATA_SOURCE (SELECT ไป slave, write ไป master) และ
 --       write ทั้งหมดต้องอยู่ใน transaction เดียวกับที่ระบุใน 9.3
 
--- [W] sgi_fgi_impact_stores : insert คู่ร้านกระทบ–ร้านใหม่ / ตั้ง sales_request_status = W · N · P (ตารางนี้ไม่มี created_by — ช่องทางต้นทางอยู่ที่ sgi_fgi_impact_processes.datasource)
+-- [R/W] sgi_impacted_stores : upsert ร้านที่ถูกกระทบก่อน (FK ต้นทาง) — ห้ามเขียนทับค่าที่ Job 2 ไม่มีข้อมูล เช่น opt_dv_user_id / latitude / longitude
+-- อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
+SELECT store_code, dv_code, is_active, latitude, longitude, opt_dv_user_id, transfer_sbp_date, updated_at   -- ตัดคอลัมน์ที่ job นี้ไม่ได้ใช้ออก (ทั้งตารางมี 8 คอลัมน์)
+  FROM sgi_impacted_stores
+ WHERE store_code = $1   -- คีย์ที่ job นี้ใช้คัดแถว (ตารางนี้ไม่มีคอลัมน์งวดของตัวเอง)
+   FOR UPDATE SKIP LOCKED;
+
+UPDATE sgi_impacted_stores
+   SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
+       updated_at = NOW()
+ WHERE /* คีย์ที่ล็อกไว้จาก SELECT ... FOR UPDATE ข้างบน */ store_code = ANY($1);
+
+-- [R/W] sgi_fgi_impact_processes : upsert แถวแม่ของ (ร้าน + งวด) แล้วอ่าน id กลับมาใส่ impact_process_id — ON CONFLICT DO NOTHING ไม่คืนแถว ต้อง SELECT ซ้ำ
+-- อ่าน candidate แบบล็อกแถว กันรอบอื่น/pod อื่นแย่งอัปเดตแถวเดียวกัน
+SELECT id, action_status, created_at, datasource, end_compensate_month, end_compensate_year, flag_action, impact_month   -- ตัดคอลัมน์ที่ job นี้ไม่ได้ใช้ออก (ทั้งตารางมี 19 คอลัมน์)
+  FROM sgi_fgi_impact_processes
+ WHERE impact_year = $1 AND impact_month = $2  -- คอลัมน์งวดจริงของตารางนี้ตาม DDL
+   FOR UPDATE SKIP LOCKED;
+
+UPDATE sgi_fgi_impact_processes
+   SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */
+       updated_at = NOW(), updated_by = 'JOB2'
+ WHERE /* คีย์ที่ล็อกไว้จาก SELECT ... FOR UPDATE ข้างบน */ id = ANY($1);
+
+-- [W] sgi_fgi_impact_stores : insert คู่ร้านกระทบ–ร้านใหม่ (verify_status = W ตาม DEFAULT) / ตั้ง verify_status เป็น P หรือ N · sales_request_status คงเป็น W ให้ Job 4 หยิบต่อ
 -- คอลัมน์มาจาก DDL จริง — ตัดคอลัมน์ที่ job นี้ไม่ได้เขียนออก แล้วเลื่อนเลข $n ให้ตรง
 INSERT INTO sgi_fgi_impact_stores
   (impact_process_id, impacted_store_code, new_store_code, impact_month, adjust_compensate_percent, adjust_compensation_amount, created_by, distance_km, forecast_compensate_percent, forecast_compensation_amount, sales_request_status, updated_by, verify_status)
 VALUES ($1 /* impact_process_id */, $2 /* impacted_store_code */, $3 /* new_store_code */, $4 /* impact_month */, $5 /* adjust_compensate_percent */, $6 /* adjust_compensation_amount */, $7 /* created_by */, $8 /* distance_km */, $9 /* forecast_compensate_percent */, $10 /* forecast_compensation_amount */, $11 /* sales_request_status */, $12 /* updated_by */, $13 /* verify_status */)
 ON CONFLICT (impacted_store_code, new_store_code, impact_month)   -- unique key จริงตาม DDL ของ sgi_fgi_impact_stores (ห้ามเดา)
-DO UPDATE SET impact_process_id = EXCLUDED.impact_process_id, adjust_compensate_percent = EXCLUDED.adjust_compensate_percent, adjust_compensation_amount = EXCLUDED.adjust_compensation_amount, created_by = EXCLUDED.created_by, distance_km = EXCLUDED.distance_km, forecast_compensate_percent = EXCLUDED.forecast_compensate_percent, forecast_compensation_amount = EXCLUDED.forecast_compensation_amount, sales_request_status = EXCLUDED.sales_request_status, updated_by = EXCLUDED.updated_by, verify_status = EXCLUDED.verify_status,
-       updated_at = NOW(), updated_by = 'JOB2';
+DO NOTHING;   -- ตามสัญญา idempotency ของ job นี้: คู่ที่มีอยู่แล้วต้องข้ามเงียบ ห้ามอัปเดตทับ
+-- ⚠️ DO NOTHING ไม่คืนแถว — ถ้าต้องใช้ id ต่อ ให้ SELECT ซ้ำด้วย business key
 ```
 
 ### 9.6 การแจ้งเตือนและการรันซ้ำของ Job 2
@@ -745,10 +858,10 @@ export class JobFailureNotifier {
 #### 9.6.2 Checklist การ rerun
 
 - กติกา rerun ของ Job 2: คู่เดิมถูกข้าม — รันซ้ำไม่อัปเดตของเดิม ต้องลบ/แก้คู่ที่ต้องการอย่างจงใจก่อน
-- ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: หนึ่ง transaction + savepoint
+- ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: ทั้ง 3 ขั้น (impacted_stores → impact_processes → impact_stores) ของ candidate หนึ่งราย อยู่ใน transaction เดียวกัน · chunk ล้ม rollback เฉพาะ chunk · ห้ามซ้อน transaction สองชั้นแบบระบบเดิม
 - ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: E4: updateList เป็น dead code / INNER JOIN ทำแถวที่ master ไม่ครบหายเงียบ (P1)
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
-- สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=2 --period=&lt;YYYYMM&gt;`
+- สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API) — local: `JOB_NAME=sgi-import-impact-store INPUT='{"year":2026,"month":6}' npm run start` · AWS Batch: `node dist/main.js '{"year":2026,"month":6}' sgi-import-impact-store` (quote เดี่ยวครอบ JSON เสมอ) · ตรวจผลด้วย `echo $?` ต้องเป็น 0 เมื่อสำเร็จ
 - หลังรันซ้ำ ตรวจ output `sgi_fgi_impact_stores` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
 - ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 
@@ -760,11 +873,11 @@ export class JobFailureNotifier {
 | 2 | อ่าน SEVEN_IMPACT_VIEW จาก ALLMAP (ROW_NUMBER dedup) (เชื่อม SQL Server GSMALLMAP ด้วย user allmapssa) |
 | 3 | มีข้อมูลต้นทาง? \| No: จบการทำงาน |
 | 4 | เป็นคู่ร้านใหม่ (ยังไม่มีใน Oracle)? \| No: ข้ามรายการ — ของเดิมไม่ถูกอัปเดต (updateList เป็น dead code) (Errata E4: รันซ้ำจะไม่อัปเดตคู่เดิม) |
-| 5 | insert คู่ใหม่ sales_request_status = W (ช่องทางต้นทางเก็บที่ sgi_fgi_impact_processes.datasource = ALM (sgi_fgi_impact_stores ไม่มีคอลัมน์ created_by/datasource)) |
+| 5 | insert คู่ใหม่ verify_status = W (ค่า DEFAULT) (created_by = ALM (คอลัมน์ของ sgi_fgi_impact_stores เอง) · ช่องทางต้นทางระดับรอบชดเชยอยู่ที่ sgi_fgi_impact_processes.datasource) |
 | 6 | เติมข้อมูล master และ enrichment data (INNER JOIN — ถ้า master ไม่ครบ แถวจะหลุดหายเงียบ ๆ) |
-| 7 | ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS) \| No: sales_request_status = N (Deny) (DENY: สาขา N=F / juristic เดียวกัน / สัญญา SBP ไม่คลุมงวด / เก่ากว่า 12 เดือน) |
-| 8 | เข้าเงื่อนไข ON_PROCESS หรือ sgi_fgi_impact_processes.datasource = STA? \| No: คงค่า W (รอตรวจสอบ) (แหล่ง STA เข้าสถานะ P ได้อัตโนมัติ) |
-| 9 | sales_request_status = P (On Process) แล้ววนจนครบทุกแถว |
+| 7 | ผ่านกฎ DENY? (ตรวจก่อน ON_PROCESS) \| No: verify_status = N (Deny) (DENY: สาขา N=F / juristic เดียวกัน / สัญญา SBP ไม่คลุมงวด / เก่ากว่า 12 เดือน) |
+| 8 | เข้าเงื่อนไข ON_PROCESS หรือ sgi_fgi_impact_stores.created_by = STA? \| No: คงค่า verify_status = W (รอตรวจสอบ) (แถวที่ created_by = STA เข้าสถานะ P ได้อัตโนมัติ) |
+| 9 | verify_status = P (On Process) แล้ววนจนครบทุกแถว (sales_request_status ไม่ถูกแตะเลย — คงเป็น W ตาม DEFAULT ให้ Job 4 หยิบต่อ) |
 | 10 | จบ |
 
 ## 11. Acceptance Criteria
@@ -801,7 +914,7 @@ export class JobFailureNotifier {
 | business rule | logic | ทุกรอบต้องเขียน application log แบบ structured (`BATCH_START`/`BATCH_END` + `runId` — `src/main.ts` ทำให้แล้ว) และบันทึกลง `integration_log` อัตโนมัติ · error ต้องส่ง EM-07 |
 | business rule | logic | DB/table mapping ใช้เป็น reference สำหรับ implement Job เท่านั้น ไม่ใช่งานสร้างหน้า Database |
 | business rule | logic | รองรับ rerun rule และ risk note ตาม runbook |
-| `sgi_fgi_impact_stores` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
+| `sgi_impacted_stores`, `sgi_fgi_impact_processes`, `sgi_fgi_impact_stores` | transaction | จำลอง error กลางทาง แล้วยืนยันว่า rollback ครบ ไม่เหลือแถวค้าง (mock DataSource/QueryRunner) |
 | runner | idempotency | รันซ้ำด้วย fixture เดิมต้องไม่เกิดแถวซ้ำ (ON CONFLICT / business unique key ทำงาน) |
 | runner | lock | เรียกซ้อนขณะกำลังรัน ต้องถูกปฏิเสธด้วย advisory lock |
 

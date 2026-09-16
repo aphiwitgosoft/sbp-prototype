@@ -203,29 +203,21 @@ Popup เลือกร้านที่ถูกกระทบ
 
 ```json
 {
-  "status": "06",
-  "impactedStoreCode": "00788",
-  "newStoreCode": "00990",
-  "periodStatementFrom": "2026-06-01",
-  "periodStatementTo": "2026-06-30",
-  "storeTypes": [
-    "A",
-    "B"
-  ],
-  "regions": [
-    "RSU",
-    "BN"
-  ],
-  "result": "APPROVE",
-  "page": 1,
-  "size": 20,
   "year": 2026,
-  "region": [
+  "status": "06",
+  "result": "APPROVE",
+  "regions": [
     "RSU"
   ],
-  "storeType": [
+  "storeTypes": [
     "A"
-  ]
+  ],
+  "periodStatementFrom": "2026-06-01",
+  "periodStatementTo": "2026-06-30",
+  "impactedStoreCode": "00788",
+  "newStoreCode": "00990",
+  "page": 1,
+  "size": 20
 }
 ```
 
@@ -233,19 +225,17 @@ Popup เลือกร้านที่ถูกกระทบ
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | status | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
-| newStoreCode | string | No | exactly 5 digits; preserve leading zero |
+| result | string | No | ช่อง **ผลการพิจารณา** (มีเฉพาะหน้า *ที่เกี่ยวข้อง*) — `APPROVE` / `REJECT` / `CANCELLED` / `NONE` · ดูจากผลพิจารณา **ล่าสุด** ของเอกสารใน `sgi_consideration_logs` ไม่ได้อยู่ที่หัวเอกสาร |
+| regions | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| storeTypes | array&lt;string&gt; | No | JSON array; element type shown in Type column |
 | periodStatementFrom | string | No | UTF-8; use value domain described by endpoint purpose |
 | periodStatementTo | string | No | UTF-8; use value domain described by endpoint purpose |
-| storeTypes | array&lt;string&gt; | No | JSON array; element type shown in Type column |
-| regions | array&lt;string&gt; | No | JSON array; element type shown in Type column |
-| result | string | No | UTF-8; use value domain described by endpoint purpose |
+| impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
+| newStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
-| year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| region | array&lt;string&gt; | No | JSON array; element type shown in Type column |
-| storeType | array&lt;string&gt; | No | JSON array; element type shown in Type column |
 
 #### Response
 
@@ -304,7 +294,7 @@ Popup เลือกร้านที่ถูกกระทบ
 | items[].newStoreName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].newRegion | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].newStoreType | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].compensationAmount | number | Yes | number >= 0 with 2 decimals |
+| items[].compensationAmount | number | Yes | number >= 0 with 2 decimals · ⚠️ มาจากคนละคอลัมน์ตามที่อยู่: ใน `newStores[]` = `sgi_document_new_stores.compensation_amount` · ใน `compensationHistories[]` = `sgi_compensation_histories.compensate_amount` |
 | items[].roundNo | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].createdDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
 | items[].docNo | string | Yes | ค.ศ. YYYY/xxxxx |
@@ -339,9 +329,9 @@ Export Excel ด้วย filter เดียวกับการค้นห�
 | --- | --- | --- | --- |
 | year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
 | status | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| result | string | No | UTF-8; use value domain described by endpoint purpose |
+| result | string | No | ช่อง **ผลการพิจารณา** (มีเฉพาะหน้า *ที่เกี่ยวข้อง*) — `APPROVE` / `REJECT` / `CANCELLED` / `NONE` · ดูจากผลพิจารณา **ล่าสุด** ของเอกสารใน `sgi_consideration_logs` ไม่ได้อยู่ที่หัวเอกสาร |
 | region | array&lt;string&gt; | No | JSON array; element type shown in Type column |
-| storeType | array&lt;string&gt; | No | JSON array; element type shown in Type column |
+| storeType | array&lt;string&gt; | No | ช่อง **ประเภทร้าน** — 7 ค่า `A B C D E PTT บริษัท` (`store.store_type`) ชุดเดียวกับตัวกรองในรายงาน |
 | impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | newStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | sameAsSearch | boolean | No | UTF-8; use value domain described by endpoint purpose |
@@ -512,19 +502,17 @@ export interface StoreSearchResponse { items: StoreSearchItem[]; }
 
 /** GET /api/v1/sgi/report/status-summary — request */
 export interface SgiReportStatusSummaryParams {
+  year?: number;
   status?: string;
-  impactedStoreCode?: string;
-  newStoreCode?: string;
+  result?: string;
+  regions?: string[];
+  storeTypes?: string[];
   periodStatementFrom?: string;
   periodStatementTo?: string;
-  storeTypes?: string[];
-  regions?: string[];
-  result?: string;
+  impactedStoreCode?: string;
+  newStoreCode?: string;
   page?: number;
   size?: number;
-  year?: number;
-  region?: string[];
-  storeType?: string[];
 }
 
 /** GET /api/v1/sgi/report/status-summary — 1 แถวในตาราง */

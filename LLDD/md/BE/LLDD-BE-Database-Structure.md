@@ -10,7 +10,7 @@ SBP Mall - ระบบประกันรายได้ | Low Level Design D
 | Estimate | 31 ชั่วโมง (ไม่มี unit test แยก — ดูเหตุผลใน NO_UNIT_TEST_DOCS) |
 | Owner | Peerakorn &lt;Pete&gt; Sakunkaewphithak |
 | Target repository | `SBP/srm-sps-spsap-store-backend` (NestJS + TypeORM · schema `sps_store`) + `SBP/srm-sps-spsap-sbp-bff` (forward ผ่าน client service · ไม่มี DB) สำหรับเส้นที่ FE เรียก |
-| Objective | กำหนด DDL ของ target schema 20 ตาราง พร้อม index/constraint/seed และสคริปต์ deploy ให้ทุกเอกสาร BE อ้างอิงโครงเดียวกัน — เป็น blocker ที่ต้องปิดในสัปดาห์แรก |
+| Objective | กำหนด DDL ของ target schema 21 ตาราง พร้อม index/constraint/seed และสคริปต์ deploy ให้ทุกเอกสาร BE อ้างอิงโครงเดียวกัน — เป็น blocker ที่ต้องปิดในสัปดาห์แรก |
 
 Common contract reference: ทุกหัวข้อ API/FE ต้องยึด LLDD-BE-API-Common-Contracts และ LLDD-FE-Integration-Contracts สำหรับ error/auth/format/pagination/action/RBAC ก่อนลงรายละเอียดเฉพาะหน้าหรือเฉพาะ endpoint
 
@@ -25,7 +25,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ## 2. Screen / Functional Scope
 
-- DDL ครบ 20 ตารางของ target schema (โซน A 8 · โซน B 9 · โซน C 3)
+- DDL ครบ 21 ตารางของ target schema (โซน A 8 · โซน B 9 · โซน C 3)
 - Index, unique/partial index, check constraint และ FK ที่ต้องมีก่อน SIT
 - Seed data ที่ต้องมีก่อนเปิดระบบ (sgi_external_factors · sgi_competitors) — decisions ไป seed ที่ common_code ของระบบเดิม (DP-9)
 - สคริปต์ deploy/rollback ต่อ environment และลำดับการรันตาม dependency
@@ -61,13 +61,13 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Database Structure and Deploy
 | doc_no | VARCHAR(12) รูปแบบ YYYY/xxxxx | unique ต่อปี | ออกเลขผ่าน sgi_document_running_numbers แบบ atomic |
 | amount / percent | NUMERIC(15,2) / NUMERIC(5,2) | amount >= 0 · percent 0-100 | ผลรวม compensate_percent ต่อเอกสารต้อง = 100 |
 | period key | CHAR(7) 'YYYY-MM' (ค.ศ.) | ค่าคงรูปแบบเดียวทั้ง schema | แสดงผลเป็น ค.ศ. เช่นกัน |
-| fcs_qssi_score | ตารางเดิมของ sps_store | ห้าม CREATE TABLE ใหม่ | มีอยู่จริง 23,958,780 แถว + import pipeline ใช้งานอยู่ (POST /performance/import-qssi · staging fcs_tmp_qssi_score) |
+| fcs_qssi_score | ตารางเดิมของ sps_store | ห้าม CREATE TABLE ใหม่ | มีอยู่จริง 24,284,545 แถว + import pipeline ใช้งานอยู่ (POST /performance/import-qssi · staging fcs_tmp_qssi_score) |
 
-### 5.1 ขอบเขตตารางในโครง SGI (20 ตาราง — CREATE จริง 19 + reuse 1)
+### 5.1 ขอบเขตตารางในโครง SGI (21 ตาราง — CREATE จริง 20 + reuse 1)
 
 DDL เต็มอยู่ที่เอกสาร `LLDD-Database` หัวข้อ Executable DDL · เอกสารฉบับนี้เป็นเจ้าของ **สคริปต์ deploy จริง** และกติกาว่าอะไรสร้างได้/สร้างไม่ได้
 
-⚠️ **20 = จำนวนตารางในโครง ไม่ใช่จำนวนที่ต้อง CREATE** — `fcs_qssi_score` นับอยู่ในโครงโซน A แต่ใช้ตารางเดิมของ `sps_store` (23,958,780 แถว) จึง **ห้าม CREATE TABLE** ดูหัวข้อ 5.1.1 · จำนวนที่ต้อง CREATE จริงคือ **19 ตาราง** (20 ตารางในโครง ลบ fcs_qssi_score ที่ reuse) · **DP-4 ✅ ปิดแล้ว 2026-08-24** — reuse ตารางเดิมแบบ **อ่านอย่างเดียว** ไม่มีการเขียนจากฝั่ง SGI จึงไม่ต้องแก้ constraint/index ของตารางเดิมและไม่ต้องขอ sign-off (`SBP/SBPGI-vs-existing-system.md หัวข้อ 4`)
+⚠️ **20 = จำนวนตารางในโครง ไม่ใช่จำนวนที่ต้อง CREATE** — `fcs_qssi_score` นับอยู่ในโครงโซน A แต่ใช้ตารางเดิมของ `sps_store` (24,284,545 แถว) จึง **ห้าม CREATE TABLE** ดูหัวข้อ 5.1.1 · จำนวนที่ต้อง CREATE จริงคือ **20 ตาราง** (21 ตารางในโครง ลบ fcs_qssi_score ที่ reuse) · **DP-4 ✅ ปิดแล้ว 2026-08-24** — reuse ตารางเดิมแบบ **อ่านอย่างเดียว** ไม่มีการเขียนจากฝั่ง SGI จึงไม่ต้องแก้ constraint/index ของตารางเดิมและไม่ต้องขอ sign-off (`SBP/SBPGI-vs-existing-system.md หัวข้อ 4`)
 
 | โซน | จำนวน | ตาราง |
 | --- | --- | --- |
@@ -80,14 +80,16 @@ DDL เต็มอยู่ที่เอกสาร `LLDD-Database` หั�
 
 ตรวจฐานข้อมูลจริง 2026-08-07 (`SBP/db-schema-sps_store.md`) ทุกตารางในตารางนี้อยู่ใน schema **`sps_store`** และมีข้อมูลจริงใช้งานอยู่ การสร้างซ้ำใน SGI = ข้อมูลสองชุดที่ไม่มีวันตรงกัน
 
+⚠️ **จำนวนแถวเป็นค่า ณ 2026-09-16** วัดสดจากฐาน dev ด้วย `tools/introspect_dev_sgi.py` · ฐานนี้ยังมีระบบเดิมใช้งานอยู่จริง ตัวเลขจึงเปลี่ยนทุกวัน — ใช้เพื่อดู**ขนาดของปัญหา** ไม่ใช่ตัวเลขที่ต้องตรงเป๊ะ · ตรวจว่ายังใกล้เคียงอยู่ไหมด้วย `tools/check_docs_vs_db.py`
+
 | ตาราง/กลุ่มตาราง | schema | จำนวนแถวจริง | หมายเหตุ |
 | --- | --- | --- | --- |
-| workflow engine 13 ตาราง | sps_store | workflow_transaction 19,283 · workflow_history 38,010 · workflow_approver 96,542 | ดู LLDD-BE-Workflow-Engine-Definition |
-| fcs_qssi_score (เอกพจน์) | sps_store | 23,958,780 | มี import pipeline ใช้งานอยู่ (POST /performance/import-qssi · staging fcs_tmp_qssi_score) — ห้ามสร้างใหม่ |
-| mas_param | sps_store | 93,752 | ค่ากำหนดกลาง |
-| common_code / common_code_type | sps_store | 2,609 / 376 | วงเงินอนุมัติ code_type = SGI_APPROVE_LIMIT |
-| email_template / email_sent | sps_store | 85 / 5,214 | เทมเพลตอีเมลและ log การส่ง |
-| business_user | sps_store | 12,752 | ตัวตนผู้ใช้/ผู้อนุมัติ |
+| workflow engine 13 ตาราง | sps_store | workflow_transaction 19,327 · workflow_history 38,136 · workflow_approver 96,542 | ดู LLDD-BE-Workflow-Engine-Definition |
+| fcs_qssi_score (เอกพจน์) | sps_store | 24,284,545 | มี import pipeline ใช้งานอยู่ (POST /performance/import-qssi · staging fcs_tmp_qssi_score) — ห้ามสร้างใหม่ |
+| mas_param | sps_store | 93,763 | ค่ากำหนดกลาง |
+| common_code / common_code_type | sps_store | 2,641 / 380 | วงเงินอนุมัติ code_type = SGI_APPROVE_LIMIT |
+| email_template / email_sent | sps_store | 126 / 5,392 | เทมเพลตอีเมลและ log การส่ง |
+| business_user | sps_store | 12,759 | ตัวตนผู้ใช้/ผู้อนุมัติ |
 | store / mas_store | sps_store | 19,402 / 19,647 | master ร้าน |
 | fcs_monthly_sales | sps_store | 711,384 | ยอดขาย**รายเดือน** (key store_id+year+month) — ใช้แทน sgi_sales_transactions รายวันไม่ได้ ย้อนกลับเป็นรายวันไม่ได้ · ใช้ cross-check ได้ |
 
@@ -99,7 +101,7 @@ DDL เต็มอยู่ที่เอกสาร `LLDD-Database` หั�
 
 | ไฟล์ | เนื้อหา | รันเมื่อไร |
 | --- | --- | --- |
-| 01_schema.sql | CREATE TABLE 19 ตาราง เรียงตาม dependency (C master -> A pipeline -> B document) — ไม่รวม fcs_qssi_score ที่ reuse ของเดิม | ครั้งเดียวต่อ environment |
+| 01_schema.sql | CREATE TABLE 20 ตาราง เรียงตาม dependency (C master -> A pipeline -> B document) — ไม่รวม fcs_qssi_score ที่ reuse ของเดิม | ครั้งเดียวต่อ environment |
 | 02_index.sql | index, unique/partial index, check constraint | หลัง 01 · rerun ได้เมื่อเพิ่ม index |
 | 03_seed.sql | sgi_external_factors, sgi_competitors (01-11) — ไม่มี decisions แล้ว (DP-9 ย้ายไป common_code · seed ที่ระบบเดิม) | หลัง 02 |
 | 04_grant.sql | GRANT ให้ role ของ application (แยก read/write) | หลัง 03 |
@@ -122,7 +124,7 @@ CREATE TABLE sgi_impacted_stores (...);
 --    workflow ให้ 'เลข template' ผ่าน workflow_route.email_id → SGI เรียก sendEmail() ของ email-lib เอง
 --    ผู้รับ resolve จาก workflow_approver → business_user.email · ⚠️ คอลัมน์จริงคือ email_sent.send_by ไม่ใช่ sent_by
 --    SGI อ่าน workflow_route.email_id แล้วเรียก sendEmail() ของ email-lib · template อยู่ที่ email_template ของระบบ SBP เดิม (85 แถว)
---    lib เขียน log ให้เองที่ email_sent (5,214 แถว · mail_to/mail_cc/is_sent/error · ⚠️ คอลัมน์ผู้ส่งคือ send_by)
+--    lib เขียน log ให้เองที่ email_sent (5,392 แถว · mail_to/mail_cc/is_sent/error · ⚠️ คอลัมน์ผู้ส่งคือ send_by)
 
 
 -- โซน A: pipeline
@@ -142,8 +144,8 @@ COMMIT;
 | (ไม่สร้าง) decisions | ย้ายไป common_code ของระบบเดิม (code_type = SGI_DECISION) — มติ DP-9 2026-08-10 | MSSQL DecisionProfile |
 | sgi_competitors | แบรนด์คู่แข่ง 11 รายการ รหัส 01-11 (ไทย+อังกฤษ) | หน้าจอ K2 เดิม (k2-competitors.html) |
 | sgi_external_factors | ปัจจัยภายนอกที่ใช้อยู่ | MSSQL FactorProfile |
-| common_code (ระบบเดิม) | SGI_APPROVE_LIMIT: THRESHOLD=100000 (เกณฑ์เดียว) | มติประชุม 2026-08-18 — เขียนที่ common_code ของระบบเดิม ไม่ใช่ตารางของ SGI |
-| common_code (ระบบเดิม) | SGI_DATASOURCE: ALM=ระบบ (ALLMAP) · STA=ระบบ (Statement) · PRO=เชิงรุก · REA=เชิงรับ | SDD GI สไลด์ 17 — 3 แหล่งข้อมูลร้านที่ต้องชดเชย · รหัส PRO/REA ตั้งใหม่ 2026-08-24 ตามแพตเทิร์น 3 ตัวอักษรของ DATASOURCE เดิม (ALM/STA/HRS) เพราะ SDD และระบบเดิมไม่ได้กำหนดไว้ |
+| common_code (ระบบเดิม) | SGI_APPROVE_LIMIT: code_value=100000 · code_name=100000 (เกณฑ์เดียว) | มติประชุม 2026-08-18 — เขียนที่ common_code ของระบบเดิม ไม่ใช่ตารางของ SGI |
+| common_code (ระบบเดิม) | SGI_DATASOURCE: ALM=ระบบ (ALLMAP) · STA=ระบบ (Statement) · PRO=เชิงรุก · REA=เชิงรับ | SDD GI สไลด์ 17 — 3 แหล่งข้อมูลร้านที่ต้องชดเชย · รหัส PRO/REA ตั้งใหม่ 2026-08-24 ตามแพตเทิร์น 3 ตัวอักษรของ DATASOURCE เดิม (ข้อมูลจริงมีแค่ ALM/STA) เพราะ SDD และระบบเดิมไม่ได้กำหนดไว้ |
 
 ### 5.4 ข้อกำหนดด้านโครงสร้างข้อมูลที่ต้องยึด
 
@@ -152,7 +154,7 @@ COMMIT;
 | เรื่อง | ข้อกำหนดที่ต้องทำตาม | ที่มา / เหตุผล |
 | --- | --- | --- |
 | ร้าน SP ที่ใช้อ้างในเอกสาร | เก็บเป็น **snapshot เฉพาะร้านที่เคยเข้ารอบชดเชย** ใน `sgi_impacted_stores` — เติมตอนสร้าง `sgi_fgi_impact_processes` ห้ามอ่านผ่าน view ของระบบเดิม | ร้านที่ยกเลิกเกิน 1 เดือนหายจาก view ของระบบเดิม ทำให้เอกสารย้อนหลังอ่านไม่ได้ (ตัดสิน 2026-08-10) |
-| `fcs_qssi_score` | **ห้าม CREATE TABLE** — reuse ตารางเดิมของ `sps_store` (23,958,780 แถว) แบบอ่านอย่างเดียว | ระบบ SBP เดิมนำเข้าให้แล้วผ่าน `POST /performance/import-qssi` (ปิด 2026-08-24 · ตัด Job 1 ออก) |
+| `fcs_qssi_score` | **ห้าม CREATE TABLE** — reuse ตารางเดิมของ `sps_store` (24,284,545 แถว) แบบอ่านอย่างเดียว | ระบบ SBP เดิมนำเข้าให้แล้วผ่าน `POST /performance/import-qssi` (ปิด 2026-08-24 · ตัด Job 1 ออก) |
 | ผลพิจารณา / ปัจจัย / คู่แข่ง | `decisions` ใช้ `common_code` ของระบบเดิม (`code_type = SGI_DECISION`) · `sgi_external_factors` และ `sgi_competitors` **เป็นตารางของ SGI** | สองตารางหลังมีหน้าจอ CRUD ของตัวเอง และ remark ของ `common_code` จำกัด 50 ตัวอักษร (ตัดสิน 2026-08-10) |
 | `reference_id` ที่ส่งเข้า workflow engine | ส่ง **`sgi_compensation_documents.id`** (surrogate) เป็น string — ห้ามส่ง `doc_no` | `reference_id` ของ engine เป็น varchar(255) และระบบเดิม (cooperation-request / inform-evaluate) ส่ง surrogate id ทุกจุด (ปิด 2026-08-17) |
 | ประวัติการพิจารณา | ใช้ **`sgi_consideration_logs` ของ SGI เอง** ผูก `transaction_id` ของ engine — ไม่ต่อยอดบน `sps_store.workflow_history` | engine เก็บ timeline แต่ไม่มีรหัสผลพิจารณาและไฟล์แนบ (ปิด 2026-08-24) |
@@ -163,20 +165,20 @@ COMMIT;
 | Stage | Contract for implementation |
 | --- | --- |
 | Input | ไม่มี endpoint ของตัวเอง — input คือ request ที่เอกสารอื่นส่งเข้ามา พร้อม user context จาก BFF header (ดู 5.1) และค่ากำหนดกลางที่อ่านจากระบบเดิม |
-| Progress | ยืนยันรายการ 20 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL; เขียน 01_schema.sql เรียงตาม dependency: โซน C master -> โซน A pipeline -> โซน B document; เขียน 02_index.sql แยกไฟล์ เพื่อให้ rerun/เพิ่ม index ภายหลังได้โดยไม่แตะ schema; เขียน 03_seed.sql เฉพาะ master ที่ระบบต้องมีตั้งแต่วันแรก |
+| Progress | ยืนยันรายการ 21 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL; เขียน 01_schema.sql เรียงตาม dependency: โซน C master -> โซน A pipeline -> โซน B document; เขียน 02_index.sql แยกไฟล์ เพื่อให้ rerun/เพิ่ม index ภายหลังได้โดยไม่แตะ schema; เขียน 03_seed.sql เฉพาะ master ที่ระบบต้องมีตั้งแต่วันแรก |
 | Output | 20 target tables (โซน A/B/C) |
 
 ### 5.90 Endpoint Implementation Contract
 
 | Endpoint | Use-case owner | Service/repository behavior | Definition of done |
 | --- | --- | --- | --- |
-| Internal service | กำหนด DDL ของ target schema 20 ตาราง พร้อม index/constraint/seed และสคริปต์ deploy ให้ทุกเอกสาร BE อ้างอิงโครงเดียวกัน — เป็น blocker ที่ต้องปิดในสัปดาห์แรก | เรียกจาก use case ภายในเท่านั้น | DDL รันบนฐานว่างได้ครบในครั้งเดียวโดยไม่มี error ลำดับ FK |
+| Internal service | กำหนด DDL ของ target schema 21 ตาราง พร้อม index/constraint/seed และสคริปต์ deploy ให้ทุกเอกสาร BE อ้างอิงโครงเดียวกัน — เป็น blocker ที่ต้องปิดในสัปดาห์แรก | เรียกจาก use case ภายในเท่านั้น | DDL รันบนฐานว่างได้ครบในครั้งเดียวโดยไม่มี error ลำดับ FK |
 
 ### 5.91 Backend Execution Sequence
 
 | Step | Behavior specific to this LLDD | Failure/test evidence |
 | --- | --- | --- |
-| 1 | ยืนยันรายการ 20 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL | รัน 01+02+03 บนฐานว่าง แล้ว dump schema เทียบกับต้นฉบับ |
+| 1 | ยืนยันรายการ 21 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL | รัน 01+02+03 บนฐานว่าง แล้ว dump schema เทียบกับต้นฉบับ |
 | 2 | เขียน 01_schema.sql เรียงตาม dependency: โซน C master -> โซน A pipeline -> โซน B document | รัน 01 ซ้ำครั้งที่สอง ต้อง fail แบบชัดเจน ไม่สร้างของซ้ำเงียบ ๆ |
 | 3 | เขียน 02_index.sql แยกไฟล์ เพื่อให้ rerun/เพิ่ม index ภายหลังได้โดยไม่แตะ schema | ทดสอบ insert เอกสารที่ compensate_percent รวมไม่ครบ 100 ต้องถูก block |
 | 4 | เขียน 03_seed.sql เฉพาะ master ที่ระบบต้องมีตั้งแต่วันแรก | ทดสอบ insert store_code '00788' แล้วอ่านกลับได้ leading zero ครบ |
@@ -188,7 +190,7 @@ COMMIT;
 
 | Action | Trigger | API / Service | Expected Result |
 | --- | --- | --- | --- |
-| รัน DDL baseline | deploy script | psql -f 01_schema.sql | สร้าง 19 ตารางตามลำดับ dependency |
+| รัน DDL baseline | deploy script | psql -f 01_schema.sql | สร้าง 20 ตารางตามลำดับ dependency |
 | รัน index/constraint | deploy script | psql -f 02_index.sql | index/unique/check ครบก่อนเปิด SIT |
 | รัน seed | deploy script | psql -f 03_seed.sql | master ที่ระบบต้องมีตั้งแต่วันแรก |
 | Rollback | deploy script | psql -f 99_rollback.sql | DROP ย้อนลำดับ · ห้ามแตะตารางของระบบ SBP เดิม |
@@ -205,14 +207,14 @@ COMMIT;
 | --- | --- | --- |
 | 20 target tables (โซน A/B/C) | W | สร้างจาก DDL baseline ของเอกสารนี้ |
 | workflow engine 13 ตาราง (sps_store) | R | ห้ามสร้างซ้ำ — ใช้ของ @srm/glb-workflow |
-| fcs_qssi_score (sps_store) | R | ห้ามสร้างซ้ำ — 23,958,780 แถว + import pipeline ใช้งานอยู่ |
+| fcs_qssi_score (sps_store) | R | ห้ามสร้างซ้ำ — 24,284,545 แถว + import pipeline ใช้งานอยู่ |
 | mas_param / common_code / business_user / email_template (sps_store) | R | ค่ากำหนดกลาง/master/ตัวตน/เทมเพลตอีเมลของระบบ SBP เดิม |
 
 ## 9. Processing Flow
 
 | Step | Description |
 | --- | --- |
-| 1 | ยืนยันรายการ 20 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL |
+| 1 | ยืนยันรายการ 21 ตารางกับ database.md และ LLDD-Database ให้ตรงกันก่อนเขียน DDL |
 | 2 | เขียน 01_schema.sql เรียงตาม dependency: โซน C master -> โซน A pipeline -> โซน B document |
 | 3 | เขียน 02_index.sql แยกไฟล์ เพื่อให้ rerun/เพิ่ม index ภายหลังได้โดยไม่แตะ schema |
 | 4 | เขียน 03_seed.sql เฉพาะ master ที่ระบบต้องมีตั้งแต่วันแรก |
@@ -223,7 +225,7 @@ COMMIT;
 ## 10. Acceptance Criteria
 
 - DDL รันบนฐานว่างได้ครบในครั้งเดียวโดยไม่มี error ลำดับ FK
-- จำนวนตารางที่สร้างจริง = 19 ตาราง (20 ในโครง ลบ fcs_qssi_score ที่ reuse) ตรงกับ database.md
+- จำนวนตารางที่สร้างจริง = 20 ตาราง (21 ในโครง ลบ fcs_qssi_score ที่ reuse) ตรงกับ database.md
 - ไม่มี CREATE TABLE ของ workflow engine, store master, common_code, mas_param, business_user, email_template หรือ fcs_qssi_score
 - ทุกตารางมี PK และทุก FK ชี้ไปตารางที่มีอยู่จริงในสคริปต์เดียวกัน
 - rollback script ลบเฉพาะตารางของ SGI

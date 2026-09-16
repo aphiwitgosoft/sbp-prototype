@@ -163,10 +163,11 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Lookup_
 {
   "items": [
     {
-      "code": "06",
-      "label": "รอฝ่าย SBP DSA ดำเนินการ",
       "statusCode": "06",
-      "statusName": "รอฝ่าย SBP DSA ดำเนินการ"
+      "currentOwner": "somchai.k",
+      "statusName": "รอฝ่าย SBP DSA ดำเนินการ",
+      "code": "06",
+      "label": "รอฝ่าย SBP DSA ดำเนินการ"
     }
   ]
 }
@@ -177,10 +178,11 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Lookup_
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| items[].statusCode | string | Yes | canonical code; do not replace with display label |
+| items[].currentOwner | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].code | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].statusCode | string | Yes | canonical code; do not replace with display label |
-| items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### GET /api/v1/sgi/lookup/workflow-sections
 
@@ -226,7 +228,8 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Lookup_
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
 | sgi_impacted_stores (SGI) / store · mas_store · sevenshop (SBP เดิม) | R | store picker — SGI ไม่มีตาราง stores ของตัวเอง |
-| workflow_status / workflow_state (@srm/glb-workflow · sps_store) | R | lookup สถานะ verbatim และ 5 ขั้น 06/08/01/02/03 — ไม่สร้างตารางของ SGI เอง |
+| common_code (SBP เดิม · SGI_DOC_STATUS / SGI_APPROVE_LIMIT) | R | 🔴 แก้ 2026-09-16 — lookup สถานะ 6 ค่าและขั้น 5 ค่าอ่านจาก common_code **ไม่ใช่ sps_store.workflow_status** เพราะตารางนั้นไม่มีคอลัมน์ลำดับ และ status_id เป็น integer surrogate ต่างกันตาม environment · วงเงินอนุมัติอยู่ที่ code_name ของ SGI_APPROVE_LIMIT |
+| workflow_status / workflow_state (@srm/glb-workflow · sps_store) | R | ชื่อสถานะฝั่ง engine — engine เป็นเจ้าของสถานะตอนรันไทม์ · lookup API ไม่ได้อ่านตารางนี้แล้ว |
 | business_user (SBP เดิม) | R | popup ค้นหาพนักงาน — SGI ไม่มีตาราง employees |
 | auth-backend groups / menus / permissions (ระบบเดิม) | R | RBAC/menu matrix — จัดการที่หน้า /setting/manage-user-rights เดิม · SGI อ่านผ่าน header x-user-permissions เท่านั้น ไม่มีตารางของตัวเอง |
 | email_template (SBP เดิม) | R | template — SGI อ่านผ่าน lib เท่านั้น ไม่แก้ของระบบเดิม |
@@ -246,8 +249,8 @@ _รูปที่ 2: Sequence diagram: LLDD BE - API Lookup_
 | store-backend · src/modules/sgi-lookup/dto/sgi-lookup.dto.ts | DTO + class-validator ตาม validation ในหัวข้อฟิลด์ของเอกสารนี้ |
 | store-backend · src/modules/sgi-lookup/sgi-lookup.module.ts | ประกอบ controller/service/providers แล้ว register ที่ `app.module.ts` |
 | store-backend · src/entitys/sgi-impacted-stores.entity.ts | entity ของ `sgi_impacted_stores` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
+| store-backend · src/entitys/common-code.entity.ts | entity ของ `common_code` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/entitys/business-user.entity.ts | entity ของ `business_user` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
-| store-backend · src/entitys/permissions.entity.ts | entity ของ `permissions` (`@Entity({schema: process.env.DB_SCHEMA})`, ไม่ประกาศ relation) |
 | store-backend · src/providers/sgi/sgi.ts | repository provider แบบ factory ผูก token string กับ `DATA_SOURCE` — **ไฟล์ร่วมของทุกเอกสาร BE ให้ merge array เพิ่ม ห้ามเขียนทับ** |
 | store-backend · sql/deploy-sgi-lookup.sql | DDL production แบบ idempotent (ทีมนี้ไม่ใช้ migration เป็นหลัก) |
 | BFF · src/common/client-services/sgi-client.service.ts | client ต่อจาก `BaseClientService` ตั้ง baseUrl + `x-api-key` ตอน `onModuleInit` |
@@ -415,20 +418,20 @@ export class ImpactedStore {
 ```
 
 ```ts
-// src/entitys/business-user.entity.ts
+// src/entitys/common-code.entity.ts
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'business_user', schema: process.env.DB_SCHEMA })
-export class BusinessUser {
+@Entity({ name: 'common_code', schema: process.env.DB_SCHEMA })
+export class CommonCode {
   @PrimaryColumn({ name: 'id', type: 'bigint' })
   id: number;
 
-  // TODO: เติมคอลัมน์ที่เหลือของ business_user ตาม database.md (Canonical Column Contract)
+  // TODO: เติมคอลัมน์ที่เหลือของ common_code ตาม database.md (Canonical Column Contract)
   //       และห้ามประกาศ relation — โมดูลนี้ join ด้วย raw SQL ตาม convention ของทีม
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`permissions`, `email_sent`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`business_user`, `permissions`, `email_sent`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ตารางที่ **ไม่ต้องสร้าง entity** เพราะใช้ของระบบเดิม/workflow engine:
 
@@ -450,8 +453,8 @@ export class BusinessUser {
 //    (ชื่อ const แยกต่อเอกสารไว้แล้วเพื่อไม่ให้ชนกัน)
 import { DataSource } from 'typeorm';
 import { ImpactedStore } from '../../entitys/sgi-impacted-stores.entity';
+import { CommonCode } from '../../entitys/common-code.entity';
 import { BusinessUser } from '../../entitys/business-user.entity';
-import { Permission } from '../../entitys/permissions.entity';
 
 export const sgiLookupProviders = [
   {
@@ -460,13 +463,13 @@ export const sgiLookupProviders = [
     inject: ['DATA_SOURCE'],
   },
   {
-    provide: 'BUSINESS_USER_REPOSITORY',
-    useFactory: (dataSource: DataSource) => dataSource.getRepository(BusinessUser),
+    provide: 'COMMON_CODE_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(CommonCode),
     inject: ['DATA_SOURCE'],
   },
   {
-    provide: 'PERMISSION_REPOSITORY',
-    useFactory: (dataSource: DataSource) => dataSource.getRepository(Permission),
+    provide: 'BUSINESS_USER_REPOSITORY',
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(BusinessUser),
     inject: ['DATA_SOURCE'],
   },
 ];
@@ -584,6 +587,7 @@ export class SgiLookupBffController {
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
 | sgi_impacted_stores | R | store picker — SGI ไม่มีตาราง stores ของตัวเอง |
+| common_code | R | 🔴 แก้ 2026-09-16 — lookup สถานะ 6 ค่าและขั้น 5 ค่าอ่านจาก common_code **ไม่ใช่ sps_store.workflow_status** เพราะตารางนั้นไม่มีคอลัมน์ลำดับ และ status_id เป็น integer surrogate ต่างกันตาม environment · วงเงินอนุมัติอยู่ที่ code_name ของ SGI_APPROVE_LIMIT |
 | business_user | R | popup ค้นหาพนักงาน — SGI ไม่มีตาราง employees |
 | permissions | R | RBAC/menu matrix — จัดการที่หน้า /setting/manage-user-rights เดิม · SGI อ่านผ่าน header x-user-permissions เท่านั้น ไม่มีตารางของตัวเอง |
 | email_sent | W (โดย email-lib) | log การส่ง — SGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง (DP-5 · 2026-08-14) · ⚠️ คอลัมน์ผู้ส่งคือ send_by ไม่ใช่ sent_by |
@@ -597,31 +601,33 @@ export class SgiLookupBffController {
 **GET /api/v1/sgi/lookup/document-statuses** — รายการสถานะเอกสาร verbatim
 
 ```sql
--- bind ตามลำดับ: $1=sgiVersionId
--- ตาราง document_statuses ของ SGI ถูกตัดแล้ว — อ่านจาก workflow_status ของ engine กลาง
-SELECT status_id AS status_code, status_name, seq AS sort_order
-FROM sps_store.workflow_status
-WHERE version_id = $1 /* sgiVersionId */
-ORDER BY seq;
+-- 🔴 แก้ 2026-09-16 — ของเดิมรันไม่ได้: sps_store.workflow_status **ไม่มีคอลัมน์ seq**
+--    (ตารางจริงมีแค่ status_id · status_name · create_date · version_id)
+--    และ status_id เป็น integer surrogate ต่างกันตาม environment ใช้เป็น statusCode ไม่ได้
+--    รหัส 2 ตัวอักษร (06/08/01/02/03/99) เป็นของ SGI อยู่ที่ common_code · seed แล้ว
+SELECT code_value AS status_code, code_name AS status_name, seq_no AS sort_order
+FROM sps_store.common_code
+WHERE code_type = 'SGI_DOC_STATUS' AND active_flag = 'Y'
+ORDER BY seq_no;
 ```
 
 **GET /api/v1/sgi/lookup/workflow-sections** — รายการ section 5 ขั้น
 
 ```sql
--- bind ตามลำดับ: $1=sgiVersionId
--- ตาราง workflow_sections ของ SGI ถูกตัดแล้ว — อ่าน state จาก engine กลาง และวงเงินจาก common_code ของระบบเดิม
--- (approve_limit_amount = SectionLimitCost ของ K2 เดิม · เกณฑ์เดียว 100,000 ตามมติ 2026-08-18 — เป็น data ไม่ hardcode · ขั้น 03 เป็น null = ไม่มีเพดาน)
--- ⚠️ sps_store.workflow_state ไม่มีคอลัมน์ลำดับ (มีแค่ version_id · state_id · state_name · create_date)
---    ลำดับขั้นต้องเอาจาก workflow_route.seq · วงเงินจับคู่ด้วย common_code.code_value (ไม่มี code_id)
-SELECT s.state_id AS section_code, s.state_name AS section_name,
-       MIN(r.seq) AS sort_order,
-       CAST(c.other_value AS NUMERIC) AS approve_limit_amount
-FROM sps_store.workflow_state s
-LEFT JOIN sps_store.workflow_route r ON r.version_id = s.version_id AND r.from_state_id = s.state_id
-LEFT JOIN common_code c ON c.code_type = 'SGI_APPROVE_LIMIT' AND c.code_value = s.state_id
-WHERE s.version_id = $1 /* sgiVersionId */
-GROUP BY s.state_id, s.state_name, c.other_value
-ORDER BY sort_order;
+-- 🔴 แก้ 2026-09-16 — ของเดิมรันไม่ได้ 2 จุด:
+--    (1) c.code_value = s.state_id เทียบ varchar กับ integer · seed ใส่ code_value = '100000' ไม่ใช่รหัสขั้น
+--    (2) อ่านยอดจาก other_value ซึ่งไม่ได้ seed — contract อยู่ที่ code_name
+-- วงเงินเป็นค่าเดียวทั้งระบบ (เกณฑ์เดียว 100,000 · มติ 2026-08-18) ไม่ใช่ค่าแยกรายขั้น
+-- ⚠️ BE ต้อง fail-fast เมื่อ threshold หาย/ซ้ำ/แปลงเป็นตัวเลขไม่ได้ — SQL อย่างเดียวทำแทนไม่ได้
+SELECT c.code_value AS section_code, c.code_name AS section_name, c.seq_no AS sort_order,
+       (SELECT CAST(l.code_name AS NUMERIC)
+          FROM sps_store.common_code l
+         WHERE l.code_type = 'SGI_APPROVE_LIMIT'
+           AND l.code_value = '100000' AND l.active_flag = 'Y') AS approve_limit_amount
+FROM sps_store.common_code c
+WHERE c.code_type = 'SGI_DOC_STATUS' AND c.active_flag = 'Y'
+  AND c.code_value <> '99'          -- 99 = เสร็จสิ้น ไม่ใช่ขั้นที่รอคนทำ
+ORDER BY c.seq_no;
 ```
 
 ### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)

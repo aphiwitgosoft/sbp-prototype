@@ -1,0 +1,225 @@
+{
+  "sql_sha256": {
+    "sgi_existing_stub.sql": "4587bfa029f276846e0bc20d2538b37ccf855c348e5bd5d33b2f0f5c76512883",
+    "sgi_schema_rollback.sql": "f3fbe79dcefcd541366bc5fd825ecf8fc888883edc559a4c34ed6721b23c73e3",
+    "sgi_schema.sql": "b66cc38803f5047672fc6a222b44ebedff4ddd8ff77032b8fbce5bc718fb6639",
+    "sgi_seed_data.sql": "00d472d185dfa1084723a8238a87fe21cf21b3be37b85ecb7f959cd6afa1c659"
+  },
+  "generator_equal": {
+    "sgi_schema_rollback.sql": true,
+    "sgi_schema.sql": true,
+    "sgi_seed_data.sql": true,
+    "sgi_existing_stub.sql": true
+  },
+  "container": "sgi-audit-20260916-23d6357e",
+  "postgres": "16.15",
+  "fresh_counts": "{\"types\" : 3, \"codes\" : 14, \"params\" : 11, \"templates\" : 8, \"competitors\" : 11, \"factors\" : 4, \"running\" : 1}",
+  "sequential_counts": "{\"types\" : 3, \"codes\" : 14, \"params\" : 11, \"templates\" : 8, \"competitors\" : 11, \"factors\" : 4, \"running\" : 1}",
+  "catalog": "{\"tables\" : 20, \"secondary_indexes\" : 24, \"fks\" : 28}",
+  "fk_without_leading_index": "sgi_document_competitors:source_row_id\nsgi_document_new_stores:source_row_id\nsgi_fgi_new_store_compensations:impact_store_id",
+  "stub_missing_not_null": [
+    "common_code.code_type",
+    "common_code.seq_no",
+    "common_code_type.code_type_name",
+    "common_code_type.active_flag",
+    "business_user.user_id",
+    "workflow_transaction.version_id",
+    "workflow_transaction.current_state_id",
+    "workflow_transaction.current_approver",
+    "workflow_transaction.current_status_id"
+  ],
+  "stub_missing_defaults": [
+    "mas_store.active_flag",
+    "fr_store.create_date",
+    "fr_store.change_partner_contact_flag",
+    "common_code.active_flag",
+    "common_code_type.active_flag",
+    "mas_param.is_config",
+    "mas_param.active_flag",
+    "mas_param.create_date",
+    "email_template.create_date",
+    "email_template.active_flag",
+    "email_sent.sent_date",
+    "fcs_qssi_score.create_date"
+  ],
+  "GET /api/v1/sgi/lookup/document-statuses": "06|รอฝ่าย SBP DSA ดำเนินการ|1\n08|รอเจ้าหน้าที่ SBP DSA ดำเนินการ|2\n01|รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ|3\n02|รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ|4\n03|รอผู้บริหารสำนักบริหาร SBP ดำเนินการ|5\n99|เสร็จสิ้นดำเนินการ|6",
+  "GET /api/v1/sgi/lookup/workflow-sections": "06|รอฝ่าย SBP DSA ดำเนินการ|1|100000\n08|รอเจ้าหน้าที่ SBP DSA ดำเนินการ|2|100000\n01|รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ|3|100000\n02|รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ|4|100000\n03|รอผู้บริหารสำนักบริหาร SBP ดำเนินการ|5|100000",
+  "lookup_missing": {
+    "returncode": 0,
+    "stdout": "06|รอฝ่าย SBP DSA ดำเนินการ|1|\n08|รอเจ้าหน้าที่ SBP DSA ดำเนินการ|2|\n01|รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ|3|\n02|รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ|4|\n03|รอผู้บริหารสำนักบริหาร SBP ดำเนินการ|5|",
+    "stderr": ""
+  },
+  "lookup_inactive": {
+    "returncode": 0,
+    "stdout": "06|รอฝ่าย SBP DSA ดำเนินการ|1|\n08|รอเจ้าหน้าที่ SBP DSA ดำเนินการ|2|\n01|รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ|3|\n02|รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ|4|\n03|รอผู้บริหารสำนักบริหาร SBP ดำเนินการ|5|",
+    "stderr": ""
+  },
+  "lookup_invalid": {
+    "returncode": 3,
+    "stdout": "",
+    "stderr": "ERROR:  invalid input syntax for type numeric: \"invalid\""
+  },
+  "lookup_duplicate": {
+    "returncode": 3,
+    "stdout": "",
+    "stderr": "ERROR:  more than one row returned by a subquery used as an expression"
+  },
+  "seed_accepts_duplicate_param": {
+    "returncode": 0,
+    "notices": "NOTICE:  OK: competitors=11 factors=4 decisions=7 docStatuses=6 params=12 templates=8"
+  },
+  "seed_accepts_invalid_threshold": {
+    "returncode": 0,
+    "notices": "NOTICE:  OK: competitors=11 factors=4 decisions=7 docStatuses=6 params=11 templates=8"
+  },
+  "seed_accepts_inactive_type": {
+    "returncode": 0,
+    "notices": "NOTICE:  OK: competitors=11 factors=4 decisions=7 docStatuses=6 params=11 templates=8"
+  },
+  "seed_accepts_foreign_owner": {
+    "returncode": 0,
+    "notices": "NOTICE:  OK: competitors=11 factors=4 decisions=7 docStatuses=6 params=11 templates=8"
+  },
+  "concurrent_fresh": "{\"types\" : 3, \"codes\" : 14, \"params\" : 11, \"templates\" : 8, \"competitors\" : 11, \"factors\" : 4, \"running\" : 1}",
+  "concurrent_partial": "{\"types\" : 3, \"codes\" : 14, \"params\" : 11, \"templates\" : 8, \"competitors\" : 11, \"factors\" : 4, \"running\" : 1}",
+  "empty_email_bodies": "8",
+  "batch_prepare": {
+    "total": 90,
+    "passed": 75,
+    "skipped": [
+      {
+        "file": "job-12-notify-pending-work.service.ts",
+        "reason": "mssql"
+      },
+      {
+        "file": "job-2-import-impact-store.service.ts",
+        "reason": "mssql"
+      },
+      {
+        "file": "job-3-import-impact-competitor.service.ts",
+        "reason": "mssql"
+      },
+      {
+        "file": "job-7-sync-competitor-to-document.service.ts",
+        "reason": "mssql"
+      },
+      {
+        "file": "job-8-create-compensation-document.service.ts",
+        "reason": "prose"
+      },
+      {
+        "file": "job-8-create-compensation-document.service.ts",
+        "reason": "mssql"
+      },
+      {
+        "file": "job-8-document-number.ts",
+        "reason": "prose"
+      },
+      {
+        "file": "job-9-sync-new-store-to-document.service.ts",
+        "reason": "mssql"
+      }
+    ],
+    "failed": [
+      {
+        "file": "job-10-notify-no-receive-data.service.ts",
+        "error": "ERROR:  syntax error at or near \"AND\"\nLINE 14:           AND (t.last_ack_notified_on IS NULL OR t.last_ack_...\n                   ^",
+        "sql": "SELECT t.id::text                 AS \"id\",\n              t.data_name                AS \"dataName\",\n              t.direction                AS \"direction\",\n              t.business_key             AS \"businessKey\",\n              t.period_key               AS \"periodKey\",\n              t.outbox_status            AS \"outboxStatus\",\n              t.status                   AS \"status\",\n              t.retry_count              AS \"retryCount\",\n              t.doc_no                   AS \"docNo\",\n              to_char(t.created_at, 'YYYY-MM-DD HH24:MI') AS \"createdAt\",\n              to_char(t.sent_at, 'YYYY-MM-DD HH24:MI')    AS \"sentAt\",\n              floor(EXTRACT(EPOCH FROM (now() - t.created_at)) / 86400)::int AS \"ageDays\"\n          \n          AND (t.last_ack_notified_on IS NULL OR t.last_ack_notified_on < CURRENT_DATE)\n        ORDER BY t.created_at, t.id"
+      },
+      {
+        "file": "job-2-import-impact-store.service.ts",
+        "error": "ERROR:  syntax error at or near \";\"\nLINE 52:       );\n                ^",
+        "sql": "WITH pairs AS (\n        SELECT a.id, a.impacted_store_code, a.new_store_code, a.impact_month,\n               a.created_at, a.created_by, a.updated_by\n          FROM sps_store.sgi_fgi_impact_stores a\n         WHERE a.verify_status = 'W'\n      ),\n      contract_i AS (\n        SELECT p.id AS pair_id, c.juristic_id, c.start_date, c.cancel_date, c.cancel_type\n          FROM pairs p\n          LEFT JOIN LATERAL (\n            SELECT fs.juristic_id, fs.start_date, fs.cancel_date, fs.cancel_type,\n                   dense_rank() OVER (ORDER BY fs.start_date DESC, fs.cancel_type, fs.order_id DESC) AS rnk\n              FROM sps_store.fr_store fs\n             WHERE fs.store_id = p.impacted_store_code\n               AND COALESCE(fs.status, '-') <> 'D'\n               AND fs.store_id <> '00000'\n               AND fs.cancel_type IS NOT NULL\n               AND date_trunc('day', fs.start_date)\n                     <= (to_date(p.impact_month, 'YYYY-MM') + INTERVAL '1 month - 1 day')\n               AND COALESCE(fs.cancel_date, DATE '4000-01-01')\n                     >= to_date(p.impact_month, 'YYYY-MM')\n          ) c ON c.rnk = 1\n      ),\n      contract_n AS (\n        SELECT p.id AS pair_id, c.juristic_id\n          FROM pairs p\n          LEFT JOIN LATERAL (\n            SELECT fs.juristic_id,\n                   dense_rank() OVER (ORDER BY fs.start_date DESC, fs.cancel_type, fs.order_id DESC) AS rnk\n              FROM sps_store.fr_store fs\n             WHERE fs.store_id = p.new_store_code\n               AND COALESCE(fs.status, '-') <> 'D'\n               AND fs.store_id <> '00000'\n          ) c ON c.rnk = 1\n      ),\n      eval AS (\n        SELECT p.id,\n               ms_i.status_type   AS branchtype_i,\n               ms_n.status_type   AS branchtype_n,\n               j_i.juristic_name  AS juristic_name_i,\n               j_n.juristic_name  AS juristic_name_n,\n               ci.start_date      AS sbp_start_date_i,\n               ci.cancel_date     AS sbp_cancel_date_i,\n               ci.cancel_type     AS sbp_cancel_type_i\n          FROM pairs p\n          LEFT JOIN sps_store.mas_store ms_i ON ms_i.branch_id = p.impacted_store_code\n          LEFT JOIN sps_store.mas_store ms_n ON ms_n.branch_id = p.new_store_code\n          LEFT JOIN contract_i ci ON ci.pair_id = p.id\n          LEFT JOIN contract_n cn ON cn.pair_id = p.id\n          LEFT JOIN sps_store.juristic j_i ON j_i.juristic_id = ci.juristic_id\n          LEFT JOIN sps_store.juristic j_n ON j_n.juristic_id = cn.juristic_id\n      )"
+      },
+      {
+        "file": "job-2-import-impact-store.service.ts",
+        "error": "ERROR:  relation \"eval\" does not exist\nLINE 3:          FROM eval e\n                      ^",
+        "sql": "UPDATE sps_store.sgi_fgi_impact_stores a\n          SET verify_status = 'N', updated_by = 'ALM', updated_at = CURRENT_TIMESTAMP\n         FROM eval e\n        WHERE a.id = e.id\n          AND a.verify_status = 'W'\n\n\n\n\n\n          AND 'ALM' IN (a.created_by, a.updated_by)\n          AND (\n                e.branchtype_i <> ALL ($1::text[])\n             OR e.branchtype_n = ANY ($2::text[])\n             OR TRIM(COALESCE(e.juristic_name_n, 'juristic_n')) = TRIM(COALESCE(e.juristic_name_i, 'juristic_i'))\n             OR ( (    e.branchtype_i = ANY ($3::text[])\n                    OR (e.branchtype_i = $4 AND e.sbp_cancel_type_i = $5) )\n                  AND ( date_trunc('day', e.sbp_start_date_i)\n                            >= (to_date(a.impact_month, 'YYYY-MM') + INTERVAL '1 month - 1 day')\n                     OR to_date(a.impact_month, 'YYYY-MM')\n                            >= date_trunc('day', COALESCE(e.sbp_cancel_date_i, DATE '4000-01-01')) ) )\n             OR CURRENT_TIMESTAMP > (date_trunc('day', a.created_at) + ($6 || ' months')::INTERVAL)\n          )"
+      },
+      {
+        "file": "job-2-import-impact-store.service.ts",
+        "error": "ERROR:  relation \"eval\" does not exist\nLINE 3:          FROM eval e\n                      ^",
+        "sql": "UPDATE sps_store.sgi_fgi_impact_stores a\n          SET verify_status = 'P', updated_by = 'ALM', updated_at = CURRENT_TIMESTAMP\n         FROM eval e\n        WHERE a.id = e.id\n          AND a.verify_status = 'W'\n          AND (\n                (     a.created_by = 'ALM'\n                  AND (    e.branchtype_i = ANY ($1::text[])\n                        OR (e.branchtype_i = $2 AND e.sbp_cancel_type_i = $3) )\n                  AND e.branchtype_n <> ALL ($4::text[])\n                  AND TRIM(COALESCE(e.juristic_name_n, 'juristic_n'))\n                        <> TRIM(COALESCE(e.juristic_name_i, 'juristic_i'))\n                  AND date_trunc('day', e.sbp_start_date_i)\n                        < (to_date(a.impact_month, 'YYYY-MM') + INTERVAL '1 month - 1 day')\n                  AND to_date(a.impact_month, 'YYYY-MM')\n                        < date_trunc('day', COALESCE(e.sbp_cancel_date_i, DATE '4000-01-01')) )\n             OR a.created_by = 'STA'\n          )"
+      },
+      {
+        "file": "job-7-sync-competitor-to-document.service.ts",
+        "error": "ERROR:  syntax error at or near \"::\"\nLINE 9:         WHERE d.doc_no <> ALL( ::varchar[]) \n                                       ^",
+        "sql": "SELECT d.doc_no AS \"docNo\", count(*) AS \"rowCount\"\n         FROM sps_store.sgi_compensation_documents d\n         JOIN sps_store.sgi_fgi_impact_compensations c ON c.id = d.impact_compensation_id\n          AND c.compensate_status = 'I'\n         JOIN sps_store.sgi_fgi_impact_processes p ON p.id = c.impact_process_id\n          AND p.flag_action IN ('Y','W')\n         JOIN sps_store.sgi_document_competitors dc ON dc.doc_no = d.doc_no\n          AND dc.source_system = $1\n        WHERE d.doc_no <> ALL( ::varchar[]) \n        GROUP BY d.doc_no\n        ORDER BY d.doc_no"
+      },
+      {
+        "file": "job-8-document-number.ts",
+        "error": "ERROR:  syntax error at or near \".\"\nLINE 1: PREPARE q AS INSERT INTO  .sgi_document_running_numbers (yea...\n                                  ^",
+        "sql": "INSERT INTO  .sgi_document_running_numbers (year, last_running_no, updated_by, updated_at)\n     VALUES ($1, 1, 'SGI-JOB8', CURRENT_TIMESTAMP)\n     ON CONFLICT (year) DO UPDATE\n        SET last_running_no =  .sgi_document_running_numbers.last_running_no + 1,\n            updated_by = 'SGI-JOB8',\n            updated_at = CURRENT_TIMESTAMP\n     RETURNING last_running_no"
+      },
+      {
+        "file": "job-9-sync-new-store-to-document.service.ts",
+        "error": "ERROR:  syntax error at or near \"::\"\nLINE 11:         WHERE d.doc_no <> ALL( ::varchar[]) \n                                        ^",
+        "sql": "SELECT d.doc_no AS \"docNo\",\n              count(*) AS \"rowCount\",\n              sum(dn.compensate_percent)::text AS \"pctSum\"\n         FROM sps_store.sgi_compensation_documents d\n         JOIN sps_store.sgi_fgi_impact_compensations c ON c.id = d.impact_compensation_id\n          AND c.compensate_status = 'I'\n         JOIN sps_store.sgi_fgi_impact_processes p ON p.id = c.impact_process_id\n          AND p.flag_action IN ('Y','W')\n         JOIN sps_store.sgi_document_new_stores dn ON dn.doc_no = d.doc_no\n          AND dn.source_system = $1\n        WHERE d.doc_no <> ALL( ::varchar[]) \n        GROUP BY d.doc_no\n        ORDER BY d.doc_no"
+      }
+    ]
+  },
+  "api_prepare": {
+    "endpoints": 28,
+    "statements_passed": 46,
+    "failed": [
+      {
+        "endpoint": "GET /api/v1/sgi/document/tasks",
+        "sql": "WITH wh AS (\n  \n  SELECT transaction_id, MIN(create_date) AS first_event_date\n  FROM sps_store.workflow_history GROUP BY transaction_id\n)\nSELECT d.round_no AS \"roundNo\",\n       d.doc_no AS \"docNo\",\n       d.impacted_store_code AS \"impactedStoreCode\",\n       s.store_name AS \"impactedStoreName\",\n       s.zone_cd AS \"regionCode\",\n       GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) AS \"salesDeclinePercent\",\n       d.total_compensation_amount AS \"totalCompensationAmount\",\n       d.status_code AS \"statusCode\",\n       d.current_section_code AS \"currentSection\",\n       w.current_approver AS \"currentOwner\",   \n       GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) AS \"daysPending\",\n       ss.total_working_days AS \"salesDataDays\"\nFROM sps_store.workflow_approver a\nJOIN sps_store.workflow_transaction w ON w.transaction_id = a.transaction_id\nJOIN sgi_compensation_documents d ON d.id::text = w.reference_id   \nJOIN store s ON s.store_id = d.impacted_store_code\nLEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id\n\nWHERE a.state_id = $1 AND a.state_id = w.current_state_id AND w.version_id = $2\n  AND ($3           IS NULL OR d.status_code = $3)\n  AND ($4          IS NULL OR d.doc_no ILIKE '%' || $4 || '%'\n                                 OR s.store_name ILIKE '%' || $4 || '%'\n                                 OR d.impacted_store_code ILIKE '%' || $4 || '%')\n  AND ($5       IS NULL OR s.zone_cd = $5)\n  AND ($6        IS NULL OR s.store_type = $6)\n  AND ($7      IS NULL OR d.created_at >= $7::date)\n  AND ($8        IS NULL OR d.created_at <  $8::date + 1)\n  AND ($9  IS NULL OR d.total_compensation_amount >= $9)\n  AND ($10  IS NULL OR d.total_compensation_amount <= $10)\n  AND ($11  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) >= $11)\n  AND ($12  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) <= $12)\n  AND ($13   IS NULL OR GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) >= $13)\n  AND ($14   IS NULL OR GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) <= $14)\nORDER BY w.update_date\nLIMIT $15 OFFSET $16",
+        "error": "ERROR:  missing FROM-clause entry for table \"wh\"\nLINE 16:        GREATEST(CURRENT_DATE - wh.first_event_date::date, 0)...\n                                        ^"
+      },
+      {
+        "endpoint": "GET /api/v1/sgi/document",
+        "sql": "SELECT d.round_no AS \"roundNo\",\n       d.doc_no AS \"docNo\",\n       d.impacted_store_code AS \"impactedStoreCode\",\n       s.store_name AS \"impactedStoreName\",\n       s.zone_cd AS \"regionCode\",\n       GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) AS \"salesDeclinePercent\",\n       d.total_compensation_amount AS \"totalCompensationAmount\",\n       d.status_code AS \"statusCode\",\n       d.current_section_code AS \"currentSection\",\n       w.current_approver AS \"currentOwner\",   \n       \n       CASE WHEN w.current_status_id <> $1 THEN GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) ELSE 0 END AS \"daysPending\",\n       ss.total_working_days AS \"salesDataDays\"\nFROM sgi_compensation_documents d\nJOIN store s ON s.store_id = d.impacted_store_code\nLEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id\nLEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.id::text   \n\n\nWHERE d.year = $2\n  AND ($3 IS NULL OR d.impacted_store_code = $3)\n  AND ($4            IS NULL OR d.status_code = $4)\n  \n  AND ($5            IS NULL OR EXISTS (\n        SELECT 1 FROM sgi_consideration_logs cl\n         WHERE cl.doc_no = d.doc_no AND cl.result_category = $5\n           AND cl.action_datetime = (SELECT MAX(action_datetime) FROM sgi_consideration_logs\n                                      WHERE doc_no = d.doc_no)))\n  AND ($6          IS NULL OR d.doc_no ILIKE '%' || $6 || '%'\n                                 OR s.store_name ILIKE '%' || $6 || '%'\n                                 OR d.impacted_store_code ILIKE '%' || $6 || '%')\n  AND ($7       IS NULL OR s.zone_cd = $7)\n  AND ($8        IS NULL OR s.store_type = $8)   \n  AND ($9      IS NULL OR d.created_at >= $9::date)\n  AND ($10        IS NULL OR d.created_at <  $10::date + 1)\n  AND ($11  IS NULL OR d.total_compensation_amount >= $11)\n  AND ($12  IS NULL OR d.total_compensation_amount <= $12)\n  AND ($13  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) >= $13)\n  AND ($14  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) <= $14)\nORDER BY d.doc_no DESC\nLIMIT $15 OFFSET $16",
+        "error": "ERROR:  missing FROM-clause entry for table \"wh\"\nLINE 12: ...rent_status_id <> $1 THEN GREATEST(CURRENT_DATE - wh.first_e...\n                                                              ^"
+      },
+      {
+        "endpoint": "GET /api/v1/sgi/master/competitors",
+        "sql": "SELECT competitor_code, name_th, name_en, remark, is_active\nFROM sgi_competitors\nWHERE ($1      IS NULL OR name_th LIKE $1 OR name_en LIKE $1)\n  AND ($2 IS NULL OR is_active = $2)   \nORDER BY competitor_code",
+        "error": "ERROR:  could not determine data type of parameter $1\nLINE 3: WHERE ($1      IS NULL OR name_th LIKE $1 OR name_en LIKE $1...\n               ^"
+      },
+      {
+        "endpoint": "DELETE /api/v1/sgi/master/competitors/{code}",
+        "sql": "SELECT 1 FROM sgi_document_competitors WHERE competitor_code = $1",
+        "error": "ERROR:  column \"competitor_code\" does not exist\nLINE 1: ...q AS SELECT 1 FROM sgi_document_competitors WHERE competitor...\n                                                             ^"
+      },
+      {
+        "endpoint": "GET /api/v1/sgi/master/factors",
+        "sql": "SELECT factor_code, factor_name, factor_remark, is_active\nFROM sgi_external_factors\nWHERE ($1      IS NULL OR factor_name LIKE $1)\n  AND ($2 IS NULL OR is_active = $2)   \nORDER BY factor_code",
+        "error": "ERROR:  could not determine data type of parameter $1\nLINE 3: WHERE ($1      IS NULL OR factor_name LIKE $1)\n               ^"
+      },
+      {
+        "endpoint": "GET /api/v1/sgi/report/status-summary",
+        "sql": "SELECT si.store_id   AS impacted_store_code, si.store_name   AS impacted_store_name,\n       si.zone_cd  AS impacted_region,     si.store_type   AS impacted_store_type,\n       pr.impact_month, pr.impact_year, d.statement_date,   \n       ns.store_id   AS new_store_code,      ns.store_name  AS new_store_name,\n       ns.zone_cd  AS new_region,          ns.store_type  AS new_store_type,\n       h.compensate_amount, d.loop_no AS round_no, d.created_at AS created_date, d.doc_no\nFROM sgi_compensation_documents d\nJOIN sgi_fgi_impact_processes pr ON pr.id = d.impact_process_id\nJOIN store si                ON si.store_id = d.impacted_store_code\nLEFT JOIN sgi_compensation_histories h ON h.ref_doc_no = d.doc_no\nLEFT JOIN sgi_document_new_stores dns  ON dns.doc_no = d.doc_no\nLEFT JOIN store ns                 ON ns.store_id = dns.new_store_code\nLEFT JOIN LATERAL (\n  SELECT result_category FROM sgi_consideration_logs\n  WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1\n) cl ON TRUE\nWHERE d.year = $1\n  AND d.status_code = $2                                   \n  AND ($3 IS NULL OR d.impacted_store_code = $3)\n  AND ($4      IS NULL OR dns.new_store_code    = $4)\n  AND ($5 IS NULL OR d.statement_date BETWEEN $5 AND $6)  \n  AND ($7 IS NULL OR si.store_type  = ANY($7))       \n  AND ($8    IS NULL OR si.zone_cd = ANY($8))          \n  AND ($9     IS NULL OR cl.result_category = $9)            \nORDER BY d.doc_no\nLIMIT $10 OFFSET $11",
+        "error": "ERROR:  could not determine data type of parameter $3\nLINE 19:   AND ($3 IS NULL OR d.impacted_store_code = $3)\n                ^"
+      },
+      {
+        "endpoint": "GET /api/v1/sgi/report/status-summary/export",
+        "sql": "ORDER BY d.doc_no",
+        "error": "ERROR:  syntax error at or near \"ORDER\"\nLINE 1: PREPARE q AS ORDER BY d.doc_no;\n                     ^"
+      },
+      {
+        "endpoint": "GET /api/v1/sgi/workflow/summary",
+        "sql": "SELECT workflow_generation_status, COUNT(*) AS cnt\nFROM sgi_fgi_impact_processes\nWHERE ($1 IS NULL OR impact_month = $1)   \nGROUP BY workflow_generation_status",
+        "error": "ERROR:  could not determine data type of parameter $1\nLINE 3: WHERE ($1 IS NULL OR impact_month = $1)   \n               ^"
+      },
+      {
+        "endpoint": "GET /api/v1/sgi/interface/tracking",
+        "sql": "SELECT id AS tracking_id, data_name, doc_no, sent_at, outbox_status, acked_at AS confirmed_date\nFROM sgi_interface_transactions\nWHERE ($1 IS NULL OR data_name = $1)\n  AND ($2  IS NULL OR outbox_status IS DISTINCT FROM 'CONFIRMED')\n  AND ($3   IS NULL OR outbox_status = $3)   \n  AND ($4 IS NULL OR sent_at >= $4)\n  AND ($5   IS NULL OR sent_at <  $5 + INTERVAL '1 day')\nORDER BY sent_at DESC\nLIMIT $6 OFFSET $7",
+        "error": "ERROR:  operator does not exist: timestamp without time zone < interval\nLINE 7:   AND ($5   IS NULL OR sent_at <  $5 + INTERVAL '1 day')\n                                       ^\nHINT:  No operator matches the given name and argument types. You might need to add explicit type casts."
+      },
+      {
+        "endpoint": "GET /api/v1/sgi/interface/pending-ack",
+        "sql": "SELECT data_name, doc_no, created_at, (CURRENT_DATE - created_at::date) AS age_days\nFROM sgi_interface_transactions\nWHERE direction = 'OUT'\n  AND (outbox_status IS NULL OR outbox_status <> 'CONFIRMED')\n  AND created_at < CURRENT_TIMESTAMP - ($1 * INTERVAL '1 hour')\n  AND ($2 IS NULL OR data_name = $2)   \nORDER BY created_at",
+        "error": "ERROR:  could not determine data type of parameter $2\nLINE 6:   AND ($2 IS NULL OR data_name = $2)   \n               ^"
+      }
+    ]
+  },
+  "rollback": {
+    "sgi_objects": "0",
+    "dependent_view_exists": "",
+    "shared_counts": "3/14/11/8",
+    "notices": "NOTICE:  drop cascades to constraint fk_interface_doc_no on table sgi_interface_transactions\nNOTICE:  drop cascades to view audit_other.dependent"
+  },
+  "reinstall": "{\"types\" : 3, \"codes\" : 14, \"params\" : 11, \"templates\" : 8, \"competitors\" : 11, \"factors\" : 4, \"running\" : 1}",
+  "container_removed": true
+}

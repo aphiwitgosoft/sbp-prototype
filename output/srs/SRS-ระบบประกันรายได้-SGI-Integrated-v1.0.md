@@ -478,9 +478,9 @@ Version 1.0
 
 | หัวข้อ | รายละเอียด |
 | --- | --- |
-| เป้าหมาย | **ไม่ต่อ RabbitMQ เอง** (มติ 2026-09-08) - `srm-sps-spsap-store-consumer` เป็นผู้ consume คิว `sta_update_compensate` แล้ว SubmitJob มาที่ job นี้พร้อม `INPUT` = ข้อความทั้ง envelope · job มีหน้าที่ **อัปเดตยอดเงินประกันรายได้ของงวดที่ระบุ** อย่างเดียว - ปิดช่องว่างที่สเปก STA บังคับให้ SGI consume แต่ยังไม่มีเอกสารรองรับ (มติ 2026-09-02) |
+| เป้าหมาย | **consume คิว `sta_update_compensate` เองใน `srm-sps-spsap-sop-sgi-batch`** (มติ 2026-09-12 - ตัด repo `store-consumer` ออกจากขอบเขต) · job รับผิดชอบทั้ง **bind คิว · ack/nack · DLQ · retry** และ **อัปเดตยอดเงินประกันรายได้ของงวดที่ระบุ** · ⚠️ repo ปลายทางมีแต่ `publishMessage` **ยังไม่มี consumer** ต้องสร้างใหม่ - ปิดช่องว่างที่สเปก STA บังคับให้ SGI consume แต่ยังไม่มีเอกสารรองรับ (มติ 2026-09-02) |
 | รับข้อมูล/เงื่อนไข | งวดข้อมูลและพารามิเตอร์ของงาน |
-| ระบบทำอะไรโดยสรุป | **ไม่ต่อ RabbitMQ เอง** (มติ 2026-09-08) - `srm-sps-spsap-store-consumer` เป็นผู้ consume คิว `sta_update_compensate` แล้ว SubmitJob มาที่ job นี้พร้อม `INPUT` = ข้อความทั้ง envelope · job มีหน้าที่ **อัปเดตยอดเงินประกันรายได้ของงวดที่ระบุ** อย่างเดียว - ปิดช่องว่างที่สเปก STA บังคับให้ SGI consume แต่ยังไม่มีเอกสารรองรับ (มติ 2026-09-02) |
+| ระบบทำอะไรโดยสรุป | **consume คิว `sta_update_compensate` เองใน `srm-sps-spsap-sop-sgi-batch`** (มติ 2026-09-12 - ตัด repo `store-consumer` ออกจากขอบเขต) · job รับผิดชอบทั้ง **bind คิว · ack/nack · DLQ · retry** และ **อัปเดตยอดเงินประกันรายได้ของงวดที่ระบุ** · ⚠️ repo ปลายทางมีแต่ `publishMessage` **ยังไม่มี consumer** ต้องสร้างใหม่ - ปิดช่องว่างที่สเปก STA บังคับให้ SGI consume แต่ยังไม่มีเอกสารรองรับ (มติ 2026-09-02) |
 | ผลลัพธ์ที่ต้องได้ | sgi_fgi_impact_compensations (forecast_amount / adjust_amount) |
 | ผู้ใช้ติดตามได้จาก | ติดตามได้จาก application log ของงาน Batch |
 

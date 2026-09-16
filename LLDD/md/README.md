@@ -20,7 +20,7 @@
 | --- | --- | --- | --- | --- |
 | LLDD-API | BE/FE | REST conventions, endpoint catalog, request lifecycle, SQL/repository pattern | [PDF](../pdf/LLDD-API.pdf) | [DOCX](../word/LLDD-API.docx) |
 | LLDD-Database | BE/DB | 20-table target schema (CREATE 19 + reuse fcs_qssi_score), data zones/spine, DDL reference, indexes, transaction rules, seed data — **คำอธิบายรายคอลัมน์อยู่ที่ LLDD-Database-Dictionary** | [PDF](../pdf/LLDD-Database.pdf) | [DOCX](../word/LLDD-Database.docx) |
-| LLDD-Database-Dictionary | BE/DB | 19 ตารางใหม่ (โซน A/B/C) — มาจากไหน · ใช้ทำอะไร · ทำไมต้องมี · ทุกคอลัมน์เก็บอะไรไว้ใช้ทำอะไร | [PDF](../pdf/LLDD-Database-Dictionary.pdf) | — (PDF อย่างเดียว) |
+| LLDD-Database-Dictionary | BE/DB | 20 ตารางใหม่ (โซน A/B/C) — มาจากไหน · ใช้ทำอะไร · ทำไมต้องมี · ทุกคอลัมน์เก็บอะไรไว้ใช้ทำอะไร | [PDF](../pdf/LLDD-Database-Dictionary.pdf) | — (PDF อย่างเดียว) |
 | LLDD-To-Be | PM/BA | สอบทานย้อนกลับ SDD GI หัวข้อ 1.9 To-Be -> เอกสาร FE/BE ที่ใช้ + ชั่วโมงต่อข้อ (implementation + unit test) | [PDF](../pdf/LLDD-To-Be.pdf) | [DOCX](../word/LLDD-To-Be.docx) |
 
 ## FE Core Documents

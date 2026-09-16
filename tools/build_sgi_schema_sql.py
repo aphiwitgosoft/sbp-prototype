@@ -326,6 +326,23 @@ def build() -> tuple[Path, Path, list[str]]:
     r("--  ⚠️ ใช้กับ dev/uat เท่านั้น — คำสั่งนี้ลบข้อมูลทิ้งถาวร")
     r("--  ลบเฉพาะตารางที่ขึ้นต้นด้วย sgi_ ที่สคริปต์ sgi_schema.sql สร้างไว้")
     r("--  ไม่แตะตารางของระบบ SBP เดิมแม้แต่ตารางเดียว")
+    r("--")
+    r("--  🔴 สิ่งที่สคริปต์นี้ **ไม่ได้ลบ** (ตั้งใจ — เป็นตารางของระบบเดิม)")
+    r(f"--     common_code_type {len(SGI_CODE_TYPES)} แถว (code_type LIKE 'SGI/_%')")
+    r(f"--     common_code   {len(SGI_DECISIONS) + len(SGI_DOC_STATUSES) + len(SGI_APPROVE_LIMITS)} แถว (code_type LIKE 'SGI/_%')")
+    r(f"--     mas_param     {len(MAS_PARAMS)} แถว (param_name LIKE 'SGI/_%')")
+    r(f"--     email_template {len(EMAIL_TEMPLATES)} แถว (create_by = '{SEED_OWNER}')")
+    r("--")
+    r("--  ⚠️ **กับดักที่ต้องรู้** — sgi_seed_data.sql ใช้ INSERT ... WHERE NOT EXISTS")
+    r("--     ถ้าแก้ค่า seed (เช่น เกณฑ์ใน mas_param) แล้วติดตั้งใหม่ **ค่าเก่าจะค้างอยู่**")
+    r("--     เพราะแถวยังอยู่ seed จึงข้ามไป · ต้องลบแถวเก่าด้วยมือก่อน แล้วค่อยรัน seed ใหม่")
+    r("--")
+    r("--  คำสั่งล้างแถวเหล่านี้ (dev/uat เท่านั้น · ไม่รันอัตโนมัติ — ลอก 4 บรรทัดนี้ไปรันเอง)")
+    r("--  ⚠️ ลบ common_code ก่อน common_code_type เสมอ — ทะเบียน type ต้องหายทีหลังค่าที่อ้างมัน")
+    r("--     DELETE FROM sps_store.common_code      WHERE code_type  LIKE 'SGI/_%' ESCAPE '/';")
+    r("--     DELETE FROM sps_store.common_code_type WHERE code_type  LIKE 'SGI/_%' ESCAPE '/';")
+    r("--     DELETE FROM sps_store.mas_param        WHERE param_name LIKE 'SGI/_%' ESCAPE '/';")
+    r(f"--     DELETE FROM sps_store.email_template   WHERE create_by  = '{SEED_OWNER}';")
     r("-- =====================================================================")
     r("")
     r("\\set ON_ERROR_STOP on")
@@ -355,7 +372,9 @@ def build() -> tuple[Path, Path, list[str]]:
 # ทุกคำสั่งเป็น INSERT ... WHERE NOT EXISTS จึงรันซ้ำได้โดยไม่เกิดแถวซ้ำ
 # และไม่ใช้ ON CONFLICT เพราะยังยืนยัน unique constraint ของตารางระบบเดิมไม่ได้
 # ---------------------------------------------------------------------------
-SEED_OWNER = "SGI-INSTALL"
+SEED_LOCK_CLASS = 861000   # namespace เดียวกับ SgiJobLockService
+SEED_LOCK_KEY = 1          # 1 = การติดตั้ง seed ของ SGI
+SEED_OWNER = "SGI-SETUP"   # 🔴 2026-09-16 — ให้ตรงกับที่ติดตั้งในฐาน dev จริง
 
 
 def _sq(v: str) -> str:
@@ -393,20 +412,71 @@ SGI_DECISIONS = [
     ("คำนวณเงินชดเชยเรียบร้อย", "PENDING"),
 ]
 
+# สถานะเอกสาร 6 ค่า — มติ 2026-09-13 (DECISIONS ข้อ 2.31)
+# รหัสเป็นของ SGI เอง · sps_store.workflow_status ของ engine มีแค่ status_id (integer) + status_name
+# จึงใช้เป็นแหล่ง lookup ของรหัส 2 ตัวอักษรไม่ได้ — เก็บที่ common_code แบบเดียวกับ SGI_DECISION
+# ข้อความไทยเป็น verbatim จาก workflow_status_document.md **ห้ามแก้คำ**
+SGI_DOC_STATUSES = [
+    ("06", "รอฝ่าย SBP DSA ดำเนินการ"),
+    ("08", "รอเจ้าหน้าที่ SBP DSA ดำเนินการ"),
+    ("01", "รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ"),
+    ("02", "รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ"),
+    ("03", "รอผู้บริหารสำนักบริหาร SBP ดำเนินการ"),
+    ("99", "เสร็จสิ้นดำเนินการ"),
+]
+
+# ทะเบียน code type ของ SGI — **ต้อง INSERT ก่อนแถวใน common_code เสมอ**
+# `sps_store.common_code_type` เป็น PK บน `code_type` และมีของจริงอยู่ 378 แถว
+# ถ้าลง `common_code` โดยไม่มีทะเบียน type หน้าจอ/สคริปต์ที่ไล่จาก type จะมองไม่เห็นค่าของ SGI เลย
+# (ที่มา: `SBP/db-schema-sps_store.md` · `LLDD-BE-Integration-SBP-Platform` §5.5.2)
+SGI_CODE_TYPES = [
+    ("SGI_DECISION",     "ผลการพิจารณาเอกสารประกันรายได้"),
+    ("SGI_DOC_STATUS",   "สถานะเอกสารประกันรายได้"),
+    ("SGI_APPROVE_LIMIT", "วงเงินอนุมัติของระบบประกันรายได้"),
+]
+
+# วงเงินอนุมัติ
+# 🔴 แก้ 2026-09-16 — **ยึดของที่ติดตั้งในฐาน dev จริง** (มติผู้ใช้)
+#    เอกสาร `LLDD-BE-Integration-SBP-Platform` §5.5.2 เขียน contract ว่า code_value = 'THRESHOLD'
+#    แต่ฐาน dev ถูก seed ไปแล้วเมื่อ 2026-08-27 (เจ้าของ SGI-SETUP) ด้วย **code_value = '100000'**
+#    ถ้า seed ของเราใช้ 'THRESHOLD' → `WHERE NOT EXISTS` จะไม่เจอแถวเดิม แล้ว **insert เพิ่มเป็นแถวที่สอง**
+#    ผลคือ SGI_APPROVE_LIMIT มี 2 แถว active แล้วฝั่งที่อ่านเลือกไม่ถูกว่าตัวไหนจริง
+# ⚠️ `code_name` ถือ**ตัวเลข** — ฝั่งที่อ่านต้องแปลงเป็นตัวเลข และ fail-fast เมื่อไม่มีค่า/มีหลายแถว/แปลงไม่ได้
+SGI_APPROVE_LIMITS = [
+    ("100000", "100000",
+     "วงเงินอนุมัติเกณฑ์เดียว — ต่ำกว่านี้จบที่ GM (02) · ตั้งแต่นี้ขึ้นไปส่ง AVP (03) · มติประชุม 2026-08-18"),
+]
+
 # ค่าคงที่ธุรกิจที่โค้ดต้องอ่าน (แทนตาราง system_configs ที่ถูกตัดออก)
 MAS_PARAMS = [
-    ("SGI_APPROVE_LIMIT", "100000",
-     "วงเงินอนุมัติเกณฑ์เดียว — ต่ำกว่านี้จบที่ GM (02) · ตั้งแต่นี้ขึ้นไปส่ง AVP (03) · มติประชุม 2026-08-18"),
-    ("SGI_IMPACT_RADIUS_BKK_KM", "1",
+    # 🔴 `SGI_APPROVE_LIMIT` **ย้ายออกไปอยู่ common_code แล้ว 2026-09-15**
+    #    เอกสารกำหนดแหล่งเดียวไว้ที่ `common_code` มาตั้งแต่ต้น
+    #    (`database.md` ตาราง "ใครเป็นเจ้าของค่า" · `LLDD-BE-Integration-SBP-Platform` §5.5.2
+    #     ระบุ contract เป๊ะ: code_value = 'THRESHOLD' · code_name = '100000')
+    #    แต่ seed กลับใส่ลง `mas_param` — ถ้าปล่อยไว้จะมีสองแหล่งที่ขัดกันได้
+    #    และ `GET /sgi/lookup/workflow-sections` ออกแบบให้อ่านจาก common_code
+    ("SGI_IMPACT_RADIUS_BKK", "1",
      "รัศมีกระทบ กทม./ปริมณฑล (กิโลเมตร)"),
-    ("SGI_IMPACT_RADIUS_UPC_KM", "2",
+    ("SGI_IMPACT_RADIUS_UPC", "2",
      "รัศมีกระทบต่างจังหวัด (กิโลเมตร)"),
-    ("SGI_SALES_DATA_MIN_DAYS", "60",
+    ("SGI_SALES_DAYS_MIN", "60",
      "จำนวนวันทำการขั้นต่ำที่ต้องมีข้อมูลยอดขาย — ไม่ครบขึ้นธงแดงและเข้าเงื่อนไข pre-accept"),
-    ("SGI_GROWTH_RATE_THRESHOLD", "-10",
+    ("SGI_GROWTH_RATE_MAX", "-10",
      "เกณฑ์ผลต่างอัตราเติบโต (%) — ต้องน้อยกว่าหรือเท่ากับค่านี้จึงเข้าข่ายชดเชย"),
     ("SGI_OUTLIER_SALES_DIFF", "50",
-     "เกณฑ์ outlier ของยอดขายรายวัน (|sales_diff| ตั้งแต่ค่านี้ขึ้นไป) — ตัดออกจากการคำนวณ growth"),
+     "เกณฑ์ outlier ของยอดขายรายวัน — |sales_diff| (หน่วย **เปอร์เซ็นต์**) ตั้งแต่ค่านี้ขึ้นไป · "
+     "⚠️ แก้คำอธิบาย 2026-09-13: วัน outlier **ไม่ได้ถูกตัดออก** จากการคำนวณ growth "
+     "แต่ถูกแทนด้วย 0 โดยตัวหารยังนับอยู่ (ดู ImportJdbc สูตร AVG ของ Job 5)"),
+    # ── ค่าคงที่ธุรกิจของ Job 6 — ระบบเดิมเก็บใน ApplicationResources.properties ──
+    #    ทั้งสามตัวเป็นค่าที่ธุรกิจขอเปลี่ยนได้ จึงห้าม hardcode ในโค้ด (batchjob/JOB-06 หัวข้อ 12)
+    ("SGI_STA_INIT_START_DAY", "7",
+     "วันของเดือนที่เริ่มเปิดรอบชดเชยใหม่ส่ง STA (`dateStartInitToSTA` เดิม) — "
+     "วันที่ 1 ถึงวันก่อนหน้านี้ Job 6 ยังซิงก์สถานะแต่ไม่เปิดรอบใหม่"),
+    ("SGI_STA_NUM_WAIT_PAY", "3",
+     "จำนวนงวดรอจ่าย (`numWaitPay` เดิม) — ใช้คำนวณงวด Statement ที่ STA จะตัดจ่าย"),
+    ("SGI_QSSI_CATEGORIES", "8,9,12,1,10,16",
+     "หมวดคะแนน QSSI ที่ต้องครบก่อนเปิดรอบชดเชยใหม่ (`categoryQssi` เดิม) — "
+     "ต้องครบทั้ง 6 หมวดจากงวด max เดียวกัน ในกรอบ 3 เดือน"),
     ("SGI_ZERO_AMOUNT_MAX_MONTHS", "3",
      "จำนวนเดือนสูงสุดที่ยอดชดเชยเป็น 0 ได้ติดกัน — เดือนถัดไปให้หยุดชดเชย"),
     ("SGI_PENDING_ACK_AGE_DAYS", "1",
@@ -416,15 +486,100 @@ MAS_PARAMS = [
      "🔴 ตั้ง N ไว้ก่อนจนกว่าจะมี security sign-off (ข้อค้าง 2.10)"),
 ]
 
+# ---------------------------------------------------------------------------
+# email_template — ยึดรูปแบบจาก **แถวจริงในฐาน dev** ไม่ใช่รูปแบบที่เราคิดขึ้นเอง
+# วัดจากช่วง id 1501010–1501044 = ชุด template ของระบบประกันรายได้เดิม 33 แถว (2026-09-16)
+#
+#   • ตัวแปรเป็น `${ชื่อ}` ไม่ใช่ `{ชื่อ}` — ของจริงใช้ ${} 193 จุด · {} เปล่าเพียง 5 จุด
+#   • `sender` = **อีเมลผู้ส่ง** · `email_from` = **ชื่อที่แสดง** (สลับกับที่ชื่อคอลัมน์ชวนให้เข้าใจ)
+#     คู่ที่ชุดประกันรายได้เดิมใช้ครบทั้ง 33 แถว: noreply@cpall.co.th / SBP Mall System
+#   • `body_format` เป็น HTML เต็มฉบับเสมอ (126/126 แถวของระบบเดิมมีเนื้อหา ไม่มีแถวว่าง)
+#     โครงเดิมคงไว้ทั้งหมดรวมทั้ง `<title>Untitled Document</title>` — ตามที่ผู้ใช้สั่งว่า
+#     ส่วนที่เรายังไม่มีข้อมูลของตัวเองให้ยึดตาม data เดิมไปก่อน
+#   • ตัวแปรที่ของเดิมมีอยู่แล้ว **ใช้ชื่อเดิม ห้ามตั้งใหม่**:
+#     ${compCurrentUser} ${compStoreCode} ${compStoreName} ${branchTypeI} ${compLoopNo} ${link}
+#     ที่เพิ่มใหม่เพราะระบบเดิมไม่มีแนวคิดนี้: ${docNo} ${ageDays} ${pendingCount}
+#                                             ${newDocCount} ${jobName} ${runId} ${errorMessage}
+# ⚠️ เนื้อความจริงยังต้องให้ทีมธุรกิจตรวจ — ชุดนี้คือโครงที่ "ส่งออกไปแล้วอ่านรู้เรื่อง"
+#    ไม่ใช่ข้อความที่ผ่าน sign-off แล้ว
+# ---------------------------------------------------------------------------
+EMAIL_SENDER = "noreply@cpall.co.th"     # คอลัมน์ sender     = อีเมลผู้ส่ง
+EMAIL_FROM = "SBP Mall System"           # คอลัมน์ email_from = ชื่อที่แสดง
+EMAIL_LINK_LINE = "คลิก Link เพื่อดำเนินการประกันรายได้ ${link}"
+EMAIL_STORE_LINE = ("สาขา ${compStoreCode}#${compStoreName} Type ${branchTypeI} "
+                    "&nbsp;ครั้งที่ ${compLoopNo}")
+
+
+def _email_body(topic: str, details: list[str], action: str, closing: str) -> str:
+    """ประกอบ body_format ตามโครงเดียวกับ template ของระบบเดิมทุกบรรทัด"""
+    detail_html = "".join(f"{line}<br />\n" for line in details)
+    return (
+        "<html>\n"
+        "<head>\n"
+        '<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />\n'
+        "<title>Untitled Document</title>\n"
+        "</head>\n"
+        "<body>\n"
+        "<p>เรียน ${compCurrentUser}</p>\n"
+        f"<div >เรื่อง &nbsp;{topic} &nbsp;<br />\n"
+        f"{detail_html}"
+        "<br />\n"
+        f"{action}</div>\n"
+        "<br>\n"
+        f"<div>{closing}<br />\n"
+        "ขอบคุณค่ะ</div>\n"
+        "</body>\n"
+        "</html>"
+    )
+
+
+_DO = "แจ้งเพื่อโปรดดำเนินการ"      # ปิดท้ายแบบที่ template เดิมใช้กับงานที่ต้องลงมือ
+_FYI = "แจ้งเพื่อทราบ"               # ปิดท้ายแบบแจ้งให้ทราบ
+_CHECK = "แจ้งเพื่อโปรดตรวจสอบ"      # ปิดท้ายของอีเมลฝั่งระบบ (ไม่มีปุ่มให้กด)
+
+# (code, ชื่อ, subject_format, body_format)
 EMAIL_TEMPLATES = [
-    ("EM-01", "SGI - เอกสารเปลี่ยนสถานะ", "[ประกันรายได้] เอกสาร {docNo} รอท่านดำเนินการ"),
-    ("EM-02", "SGI - จบ workflow", "[ประกันรายได้] เอกสาร {docNo} เสร็จสิ้นดำเนินการ"),
-    ("EM-03", "SGI - ถูกส่งกลับ", "[ประกันรายได้] เอกสาร {docNo} ถูกส่งกลับให้แก้ไข"),
-    ("EM-04", "SGI - เตือนงานค้างรายสัปดาห์", "[ประกันรายได้] สรุปงานค้างของท่าน ประจำสัปดาห์"),
-    ("EM-05", "SGI - Escalation งานค้าง", "[ประกันรายได้] แจ้งงานค้างเกินกำหนด {ageDays} วัน"),
-    ("EM-06", "SGI - สรุปเปิด workflow ราย DV", "[ประกันรายได้] สรุปเอกสารที่เปิดใหม่ ประจำวัน"),
-    ("EM-07", "SGI - Batch job จบด้วย Error", "[ประกันรายได้] batch job {jobName} ทำงานไม่สำเร็จ"),
-    ("EM-08", "SGI - ข้อความขาออกค้างส่ง", "[ประกันรายได้] มีข้อความค้างส่งเกิน {ageDays} วัน"),
+    ("EM-01", "SGI - เอกสารเปลี่ยนสถานะ",
+     "[ประกันรายได้] เอกสาร ${docNo} รอท่านดำเนินการ",
+     _email_body("พิจารณาดำเนินการประกันรายได้",
+                 ["เอกสารเลขที่ ${docNo}", EMAIL_STORE_LINE],
+                 EMAIL_LINK_LINE, _DO)),
+    ("EM-02", "SGI - จบ workflow",
+     "[ประกันรายได้] เอกสาร ${docNo} เสร็จสิ้นดำเนินการ",
+     _email_body("แจ้งผลการพิจารณาประกันรายได้ (เสร็จสิ้นกระบวนการ)",
+                 ["เอกสารเลขที่ ${docNo}", EMAIL_STORE_LINE],
+                 EMAIL_LINK_LINE, _FYI)),
+    ("EM-03", "SGI - ถูกส่งกลับ",
+     "[ประกันรายได้] เอกสาร ${docNo} ถูกส่งกลับให้แก้ไข",
+     _email_body("เอกสารประกันรายได้ถูกส่งกลับให้แก้ไข",
+                 ["เอกสารเลขที่ ${docNo}", EMAIL_STORE_LINE],
+                 EMAIL_LINK_LINE, _DO)),
+    ("EM-04", "SGI - เตือนงานค้างรายสัปดาห์",
+     "[ประกันรายได้] สรุปงานค้างของท่าน ประจำสัปดาห์",
+     _email_body("สรุปเอกสารประกันรายได้ที่รอท่านดำเนินการ ประจำสัปดาห์",
+                 ["จำนวนเอกสารที่รอดำเนินการ ${pendingCount} ฉบับ"],
+                 EMAIL_LINK_LINE, _DO)),
+    ("EM-05", "SGI - Escalation งานค้าง",
+     "[ประกันรายได้] แจ้งงานค้างเกินกำหนด ${ageDays} วัน",
+     _email_body("มีเอกสารรอท่านดำเนินการพิจารณาประกันรายได้มาแล้ว ${ageDays} วัน "
+                 "หากครบ 60 วันเอกสารจะถูกยกเลิก",
+                 ["จำนวนเอกสารที่รอดำเนินการ ${pendingCount} ฉบับ"],
+                 EMAIL_LINK_LINE, _DO)),
+    ("EM-06", "SGI - สรุปเปิด workflow ราย DV",
+     "[ประกันรายได้] สรุปเอกสารที่เปิดใหม่ ประจำวัน",
+     _email_body("สรุปเอกสารประกันรายได้ที่เปิดใหม่ ประจำวัน",
+                 ["จำนวนเอกสารที่เปิดใหม่ ${newDocCount} ฉบับ"],
+                 EMAIL_LINK_LINE, _FYI)),
+    ("EM-07", "SGI - Batch job จบด้วย Error",
+     "[ประกันรายได้] batch job ${jobName} ทำงานไม่สำเร็จ",
+     _email_body("batch job ${jobName} ของระบบประกันรายได้ทำงานไม่สำเร็จ",
+                 ["รหัสการรัน (runId) ${runId}", "ข้อความจากระบบ ${errorMessage}"],
+                 "โปรดตรวจสอบ application log ของ job รอบดังกล่าว", _CHECK)),
+    ("EM-08", "SGI - ข้อความขาออกค้างส่ง",
+     "[ประกันรายได้] มีข้อความค้างส่งเกิน ${ageDays} วัน",
+     _email_body("มีข้อความขาออกของระบบประกันรายได้ค้างส่งเกิน ${ageDays} วัน",
+                 ["จำนวนข้อความที่ค้างส่ง ${pendingCount} รายการ"],
+                 "โปรดตรวจสอบสถานะ publisher confirm ของคิวขาออก", _CHECK)),
 ]
 
 
@@ -444,7 +599,12 @@ def build_seed() -> Path:
     a("--")
     a("--  แบ่ง 2 กลุ่มตามระดับความเสี่ยง")
     a(f"--    ส่วนที่ 1 — ตาราง sgi_* ของเราเอง  ({len(comps)} แบรนด์คู่แข่ง · {len(factors)} ปัจจัยภายนอก · ตัวนับเลขเอกสาร)")
-    a(f"--    ส่วนที่ 2 — ตารางของระบบ SBP เดิม  (common_code {len(SGI_DECISIONS)} แถว · "
+    # 🔴 แก้ 2026-09-15 — เดิมนับเฉพาะ SGI_DECISIONS ทำให้หัวไฟล์บอก "7 แถว"
+    #    ทั้งที่ลง common_code จริง 13 แถว (ตก SGI_DOC_STATUSES ไป 6 แถว)
+    #    คนอ่านหัวไฟล์เพื่อรู้ว่าจะมีอะไรเข้าตารางของระบบเดิมบ้าง — นับผิดคือบอกผิด
+    a(f"--    ส่วนที่ 2 — ตารางของระบบ SBP เดิม  "
+      f"(common_code {len(SGI_DECISIONS) + len(SGI_DOC_STATUSES)} แถว "
+      f"= SGI_DECISION {len(SGI_DECISIONS)} + SGI_DOC_STATUS {len(SGI_DOC_STATUSES)} · "
       f"mas_param {len(MAS_PARAMS)} แถว · email_template {len(EMAIL_TEMPLATES)} แถว)")
     a("--")
     a("--  ความปลอดภัยของส่วนที่ 2")
@@ -461,6 +621,19 @@ def build_seed() -> Path:
     a(f"SET search_path TO {TARGET_SCHEMA};")
     a("")
     a("-- ---------------------------------------------------------------------")
+    a("-- 🔴 DEPLOYMENT LOCK — กัน seed สองรอบรันทับกัน")
+    a("-- ---------------------------------------------------------------------")
+    a("--  `INSERT ... WHERE NOT EXISTS` กันซ้ำได้เฉพาะเมื่อรัน**ทีละรอบ**")
+    a("--  ถ้าสอง session รันพร้อมกัน ต่างฝ่ายต่างไม่เห็นแถวที่อีกฝ่ายยังไม่ commit (READ COMMITTED)")
+    a("--  → ได้แถวซ้ำทั้งคู่ · พิสูจน์กับ PostgreSQL 16 จริงแล้ว 2026-09-16 (ได้ 2 แถวที่ควรมี 1)")
+    a("--")
+    a("--  ⚠️ ใช้ ON CONFLICT แทนไม่ได้ — `common_code` / `mas_param` ของระบบเดิม **ไม่มี unique constraint**")
+    a("--     และเป็นตารางของทีมอื่น เราเพิ่ม constraint เองไม่ได้ตามกติกาโครงการ")
+    a("--  advisory lock จึงเป็นทางเดียวที่กันได้โดยไม่แตะโครงสร้างของระบบเดิม")
+    a("--  ปลดอัตโนมัติตอน COMMIT/ROLLBACK (xact) — ไม่มีทางค้างแม้ script ตาย")
+    a(f"SELECT pg_advisory_xact_lock({SEED_LOCK_CLASS}, {SEED_LOCK_KEY});")
+    a("")
+    a("-- ---------------------------------------------------------------------")
     a("-- PREFLIGHT — ต้องมีตารางของ SGI แล้ว และต้องมีตารางของระบบเดิมที่จะเพิ่มข้อมูลลงไป")
     a("-- ---------------------------------------------------------------------")
     a("DO $$")
@@ -472,6 +645,10 @@ def build_seed() -> Path:
     a("    IF NOT EXISTS (SELECT 1 FROM information_schema.tables")
     a(f"                   WHERE table_schema = '{TARGET_SCHEMA}' AND table_name = 'common_code') THEN")
     a("        RAISE EXCEPTION 'ไม่พบตาราง common_code ของระบบเดิม — ต่อผิดฐานข้อมูลหรือเปล่า';")
+    a("    END IF;")
+    a("    IF NOT EXISTS (SELECT 1 FROM information_schema.tables")
+    a(f"                   WHERE table_schema = '{TARGET_SCHEMA}' AND table_name = 'common_code_type') THEN")
+    a("        RAISE EXCEPTION 'ไม่พบตาราง common_code_type — ต้องลงทะเบียน code type ก่อนลงค่าใน common_code';")
     a("    END IF;")
     a("END $$;")
     a("")
@@ -510,6 +687,14 @@ def build_seed() -> Path:
     a("-- ส่วนที่ 2 — ตารางของระบบ SBP เดิม (เพิ่มแถวเท่านั้น ห้ามแตะของเดิม)")
     a("-- =====================================================================")
     a("")
+    a(f"-- 2.0 common_code_type — ทะเบียน code type ของ SGI {len(SGI_CODE_TYPES)} ตัว")
+    a("--     🔴 **ต้องมาก่อน 2.1/2.1b/2.1c เสมอ** — `common_code_type` เป็น PK บน code_type")
+    a("--     ถ้าลง common_code โดยไม่มีทะเบียน type หน้าจอ/สคริปต์ที่ไล่จาก type จะมองไม่เห็นค่าของ SGI")
+    for code_type, type_name in SGI_CODE_TYPES:
+        a("INSERT INTO common_code_type (code_type, code_type_name, active_flag, create_user, create_date)")
+        a(f"SELECT {_sq(code_type)}, {_sq(type_name)}, 'Y', {_sq(SEED_OWNER)}, CURRENT_TIMESTAMP")
+        a(f" WHERE NOT EXISTS (SELECT 1 FROM common_code_type WHERE code_type = {_sq(code_type)});")
+    a("")
     a(f"-- 2.1 common_code · code_type = 'SGI_DECISION' — ผลการพิจารณา {len(SGI_DECISIONS)} ค่า")
     a("--     ข้อความไทยเป็น verbatim จาก SRS/SDD **ห้ามแก้คำ** เพราะหน้าจอเทียบข้อความตรงตัว")
     a("--     (มติ DP-9 2026-08-10 ย้ายจากตาราง decisions มาไว้ที่ common_code ของระบบเดิม)")
@@ -519,6 +704,28 @@ def build_seed() -> Path:
         a(f" WHERE NOT EXISTS (SELECT 1 FROM common_code")
         a(f"                    WHERE code_type = 'SGI_DECISION' AND code_name = {_sq(label)});")
     a("")
+    a(f"-- 2.1b common_code · code_type = 'SGI_DOC_STATUS' — สถานะเอกสาร {len(SGI_DOC_STATUSES)} ค่า")
+    a("--     รหัสเป็นของ SGI เอง (มติ 2026-09-13 ข้อ 2.31) — sps_store.workflow_status ของ engine")
+    a("--     มีแค่ status_id (integer) + status_name จึงใช้เป็นแหล่ง lookup ของรหัสไม่ได้")
+    a("--     ข้อความไทยเป็น verbatim จาก workflow_status_document.md **ห้ามแก้คำ**")
+    for i, (code, label) in enumerate(SGI_DOC_STATUSES, start=1):
+        a("INSERT INTO common_code (code_type, seq_no, code_value, code_name, active_flag, create_user, create_date)")
+        a(f"SELECT 'SGI_DOC_STATUS', {i}, {_sq(code)}, {_sq(label)}, 'Y', {_sq(SEED_OWNER)}, CURRENT_TIMESTAMP")
+        a(f" WHERE NOT EXISTS (SELECT 1 FROM common_code")
+        a(f"                    WHERE code_type = 'SGI_DOC_STATUS' AND code_value = {_sq(code)});")
+    a("")
+    a(f"-- 2.1c common_code · code_type = 'SGI_APPROVE_LIMIT' — วงเงินอนุมัติ {len(SGI_APPROVE_LIMITS)} ค่า")
+    a("--     🔴 ย้ายมาจาก mas_param เมื่อ 2026-09-15 — เอกสารกำหนดแหล่งเดียวไว้ที่ common_code")
+    a("--     contract: code_value = '100000' · code_name = ตัวเลขวงเงิน — **ยึดของที่ติดตั้งในฐาน dev จริง**")
+    a("--     (เอกสาร LLDD §5.5.2 เดิมเขียน 'THRESHOLD' ซึ่งไม่ตรงกับแถวที่ seed ไปเมื่อ 2026-08-27)")
+    a("--     ⚠️ ฝั่งที่อ่านต้องแปลง code_name เป็นตัวเลข และ fail-fast เมื่อไม่มีค่า/มีหลายแถว active")
+    for i, (code_value, amount, desc) in enumerate(SGI_APPROVE_LIMITS, start=1):
+        a(f"--     {desc}")
+        a("INSERT INTO common_code (code_type, seq_no, code_value, code_name, active_flag, create_user, create_date)")
+        a(f"SELECT 'SGI_APPROVE_LIMIT', {i}, {_sq(code_value)}, {_sq(amount)}, 'Y', {_sq(SEED_OWNER)}, CURRENT_TIMESTAMP")
+        a(f" WHERE NOT EXISTS (SELECT 1 FROM common_code")
+        a(f"                    WHERE code_type = 'SGI_APPROVE_LIMIT' AND code_value = {_sq(code_value)});")
+    a("")
     a(f"-- 2.2 mas_param — ค่าคงที่ธุรกิจ {len(MAS_PARAMS)} ตัว (แทนตาราง system_configs ที่ถูกตัดออก)")
     a("--     ทุก key ขึ้นต้นด้วย SGI_ จึงไม่ชนกับค่าของระบบเดิม")
     for name, value, desc in MAS_PARAMS:
@@ -527,15 +734,28 @@ def build_seed() -> Path:
         a(f" WHERE NOT EXISTS (SELECT 1 FROM mas_param WHERE param_name = {_sq(name)});")
     a("")
     a(f"-- 2.3 email_template — {len(EMAIL_TEMPLATES)} template ของ SGI")
-    a("--     ⚠️ body_format ปล่อยเป็นโครงเปล่าไว้ก่อน — เนื้อความจริงให้ทีมธุรกิจกรอกผ่านระบบเดิม")
-    a("--     ⚠️ `email_template_id` มาจาก sequence จึงรู้ค่าล่วงหน้าไม่ได้ · หลังรันสคริปต์นี้")
+    a("--     รูปแบบทุกช่องยึดจากแถวจริงของระบบเดิม (ช่วง id 1501010–1501044 = template ประกันรายได้เดิม)")
+    a("--     ตัวแปรเป็น ${ชื่อ} ไม่ใช่ {ชื่อ} · sender = อีเมลผู้ส่ง · email_from = ชื่อที่แสดง")
+    a("--     ⚠️ เนื้อความยังไม่ผ่าน business sign-off — เป็นโครงที่อ่านรู้เรื่องไว้ก่อน")
+    a("--        การแก้ subject/body จริงทำที่หน้าจอของระบบ SBP เดิม (SGI อ่านอย่างเดียว)")
+    a("--     ⚠️ **ห้ามพึ่ง sequence ของตารางนี้** — วัดบนฐาน dev จริง 2026-09-16 พบว่า")
+    a("--        `email_template_email_template_id_seq.last_value` = 1201012 แต่ `max(email_template_id)`")
+    a("--        = 1501044 · id ถูกแจกเป็นช่วงตามทีม/migration (1–6007 · 1101001–1101006 ·")
+    a("--        1201001–1201013 · 1501010–1501044) ไม่ได้มาจาก nextval() · ปล่อยให้ default ทำงาน")
+    a("--        จะได้ 1201012 ซึ่งมีแถวอยู่แล้ว → duplicate key ทั้ง transaction ล้ม")
+    a("--        จึงคำนวณ id เองจาก max()+1 · advisory lock ที่หัวไฟล์กันสองเครื่องคำนวณพร้อมกัน")
+    a("--        **ไม่แตะ sequence ของระบบเดิม** (เป็น object ของทีมอื่น — setval เป็นสิทธิ์ของเจ้าของ)")
+    a("--     ⚠️ `email_template_id` จึงรู้ค่าล่วงหน้าไม่ได้ · หลังรันสคริปต์นี้")
     a("--        ต้องนำ id ที่ได้ไปผูกกับ `workflow_route.email_id` ของ @srm/glb-workflow")
     a("--        **ซึ่งเป็นตารางของ engine — ต้องให้ทีมเจ้าของ lib เป็นผู้ตั้ง ไม่ทำที่นี่**")
-    for code, name, subject in EMAIL_TEMPLATES:
+    for code, name, subject, body in EMAIL_TEMPLATES:
         full = f"{code} {name}"
-        a("INSERT INTO email_template (email_template_name, email_template_desc, subject_format, body_format,")
-        a("                            active_flag, create_by, create_date)")
-        a(f"SELECT {_sq(full)}, {_sq(name)}, {_sq(subject)}, '', 'Y', {_sq(SEED_OWNER)}, CURRENT_TIMESTAMP")
+        a("INSERT INTO email_template (email_template_id, email_template_name, email_template_desc, subject_format,")
+        a("                            body_format, sender, email_from, active_flag, create_by, create_date)")
+        a("SELECT (SELECT COALESCE(max(email_template_id), 0) + 1 FROM email_template),")
+        a(f"       {_sq(full)}, {_sq(name)}, {_sq(subject)},")
+        a(f"       {_sq(body)},")
+        a(f"       {_sq(EMAIL_SENDER)}, {_sq(EMAIL_FROM)}, 'Y', {_sq(SEED_OWNER)}, CURRENT_TIMESTAMP")
         a(f" WHERE NOT EXISTS (SELECT 1 FROM email_template WHERE email_template_name = {_sq(full)});")
     a("")
 
@@ -545,18 +765,19 @@ def build_seed() -> Path:
     a("-- ตรวจผลก่อน COMMIT")
     a("-- ---------------------------------------------------------------------")
     a("DO $$")
-    a("DECLARE c integer; f integer; d integer; p integer; e integer;")
+    a("DECLARE c integer; f integer; d integer; s integer; p integer; e integer;")
     a("BEGIN")
     a("    SELECT count(*) INTO c FROM sgi_competitors;")
     a("    SELECT count(*) INTO f FROM sgi_external_factors;")
     a("    SELECT count(*) INTO d FROM common_code   WHERE code_type = 'SGI_DECISION';")
+    a("    SELECT count(*) INTO s FROM common_code   WHERE code_type = 'SGI_DOC_STATUS';")
     a("    SELECT count(*) INTO p FROM mas_param     WHERE param_name LIKE 'SGI\\_%';")
     a("    SELECT count(*) INTO e FROM email_template WHERE email_template_name LIKE 'EM-0%';")
     a(f"    IF c < {len(comps)} OR f < {len(factors)} OR d < {len(SGI_DECISIONS)}"
-      f" OR p < {len(MAS_PARAMS)} OR e < {len(EMAIL_TEMPLATES)} THEN")
-    a("        RAISE EXCEPTION 'seed ไม่ครบ: competitors=% factors=% decisions=% params=% templates=%', c, f, d, p, e;")
+      f" OR s < {len(SGI_DOC_STATUSES)} OR p < {len(MAS_PARAMS)} OR e < {len(EMAIL_TEMPLATES)} THEN")
+    a("        RAISE EXCEPTION 'seed ไม่ครบ: competitors=% factors=% decisions=% docStatuses=% params=% templates=%', c, f, d, s, p, e;")
     a("    END IF;")
-    a("    RAISE NOTICE 'OK: competitors=% factors=% decisions=% params=% templates=%', c, f, d, p, e;")
+    a("    RAISE NOTICE 'OK: competitors=% factors=% decisions=% docStatuses=% params=% templates=%', c, f, d, s, p, e;")
     a("END $$;")
     a("")
     a("COMMIT;")
@@ -564,7 +785,7 @@ def build_seed() -> Path:
     a("-- ---------------------------------------------------------------------")
     a("-- ถอน seed เฉพาะส่วนที่ 2 (ตารางระบบเดิม) — ใช้เมื่อต้องการยกเลิกการติดตั้ง")
     a(f"--   ลบได้ปลอดภัยเพราะทุกแถวประทับ '{SEED_OWNER}' ไว้")
-    a("--   DELETE FROM common_code    WHERE code_type = 'SGI_DECISION'   "
+    a("--   DELETE FROM common_code    WHERE code_type IN ('SGI_DECISION','SGI_DOC_STATUS')   "
       f"AND create_user = {_sq(SEED_OWNER)};")
     a("--   DELETE FROM mas_param      WHERE param_name LIKE 'SGI\\_%'     "
       f"AND create_by   = {_sq(SEED_OWNER)};")

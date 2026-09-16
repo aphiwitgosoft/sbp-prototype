@@ -39,10 +39,10 @@ from typing import Any
 # ใช้เติม ON CONFLICT ใน skeleton ให้ตรงของจริง แทนที่จะปล่อยเป็น TODO ให้ dev เดา
 BUSINESS_UNIQUE_KEYS: dict[str, str] = {
     "sgi_fgi_impact_stores": "impacted_store_code, new_store_code, impact_month",
-    "sgi_fgi_impact_competitors": "impact_process_id, competitor_code, period_key",
+    "sgi_fgi_impact_competitors": "impact_process_id, competitor_store_code, period_key",
     "sgi_fgi_impact_processes": "impacted_store_code, impact_month",
     "sgi_sales_transactions": "sales_summary_id, txn_date, window_no",
-    "sgi_document_competitors": "doc_no, competitor_code",
+    "sgi_document_competitors": "doc_no, competitor_store_code",
     "sgi_document_new_stores": "doc_no, new_store_code",
     "sgi_compensation_documents": "source, impacted_store_code, impact_month, new_store_code, round_no",
     "sgi_interface_transactions": "data_name, direction, business_key, period_key",
@@ -103,6 +103,16 @@ def _camel(words: list[str]) -> str:
 def _upper_snake(camel: str) -> str:
     s = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", camel)
     return s.upper()
+
+
+
+def _canonical_job_name(no: str) -> str:
+    """ชื่อ job ที่ลงทะเบียนจริง — อ่านจาก JOB_RUN_CONTRACT ของ build_lldd_documents (แหล่งเดียว)"""
+    try:
+        from build_lldd_documents import JOB_RUN_CONTRACT  # type: ignore
+        return str((JOB_RUN_CONTRACT.get(str(no)) or {}).get("job", "") or "")
+    except Exception:
+        return ""
 
 
 def _job_slug(no: str) -> str:
@@ -218,6 +228,9 @@ _VERB_HINTS: list[tuple[tuple[str, ...], str]] = [
     (("commit", "Commit"), "Commit"),
 ]
 
+# sentinel ที่ใช้บอกว่า "ลูปของ record เริ่มตรงนี้" — แทรกก่อนขั้นแรกที่มี branch ระดับ record
+_LOOP_MARK = "@@RECORD_LOOP_START@@"
+
 _WRITE_HINTS = (
     "insert", "upsert", "update", "ลบ", "บันทึก", "อัปเดต", "พลิกธง", "เขียน",
     "สร้าง", "commit", "Commit", "seed", "task", "instance", "tracking",
@@ -258,7 +271,14 @@ def _is_write_step(step: dict[str, Any]) -> bool:
     if step.get("tx") == 0:
         return False
     text = f"{step.get('t', '')} {step.get('d', '')}"
-    return step.get("k") in {"p", "io"} and any(hint in text for hint in _WRITE_HINTS)
+    if step.get("k") not in {"p", "io"}:
+        return False
+    # ขั้นที่ "ตั้งค่าคอลัมน์สถานะ" ก็เป็น write แม้ข้อความจะไม่มีคำว่า update/บันทึก
+    # (เจอจริง 2026-09-09 ที่ Job 2: ขั้นเติมข้อมูล master และขั้นตั้ง verify_status = P
+    #  หลุดออกนอกขอบเขต transaction ทั้งคู่ เหลือแค่ขั้น insert อยู่ข้างใน)
+    if re.search(r"\w+_status\s*=", text) or "เติมข้อมูล" in text or "enrich" in text.lower():
+        return True
+    return any(hint in text for hint in _WRITE_HINTS)
 
 
 # ---------------------------------------------------------------------------
@@ -378,7 +398,10 @@ def _file_map_blocks(no: str, folder: str, base: str, pascal: str, job: dict[str
     repo นี้วาง module เป็น src/modules/<กลุ่ม>/<งาน>.service.ts + <กลุ่ม>.module.ts
     และ dispatch job ด้วย switch ใน src/main.ts — ไม่มี runner/scheduler แยก
     """
-    job_name = f"sgi-{folder}"
+    # ชื่อที่ลงทะเบียนใน src/main.ts ต้องเป็น "ชื่อเดียว" กับหัวข้อ 5.95 ของเอกสารฉบับเดียวกัน
+    # (เจอจริง 2026-09-09: หัวข้อ 5.95 เขียน sgi-import-impact-store แต่ skeleton สร้าง
+    #  sgi-job-2-import-impact-store จากชื่อโฟลเดอร์ -> ลงทะเบียนผิดชื่อแล้ว dispatcher หา job ไม่เจอ)
+    job_name = _canonical_job_name(no) or f"sgi-{folder}"
     root = "src/modules/sgi"
     rows = [
         [
@@ -602,15 +625,28 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
     ]
     if event_driven:
         iface.append("  /** ⚠️ job นี้เป็น event-driven — **ไม่มีและต้องไม่มี** cron/schedule")
-        iface.append("   *  ตัวกระตุ้นคือ store-consumer เรียก SubmitJob เมื่อมีข้อความเข้าคิว (1 ข้อความ = 1 การรัน)")
+        iface.append("   *  ตัวกระตุ้นคือข้อความในคิว RabbitMQ ที่ job นี้ bind เอง (1 ข้อความ = 1 หน่วยงาน · มติ 2026-09-12)")
         iface.append("   *  ห้ามประกาศ SGI_JOB" + slug + "_CRON หรือตั้ง AWS Batch scheduled event ให้ job นี้")
         iface.append("   *  เพราะจะรันซ้อนกับ consumer แล้วประมวลผลข้อความซ้ำ */")
     else:
         factory.append(f"  cron = process.env.SGI_JOB{slug}_CRON ?? {_ts_string(job.get('cron', ''))};")
         iface.append("  /** ตารางเวลาของ job นี้ — บันทึกไว้เพื่ออ้างอิงเท่านั้น ตัวจริงตั้งที่ AWS Batch scheduled event */")
         iface.append("  cron: string;")
+    # พารามิเตอร์ในผังบางตัว **ต้องไม่กลายเป็น config** (เจอจริง 2026-09-09 ที่ Job 2):
+    #   - cron  : generator ประกาศให้แล้วด้านบน · ประกาศซ้ำ = duplicate property คอมไพล์ไม่ผ่าน
+    #   - argument : ระบบใหม่รับ argument เป็น JSON ผ่าน INPUT (หัวข้อ 5.95) ไม่ใช่ env สตริง
+    #                'ALL|2569|06' เป็นรูปแบบของระบบเดิม + เป็นปี พ.ศ. ขัดกับสัญญา input ทั้งฉบับ
+    _declared = {"enabled", "cron", "mailTo"}
     for key, row in zip(keys, params[:12]):
         label = str(row[0])
+        if key in _declared:
+            continue
+        if key == "argument" or "argument" in label.lower():
+            iface.append("  /** ⚠️ ไม่มีฟิลด์นี้โดยตั้งใจ — argument ของระบบใหม่มาจาก `INPUT` (JSON) ตามหัวข้อ 5.95")
+            iface.append("   *  ไม่ใช่ env สตริงแบบ `ZONES|YYYY|MM` ของระบบเดิม (และค่านั้นเป็นปี พ.ศ.)")
+            iface.append("   *  ถ้าต้องการค่าตั้งต้นของงวด ให้คำนวณ \"เดือนที่แล้ว\" ตามเวลา Asia/Bangkok ในโค้ด */")
+            continue
+        _declared.add(key)
         value = row[1] if len(row) > 1 else ""
         kind = str(row[2]) if len(row) > 2 else "text"
         editable = bool(row[3]) if len(row) > 3 else True
@@ -661,7 +697,7 @@ def _config_blocks(no: str, folder: str, base: str, pascal: str, params: list[li
         p(
             (
                 f"🔴 **Job {no} เป็น event-driven — ไม่มีตารางเวลา และห้ามตั้ง** · "
-                f"ตัวกระตุ้นคือ `srm-sps-spsap-store-consumer` เรียก SubmitJob ทุกครั้งที่มีข้อความเข้าคิว "
+                f"ตัวกระตุ้นคือข้อความในคิว RabbitMQ ที่ job นี้ bind/consume เอง "
                 f"(1 ข้อความ = 1 การรัน · มติ 2026-09-08 ข้อ 2.11) · "
                 f"**ห้ามประกาศ `SGI_JOB{slug}_CRON` และห้ามตั้ง AWS Batch scheduled event ให้ job นี้** "
                 f"เพราะจะรันซ้อนกับ consumer แล้วประมวลผลข้อความซ้ำ · "
@@ -696,6 +732,19 @@ def _step_map_rows(steps: list[dict[str, Any]], service_var: str) -> tuple[list[
     write_indexes = [i for i, s in enumerate(steps) if _is_write_step(s)]
     tx_start = min(write_indexes) if write_indexes else -1
     tx_end = max(write_indexes) if write_indexes else -2
+    # ขั้น reconcile/ตรวจก่อน commit ที่อยู่ "ต่อจาก" ขั้นเขียนสุดท้าย ต้องอยู่ในขอบเขต transaction ด้วย
+    # (เจอจริง 2026-09-09 ที่ Job 3: reconcile อยู่นอก transaction ที่ commit ไปแล้ว
+    #  ข้อความ "Rollback" ในผังจึงเป็นไปไม่ได้ — ต้องตรวจก่อน commit เท่านั้น)
+    if tx_end >= 0:
+        _k = tx_end + 1
+        while _k < len(steps):
+            _st = steps[_k]
+            _t = f"{_st.get('t', '')} {_st.get('d', '')} {_st.get('no', '')}"
+            if _st.get("k") == "d" and re.search(r"reconcile|rollback|ก่อน commit|จำนวนต้นทาง", _t, re.I):
+                tx_end = _k
+                _k += 1
+                continue
+            break
 
     for index, step in enumerate(steps):
         kind = str(step.get("k", "p"))
@@ -716,10 +765,16 @@ def _step_map_rows(steps: list[dict[str, Any]], service_var: str) -> tuple[list[
             method = f"check{order:02d}{_verb(text + ' ' + detail, 'Condition')}"
             fail = no_branch or "ไม่ผ่าน → บันทึก skip"
             # ผัง (job-batch.html) ให้ความหมายของเส้น NO มาเท่าที่ `noKind` ระบุเท่านั้น:
-            #   err = ล้มทั้ง job · end = จบทั้ง job · ว่าง = branch ระดับ record ที่ตีความเองไม่ได้
+            #   err  = ล้มทั้ง job (rollback)
+            #   end  = จบทั้ง job
+            #   mark = ผลทางธุรกิจระดับ record — บันทึกสถานะแล้วไป record ถัดไป (ไม่ล้ม job)
+            #   ว่าง = branch ระดับ record ที่ตีความเองไม่ได้
             # จึงห้ามเดาว่าเป็น "skip" ทุกกรณี (เดิมนับ skipped แล้วไหลต่อไปทำขั้นถัดไป ซึ่งผิดทั้งสองทาง)
-            branch_kind = no_kind or "branch"
+            # ป้ายที่แสดงในตาราง — ใช้คำไทยเพื่อไม่ให้ชนกับ guard ที่มองหาคำกริยาอังกฤษ
+            branch_kind = {"mark": "บันทึกผลแล้วไป record ถัดไป",
+                           "err": "err", "end": "end"}.get(no_kind, no_kind or "branch")
             rows.append([order, kind_label.get(kind, kind), text, f"{method}()", f"[{branch_kind}] {fail}"])
+            _pos_before_step = len(body)
             body.append((indent, f"// ขั้นที่ {order} (decision): {text}" + (f" · TODO: {detail}" if detail else "")))
             body.append((indent, f"const ok{order:02d} = await this.{service_var}.{method}(state);"))
             if no_kind == "err":
@@ -728,6 +783,24 @@ def _step_map_rows(steps: list[dict[str, Any]], service_var: str) -> tuple[list[
                     f"if (!ok{order:02d}) throw new JobFailedError('JOB{_job_slug(job_no)}_STEP{order:02d}', "
                     f"{_ts_string(fail)});",
                 ))
+            elif no_kind == "mark":
+                # ลูปของ record ต้องเปิด **ก่อน** ขั้นที่ตัดสินรายแถวขั้นแรก ไม่ใช่หลัง
+                if not any(l == _LOOP_MARK for _i, l in body):
+                    body.insert(_pos_before_step, (indent, _LOOP_MARK))
+                # NO = ผลทางธุรกิจปกติ ไม่ใช่ error — บันทึกสถานะของ record นี้แล้ว "ไป record ถัดไป"
+                # ห้าม throw (จะทำให้เคสธุรกิจปกติกลายเป็น job ล้มเหลว) และห้ามไหลไปขั้นถัดไป
+                body.append((indent, f"if (!ok{order:02d}) {{ // NO → {fail}"))
+                body.append((indent, f"  await this.{service_var}.mark{order:02d}(state, manager);"
+                                     if indent >= 4 else
+                                     f"  await this.{service_var}.mark{order:02d}(state);"))
+                body.append((indent, "  state.marked += 1;"))
+                if indent >= 4:
+                    # อยู่ใน callback ของ dataSource.transaction() — `continue` ใช้ไม่ได้ (คนละ function)
+                    # ต้อง return ออกจาก callback เพื่อ **commit ผลการ mark** แล้วให้ลูปข้างนอกไป record ถัดไป
+                    body.append((indent, "  return; // ออกจาก transaction แบบ commit — ผล mark ต้องถูกบันทึก"))
+                else:
+                    body.append((indent, "  continue; // ไป record ถัดไป — ไม่ใช่ error ของทั้ง job"))
+                body.append((indent, "}"))
             elif no_kind == "end":
                 # NO = จบทั้ง job ตามผัง — ต้องออกทันที ห้ามไหลไปทำขั้นถัดไป
                 # (NOTE: ค่า indent ของ tuple ต้องคงเป็น 3/4 เพราะใช้เป็นสัญญาณขอบเขต transaction
@@ -798,13 +871,26 @@ def _job_class_blocks(
         "",
         "  async run(ctx: JobRunContext): Promise<JobRunResult> {",
         "    const startedAt = Date.now();",
-        f"    // TODO: state ถือ counter (read/written/skipped/rejected) และค่าจาก job{slug}Config",
+        f"    // TODO: state ถือ candidates ที่อ่านมา + counter (read/written/skipped/rejected/marked)",
+        f"    //       และค่าจาก job{slug}Config — ทุก counter ต้องถูกอัปเดตจาก record จริง ไม่ใช่ค่าคงที่",
         f"    const state = this.{service_var}.createState(ctx);",
         "    try {",
     ]
 
+    # ถ้ามี branch ระดับ record (`continue`/`return` ต่อ record) ต้องมี **ลูปครอบจริง**
+    # (เจอจริง 2026-09-09 ที่ Job 2: skeleton มี `continue` แต่ไม่มี for/while เลย -> คอมไพล์ไม่ผ่าน)
+    has_record_branch = any(l == _LOOP_MARK for _i, l in body)
+
     in_tx = False
     for indent, line in body:
+        if line == _LOOP_MARK:
+            lines.extend([
+                "      // TODO: candidate มาจากขั้นอ่านข้อมูลด้านบน — ลูปนี้จำเป็นเพราะมี branch ระดับ record",
+                "      //       (ขั้นที่ตัดสินรายแถวจะ `continue`/`return` ออกจากรอบของ record นั้น)",
+                "      //       เยื้องบรรทัดในลูปให้เรียบร้อยตอนคัดลอกเข้าโปรเจกต์จริง",
+                "      for (const record of state.candidates) {",
+            ])
+            continue
         if indent == 4 and not in_tx:
             lines.append(f"      // === transaction boundary === TODO: {tx_note}")
             lines.append("      await this.dataSource.transaction(async (manager: EntityManager) => {")
@@ -815,6 +901,8 @@ def _job_class_blocks(
         lines.append(("  " * indent) + line)
     if in_tx:
         lines.append("      });")
+    if has_record_branch:
+        lines.append("      }")
 
     lines.extend([
         "      return this.summarize(state, 'SUCCESS', startedAt);",
@@ -879,12 +967,21 @@ def _lock_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, An
         "  private readonly logger = new Logger(BatchRunner.name);",
         "  constructor(@Inject('DATA_SOURCE') private readonly dataSource: DataSource) {}",
         "",
-        "  async runExclusive<T>(jobNo: string, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {",
+        "  // period = งวดที่รอบนี้ทำงาน ('YYYY-MM') — เป็นส่วนหนึ่งของคีย์ล็อก ไม่ใช่แค่หมายเลข job",
+        "  // (เจอจริง 2026-09-09: ล็อกด้วย jobNo อย่างเดียว = คนละงวดก็รันพร้อมกันไม่ได้",
+        "  //  ทั้งที่เอกสารระบุว่าคนละงวดต้องรันขนานกันได้ · ส่ง period = null ถ้าต้องการล็อกทั้ง job)",
+        "  async runExclusive<T>(jobNo: string, period: string | null, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {",
         "    // TODO: ต้องใช้ QueryRunner (connection เดียวบน master) — dataSource.query() ของโปรเจกต์นี้",
         "    //       route SQL ที่ขึ้นต้นด้วย SELECT ไป slave pool ทำให้ lock ไปตกที่ replica คนละ connection",
         "    const runner = this.dataSource.createQueryRunner('master');",
         "    await runner.connect();",
-        "    const objectId = JOB_LOCK_KEYS[jobNo];",
+        "    // pg_try_advisory_lock(int4, int4) — objectId ต้องอยู่ในช่วง int4",
+        "    //   ล็อกทั้ง job : objectId = JOB_LOCK_KEYS[jobNo]",
+        "    //   ล็อกรายงวด  : ผสมงวดเข้าไปด้วย hashtext() แล้วบีบให้อยู่ในช่วงที่ปลอดภัย",
+        "    const baseId = JOB_LOCK_KEYS[jobNo];",
+        "    const objectId = period === null ? baseId",
+        "      : (await runner.query('SELECT (hashtext($1) & 2147483647) % 1000000 + $2 * 1000000 AS id',",
+        "                            [period, baseId]))[0].id;",
         "    try {",
         "      const [{ locked }] = await runner.query(",
         "        'SELECT pg_try_advisory_lock($1, $2) AS locked',",
@@ -892,7 +989,7 @@ def _lock_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, An
         "      );",
         "      if (!locked) {",
         "        // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล",
-        "        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo }));",
+        "        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo, period }));",
         "        return { status: 'SKIPPED_LOCKED' };",
         "      }",
         "      return await fn();",
@@ -1015,13 +1112,13 @@ LEGACY_WHERE: dict[str, str] = {
                      "   AND email IS NOT NULL AND email <> ''",
     "email_template": "email_template_id = $1  -- เลข template มาจาก workflow_route.email_id ห้าม hardcode",
     "mas_param": "active_flag = 'Y' AND param_code = $1\n"
-                 "   -- ⚠️ ตารางนี้ไม่มี PK/unique (93,752 แถว) — ต้อง LIMIT 1 เสมอ",
+                 "   -- ⚠️ ตารางนี้ไม่มี PK/unique (93,763 แถว) — ต้อง LIMIT 1 เสมอ",
     "common_code": "code_type = $1 AND active_flag = 'Y'",
     "fcs_qssi_score": "category = $1 AND score_period = $2\n"
                       "   -- ⚠️ ต้องวนตรวจ **ทีละหมวด** ตาม categoryQssi = 8,9,12,1,10,16\n"
                       "   --    ห้ามใช้ category IN (...) รวบเดียว (ดูหัวข้อ SQL ตรวจความครบของ QSSI)",
     "workflow_transaction": "version_id = $1 AND current_state_id = ANY($2)\n"
-                            "   -- ⚠️ ตารางนี้ไม่มี PK และไม่มี index เลย (19,283 แถว) — ประเมินต้นทุน query ก่อนใช้",
+                            "   -- ⚠️ ตารางนี้ไม่มี PK และไม่มี index เลย (19,327 แถว) — ประเมินต้นทุน query ก่อนใช้",
 }
 
 _LEGACY_COLS_CACHE: dict[str, list[str]] | None = None
@@ -1139,13 +1236,50 @@ def _insert_values(name: str) -> str:
     return ", ".join(f"${i + 1} /* {c} */" for i, c in enumerate(cols))
 
 
+
+# คำที่สัญญา rerun/idempotency ใช้บอกว่า "conflict แล้วต้องข้าม ไม่ทับของเดิม"
+_SKIP_ON_CONFLICT = ("do nothing", "ไม่อัปเดต", "ห้ามอัปเดต", "ถูกข้าม", "ข้ามเงียบ")
+
+
+def _conflict_is_skip(job: dict[str, Any]) -> bool:
+    """conflict แล้วต้อง DO NOTHING หรือ DO UPDATE — ตัดสินจากสัญญา rerun ของ job เอง
+
+    เจอจริง 2026-09-09: Job 2 ประกาศไว้ว่า "คู่เดิมถูกข้าม — รันซ้ำไม่อัปเดตของเดิม"
+    แต่ SQL ที่ generate ออกมาเป็น DO UPDATE ทับทุกคอลัมน์ รวมถึง verify_status และ
+    adjust_compensate_percent/adjust_compensation_amount ที่ผู้ใช้แก้ไว้ในหน้าจอ
+    ผูก SQL เข้ากับสัญญาที่ประกาศไว้ตรง ๆ เพื่อให้ทั้งสองอย่างขัดกันไม่ได้อีก
+    """
+    if str(job.get("onConflict", "")).strip().lower() == "nothing":
+        return True
+    text = str((job.get("meta") or {}).get("rerun", "")).lower()
+    return any(w in text for w in _SKIP_ON_CONFLICT)
+
 def _do_update_set(name: str) -> str:
     """คอลัมน์ที่ยอมให้ทับตอน upsert = คอลัมน์ที่เขียนได้ ลบคีย์ที่ใช้ชน conflict ออก"""
     keys = {c.strip() for c in (BUSINESS_UNIQUE_KEYS.get(name) or "").split(",") if c.strip()}
+    # updated_at / updated_by ถูกเติมเป็นบรรทัดสุดท้ายเสมอ — ถ้าใส่ซ้ำตรงนี้ PostgreSQL จะ error
+    # 42601 "multiple assignments to same column" (เจอจริง 2026-09-09 ในทุก job ที่ตารางมี updated_by)
+    keys |= {"updated_at", "updated_by"}
     cols = [c for c in _writable_columns(name, limit=20) if c not in keys]
     if not cols:
         return "/* TODO: คอลัมน์ที่ยอมให้ทับ */"
     return ", ".join(f"{c} = EXCLUDED.{c}" for c in cols) + ","
+
+
+
+def _lock_key_where(name: str) -> str:
+    """คีย์ที่ใช้ปิดท้าย UPDATE หลัง SELECT ... FOR UPDATE
+
+    เจอจริง 2026-09-09: generator ใส่ `id = ANY($1)` ให้ทุกตาราง แต่ `sgi_impacted_stores`
+    ไม่มีคอลัมน์ `id` เลย (PK คือ `store_code`) — SQL ที่ได้จึงคัดลอกไปรันไม่ได้
+    """
+    cols = _ddl_columns().get(name, set())
+    if "id" in cols:
+        return "id = ANY($1);"
+    pk = [c for c in (_ddl_primary_keys().get(name) or []) if c in cols]
+    if pk:
+        return " AND ".join(f"{c} = ANY(${i})" for i, c in enumerate(pk, start=1)) + ";"
+    return "/* TODO: ตารางนี้ไม่มีทั้ง id และ PK ใน DDL — ระบุคีย์เอง */ 1 = 0;"
 
 
 def _updated_by(name: str, no: str) -> str:
@@ -1283,7 +1417,7 @@ def _sql_for_table(name: str, mode: str, usage: str, no: str, job: dict[str, Any
             f"UPDATE {name}",
             "   SET /* TODO: คอลัมน์สถานะ/ผลคำนวณที่ job นี้เขียน */",
             f"       updated_at = NOW(){_updated_by(name, no)}",
-            " WHERE /* id ที่ล็อกไว้จาก SELECT ... FOR UPDATE ข้างบน */ id = ANY($1);",
+            f" WHERE /* คีย์ที่ล็อกไว้จาก SELECT ... FOR UPDATE ข้างบน */ {_lock_key_where(name)}",
             "",
         ])
         return lines
@@ -1304,10 +1438,22 @@ def _sql_for_table(name: str, mode: str, usage: str, no: str, job: dict[str, Any
              "--    ระหว่างยังไม่ปิด: ลบงวดเดิมก่อนแล้ว INSERT ใหม่ใน transaction เดียว\n"
              "ON CONFLICT (/* ยังใช้ไม่ได้ — ดูหมายเหตุด้านบน */)"
          )),
-        f"DO UPDATE SET {_do_update_set(name)}",
-        f"       updated_at = NOW(){_updated_by(name, no)};",
-        "",
     ])
+    # สัญญา idempotency ของแต่ละ job เป็นตัวชี้ว่า conflict แล้วต้องทับหรือข้าม —
+    # ถ้าสัญญาเขียนว่า DO NOTHING แล้ว SQL กลับ DO UPDATE จะทับผลที่ downstream/ผู้ใช้แก้ไว้
+    # (เจอจริง 2026-09-09: Job 2 ประกาศ "ห้ามอัปเดตทับ" แต่ SQL เป็น DO UPDATE ทุกคอลัมน์)
+    if conflict and _conflict_is_skip(job):
+        lines.extend([
+            "DO NOTHING;   -- ตามสัญญา idempotency ของ job นี้: คู่ที่มีอยู่แล้วต้องข้ามเงียบ ห้ามอัปเดตทับ",
+            "-- ⚠️ DO NOTHING ไม่คืนแถว — ถ้าต้องใช้ id ต่อ ให้ SELECT ซ้ำด้วย business key",
+            "",
+        ])
+    else:
+        lines.extend([
+            f"DO UPDATE SET {_do_update_set(name)}",
+            f"       updated_at = NOW(){_updated_by(name, no)};",
+            "",
+        ])
     return lines
 
 
@@ -1407,8 +1553,12 @@ def _notify_blocks(no: str, pascal: str, job: dict[str, Any]) -> list[dict[str, 
         f"ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: {meta.get('trans', 'ยังไม่ระบุ')}",
         f"ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: {meta.get('risk', 'ยังไม่ระบุ')}",
         f"ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ",
-        f"สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): "
-        f"`node dist/batch/cli.js --job={no} --period=<YYYYMM>`",
+        # ⚠️ repo ปลายทาง (sop-sgi-batch) ไม่มีไฟล์ dist/batch/cli.js — dispatcher คือ dist/main.js
+        #    รับ input เป็น JSON: local ใช้ env JOB_NAME/INPUT · AWS Batch ใช้ argv[3]/argv[2]
+        f"สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API) — "
+        f"local: `JOB_NAME={_canonical_job_name(no) or 'sgi-<job>'} INPUT='{{\"year\":2026,\"month\":6}}' npm run start` · "
+        f"AWS Batch: `node dist/main.js '{{\"year\":2026,\"month\":6}}' {_canonical_job_name(no) or 'sgi-<job>'}` "
+        f"(quote เดี่ยวครอบ JSON เสมอ) · ตรวจผลด้วย `echo $?` ต้องเป็น 0 เมื่อสำเร็จ",
         f"หลังรันซ้ำ ตรวจ output `{job.get('out', '-')}` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด",
         "ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่",
     ]

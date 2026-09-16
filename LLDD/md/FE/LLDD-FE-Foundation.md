@@ -136,10 +136,11 @@ _รูปที่ 2: Sequence diagram: LLDD FE - Application Foundation and Sh
 {
   "items": [
     {
-      "code": "06",
-      "label": "รอฝ่าย SBP DSA ดำเนินการ",
       "statusCode": "06",
-      "statusName": "รอฝ่าย SBP DSA ดำเนินการ"
+      "currentOwner": "somchai.k",
+      "statusName": "รอฝ่าย SBP DSA ดำเนินการ",
+      "code": "06",
+      "label": "รอฝ่าย SBP DSA ดำเนินการ"
     }
   ]
 }
@@ -150,10 +151,11 @@ _รูปที่ 2: Sequence diagram: LLDD FE - Application Foundation and Sh
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | items | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| items[].statusCode | string | Yes | canonical code; do not replace with display label |
+| items[].currentOwner | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].code | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].label | string | Yes | UTF-8; use value domain described by endpoint purpose |
-| items[].statusCode | string | Yes | canonical code; do not replace with display label |
-| items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ## 8. Skeleton Code (โครงโค้ดตั้งต้นของหน้าจอนี้)
 
@@ -238,10 +240,11 @@ export async function getSgiLookupDocumentStatuses(): Promise<T.SgiLookupDocumen
 
 /** GET /api/v1/sgi/lookup/document-statuses — 1 แถวในตาราง */
 export interface SgiLookupDocumentStatusesItem {
+  statusCode: string;
+  currentOwner: string;
+  statusName: string;
   code: string;
   label: string;
-  statusCode: string;
-  statusName: string;
 }
 export interface SgiLookupDocumentStatusesResponse { items: SgiLookupDocumentStatusesItem[]; }
 

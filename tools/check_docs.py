@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import re
 import sys
@@ -24,12 +25,14 @@ import glob
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 
-CANON_TABLES = 20          # 19 CREATE + fcs_qssi_score ที่ reuse ของเดิม (รับ F8+F1 เข้าโครง 2026-08-21)
+CANON_TABLES = 21          # 20 CREATE + fcs_qssi_score ที่ reuse ของเดิม (รับ F8+F1 เข้าโครง 2026-08-21)
 CANON_DOCS = 42           # 39 topic + LLDD-API + LLDD-Database + LLDD-To-Be (นับจาก .md เท่านั้น)
 #   LLDD-Database-Dictionary **ไม่นับ** เพราะส่งมอบเป็น PDF อย่างเดียว (มติผู้ใช้ 2026-09-09)
 #   ไม่มีชั่วโมง/เจ้าของ จึงไม่กระทบยอด 829 ชม.
 #   (ตัด Job 1 ImportQSSI 2026-08-24 · เพิ่ม Job 11 ConsumeStaCompensate + Job 12 NotifyPendingWork 2026-09-02)
 CANON_ENDPOINTS = 28       # 6 กลุ่ม (เอกสาร 11 · Lookup 2 · Master 8 · รายงาน 2 · Workflow 3 · Interface 2)
+LLDDV2_FEATURES = 8
+LLDDV2_JOBS = 12           # Jobs 2–12 + 8b
 #   Interface 3 → 2 เมื่อ 2026-09-08 — ตัด POST /sgi/interface/sta/ack (มติข้อ 2.13 · สเปก STA ไม่มี ACK แบบ HTTP)            # 38 topic + LLDD-API + LLDD-Database
 ENGINE_API = {
     "initializeWorkflow", "eventWorkflow", "getPermissionEvents", "getHistory",
@@ -280,10 +283,17 @@ check("INSERT ขาดคอลัมน์ NOT NULL ที่ไม่มี D
 
 # ตารางที่ SQL อ้างแต่ไม่มีทั้งใน DDL ของเราและใน schema ของระบบเดิม (จับชื่อที่พิมพ์ผิด/ตายไปแล้ว)
 # object ที่ไม่ใช่ตารางของทั้งสองระบบแต่ถูกต้อง — system catalog + view ภายนอก
+# คำสงวนที่ตามหลัง FROM/JOIN/UPDATE ได้ แต่ไม่ใช่ชื่อตาราง
+_SQL_WORDS = {
+    "set", "lateral", "of", "skip", "only", "all", "distinct", "nowait",
+    "select", "where", "as", "on", "using", "share", "key", "no", "locked",
+}
 SQL_ALIAS_OK = {
     "dual", "unnest", "generate_series", "values", "json_to_recordset",
     "pg_locks",                                    # ตรวจ advisory lock กันรันซ้อน
-    "allmap_seven_impact_view",                    # allmapssa.SEVEN_IMPACT_VIEW (SQL Server GSMALLMAP) — Job 2
+    "allmap_seven_impact_view",                    # ชื่อเดิมที่เคยใช้ในเอกสาร — คงไว้กันของเก่าพัง
+    "seven_impact_view",                           # allmapssa.SEVEN_IMPACT_VIEW (SQL Server GSMALLMAP) — Job 2
+    "competitor_impact_view",                      # allmapssa.COMPETITOR_IMPACT_VIEW (SQL Server) — Job 3
     "allmap_competitor_impact_view",               # view คู่แข่งของ ALLMAP — Job 3
 }
 ghost = []
@@ -293,8 +303,14 @@ for f in glob.glob("LLDD/md/**/*.md", recursive=True):
     # ชื่อ CTE ที่ประกาศในไฟล์เดียวกัน (WITH x AS (...) , y AS (...)) ไม่ใช่ตาราง
     ctes = set(re.findall(r"(?:WITH|,)\s+([a-z][a-z_0-9]*)\s+AS\s*\(", s_, re.I))
     ctes |= set(re.findall(r"RETURNING[^;]*?\)\s*(?:,)?\s*([a-z][a-z_0-9]*)\s+AS\s*\(", s_, re.I))
-    for m in re.finditer(r"\b(?:FROM|JOIN|INSERT INTO|UPDATE)\s+(?:sps_store\.)?([a-z][a-z_0-9]*)", s_):
-        t = m.group(1)
+    # รองรับ schema qualifier ทุกแบบ ไม่ใช่แค่ sps_store. — วิวของ ALLMAP อยู่บน SQL Server
+    # และเขียนเป็น allmapssa.SEVEN_IMPACT_VIEW (ตัวพิมพ์ใหญ่) เดิมจับ "allmapssa" มาเป็นชื่อตาราง
+    # `IS NOT DISTINCT FROM x.col` มีคำว่า FROM แต่ตามด้วยคอลัมน์ ไม่ใช่ตาราง
+    s_ = re.sub(r"IS\s+(?:NOT\s+)?DISTINCT\s+FROM", "IS_DISTINCT", s_, flags=re.I)
+    for m in re.finditer(r"\b(?:FROM|JOIN|INSERT INTO|UPDATE)\s+(?:([A-Za-z][\w]*)\.)?([A-Za-z][\w]*)", s_):
+        t = m.group(2).lower()
+        if t in _SQL_WORDS:      # UPDATE ... SET · FOR UPDATE SKIP LOCKED · JOIN LATERAL ฯลฯ
+            continue
         if t in created or t in EXISTING_TABLES or t in SQL_ALIAS_OK or t in DROPPED or t in ctes:
             continue
         ghost.append(f"{f} → {t}")
@@ -1480,7 +1496,7 @@ for _f in _skill_files:
                 _skill_bad.append(f"{_f}: หน้า `{_h}` อยู่ใน MODULES แต่ skill ไม่พูดถึง")
 # repo ปลายทางของ batch/consumer ต้องถูกอ้างใน skill
 for _need, _why in ((("srm-sps-spsap-sop-sgi-batch",), "repo ปลายทางของ batch job"),
-                    (("srm-sps-spsap-store-consumer",), "repo ตัวรับ EAI/RabbitMQ (มติ 2026-09-08)")):
+                    (("srm-sps-spsap-sop-sgi-batch",), "repo ที่ job consume EAI/RabbitMQ เอง (มติ 2026-09-12)")):
     if not any(any(n in read(_f) for n in _need) for _f in _skill_files if os.path.exists(_f)):
         _skill_bad.append(f"skill ไม่ได้อ้าง `{_need[0]}` — {_why}")
 check("ไฟล์ skill ตกยุคจากข้อเท็จจริงปัจจุบัน", _skill_bad)
@@ -1534,6 +1550,27 @@ if os.path.exists(_schema_file):
                     if _col not in _legacy_tabs[_tb]:
                         _alias_bad.append(f"{_f}: `{_tb} {_al}` → `{_al}.{_col}` "
                                           f"ไม่มีคอลัมน์นี้ใน {_schema_file}")
+    # 🔴 เพิ่ม 2026-09-14 — ต้องสแกน **โค้ด batch job** ด้วย ไม่ใช่เฉพาะบล็อก ```sql ในเอกสาร
+    #   รอบตรวจที่ห้าพบว่า Job 6/8/8b/12 อ้างคอลัมน์ที่ไม่มีจริงถึง 4 จุด แล้วรอดมาได้
+    #   เพราะกฎนี้มองแค่ไฟล์ .md ส่วนโค้ดจริงอยู่ใน .ts ของอีก repo
+    #   (ตัวเต็มที่ให้ PostgreSQL parse จริงอยู่ที่ tools/check_sgi_sql_columns.py ซึ่งต้องใช้ docker)
+    _job_src = os.path.join("SBP", "srm-sps-spsap-sop-sgi-batch", "src", "modules", "sgi")
+    if os.path.isdir(_job_src):
+        for _name in sorted(os.listdir(_job_src)):
+            if not _name.endswith(".ts") or _name.endswith(".spec.ts"):
+                continue
+            _raw = re.sub(r"--[^\n]*", "", read(os.path.join(_job_src, _name)))
+            # ⚠️ ต้องแยกทีละ template literal — alias ตัวเดียว (`s`) ถูกใช้กับคนละตารางในคนละคำสั่ง
+            #    ถ้าสแกนทั้งไฟล์รวดเดียวจะได้ false positive ทันที
+            for _c in re.split(r"`", _raw):
+                for _tb, _al in re.findall(
+                        r"\b(?:FROM|JOIN)\s+\$\{this\.schema\}\.([a-z_][a-z_0-9]*)\s+([a-z][a-z0-9_]?)\b", _c):
+                    if _tb not in _legacy_tabs:
+                        continue
+                    for _col in re.findall(r"\b" + re.escape(_al) + r"\.([a-z_][a-z_0-9]*)\b", _c):
+                        if _col not in _legacy_tabs[_tb]:
+                            _alias_bad.append(f"{_name}: `{_tb} {_al}` → `{_al}.{_col}` "
+                                              f"ไม่มีคอลัมน์นี้ใน {_schema_file}")
 check("SQL อ้างคอลัมน์ของตารางระบบเดิมผิด (ผ่าน alias)", sorted(set(_alias_bad))[:12])
 
 # 58) ห้ามเขียนช่วงเลข batch job ด้วยมือ — ชุดงานโตแล้วข้อความจะตกยุคทันที
@@ -1721,14 +1758,15 @@ for _f in DOC_FILES:
 check("จำนวนตารางลูกที่ FK doc_no แบบ NOT NULL ไม่ตรงกับ DDL", sorted(set(_fk_bad)))
 
 # --------------------------------------------- #75 job ที่ consumer เป็นตัวกระตุ้น
-# เจอจริง 2026-09-08: Job 11 ประกาศ trigger = "ข้อความจาก store-consumer (1 ข้อความ = 1 การรัน)"
+# เจอจริง 2026-09-08: Job 11 ประกาศ trigger = "ข้อความจากคิว (1 ข้อความ = 1 การรัน)"
 # แต่ฟิลด์ cron ยังเป็น "*/10 * * * *" (drain-then-exit ของดีไซน์เก่า) แล้วเลขนั้นไหลไป LLDD + SRS
 _cron_bad = []
 try:
     import build_lldd_documents as _BC
     for _j in _BC.read_js_array_from_html("job-batch.html", "JOBS"):
         _trig = " ".join(str(_p) for _row in _j.get("params", []) for _p in _row)
-        _consumer_driven = "store-consumer" in _trig or "1 ข้อความ = 1 การรัน" in _trig
+        # ต้องเป็น "รับ" ข้อความเท่านั้น — Job 6 พูดถึง RabbitMQ เหมือนกันแต่เป็นฝั่ง publish
+        _consumer_driven = ("job consume เอง" in _trig or "1 ข้อความ = 1" in _trig)
         _has_cron = bool(re.match(r"^[\d*/, -]+$", str(_j.get("cron", "")).strip()))
         # ข้อยกเว้น: job ที่ประกาศ "โหมด safety-net" ไว้ชัดเจน (เช่น Job 5 ที่ยังสแกนไฟล์เองได้
         # ถ้า consumer ไม่ยิงมา) — cron ของมันคือตารางของโหมดสำรอง ไม่ใช่ตัวกระตุ้นหลัก
@@ -2117,6 +2155,36 @@ except Exception as _e:   # pragma: no cover
     _jw_bad.append(f"ตรวจ WORKFLOW_TRIGGER_CONTRACTS ไม่ได้: {_e}")
 check("batch job เรียก @srm/glb-workflow เอง (ต้องผ่าน BE API)", sorted(set(_jw_bad)))
 
+# --------------------------- #112 ไฟล์ .sql ต้องตรงกับ generator แบบ "ทุกไบต์"
+# เพิ่ม 2026-09-16 — กฎ #91 ตรวจเชิงโครงสร้าง (มี CREATE TABLE ครบไหม) จึง **มองไม่เห็น
+# comment ที่ตกยุค** · เจอของจริงวันนี้: แก้จำนวนแถวที่ generator แล้วลืม regenerate
+# ไฟล์ .sql บนดิสก์ยังค้าง 23,958,780 ทั้งที่ generator ให้ 24,284,545
+# วิธี: generate ใหม่ลง temp แล้วเทียบไบต์ต่อไบต์ — ต่างแม้จุดเดียวคือไฟล์ค้างเวอร์ชันเก่า
+_gen_bad: list[str] = []
+try:
+    import tempfile, shutil, pathlib
+    import build_sgi_schema_sql as _BS2
+    _real = pathlib.Path("output/sql")
+    # temp dir ต้องอยู่ **ในรีโป** — generator คำนวณ path แบบ relative_to(ROOT)
+    with tempfile.TemporaryDirectory(dir="output") as _td:
+        _tmp = pathlib.Path(_td)
+        _saved = _BS2.OUT_DIR
+        _BS2.OUT_DIR = _tmp
+        try:
+            _BS2.main()
+        finally:
+            _BS2.OUT_DIR = _saved
+        for _gf in sorted(_tmp.glob("*.sql")):
+            _cur = _real / _gf.name
+            if not _cur.exists():
+                _gen_bad.append(f"output/sql/{_gf.name} :: ยังไม่ถูกสร้าง — รัน tools/build_sgi_schema_sql.py")
+            elif _cur.read_bytes() != _gf.read_bytes():
+                _gen_bad.append(f"output/sql/{_gf.name} :: ไม่ตรงกับ generator — ไฟล์ค้างเวอร์ชันเก่า "
+                                f"ให้รัน python3 tools/build_sgi_schema_sql.py")
+except Exception as _e:                                   # pragma: no cover
+    _gen_bad.append(f"ตรวจ determinism ของ output/sql ไม่ได้: {_e}")
+check("ไฟล์ .sql ไม่ตรงกับ generator (ค้างเวอร์ชันเก่า)", sorted(set(_gen_bad)))
+
 # --------------------------- #91 สคริปต์ SQL ต้องตรงกับ DDL และต้องปลอดภัย
 # เพิ่ม 2026-09-09 พร้อม output/sql/ — สคริปต์ติดตั้ง schema + seed ลงฐาน SBP เดิม
 # เหตุผล: ไฟล์ .sql generate จาก DDL ชุดเดียวกับเอกสาร ถ้าใครแก้ DDL แล้วลืม generate ใหม่
@@ -2153,7 +2221,49 @@ try:
                 if _kw in _ln and not _ln.strip().startswith("--"):
                     _sql_bad.append(f"{_sql_seed} :: มี {_kw.strip()} ที่ไม่ใช่คอมเมนต์ — "
                                     "seed ต้อง INSERT อย่างเดียว ห้ามแก้/ลบแถวของระบบเดิม")
-        for _stmt in _ss.split(";"):
+        # ⚠️ ห้าม split(";") ตรง ๆ — body_format ของ email_template เป็น HTML ที่มี `&nbsp;`
+        #    การแยกแบบไร้เดียงสาจะหั่นกลางคำสั่ง แล้วรายงานว่า "ไม่มี WHERE NOT EXISTS" ทั้งที่มี
+        #    (เจอจริง 2026-09-16 ตอนใส่ body_format จริงลง seed)
+        def _sql_split(_text: str) -> list:
+            _out, _buf, _i, _n, _instr = [], [], 0, len(_text), False
+            while _i < _n:
+                _c = _text[_i]
+                if _instr:
+                    _buf.append(_c)
+                    if _c == "'":
+                        if _i + 1 < _n and _text[_i + 1] == "'":
+                            _buf.append(_text[_i + 1]); _i += 2; continue
+                        _instr = False
+                    _i += 1; continue
+                if _c == "'":
+                    _instr = True; _buf.append(_c); _i += 1; continue
+                if _c == "-" and _i + 1 < _n and _text[_i + 1] == "-":
+                    _j = _text.find("\n", _i)
+                    _j = _n if _j < 0 else _j
+                    _buf.append(_text[_i:_j]); _i = _j; continue
+                if _c == ";":
+                    _out.append("".join(_buf)); _buf = []; _i += 1; continue
+                _buf.append(_c); _i += 1
+            if "".join(_buf).strip():
+                _out.append("".join(_buf))
+            return _out
+
+        # ---- email_template ต้องตรงรูปแบบของ "ของเดิม" ไม่ใช่รูปแบบที่เราคิดเอง ----
+        # เจอจริง 2026-09-16: seed เขียน subject เป็น `{docNo}` แต่ทั้งตาราง (193 จุด) ใช้ `${docNo}`
+        # และเว้น body_format/sender/email_from ว่างไว้ ทั้งที่ 126/126 แถวของระบบเดิมมีครบ
+        for _st in _sql_split(_ss):
+            if "INSERT INTO email_template" not in _st:
+                continue
+            for _col in ("body_format", "sender", "email_from"):
+                if _col not in _st:
+                    _sql_bad.append(f"{_sql_seed} :: INSERT email_template ไม่ได้ใส่คอลัมน์ {_col} — "
+                                    "ของระบบเดิมมีครบทุกแถว")
+            for _lit in re.findall(r"'((?:[^']|'')*)'", _st):
+                for _bad_ph in re.findall(r"(?<!\$)\{([A-Za-z][\w]*)\}", _lit):
+                    _sql_bad.append(f"{_sql_seed} :: email_template ใช้ตัวแปร " + "{" + _bad_ph + "}" +
+                                    " — ต้องเป็น ${" + _bad_ph + "} ตามรูปแบบของตารางเดิม")
+
+        for _stmt in _sql_split(_ss):
             if "INSERT INTO" in _stmt and "WHERE NOT EXISTS" not in _stmt:
                 _mm = re.search(r"INSERT INTO (\w+)", _stmt)
                 _sql_bad.append(f"{_sql_seed} :: INSERT ลง {_mm.group(1) if _mm else '?'} "
@@ -2325,6 +2435,945 @@ try:
 except Exception as _e:   # pragma: no cover
     _hdr_bad.append(f"ตรวจตารางที่ 'สร้างไม่ได้' ไม่ได้: {_e}")
 check("วันที่หัวไฟล์ตกยุค หรืออ้างข้อที่ปิดแล้วว่ายังบล็อก", sorted(set(_hdr_bad)))
+
+# --------------- #96 ตัวกรองบนหน้ารายการ ต้องมี query param รองรับครบ
+# เจอจริง 2026-09-09 (ผู้ใช้ชี้ว่า Query Params ไม่ครบ): หน้ารายการมีช่องกรอง 11 ช่อง
+# แต่ API ประกาศแค่ year/storeCode/status/page/size — และชื่อยังผิด (storeCode ทั้งที่ SQL
+# กับ response ใช้ impactedStoreCode) · endpoint มี page/size ถ้าไม่ส่งตัวกรองขึ้น server
+# ตัวกรองจะทำงานแค่แถวในหน้านั้น
+_flt_bad: list[str] = []
+# ช่องกรองบนหน้าจอ (id ใน k2-list-*.html) -> query param ที่ต้องมี
+_SCREEN_FILTER_PARAM = {
+    "fSearch": "keyword", "fStatus": "status", "fRegion": "regionCode",
+    "fType": "storeType", "fDateFrom": "createdFrom", "fDateTo": "createdTo",
+    "fDropMin": "salesDeclineMin", "fDropMax": "salesDeclineMax",
+    "fCompMin": "compensationMin", "fCompMax": "compensationMax",
+    "fDayMin": "daysPendingMin", "fDayMax": "daysPendingMax",
+    "fResult": "result",
+}
+try:
+    import build_lldd_documents as _BF
+    _list_specs = {}
+    for _t in _BF.topics():
+        for _a in (_t.apis or []):
+            # ⚠️ ต้องแยกตาม method — POST /sgi/document ใช้ path เดียวกับ GET
+            #    ถ้าไม่แยก คีย์ของ POST จะกลบว่า GET ขาดพารามิเตอร์
+            if (getattr(_a, "path", "") in ("/api/v1/sgi/document", "/api/v1/sgi/document/tasks")
+                    and _a.method.upper() == "GET"):
+                _list_specs.setdefault(_a.path, set()).update((_a.request or {}).keys())
+    _screen = read("k2-list-waiting.html") + read("k2-list-related.html")
+    for _fid, _param in sorted(_SCREEN_FILTER_PARAM.items()):
+        if f'id="{_fid}"' not in _screen and f'id="{_fid}R"' not in _screen:
+            continue
+        for _path, _params in _list_specs.items():
+            # daysPending มีเฉพาะกล่องงาน · result มีเฉพาะหน้า "ที่เกี่ยวข้อง"
+            if _param.startswith("daysPending") and _path != "/api/v1/sgi/document/tasks":
+                continue
+            if _param == "result" and _path != "/api/v1/sgi/document":
+                continue
+            if _param not in _params:
+                _flt_bad.append(f"{_path} :: ไม่มี query param `{_param}` ที่รองรับช่องกรอง "
+                                f"`#{_fid}` บนหน้ารายการ — endpoint มี page/size "
+                                "ถ้าไม่กรองที่ server ตัวกรองจะทำงานแค่แถวในหน้านั้น")
+    # ชื่อ param ต้องตรงกับที่ SQL ผูกจริง
+    _sql = _BF.api_sql_map().get("GET /api/v1/sgi/document", "")
+    if _sql and "storeCode" in " ".join(_list_specs.get("/api/v1/sgi/document", set())) \
+            and ":impactedStoreCode" in _sql:
+        _flt_bad.append("/api/v1/sgi/document :: query param ใช้ชื่อ `storeCode` "
+                        "แต่ SQL ผูก `:impactedStoreCode` — FE จะส่งชื่อผิด")
+except Exception as _e:   # pragma: no cover
+    _flt_bad.append(f"ตรวจตัวกรองหน้ารายการไม่ได้: {_e}")
+# ทุก endpoint ใน SQL_BY_PATH ต้อง parse ออกมาเป็นสตริงได้จริง
+# เจอจริง 2026-09-09: เติม SQL ที่มี single quote โดยไม่ escape ทำให้ค่าเป็น None เงียบ ๆ
+# แล้วหัวข้อ "SQL จริงต่อ Endpoint" ในเอกสารจะหายไปโดยไม่มีใครรู้
+try:
+    _smap = _BF.api_sql_map()
+    for _k, _v in sorted(_smap.items()):
+        if not isinstance(_v, str) or not _v.strip():
+            _flt_bad.append(f"SQL_BY_PATH['{_k}'] :: parse ไม่ได้/ว่าง (ได้ {type(_v).__name__}) — "
+                            "มักเกิดจาก single quote ใน SQL ที่ยังไม่ escape เป็น \\' ในสตริง JS")
+except Exception as _e:   # pragma: no cover
+    _flt_bad.append(f"อ่าน SQL_BY_PATH ไม่ได้: {_e}")
+check("ตัวกรองบนหน้ารายการไม่มี query param รองรับ", sorted(set(_flt_bad)))
+
+# ------------- #97 query param ที่ประกาศ ต้องตรงกับ bind ใน SQL ทุกเส้น
+# ต่อยอดจาก #96 (ผู้ใช้ชี้ว่า Query Params ไม่ครบ) — ทำเป็นกฎทั่วไปกับ **ทุก GET endpoint**
+# เจอเพิ่ม 6 เส้นด้วยกฎนี้: /tasks ประกาศ sectionCode ทั้งที่มาจาก JWT ·
+#   tracking ประกาศ status/sentFrom/sentTo แต่ SQL ไม่กรอง · master/* ประกาศ active แต่ไม่กรอง ·
+#   workflow/summary ประกาศ period แต่ SQL รวมทุกงวด · pending-ack ประกาศ dataName แต่ไม่กรอง ·
+#   รายงานประกาศ region/storeType เอกพจน์ที่ตายแล้ว และ periodStatementFrom/To ไม่ตรงกับ :psFrom/:psTo
+_qp_bad: list[str] = []
+# ค่าที่มาจาก JWT/ระบบ ไม่ใช่ client ส่ง — ไม่ต้องประกาศเป็น query param
+_QP_INTERNAL = {"page", "size", "off", "offset", "statusDone", "sgiVersionId", "sectionFromJwt",
+                "userId", "empId", "serviceActor", "allowPendingDownload", "thresholdHours",
+                "referenceId", "salesSummaryId", "pending"}
+try:
+    import build_lldd_documents as _BQ
+    _sqlmap = _BQ.api_sql_map()
+    _specs: dict[str, set] = {}
+    for _t in _BQ.topics():
+        for _a in (_t.apis or []):
+            if _a.method.upper() == "GET" and "/sgi/" in getattr(_a, "path", "") and "*" not in _a.path:
+                _specs.setdefault(f"{_a.method} {_a.path}", set()).update((_a.request or {}).keys())
+
+    def _binds(_sql: str) -> set:
+        _sql = re.sub(r"::\w+", "", _sql)          # ตัด cast ::date ::text ออกก่อน
+        return set(re.findall(r"(?<!:):(\w+)", _sql)) | set(re.findall(r"/\* (\w+) \*/", _sql))
+
+    for _k in sorted(_specs):
+        _sql = _sqlmap.get(_k) or ""
+        if not _sql or "เงื่อนไขเดียวกับ" in _sql:   # export ใช้เงื่อนไขของ search — ไม่ซ้ำ SQL
+            continue
+        _b = _binds(_sql)
+        _q = _specs[_k]
+        _ex = sorted(x for x in _q - _b - _QP_INTERNAL if "{" + x + "}" not in _k)
+        _ms = sorted(x for x in _b - _q - _QP_INTERNAL if "{" + x + "}" not in _k)
+        for _x in _ex:
+            _qp_bad.append(f"{_k} :: ประกาศ query param `{_x}` แต่ SQL ไม่ได้ใช้ — "
+                           "ตัวกรองจะไม่ทำงานจริง")
+        for _x in _ms:
+            _qp_bad.append(f"{_k} :: SQL ผูก `:{_x}` แต่ไม่ได้ประกาศเป็น query param — "
+                           "FE จะไม่รู้ว่าต้องส่งอะไร")
+except Exception as _e:   # pragma: no cover
+    _qp_bad.append(f"ตรวจ query param เทียบ SQL ไม่ได้: {_e}")
+check("query param ที่ประกาศ ไม่ตรงกับ bind ใน SQL", sorted(set(_qp_bad)))
+
+# ----------- #98 คอลัมน์บนตารางหน้ารายการ ต้องมี field ใน response
+# เจอจริง 2026-09-09: ตารางหน้ารายการมีคอลัมน์ "ผู้ดำเนินการ (เจ้าของงาน)" และ prototype
+# สร้างค่าให้จริง แต่ response ของ /sgi/document/tasks ไม่มี field ไหนรองรับเลย
+# → FE เรนเดอร์คอลัมน์นั้นไม่ได้จากสัญญาที่เขียนไว้
+_col_bad: list[str] = []
+_COL_FIELD = {
+    "ครั้งที่": "roundNo",
+    "เลขที่เอกสาร": "docNo",
+    "รหัสร้าน": "impactedStoreCode",
+    "ชื่อร้านถูกกระทบ": "impactedStoreName",
+    "ภาค": "regionCode",
+    "ยอดขายที่ลดลง": "salesDeclinePercent",
+    "จำนวนเงินที่ชดเชย": "totalCompensationAmount",
+    "ผู้ดำเนินการ (เจ้าของงาน)": "currentOwner",
+    "สถานะ": "statusCode",
+    "รอ (วัน)": "daysPending",
+}
+try:
+    import build_lldd_documents as _BC2
+    _fields: set = set()
+    for _t in _BC2.topics():
+        for _a in (_t.apis or []):
+            if getattr(_a, "path", "") in ("/api/v1/sgi/document", "/api/v1/sgi/document/tasks") \
+                    and _a.method.upper() == "GET":
+                _items = (_a.response or {}).get("items") or []
+                if _items and isinstance(_items[0], dict):
+                    _fields.update(_items[0].keys())
+    _screen2 = read("k2-list-waiting.html")
+    _ths = [re.sub(r"<[^>]+>", "", _x).strip()
+            for _x in re.findall(r"<th[^>]*>(.*?)</th>", _screen2, re.S)]
+    for _col, _fld in _COL_FIELD.items():
+        if _col in _ths and _fld not in _fields:
+            _col_bad.append(f"ตารางหน้ารายการมีคอลัมน์ '{_col}' แต่ response ของ "
+                            f"/sgi/document(/tasks) ไม่มี field `{_fld}` — FE เรนเดอร์คอลัมน์นี้ไม่ได้")
+except Exception as _e:   # pragma: no cover
+    _col_bad.append(f"ตรวจคอลัมน์หน้ารายการไม่ได้: {_e}")
+check("คอลัมน์บนตารางหน้ารายการไม่มี field ใน response", sorted(set(_col_bad)))
+
+# --------- #99 การ์ดบนหน้าเอกสาร/รายงาน ต้องมีข้อมูลจาก API รองรับ
+# เจอจริง 2026-09-09: k2-document.html มี 10 การ์ด แต่ response ของ
+# GET /sgi/document/{docNo} ประกาศแค่ impactedStore + newStores —
+# คู่แข่ง · ปัจจัยอื่นๆ · เอกสารแนบ · คำนวณเงินชดเชย · ประวัติการชดเชย · ผลการพิจารณา ไม่มีที่มา
+# (SQL อ่าน 6 ตารางอยู่แล้วแต่ response ไม่ประกาศ · และยังขาดอีก 2 ตารางที่การ์ดต้องใช้)
+_card_bad: list[str] = []
+_DOC_CARD_KEY = {
+    "ข้อมูลร้านถูกกระทบ": "impactedStore",
+    "แผนที่ (POI จากระบบ AllMap)": "allmapUrl",
+    "ร้านเปิดใหม่ (ที่ทำให้เกิดผลกระทบ)": "newStores",
+    "ร้านคู่แข่งเปิดกระทบ": "competitors",
+    "ปัจจัยอื่นๆ": "externalFactors",
+    "เอกสารแนบทั้งหมด": "attachments",
+    "คำนวณเงินชดเชย": "costDetails",
+    "ประวัติการชดเชย": "compensationHistories",
+    "ผลการพิจารณา (ประวัติ)": "considerationLogs",
+    "พิจารณา (ส่งดำเนินการ)": "actionOptions",
+}
+_CARD_TABLE = {
+    "competitors": "sgi_document_competitors",
+    "externalFactors": "sgi_document_external_factors",
+    "attachments": "sgi_document_attachments",
+    "costDetails": "sgi_document_cost_details",
+    "compensationHistories": "sgi_compensation_histories",
+    "considerationLogs": "sgi_consideration_logs",
+    "newStores": "sgi_document_new_stores",
+}
+try:
+    import build_lldd_documents as _BD
+    _resp: set = set()
+    for _t in _BD.topics():
+        for _a in (_t.apis or []):
+            if getattr(_a, "path", "") == "/api/v1/sgi/document/{docNo}" and _a.method.upper() == "GET":
+                _resp.update((_a.response or {}).keys())
+    _doc_html = read("k2-document.html")
+    _cards = [" ".join(re.sub(r"<[^>]+>", "", _m).split())
+              for _m in re.findall(r'<div class="card-head"[^>]*>\s*<h2[^>]*>(.*?)</h2>', _doc_html, re.S)]
+    _sql_doc = _BD.api_sql_map().get("GET /api/v1/sgi/document/{docNo}") or ""
+    for _card, _key in _DOC_CARD_KEY.items():
+        if _card not in _cards:
+            continue
+        if _key not in _resp:
+            _card_bad.append(f"k2-document.html มีการ์ด '{_card}' แต่ response ของ "
+                             f"GET /sgi/document/{{docNo}} ไม่มี `{_key}` — FE เรนเดอร์การ์ดนี้ไม่ได้")
+        _tbl = _CARD_TABLE.get(_key)
+        if _tbl and _tbl not in _sql_doc:
+            _card_bad.append(f"การ์ด '{_card}' ต้องใช้ตาราง {_tbl} แต่ SQL ของ endpoint นี้ไม่ได้อ่าน")
+except Exception as _e:   # pragma: no cover
+    _card_bad.append(f"ตรวจการ์ดหน้าเอกสารไม่ได้: {_e}")
+check("การ์ดบนหน้าเอกสารไม่มีข้อมูลจาก API รองรับ", sorted(set(_card_bad)))
+
+# ------ #100 เอกสาร batchjob/ ต้องไม่ยืนยันว่า "สำเร็จแล้วไม่เหลือ W" (ขัดกับ legacy)
+# เจอจริง 2026-09-09: JOB-02 test case 4.2 เขียนว่า "ไม่มีแถวไหนเหลือ W — ต้องเป็น N หรือ P เท่านั้น"
+# แต่โค้ดเดิมเหลือ W ได้จริง เมื่อ branchtype เป็น NULL (ตรรกะสามค่า → ไม่เข้าทั้ง DENY และ PASS)
+# guard นี้กันคำยืนยันผิด + บังคับให้เอกสารที่พูดถึงวงจร W ต้องมี metric remainingWCount
+_bj_bad = []
+_BJ_NEVER = [
+    "ไม่มีแถวไหนเหลือ",
+    "ไม่เหลือแถว `W`",
+    "ต้องไม่เหลือ `W`",
+    "ไม่มีแถว `W` เหลือ",
+]
+_bj_dir = "batchjob"
+if os.path.isdir(_bj_dir):
+    for _fn in sorted(os.listdir(_bj_dir)):
+        if not _fn.endswith(".md") or _fn == "README.md":
+            continue
+        _p = os.path.join(_bj_dir, _fn)
+        _txt = read(_p)
+        for _lno, _line in enumerate(_txt.split("\n"), 1):
+            for _bad in _BJ_NEVER:
+                if _bad in _line:
+                    _bj_bad.append(f"{_p}:{_lno} ยืนยันว่าไม่เหลือแถว W — ขัดกับ legacy (ดูข้อ 2.15)")
+        # เอกสารที่อธิบายวงจร flag_verify/W ต้องมี metric + alert
+        if "flag_verify" in _txt and "'W'" in _txt and "remainingWCount" not in _txt:
+            _bj_bad.append(f"{_p} อธิบายวงจรสถานะ W แต่ไม่มี metric remainingWCount + alert")
+check("เอกสาร batchjob ยืนยันว่าไม่เหลือแถว W (ขัดกับ legacy)", sorted(set(_bj_bad)))
+
+# --- #101 เอกสาร batchjob: รายการ NOT NULL/DEFAULT ต้องตรงกับ DDL จริง
+# เจอจริง 2026-09-09: JOB-02 เขียนว่า sales_request_status ตั้งเป็น 'W' "เฉพาะแถวที่เป็น P"
+# แต่ DDL เป็น NOT NULL DEFAULT 'W' → แถว N ก็ได้ 'W' ด้วย (คนละมิติกับ verify_status)
+# guard นี้ไล่ทุกคอลัมน์ที่เอกสาร batchjob อ้างว่า "มี DEFAULT" / "ต้องใส่ค่าเอง" เทียบกับ DDL
+_dflt_bad = []
+_ddl_cols = {}     # (table, column) -> (default_value|None, not_null)
+_KW = ("PRIMARY", "UNIQUE", "FOREIGN", "CHECK", "CONSTRAINT", "EXCLUDE")
+for _blk in re.finditer(r"CREATE TABLE (\w+)\s*\((.*?)\n\);", ddl, re.S):
+    _tbl, _body = _blk.group(1), _blk.group(2)
+    # ตัดคอมเมนต์ -- ทิ้งก่อน มิฉะนั้น comma/วงเล็บในคอมเมนต์จะทำให้ split พัง
+    _body = "\n".join(re.sub(r"--.*$", "", _ln) for _ln in _body.split("\n"))
+    _parts, _depth, _buf = [], 0, ""
+    for _ch in _body:
+        if _ch == "(":
+            _depth += 1
+        elif _ch == ")":
+            _depth -= 1
+        if _ch == "," and _depth == 0:
+            _parts.append(_buf); _buf = ""
+        else:
+            _buf += _ch
+    _parts.append(_buf)
+    for _d in _parts:
+        _d = _d.strip()
+        _m = re.match(r"(\w+)\s+[A-Za-z]", _d)
+        if not _m or _m.group(1).upper() in _KW:
+            continue
+        _dm = re.search(r"\bDEFAULT\s+('[^']*'|[\w()]+)", _d)
+        _ddl_cols[(_tbl, _m.group(1))] = (_dm.group(1) if _dm else None, "NOT NULL" in _d)
+
+_bj_dir = "batchjob"
+if os.path.isdir(_bj_dir) and _ddl_cols:
+    for _fn in sorted(os.listdir(_bj_dir)):
+        if not _fn.endswith(".md") or _fn == "README.md":
+            continue
+        _p = os.path.join(_bj_dir, _fn)
+        _txt = read(_p)
+        # ก) บรรทัด "ที่เหลือมี `DEFAULT` ให้แล้ว — col='v' · col='v' …"
+        for _blk2 in re.findall(r"ที่เหลือมี `DEFAULT` ให้แล้ว(.+?)\n\*\*", _txt, re.S):
+            for _c, _v in re.findall(r"`(\w+)=('[^']*'|[\w.]+)`", _blk2):
+                _seen = [dv for (tt, cc), (dv, nn) in _ddl_cols.items() if cc == _c]
+                if not _seen:
+                    _dflt_bad.append(f"{_p}: อ้างคอลัมน์ `{_c}` ที่ไม่มีใน DDL")
+                elif _v not in _seen:
+                    _dflt_bad.append(
+                        f"{_p}: `{_c}` DEFAULT ในเอกสาร {_v} · DDL มีแต่ {sorted(set(map(str, _seen)))}")
+        # ข) ตาราง "คอลัมน์ที่ NOT NULL และไม่มี DEFAULT — ต้องใส่ค่าเอง"
+        _sec = re.search(r"NOT NULL` และ \*\*ไม่มี DEFAULT\*\*.+?\n\n(.+?)\n\n", _txt, re.S)
+        if _sec:
+            for _t, _cells in re.findall(r"^\| `(\w+)` \| (.+?) \|$", _sec.group(1), re.M):
+                if "ไม่มี —" in _cells or "ไม่มี -" in _cells:
+                    _claim = set()
+                else:
+                    _claim = set(re.findall(r"`(\w+)`", _cells))
+                _real = {c for (tt, c), (dv, nn) in _ddl_cols.items()
+                         if tt == _t and nn and dv is None and c != "id"}
+                for _c in sorted(_claim - _real):
+                    _dflt_bad.append(f"{_p}: `{_t}.{_c}` ไม่ได้เป็น NOT NULL-ไม่มี-DEFAULT ตาม DDL")
+                for _c in sorted(_real - _claim):
+                    _dflt_bad.append(f"{_p}: `{_t}.{_c}` เป็น NOT NULL ไม่มี DEFAULT แต่เอกสารไม่ได้ระบุ")
+check("เอกสาร batchjob ระบุ NOT NULL/DEFAULT ไม่ตรงกับ DDL", sorted(set(_dflt_bad)))
+
+# --- #102 ค่าที่เอกสารบอกว่าเซ็ตลงคอลัมน์ ต้องอยู่ในโดเมน CHECK ของ DDL
+# เจอจริง 2026-09-09: LLDD Job 2 เขียน "ตั้ง sales_request_status = W / N / P" หลายจุด
+# ตอนนั้น DDL คือ CHECK IN ('W','P','Y','E') — ไม่มี 'N'
+# (มติ 2026-09-12 ข้อ 2.37 ขยายโดเมนเป็น W/P/Y/N/E แล้ว โดย 'N' = ได้ยอดขายแต่ยอดไม่ตก
+#  ซึ่งคนละความหมายกับ verify_status = 'N' ที่แปลว่าคู่ร้านถูกตัดทิ้ง — กฎนี้ยังจำเป็นอยู่)
+# ต้นทางคือ JOBS ใน job-batch.html ที่ generator อ่านไปสร้างทั้ง flowchart · ตาราง · skeleton
+# ตรวจเฉพาะคอลัมน์ที่โดเมนเป็น "ตัวอักษรเดียวทุกค่า" (W/P/N …) เพื่อไม่ให้ชนกับโดเมนคำเต็ม
+_dom_bad = []
+_dom = {}
+for _cm in re.finditer(r"(\w+)\s+(?:CHAR|VARCHAR)\(\d+\)[^,\n]*?CHECK\s*\(\s*\1\s+IN\s*\(([^)]*)\)", ddl):
+    _vals = set(re.findall(r"'([^']*)'", _cm.group(2)))
+    if _vals and all(len(v) == 1 for v in _vals):
+        _dom.setdefault(_cm.group(1), set()).update(_vals)
+# คอลัมน์ชื่อซ้ำข้ามตาราง ตรวจไม่ได้แบบไม่รู้ตาราง — ข้ามไป
+_AMBIG = {c for c in _dom
+          if len(re.findall(r"\b" + c + r"\s+(?:CHAR|VARCHAR)\(", ddl)) > 1}
+for _p in sorted(glob.glob("LLDD/md/**/*.md", recursive=True)) + ["job-batch.html"]:
+    if not os.path.exists(_p):
+        continue
+    for _lno, _line in enumerate(read(_p).split("\n"), 1):
+        # จับ  col = X   /  col = 'X'   และค่าที่ต่อกันด้วย / · ,  เช่น "= W / N / P"
+        for _m in re.finditer(
+                r"\b(\w+)\s*=\s*('?[A-Z]'?(?![A-Za-z_])(?:\s*[/·,]\s*'?[A-Z]'?(?![A-Za-z_]))*)", _line):
+            _c = _m.group(1)
+            if _c not in _dom or _c in _AMBIG:
+                continue
+            for _v in re.findall(r"[A-Z]", _m.group(2)):
+                if _v not in _dom[_c]:
+                    _dom_bad.append(
+                        f"{_p}:{_lno} `{_c} = {_v}` ไม่อยู่ในโดเมน CHECK ของ DDL "
+                        f"({'/'.join(sorted(_dom[_c]))})")
+check("เอกสารเซ็ตค่าที่อยู่นอกโดเมน CHECK ของ DDL", sorted(set(_dom_bad)))
+
+# --- #103 SQL/skeleton ที่ generate ต้องไม่ขัดกับสัญญาของ job ฉบับเดียวกัน
+# เจอจริง 2026-09-09 ใน LLDD Job 2 สามเรื่องพร้อมกัน:
+#   (ก) DO UPDATE SET ใส่ updated_by ซ้ำสองครั้ง -> PostgreSQL error 42601
+#   (ข) หัวข้อ idempotency ประกาศ "DO NOTHING / ห้ามอัปเดตทับ" แต่ SQL เป็น DO UPDATE ทับทุกคอลัมน์
+#   (ค) เส้น NO ของ decision ที่เป็นผลธุรกิจปกติ (DENY) กลับ throw JobFailedError = job ล้มทั้งตัว
+_gen_bad = []
+for _f in sorted(glob.glob("LLDD/md/Jobs/*.md")):
+    _txt = read(_f)
+    # (ก) คอลัมน์ซ้ำใน DO UPDATE SET — statement เดียวกันห้ามกำหนดคอลัมน์เดิมสองครั้ง
+    for _m in re.finditer(r"DO UPDATE SET (.+?);", _txt, re.S):
+        _cols = re.findall(r"(?:^|,)\s*(\w+)\s*=", _m.group(1))
+        _dup = {c for c in _cols if _cols.count(c) > 1}
+        if _dup:
+            _gen_bad.append(f"{_f} :: DO UPDATE SET กำหนดคอลัมน์ซ้ำ {sorted(_dup)} "
+                            "— PostgreSQL error 42601 multiple assignments to same column")
+    # (ข) สัญญา idempotency บอก DO NOTHING แต่ SQL ของตารางเดียวกันเป็น DO UPDATE
+    _pledge = re.search(r"\| Idempotency / dedup \| ([^|]*)\|", _txt)
+    if _pledge and "DO NOTHING" in _pledge.group(1):
+        _tb = re.search(r"UNIQUE\(([^)]*)\)", _pledge.group(1))
+        _key = _tb.group(1).replace(" ", "") if _tb else None
+        for _m in re.finditer(r"ON CONFLICT \(([^)]*)\)[^;]*?DO UPDATE", _txt, re.S):
+            if _key and _m.group(1).replace(" ", "").split("--")[0].strip(", ") == _key:
+                _gen_bad.append(f"{_f} :: ประกาศ idempotency เป็น DO NOTHING "
+                                f"แต่ SQL ของคีย์เดียวกันใช้ DO UPDATE — จะทับข้อมูลที่ downstream/ผู้ใช้แก้ไว้")
+    # (ค) เส้น NO ที่ข้อความบอกว่าเป็นการ "บันทึกสถานะ/คงสถานะ" แต่ skeleton throw
+    for _m in re.finditer(r"if \(!ok(\d+)\) throw new JobFailedError\([^)]*?'([^']*)'\)", _txt):
+        _msg = _m.group(2)
+        if re.search(r"(verify_status|_status)\s*=\s*[A-Z]|คงสถานะ|คงค่า|บันทึก reject|ไม่ rollback", _msg):
+            _gen_bad.append(f"{_f} :: ขั้นที่ {_m.group(1)} เส้น NO เป็นผลทางธุรกิจ ('{_msg}') "
+                            "แต่ skeleton throw JobFailedError — ใช้ noKind:'mark' แทน")
+check("SQL/skeleton ที่ generate ขัดกับสัญญาในฉบับเดียวกัน", sorted(set(_gen_bad)))
+
+# --- #104 skeleton ต้องสอดคล้องกับหัวข้ออื่นในเอกสาร Job ฉบับเดียวกัน
+# เจอจริง 2026-09-09 ใน LLDD Job 2 สี่เรื่อง:
+#   (ก) ชื่อ job ที่ลงทะเบียนใน main.ts ไม่ตรงกับชื่อ canonical ในหัวข้อ 5.95
+#   (ข) config class ประกาศ property ซ้ำ (cron สองครั้ง) -> TypeScript คอมไพล์ไม่ผ่าน
+#   (ค) config มี argument = 'ALL|2569|06' ทั้งที่สัญญา input เป็น JSON ผ่าน INPUT
+#   (ง) `continue` อยู่ใน callback ของ dataSource.transaction() -> ใช้ไม่ได้ (คนละ function)
+_sk_bad = []
+for _f in sorted(glob.glob("LLDD/md/Jobs/*.md")):
+    _txt = read(_f)
+    # (ก) ชื่อ job
+    _canon = re.search(r"ลงทะเบียนเป็น job ชื่อ \*\*`([\w-]+)`\*\*", _txt)
+    if _canon:
+        for _m in re.finditer(r"case '([\w-]+)'", _txt):
+            if _m.group(1).startswith("sgi-") and _m.group(1) != _canon.group(1):
+                _sk_bad.append(f"{_f} :: skeleton ลงทะเบียน '{_m.group(1)}' "
+                               f"แต่ชื่อ canonical คือ '{_canon.group(1)}'")
+    # (ข) property ซ้ำใน config class/interface
+    for _blk in re.finditer(r"export (?:interface|class) \w+[^{]*\{(.*?)\n\}", _txt, re.S):
+        # เอาเฉพาะบรรทัดที่เป็น property จริง (`name: Type;` / `name = value;`)
+        # ไม่นับ modifier (private/readonly/async/static) และไม่นับ method (`name(...)`)
+        _props = [c for c in re.findall(r"^\s{2}(\w+)\s*[?:=][^(=]", _blk.group(1), re.M)
+                  if c not in {"private", "public", "protected", "readonly",
+                               "async", "static", "constructor", "get", "set"}]
+        _dup = {c for c in _props if _props.count(c) > 1}
+        if _dup:
+            _sk_bad.append(f"{_f} :: config ประกาศ property ซ้ำ {sorted(_dup)} — TypeScript คอมไพล์ไม่ผ่าน")
+    # (ค) argument แบบ legacy ใน config ทั้งที่สัญญา input เป็น JSON
+    if "INPUT" in _txt and re.search(r"argument\s*=\s*process\.env", _txt):
+        _sk_bad.append(f"{_f} :: config อ่าน argument จาก env แบบสตริง legacy "
+                       "ทั้งที่สัญญา input เป็น JSON ผ่าน INPUT")
+    # (ง) continue ภายใน callback ของ transaction
+    for _m in re.finditer(r"dataSource\.transaction\(async[^\n]*\n(.*?)\n\s{6}\}\);", _txt, re.S):
+        if re.search(r"^\s+continue;", _m.group(1), re.M):
+            _sk_bad.append(f"{_f} :: มี `continue` อยู่ใน callback ของ dataSource.transaction() "
+                           "— ใช้ไม่ได้เพราะเป็นคนละ function (ต้อง return เพื่อ commit แล้วให้ลูปข้างนอกไปต่อ)")
+check("skeleton ขัดกับหัวข้ออื่นในเอกสาร Job ฉบับเดียวกัน", sorted(set(_sk_bad)))
+
+# --- #105 ON CONFLICT ต้องอ้างคอลัมน์ที่มีจริงใน DDL ของตารางนั้น
+# เจอจริง 2026-09-12: LLDD Job 7 เขียน ON CONFLICT (doc_no, competitor_code)
+# แต่ DDL เปลี่ยนเป็น competitor_store_code ไปแล้ว -> SQL prepare ไม่ผ่าน
+_oc_bad = []
+_oc_cols = {}
+for _blk in re.finditer(r"CREATE TABLE (\w+)\s*\((.*?)\n\);", ddl, re.S):
+    _t = _blk.group(1)
+    _body = "\n".join(re.sub(r"--.*$", "", _ln) for _ln in _blk.group(2).split("\n"))
+    # หนึ่งบรรทัดประกาศได้หลายคอลัมน์ (คั่นด้วย comma) — ต้อง split ที่ depth 0
+    _parts, _depth, _buf = [], 0, ""
+    for _ch in _body:
+        if _ch == "(":
+            _depth += 1
+        elif _ch == ")":
+            _depth -= 1
+        if _ch == "," and _depth == 0:
+            _parts.append(_buf); _buf = ""
+        else:
+            _buf += _ch
+    _parts.append(_buf)
+    _oc_cols[_t] = {_cm.group(1) for _cm in
+                    (re.match(r"\s*(\w+)\s+[A-Za-z]", _p) for _p in _parts)
+                    if _cm and _cm.group(1).upper() not in
+                    ("PRIMARY", "UNIQUE", "FOREIGN", "CHECK", "CONSTRAINT", "EXCLUDE")}
+for _f in sorted(glob.glob("LLDD/md/**/*.md", recursive=True)) + ["plan-api.html"]:
+    if not os.path.exists(_f):
+        continue
+    _txt = read(_f)
+    # จับคู่ INSERT INTO <table> ... ON CONFLICT (<cols>) ที่อยู่ใน statement เดียวกัน
+    for _m in re.finditer(r"INSERT INTO\s+(\w+)(.{0,2000}?)ON CONFLICT\s*\(([^)]*)\)", _txt, re.S):
+        _t, _cols = _m.group(1), _m.group(3)
+        if _t not in _oc_cols or "/*" in _cols:
+            continue
+        for _c in re.findall(r"\b([a-z][a-z_0-9]*)\b", _cols):
+            if _c not in _oc_cols[_t]:
+                _oc_bad.append(f"{_f} :: ON CONFLICT ของ {_t} อ้าง `{_c}` ที่ไม่มีใน DDL")
+check("ON CONFLICT อ้างคอลัมน์ที่ไม่มีใน DDL", sorted(set(_oc_bad)))
+
+# --- #106 ค่า canonical ของ enum ที่เขียนเป็น literal ต้องใช้ค่าเดียวทั้งระบบ
+# เจอจริง 2026-09-12: source_system ใช้ทั้ง 'ALM' และ 'ALLMAP' — prune จะไม่ตรงกลุ่ม
+_enum_bad = []
+_CANON = {
+    # ฟิลด์ -> (ค่าที่เลือกแล้ว, ค่าที่ห้ามใช้ซ้ำ)
+    "source_system": ("ALLMAP", {"ALM"}),
+}
+_enum_files = (sorted(glob.glob("LLDD/md/**/*.md", recursive=True))
+               + sorted(glob.glob("batchjob/JOB-*.md"))
+               + ["job-batch.html", "plan-api.html", "database.md"])
+for _f in _enum_files:
+    if not os.path.exists(_f):
+        continue
+    for _lno, _line in enumerate(read(_f).split("\n"), 1):
+        if "canonical" in _line or "migrate" in _line or "เลือกค่า" in _line:
+            continue        # บรรทัดที่อธิบายการเลือกค่าเอง
+        for _fld, (_ok, _bad_vals) in _CANON.items():
+            for _bv in _bad_vals:
+                if re.search(_fld + r"\s*=\s*'?" + _bv + r"'?(?![A-Z])", _line):
+                    _enum_bad.append(
+                        f"{_f}:{_lno} `{_fld} = {_bv}` — ค่า canonical คือ '{_ok}' ค่าเดียว")
+check("ค่า canonical ของ enum ถูกเขียนหลายค่า", sorted(set(_enum_bad)))
+
+# --- #107 job ที่ประกาศ dependency กัน ต้องไม่ใช้ cron เดียวกัน
+# เจอจริง 2026-09-12: Job 2 กับ Job 3 เป็น `0 07 7 * *` ทั้งคู่ ทั้งที่ Job 3 ต้องรอ parent จาก Job 2
+# และ Jobs 7/8/9 เป็น `30 17 7-31 * *` ทั้งสามตัว ทั้งที่ 7 กับ 9 ต้องรอ doc_no จาก Job 8
+# cron เดียวกัน = ไม่มีอะไรรับประกันลำดับ (race ทุกรอบ)
+_dep_bad = []
+try:
+    import build_lldd_documents as _BD
+    _cron = {str(_j["no"]): str(_j.get("cron", "")).strip()
+             for _j in _BD.read_js_array_from_html("job-batch.html", "JOBS")}
+    for _job, _ups in _BD.JOB_DEPENDENCIES.items():
+        _c = _cron.get(_job, "")
+        # นับเฉพาะ cron ที่เป็นตารางเวลาจริง — 'event-driven' / 'after-job-8' ไม่ใช่
+        if not re.match(r"^[\d*/, -]+$", _c):
+            continue
+        for _u in _ups:
+            if _cron.get(_u, "") == _c:
+                _dep_bad.append(
+                    f"Job {_job} ขึ้นกับ Job {_u} แต่ cron เท่ากัน (`{_c}`) — "
+                    f"ลำดับไม่ถูกบังคับ ต้องตั้ง dependency ที่ scheduler หรือเหลื่อมเวลา")
+except Exception as _e:   # pragma: no cover
+    _dep_bad.append(f"ตรวจ cron/dependency ไม่ได้: {_e}")
+check("job ที่ขึ้นต่อกัน แต่ใช้ cron เดียวกัน", sorted(set(_dep_bad)))
+
+# --- #108 generator ต้อง deterministic — ห้ามหยิบ "ตัวแรก" จาก set
+# เจอจริง 2026-09-12: lldd_skeleton_be.py ใช้ next(iter(body_props)) ที่ body_props เป็น set
+# ทำให้ build ติดกันสองครั้งได้ `body.impactMonth` กับ `body.roundNo` สลับกัน
+# → เอกสารที่ commit ไว้กับที่ generate ใหม่ diff กันทั้งที่ source ไม่เปลี่ยน
+# ตรวจด้วย AST แยกตาม scope (ชื่อซ้ำข้ามฟังก์ชันไม่นับ) — ไม่ใช้การเดาจากชื่อตัวแปร
+_ndet_bad: list[str] = []
+
+
+def _ndet_scan(path: str) -> None:
+    import ast
+    try:
+        tree = ast.parse(read(path))
+    except SyntaxError as exc:
+        _ndet_bad.append(f"{path}: parse ไม่ผ่าน ({exc})")
+        return
+
+    def _is_set_expr(node) -> bool:
+        """นิพจน์นี้ให้ set (ลำดับไม่คงที่) หรือไม่"""
+        if isinstance(node, (ast.Set, ast.SetComp)):
+            return True
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "set":
+            return True
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.BitOr, ast.BitAnd, ast.Sub)):
+            return _is_set_expr(node.left) or _is_set_expr(node.right)
+        return False
+
+    def _root_name(node):
+        while isinstance(node, (ast.Subscript, ast.Attribute)):
+            node = node.value
+        return node.id if isinstance(node, ast.Name) else None
+
+    def _sorted_wrapped(node) -> bool:
+        return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) \
+            and node.func.id in {"sorted", "len", "sum", "min", "max", "any", "all"}
+
+    _NESTED = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+    # ฟังก์ชันที่ "ยุบ" ลำดับทิ้ง — วนบน set แล้วส่งให้ตัวเหล่านี้ ผลคงที่เสมอ
+    _SAFE_REDUCERS = {"set", "frozenset", "dict", "sum", "len", "any", "all",
+                      "min", "max", "sorted", "Counter"}
+
+    def _own_nodes(scope):
+        """ทุก node ที่เป็นของ scope นี้เอง — ไม่ลงไปในฟังก์ชัน/คลาสที่ซ้อนอยู่
+        (ถ้าลงไปด้วย ชื่อตัวแปรของ scope ข้างในจะถูกนับปนกับข้างนอก → false positive)"""
+        # กรองตั้งแต่ชั้นแรก — ถ้าปล่อย FunctionDef ชั้นบนเข้า stack ลูกของมันจะถูก push ต่อ
+        # แล้วตัวแปรในฟังก์ชันจะไหลมาปนกับ scope แม่ (bug ที่ทำให้ _dedupe โผล่เป็น <module>)
+        out, stack = [], [n for n in scope.body if not isinstance(n, _NESTED)]
+        while stack:
+            node = stack.pop()
+            out.append(node)
+            for child in ast.iter_child_nodes(node):
+                if not isinstance(child, _NESTED):
+                    stack.append(child)
+        return out
+
+    scopes = [tree] + [n for n in ast.walk(tree)
+                       if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    for scope in scopes:
+        # ชื่อที่ถูก assign เป็น set ภายใน scope นี้เท่านั้น
+        setnames: set[str] = set()
+        own = _own_nodes(scope)
+        for node in own:
+            if isinstance(node, (ast.Assign, ast.AugAssign, ast.AnnAssign)):
+                value = getattr(node, "value", None)
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                if value is not None and _is_set_expr(value):
+                    for tgt in targets:
+                        if isinstance(tgt, ast.Name):
+                            setnames.add(tgt.id)
+        parent = {}
+        for node in own:
+            for child in ast.iter_child_nodes(node):
+                if not isinstance(child, _NESTED):
+                    parent[child] = node
+        for node in own:
+            bad_name = why = None
+            at = node
+            forced = False   # True = ฟ้องโดยไม่ต้องรู้ว่าเป็น set (ค่าที่มาจาก dict.get()/พารามิเตอร์)
+            # (1) next(iter(X)) — หยิบ "ตัวแรก" จาก collection ที่ลำดับไม่การันตี  ← bug ที่เจอจริง
+            #     bug จริงเขียนว่า next(iter(dto.get("body_props", []))) — ชื่อ set ไม่โผล่ใน scope เลย
+            #     จึงต้องฟ้องที่ "รูปแบบ" ไม่ใช่ที่ชื่อตัวแปร · ถ้าลำดับไม่สำคัญให้เขียน sorted(...)[0]
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "next" \
+                    and node.args and isinstance(node.args[0], ast.Call) \
+                    and isinstance(node.args[0].func, ast.Name) and node.args[0].func.id == "iter" \
+                    and node.args[0].args:
+                _inner = node.args[0].args[0]
+                if not _sorted_wrapped(_inner) and not isinstance(_inner, (ast.List, ast.Tuple)):
+                    bad_name, why, forced = (_root_name(_inner) or "<expr>"), "next(iter(...))", True
+            # (2) list(X)[n] / tuple(X)[n] — index เข้าไปในลำดับที่ไม่คงที่
+            elif isinstance(node, ast.Subscript) and isinstance(node.value, ast.Call) \
+                    and isinstance(node.value.func, ast.Name) \
+                    and node.value.func.id in {"list", "tuple"} and node.value.args:
+                _inner = node.value.args[0]
+                if not _sorted_wrapped(_inner) and not isinstance(_inner, (ast.List, ast.Tuple)):
+                    bad_name, why, forced = (_root_name(_inner) or "<expr>"), \
+                        f"{node.value.func.id}(...)[...]", True
+            # (3) X.pop() บน set — คืนสมาชิกแบบสุ่มลำดับ
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
+                    and node.func.attr == "pop" and not node.args:
+                bad_name, why = _root_name(node.func.value), ".pop()"
+            # (4) for ... in X: ที่ "สร้างผลลัพธ์แบบเรียงลำดับ" (append/extend/insert/+=/yield)
+            elif isinstance(node, (ast.For, ast.AsyncFor)) and not _sorted_wrapped(node.iter):
+                _emits = any(
+                    (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                     and n.func.attr in {"append", "extend", "insert", "add_run", "write"})
+                    or isinstance(n, (ast.AugAssign, ast.Yield, ast.YieldFrom))
+                    for st in node.body for n in ast.walk(st))
+                if _emits:
+                    bad_name, why = _root_name(node.iter), "วนลูปสร้างผลลัพธ์เรียงลำดับ"
+            # (5) list/generator comprehension บน set ที่ผลลัพธ์ยังคงลำดับไว้
+            #     (ถ้าเป็น set/dict comprehension หรือถูกยุบด้วย sum/len/min/... ทันที → ลำดับไม่มีผล)
+            elif isinstance(node, ast.comprehension) and not _sorted_wrapped(node.iter):
+                comp = parent.get(node)
+                if isinstance(comp, (ast.ListComp, ast.GeneratorExp)):
+                    consumer = parent.get(comp)
+                    safe = isinstance(consumer, ast.Call) and isinstance(consumer.func, ast.Name) \
+                        and consumer.func.id in _SAFE_REDUCERS
+                    if not safe:
+                        bad_name, why, at = _root_name(node.iter), "comprehension เก็บลำดับ", node.iter
+            if bad_name and (forced or bad_name in setnames):
+                fn = getattr(scope, "name", "<module>")
+                _ndet_bad.append(
+                    f"{path}:{getattr(at, 'lineno', '?')} · {fn}() · {why} บน set `{bad_name}` — "
+                    "ผลไม่คงที่ระหว่าง build · ใช้ sorted() ครอบก่อน")
+
+
+for _f in ("tools/lldd_skeleton_be.py", "tools/lldd_skeleton_job.py",
+           "tools/build_lldd_documents.py", "tools/lldd_db_dictionary.py",
+           "tools/build_sgi_schema_sql.py"):
+    if os.path.exists(_f):
+        _ndet_scan(_f)
+check("generator ไม่ deterministic (หยิบลำดับจาก set โดยไม่เรียงก่อน)", sorted(set(_ndet_bad)))
+
+# --- #109 CREATE INDEX ต้องอ้างคอลัมน์ที่มีจริงใน DDL
+# เจอจริง 2026-09-12 ตอนรัน output/sql/sgi_schema.sql กับ PostgreSQL 16 จริงครั้งแรก:
+#   CREATE INDEX idx_impact_competitor_code ON sgi_fgi_impact_competitors(competitor_code);
+#   -> ERROR: column "competitor_code" does not exist
+# คอลัมน์ถูกแยกเป็น competitor_store_code + brand_code ตอนแก้ identity ของคู่แข่ง (2026-09-09)
+# แต่ index ไม่ได้ตามไปด้วย · กฎ #105 ดักเฉพาะ ON CONFLICT จึงมองไม่เห็นจุดนี้
+# ทั้งไฟล์อยู่ใน transaction เดียว = พังข้อเดียวคือติดตั้งไม่ได้ทั้งชุด
+_idx_bad = []
+# _ddl_cols เป็น dict[(table, column)] -> (default, not_null) ที่กฎ #101/#102 สร้างไว้แล้ว
+_cols_by_table: dict[str, set[str]] = {}
+for (_t, _c) in _ddl_cols:
+    _cols_by_table.setdefault(_t, set()).add(_c)
+for _m in re.finditer(
+    r"CREATE\s+(?:UNIQUE\s+)?INDEX\s+(\w+)\s+ON\s+([\w.]+)\s*\(([^)]*)\)", ddl):
+    _name, _tbl, _cols = _m.group(1), _m.group(2).split(".")[-1], _m.group(3)
+    _known = _cols_by_table.get(_tbl)
+    if not _known:
+        continue   # ตารางของระบบเดิม — ไม่มี DDL ให้เทียบ
+    for _col in _cols.split(","):
+        # ตัด DESC/ASC/NULLS FIRST/opclass และนิพจน์ (index บนนิพจน์ไม่ตรวจชื่อคอลัมน์)
+        _c = _col.strip().split()[0].strip() if _col.strip() else ""
+        if not _c or "(" in _col or not re.fullmatch(r"\w+", _c):
+            continue
+        if _c.lower() not in {k.lower() for k in _known}:
+            _idx_bad.append(
+                f"{_name}: อ้าง {_tbl}.{_c} ที่ไม่มีใน DDL "
+                f"(คอลัมน์จริง: {', '.join(sorted(_known))[:120]}...)")
+check("CREATE INDEX อ้างคอลัมน์ที่ไม่มีใน DDL", sorted(set(_idx_bad)))
+
+# --- #110 โดเมนจริงจากฐาน Oracle เดิม ต้องไม่ขัดกับ CHECK ที่ DDL ใหม่ประกาศ
+# ใช้ผลจาก tools/introspect_legacy_oracle.py (output/legacy-oracle/data.json)
+# ข้ามไปเงียบ ๆ ถ้ายังไม่เคยรัน — ไม่บังคับให้ทุกคนต้องต่อ VPN ถึงจะ check เอกสารได้
+# จุดประสงค์: ค่าที่มีอยู่จริงในระบบเดิมแต่ไม่อยู่ในโดเมนของ DDL ใหม่ = migration ล้มแน่นอน
+_legacy_path = "output/legacy-oracle/data.json"
+_legacy_bad = []
+if os.path.exists(_legacy_path):
+    _legacy = json.loads(read(_legacy_path))
+    _src = str(_legacy.get("source", ""))
+    # ค่าที่เอกสาร migration ประกาศการแมปไว้แล้ว — key = ชื่อคอลัมน์ต้นทาง (FLAG_VERIFY ฯลฯ)
+    _mig = read("LLDD/md/BE/LLDD-BE-Data-Migration-Cutover.md")
+    _mig_section = _mig.split("### 5.2.1")[1].split("### 5.2.2")[0] if "### 5.2.1" in _mig else ""
+    _declared_map: dict[str, set[str]] = {}
+    for _dm in re.finditer(r"`[A-Z_]*\.?(\w+)`\s*=\s*`([^`]+)`", _mig_section):
+        for _val in re.split(r"\s*/\s*", _dm.group(2)):
+            _declared_map.setdefault(_dm.group(1), set()).add(_val.strip())
+    if not _declared_map:
+        _legacy_bad.append("LLDD-BE-Data-Migration-Cutover ข้อ 5.2.1 ไม่มีตารางแมปค่า — กฎนี้ตรวจอะไรไม่ได้")
+
+
+    # โดเมนที่ DDL ของเอกสารประกาศไว้:  col CHAR(n) ... CHECK (col IN ('a','b'))
+    _doc_domains: dict[str, set[str]] = {}
+    for _m in re.finditer(r"(\w+)\s+(?:CHAR|VARCHAR)\(\d+\)[^,\n]*?CHECK\s*\(\s*\1\s+IN\s*\(([^)]*)\)", ddl):
+        _doc_domains[_m.group(1)] = {v.strip().strip("'") for v in _m.group(2).split(",") if v.strip()}
+
+    # ค่า "ปลายทาง" ที่ตารางแมปสัญญาไว้ ต้องอยู่ในโดเมนของคอลัมน์ปลายทางจริง
+    # ไม่งั้นถ้ามีใครหด CHECK ให้แคบลง กฎนี้จะเงียบเพราะค่าต้นทางถูก "ประกาศแมปไว้แล้ว"
+    # (เจอจริง 2026-09-12: ถอด 'P' ออกจาก sales_status แล้วกฎไม่ฟ้อง)
+    _mig_lines = [ln for ln in _mig_section.split("\n") if ln.startswith("|")]
+    for _ln in _mig_lines:
+        for _tm2 in re.finditer(r"`(?:sgi_\w+\.)?(\w+)\s*=\s*'([^']+)'`", _ln):
+            _col, _val = _tm2.group(1), _tm2.group(2)
+            _dom2 = _doc_domains.get(_col)
+            if _dom2 and _val not in _dom2:
+                _legacy_bad.append(
+                    f"ตารางแมป 5.2.1 สัญญาว่าแมปเป็น {_col} = '{_val}' "
+                    f"แต่โดเมนจริงของ DDL คือ {sorted(_dom2)} — สองที่นี้ขัดกันเอง")
+
+    for _key, _info in (_legacy.get("data", {}).get("domains") or {}).items():
+        _note = str(_info.get("note", ""))
+        _tm = re.search(r"(sgi_\w+)\.(\w+)\s+CHECK", _note)
+        if not _tm:
+            continue                       # โดเมนที่ไม่ได้ผูกกับ CHECK ของ DDL ใหม่ (เช่น datasource)
+        _target_col = _tm.group(2)
+        _allowed = _doc_domains.get(_target_col)
+        if not _allowed:
+            continue
+        _seen = {v for v in (_info.get("values") or {}) if v != "<NULL>"}
+        # ค่าที่ประกาศการแมปไว้แล้วในตาราง 5.2.1 ของ LLDD-BE-Data-Migration-Cutover ไม่นับว่าพัง
+        # (จุดประสงค์ของกฎนี้คือกัน "ค่าที่ไม่มีใครรู้ว่าจะทำยังไง" ไม่ใช่บังคับให้โดเมนตรงกันเป๊ะ)
+        _outside = sorted(_seen - _allowed - _declared_map.get(_key.split(".")[-1], set()))
+        if _outside:
+            _legacy_bad.append(
+                f"{_key}: ฐานเดิมมีค่า {_outside} ที่ไม่อยู่ในโดเมนของ "
+                f"{_tm.group(1)}.{_target_col} ({sorted(_allowed)}) — migration จะล้ม "
+                f"[ที่มา {_src}]")
+check("โดเมนจริงในฐานเดิม ขัดกับ CHECK ของ DDL ใหม่", sorted(set(_legacy_bad)))
+
+# --- #111 ชื่อสถานะเอกสารต้องตรงกันระหว่าง common_code (SGI) กับ workflow_status (engine)
+# รหัส 2 ตัวอักษร 06/08/01/02/03/99 เป็นของ SGI · engine ถือแค่ status_id (integer) + status_name
+# ชื่อไทยจึงถูกเขียนไว้ 2 ที่: seed common_code (SGI_DOC_STATUS) และเอกสาร Workflow-Engine-Definition
+# ถ้าสองที่นี้หลุดจากกัน หน้าจอกับ inbox กลางจะแสดงคนละชื่อสำหรับสถานะเดียวกัน
+_st_bad = []
+try:
+    import importlib
+    _bs = importlib.import_module("build_sgi_schema_sql")
+    _seed_names = [n for _c, n in getattr(_bs, "SGI_DOC_STATUSES", [])]
+except Exception as _e:      # pragma: no cover
+    _seed_names = []
+    _st_bad.append(f"อ่าน SGI_DOC_STATUSES จาก build_sgi_schema_sql ไม่ได้: {_e}")
+if _seed_names:
+    _wf = read("LLDD/md/BE/LLDD-BE-Workflow-Engine-Definition.md")
+    _row = [ln for ln in _wf.split("\n") if "workflow_status (sps_store)" in ln]
+    if not _row:
+        _st_bad.append("LLDD-BE-Workflow-Engine-Definition ไม่มีแถว workflow_status (sps_store)")
+    else:
+        for _n in _seed_names:
+            if _n not in _row[0]:
+                _st_bad.append(
+                    f"ชื่อสถานะ '{_n}' อยู่ใน seed common_code (SGI_DOC_STATUS) "
+                    f"แต่ไม่มีในแถว workflow_status ของ LLDD-BE-Workflow-Engine-Definition")
+check("ชื่อสถานะเอกสารไม่ตรงกันระหว่าง common_code กับ workflow_status ของ engine", sorted(set(_st_bad)))
+
+# --- #112 ตาราง FGI_* ที่มีข้อมูลจริง ต้องปรากฏในแผน migration
+# เจอจริง 2026-09-13: FGI_IMPACT_STORE_INFO (429) · FGI_NEW_STORE_INFO (492) ·
+#   FGI_NEW_STORE_COMPENSATE (473) · FGI_WS_LOG (20,704) มีข้อมูลจริงแต่ไม่อยู่ในตาราง
+#   Source-to-Target ข้อ 5.1 เลย — รวม 22,098 แถวที่ไม่มีใครระบุว่าจะทำอย่างไร
+# ใช้ row_counts จาก output/legacy-oracle/data.json (ข้ามไปถ้ายังไม่เคยรัน extractor)
+_mig_bad = []
+if os.path.exists(_legacy_path):
+    _lg = json.loads(read(_legacy_path))
+    _counts = (_lg.get("data") or {}).get("row_counts") or {}
+    _mig_doc = read("LLDD/md/BE/LLDD-BE-Data-Migration-Cutover.md").upper()
+    for _t, _n in sorted(_counts.items()):
+        if not _t.startswith("FGI_") or "_BK_" in _t or not _n:
+            continue          # ตาราง backup ไม่ต้อง migrate
+        if _t not in _mig_doc:
+            _mig_bad.append(
+                f"{_t}: มี {_n:,} แถวในฐานเดิม แต่ไม่ปรากฏใน LLDD-BE-Data-Migration-Cutover เลย "
+                "— ต้องระบุปลายทาง หรือระบุชัดว่า **ไม่ migrate** พร้อมเหตุผล")
+check("ตาราง FGI_* ที่มีข้อมูลจริง แต่ไม่มีในแผน migration", sorted(set(_mig_bad)))
+
+# ------------------------------------------------------------------- LLDDv2
+# LLDDv2 เป็น Markdown ที่เขียนใหม่แบบ feature-centric จึงตรวจแยกจากกฎของ generator
+# ชุดเดิมด้านบน (ไม่เอาไฟล์ใหม่ไปปนกับ regex ของ SQL/skeleton เดิม)
+_v2_root = "llddv2"
+_v2_required = [
+    "PLAN-LLDDV2.md", "README.md",
+    *[f"00-foundation/{i:02}-{name}.md" for i, name in enumerate([
+        "system-overview", "glossary-and-business-rules", "api-security-and-error-contract",
+        "database-and-migration", "workflow-engine", "integrations-and-operations",
+        "decision-register",
+    ], 1)],
+    *[f"features/{i:02}-{name}.md" for i, name in enumerate([
+        "worklist-and-document-search", "document-creation-pipeline",
+        "document-detail-and-editing", "workflow-actions-and-timeline",
+        "attachments-and-sales-data", "master-data", "status-report-and-export",
+        "interface-tracking",
+    ], 1)],
+    "jobs/00-job-pipeline-overview.md",
+    "jobs/JOB-02-ImportImpactStore.md", "jobs/JOB-03-ImportImpactCompetitor.md",
+    "jobs/JOB-04-PrepareImpactStoreToIAS.md", "jobs/JOB-05-ImportImpactSaleFromIAS.md",
+    "jobs/JOB-06-ExportImpactStoreToSTA.md", "jobs/JOB-07-SyncCompetitorToDocument.md",
+    "jobs/JOB-08-CreateCompensationDocument.md", "jobs/JOB-08b-StartInternalWorkflow.md",
+    "jobs/JOB-09-SyncNewStoreToDocument.md", "jobs/JOB-10-NotifyNoReceiveData.md",
+    "jobs/JOB-11-ConsumeStaCompensate.md", "jobs/JOB-12-NotifyPendingWork.md",
+    "references/API-CATALOG.md", "references/DATABASE-DICTIONARY.md",
+    "references/CONFIG-AND-ENV-CATALOG.md", "references/ERROR-CATALOG.md",
+    "references/TEST-AND-DELIVERY.md", "templates/FEATURE-TEMPLATE.md",
+    "templates/JOB-TEMPLATE.md",
+]
+check("LLDDv2 มีไฟล์บังคับครบ", [
+    p for p in _v2_required if not os.path.isfile(os.path.join(_v2_root, p))
+])
+
+_v2_files = sorted(glob.glob("llddv2/**/*.md", recursive=True))
+_v2_features = sorted(glob.glob("llddv2/features/[0-9][0-9]-*.md"))
+_v2_jobs = sorted(glob.glob("llddv2/jobs/JOB-*.md"))
+check(f"LLDDv2 feature = {LLDDV2_FEATURES}", [] if len(_v2_features) == LLDDV2_FEATURES else [
+    f"พบ {len(_v2_features)} ฉบับ: {', '.join(_v2_features)}"
+])
+check(f"LLDDv2 job = {LLDDV2_JOBS} (Jobs 2–12 + 8b)", [] if len(_v2_jobs) == LLDDV2_JOBS else [
+    f"พบ {len(_v2_jobs)} ฉบับ: {', '.join(_v2_jobs)}"
+])
+
+# หัวข้อมาตรฐานต้องมีครบและเรียง 1..17 / 1..18 เพื่อให้ reviewer หา contract เดิมได้ทุกฉบับ
+_heading_bad = []
+for _f, _last in [(f, 17) for f in _v2_features] + [(f, 18) for f in _v2_jobs]:
+    _nums = [int(n) for n in re.findall(r"^##\s+(\d+)\.", read(_f), re.M)]
+    if _nums != list(range(1, _last + 1)):
+        _heading_bad.append(f"{_f}: หัวข้อเลข {_nums} ต้องเป็น 1..{_last}")
+check("LLDDv2 feature/job ใช้หัวข้อมาตรฐานครบและเรียงถูก", _heading_bad)
+
+# ทุก feature/job ต้องมี flowchart และ sequence จริงอย่างน้อยอย่างละหนึ่ง block
+# Static parser นี้ตรวจ fence/declaration/edge ขั้นต่ำ; สามารถเสริม mmdc ใน CI ได้โดยไม่เปลี่ยน contract
+_mermaid_bad = []
+for _f in _v2_features + _v2_jobs:
+    _txt = read(_f)
+    _blocks = re.findall(r"```mermaid\s*\n(.*?)```", _txt, re.S)
+    _kinds = [b.strip().splitlines()[0].strip() if b.strip() else "" for b in _blocks]
+    if not any(k.startswith(("flowchart ", "graph ")) for k in _kinds):
+        _mermaid_bad.append(f"{_f}: ไม่มี Mermaid Flowchart")
+    if "sequenceDiagram" not in _kinds:
+        _mermaid_bad.append(f"{_f}: ไม่มี Mermaid Sequence Diagram")
+    for _idx, _b in enumerate(_blocks, 1):
+        _first = _b.strip().splitlines()[0].strip() if _b.strip() else ""
+        if not _first.startswith(("flowchart ", "graph ", "sequenceDiagram", "stateDiagram")):
+            _mermaid_bad.append(f"{_f}: Mermaid block {_idx} ไม่ขึ้นต้นด้วยชนิด diagram ที่รองรับ")
+        if _first == "sequenceDiagram" and ("participant " not in _b or "->>" not in _b):
+            _mermaid_bad.append(f"{_f}: Sequence block {_idx} ไม่มี participant/arrow")
+        if _first.startswith(("flowchart ", "graph ")) and "-->" not in _b:
+            _mermaid_bad.append(f"{_f}: Flowchart block {_idx} ไม่มี edge")
+check("LLDDv2 Mermaid flowchart/sequence มีโครงสร้าง parseable ขั้นต่ำ", _mermaid_bad)
+
+_v2_table_bad = []
+def _v2_cell_count(row: str) -> int:
+    row = row.replace("\\|", "")
+    row = re.sub(r"`[^`]*`", "", row)
+    return row.count("|")
+
+for _f in _v2_files:
+    _lines = read(_f).splitlines()
+    for _i, _line in enumerate(_lines[:-1]):
+        if not _line.startswith("|") or not re.match(r"^\|[\s:| -]+\|$", _lines[_i + 1]):
+            continue
+        _want = _v2_cell_count(_line)
+        for _j in range(_i + 2, len(_lines)):
+            if not _lines[_j].startswith("|"):
+                break
+            _got = _v2_cell_count(_lines[_j])
+            if _got != _want:
+                _v2_table_bad.append(f"{_f}:{_j + 1} ({_got} ช่อง ≠ หัวตาราง {_want})")
+check("LLDDv2 ตาราง Markdown มีจำนวนช่องตรงหัวตาราง", _v2_table_bad)
+
+check("LLDDv2 เอกสารหลักไม่เกิน 500 บรรทัด", [
+    f"{_f}: {len(read(_f).splitlines())} บรรทัด" for _f in _v2_files
+    if not "/references/" in _f and len(read(_f).splitlines()) > 500
+])
+
+# ลิงก์ Markdown ภายในต้องเปิดไฟล์ได้จริง; anchor และ URL ภายนอกไม่ใช่ target filesystem
+_link_bad = []
+for _f in _v2_files:
+    _txt = read(_f)
+    for _m in re.finditer(r"(?<!!)\[[^\]]+\]\(([^)]+)\)", _txt):
+        _target = _m.group(1).strip()
+        if not _target or _target.startswith(("#", "http://", "https://", "mailto:")):
+            continue
+        _path = _target.split("#", 1)[0].split("?", 1)[0]
+        if _path.startswith("<") and _path.endswith(">"):
+            _path = _path[1:-1]
+        _resolved = os.path.normpath(os.path.join(os.path.dirname(_f), _path))
+        if not os.path.exists(_resolved):
+            _line = _txt[:_m.start()].count("\n") + 1
+            _link_bad.append(f"{_f}:{_line} -> {_target}")
+check("LLDDv2 Markdown links ชี้ไฟล์ที่มีจริง", _link_bad)
+
+# Catalog API ต้องตรง plan-api.html แบบ method/path ทุกตัว ไม่ใช่แค่จำนวนเท่ากัน
+_api_catalog_path = "llddv2/references/API-CATALOG.md"
+_v2_eps = []
+if os.path.exists(_api_catalog_path):
+    for _line in read(_api_catalog_path).splitlines():
+        _m = re.match(r"^\|\s*\d+\s*\|\s*`(GET|POST|PUT|PATCH|DELETE)\s+([^`]+)`\s*\|", _line)
+        if _m:
+            _v2_eps.append((_m.group(1), _m.group(2)))
+_api_trace_bad = []
+if len(_v2_eps) != CANON_ENDPOINTS:
+    _api_trace_bad.append(f"API Catalog มี {len(_v2_eps)} เส้น ต้องมี {CANON_ENDPOINTS}")
+if set(_v2_eps) != set(_eps):
+    for _x in sorted(set(_eps) - set(_v2_eps)):
+        _api_trace_bad.append(f"Catalog ขาด {_x[0]} {_x[1]}")
+    for _x in sorted(set(_v2_eps) - set(_eps)):
+        _api_trace_bad.append(f"Catalog เกิน {_x[0]} {_x[1]}")
+for _line in read(_api_catalog_path).splitlines() if os.path.exists(_api_catalog_path) else []:
+    if re.match(r"^\|\s*\d+\s*\|", _line):
+        _cells = [c.strip() for c in _line.strip().strip("|").split("|")]
+        if len(_cells) < 6 or any(not c for c in _cells[2:6]):
+            _api_trace_bad.append(f"traceability ไม่ครบ: {_line[:160]}")
+check("LLDDv2 API Catalog = 28 และตรง plan-api พร้อม traceability", _api_trace_bad)
+
+# Database Dictionary ต้องมี owner/reader/writer และชื่อตรง DDL 20 + reuse 1
+_db_catalog_path = "llddv2/references/DATABASE-DICTIONARY.md"
+_v2_tables = []
+_db_trace_bad = []
+for _line in read(_db_catalog_path).splitlines() if os.path.exists(_db_catalog_path) else []:
+    _m = re.match(r"^\|\s*\d+\s*\|\s*`([a-z_0-9]+)`\s*\|", _line)
+    if not _m:
+        continue
+    _v2_tables.append(_m.group(1))
+    _cells = [c.strip() for c in _line.strip().strip("|").split("|")]
+    if len(_cells) < 6 or any(not c for c in (_cells[2], _cells[4], _cells[5])):
+        _db_trace_bad.append(f"owner/reader/writer ไม่ครบ: {_line[:160]}")
+_canon_v2_tables = created | {"fcs_qssi_score"}
+if len(_v2_tables) != CANON_TABLES:
+    _db_trace_bad.append(f"Database Dictionary มี {len(_v2_tables)} ตาราง ต้องมี {CANON_TABLES}")
+if set(_v2_tables) != _canon_v2_tables:
+    _db_trace_bad.extend(f"Dictionary ขาด {_x}" for _x in sorted(_canon_v2_tables - set(_v2_tables)))
+    _db_trace_bad.extend(f"Dictionary เกิน {_x}" for _x in sorted(set(_v2_tables) - _canon_v2_tables))
+check("LLDDv2 Database Dictionary = 20 new + 1 reuse พร้อม owner/read/write", _db_trace_bad)
+
+_db_col_bad = []
+_v2_cols_by_table: dict[str, set[str]] = {}
+for _line in read(_db_catalog_path).splitlines() if os.path.exists(_db_catalog_path) else []:
+    _m = re.match(r"^\|\s*`(sgi_[a-z_0-9]+|fcs_qssi_score)`\s*\|\s*(.*?)\s*\|$", _line)
+    if _m:
+        _v2_cols_by_table[_m.group(1)] = set(re.findall(r"`([a-z_0-9]+)`", _m.group(2)))
+for _table in sorted(_canon_v2_tables):
+    _expected_cols = schema.get(_table, set()) if _table == "fcs_qssi_score" else all_cols.get(_table, set())
+    _documented_cols = _v2_cols_by_table.get(_table)
+    if _documented_cols is None:
+        _db_col_bad.append(f"{_table}: ไม่มีแถว canonical columns")
+        continue
+    for _col in sorted(_expected_cols - _documented_cols):
+        _db_col_bad.append(f"{_table}: dictionary ขาดคอลัมน์ {_col}")
+    for _col in sorted(_documented_cols - _expected_cols):
+        _db_col_bad.append(f"{_table}: dictionary มีคอลัมน์ที่ไม่มีใน schema {_col}")
+check("LLDDv2 canonical columns ตรง DDL/schema จริงครบทุกตาราง", _db_col_bad)
+
+# ห้ามประกาศ Ready ขณะที่เอกสารยังมี BLOCKED; ตรวจเฉพาะ status metadata ช่วงต้นไฟล์
+_ready_bad = []
+for _f in _v2_files:
+    _txt = read(_f)
+    _head = "\n".join(_txt.splitlines()[:8])
+    if re.search(r"(?:Document status|สถานะเอกสาร):\s*`?Ready`?", _head, re.I) \
+            and re.search(r"\bBLOCKED\b", _txt, re.I):
+        _ready_bad.append(f"{_f}: status Ready แต่ยังมี BLOCKED")
+check("LLDDv2 ไม่มีเอกสาร Ready ที่ยังมี BLOCKED", _ready_bad)
+
+# Code path ของ Job ที่ประกาศ AS-BUILT ต้องเปิดพบจริง
+_job_service_expected = {
+    "02": "job-2-import-impact-store.service.ts",
+    "03": "job-3-import-impact-competitor.service.ts",
+    "04": "job-4-prepare-impact-store-to-ias.service.ts",
+    "05": "job-5-import-impact-sale-from-ias.service.ts",
+    "06": "job-6-export-impact-store-to-sta.service.ts",
+    "07": "job-7-sync-competitor-to-document.service.ts",
+    "08": "job-8-create-compensation-document.service.ts",
+    "08b": "job-8b-start-internal-workflow.service.ts",
+    "09": "job-9-sync-new-store-to-document.service.ts",
+    "10": "job-10-notify-no-receive-data.service.ts",
+    "11": "job-11-consume-sta-compensate.service.ts",
+    "12": "job-12-notify-pending-work.service.ts",
+}
+_code_path_bad = []
+for _no, _service in _job_service_expected.items():
+    _source = os.path.join("SBP/srm-sps-spsap-sop-sgi-batch/src/modules/sgi", _service)
+    _doc_matches = glob.glob(f"llddv2/jobs/JOB-{_no}-*.md")
+    if not os.path.isfile(_source):
+        _code_path_bad.append(f"Job {_no}: ไม่พบ source {_source}")
+    if len(_doc_matches) != 1 or (len(_doc_matches) == 1 and _service not in read(_doc_matches[0])):
+        _code_path_bad.append(f"Job {_no}: เอกสารไม่อ้าง service จริง {_service}")
+check("LLDDv2 Job code path เปิดพบและอ้างตรง service ปัจจุบัน", _code_path_bad)
 
 # ------------------------------------------------------------------- รายงานผล
 print(f"schema sps_store: {len(schema)} ตาราง · ตรวจ {len(DOC_FILES)} ไฟล์\n")

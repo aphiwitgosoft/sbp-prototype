@@ -225,7 +225,69 @@ Document aggregate API
   "impactedStore": {
     "storeCode": "01234"
   },
-  "newStores": []
+  "newStores": [],
+  "competitors": [
+    {
+      "competitorCode": "01",
+      "nameTh": "โลตัสเอ็กซ์เพรส",
+      "branchTh": "สาขารัตนอุทิศ",
+      "openedDate": "2023-10-10",
+      "impactDate": "2026-06-01",
+      "detail": "",
+      "sourceSystem": "ALLMAP"
+    }
+  ],
+  "externalFactors": [
+    {
+      "factorCode": "F003",
+      "factorName": "การก่อสร้าง / ปิดถนน",
+      "dateFrom": "2026-05-01",
+      "dateTo": null,
+      "detail": ""
+    }
+  ],
+  "attachments": [
+    {
+      "attachId": 4471,
+      "fileName": "impact_report.pdf",
+      "fileSize": 1887436,
+      "mimeType": "application/pdf",
+      "sectionCode": "06",
+      "scanStatus": "CLEAN",
+      "uploadedBy": "somchai.k",
+      "uploadedAt": "2026-06-12T09:31:00"
+    }
+  ],
+  "costDetails": [
+    {
+      "newStoreCode": "00990",
+      "costYear": 2026,
+      "costMonth": 6,
+      "costTargetN": 250000.0,
+      "costAmountN": 232000.0,
+      "costTargetNc": 0,
+      "costAmountNc": 0
+    }
+  ],
+  "compensationHistories": [
+    {
+      "submitAccountMonth": "2026-05",
+      "compensationAmount": 18000.0,
+      "refDocNo": "2026/00098",
+      "accountingStatus": "POSTED"
+    }
+  ],
+  "considerationLogs": [
+    {
+      "sectionCode": "06",
+      "result": "ส่งเจ้าหน้าที่ SBP DSA",
+      "resultCategory": "PENDING",
+      "detail": "",
+      "considerBy": "somchai.k",
+      "actionDatetime": "2026-06-12T10:02:00"
+    }
+  ],
+  "allmapUrl": "https://allmap.example/store/01234"
 }
 ```
 
@@ -248,6 +310,50 @@ Document aggregate API
 | impactedStore | object | Yes | JSON object; nested fields listed below |
 | impactedStore.storeCode | string | Yes | exactly 5 digits; preserve leading zero |
 | newStores | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| competitors | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| competitors[].competitorCode | string | Yes | รหัสแบรนด์คู่แข่งจาก master 01–11 เท่านั้น (ห้าม free text) |
+| competitors[].nameTh | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| competitors[].branchTh | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| competitors[].openedDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| competitors[].impactDate | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| competitors[].detail | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| competitors[].sourceSystem | string | Yes | ALLMAP = ระบบดึงมาเอง · USER = ผู้ใช้คีย์เพิ่ม |
+| externalFactors | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| externalFactors[].factorCode | string | Yes | รหัสปัจจัยภายนอกจาก master (sgi_external_factors.factor_code) |
+| externalFactors[].factorName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| externalFactors[].dateFrom | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| externalFactors[].dateTo | string \| null | No | UTF-8; use value domain described by endpoint purpose |
+| externalFactors[].detail | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| attachments[].attachId | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].fileName | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].fileSize | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].mimeType | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].sectionCode | string | Yes | canonical code; do not replace with display label |
+| attachments[].scanStatus | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].uploadedBy | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| attachments[].uploadedAt | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| costDetails | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| costDetails[].newStoreCode | string | Yes | exactly 5 digits; preserve leading zero |
+| costDetails[].costYear | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| costDetails[].costMonth | integer | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| costDetails[].costTargetN | number | Yes | UTF-8; use value domain described by endpoint purpose |
+| costDetails[].costAmountN | number | Yes | number >= 0 with 2 decimals |
+| costDetails[].costTargetNc | integer | Yes | UTF-8; use value domain described by endpoint purpose |
+| costDetails[].costAmountNc | integer | Yes | number >= 0 with 2 decimals |
+| compensationHistories | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| compensationHistories[].submitAccountMonth | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| compensationHistories[].compensationAmount | number | Yes | number >= 0 with 2 decimals · ⚠️ มาจากคนละคอลัมน์ตามที่อยู่: ใน `newStores[]` = `sgi_document_new_stores.compensation_amount` · ใน `compensationHistories[]` = `sgi_compensation_histories.compensate_amount` |
+| compensationHistories[].refDocNo | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| compensationHistories[].accountingStatus | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| considerationLogs | array&lt;object&gt; | Yes | JSON array; element type shown in Type column |
+| considerationLogs[].sectionCode | string | Yes | canonical code; do not replace with display label |
+| considerationLogs[].result | string | Yes | ช่อง **ผลการพิจารณา** (มีเฉพาะหน้า *ที่เกี่ยวข้อง*) — `APPROVE` / `REJECT` / `CANCELLED` / `NONE` · ดูจากผลพิจารณา **ล่าสุด** ของเอกสารใน `sgi_consideration_logs` ไม่ได้อยู่ที่หัวเอกสาร |
+| considerationLogs[].resultCategory | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| considerationLogs[].detail | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| considerationLogs[].considerBy | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| considerationLogs[].actionDatetime | string | Yes | ISO-8601 ค.ศ.; nullable only when type includes null |
+| allmapUrl | string | Yes | UTF-8; use value domain described by endpoint purpose |
 
 ### GET /api/v1/sgi/master/competitors
 
@@ -317,7 +423,9 @@ Document aggregate API
 | sgi_document_external_factors | R | ปัจจัยภายนอก |
 | sgi_document_attachments | R | metadata ไฟล์แนบ |
 | sgi_consideration_logs | R | timeline/history |
-| sgi_competitors | R | ชื่อแบรนด์คู่แข่ง (join จาก sgi_document_competitors.competitor_code) (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
+| sgi_document_cost_details | R | การ์ด "คำนวณเงินชดเชย" — ยอดแยกรายเดือน × รายร้านเปิดใหม่ (เพิ่ม 2026-09-09) |
+| sgi_compensation_histories | R | การ์ด "ประวัติการชดเชย" — ประวัติรายร้านข้ามเอกสาร (เพิ่ม 2026-09-09) |
+| sgi_competitors | R | ชื่อแบรนด์คู่แข่ง (join จาก sgi_document_competitors.brand_code) (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
 
 ## 9. Skeleton Code (store-backend + BFF)
 
@@ -472,6 +580,9 @@ export class CompensationDocument {
   @Column({ name: 'impact_process_id', type: 'bigint' })
   impactProcessId: number;
 
+  @Column({ name: 'impact_compensation_id', type: 'bigint' })
+  impactCompensationId: number;
+
   @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
@@ -490,7 +601,7 @@ export class CompensationDocument {
   @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
   source: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  @Column({ name: 'status_code', type: 'varchar', length: 2, default: '06' })
   statusCode: string;
 
   @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })
@@ -572,7 +683,7 @@ export class ImpactedStore {
 }
 ```
 
-ตารางที่เหลือของเอกสารนี้ (`sgi_document_new_stores`, `sgi_document_competitors`, `sgi_document_external_factors`, `sgi_document_attachments`, `sgi_consideration_logs`, `sgi_competitors`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
+ตารางที่เหลือของเอกสารนี้ (`sgi_document_new_stores`, `sgi_document_competitors`, `sgi_document_external_factors`, `sgi_document_attachments`, `sgi_consideration_logs`, `sgi_document_cost_details`, `sgi_compensation_histories`, `sgi_competitors`) ใช้รูปแบบ entity เดียวกัน — คอลัมน์อ้างจาก `database.md`
 
 ### 9.6 Repository Providers + Module wiring
 
@@ -724,7 +835,9 @@ export class SgiDocumentDetailAggregateBffController {
 | sgi_document_external_factors | R | ปัจจัยภายนอก |
 | sgi_document_attachments | R | metadata ไฟล์แนบ |
 | sgi_consideration_logs | R | timeline/history |
-| sgi_competitors | R | ชื่อแบรนด์คู่แข่ง (join จาก sgi_document_competitors.competitor_code) (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
+| sgi_document_cost_details | R | การ์ด "คำนวณเงินชดเชย" — ยอดแยกรายเดือน × รายร้านเปิดใหม่ (เพิ่ม 2026-09-09) |
+| sgi_compensation_histories | R | การ์ด "ประวัติการชดเชย" — ประวัติรายร้านข้ามเอกสาร (เพิ่ม 2026-09-09) |
+| sgi_competitors | R | ชื่อแบรนด์คู่แข่ง (join จาก sgi_document_competitors.brand_code) (เพิ่ม 2026-09-02 — SQL แตะอยู่แล้วแต่ไม่ได้ประกาศไว้) |
 
 ### 10.2 SQL จริงต่อ Endpoint
 
@@ -732,23 +845,31 @@ export class SgiDocumentDetailAggregateBffController {
 
 ```sql
 -- bind ตามลำดับ: $1=docNo
--- โหลดเอกสารฉบับเต็ม 12 ส่วนในคำขอเดียว
+-- โหลดเอกสารฉบับเต็มในคำขอเดียว — 1 result set ต่อ 1 การ์ดบนหน้าจอ (k2-document.html)
+-- ⚠️ เพิ่ม 2 ชุดท้ายเมื่อ 2026-09-09: การ์ด 'ประวัติการชดเชย' และ 'คำนวณเงินชดเชย'
+--    เดิม SQL ไม่ได้อ่าน 2 ตารางนี้เลย ทั้งที่หน้าจอมีการ์ดทั้งคู่
 SELECT * FROM sgi_compensation_documents      WHERE doc_no = $1 /* docNo */;
 SELECT * FROM sgi_document_new_stores          WHERE doc_no = $1 /* docNo */;
 SELECT * FROM sgi_document_competitors         WHERE doc_no = $1 /* docNo */;
 SELECT * FROM sgi_document_external_factors    WHERE doc_no = $1 /* docNo */;
 SELECT * FROM sgi_document_attachments         WHERE doc_no = $1 /* docNo */ AND deleted_flag = 'N';
 SELECT * FROM sgi_consideration_logs           WHERE doc_no = $1 /* docNo */ ORDER BY action_datetime;
+SELECT * FROM sgi_compensation_histories
+ WHERE store_code = (SELECT impacted_store_code FROM sgi_compensation_documents WHERE doc_no = $1 /* docNo */)
+ ORDER BY submit_account_month DESC;   -- การ์ด 'ประวัติการชดเชย' (รายร้าน ข้ามเอกสาร)
+SELECT * FROM sgi_document_cost_details        WHERE doc_no = $1 /* docNo */
+                                                 ORDER BY cost_year, cost_month, new_store_code;   -- การ์ด 'คำนวณเงินชดเชย'
 ```
 
 **GET /api/v1/sgi/master/competitors** — **อ้างอิงเท่านั้น — เจ้าของ endpoint นี้คือ LLDD-BE-API-Report-and-Master-Data (Peerakorn)** · เอกสารนี้เป็นผ…
 
 ```sql
--- bind ตามลำดับ: $1=q
+-- bind ตามลำดับ: $1=q · $2=active
 -- master แบรนด์คู่แข่ง 11 รายการ (รหัส 01-11) · ระบบเดิมเก็บชื่อไทยและอังกฤษ
 SELECT competitor_code, name_th, name_en, remark, is_active
 FROM sgi_competitors
-WHERE ($1 /* q */ IS NULL OR name_th LIKE $1 /* q */ OR name_en LIKE $1 /* q */)
+WHERE ($1 /* q */      IS NULL OR name_th LIKE $1 /* q */ OR name_en LIKE $1 /* q */)
+  AND ($2 /* active */ IS NULL OR is_active = $2 /* active */)   -- dropdown ส่ง active=true · หน้าดูแล master ส่ง NULL
 ORDER BY competitor_code;
 ```
 
@@ -762,6 +883,7 @@ ORDER BY competitor_code;
 | sgi_document_external_factors | CREATE INDEX idx_document_external_factors_doc_no ON sgi_document_external_factors (doc_no); | อนุมานจากเงื่อนไข query ที่เอกสารนี้ระบุ — สร้างพร้อมสคริปต์ deploy ของ SGI |
 | sgi_document_attachments | CREATE INDEX idx_document_attachments_doc_no ON sgi_document_attachments (doc_no, section_code); | อนุมานจากเงื่อนไข query ที่เอกสารนี้ระบุ — สร้างพร้อมสคริปต์ deploy ของ SGI |
 | sgi_consideration_logs | CREATE INDEX idx_consideration_logs_doc_no ON sgi_consideration_logs (doc_no, action_datetime DESC); | อนุมานจากเงื่อนไข query ที่เอกสารนี้ระบุ — สร้างพร้อมสคริปต์ deploy ของ SGI |
+| sgi_compensation_histories | CREATE INDEX idx_compensation_histories_store ON sgi_compensation_histories (store_code, compensate_year, compensate_month); | อนุมานจากเงื่อนไข query ที่เอกสารนี้ระบุ — สร้างพร้อมสคริปต์ deploy ของ SGI |
 
 ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่
 

@@ -690,7 +690,7 @@ def render_md(boxes: dict[str, Box], edges: list[dict], schemas: dict) -> str:
     L: list[str] = []
     L.append("# ER Diagram ฉบับสมบูรณ์ — SGI + ฐานข้อมูลระบบ SBP เดิม\n")
     L.append("> สร้างอัตโนมัติด้วย `python3 tools/build_er_diagram.py` — **ห้ามแก้ไฟล์นี้ด้วยมือ**  ")
-    L.append("> แหล่งข้อมูล: `LLDD/md/LLDD-Database.md` (DDL 20 ตาราง) · `SBP/db-schema-sps_store.md` · "
+    L.append("> แหล่งข้อมูล: `LLDD/md/LLDD-Database.md` (DDL 21 ตาราง) · `SBP/db-schema-sps_store.md` · "
              "`SBP/db-schema-sps_auth.md` (ดึงฐานจริง 07/08/2026) · `database.md` (Cross-System Keys)  ")
     L.append("> รูป: `er-sgi-complete.svg` (เวกเตอร์) · `er-sgi-complete.png` · "
              "`er-sgi-complete.html` (โต้ตอบได้ · มีภาคผนวกตารางครบทุกตาราง)\n")

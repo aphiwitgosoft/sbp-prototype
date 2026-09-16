@@ -53,8 +53,8 @@ Dependency ภายนอกมีแค่ Google Fonts — **ทุกอย�
 · job ทั้ง 12 ตัวนิยามที่ `JOBS` ใน `job-batch.html` แล้ว generate ต่อเป็นเอกสาร LLDD (`JOB_RUN_CONTRACT` = 5.95 args · `JOB_DECISION_RULES` = 5.96 เงื่อนไข)
 · **ห้ามใช้ `@Cron`** — repo นั้นไม่มีเลย ตารางเวลาเป็น AWS Batch scheduled event
 
-**แก้เรื่องรับข้อมูลจาก EAI / RabbitMQ** — **ตัวรับคือ `SBP/srm-sps-spsap-store-consumer`** (มติ 2026-09-08)
-อ่าน **`SBP/srm-sps-spsap-store-consumer.md`** ก่อน · consumer รับข้อความ → อ่าน config จาก S3 → `SubmitJob` ให้ job ของเรา
+**แก้เรื่องรับข้อมูลจาก EAI / RabbitMQ** — **Job 5 / Job 11 consume คิวเองใน `SBP/srm-sps-spsap-sop-sgi-batch`** (มติ 2026-09-12 — ตัด repo `store-consumer` ออกจากขอบเขต)
+อ่าน **`SBP/srm-sps-spsap-sop-sgi-batch.md`** ข้อ 4 ก่อน · ⚠️ repo นั้นมีแต่ `publishMessage` **ยังไม่มี consumer · DLQ · retry** ต้องสร้างใหม่ทั้งชุด
 · **Job 5** (รับ `AMS06001I`) และ **Job 11** (รับ `sta_update_compensate`) ถูกสั่งด้วยวิธีนี้ — job **ดาวน์โหลดไฟล์จาก S3 URI เอง**
 · **ขาออกไม่ผ่าน consumer** — Job 4 (upload) และ Job 6 (publish ให้ STA) ใช้ `S3Service`/publisher ของ `sop-sgi-batch` ตรง ๆ
 · ⚠️ consumer **ยังไม่มี DLQ และไม่เปิดใช้ retry** — ดูข้อค้าง 2.11/2.12 ใน `DECISIONS-รอตัดสินใจ.md`

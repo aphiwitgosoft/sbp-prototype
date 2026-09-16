@@ -59,7 +59,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job 3 ImportImpactCompetitor_
 
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
-| กำหนดการรัน (Cron) | 0 07 7 * * | แก้ไขได้ | ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh; Operations ตรวจ deployment path และ owner permission ก่อนขึ้น production |
+| กำหนดการรัน (Cron) | 30 07 7 * * | แก้ไขได้ | เหลื่อมหลัง Job 2 (07:00) เพราะ Job 3 ต้องรอแถวแม่ · **เวลาเหลื่อมไม่ใช่การรับประกันลำดับ — ต้องตั้ง dependency ที่ AWS Batch** · ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh |
 | Argument (งวด) | 2569\|06 | แก้ไขได้ | รูปแบบ YYYY\|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง |
 | Chunk Size | 10000 | แก้ไขได้ | จำนวนแถวต่อรอบ insert |
 | Source View | COMPETITOR_IMPACT_VIEW | ค่าคงที่/แก้ผ่านหน้าจอไม่ได้ | SELECT DISTINCT / map คอลัมน์ NAMT -> NAME_TH, BRANCHT -> BRANCH_TH |
@@ -89,7 +89,7 @@ validate period, skip when period already exists, query competitor view, insert 
 | --- | --- | --- |
 | Input identity | Period year/month and competitor impact data from ALLMAP COMPETITOR_IMPACT_VIEW. | snapshot input file/business key/period in run record |
 | Output identity | FGI_IMPACT_COMPETITOR rows for the target period; run status is success/no-data/failed with inserted-count reconciliation. | reconcile input, success, reject and skipped counts |
-| Dedup proof | UNIQUE(impact_process_id, competitor_code, period_key); source row ซ้ำในไฟล์/วิวต้อง deduplicate ก่อน upsert | rerun fixture produces no duplicate target business key |
+| Dedup proof | UNIQUE(impact_process_id, competitor_store_code, period_key) — **คีย์เป็นสาขา ไม่ใช่แบรนด์** (แก้ 2026-09-09); source row ซ้ำในวิวต้อง deduplicate ก่อน upsert · **สัญญาระดับ job คือ period-level skip** — ✅ ปิดแล้ว 2026-09-13 (ข้อ 2.23): คงพฤติกรรมเดิม (งวดมีข้อมูลแล้ว = ข้ามทั้งงวด) **แต่ต้องเทียบ `existingRowCount` กับ `sourceCount` ทุกรอบแล้ว alert เมื่อของเดิมน้อยกว่าต้นทาง** · หลักฐาน: ข้อมูลจริง 88 งวด (2017-2025) **insert จบภายในวันเดียวทั้ง 88 งวด · งวดที่ insert หลายวัน = 0** จึงไม่เคยมีการนำเข้าไม่ครบแล้วเติมทีหลัง และไม่มีคำสั่ง `DELETE FROM FGI_IMPACT_COMPETITOR` ที่ใดเลยทั้ง repo | rerun fixture produces no duplicate target business key |
 | Transaction proof | validate งวดก่อนอ่าน; upsert ทีละ chunk และ commit หลัง reconcile จำนวน input/success/reject ของ chunk ตรงกัน | injected failure leaves no partial committed state outside documented boundary |
 | Security proof | ALLMAP datasource ใช้ secretRef และ TLS verify-full; จำกัด DB user เป็น SELECT เฉพาะ source view | config/log/error contains no plaintext secret |
 
@@ -101,34 +101,53 @@ validate period, skip when period already exists, query competitor view, insert 
 | fcsJar/src/th/co/gosoft/fgi/controller/ImportController.java | 483-598 | Validate params, skip duplicates, query source, chunk insert sgi_competitors. |
 | fcsJar/src/th/co/gosoft/fgi/dao/jdbc/ImportJdbc.java | 200-241 | Count existing period, query COMPETITOR_IMPACT_VIEW, insert FGI_IMPACT_COMPETITOR. |
 
-Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft/java/SBP/fcsJar. Use these ranges to preserve business behavior while implementing the target Node job.
+Line ranges refer to the legacy Java implementation under `batchjob/fcsJar/` (path นับจากราก `sbp-prototype/`). Use these ranges to preserve business behavior while implementing the target Node job.
 
 ### 5.93 Target Repository and SQL Contract
 
 | Contract | Target implementation |
 | --- | --- |
 | Repository | impactCompetitorRepository |
-| Idempotency / dedup | UNIQUE(impact_process_id, competitor_code, period_key); source row ซ้ำในไฟล์/วิวต้อง deduplicate ก่อน upsert |
+| Idempotency / dedup | UNIQUE(impact_process_id, competitor_store_code, period_key) — **คีย์เป็นสาขา ไม่ใช่แบรนด์** (แก้ 2026-09-09); source row ซ้ำในวิวต้อง deduplicate ก่อน upsert · **สัญญาระดับ job คือ period-level skip** — ✅ ปิดแล้ว 2026-09-13 (ข้อ 2.23): คงพฤติกรรมเดิม (งวดมีข้อมูลแล้ว = ข้ามทั้งงวด) **แต่ต้องเทียบ `existingRowCount` กับ `sourceCount` ทุกรอบแล้ว alert เมื่อของเดิมน้อยกว่าต้นทาง** · หลักฐาน: ข้อมูลจริง 88 งวด (2017-2025) **insert จบภายในวันเดียวทั้ง 88 งวด · งวดที่ insert หลายวัน = 0** จึงไม่เคยมีการนำเข้าไม่ครบแล้วเติมทีหลัง และไม่มีคำสั่ง `DELETE FROM FGI_IMPACT_COMPETITOR` ที่ใดเลยทั้ง repo |
 | Transaction boundary | validate งวดก่อนอ่าน; upsert ทีละ chunk และ commit หลัง reconcile จำนวน input/success/reject ของ chunk ตรงกัน |
 | Security | ALLMAP datasource ใช้ secretRef และ TLS verify-full; จำกัด DB user เป็น SELECT เฉพาะ source view |
 
 #### Input / candidate query
 
 ```sql
--- bind ตามลำดับ: $1=period_key
-SELECT impact_process_id, competitor_code, name_th, branch_th, opened_date, closed_date, period_key
-FROM allmap_competitor_impact_view
-WHERE period_key = $1 /* period_key */;
+-- ⚠️ วิวต้นทางอยู่บน **SQL Server** (GSMALLMAP) · ชื่อคอลัมน์เป็นของวิวจริง (ตัวพิมพ์ใหญ่)
+--    placeholder เป็น ? ของ JDBC/mssql ไม่ใช่ $n/:name · **ห้ามใช้ไวยากรณ์ PostgreSQL ที่นี่**
+--    ⚠️ `NAMT` และ `BRANCHT` เป็นชื่อคอลัมน์จริงของวิว ไม่ใช่พิมพ์ผิด (ImpactCompetitorMapper.java:18,20)
+--    ระบุคอลัมน์ใน DISTINCT เสมอ — ระบบเดิมใช้ `SELECT distinct *` ซึ่ง dedup ด้วยทุกคอลัมน์ของวิว
+--    รวมคอลัมน์ที่ไม่ได้เอาไปใช้ ทำให้แถวซ้ำหลุดเข้ามาได้
+SELECT DISTINCT
+       STORECODE_I, COMPET_ID, NAMT, NAME, BRANCHT,
+       ZONE_CODE, SUBZONE_CODE, OPEN_DATE, CLOSE_DATE,
+       PERIOD_YEAR, PERIOD_MONTH
+  FROM allmapssa.COMPETITOR_IMPACT_VIEW
+ WHERE PERIOD_YEAR = ? AND PERIOD_MONTH = ?;
+
+-- ขั้น resolve (รันบน PostgreSQL หลังอ่านข้อมูลมาแล้ว — คนละฐาน ห้าม join ข้าม)
+--   1) STORECODE_I + งวด -> impact_process_id
+--      ✅ หาไม่พบ = **ข้ามแถวนั้น** แล้วนับ skippedNoParentCount + alert (มติ 2026-09-13 · ข้อ 2.20)
+--      หลักฐาน: ผู้อ่าน FGI_IMPACT_COMPETITOR รายเดียวของระบบเดิมคือคิวรีส่งออกที่
+--      ExportJdbc.java:1605-1628 ซึ่ง INNER JOIN ไปแถวแม่ -> คู่แข่งของร้านที่ไม่มีแถวแม่
+--      ระบบเดิมก็ไม่เคยใช้เลย · ข้อมูลจริง 228,116 แถว: ไม่มีแถวคู่ร้าน 16,796 แถว
+--      ผูกกับรอบชดเชยได้แค่ 14 แถว (0.08%) = 99.92% เป็นข้อมูลตายอยู่แล้ว
+--   2) COMPET_ID          -> competitor_store_code (ใช้ตรง ๆ · '' -> NULL)
+--   3) NAMT/NAME          -> brand_code ผ่าน master 11 แบรนด์ (map ไม่ได้ = NULL + นับ unmapped)
 ```
 
 #### Write / upsert query
 
 ```sql
--- bind ตามลำดับ: $1=impact_process_id · $2=competitor_code · $3=name_th · $4=branch_th · $5=opened_date · $6=closed_date · $7=period_key
+-- bind ตามลำดับ: $1=impact_process_id · $2=competitor_store_code · $3=brand_code · $4=name_th · $5=name_en · $6=branch_th · $7=zone_code · $8=subzone_code · $9=opened_date · $10=closed_date · $11=period_key
 INSERT INTO sgi_fgi_impact_competitors
-    (impact_process_id, competitor_code, name_th, branch_th, opened_date, closed_date, period_key, updated_at)
-VALUES ($1 /* impact_process_id */, $2 /* competitor_code */, $3 /* name_th */, $4 /* branch_th */, $5 /* opened_date */, $6 /* closed_date */, $7 /* period_key */, CURRENT_TIMESTAMP)
-ON CONFLICT (impact_process_id, competitor_code, period_key)
+    (impact_process_id, competitor_store_code, brand_code, name_th, name_en, branch_th,
+     zone_code, subzone_code, opened_date, closed_date, period_key, updated_at)
+VALUES ($1 /* impact_process_id */, $2 /* competitor_store_code */, $3 /* brand_code */, $4 /* name_th */, $5 /* name_en */, $6 /* branch_th */,
+        $7 /* zone_code */, $8 /* subzone_code */, $9 /* opened_date */, $10 /* closed_date */, $11 /* period_key */, CURRENT_TIMESTAMP)
+ON CONFLICT (impact_process_id, competitor_store_code, period_key)
 DO UPDATE SET name_th = EXCLUDED.name_th,
               branch_th = EXCLUDED.branch_th,
               opened_date = EXCLUDED.opened_date,
@@ -194,13 +213,13 @@ export async function runLlddBeJob3Importimpactcompetitor(ctx, services) {
 
 ### 5.96 เงื่อนไขตัดสิน (Decision Rules) — ตัดสินจากอะไร
 
-Job 3 ตัดสินเรื่องเดียวแต่พลาดง่าย: **งวดนี้เคยนำเข้าคู่แข่งไปแล้วหรือยัง** — ระบบเดิมล้างข้อมูลของงวดทิ้งแล้วนำเข้าใหม่ ไม่ได้ merge ทีละแถว
+Job 3 ตัดสินเรื่องเดียวแต่พลาดง่าย: **งวดนี้เคยนำเข้าคู่แข่งไปแล้วหรือยัง** — ⚠️ ระบบเดิม **ข้ามทั้งงวดแล้วรายงานว่าสำเร็จ** ไม่ได้ล้างแล้วนำเข้าใหม่ และไม่ได้ merge ทีละแถว (ยืนยันแล้วว่า `fcsJar/` ไม่มีคำสั่ง `DELETE FROM FGI_IMPACT_COMPETITOR` เลยแม้แต่จุดเดียว)
 
 | คำถามที่โค้ดต้องตอบ | ตัดสินจาก (ตาราง · คอลัมน์) | เงื่อนไขที่ต้องเป็นจริง | ไม่เข้าเงื่อนไขแล้วทำอะไร |
 | --- | --- | --- | --- |
-| งวดนี้มีข้อมูลคู่แข่งอยู่แล้วหรือไม่ | `sgi_fgi_impact_competitors` — `impact_process_id` · `period_key` (CHAR(7) `'YYYY-MM'`) | มีแถวของ `period_key` = งวดที่ขอ อยู่แล้ว → ถือว่า "งวดนี้นำเข้าแล้ว" | **ล้างข้อมูลของงวดนั้นก่อนแล้วนำเข้าใหม่ทั้งงวด** (ไม่ใช่ upsert รายแถว) — ทำใน transaction เดียวกับการ insert ชุดใหม่ ไม่งั้นระหว่างรันจะมีช่วงที่งวดว่างเปล่า |
-| ร้านคู่แข่งรายนี้อ้างอิงได้หรือไม่ | `sgi_competitors.competitor_code` (master 11 รหัส `01`-`11`) | `competitor_code` ที่วิวส่งมาต้องมีอยู่ใน master · ไม่มี = FK violation | ต้อง **reject รายแถวพร้อมเก็บ reason** ไม่ใช่ล้มทั้งงวด (นับเข้า `rejected` ใน metrics) |
-| แถวซ้ำในวิวต้นทาง | วิว `COMPETITOR_IMPACT_VIEW` (ALLMAP · SQL Server GSMALLMAP) | อ่านทีละ 10,000 แถว · deduplicate ด้วยคีย์ `(impact_process_id, competitor_code, period_key)` **ก่อน** ยิงเข้า DB | ไม่ dedup ก่อน จะชน `uq_impact_competitor` แล้วทั้ง chunk fail |
+| งวดนี้มีข้อมูลคู่แข่งอยู่แล้วหรือไม่ | `sgi_fgi_impact_competitors` — `impact_process_id` · `period_key` (CHAR(7) `'YYYY-MM'`) | มีแถวของ `period_key` = งวดที่ขอ อยู่แล้ว → ถือว่า "งวดนี้นำเข้าแล้ว" | **ข้ามทั้งงวดทันที ไม่ insert อะไรเลย แล้วจบด้วยสถานะสำเร็จ** (`ImportController.importImpactCompetitor` บรรทัด 521-527) — ไม่ใช่ล้างแล้วนำเข้าใหม่ และไม่ใช่ upsert · 🔴 **จุดเสี่ยง:** ถ้ารอบก่อนล้มกลางคันจนมีข้อมูลค้างไม่ครบ การรันซ้ำจะไม่ช่วยอะไร ข้อมูลขาดถาวรโดยไม่มีใครรู้ — ระบบใหม่ต้องเทียบจำนวนกับต้นทางแล้ว **alert เมื่อไม่ตรง** (ดู `batchjob/JOB-03-ImportImpactCompetitor-อธิบายละเอียด.md` หัวข้อ 3 และ 10) |
+| ร้านคู่แข่งรายนี้อ้างอิงได้หรือไม่ | `sgi_competitors.competitor_code` (master 11 รหัส `01`-`11`) | ⚠️ **`COMPET_ID` ที่วิวส่งมาคือ *รหัสสาขา* ไม่ใช่รหัสแบรนด์** (ไฟล์จริง BPM06003O มี 222 รหัสจาก 7 แบรนด์) จึงเก็บลง `competitor_store_code` ที่**ไม่มี FK** · ส่วน `brand_code` ได้จากการ map ชื่อแบรนด์เข้า master 11 รายการ | ต้อง **reject รายแถวพร้อมเก็บ reason** ไม่ใช่ล้มทั้งงวด (นับเข้า `rejected` ใน metrics) |
+| แถวซ้ำในวิวต้นทาง | วิว `COMPETITOR_IMPACT_VIEW` (ALLMAP · SQL Server GSMALLMAP) | อ่านทีละ 10,000 แถว · deduplicate ด้วยคีย์ `(impact_process_id, competitor_store_code, period_key)` **ก่อน** ยิงเข้า DB · แถวที่ `competitor_store_code` ว่างต้องแปลงเป็น NULL แล้ว dedup ด้วย `branch_th` แทน | ไม่ dedup ก่อน จะชน `uq_impact_competitor` แล้วทั้ง chunk fail |
 
 #### ค่าคงที่และโดเมนที่ใช้ในเงื่อนไขข้างบน
 
@@ -209,7 +228,7 @@ Job 3 ตัดสินเรื่องเดียวแต่พลาด�
 | ค่า | โดเมน / ค่าที่ระบบเดิมใช้ | ที่มา |
 | --- | --- | --- |
 | ขนาด chunk | 10,000 แถว | พฤติกรรมเดิมของ `ImportImpactCompetitor` |
-| คีย์กันซ้ำ | `UNIQUE (impact_process_id, competitor_code, period_key)` | `uq_impact_competitor` ใน DDL |
+| คีย์กันซ้ำ | `UNIQUE (impact_process_id, competitor_store_code, period_key)` — **คีย์เป็นสาขา ไม่ใช่แบรนด์** | `uq_impact_competitor` ใน DDL (แก้ 2026-09-09) |
 
 ## 6. Button / User Action Mapping
 
@@ -248,15 +267,15 @@ Job 3 ตัดสินเรื่องเดียวแต่พลาด�
 | src/modules/sgi/job-3-import-impact-competitor.service.spec.ts | unit test ของ service — repo นี้วาง spec ไว้ข้างไฟล์จริงเสมอ (`jest` + `npm run test:ci` มี coverage/SonarQube) |
 | src/modules/sgi/dto/job-3-import-impact-competitor-input.dto.ts | DTO ของ `INPUT` (JSON) พร้อม `class-validator` ตามตารางในหัวข้อ 9.2 — parse ไม่ผ่านต้อง fail ก่อนแตะ DB |
 | src/modules/sgi/sgi.module.ts | NestJS module ของกลุ่มงานประกันรายได้ — ผูก service ทุกตัวของ SGI เข้ากับ `TypeOrmModule` (ไฟล์ร่วมของทุก job ให้ merge ไม่ใช่เขียนทับ) |
-| src/main.ts | **เพิ่ม `case 'sgi-job-3-import-impact-competitor':`** ในสวิตช์เดิม → `await import('./modules/sgi/job-3-import-impact-competitor.service')` แล้ว `app.get(ImportImpactCompetitorService).execute(input)` (ไฟล์กลางของทุก job — เป็นจุด merge conflict ที่ต้องระวัง) |
+| src/main.ts | **เพิ่ม `case 'sgi-import-impact-competitor':`** ในสวิตช์เดิม → `await import('./modules/sgi/job-3-import-impact-competitor.service')` แล้ว `app.get(ImportImpactCompetitorService).execute(input)` (ไฟล์กลางของทุก job — เป็นจุด merge conflict ที่ต้องระวัง) |
 | src/entities/sgi-*.entity.ts | entity ของตาราง `sgi_*` ที่หัวข้อ Reference DB Mapping อ้างถึง — **ยังไม่มีใน repo เลยสักตัว** ต้องสร้างใหม่ทั้งหมด |
 | src/config/config.ts | เพิ่ม `export const sgiJob3Config` ตามแบบของไฟล์นี้ (โปรเจกต์ไม่ใช้ `registerAs`) — ค่าคงที่ทางธุรกิจของ Job 3 |
 
-#### การลงทะเบียนใน `src/main.ts` (job `sgi-job-3-import-impact-competitor`)
+#### การลงทะเบียนใน `src/main.ts` (job `sgi-import-impact-competitor`)
 
 ```js
 // src/main.ts — เพิ่มเคสนี้ในสวิตช์เดิม (เรียงต่อจาก job ของ SGI ตัวก่อนหน้า)
-      case 'sgi-job-3-import-impact-competitor': {
+      case 'sgi-import-impact-competitor': {
         const { ImportImpactCompetitorService } = await import('./modules/sgi/job-3-import-impact-competitor.service');
         const job3importimpactcompetitorService = app.get(ImportImpactCompetitorService);
         await job3importimpactcompetitorService.execute(input);   // input = JSON ที่ parse จาก INPUT/argv[2] แล้ว
@@ -264,11 +283,11 @@ Job 3 ตัดสินเรื่องเดียวแต่พลาด�
       }
 ```
 
-`main.ts` เรียก `StatementService.logInterfest('sgi-job-3-import-impact-competitor', input)` ให้อยู่แล้วก่อนเข้าสวิตช์ → **ไม่ต้องเขียน log ลง `integration_log` เองซ้ำ** · และ `BATCH_END` ที่ท้ายไฟล์จะสรุป `batchStatus` + `durationMs` ให้อัตโนมัติ หน้าที่ของ service คือ throw เมื่อทำงานไม่สำเร็จเท่านั้น
+`main.ts` เรียก `StatementService.logInterfest('sgi-import-impact-competitor', input)` ให้อยู่แล้วก่อนเข้าสวิตช์ → **ไม่ต้องเขียน log ลง `integration_log` เองซ้ำ** · และ `BATCH_END` ที่ท้ายไฟล์จะสรุป `batchStatus` + `durationMs` ให้อัตโนมัติ หน้าที่ของ service คือ throw เมื่อทำงานไม่สำเร็จเท่านั้น
 
 ### 9.2 Config Schema ของ Job 3 (backend config / env)
 
-ตารางเวลาของ Job 3 คือ `0 07 7 * *` (ทุกวันที่ 7 เวลา 07:00) — ⚠️ **ตัวจริงตั้งที่ AWS Batch scheduled event ไม่ใช่ในโค้ด** (repo นี้ไม่มี `@Cron` เลย) ค่า `SGI_JOB3_CRON` เก็บไว้เป็นเอกสารประกอบ/ตรวจสอบเท่านั้น · `SGI_JOB3_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล (กันกรณี AWS Batch ยังยิงเข้ามา)
+ตารางเวลาของ Job 3 คือ `30 07 7 * *` (ทุกวันที่ 7 เวลา 07:30 — **เหลื่อมหลัง Job 2 (07:00) เพราะต้องรอแถวแม่** · ⚠️ เวลาเหลื่อมไม่ใช่การรับประกัน ต้องตั้ง dependency ที่ AWS Batch) — ⚠️ **ตัวจริงตั้งที่ AWS Batch scheduled event ไม่ใช่ในโค้ด** (repo นี้ไม่มี `@Cron` เลย) ค่า `SGI_JOB3_CRON` เก็บไว้เป็นเอกสารประกอบ/ตรวจสอบเท่านั้น · `SGI_JOB3_ENABLED=false` ให้ `execute()` จบทันทีแบบ SUCCESS พร้อม log เหตุผล (กันกรณี AWS Batch ยังยิงเข้ามา)
 
 ```ts
 // src/config/config.ts — เพิ่มบล็อกนี้ต่อท้าย (repo ใช้ export const ไม่ใช้ registerAs)
@@ -284,10 +303,9 @@ export interface Job3Config {
   enabled: boolean;
   /** ตารางเวลาของ job นี้ — บันทึกไว้เพื่ออ้างอิงเท่านั้น ตัวจริงตั้งที่ AWS Batch scheduled event */
   cron: string;
-  /** กำหนดการรัน (Cron) — ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh; Operations ตรวจ deployment path และ owner permission ก่อนขึ้น production */
-  cron: string;
-  /** Argument (งวด) — รูปแบบ YYYY|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง */
-  argument: string;
+  /** ⚠️ ไม่มีฟิลด์นี้โดยตั้งใจ — argument ของระบบใหม่มาจาก `INPUT` (JSON) ตามหัวข้อ 9.2
+   *  ไม่ใช่ env สตริงแบบ `ZONES|YYYY|MM` ของระบบเดิม (และค่านั้นเป็นปี พ.ศ.)
+   *  ถ้าต้องการค่าตั้งต้นของงวด ให้คำนวณ "เดือนที่แล้ว" ตามเวลา Asia/Bangkok ในโค้ด */
   /** Chunk Size — จำนวนแถวต่อรอบ insert */
   chunkSize: number;
   /** Source View — SELECT DISTINCT / map คอลัมน์ NAMT -> NAME_TH, BRANCHT -> BRANCH_TH */
@@ -301,9 +319,7 @@ export interface Job3Config {
 export class SgiJob3Config implements Job3Config {
   // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)
   enabled = (process.env.SGI_JOB3_ENABLED ?? 'true') === 'true';
-  cron = process.env.SGI_JOB3_CRON ?? '0 07 7 * *';
-  cron = process.env.SGI_JOB3_CRON ?? '0 07 7 * *'; // TODO: แก้ผ่าน env/config file แล้ว deploy
-  argument = process.env.SGI_JOB3_ARGUMENT ?? '2569|06'; // TODO: ปีเป็น พ.ศ. ตามวิว ALLMAP — ค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง (⚠️)
+  cron = process.env.SGI_JOB3_CRON ?? '30 07 7 * *';
   chunkSize = Number(process.env.SGI_JOB3_CHUNK_SIZE ?? 10000); // TODO: แก้ผ่าน env/config file แล้ว deploy
   sourceView = process.env.SGI_JOB3_SOURCE_VIEW ?? 'COMPETITOR_IMPACT_VIEW'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
   mailTo = process.env.SGI_JOB3_MAIL_TO ?? ''; // TODO: ผู้รับอีเมลแจ้ง error คั่นด้วย comma (เดิม: config mailTo / storeretention)
@@ -373,8 +389,8 @@ export class ImportImpactCompetitorService {
 
   // เป็นงวดใหม่ (ยังไม่เคยนำเข้า)?
   //   เงื่อนไขจริง: ดูตารางในหัวข้อ "เงื่อนไขตัดสิน (Decision Rules)" ของเอกสารฉบับนี้
-  async check02ResolvePeriod(state: JobState): Promise<boolean> {
-    throw new Error('check02ResolvePeriod: ยังไม่ได้ implement — ห้าม deploy ทั้งที่ยังไม่เขียนเงื่อนไขจริง');
+  async check02Insert(state: JobState): Promise<boolean> {
+    throw new Error('check02Insert: ยังไม่ได้ implement — ห้าม deploy ทั้งที่ยังไม่เขียนเงื่อนไขจริง');
   }
 
   // SELECT DISTINCT จาก COMPETITOR_IMPACT_VIEW
@@ -393,7 +409,7 @@ export class ImportImpactCompetitorService {
     throw new Error('step05Insert: ยังไม่ได้ implement — ดู SQL ที่หัวข้อ Repository / SQL และกติกาที่หัวข้อเงื่อนไขตัดสิน');
   }
 
-  // จำนวนที่ insert = จำนวนต้นทาง?
+  // reconcile: inserted + rejected + deduplicated = จำนวนต้นทาง?
   //   เงื่อนไขจริง: ดูตารางในหัวข้อ "เงื่อนไขตัดสิน (Decision Rules)" ของเอกสารฉบับนี้
   async check06Insert(state: JobState): Promise<boolean> {
     throw new Error('check06Insert: ยังไม่ได้ implement — ห้าม deploy ทั้งที่ยังไม่เขียนเงื่อนไขจริง');
@@ -409,11 +425,11 @@ export class ImportImpactCompetitorService {
 | ลำดับ | ชนิด | ขั้นตอนจากผัง | Method ที่ต้อง implement | เส้นทาง NO / error |
 | --- | --- | --- | --- | --- |
 | 1 | start | เริ่ม | createState() | - |
-| 2 | decision | เป็นงวดใหม่ (ยังไม่เคยนำเข้า)? | check02ResolvePeriod() | [branch] ข้ามทั้งงวด — ไม่มี upsert ต้องลบงวดก่อนจึงนำเข้าใหม่ได้ |
+| 2 | decision | เป็นงวดใหม่ (ยังไม่เคยนำเข้า)? | check02Insert() | [end] ข้ามทั้งงวดแล้วจบด้วยสถานะ SKIPPED — ไม่ query ไม่ insert |
 | 3 | io | SELECT DISTINCT จาก COMPETITOR_IMPACT_VIEW | step03Query() | throw JobFailedError เมื่อทำไม่สำเร็จ |
 | 4 | decision | พบข้อมูลต้นทาง? | check04Condition() | [end] จบการทำงาน |
 | 5 | process | insert ทีละ 10,000 แถว (ผูก impact_process_id) | step05Insert() | throw JobFailedError เมื่อทำไม่สำเร็จ |
-| 6 | decision | จำนวนที่ insert = จำนวนต้นทาง? | check06Insert() | [err] Rollback + ส่งเมลแจ้งล้มเหลว |
+| 6 | decision | reconcile: inserted + rejected + deduplicated = จำนวนต้นทาง? | check06Insert() | [err] throw ภายใน transaction เพื่อให้ rollback ทั้งงวด |
 | 7 | end | Commit / จบ | summarize() | - |
 
 ```ts
@@ -437,16 +453,14 @@ export class ImportImpactCompetitorJob {
 
   async run(ctx: JobRunContext): Promise<JobRunResult> {
     const startedAt = Date.now();
-    // TODO: state ถือ counter (read/written/skipped/rejected) และค่าจาก job3Config
+    // TODO: state ถือ candidates ที่อ่านมา + counter (read/written/skipped/rejected/marked)
+    //       และค่าจาก job3Config — ทุก counter ต้องถูกอัปเดตจาก record จริง ไม่ใช่ค่าคงที่
     const state = this.service.createState(ctx);
     try {
-      // ขั้นที่ 2 (decision): เป็นงวดใหม่ (ยังไม่เคยนำเข้า)? · TODO: กันซ้ำระดับงวด (Errata E15)
-      const ok02 = await this.service.check02ResolvePeriod(state);
-      if (!ok02) { // NO → ข้ามทั้งงวด — ไม่มี upsert ต้องลบงวดก่อนจึงนำเข้าใหม่ได้
-        // TODO: เส้น NO ของขั้นนี้เป็น branch ระดับ record — ผังไม่ได้ระบุว่าหยุดหรือไปต่อ
-        //   ถ้าเป็น 'ข้ามรายการ'      -> state.skipped += 1; แล้ว continue ในลูปของ record
-        //   ถ้าเป็น 'ตั้งค่าแล้วไปต่อ' -> เรียก service ตั้งค่าสถานะ แล้วเดินขั้นถัดไป (ห้าม return)
-        //   ถ้าเป็น 'คงสถานะเดิม/ไม่เปิดงาน' -> หยุดเฉพาะ record นี้ ห้ามไหลไปขั้นถัดไป
+      // ขั้นที่ 2 (decision): เป็นงวดใหม่ (ยังไม่เคยนำเข้า)? · TODO: กันซ้ำระดับงวด (Errata E15) · บันทึก existingRowCount + skippedPeriod=true · alert เมื่อ existingRowCount ไม่สมเหตุสมผล
+      const ok02 = await this.service.check02Insert(state);
+      if (!ok02) { // NO → ข้ามทั้งงวดแล้วจบด้วยสถานะ SKIPPED — ไม่ query ไม่ insert
+        return this.summarize(state, 'SKIPPED', startedAt);
       }
       // ขั้นที่ 3: SELECT DISTINCT จาก COMPETITOR_IMPACT_VIEW
       await this.service.step03Query(state);
@@ -455,14 +469,14 @@ export class ImportImpactCompetitorJob {
       if (!ok04) { // NO → จบการทำงาน
         return this.summarize(state, 'SKIPPED', startedAt);
       }
-      // === transaction boundary === TODO: หนึ่ง transaction + savepoint (insert เป็น chunk ละ 10,000)
+      // === transaction boundary === TODO: transaction เดียวคลุมทั้งงวด (insert เป็น chunk ละ 10,000 แต่ commit ครั้งเดียวตอนจบ) · reconcile ต้องอยู่ในขอบเขต transaction · chunk ใดล้ม = rollback ทั้งงวด · ห้ามซ้อน transaction สองชั้นแบบระบบเดิม
       await this.dataSource.transaction(async (manager: EntityManager) => {
-        // ขั้นที่ 5: insert ทีละ 10,000 แถว (ผูก impact_process_id) · TODO: ช่องทางต้นทาง ALM เก็บที่ sgi_fgi_impact_processes.datasource — sgi_fgi_impact_competitors ไม่มีคอลัมน์นี้ · map คอลัมน์ NAMT → name_th และ BRANCHT → branch_th (NAMT/BRANCHT เป็นคอลัมน์ของวิวฝั่ง ALLMAP)
+        // ขั้นที่ 5: insert ทีละ 10,000 แถว (ผูก impact_process_id) · TODO: map COMPET_ID → competitor_store_code (ว่าง → NULL) · map ชื่อแบรนด์ → brand_code (map ไม่ได้ = NULL + นับ unmapped) · NAMT → name_th · BRANCHT → branch_th (NAMT/BRANCHT เป็นชื่อคอลัมน์จริงของวิว ALLMAP)
         await this.service.step05Insert(state, manager);
+        // ขั้นที่ 6 (decision): reconcile: inserted + rejected + deduplicated = จำนวนต้นทาง? · TODO: ⚠️ ต้องตรวจ **ภายใน** transaction ก่อน commit — ถ้าตรวจหลัง commit ข้อความ Rollback จะไม่เป็นความจริง
+        const ok06 = await this.service.check06Insert(state);
+        if (!ok06) throw new JobFailedError('JOB3_STEP06', 'throw ภายใน transaction เพื่อให้ rollback ทั้งงวด');
       });
-      // ขั้นที่ 6 (decision): จำนวนที่ insert = จำนวนต้นทาง? · TODO: ตรวจ reconcile จำนวนแถวก่อน commit
-      const ok06 = await this.service.check06Insert(state);
-      if (!ok06) throw new JobFailedError('JOB3_STEP06', 'Rollback + ส่งเมลแจ้งล้มเหลว');
       return this.summarize(state, 'SUCCESS', startedAt);
     } catch (error) {
       // TODO: error path ของ Job 3 — กันซ้ำระดับงวดเท่านั้น — ไม่ใช่ upsert (E15)
@@ -506,12 +520,21 @@ export class BatchRunner {
   private readonly logger = new Logger(BatchRunner.name);
   constructor(@Inject('DATA_SOURCE') private readonly dataSource: DataSource) {}
 
-  async runExclusive<T>(jobNo: string, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {
+  // period = งวดที่รอบนี้ทำงาน ('YYYY-MM') — เป็นส่วนหนึ่งของคีย์ล็อก ไม่ใช่แค่หมายเลข job
+  // (เจอจริง 2026-09-09: ล็อกด้วย jobNo อย่างเดียว = คนละงวดก็รันพร้อมกันไม่ได้
+  //  ทั้งที่เอกสารระบุว่าคนละงวดต้องรันขนานกันได้ · ส่ง period = null ถ้าต้องการล็อกทั้ง job)
+  async runExclusive<T>(jobNo: string, period: string | null, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {
     // TODO: ต้องใช้ QueryRunner (connection เดียวบน master) — dataSource.query() ของโปรเจกต์นี้
     //       route SQL ที่ขึ้นต้นด้วย SELECT ไป slave pool ทำให้ lock ไปตกที่ replica คนละ connection
     const runner = this.dataSource.createQueryRunner('master');
     await runner.connect();
-    const objectId = JOB_LOCK_KEYS[jobNo];
+    // pg_try_advisory_lock(int4, int4) — objectId ต้องอยู่ในช่วง int4
+    //   ล็อกทั้ง job : objectId = JOB_LOCK_KEYS[jobNo]
+    //   ล็อกรายงวด  : ผสมงวดเข้าไปด้วย hashtext() แล้วบีบให้อยู่ในช่วงที่ปลอดภัย
+    const baseId = JOB_LOCK_KEYS[jobNo];
+    const objectId = period === null ? baseId
+      : (await runner.query('SELECT (hashtext($1) & 2147483647) % 1000000 + $2 * 1000000 AS id',
+                            [period, baseId]))[0].id;
     try {
       const [{ locked }] = await runner.query(
         'SELECT pg_try_advisory_lock($1, $2) AS locked',
@@ -519,7 +542,7 @@ export class BatchRunner {
       );
       if (!locked) {
         // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล
-        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo }));
+        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo, period }));
         return { status: 'SKIPPED_LOCKED' };
       }
       return await fn();
@@ -548,11 +571,11 @@ repository ของ Job 3 ประกาศเป็น factory provider (`{pr
 -- [W] sgi_fgi_impact_competitors : insert รายงวด (งวดล่าสุดต่อร้าน) ดึงจาก ALLMAP · ช่องทางต้นทาง ALM เก็บที่ sgi_fgi_impact_processes.datasource
 -- คอลัมน์มาจาก DDL จริง — ตัดคอลัมน์ที่ job นี้ไม่ได้เขียนออก แล้วเลื่อนเลข $n ให้ตรง
 INSERT INTO sgi_fgi_impact_competitors
-  (impact_process_id, competitor_code, period_key, branch_th, closed_date, name_th, opened_date)
-VALUES ($1 /* impact_process_id */, $2 /* competitor_code */, $3 /* period_key */, $4 /* branch_th */, $5 /* closed_date */, $6 /* name_th */, $7 /* opened_date */)
-ON CONFLICT (impact_process_id, competitor_code, period_key)   -- unique key จริงตาม DDL ของ sgi_fgi_impact_competitors (ห้ามเดา)
-DO UPDATE SET branch_th = EXCLUDED.branch_th, closed_date = EXCLUDED.closed_date, name_th = EXCLUDED.name_th, opened_date = EXCLUDED.opened_date,
-       updated_at = NOW();
+  (impact_process_id, period_key, branch_th, brand_code, closed_date, competitor_key, competitor_store_code, name_en, name_th, opened_date, subzone_code, zone_code)
+VALUES ($1 /* impact_process_id */, $2 /* period_key */, $3 /* branch_th */, $4 /* brand_code */, $5 /* closed_date */, $6 /* competitor_key */, $7 /* competitor_store_code */, $8 /* name_en */, $9 /* name_th */, $10 /* opened_date */, $11 /* subzone_code */, $12 /* zone_code */)
+ON CONFLICT (impact_process_id, competitor_store_code, period_key)   -- unique key จริงตาม DDL ของ sgi_fgi_impact_competitors (ห้ามเดา)
+DO NOTHING;   -- ตามสัญญา idempotency ของ job นี้: คู่ที่มีอยู่แล้วต้องข้ามเงียบ ห้ามอัปเดตทับ
+-- ⚠️ DO NOTHING ไม่คืนแถว — ถ้าต้องใช้ id ต่อ ให้ SELECT ซ้ำด้วย business key
 ```
 
 ### 9.6 การแจ้งเตือนและการรันซ้ำของ Job 3
@@ -596,7 +619,7 @@ export class JobFailureNotifier {
           period: ctx.period, triggeredBy: ctx.triggeredBy,
           output: 'sgi_fgi_impact_competitors',
           errorMessage: error.message,
-          rerunNote: 'ต้องลบข้อมูลงวดเองก่อน re-import แล้วตรวจจำนวนแถวเทียบต้นทาง',
+          rerunNote: 'งวดที่มีข้อมูลแล้วถูกข้าม (ไม่อัปเดตของเดิม) — ต้องลบข้อมูลงวดเองก่อน re-import แล้วตรวจจำนวนแถวเทียบต้นทาง',
         },
       });
     } catch (mailError) {
@@ -609,11 +632,11 @@ export class JobFailureNotifier {
 
 #### 9.6.2 Checklist การ rerun
 
-- กติกา rerun ของ Job 3: ต้องลบข้อมูลงวดเองก่อน re-import แล้วตรวจจำนวนแถวเทียบต้นทาง
-- ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: หนึ่ง transaction + savepoint (insert เป็น chunk ละ 10,000)
+- กติกา rerun ของ Job 3: งวดที่มีข้อมูลแล้วถูกข้าม (ไม่อัปเดตของเดิม) — ต้องลบข้อมูลงวดเองก่อน re-import แล้วตรวจจำนวนแถวเทียบต้นทาง
+- ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: transaction เดียวคลุมทั้งงวด (insert เป็น chunk ละ 10,000 แต่ commit ครั้งเดียวตอนจบ) · reconcile ต้องอยู่ในขอบเขต transaction · chunk ใดล้ม = rollback ทั้งงวด · ห้ามซ้อน transaction สองชั้นแบบระบบเดิม
 - ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: กันซ้ำระดับงวดเท่านั้น — ไม่ใช่ upsert (E15)
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
-- สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=3 --period=&lt;YYYYMM&gt;`
+- สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API) — local: `JOB_NAME=sgi-import-impact-competitor INPUT='{"year":2026,"month":6}' npm run start` · AWS Batch: `node dist/main.js '{"year":2026,"month":6}' sgi-import-impact-competitor` (quote เดี่ยวครอบ JSON เสมอ) · ตรวจผลด้วย `echo $?` ต้องเป็น 0 เมื่อสำเร็จ
 - หลังรันซ้ำ ตรวจ output `sgi_fgi_impact_competitors` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
 - ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 
@@ -622,11 +645,11 @@ export class JobFailureNotifier {
 | Step | Description |
 | --- | --- |
 | 1 | เริ่ม |
-| 2 | เป็นงวดใหม่ (ยังไม่เคยนำเข้า)? \| No: ข้ามทั้งงวด — ไม่มี upsert ต้องลบงวดก่อนจึงนำเข้าใหม่ได้ (กันซ้ำระดับงวด (Errata E15)) |
+| 2 | เป็นงวดใหม่ (ยังไม่เคยนำเข้า)? \| No: ข้ามทั้งงวดแล้วจบด้วยสถานะ SKIPPED — ไม่ query ไม่ insert (กันซ้ำระดับงวด (Errata E15) · บันทึก existingRowCount + skippedPeriod=true · alert เมื่อ existingRowCount ไม่สมเหตุสมผล) |
 | 3 | SELECT DISTINCT จาก COMPETITOR_IMPACT_VIEW |
 | 4 | พบข้อมูลต้นทาง? \| No: จบการทำงาน |
-| 5 | insert ทีละ 10,000 แถว (ผูก impact_process_id) (ช่องทางต้นทาง ALM เก็บที่ sgi_fgi_impact_processes.datasource — sgi_fgi_impact_competitors ไม่มีคอลัมน์นี้ · map คอลัมน์ NAMT → name_th และ BRANCHT → branch_th (NAMT/BRANCHT เป็นคอลัมน์ของวิวฝั่ง ALLMAP)) |
-| 6 | จำนวนที่ insert = จำนวนต้นทาง? \| No: Rollback + ส่งเมลแจ้งล้มเหลว (ตรวจ reconcile จำนวนแถวก่อน commit) |
+| 5 | insert ทีละ 10,000 แถว (ผูก impact_process_id) (map COMPET_ID → competitor_store_code (ว่าง → NULL) · map ชื่อแบรนด์ → brand_code (map ไม่ได้ = NULL + นับ unmapped) · NAMT → name_th · BRANCHT → branch_th (NAMT/BRANCHT เป็นชื่อคอลัมน์จริงของวิว ALLMAP)) |
+| 6 | reconcile: inserted + rejected + deduplicated = จำนวนต้นทาง? \| No: throw ภายใน transaction เพื่อให้ rollback ทั้งงวด (⚠️ ต้องตรวจ **ภายใน** transaction ก่อน commit — ถ้าตรวจหลัง commit ข้อความ Rollback จะไม่เป็นความจริง) |
 | 7 | Commit / จบ |
 
 ## 11. Acceptance Criteria

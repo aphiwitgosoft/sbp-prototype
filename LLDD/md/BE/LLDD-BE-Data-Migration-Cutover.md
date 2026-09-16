@@ -28,7 +28,7 @@ Common contract reference: ทุกหัวข้อ API/FE ต้องยึ
 
 ## 2. Screen / Functional Scope
 
-- Source-to-target mapping ระดับตาราง/คอลัมน์ (ORA FCS_FRN · MSSQL CPA_FRN_FGI -> 20 ตาราง)
+- Source-to-target mapping ระดับตาราง/คอลัมน์ (ORA FCS_FRN · MSSQL CPA_FRN_FGI -> 21 ตาราง)
 - การแปลงคีย์: polymorphic TRANSACTION_PK -> typed FK · CompDocumentID -> doc_no · IMPACT_PROCESS_ID -> impact_process_id
 - แผน cutover เป็นรอบ (dry-run -> delta -> freeze -> final) และ rollback
 - Reconcile: นับแถว ยอดเงิน และ checksum ต่อโซน
@@ -73,15 +73,19 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Data Migration and Cutover_
 | FGI_IMPACT_STORE_ON_PROCESS | ORA FCS_FRN | sgi_fgi_impact_processes | PK IMPACT_PROCESS_ID (seq SEQ_FGI_IMPACT_PROCESS) เป็น hub ของทั้งโซน A · **ต้อง migrate คอลัมน์รอบชดเชยด้วย (gap F8 · รับเข้าโครง 2026-08-21)**: `LAST_COMPENSATE_SEQ/_SEQ_NO -> last_compensate_seq/_seq_no` · `START/END_COMPENSATE_MONTH-YEAR -> start/end_compensate_month/year` · `FLAG_ACTION -> flag_action` · `DATASOURCE -> datasource` · ⚠️ `FLAG_ACTION` โดเมนจริงคือ **Y/W/N** (active = `IN ('Y','W')`) ไม่ใช่ Y/N — Job 6 เขียน `Y->W` ตอนพัก/รอจ่าย ถ้า CHECK ปลายทางรับแค่ Y/N แถวกลุ่มนี้จะ migrate ไม่ผ่าน · ทั้ง 4 กลุ่มนี้คือค่าที่ Job 8b ใช้ตัดสินจุดเข้า flow |
 | FGI_IMPACT_STORE | ORA FCS_FRN | sgi_fgi_impact_stores + sgi_impacted_stores | แถวฝั่ง `_I` ทำ distinct เข้า sgi_impacted_stores · ที่เหลือเป็นคู่ร้าน · **คอลัมน์ที่รับเข้าโครง 2026-09-02**: `FLAG_VERIFY -> verify_status` (W/P/N ตรงตัว) · `CREATE_BY -> created_by` / `UPDATE_BY -> updated_by` (โดเมน `ALM`/`STA`/`USER` — ค่าอื่นในข้อมูลเดิมต้อง map เป็น `USER` และรายงานจำนวน) · `CREATE_DATE -> created_at` (กฎ "ตัดทิ้งเมื่อเก่ากว่า 12 เดือน" ของ Job 2 อ้างคอลัมน์นี้ — ห้ามใส่ค่า sysdate ตอน migrate ไม่งั้นแถวเก่าจะไม่ถูกตัดทิ้ง) |
 | FGI_IMPACT_STORE_COMPENSATE | ORA FCS_FRN | **sgi_fgi_impact_compensations** (รับเข้าโครง 2026-08-21 · gap F1) | `COMPENSATE_FORECAST -> forecast_amount` · `COMPENSATE_ADJUST -> adjust_amount` · `COMPENSATE_SEQ/_SEQ_NO -> compensate_seq/_seq_no` · UK (impact_process_id, compensate_month) · ใช้นับยอด 0 ติดกันกี่งวดด้วย `COALESCE(adjust_amount, forecast_amount) = 0` — เป็น input ของ Job 8b ชั้นที่ 2 ของเคส ② ต่อเนื่อง |
+| FGI_IMPACT_STORE_INFO | ORA FCS_FRN | sgi_compensation_documents (+ `approver_snapshot` JSONB) | **ตกหล่นจากตารางนี้จนถึง 2026-09-13** — ตรวจฐานจริงแล้วมี **429 แถว** · เก็บ snapshot ร้านที่ถูกกระทบ + ผู้อนุมัติ ณ เวลาเปิดเอกสาร · เอกสาร `batchjob/JOB-08` ระบุปลายทางไว้แล้วแต่ไม่เคยถูกยกมาที่แผน migration |
+| FGI_NEW_STORE_INFO | ORA FCS_FRN | sgi_document_new_stores | **ตกหล่นจากตารางนี้จนถึง 2026-09-13** — ตรวจฐานจริงแล้วมี **492 แถว** · ร้านเปิดใหม่ที่ผูกกับเอกสาร (ดู `batchjob/JOB-09`) |
+| FGI_NEW_STORE_COMPENSATE | ORA FCS_FRN | sgi_document_new_stores (`%ชดเชย` ต่อร้านใหม่) | **ตกหล่นจากตารางนี้จนถึง 2026-09-13** — ตรวจฐานจริงแล้วมี **473 แถว** · สัดส่วน %ชดเชยต่อร้านใหม่ ซึ่งกติกาบังคับว่ารวมกันต้องได้ 100% พอดี — **ต้อง reconcile หลัง load** |
+| FGI_WS_LOG | ORA FCS_FRN | — **ไม่ migrate** (ตัดทิ้งโดยตั้งใจ) | ⚠️ **ตรวจฐานจริง 2026-09-13 พบ 20,704 แถว และถูกใช้ในโค้ด Java เดิม 4 ไฟล์** — ไม่ใช่ "ตารางที่เสนอไว้" อย่างที่เคยเขียนไว้ · ระบบใหม่ใช้ `integration_log` ของ SBP เดิม ทำหน้าที่นี้แทน (log payload ราย call) ส่วน ACK ระดับแถวอยู่ที่ `sgi_interface_transactions` · **log เดิมไม่ถูกยกมา** — ถ้าต้องสืบย้อนต้องเปิดฐานเดิมอ่านเอง ต้องยืนยันว่ารับได้ |
 | FGI_IMPACT_STORE_SALES | ORA FCS_FRN | sgi_fgi_impact_sales_summaries | key STORECODE_I + MONTH + YEAR |
 | FGI_IMPACT_STORE_SALES_TRN | ORA FCS_FRN | sgi_sales_transactions | 4 หน้าต่าง × 15 วัน — ห้ามใช้ fcs_monthly_sales แทน (รายเดือน ย้อนกลับเป็นรายวันไม่ได้) |
 | FGI_IMPACT_COMPETITOR | ORA FCS_FRN | sgi_fgi_impact_competitors | data_source = ALM |
 | FGI_CONFIRM_RECEIVE_DATA | ORA FCS_FRN | sgi_interface_transactions | TRANSACTION_PK เป็น polymorphic — ต้องแตกตาม DATA_NAME เป็น typed FK |
-| FCS_QSSI_SCORE | ORA FCS_FRN | fcs_qssi_score (sps_store) | ปลายทางมีข้อมูลอยู่แล้ว 23,958,780 แถว — **ไม่ต้อง migrate** เพราะ SGI อ่านอย่างเดียว ห้ามโหลดทับ |
+| FCS_QSSI_SCORE | ORA FCS_FRN | fcs_qssi_score (sps_store) | ปลายทางมีข้อมูลอยู่แล้ว 24,284,545 แถว — **ไม่ต้อง migrate** เพราะ SGI อ่านอย่างเดียว ห้ามโหลดทับ |
 | CompensateFlow | MSSQL CPA_FRN_FGI | sgi_compensation_documents | CompDocumentID -> doc_no · เก็บ round_no/loop_no/allmap_url/statement_id/approver_snapshot |
 | CompensateHistory | MSSQL CPA_FRN_FGI | sgi_consideration_logs | PK ActionID · เติม result_category (APPROVE/REJECT/CANCELLED/PENDING) |
 | ImpactProfile | MSSQL CPA_FRN_FGI | sgi_document_new_stores | ฝั่ง `_N` + %ชดเชย/ยอดต่อร้าน |
-| CompetInCompenProfile | MSSQL CPA_FRN_FGI | sgi_document_competitors | คู่แข่งที่ผูกกับเอกสาร · competitor_code อ้าง master sgi_competitors (11 รหัส 01-11) · แถวที่มาจาก ALLMAP ตั้ง data_source = ALM |
+| CompetInCompenProfile | MSSQL CPA_FRN_FGI | sgi_document_competitors | คู่แข่งที่ผูกกับเอกสาร · **competitor_store_code = รหัสสาขาจาก ALLMAP (ไม่มี FK)** · **brand_code อ้าง master sgi_competitors (11 รหัส 01-11)** · แถวที่มาจาก ALLMAP ตั้ง data_source = ALM |
 | FactorInCompenProfile | MSSQL CPA_FRN_FGI | sgi_document_external_factors | ปัจจัยภายนอกที่ผูกกับเอกสาร · factor_code อ้าง master sgi_external_factors + ช่วงวันที่มีผล |
 | FGI_IMPACT_STORE_COMPENSATE + CompensateFlow | ORA + MSSQL | sgi_compensation_histories | ประวัติชดเชยต่อร้าน/รอบ · submit_account_month (งวดที่ Job 6 ส่งไป STA ผ่าน RabbitMQ) · migrate เป็นข้อมูลอ้างอิงของ SGI — ไม่เขียนกลับ `fr_store_insure` ของระบบเดิม |
 | ImpactCostDetail | MSSQL CPA_FRN_FGI | sgi_document_cost_details | ยอดชดเชยแยกรายเดือน/รายร้านใหม่ |
@@ -93,12 +97,106 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Data Migration and Cutover_
 
 | เรื่อง | อาการถ้าไม่ทำ | กฎที่ต้องใช้ |
 | --- | --- | --- |
-| **ค่าที่ติด CHECK constraint** | **load ล้มทั้ง batch** — DDL มี `CHECK` 23 จุด ถ้าข้อมูลเดิมมีค่านอกโดเมนแม้แถวเดียว INSERT จะถูกปฏิเสธ | **profile ค่าจริงของทุกคอลัมน์ที่มี CHECK ก่อน full load** (`SELECT DISTINCT col, COUNT(*) ... GROUP BY col`) แล้วเทียบกับโดเมนใน DDL · จุดที่เสี่ยงที่สุด: `compensate_status` (`I/C/A/N/S/Z`) · `verify_status` จาก `FLAG_VERIFY` (`W/P/N` — ⚠️ `FgiConstant` ยังมีค่า `Y`/`Z` ประกาศไว้ ถ้าข้อมูลจริงมีต้องตัดสินว่า map เป็นอะไร) · `created_by`/`updated_by` จาก `CREATE_BY`/`UPDATE_BY` (`ALM/STA/USER` — ค่าอื่นให้ map เป็น `USER` แล้วรายงานจำนวน) · `flag_action` (`Y/W/N`) · `data_name` (12 ค่า) · **ห้ามแก้ด้วยการถอด CHECK ออก** — ให้แก้ค่าหรือขยายโดเมนอย่างตั้งใจพร้อมอัปเดต `database.md` |
+| **ค่าที่ติด CHECK constraint** | **load ล้มทั้ง batch** — DDL มี `CHECK` 26 จุด ถ้าข้อมูลเดิมมีค่านอกโดเมนแม้แถวเดียว INSERT จะถูกปฏิเสธ | **profile ค่าจริงของทุกคอลัมน์ที่มี CHECK ก่อน full load** (`SELECT DISTINCT col, COUNT(*) ... GROUP BY col`) แล้วเทียบกับโดเมนใน DDL · จุดที่เสี่ยงที่สุด: `compensate_status` · `verify_status` จาก `FLAG_VERIFY` · `sales_request_status` — **ทั้งสามยืนยันจากข้อมูลจริงแล้ว ดูตารางแมปในข้อ 5.2.1** · `created_by`/`updated_by` จาก `CREATE_BY`/`UPDATE_BY` (`ALM/STA/USER` — ค่าอื่นให้ map เป็น `USER` แล้วรายงานจำนวน) · `flag_action` (`Y/W/N`) · `data_name` (12 ค่า) · **ห้ามแก้ด้วยการถอด CHECK ออก** — ให้แก้ค่าหรือขยายโดเมนอย่างตั้งใจพร้อมอัปเดต `database.md` |
 | leading zero ของรหัสร้าน | ร้าน 00788 กลายเป็น 788 แล้ว join ไม่ติด | lpad(store_code, 5, '0') ทุกจุด · ปลายทางเป็น VARCHAR(5) |
 | ปี พ.ศ./ค.ศ. | วันที่เพี้ยน 543 ปี | เก็บ ค.ศ. ใน DB และ `doc_no` เป็นปี **ค.ศ.** ด้วย (มติ 2026-08-06) · ถ้าของเดิมเป็น พ.ศ. ต้องแปลงตอน migrate ด้วย toAD() |
 | polymorphic key | FK ชี้ผิดตาราง | แตก TRANSACTION_PK ตาม DATA_NAME เป็น impact_process_id / sales_summary_id / doc_no |
 | เลขเอกสารซ้ำ | ออกเลขใหม่ทับของเก่า | หลังโหลด ตั้ง sgi_document_running_numbers.last_running_no = MAX(running) ต่อปี |
 | ยอดขายรายวัน | ข้อมูล 60 วันไม่ครบ ทำให้ธงผิดปกติเพี้ยน | ต้องมาจาก FGI_IMPACT_STORE_SALES_TRN เท่านั้น · fcs_monthly_sales (711,384 แถว) ใช้ cross-check ได้อย่างเดียว |
+
+### 5.2.1 ตารางแมปค่าสถานะตอน migrate (ยืนยันจากฐานเดิมจริง)
+
+ตัวเลขทั้งหมดมาจากการ profile ฐาน Oracle ของระบบเดิมเมื่อ **2026-09-12** (`tools/introspect_legacy_oracle.py` · ตาราง `FGI_IMPACT_STORE_BK_20250515` 26,264 แถว และ `FGI_IMPACT_STORE_SALES_BK_20250515` 8,730 แถว — ตาราง live ถูกรีเซ็ตเมื่อ 2025-05-15 จึงมีแค่ 728 แถว ใช้เป็นภาพแทนไม่ได้) · **แถวที่ยังไม่เคาะทำให้ load ล้มทั้ง batch** เพราะทั้งไฟล์อยู่ใน transaction เดียว
+
+| ค่าเดิม | จำนวนแถวจริง | แมปเป็นอะไรในโครงใหม่ | สถานะ |
+| --- | --- | --- | --- |
+| `FGI_IMPACT_STORE.FLAG_VERIFY` = `N` | 14,424 | `verify_status = 'N'` | ✅ ตรงตัว |
+| `FGI_IMPACT_STORE.FLAG_VERIFY` = `Y` | **8,556** | `verify_status = 'P'` **+** `sales_request_status = 'Y'` — ค่าเดียวของเดิมถือสองความหมาย (ผ่านการตรวจคู่ร้าน **และ** ยอดขายผ่านแล้ว) โครงใหม่แยกเป็นสองคอลัมน์ | 🔴 **ต้องเคาะ** — แมปตรงตัวจะติด CHECK ทันที 8,556 แถว |
+| `FGI_IMPACT_STORE.FLAG_VERIFY` = `W` | 3,064 | `verify_status = 'W'` | ✅ ตรงตัว |
+| `FGI_IMPACT_STORE.FLAG_VERIFY` = `P` | 220 | `verify_status = 'P'` | ✅ ตรงตัว |
+| `FGI_IMPACT_STORE_SALES.FLAG_VERIFY` = `Y` | 6,029 | `sgi_fgi_impact_sales_summaries.sales_status = 'Y'` | ✅ ตรงตัว |
+| `FGI_IMPACT_STORE_SALES.FLAG_VERIFY` = `N` | 2,549 | `sgi_fgi_impact_sales_summaries.sales_status = 'N'` — `N` = ประเมินแล้วยอดไม่ตก (`growth_rate_diff >= 0`) **ไม่ใช่ความผิดพลาด** จึงแมปเป็น `E` ไม่ได้ | ✅ **เคาะแล้ว** (ข้อ 2.37) — โดเมนเดิมมี `N` อยู่แล้ว |
+| `FGI_IMPACT_STORE_SALES.FLAG_VERIFY` = `P` | **151** | `sgi_fgi_impact_sales_summaries.sales_status = 'P'` (ขอแล้วรอผล) — **โดเมนเดิมไม่มี `P` จึงเพิ่มเข้าไป** เป็น `W/P/Y/N/E` | ✅ **เคาะแล้ว** (ข้อ 2.37) |
+| `FGI_IMPACT_STORE_SALES.FLAG_VERIFY` = `W` | 1 | `sales_status = 'W'` | ✅ ตรงตัว |
+| `sgi_fgi_impact_stores.sales_request_status` | — | **ไม่มีต้นทางในระบบเดิม** — เป็นคอลัมน์ใหม่ที่ติดตาม *การขอ* ยอดขายระดับคู่ร้าน (W ยังไม่ขอ · P ขอแล้ว · Y ได้ข้อมูล · E ขอไม่สำเร็จ) คนละเรื่องกับ `sales_status` ที่เป็น *ผลทางธุรกิจ* จึงไม่มี `N` | ℹ️ ไม่เกี่ยวกับ migration |
+| `sales_status` = `E` | 0 | ไม่เคยถูกใช้เลยในระบบเดิม — สงวนไว้สำหรับกรณีที่ Job 5 คำนวณไม่ได้จริง ๆ | ℹ️ ค่าใหม่ของโครงนี้ |
+| `CREATE_BY` = `USER` | **0** | ไม่เคยถูกใช้เลย — ALM 23,126 · STA 3,138 | ℹ️ ค่าใหม่ของโครงนี้ |
+| `UPDATE_BY` | NULL ทั้ง 26,264 แถว | `updated_by` เป็น NULL ได้อยู่แล้ว | ✅ ไม่มีปัญหา |
+| `DATASOURCE` | ALM 4,670 · STA 2,877 | `datasource` ตรงตัว — **ไม่มี `HRS` จริง** | ✅ ไม่มีปัญหา |
+| `FLAG_ACTION` | N 7,545 · Y 2 · W 1 | `flag_action` ตรงตัว (`Y/W/N`) | ✅ ไม่มีปัญหา |
+
+### 5.2.2 คีย์กันซ้ำที่ทำให้ load ล้ม (ยืนยันจากฐานเดิมจริง)
+
+| คีย์ของโครงใหม่ | ข้อมูลเดิมละเมิดกี่กลุ่ม | ต้องทำอะไรก่อน load |
+| --- | --- | --- |
+| `uq_impact_store_pair (impacted_store_code, new_store_code, impact_month)` | **67 กลุ่ม** ในข้อมูลประวัติ · **93 กลุ่ม** ในตาราง live | แถวซ้ำส่วนใหญ่เหมือนกันทุกค่า (`COUNT(DISTINCT distance) = 1`) ต่างแค่ `IMPACT_STORE_ID` → เลือกแถวเดียวด้วยกติกาเดียวกับ tie-breaker ของ Job 2 (`DISTANCE` น้อยสุด) แล้วรายงานจำนวนที่ตัดทิ้ง |
+| `uq_impact_process (impacted_store_code, impact_month)` | **9 กลุ่ม** (ข้อมูลประวัติ) · **8 กลุ่ม** (live) | ✅ **เคาะครบแล้ว (ข้อ 2.38-2 · 2026-09-13)** — `impact_month` = `START_COMPENSATE_YEAR`+`MONTH` · กติกาเลือกแถวอยู่ในหัวข้อ 5.2.4 ด้านล่าง (ตัดสินครบ 9/9 กลุ่ม) · การเติม `datasource` เข้าคีย์ **ไม่ช่วยเลย** (ยังซ้ำ 9 กลุ่มเท่าเดิม) |
+| `storecode_i` / `storecode_n` → `VARCHAR(5)` | 0 (ความยาวจริงสูงสุด = 5 ทั้งที่คอลัมน์เดิมเป็น `VARCHAR2(10)`) | ไม่ต้องทำอะไร — แต่ต้องคง `lpad(..., 5, '0')` ไว้ |
+| `distance_km` → `NUMERIC(8,3)` | 0 (ของเดิมเป็น `NUMBER(3,2)` ค่าจริง 0.03–1.52 กม.) | ไม่ต้องแปลงหน่วย — ของเดิมเก็บเป็นกิโลเมตรอยู่แล้ว · ⚠️ แถว `CREATE_BY = 'STA'` 3,137 แถวมี `DISTANCE = 0` และหน่วยเป็น NULL |
+
+### 5.2.3 การสร้างแถวแม่ `sgi_fgi_impact_processes` ตอน migrate
+
+โครงใหม่บังคับให้**คู่ร้านทุกแถวต้องมีแถวแม่** (`impact_process_id BIGINT NOT NULL` + FK) แต่ระบบเดิมสร้าง `FGI_IMPACT_STORE_ON_PROCESS` **เฉพาะตอนที่รอบชดเชยเริ่มจริง** (`ExportJdbc` · หลังคู่ร้านผ่านเป็น `P` และยอดขายผ่านแล้ว) — **ไม่ใช่ตอนนำเข้า** ผลคือคู่ร้านส่วนใหญ่ไม่มีแถวแม่ในระบบเดิม และ migration ต้อง **สร้างขึ้นใหม่**
+
+| ตัวเลขจากข้อมูลจริง | ค่า |
+| --- | --- |
+| คู่ร้านในระบบเดิม | 26,264 แถว |
+| แถวแม่ที่โครงใหม่ต้องมี = `DISTINCT (storecode_i, year, month)` ของคู่ร้าน | **24,783 แถว** |
+| แถวแม่ที่ระบบเดิมมีจริง | 7,548 แถว (3,143 ร้าน) |
+| **แถวแม่ที่ต้องสร้างขึ้นใหม่ตอน migrate** | 🔴 **17,247 แถว (69.6%)** |
+| แถวแม่ที่ไม่มีคู่ร้านรองรับเลย | **0** — สร้างจากคู่ร้านได้ครบ ไม่มีของตกหล่น |
+
+**กติกาการสร้าง** — สองขั้น ห้ามสลับลำดับ
+
+| ขั้น | ทำอะไร |
+| --- | --- |
+| 1 | สร้างแถวแม่จาก `SELECT DISTINCT storecode_i, year, month FROM FGI_IMPACT_STORE` → `impacted_store_code` · `impact_month = to_char(year)\|\|'-'\|\|lpad(month,2,'0')` · `impact_year = year` |
+| 2 | `LEFT JOIN FGI_IMPACT_STORE_ON_PROCESS` ด้วย `(storecode_i, start_compensate_year, start_compensate_month)` แล้วขนคุณสมบัติของรอบมา: `flag_action` · `datasource` · `last_compensate_seq` · `last_compensate_seq_no` · `start/end_compensate_month\|year` |
+
+🔴 **สองข้อที่ยังต้องเคาะและผูกกับข้อนี้โดยตรง** — 17,247 แถวที่สร้างใหม่จะได้ค่าอะไร:
+
+| คอลัมน์ | ปัญหา | ผลถ้าตั้งผิด |
+| --- | --- | --- |
+| `flag_action` | ✅ เคาะแล้ว 2026-09-13 (ข้อ 2.38) — **17,247 แถวที่สร้างใหม่ใส่ `'N'`** (ยังไม่มีรอบชดเชย) · แถวที่มีต้นทางให้ขน `flag_action` เดิมมาตรง ๆ | ใช้กติกาเดียวกับ Job 2 ที่รันจริง (ใส่ `'N'` ชัดเจน ไม่พึ่ง `DEFAULT 'Y'`) — ตั้ง `Y` ผิด ๆ จะทำให้คิวรี "คู่ที่มีอยู่แล้ว" กันคู่ร้านใหม่ออกเงียบ ๆ |
+| `process_status` | ✅ เคาะแล้ว (ข้อ 2.17) — `IMPORTED` / `SALES_READY` / `READY_DOCUMENT` / `DOCUMENT_CREATED` / `CLOSED` · DDL มี `DEFAULT 'IMPORTED'` แล้ว | ใช้กติกาอนุมานในตารางถัดไป — ห้ามใส่ `IMPORTED` ให้ทุกแถว เพราะ 8,114 แถวมีความคืบหน้าไปแล้วจริง |
+
+**กติกาอนุมาน `process_status` ตอน migrate** — ไล่จากบนลงล่าง เจอข้อแรกที่จริงแล้วหยุด (ตัวเลขจากข้อมูลจริง 2026-09-12)
+
+| ลำดับ | เงื่อนไข | process_status | แถว |
+| --- | --- | --- | --- |
+| 1 | แถวแม่เดิมมี `FLAG_ACTION = 'N'` (รอบปิดแล้ว) | `CLOSED` | **7,542** |
+| 2 | มีแถวใน `FGI_IMPACT_STORE_COMPENSATE` ของงวดนั้น (เคยสร้างเอกสารแล้ว) | `DOCUMENT_CREATED` | **572** |
+| 3 | มีแถวแม่เดิมอยู่ แต่ยังไม่เข้าข้อ 1-2 | `READY_DOCUMENT` | 0 |
+| 4 | มี `FGI_IMPACT_STORE_SALES` ของงวดนั้นที่ `FLAG_VERIFY IN ('Y','N')` | `SALES_READY` | **2,498** |
+| 5 | นอกนั้นทั้งหมด (ส่วนใหญ่คือคู่ร้านที่ถูกตัดทิ้งหรือค้าง `W`) | `IMPORTED` | **14,180** |
+
+⚠️ ผลรวมของตารางนี้คือ **24,792** แต่แถวแม่ที่ต้องมีคือ **24,783** — ต่างกัน **9 แถว** พอดีกับ จำนวนกลุ่มแถวแม่ที่ซ้ำ การ `LEFT JOIN` จึงคืนแถวเกิน · ✅ **แก้ด้วยการตัดแถวซ้ำตามกติกาในข้อ 5.2.4 ก่อน แล้วจึงอนุมาน `process_status`** (ตัดแล้วได้ 24,783 พอดี)
+
+### 5.2.4 กติกาตัดแถวแม่ที่ซ้ำ (`uq_impact_process`)
+
+**มติ 2026-09-13 (DECISIONS ข้อ 2.38-2): เก็บแถวที่ `LAST_COMPENSATE` ใหม่สุด** แต่ข้อมูลจริงบอกว่าเกณฑ์เดียวไม่พอ — **ตัดสินได้แค่ 2 จาก 9 กลุ่ม** เพราะอีก 7 กลุ่ม เหมือนกันทุกคอลัมน์ จึงต้องมี tie-breaker ต่ออีก 2 ชั้น
+
+| ชั้น | เกณฑ์ | เหตุผล |
+| --- | --- | --- |
+| 1 | `last_compensate_year DESC, last_compensate_month DESC` | **มติหลัก** — แถวที่ก้าวหน้ากว่าสะท้อนสถานะล่าสุดจริง · ตัดสินได้ 2 กลุ่ม |
+| 2 | `create_date ASC` | ข้อมูลจริงจับคู่กันเป็น `00:00:00` (แถว backfill ที่ใส่ด้วยมือ/สคริปต์) กับ `17:00:xx` (แถวที่ job สร้างตามตาราง) · ทั้ง 2 กลุ่มที่ชั้น 1 ตัดสินได้ **แถว backfill เป็นผู้ชนะ** การเรียง `ASC` จึงสอดคล้องกัน · ตัดสินอีก 7 กลุ่ม |
+| 3 | `impact_process_id ASC` | กันเสมอเด็ดขาด — ผลต้อง deterministic รันกี่ครั้งก็ได้แถวเดิม |
+
+ยืนยันกับข้อมูลจริง: กติกา 3 ชั้นนี้ **ตัดสินครบทั้ง 9 กลุ่ม (9/9)** เหลือผู้ชนะกลุ่มละ 1 แถว และตัดทิ้ง **9 แถว** — ทำให้จำนวนแถวแม่ลงตัวที่ **24,783** พอดี (ก่อนหน้านี้ตารางอนุมาน `process_status` ในข้อ 5.2.3 รวมได้ 24,792 เพราะ `LEFT JOIN` คืนแถวเกิน 9)
+
+**แถวลูกของแถวที่ถูกตัด — ลบทิ้งได้ ไม่ต้อง repoint**
+
+| ตรวจ | ผล |
+| --- | --- |
+| แถวแม่ที่ถูกตัด | 9 แถว |
+| แถวลูกใน `FGI_IMPACT_STORE_COMPENSATE` ของแถวที่ถูกตัด | 20 แถว |
+| แถวลูกของแถวที่เก็บไว้ (เฉพาะกลุ่มที่ซ้ำ) | 20 แถว |
+| ลูกของแถวที่ถูกตัด ที่**ไม่มี**คู่งวดเดียวกันฝั่งผู้ชนะ | **0 แถว** |
+| คู่ที่ชนกัน 20 คู่ · `compensate_status` ตรงกัน | **20 จาก 20 คู่** |
+
+→ ลูกของแถวที่ถูกตัดเป็น **สำเนาซ้ำของลูกฝั่งผู้ชนะทั้งหมด** (งวดตรงกัน สถานะตรงกัน) จึง **ลบทิ้งพร้อมแถวแม่ได้เลย ไม่เสียข้อมูล และไม่ต้องย้าย FK**
+
+⚠️ **ผลข้างเคียงที่ต้องยอมรับ:** `last_compensate_seq_no` ของแถวที่เก็บไว้จะกระโดด (เช่น กลุ่ม `02985` งวด 2024-03 เก็บแถว `seq_no = 13` แล้วทิ้งแถว `seq_no = 4`) เลขลำดับในระบบใหม่จึงไม่ต่อเนื่อง — **ห้าม renumber** เพราะจะทำให้อ้างอิงย้อนหลังกับระบบเดิมไม่ตรง
 
 ### 5.3 แผน Cutover
 

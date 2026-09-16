@@ -101,7 +101,7 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Job 12 NotifyPendingWork_
 | fcsJar/src/th/co/gosoft/fgi/main/SendMailReport.java | 23-60 | Legacy main entrypoint — เรียก 3 ช่วง 30/45/60 ตามลำดับ |
 | fcsJar/src/th/co/gosoft/fgi/service/MailReportService.java | 168-240 | seperateDay() คัดช่วงอายุงาน + sendEmail() จัดกลุ่มตามโซนและ resolve ผู้รับ GM/OPT |
 
-Line ranges refer to the legacy Java implementation under /Users/bank_mac/gosoft/java/SBP/fcsJar. Use these ranges to preserve business behavior while implementing the target Node job.
+Line ranges refer to the legacy Java implementation under `batchjob/fcsJar/` (path นับจากราก `sbp-prototype/`). Use these ranges to preserve business behavior while implementing the target Node job.
 
 ### 5.93 Target Repository and SQL Contract
 
@@ -211,7 +211,7 @@ Job 12 ตัดสินเรื่องเดียวแต่พลาด�
 
 #### ⚠️ ช่องว่างของ schema ที่ต้องปิดก่อน implement เงื่อนไขข้างบนได้จริง
 
-แถวในตารางนี้ไม่ใช่ "ข้อควรระวัง" แต่เป็น **ของที่ยังไม่มีในโครง 20 ตาราง** — เขียนโค้ดตามเงื่อนไขด้านบนแล้วจะ compile ไม่ผ่าน/คิวรีพังทันที
+แถวในตารางนี้ไม่ใช่ "ข้อควรระวัง" แต่เป็น **ของที่ยังไม่มีในโครง 21 ตาราง** — เขียนโค้ดตามเงื่อนไขด้านบนแล้วจะ compile ไม่ผ่าน/คิวรีพังทันที
 
 | # | สิ่งที่ขาด | ต้องทำอะไรก่อน |
 | --- | --- | --- |
@@ -270,15 +270,15 @@ Job 12 ตัดสินเรื่องเดียวแต่พลาด�
 | src/modules/sgi/job-12-notify-pending-work.service.spec.ts | unit test ของ service — repo นี้วาง spec ไว้ข้างไฟล์จริงเสมอ (`jest` + `npm run test:ci` มี coverage/SonarQube) |
 | src/modules/sgi/dto/job-12-notify-pending-work-input.dto.ts | DTO ของ `INPUT` (JSON) พร้อม `class-validator` ตามตารางในหัวข้อ 9.2 — parse ไม่ผ่านต้อง fail ก่อนแตะ DB |
 | src/modules/sgi/sgi.module.ts | NestJS module ของกลุ่มงานประกันรายได้ — ผูก service ทุกตัวของ SGI เข้ากับ `TypeOrmModule` (ไฟล์ร่วมของทุก job ให้ merge ไม่ใช่เขียนทับ) |
-| src/main.ts | **เพิ่ม `case 'sgi-job-12-notify-pending-work':`** ในสวิตช์เดิม → `await import('./modules/sgi/job-12-notify-pending-work.service')` แล้ว `app.get(NotifyPendingWorkService).execute(input)` (ไฟล์กลางของทุก job — เป็นจุด merge conflict ที่ต้องระวัง) |
+| src/main.ts | **เพิ่ม `case 'sgi-notify-pending-work':`** ในสวิตช์เดิม → `await import('./modules/sgi/job-12-notify-pending-work.service')` แล้ว `app.get(NotifyPendingWorkService).execute(input)` (ไฟล์กลางของทุก job — เป็นจุด merge conflict ที่ต้องระวัง) |
 | src/entities/sgi-*.entity.ts | entity ของตาราง `sgi_*` ที่หัวข้อ Reference DB Mapping อ้างถึง — **ยังไม่มีใน repo เลยสักตัว** ต้องสร้างใหม่ทั้งหมด |
 | src/config/config.ts | เพิ่ม `export const sgiJob12Config` ตามแบบของไฟล์นี้ (โปรเจกต์ไม่ใช้ `registerAs`) — ค่าคงที่ทางธุรกิจของ Job 12 |
 
-#### การลงทะเบียนใน `src/main.ts` (job `sgi-job-12-notify-pending-work`)
+#### การลงทะเบียนใน `src/main.ts` (job `sgi-notify-pending-work`)
 
 ```js
 // src/main.ts — เพิ่มเคสนี้ในสวิตช์เดิม (เรียงต่อจาก job ของ SGI ตัวก่อนหน้า)
-      case 'sgi-job-12-notify-pending-work': {
+      case 'sgi-notify-pending-work': {
         const { NotifyPendingWorkService } = await import('./modules/sgi/job-12-notify-pending-work.service');
         const job12notifypendingworkService = app.get(NotifyPendingWorkService);
         await job12notifypendingworkService.execute(input);   // input = JSON ที่ parse จาก INPUT/argv[2] แล้ว
@@ -286,7 +286,7 @@ Job 12 ตัดสินเรื่องเดียวแต่พลาด�
       }
 ```
 
-`main.ts` เรียก `StatementService.logInterfest('sgi-job-12-notify-pending-work', input)` ให้อยู่แล้วก่อนเข้าสวิตช์ → **ไม่ต้องเขียน log ลง `integration_log` เองซ้ำ** · และ `BATCH_END` ที่ท้ายไฟล์จะสรุป `batchStatus` + `durationMs` ให้อัตโนมัติ หน้าที่ของ service คือ throw เมื่อทำงานไม่สำเร็จเท่านั้น
+`main.ts` เรียก `StatementService.logInterfest('sgi-notify-pending-work', input)` ให้อยู่แล้วก่อนเข้าสวิตช์ → **ไม่ต้องเขียน log ลง `integration_log` เองซ้ำ** · และ `BATCH_END` ที่ท้ายไฟล์จะสรุป `batchStatus` + `durationMs` ให้อัตโนมัติ หน้าที่ของ service คือ throw เมื่อทำงานไม่สำเร็จเท่านั้น
 
 ### 9.2 Config Schema ของ Job 12 (backend config / env)
 
@@ -306,8 +306,6 @@ export interface Job12Config {
   enabled: boolean;
   /** ตารางเวลาของ job นี้ — บันทึกไว้เพื่ออ้างอิงเท่านั้น ตัวจริงตั้งที่ AWS Batch scheduled event */
   cron: string;
-  /** กำหนดการรัน (Cron) — ทุกวันจันทร์ 10:00 น. ตาม workflow.md */
-  cron: string;
   /** ช่วงอายุงานที่เตือน — เป็นช่วง 7 วัน ไม่ใช่ ">= n วัน" — นอกช่วงไม่ส่งเลย (พฤติกรรมเดิมของ MailReportService.seperateDay) */
   param2: string;
   /** กลุ่มผู้รับ — business_user ของระบบ SBP เดิม */
@@ -326,7 +324,6 @@ export class SgiJob12Config implements Job12Config {
   // TODO: ยืนยันค่า default ทุกตัวกับ Ops ก่อนขึ้น production (ไม่มีหน้าจอแก้ค่าแล้ว)
   enabled = (process.env.SGI_JOB12_ENABLED ?? 'true') === 'true';
   cron = process.env.SGI_JOB12_CRON ?? '0 10 * * 1';
-  cron = process.env.SGI_JOB12_CRON ?? '0 10 * * 1'; // TODO: แก้ผ่าน env/config file แล้ว deploy
   param2 = process.env.SGI_JOB12_PARAM2 ?? '30-36 | 45-51 | 60-66 วัน'; // TODO: แก้ผ่าน env/config file แล้ว deploy
   recipients = process.env.SGI_JOB12_RECIPIENTS ?? 'GM group 38 · OPT group 15'; // TODO: แก้ผ่าน env/config file แล้ว deploy
   param4 = process.env.SGI_JOB12_PARAM4 ?? 'ตามโซนของร้านที่ถูกกระทบ (zone)'; // TODO: ค่าคงที่ทางธุรกิจ — เปลี่ยนต้องผ่านการอนุมัติ
@@ -460,7 +457,8 @@ export class NotifyPendingWorkJob {
 
   async run(ctx: JobRunContext): Promise<JobRunResult> {
     const startedAt = Date.now();
-    // TODO: state ถือ counter (read/written/skipped/rejected) และค่าจาก job12Config
+    // TODO: state ถือ candidates ที่อ่านมา + counter (read/written/skipped/rejected/marked)
+    //       และค่าจาก job12Config — ทุก counter ต้องถูกอัปเดตจาก record จริง ไม่ใช่ค่าคงที่
     const state = this.service.createState(ctx);
     try {
       // === transaction boundary === TODO: ยืนยันขอบเขต transaction กับ BA
@@ -525,12 +523,21 @@ export class BatchRunner {
   private readonly logger = new Logger(BatchRunner.name);
   constructor(@Inject('DATA_SOURCE') private readonly dataSource: DataSource) {}
 
-  async runExclusive<T>(jobNo: string, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {
+  // period = งวดที่รอบนี้ทำงาน ('YYYY-MM') — เป็นส่วนหนึ่งของคีย์ล็อก ไม่ใช่แค่หมายเลข job
+  // (เจอจริง 2026-09-09: ล็อกด้วย jobNo อย่างเดียว = คนละงวดก็รันพร้อมกันไม่ได้
+  //  ทั้งที่เอกสารระบุว่าคนละงวดต้องรันขนานกันได้ · ส่ง period = null ถ้าต้องการล็อกทั้ง job)
+  async runExclusive<T>(jobNo: string, period: string | null, fn: () => Promise<T>): Promise<T | { status: 'SKIPPED_LOCKED' }> {
     // TODO: ต้องใช้ QueryRunner (connection เดียวบน master) — dataSource.query() ของโปรเจกต์นี้
     //       route SQL ที่ขึ้นต้นด้วย SELECT ไป slave pool ทำให้ lock ไปตกที่ replica คนละ connection
     const runner = this.dataSource.createQueryRunner('master');
     await runner.connect();
-    const objectId = JOB_LOCK_KEYS[jobNo];
+    // pg_try_advisory_lock(int4, int4) — objectId ต้องอยู่ในช่วง int4
+    //   ล็อกทั้ง job : objectId = JOB_LOCK_KEYS[jobNo]
+    //   ล็อกรายงวด  : ผสมงวดเข้าไปด้วย hashtext() แล้วบีบให้อยู่ในช่วงที่ปลอดภัย
+    const baseId = JOB_LOCK_KEYS[jobNo];
+    const objectId = period === null ? baseId
+      : (await runner.query('SELECT (hashtext($1) & 2147483647) % 1000000 + $2 * 1000000 AS id',
+                            [period, baseId]))[0].id;
     try {
       const [{ locked }] = await runner.query(
         'SELECT pg_try_advisory_lock($1, $2) AS locked',
@@ -538,7 +545,7 @@ export class BatchRunner {
       );
       if (!locked) {
         // TODO: รอบนี้ข้ามไปเฉย ๆ ไม่ถือเป็น error และไม่ต้องส่งอีเมล
-        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo }));
+        this.logger.warn(JSON.stringify({ event: 'job.skipped.locked', jobNo, period }));
         return { status: 'SKIPPED_LOCKED' };
       }
       return await fn();
@@ -573,13 +580,13 @@ repository ของ Job 12 ประกาศเป็น factory provider (`{p
 SELECT transaction_id, version_id, reference_id, current_state_id, current_approver, approver_type, current_status_id, data_json, update_date   -- คอลัมน์จริงจาก SBP/db-schema-sps_store.md (ทั้งตารางมี 9 คอลัมน์) · ตัดที่ job นี้ไม่ได้ใช้ออก
   FROM sps_store.workflow_transaction
  WHERE version_id = $1 AND current_state_id = ANY($2)
-   -- ⚠️ ตารางนี้ไม่มี PK และไม่มี index เลย (19,283 แถว) — ประเมินต้นทุน query ก่อนใช้
+   -- ⚠️ ตารางนี้ไม่มี PK และไม่มี index เลย (19,327 แถว) — ประเมินต้นทุน query ก่อนใช้
  ORDER BY transaction_id   -- ตารางระบบเดิมไม่มี PK ที่ประกาศไว้ · ใช้คอลัมน์นี้ให้ลำดับคงที่
  LIMIT $3 OFFSET $4;  -- อ่านเป็น chunk กัน memory บวม
 
 -- [R] sgi_compensation_documents : เลขเอกสาร · ร้าน · งวด สำหรับเนื้อหาอีเมล
 -- คอลัมน์มาจาก DDL จริงของตารางนี้ (ห้าม SELECT *) · ตรวจว่ามี index รองรับ WHERE ก่อนขึ้น prod
-SELECT id, account_month, account_year, allmap_url, approver_snapshot, created_at, created_by, current_section_code, doc_no, impact_month, impact_process_id, impacted_store_code   -- ตัดคอลัมน์ที่ job นี้ไม่ได้ใช้ออก (ทั้งตารางมี 25 คอลัมน์)
+SELECT id, account_month, account_year, allmap_url, approver_snapshot, created_at, created_by, current_section_code, doc_no, impact_compensation_id, impact_month, impact_process_id   -- ตัดคอลัมน์ที่ job นี้ไม่ได้ใช้ออก (ทั้งตารางมี 26 คอลัมน์)
   FROM sgi_compensation_documents
  WHERE impact_month = $1  -- คอลัมน์งวดจริงของตารางนี้ตาม DDL
  ORDER BY id   -- PK ทำให้ลำดับคงที่ระหว่างแบ่งหน้า
@@ -661,7 +668,7 @@ export class JobFailureNotifier {
 - ขอบเขต transaction ที่ต้องรักษาเมื่อรันซ้ำ: ยังไม่ระบุ
 - ความเสี่ยงที่ต้องตรวจก่อน/หลังรันซ้ำ: ยังไม่ระบุ
 - ตรวจว่ารอบก่อนหน้าไม่ได้ค้าง lock อยู่ (`SELECT * FROM pg_locks WHERE locktype = 'advisory'`) ก่อนสั่งรันนอกรอบ
-- สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API): `node dist/batch/cli.js --job=12 --period=&lt;YYYYMM&gt;`
+- สั่งรันนอกรอบผ่าน CLI/runbook เท่านั้น (ไม่มีหน้าจอและไม่มี Job Admin API) — local: `JOB_NAME=sgi-notify-pending-work INPUT='{"year":2026,"month":6}' npm run start` · AWS Batch: `node dist/main.js '{"year":2026,"month":6}' sgi-notify-pending-work` (quote เดี่ยวครอบ JSON เสมอ) · ตรวจผลด้วย `echo $?` ต้องเป็น 0 เมื่อสำเร็จ
 - หลังรันซ้ำ ตรวจ output `อีเมลเตือนงานค้าง แยกตามโซน 3 ช่วงอายุงาน` และ log บรรทัด `job.finish` ว่า read/written/skipped/rejected ตรงกับที่คาด
 - ถ้ารอบก่อนล้มเหลวกลางทาง ตรวจ `sgi_interface_transactions` ของงวดนั้นว่ามีแถวค้างสถานะ READY/PENDING หรือไม่ ก่อนสั่งรันใหม่
 

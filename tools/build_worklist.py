@@ -470,7 +470,7 @@ function renderHome(){
   <div class="note" style="border-left:3px solid #2f6fed"><b>กระทบยอดกับเอกสาร LLDD:</b>
   <b>งาน ${ts.length}</b> = การ์ดงานตั้งต้น + <b>${Object.values(T).filter(t=>t.included).length}</b> role pack ที่รวมอยู่ใน FE-Document-Detail = <b>${Object.values(T).length} หัวข้อ</b> · บวกเอกสารอ้างอิง 3 ฉบับ (LLDD-API / LLDD-Database / LLDD-To-Be ที่ไม่คิดชั่วโมงแยก) = <b>LLDD ${Object.values(T).length + 3} ฉบับ</b> ที่ส่งมอบ &nbsp;·&nbsp;
   <b>API ${Object.values(A).filter(a=>a.kind==='own').length}</b> = ครบ 28 เส้นตาม <code>api.md</code> พอดี (ที่เห็นเพิ่มคือ ${Object.values(A).filter(a=>a.kind==='external').length} เส้นของระบบเดิม และ ${Object.values(A).filter(a=>a.kind==='contract').length} รายการ pseudo <code>/*</code> จากเอกสารสัญญากลาง ซึ่งไม่นับเป็น endpoint) &nbsp;·&nbsp;
-  <b>ตาราง ${Object.values(D).filter(t=>!t.existing).length}</b> = จำนวน <code>CREATE TABLE</code> ใน DDL — <code>database.md</code> นับเป็น <b>20 ตาราง</b> เพราะรวม <code>fcs_qssi_score</code> ที่ reuse ของระบบเดิมแบบอ่านอย่างเดียว (หน้านี้จัดอยู่ในกลุ่มตารางระบบเดิม)</div>
+  <b>ตาราง ${Object.values(D).filter(t=>!t.existing).length}</b> = จำนวน <code>CREATE TABLE</code> ใน DDL — <code>database.md</code> นับเป็น <b>21 ตาราง</b> เพราะรวม <code>fcs_qssi_score</code> ที่ reuse ของระบบเดิมแบบอ่านอย่างเดียว (หน้านี้จัดอยู่ในกลุ่มตารางระบบเดิม)</div>
   ${capacityCard()}
   <div class="note"><b>อ่านยังไง:</b> เริ่มที่กลุ่มงานทางซ้าย → เปิดงานที่รับผิดชอบ → ในหน้างานจะมี <b>ขั้นตอนการทำงาน</b>, <b>เกณฑ์ตรวจรับ</b> และ <b>ขอบเขต unit test</b> ครบ ·
   ส่วน <b>API ที่ต้องต่อ</b> และ <b>ตารางที่แตะ</b> กดเข้าไปดูรายละเอียดต่อได้ทันที</div>

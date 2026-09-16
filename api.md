@@ -147,7 +147,7 @@ catalog รวมทุกเส้น → คลิกแถว → เปิ�
 
 ## กฎธุรกิจสำคัญที่ผูกกับ API
 
-- **บังคับระบุปี (ค.ศ.)** ใน `/sgi/document` และ `/sgi/report/status-summary` ไม่งั้นตอบ 400 (กติกา SRS · BE ต้องผ่าน `toAD()` ก่อน query เผื่อ client ส่ง พ.ศ. มา)
+- **บังคับระบุปี (ค.ศ.)** ใน `/sgi/document` และ `/sgi/report/status-summary` ไม่งั้นตอบ 400 (กติกา SRS · BE ต้องผ่าน `toAD()` ก่อน query เผื่อ client ส่ง พ.ศ. มา) · ⚠️ **ทั้งสองหน้าจอไม่มีช่อง "ปี" ให้ผู้ใช้กรอก** (SDD สไลด์ 60 มี 7 ตัวกรอง ไม่รวมปี) — **FE เป็นผู้ใส่ค่าให้เสมอ**: หน้ารายการใช้ปีปัจจุบัน · หน้ารายงานใช้ปีของ `periodStatementFrom` ถ้าระบุ ไม่งั้นปีปัจจุบัน
 - **เส้นทางข้ามขั้นที่ section 06** ใน `/sgi/document/{docNo}/actions`: `result = "ส่งหน่วยงานส่งเสริมธุรกิจ SBP"` → `nextSection = "01"` (**ข้ามขั้น 08**) ใช้เมื่อ**ทราบยอดเงินชดเชยจากเจ้าหน้าที่ SBP DSA แล้ว** (ข้อความอ้างอิง SDD สไลด์ 21: “ส่งต่อ Flow หลังทราบยอดเงินชดเชยรายได้จากเจ้าหน้าที่ SBP DSA ดำเนินการ”) · `result = "ส่งเจ้าหน้าที่ SBP DSA"` → `nextSection = "08"` (เส้นทางปกติ — ยังไม่ทราบยอด ต้องมอบหมายให้คำนวณก่อน) · การส่งกลับจากทุก Section กลับไปที่ 06 เสมอ (ดูตารางเทียบใน `workflow.md`)
 - **มติ 2026-09-01 — เปิดพิจารณาใหม่ต้องแจ้ง STA:** `POST /sgi/document/{docNo}/actions` ที่ section 06 บนเอกสารที่**จบไปแล้ว**ด้วยผล `เห็นควรไม่ชดเชย` หรือ `หยุดชดเชยประกันรายได้` ต้อง **publish message `sgi_reflow`** (RabbitMQ exchange `sgi.interface` · `compensate_status = "R"` · 1 รายการต่อ 1 งวด) ให้ STA ตั้ง flow ของงวดนั้นใหม่ พร้อมเขียนแถว outbox `sgi_interface_transactions` ใน transaction เดียวกับการเปิดรอบพิจารณาใหม่ — สัญญาข้อความเต็มที่ [`STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md`](STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md)
 - **มติ 2026-09-01 — ปลายทางการส่งงาน 3 ข้อ** (ลำดับกลั่นกรอง 5 ขั้นและวงเงิน 100,000 ไม่เปลี่ยน):
@@ -213,7 +213,7 @@ RPA ดึงข้อมูลร้านจาก SBP Mall ให้ทีม
 
 **ใช้ทำอะไร** — เป็นฐานกำหนด NFR ของ `GET /sgi/document/tasks` · `GET /sgi/document` · `GET /sgi/report/status-summary`:
 - ปริมาณข้อมูลระดับ **~170 เอกสาร/เดือน ≈ 2,000 เอกสาร/ปี** ไม่ใช่ระบบ high-volume → ไม่ต้องออกแบบ sharding/cache ซับซ้อน
-- แต่ **`sps_store.workflow_transaction` มี 19,283 แถวและไม่มี index เลย** (DP-2) — ที่ปริมาณนี้ seq-scan ยังพอรับได้ แต่โตขึ้นทุกเดือน **ควรปิด DP-2 ก่อนขึ้น production**
+- แต่ **`sps_store.workflow_transaction` มี 19,327 แถวและไม่มี index เลย** (DP-2) — ที่ปริมาณนี้ seq-scan ยังพอรับได้ แต่โตขึ้นทุกเดือน **ควรปิด DP-2 ก่อนขึ้น production**
 - ปุ่ม **Export CSV to Batch** และ bulk action รองรับการเลือกทีละหลายฉบับได้จริง เพราะจำนวนต่อรอบไม่เกินหลักร้อย
 
 ยกเลิกหน้าจอ Approve ของบัญชีและ**ยกเลิกสถานะบัญชีในเอกสาร 2 ค่า** — To-Be ทีมบัญชี **ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี ผ่านหน้ารายงาน**: `GET /sgi/report/status-summary` (ค้นหาข้อมูล · **สถานะเป็น dropdown บังคับ 6 ค่า ไม่มีสถานะบัญชี**) + `/export` (Export Excel) แล้วกระทบยอดกับ SAP เอง งานฝั่ง SAP อยู่นอก API ชุดนี้:
@@ -242,7 +242,7 @@ RPA ดึงข้อมูลร้านจาก SBP Mall ให้ทีม
 
 **สิ่งที่ยังอยู่ (ฝั่ง BE ภายใน ไม่ใช่ REST ของ SGI):**
 - **ส่งอีเมลตามสถานะ** ยังทำงานเหมือนเดิม — SGI เรียก `sendEmail()` ของ email-lib กลาง (lib อ่าน `email_template` แล้ว log `email_sent` ให้เอง) · จุดส่งต่อสถานะดู `workflow_status_document.md` · **สัญญาเต็มดูหัวข้อ "อีเมล" ท้ายไฟล์**
-- **ค่ากำหนดกลาง** ยังอ่านจาก **`sps_store.mas_param`** ของระบบเดิม (ตาราง config กลางของ store-backend · 93,752 แถว · ⚠️ ไม่มี PK/unique จึงต้อง `WHERE active_flag='Y'` + `LIMIT 1` · **มีเฉพาะ schema `sps_store`**) · 🔴 **ค่าของ SGI ยังไม่มีอยู่จริง ต้อง seed เองตอน setup** (ดู `LLDD-BE-Integration-SBP-Platform` 5.5) (รวมค่าที่หน้าจออื่นใช้ เช่น URL QlikView BI) · **วงเงินอนุมัติ GM/AVP** อ่านจาก `common_code` (`code_type = SGI_APPROVE_LIMIT`) ผ่าน `GET /sgi/lookup/workflow-sections` เหมือนเดิม
+- **ค่ากำหนดกลาง** ยังอ่านจาก **`sps_store.mas_param`** ของระบบเดิม (ตาราง config กลางของ store-backend · 93,763 แถว · ⚠️ ไม่มี PK/unique จึงต้อง `WHERE active_flag='Y'` + `LIMIT 1` · **มีเฉพาะ schema `sps_store`**) · ✅ **ค่าของ SGI ติดตั้งลงฐาน dev แล้ว 2026-09-16 ด้วย `output/sql/sgi_seed_data.sql`** · uat/prod ยังต้อง seed เองตอน setup (ดู `LLDD-BE-Integration-SBP-Platform` 5.5) (รวมค่าที่หน้าจออื่นใช้ เช่น URL QlikView BI) · **วงเงินอนุมัติ GM/AVP** อ่านจาก `common_code` (`code_type = SGI_APPROVE_LIMIT`) ผ่าน `GET /sgi/lookup/workflow-sections` เหมือนเดิม
 - การแก้ template/config เป็นงานของ**ระบบ SBP เดิม** — audit อยู่ที่ระบบเดิมทั้งหมด
 
 ## กลุ่ม Batch Job Admin — ลบออกจากแบบ (ตัดสินใจ 2026-08-06 · 6 เส้น)
@@ -307,10 +307,10 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 >
 > - **engine มี 13 ตาราง ไม่ใช่ 10** (เอกสารเดิมของเราเขียนผิด): `workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_transaction` · `workflow_history` · `workflow_approver` · `workflow_part` · `workflow_part_display`
 > - **engine ตัวจริงที่ SGI ต้องต่อคือชุดใน schema `sps_store` ไม่ใช่ `sps_auth`** — ทั้งสอง schema มี 13 ตารางชื่อเดียวกันครบ แต่เป็นคนละชุดข้อมูลและ**คนละเวอร์ชัน** (`workflow_state` ของ `sps_auth` 3 คอลัมน์ / ของ `sps_store` 4 คอลัมน์)
->   - `sps_store`: `workflow_transaction` **19,283 แถว** · `workflow_history` **38,010** · `workflow_approver` **96,542** (ของใช้งานจริง)
+>   - `sps_store`: `workflow_transaction` **19,327 แถว** · `workflow_history` **38,010** · `workflow_approver` **96,542** (ของใช้งานจริง)
 >   - `sps_auth`: `workflow_transaction` 55 · `route` 41 · `state` 10 (ชุดของ auth-backend คนละเรื่อง)
 >   - → ทุกที่ที่เอกสารนี้อ้างตาราง engine ให้อ่านว่า **`sps_store.<table>`**
-> - ⚠️ **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:** `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index เลย** ทั้งที่มี 19,283 แถว (ตารางชื่อเดียวกันใน `sps_auth` มี PK ปกติ) — กระทบ performance ของ `GET /sgi/document/tasks` / `POST /sgi/document/{docNo}/actions` ที่ต้อง query ตาราง**นี้ทุกครั้ง** · เป็นข้อเท็จจริงที่ตรวจพบ ไม่ใช่ข้อเสนอ · **ยังไม่ตัดสิน**ว่าจะแก้อย่างไร (เพิ่ม index / ขอ library เวอร์ชันใหม่ / อ่านผ่าน view)
+> - ⚠️ **ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:** `sps_store.workflow_transaction` **ไม่มี PK และไม่มี index เลย** ทั้งที่มี 19,327 แถว (ตารางชื่อเดียวกันใน `sps_auth` มี PK ปกติ) — กระทบ performance ของ `GET /sgi/document/tasks` / `POST /sgi/document/{docNo}/actions` ที่ต้อง query ตาราง**นี้ทุกครั้ง** · เป็นข้อเท็จจริงที่ตรวจพบ ไม่ใช่ข้อเสนอ · **ยังไม่ตัดสิน**ว่าจะแก้อย่างไร (เพิ่ม index / ขอ library เวอร์ชันใหม่ / อ่านผ่าน view)
 > - **ข้อสังเกต (SGI ไม่ใช้):** `workflow_part` + `workflow_part_display` ของ engine คุมการแสดงผล**รายส่วนของหน้าจอ** (READ/WRITE ต่อ state) ซึ่ง**ทับซ้อน**กับกลไก `data-editrole` / `.edit-only` ที่ prototype ทำเอง และกับธง `permissions.canEditSections` ที่ `GET /sgi/document/{docNo}` คืน — ต้องเลือกว่าจะให้ engine เป็นเจ้าของสิทธิ์แก้รายส่วนหรือให้ SGI คำนวณเอง (ดู `SBP/SBPGI-vs-existing-system.md` หัวข้อ 4)
 >
 > **✅ ชื่อ function ของ engine — ยึดตาม LLDD ของ lib (ยืนยันแล้ว 2026-08-14)**
@@ -334,7 +334,7 @@ comment ไว้ใน `plan-api.html` (GROUPS) พร้อมหมายเ�
 
 | เส้น | เดิมอ่าน/เขียนตาราง | เปลี่ยนเป็น |
 |---|---|---|
-| `GET /sgi/document/tasks` | `workflow_tasks` ของ SGI | **`@srm/glb-workflow`** (schema `sps_store`) — `getPendingFlowByUser({userData})` · **[✅ DP-1 ปิดแล้ว 2026-08-17 — `reference_id` = `sgi_compensation_documents.id` (surrogate) · ⚠️ DP-2 ยังไม่ตัดสิน]** และ `sps_store.workflow_transaction` ไม่มี PK/index (19,283 แถว) จึงเป็น seq-scan — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4 แล้ว join ข้อมูลเอกสารของ SGI · อ่าน `sps_store.workflow_transaction` + `workflow_approver` · inbox รวมทุกระบบที่มีอยู่แล้วคือ `GET /api/workflow/pending` (store-backend) |
+| `GET /sgi/document/tasks` | `workflow_tasks` ของ SGI | **`@srm/glb-workflow`** (schema `sps_store`) — `getPendingFlowByUser({userData})` · **[✅ DP-1 ปิดแล้ว 2026-08-17 — `reference_id` = `sgi_compensation_documents.id` (surrogate) · ⚠️ DP-2 ยังไม่ตัดสิน]** และ `sps_store.workflow_transaction` ไม่มี PK/index (19,327 แถว) จึงเป็น seq-scan — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) หัวข้อ 4 แล้ว join ข้อมูลเอกสารของ SGI · อ่าน `sps_store.workflow_transaction` + `workflow_approver` · inbox รวมทุกระบบที่มีอยู่แล้วคือ `GET /api/workflow/pending` (store-backend) |
 | `POST /sgi/document/{docNo}/actions` | `workflow_instances` + `workflow_tasks` | `eventWorkflow({versionId, referenceId, event, remark, userId, nextApproverId})` — **[✅ DP-1 ปิดแล้ว 2026-08-17 — `referenceId` = `sgi_compensation_documents.id` (surrogate · ส่งเป็น string เพราะ `reference_id` ของ engine เป็น varchar(255))]** (หลักฐานจากระบบเดิม cooperation-request · inform-evaluate ใช้ surrogate id ทุกจุด) ของ engine · ผู้อนุมัติขั้นถัดไปใช้ `addPreApprover()` · เขียน `sps_store.workflow_transaction` / `workflow_history` / `workflow_approver` |
 | `GET /sgi/document/{docNo}/timeline` | `sgi_consideration_logs` อย่างเดียว | `getHistory()` ของ engine (state transition) อ่าน `sps_store.workflow_history` **join** `sgi_consideration_logs` ของ SGI (decision · ไฟล์แนบ · ความเห็น) · **[✅ DP-7 ปิดแล้ว 2026-08-24]** `sgi_consideration_logs` เป็น **timeline เต็มของ SGI** (ตารางของเราเอง ผูก `transaction_id` ของ engine) ไม่ต่อยอดบน `workflow_history` · **[✅ DP-1 ปิดแล้ว 2026-08-17]** `referenceId` ที่ใช้เรียก `getHistory()` = `sgi_compensation_documents.id` |
 | `GET /sgi/lookup/workflow-sections` · `GET /sgi/lookup/document-statuses` | `workflow_sections` / `document_statuses` | `sps_store.workflow_state` / `workflow_route` / `workflow_status` ของ engine + **วงเงินอนุมัติจาก `common_code`** (`code_type = SGI_APPROVE_LIMIT`) |

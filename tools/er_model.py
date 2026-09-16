@@ -324,7 +324,7 @@ CROSS: list[tuple] = [
     ("sps_store.common_code", "code_type", "sps_store.common_code_type", "code_type", "logical", "N:1",
      "ต้องลงทะเบียน code_type ก่อนใช้", "database.md §มติ DP-9", "confirmed"),
     ("sps_store.email_sent", "email_id", "sps_store.email_template", "email_template_id", "logical", "N:1",
-     "log อีเมลทุกฉบับ 5,214 แถว", "db-schema-sps_store.md §email_sent", "confirmed"),
+     "log อีเมลทุกฉบับ 5,392 แถว", "db-schema-sps_store.md §email_sent", "confirmed"),
     ("sps_store.business_user", "group_id", "sps_store.business_group", "group_id", "logical", "N:1",
      "กลุ่มหลักของผู้ใช้", "db-schema-sps_store.md §business_user", "confirmed"),
     ("sps_store.business_user_group", "user_id", "sps_store.business_user", "user_id", "logical", "N:1",
@@ -378,7 +378,7 @@ CROSS: list[tuple] = [
     ("sps_auth.fr_store", "store_id", "sps_auth.mas_store", "branch_id", "logical", "N:1",
      "สัญญาร้าน (สำเนาฝั่ง auth)", "db-schema-sps_auth.md §fr_store", "proposed"),
     ("sps_auth.business_user", "user_id", "sps_store.business_user", "user_id", "logical", "1:1",
-     "ตารางชื่อเดียวกันคนละ schema (22,057 vs 12,752 แถว)", "db-schema ทั้งสองไฟล์", "confirmed"),
+     "ตารางชื่อเดียวกันคนละ schema (22,057 vs 12,759 แถว)", "db-schema ทั้งสองไฟล์", "confirmed"),
     ("sgi.sgi_compensation_documents", "created_by", "sps_auth.users", "username", "api", "N:1",
      "ตัวตนมาทาง header x-user-id ของ BFF ไม่ query ตรง", "database.md §ตารางที่ตัดออก 2026-08-05", "confirmed"),
     ("sps_auth.users", "username", "sps_store.business_user", "user_name", "logical", "1:1",
@@ -444,7 +444,7 @@ CROSS: list[tuple] = [
 # ------------------------------------------------------------- หมายเหตุบนรูป
 
 WARNINGS = [
-    ("sps_store.workflow_transaction", "ไม่มี PK และไม่มี index เลย ทั้งที่มี 19,283 แถว — DP-2 ยังไม่ตัดสิน"),
+    ("sps_store.workflow_transaction", "ไม่มี PK และไม่มี index เลย ทั้งที่มี 19,327 แถว — DP-2 ยังไม่ตัดสิน"),
     ("sps_store.fcs_qssi_score", "23.9 ล้านแถว · ห้าม CREATE ใหม่ · ห้ามใช้ชื่อพหูพจน์ · DP-4"),
     ("sps_store.common_code", "ไม่มี PK/unique — กันรหัสซ้ำที่ระดับแอป"),
     ("sgi.sgi_compensation_documents", "PK = id (surrogate) · doc_no เป็น UNIQUE · referenceId = id (DP-1 = B)"),
@@ -477,7 +477,7 @@ NOTES = [
         "   → โครงเหลือ 20 ตาราง (โซน A 8 · B 9 · C 3)",
     ]),
     ("ข้อค้างที่ยังไม่ตัดสิน — กระทบรูปนี้โดยตรง", [
-        "DP-2  workflow_transaction ไม่มี PK/index ทั้งที่มี 19,283 แถว (ตารางของ library)",
+        "DP-2  workflow_transaction ไม่มี PK/index ทั้งที่มี 19,327 แถว (ตารางของ library)",
         "DP-4  fcs_qssi_score — 4 คอลัมน์คีย์เป็น nullable · จะแก้ตารางเดิมอย่างไร",
         "DP-6  sgi_interface_transactions — ออกแบบใหม่ หรือลอกแพตเทิร์น statement_summary",
         "DP-7  sgi_consideration_logs — timeline เต็ม หรือส่วนขยายบน workflow_history",

@@ -66,8 +66,8 @@ _รูปที่ 2: Sequence diagram: LLDD BE - Integration with SBP Platform
 | envelope | {success, data} | บังคับทุก endpoint | ResponseInterceptor ห่อให้แล้ว — service ห้ามห่อซ้ำ |
 | envelope ที่ผ่าน BFF | {success, data, requestId} | **BFF ต้อง unwrap ของ store-backend 1 ชั้นก่อนคืน** | 🔴 ยืนยันจากโค้ดจริง 2026-09-04: BFF มี `ResponseInterceptor` ระดับ global (`src/common/interceptors/response.interceptor.ts`) ที่ห่อผลของ controller เป็น `{success, data, requestId}` เสมอ · แต่ `client-service.abstract.ts` คืน `response.data` ซึ่งเป็น envelope ของ store-backend อยู่แล้ว → ถ้าส่งต่อดิบ ๆ interceptor จะเห็นคีย์ `success` แล้วห่อซ้ำ FE ได้ `data.data.data` · **สัญญา: `SgiClientService` คืน `response.data.data`** แล้ว FE อ่าน `data.data` ชั้นเดียว · `requestId` เป็นของ BFF ใช้อ้างอิงตอนแจ้งปัญหา store-backend ไม่ต้องสร้างเอง |
 | error | {success:false, data:null, error:{code,message}} | message ภาษาไทย verbatim ตาม SRS | โยนผ่าน HttpException เท่านั้น |
-| sps_store.mas_param | key-value ของระบบเดิม | **runtime = read-only · เขียนเฉพาะตอน seed/cutover** | 93,752 แถว · ไม่มี PK/unique → อ่านต้อง WHERE active_flag='Y' + LIMIT 1 เสมอ · 🔴 ค่า SGI_* ยังไม่มี ต้อง seed (5.5.2) |
-| sps_store.common_code / common_code_type | code master ของระบบเดิม | **runtime = read-only · เขียนเฉพาะตอน seed/cutover** | 2,609 / 376 แถว · code_type เป็น varchar(20) · ต้อง INSERT common_code_type ก่อน · 🔴 SGI_APPROVE_LIMIT ยังไม่มี ต้อง seed (5.5.2) |
+| sps_store.mas_param | key-value ของระบบเดิม | **runtime = read-only · เขียนเฉพาะตอน seed/cutover** | 93,763 แถว · ไม่มี PK/unique → อ่านต้อง WHERE active_flag='Y' + LIMIT 1 เสมอ · ✅ ค่า SGI_* seed ลงฐาน dev แล้ว 2026-09-16 · uat/prod ยังต้อง seed (5.5.2) |
+| sps_store.common_code / common_code_type | code master ของระบบเดิม | **runtime = read-only · เขียนเฉพาะตอน seed/cutover** | 2,641 / 380 แถว · code_type เป็น varchar(20) · ต้อง INSERT common_code_type ก่อน · ✅ SGI_APPROVE_LIMIT seed ลง dev แล้ว 2026-09-16 · uat/prod ยังต้อง seed (5.5.2) |
 
 ### 5.1 User Context จาก BFF
 
@@ -223,7 +223,7 @@ curl -X POST 'http://localhost:3004/api/v1/sgi/document/2026%2F00123/actions' \
 
 ### 5.4 อีเมล
 
-ส่งผ่าน `@gosoft-sbp/email-lib` โดยอ่านเนื้อหาจาก `email_template` (85 แถว) และบันทึกผลที่ `email_sent` (5,214 แถว)
+ส่งผ่าน `@gosoft-sbp/email-lib` โดยอ่านเนื้อหาจาก `email_template` (85 แถว) และบันทึกผลที่ `email_sent` (5,392 แถว)
 
 **แก้ความเข้าใจผิดเดิม (ตรวจ schema จริง 2026-08-07):** เอกสารรุ่นก่อนเคยเขียนว่าระบบเดิม **ไม่มีที่เก็บ CC ของอีเมล** — **ไม่จริง** มีอยู่ 3 ที่: `email_sent.mail_cc` · `fcs_reminder_log.reminder_cc` · `fml_email_account`
 
@@ -233,24 +233,24 @@ curl -X POST 'http://localhost:3004/api/v1/sgi/document/2026%2F00123/actions' \
 
 | ตาราง | คืออะไร | โครงคีย์ | ของจริงตอนนี้ (ตรวจ 07/08/2026) |
 | --- | --- | --- | --- |
-| `sps_store.mas_param` | **ตาราง config กลางของ store-backend** — คู่ชื่อ/ค่าแบบอิสระ ที่ทั้งระบบเดิมใช้ร่วมกัน (เช่น `GROUP_ID_VIEW_ALL_STMT` คุมว่ากลุ่มไหนเห็นใบแจ้งยอดทั้งหมด · ช่วงวันที่ของไฟล์อากรแสตมป์) | `param_name` · `param_value`(4000) · `ref_name` · `description` · `is_config` · `active_flag` | **93,752 แถว** · ⚠️ **ไม่มี PK ไม่มี unique** มีแค่ btree `(param_name, param_value)` → ชื่อพารามิเตอร์ซ้ำได้ ต้องกันเองที่ระดับแอปและ `WHERE active_flag = 'Y'` เสมอ |
-| `sps_store.common_code` | **lookup กลาง** ของทั้งระบบเดิม — ชุดรหัส/ชื่อที่ใช้ทำ dropdown | `code_type`(**20**) · `seq_no` · `code_value`(100) · `code_name`(1000) · `other_value`(50) · `code_mapping`(100) · `active_flag` | **2,609 แถว** · ⚠️ **ไม่มี PK ไม่มี unique** บน (`code_type`,`code_value`) · `code_type` ต้องลงทะเบียนที่ **`common_code_type`** (376 แถว) ก่อน |
+| `sps_store.mas_param` | **ตาราง config กลางของ store-backend** — คู่ชื่อ/ค่าแบบอิสระ ที่ทั้งระบบเดิมใช้ร่วมกัน (เช่น `GROUP_ID_VIEW_ALL_STMT` คุมว่ากลุ่มไหนเห็นใบแจ้งยอดทั้งหมด · ช่วงวันที่ของไฟล์อากรแสตมป์) | `param_name` · `param_value`(4000) · `ref_name` · `description` · `is_config` · `active_flag` | **93,763 แถว** · ⚠️ **ไม่มี PK ไม่มี unique** มีแค่ btree `(param_name, param_value)` → ชื่อพารามิเตอร์ซ้ำได้ ต้องกันเองที่ระดับแอปและ `WHERE active_flag = 'Y'` เสมอ |
+| `sps_store.common_code` | **lookup กลาง** ของทั้งระบบเดิม — ชุดรหัส/ชื่อที่ใช้ทำ dropdown | `code_type`(**20**) · `seq_no` · `code_value`(100) · `code_name`(1000) · `other_value`(50) · `code_mapping`(100) · `active_flag` | **2,641 แถว** · ⚠️ **ไม่มี PK ไม่มี unique** บน (`code_type`,`code_value`) · `code_type` ต้องลงทะเบียนที่ **`common_code_type`** (378 แถว) ก่อน |
 
 #### 5.5.1 ทำไมค้นแล้วไม่เจอข้อมูล (2 กับดักที่เจอจริง)
 
 | กับดัก | ข้อเท็จจริง | ต้องทำอย่างไร |
 | --- | --- | --- |
-| ค้นผิด schema | `mas_param` มี **เฉพาะ `sps_store`** — ใน `sps_auth` **ไม่มีตารางนี้เลย** · ส่วน `common_code` มี **ทั้งสอง schema แต่เป็นคนละตาราง**: `sps_store` 14 คอลัมน์ 2,609 แถว vs `sps_auth` **13 คอลัมน์ 2,594 แถว** (ชุดเก่าของ auth-backend) | 🔴 SGI ใช้ **`sps_store` เท่านั้น** · เขียน schema นำหน้าทุกครั้งใน SQL (กับดักเดียวกับตาราง `workflow_*` ที่มีสองชุด — ดู 5.4) |
+| ค้นผิด schema | `mas_param` มี **เฉพาะ `sps_store`** — ใน `sps_auth` **ไม่มีตารางนี้เลย** · ส่วน `common_code` มี **ทั้งสอง schema แต่เป็นคนละตาราง**: `sps_store` 14 คอลัมน์ 2,641 แถว vs `sps_auth` **13 คอลัมน์ 2,594 แถว** (ชุดเก่าของ auth-backend) | 🔴 SGI ใช้ **`sps_store` เท่านั้น** · เขียน schema นำหน้าทุกครั้งใน SQL (กับดักเดียวกับตาราง `workflow_*` ที่มีสองชุด — ดู 5.4) |
 | คิดว่าค่าของ SGI มีอยู่แล้ว | `SGI_APPROVE_LIMIT` · `SGI_DECISION` · `SGI_DATASOURCE` **ยังไม่มีสักแถวในระบบจริง** — เป็นค่าที่การออกแบบ *วางแผนจะเพิ่ม* ไม่ใช่ของเดิมที่ reuse ได้ทันที | ต้อง **seed เองตอน setup** (ดู 5.5.2) และนับเป็นงานของ `LLDD-BE-Data-Migration-Cutover` |
 
 #### 5.5.2 ค่าที่ SGI ต้อง seed เอง
 
 | ค่า | ลงที่ไหน | คีย์ที่ใช้ | สถานะ |
 | --- | --- | --- | --- |
-| วงเงินอนุมัติ เกณฑ์เดียว **100,000** | `sps_store.common_code` | `code_type = 'SGI_APPROVE_LIMIT'` · `code_value = 'THRESHOLD'` · `code_name = '100000'` | 🔴 **ยังไม่มี — ต้อง seed** |
-| ผลการพิจารณา 6 ค่า (มติ DP-9) | `sps_store.common_code` | `code_type = 'SGI_DECISION'` | 🔴 **ยังไม่มี — ต้อง seed** |
+| วงเงินอนุมัติ เกณฑ์เดียว **100,000** | `sps_store.common_code` | `code_type = 'SGI_APPROVE_LIMIT'` · `code_value = '100000'` · `code_name = '100000'` — 🔴 **ยึดของที่ติดตั้งในฐาน dev จริง** (ตรวจ 2026-09-16) · เดิมเอกสารเขียน `'THRESHOLD'` ซึ่งไม่ตรงกับแถวที่ถูก seed ไปเมื่อ 2026-08-27 → seed ใหม่จะได้แถวที่สอง | 🔴 **ยังไม่มี — ต้อง seed** |
+| ผลการพิจารณา 7 ค่า (มติ DP-9) | `sps_store.common_code` | `code_type = 'SGI_DECISION'` | 🔴 **ยังไม่มี — ต้อง seed** |
 | ต้นทาง `PRO` (เชิงรุก) · `REA` (เชิงรับ) | `sps_store.common_code` | `code_type = 'SGI_DATASOURCE'` | 🔴 **ยังไม่มี — ต้อง seed** (เพิ่มจากของเดิมที่มี `ALM`/`STA`) |
-| รัศมีผลกระทบ 1 กม. (กทม./ปริมณฑล) · 2 กม. (ต่างจังหวัด) | `sps_store.mas_param` | `param_name = 'SGI_IMPACT_RADIUS_BKK' / '..._UPC'` | 🔴 **ยังไม่มี — ต้อง seed** · อ่านตอนคำนวณ ห้าม hardcode |
+| รัศมีผลกระทบ 1 กม. (กทม./ปริมณฑล) · 2 กม. (ต่างจังหวัด) | `sps_store.mas_param` | `param_name = 'SGI_IMPACT_RADIUS_BKK' / 'SGI_IMPACT_RADIUS_UPC'` | 🔴 **ยังไม่มี — ต้อง seed** · อ่านตอนคำนวณ ห้าม hardcode |
 | เกณฑ์ยอดขายไม่ครบ **60 วัน** · growth rate **-10%** | `sps_store.mas_param` | `param_name = 'SGI_SALES_DAYS_MIN' / 'SGI_GROWTH_RATE_MAX'` | 🔴 **ยังไม่มี — ต้อง seed** · ใช้กับธงข้อมูลผิดปกติและ Gen Flow Gate |
 
 ```sql
@@ -263,9 +263,9 @@ WHERE NOT EXISTS (SELECT 1 FROM sps_store.common_code_type WHERE code_type = 'SG
 
 -- 2) ค่าจริง · code_type เป็น varchar(20) -> 'SGI_APPROVE_LIMIT' = 19 ตัว เหลือที่ว่าง 1 ตัวเท่านั้น
 INSERT INTO sps_store.common_code (code_type, seq_no, code_value, code_name, active_flag, create_date, create_user)
-SELECT 'SGI_APPROVE_LIMIT', 1, 'THRESHOLD', '100000', 'Y', CURRENT_TIMESTAMP, 'SGI-SETUP'
+SELECT 'SGI_APPROVE_LIMIT', 1, '100000', '100000', 'Y', CURRENT_TIMESTAMP, 'SGI-SETUP'
 WHERE NOT EXISTS (SELECT 1 FROM sps_store.common_code
-                  WHERE code_type = 'SGI_APPROVE_LIMIT' AND code_value = 'THRESHOLD');
+                  WHERE code_type = 'SGI_APPROVE_LIMIT' AND code_value = '100000');
 
 -- 3) ค่ากำหนดกลางที่ไม่ใช่ lookup -> mas_param
 INSERT INTO sps_store.mas_param (param_name, param_value, description, is_config, active_flag, create_by, create_date)
@@ -366,11 +366,11 @@ ORDER BY update_date DESC NULLS LAST, create_date DESC LIMIT 1;
 
 | Table / Object | R/W | Usage |
 | --- | --- | --- |
-| mas_param (sps_store) | R (+ W ครั้งเดียวตอน seed) | ค่ากำหนดกลาง 93,752 แถว · runtime อ่านอย่างเดียว · 🔴 ค่า SGI_* ยังไม่มี ต้อง seed ตอน setup (5.5.2) |
-| common_code / common_code_type (sps_store) | R (+ W ครั้งเดียวตอน seed) | 2,609 / 376 แถว · 🔴 `SGI_APPROVE_LIMIT` / `SGI_DECISION` / `SGI_DATASOURCE` **ยังไม่มีในระบบจริง** ต้อง seed ตอน setup (5.5.2) · code_type เป็น varchar(20) |
+| mas_param (sps_store) | R (+ W ครั้งเดียวตอน seed) | ค่ากำหนดกลาง 93,763 แถว · runtime อ่านอย่างเดียว · ✅ ค่า SGI_* seed ลงฐาน dev แล้ว 2026-09-16 · uat/prod ยังต้อง seed (5.5.2) |
+| common_code / common_code_type (sps_store) | R (+ W ครั้งเดียวตอน seed) | 2,641 / 380 แถว · 🔴 `SGI_APPROVE_LIMIT` / `SGI_DECISION` / `SGI_DATASOURCE` **ยังไม่มีในระบบจริง** ต้อง seed ตอน setup (5.5.2) · code_type เป็น varchar(20) |
 | email_template (sps_store) | R | 85 แถว · SGI/lib อ่านอย่างเดียว — seed 8 แถวของ SGI ทำครั้งเดียวตอน migration ไม่ใช่ runtime |
-| email_sent (sps_store) | W (โดย email-lib) | 5,214 แถว · lib เขียน log ให้เอง SGI ไม่ INSERT เอง (⚠️ คอลัมน์ผู้ส่งคือ send_by) |
-| business_user (sps_store) | R | 12,752 แถว · ข้อมูลผู้ใช้/ผู้อนุมัติ |
+| email_sent (sps_store) | W (โดย email-lib) | 5,392 แถว · lib เขียน log ให้เอง SGI ไม่ INSERT เอง (⚠️ คอลัมน์ผู้ส่งคือ send_by) |
+| business_user (sps_store) | R | 12,759 แถว · ข้อมูลผู้ใช้/ผู้อนุมัติ |
 | store / mas_store (sps_store) | R | 19,402 / 19,647 แถว · master ร้าน |
 | sgi_document_attachments (SGI) | R/W | metadata ไฟล์แนบ · ไฟล์จริงอยู่บน S3 ของระบบเดิม |
 

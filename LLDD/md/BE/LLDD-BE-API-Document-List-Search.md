@@ -124,10 +124,20 @@ Inbox tasks API
 
 ```json
 {
-  "page": 1,
-  "size": 20,
   "status": "06",
-  "sectionCode": "06"
+  "keyword": "โลตัส",
+  "regionCode": "BE",
+  "storeType": "A",
+  "createdFrom": "2026-06-01",
+  "createdTo": "2026-06-30",
+  "salesDeclineMin": 10,
+  "salesDeclineMax": 80,
+  "compensationMin": 0,
+  "compensationMax": 500000,
+  "daysPendingMin": 0,
+  "daysPendingMax": 30,
+  "page": 1,
+  "size": 20
 }
 ```
 
@@ -135,10 +145,20 @@ Inbox tasks API
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| status | string | No | UTF-8; use value domain described by endpoint purpose |
+| keyword | string | No | ช่อง **ค้นหา** — ค้นแบบ contains ใน เลขที่เอกสาร / ชื่อร้าน / รหัสร้าน (ไม่สนตัวพิมพ์) |
+| regionCode | string | No | ช่อง **ภาค** — รหัสภาคของร้าน (`store.zone_cd`) · ค่าเดียวกับ `items[].regionCode` ใน response |
+| storeType | string | No | ช่อง **ประเภทร้าน** — 7 ค่า `A B C D E PTT บริษัท` (`store.store_type`) ชุดเดียวกับตัวกรองในรายงาน |
+| createdFrom | string | No | ช่อง **วันที่สร้าง (ตั้งแต่)** — ISO ค.ศ. · รวมวันที่ระบุ |
+| createdTo | string | No | ช่อง **วันที่สร้าง (ถึง)** — ISO ค.ศ. · **รวมทั้งวัน** (SQL ใช้ `< :createdTo + 1`) |
+| salesDeclineMin | integer | No | ช่อง **ยอดขายที่ลดลง (ต่ำสุด)** — % เทียบกับ `items[].salesDeclinePercent` |
+| salesDeclineMax | integer | No | ช่อง **ยอดขายที่ลดลง (สูงสุด)** — % เทียบกับ `items[].salesDeclinePercent` |
+| compensationMin | integer | No | ช่อง **เงินชดเชย (ต่ำสุด)** — บาท เทียบกับ `items[].totalCompensationAmount` |
+| compensationMax | integer | No | ช่อง **เงินชดเชย (สูงสุด)** — บาท เทียบกับ `items[].totalCompensationAmount` |
+| daysPendingMin | integer | No | ช่อง **รอ (วัน) ต่ำสุด** — เทียบกับ `items[].daysPending` · มีเฉพาะกล่องงาน `/tasks` |
+| daysPendingMax | integer | No | ช่อง **รอ (วัน) สูงสุด** — เทียบกับ `items[].daysPending` · มีเฉพาะกล่องงาน `/tasks` |
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
-| status | string | No | UTF-8; use value domain described by endpoint purpose |
-| sectionCode | string | No | canonical code; do not replace with display label |
 
 #### Response
 
@@ -156,6 +176,7 @@ Inbox tasks API
       "regionCode": "BE",
       "salesDeclinePercent": 12.5,
       "statusCode": "06",
+      "currentOwner": "somchai.k",
       "statusName": "รอฝ่าย SBP DSA ดำเนินการ",
       "totalCompensationAmount": 48200.0,
       "daysPending": 3,
@@ -180,6 +201,7 @@ Inbox tasks API
 | items[].regionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].salesDeclinePercent | number | Yes | number 0..100 with 2 decimals |
 | items[].statusCode | string | Yes | canonical code; do not replace with display label |
+| items[].currentOwner | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].totalCompensationAmount | number | Yes | number >= 0 with 2 decimals |
 | items[].daysPending | integer | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -194,8 +216,18 @@ Document search API
 ```json
 {
   "year": 2026,
-  "storeCode": "00788",
+  "impactedStoreCode": "00788",
   "status": "06",
+  "result": "APPROVE",
+  "keyword": "โลตัส",
+  "regionCode": "BE",
+  "storeType": "A",
+  "createdFrom": "2026-06-01",
+  "createdTo": "2026-06-30",
+  "salesDeclineMin": 10,
+  "salesDeclineMax": 80,
+  "compensationMin": 0,
+  "compensationMax": 500000,
   "page": 1,
   "size": 20
 }
@@ -206,8 +238,18 @@ Document search API
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| storeCode | string | No | exactly 5 digits; preserve leading zero |
+| impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | status | string | No | UTF-8; use value domain described by endpoint purpose |
+| result | string | No | ช่อง **ผลการพิจารณา** (มีเฉพาะหน้า *ที่เกี่ยวข้อง*) — `APPROVE` / `REJECT` / `CANCELLED` / `NONE` · ดูจากผลพิจารณา **ล่าสุด** ของเอกสารใน `sgi_consideration_logs` ไม่ได้อยู่ที่หัวเอกสาร |
+| keyword | string | No | ช่อง **ค้นหา** — ค้นแบบ contains ใน เลขที่เอกสาร / ชื่อร้าน / รหัสร้าน (ไม่สนตัวพิมพ์) |
+| regionCode | string | No | ช่อง **ภาค** — รหัสภาคของร้าน (`store.zone_cd`) · ค่าเดียวกับ `items[].regionCode` ใน response |
+| storeType | string | No | ช่อง **ประเภทร้าน** — 7 ค่า `A B C D E PTT บริษัท` (`store.store_type`) ชุดเดียวกับตัวกรองในรายงาน |
+| createdFrom | string | No | ช่อง **วันที่สร้าง (ตั้งแต่)** — ISO ค.ศ. · รวมวันที่ระบุ |
+| createdTo | string | No | ช่อง **วันที่สร้าง (ถึง)** — ISO ค.ศ. · **รวมทั้งวัน** (SQL ใช้ `< :createdTo + 1`) |
+| salesDeclineMin | integer | No | ช่อง **ยอดขายที่ลดลง (ต่ำสุด)** — % เทียบกับ `items[].salesDeclinePercent` |
+| salesDeclineMax | integer | No | ช่อง **ยอดขายที่ลดลง (สูงสุด)** — % เทียบกับ `items[].salesDeclinePercent` |
+| compensationMin | integer | No | ช่อง **เงินชดเชย (ต่ำสุด)** — บาท เทียบกับ `items[].totalCompensationAmount` |
+| compensationMax | integer | No | ช่อง **เงินชดเชย (สูงสุด)** — บาท เทียบกับ `items[].totalCompensationAmount` |
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
 
@@ -339,41 +381,31 @@ import {
 
 // query ร่วมของ GET ทุกเส้นในโมดูลนี้ (path param ใช้ @Param แยก)
 export class DocumentListSearchQueryDto {
-  /** pagination */
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number;
-
-  /** pagination */
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  size?: number;
-
   @IsNotEmpty()
   @IsString()
   status: string;
 
-  /** required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  sectionCode?: string;
+  keyword: string;
 
-  /** ไม่ระบุคืน 400 ตาม SRS · BE ผ่าน toAD() เผื่อ client ส่ง พ.ศ. · required เฉพาะบาง endpoin… */
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  year?: number;
-
-  /** แสดง leading zero · required เฉพาะบาง endpoint — ตรวจซ้ำใน service */
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  @Matches(/^\d{5}$/, { message: 'รหัสร้านต้องเป็นตัวเลข 5 หลัก และคงเลขศูนย์นำหน้า' })
-  storeCode?: string;
+  regionCode: string;
+
+  @IsNotEmpty()
+  @IsString()
+  storeType: string;
+
+  @IsNotEmpty()
+  @IsString()
+  createdFrom: string;
+
+  @IsNotEmpty()
+  @IsString()
+  createdTo: string;
+
+  // TODO: เพิ่ม property ที่เหลือของ payload นี้ให้ครบตามหัวข้อฟิลด์ของเอกสารนี้
 }
 ```
 
@@ -468,6 +500,9 @@ export class CompensationDocument {
   @Column({ name: 'impact_process_id', type: 'bigint' })
   impactProcessId: number;
 
+  @Column({ name: 'impact_compensation_id', type: 'bigint' })
+  impactCompensationId: number;
+
   @Column({ name: 'impacted_store_code', type: 'varchar', length: 5 })
   impactedStoreCode: string;
 
@@ -486,7 +521,7 @@ export class CompensationDocument {
   @Column({ name: 'source', type: 'varchar', length: 20, default: 'FS' })
   source: string;
 
-  @Column({ name: 'status_code', type: 'varchar', length: 2 })
+  @Column({ name: 'status_code', type: 'varchar', length: 2, default: '06' })
   statusCode: string;
 
   @Column({ name: 'current_section_code', type: 'varchar', length: 2, nullable: true })
@@ -735,10 +770,10 @@ export class SgiDocumentListSearchBffController {
 **GET /api/v1/sgi/document/tasks** — Inbox tasks API
 
 ```sql
--- bind ตามลำดับ: $1=sectionFromJwt · $2=sgiVersionId · $3=size · $4=offset
+-- bind ตามลำดับ: $1=sectionFromJwt · $2=sgiVersionId · $3=status · $4=keyword · $5=regionCode · $6=storeType · $7=createdFrom · $8=createdTo · $9=compensationMin · $10=compensationMax · $11=salesDeclineMin · $12=salesDeclineMax · $13=daysPendingMin · $14=daysPendingMax · $15=size · $16=offset
 -- ⚠️ ไม่มีตาราง workflow_tasks ของ SGI แล้ว — กล่องงานอ่านจาก engine กลาง (schema sps_store)
 --    getPendingFlowByUser({userData}) 
--- ✅ DP-1 ปิดแล้ว: reference_id = sgi_compensation_documents.id (surrogate · varchar(255)) · ⚠️ DP-2 workflow_transaction ไม่มี PK/index (19,283 แถว → seq-scan) ห้ามแก้ schema ของ library
+-- ✅ DP-1 ปิดแล้ว: reference_id = sgi_compensation_documents.id (surrogate · varchar(255)) · ⚠️ DP-2 workflow_transaction ไม่มี PK/index (19,327 แถว → seq-scan) ห้ามแก้ schema ของ library
 --    ห้ามแก้ schema ของ library — กันซ้ำที่ระดับ application ของ SGI
 WITH wh AS (
   -- workflow_transaction ไม่มี created_date — ใช้เวลา event แรกจาก workflow_history แทน
@@ -754,6 +789,7 @@ SELECT d.round_no AS "roundNo",
        d.total_compensation_amount AS "totalCompensationAmount",
        d.status_code AS "statusCode",
        d.current_section_code AS "currentSection",
+       w.current_approver AS "currentOwner",   -- คอลัมน์ "ผู้ดำเนินการ (เจ้าของงาน)" บนหน้าจอ · เจ้าของงานอยู่ที่ engine ไม่ใช่ตารางของ SGI
        GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) AS "daysPending",
        ss.total_working_days AS "salesDataDays"
 FROM sps_store.workflow_approver a
@@ -761,15 +797,30 @@ JOIN sps_store.workflow_transaction w ON w.transaction_id = a.transaction_id
 JOIN sgi_compensation_documents d ON d.id::text = w.reference_id   -- DP-1 = surrogate id   -- DP-1
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
+-- ⚠️ ตัวกรองบนหน้าจอต้องส่งขึ้นมาที่นี่ด้วย ไม่ใช่กรองฝั่ง client (มี LIMIT/OFFSET · เพิ่ม 2026-09-09)
 WHERE a.state_id = $1 /* sectionFromJwt */ AND a.state_id = w.current_state_id AND w.version_id = $2 /* sgiVersionId */
+  AND ($3 /* status */           IS NULL OR d.status_code = $3 /* status */)
+  AND ($4 /* keyword */          IS NULL OR d.doc_no ILIKE '%' || $4 /* keyword */ || '%'
+                                 OR s.store_name ILIKE '%' || $4 /* keyword */ || '%'
+                                 OR d.impacted_store_code ILIKE '%' || $4 /* keyword */ || '%')
+  AND ($5 /* regionCode */       IS NULL OR s.zone_cd = $5 /* regionCode */)
+  AND ($6 /* storeType */        IS NULL OR s.store_type = $6 /* storeType */)
+  AND ($7 /* createdFrom */      IS NULL OR d.created_at >= $7 /* createdFrom */::date)
+  AND ($8 /* createdTo */        IS NULL OR d.created_at <  $8 /* createdTo */::date + 1)
+  AND ($9 /* compensationMin */  IS NULL OR d.total_compensation_amount >= $9 /* compensationMin */)
+  AND ($10 /* compensationMax */  IS NULL OR d.total_compensation_amount <= $10 /* compensationMax */)
+  AND ($11 /* salesDeclineMin */  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) >= $11 /* salesDeclineMin */)
+  AND ($12 /* salesDeclineMax */  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) <= $12 /* salesDeclineMax */)
+  AND ($13 /* daysPendingMin */   IS NULL OR GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) >= $13 /* daysPendingMin */)
+  AND ($14 /* daysPendingMax */   IS NULL OR GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) <= $14 /* daysPendingMax */)
 ORDER BY w.update_date
-LIMIT $3 /* size */ OFFSET $4 /* offset */;
+LIMIT $15 /* size */ OFFSET $16 /* offset */;
 ```
 
 **GET /api/v1/sgi/document** — Document search API
 
 ```sql
--- bind ตามลำดับ: $1=statusDone · $2=year · $3=impactedStoreCode · $4=status · $5=size · $6=offset
+-- bind ตามลำดับ: $1=statusDone · $2=year · $3=impactedStoreCode · $4=status · $5=result · $6=keyword · $7=regionCode · $8=storeType · $9=createdFrom · $10=createdTo · $11=compensationMin · $12=compensationMax · $13=salesDeclineMin · $14=salesDeclineMax · $15=size · $16=offset
 -- ต้องระบุ :year เสมอ ไม่งั้นตอบ 400 (กติกา SRS)
 SELECT d.round_no AS "roundNo",
        d.doc_no AS "docNo",
@@ -780,6 +831,7 @@ SELECT d.round_no AS "roundNo",
        d.total_compensation_amount AS "totalCompensationAmount",
        d.status_code AS "statusCode",
        d.current_section_code AS "currentSection",
+       w.current_approver AS "currentOwner",   -- คอลัมน์ "ผู้ดำเนินการ (เจ้าของงาน)" บนหน้าจอ
        -- workflow_transaction ไม่มี created_date (มีแค่ update_date) — วันที่เริ่มงานเอาจาก workflow_history
        CASE WHEN w.current_status_id <> $1 /* statusDone */ THEN GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) ELSE 0 END AS "daysPending",
        ss.total_working_days AS "salesDataDays"
@@ -787,11 +839,30 @@ FROM sgi_compensation_documents d
 JOIN store s ON s.store_id = d.impacted_store_code
 LEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id
 LEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.id::text   -- DP-1 = surrogate id (reference_id เป็น varchar(255)) AND w.version_id = :sgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)
+-- ⚠️ ตัวกรองทุกตัวบนหน้าจอต้องมาที่นี่ ไม่ใช่กรองฝั่ง client — เพราะมี LIMIT/OFFSET
+--    ถ้ากรองฝั่ง client ตัวกรองจะทำงานแค่แถวในหน้านั้น (เพิ่มครบ 2026-09-09)
 WHERE d.year = $2 /* year */
   AND ($3 /* impactedStoreCode */ IS NULL OR d.impacted_store_code = $3 /* impactedStoreCode */)
   AND ($4 /* status */            IS NULL OR d.status_code = $4 /* status */)
+  -- result ไม่ได้อยู่ที่หัวเอกสาร — ต้องดูผลพิจารณา *ล่าสุด* ของเอกสารจาก sgi_consideration_logs
+  AND ($5 /* result */            IS NULL OR EXISTS (
+        SELECT 1 FROM sgi_consideration_logs cl
+         WHERE cl.doc_no = d.doc_no AND cl.result_category = $5 /* result */
+           AND cl.action_datetime = (SELECT MAX(action_datetime) FROM sgi_consideration_logs
+                                      WHERE doc_no = d.doc_no)))
+  AND ($6 /* keyword */          IS NULL OR d.doc_no ILIKE '%' || $6 /* keyword */ || '%'
+                                 OR s.store_name ILIKE '%' || $6 /* keyword */ || '%'
+                                 OR d.impacted_store_code ILIKE '%' || $6 /* keyword */ || '%')
+  AND ($7 /* regionCode */       IS NULL OR s.zone_cd = $7 /* regionCode */)
+  AND ($8 /* storeType */        IS NULL OR s.store_type = $8 /* storeType */)   -- 7 ค่า A B C D E PTT บริษัท (เหมือนตัวกรองในรายงาน)
+  AND ($9 /* createdFrom */      IS NULL OR d.created_at >= $9 /* createdFrom */::date)
+  AND ($10 /* createdTo */        IS NULL OR d.created_at <  $10 /* createdTo */::date + 1)
+  AND ($11 /* compensationMin */  IS NULL OR d.total_compensation_amount >= $11 /* compensationMin */)
+  AND ($12 /* compensationMax */  IS NULL OR d.total_compensation_amount <= $12 /* compensationMax */)
+  AND ($13 /* salesDeclineMin */  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) >= $13 /* salesDeclineMin */)
+  AND ($14 /* salesDeclineMax */  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) <= $14 /* salesDeclineMax */)
 ORDER BY d.doc_no DESC
-LIMIT $5 /* size */ OFFSET $6 /* offset */;
+LIMIT $15 /* size */ OFFSET $16 /* offset */;
 ```
 
 ### 10.3 Index / Constraint ที่ควรมี (ข้อเสนอ)
@@ -799,7 +870,8 @@ LIMIT $5 /* size */ OFFSET $6 /* offset */;
 | Table | DDL ที่เสนอ | ที่มา / หมายเหตุ |
 | --- | --- | --- |
 | sgi_fgi_impact_sales_summaries | CREATE INDEX idx_sgi_fgi_impact_sales_summaries_impact_process_id ON sgi_fgi_impact_sales_summaries (impact_process_id); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
-| sgi_compensation_documents | CREATE INDEX idx_sgi_compensation_documents_year_impacted_store_code_status_ ON sgi_compensation_documents (year, impacted_store_code, status_code); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
+| sgi_compensation_documents | CREATE INDEX idx_sgi_compensation_documents_status_code_created_at_total_com ON sgi_compensation_documents (status_code, created_at, total_compensation_amount); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
+| sgi_consideration_logs | CREATE INDEX idx_sgi_consideration_logs_doc_no_result_category_action_dateti ON sgi_consideration_logs (doc_no, result_category, action_datetime); | ข้อเสนอ — อนุมานจากคอลัมน์ที่ปรากฏใน WHERE/JOIN ของ SQL ด้านบน ต้องวัด EXPLAIN ก่อนใช้จริง |
 
 ทั้งหมดเป็น **ข้อเสนอ** ไม่ใช่ข้อกำหนดจาก SRS — ให้ตรวจกับ `EXPLAIN ANALYZE` บนข้อมูลจริง และรวมเข้าไฟล์ `sql/deploy-sgi-*.sql` แบบ idempotent (`CREATE INDEX IF NOT EXISTS`) ตาม pattern ที่ทีมใช้อยู่
 

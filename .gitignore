@@ -12,3 +12,15 @@ SBP/srm-sps-spsap-store-consumer/
 # ไฟล์ SQL ทั้งหมด — dump/สคริปต์ DB ไม่เก็บใน git
 # (ไฟล์ยังอยู่บนเครื่อง · database.md อ้างถึงเป็นแหล่ง migration เท่านั้น)
 *.sql
+
+# โค้ดระบบเดิม (Java) ที่ copy มาไว้อ่านตอนเขียนเอกสาร batch job — 445 MB ไม่ต้องเก็บใน git
+# ต้นฉบับอยู่ที่ ../fcsJar ของ workspace · เอกสารใน batchjob/*.md อ้างอิง path จากตรงนั้น
+batchjob/fcsJar/
+
+# ข้อมูลที่สกัดจากฐาน Oracle ของระบบเดิม (tools/introspect_legacy_oracle.py)
+# มีโครงสร้างตารางและสถิติข้อมูลธุรกิจจริง — ห้าม commit ขึ้น repo
+output/legacy-oracle/
+
+# ข้อมูลที่สกัดจากฐาน PostgreSQL dev ของระบบ SBP (tools/introspect_dev_sgi.py)
+# มีโครงสร้างตารางและข้อมูลธุรกิจจริงของระบบเดิม — ห้าม commit ขึ้น repo
+output/legacy-sgi/

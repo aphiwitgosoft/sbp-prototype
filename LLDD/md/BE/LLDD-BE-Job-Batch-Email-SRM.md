@@ -453,6 +453,12 @@ export class InterfaceTransaction {
   @Column({ name: 'return_message', type: 'varchar', length: 500, nullable: true })
   returnMessage?: string;
 
+  @Column({ name: 'payload', type: 'jsonb', nullable: true })
+  payload?: Record<string, unknown>;
+
+  @Column({ name: 'payload_version', type: 'smallint', default: 1 })
+  payloadVersion: number;
+
   @Column({ name: 'retry_count', type: 'int', default: 0 })
   retryCount: number;
 
@@ -648,20 +654,23 @@ export class SgiJobBatchEmailSRMBffController {
 **GET /api/v1/sgi/interface/tracking** — ค้นสถานะ interface ตาม dataset/business key/status/ช่วงเวลา
 
 ```sql
--- bind ตามลำดับ: $1=dataName · $2=pending · $3=size · $4=offset
+-- bind ตามลำดับ: $1=dataName · $2=pending · $3=status · $4=sentFrom · $5=sentTo · $6=size · $7=offset
 -- pending = ยังไม่ได้ publisher confirm (มติ 2026-09-08 ข้อ 2.13) — ไม่ใช่ "รอ return_code จาก STA"
 SELECT id AS tracking_id, data_name, doc_no, sent_at, outbox_status, acked_at AS confirmed_date
 FROM sgi_interface_transactions
 WHERE ($1 /* dataName */ IS NULL OR data_name = $1 /* dataName */)
   AND ($2 /* pending */  IS NULL OR outbox_status IS DISTINCT FROM 'CONFIRMED')
+  AND ($3 /* status */   IS NULL OR outbox_status = $3 /* status */)   -- READY / PUBLISHED / CONFIRMED / FAILED
+  AND ($4 /* sentFrom */ IS NULL OR sent_at >= $4 /* sentFrom */)
+  AND ($5 /* sentTo */   IS NULL OR sent_at <  $5 /* sentTo */ + INTERVAL '1 day')
 ORDER BY sent_at DESC
-LIMIT $3 /* size */ OFFSET $4 /* offset */;
+LIMIT $6 /* size */ OFFSET $7 /* offset */;
 ```
 
 **GET /api/v1/sgi/interface/pending-ack** — รายการข้อความขาออกที่ยังไม่ได้ publisher confirm ตาม watchdog rule อายุอย่างน้อย 1 วัน (path คงชื่อเดิม)
 
 ```sql
--- bind ตามลำดับ: $1=thresholdHours
+-- bind ตามลำดับ: $1=thresholdHours · $2=dataName
 -- เกณฑ์ watchdog Job 10 (มติ 2026-09-08 ข้อ 2.13): ขาส่งออกที่ broker ยังไม่ publisher confirm และอายุ >= 1 วัน
 --   "ค้าง" = ยังไม่ได้ publisher confirm ไม่ใช่ "STA ยังไม่ ACK" — สเปก STA มีแค่ 3 ข้อความบน RabbitMQ ไม่มี ACK กลับมา
 --   direction = OUT เท่านั้น — แถว INTERNAL ของ Jobs 7/8/9 จบที่ COMPLETED ทันที ไม่มีอะไรให้รอ
@@ -671,6 +680,7 @@ FROM sgi_interface_transactions
 WHERE direction = 'OUT'
   AND (outbox_status IS NULL OR outbox_status <> 'CONFIRMED')
   AND created_at < CURRENT_TIMESTAMP - ($1 /* thresholdHours */ * INTERVAL '1 hour')
+  AND ($2 /* dataName */ IS NULL OR data_name = $2 /* dataName */)   -- จำกัดชุดข้อมูลที่เฝ้า (ไม่ระบุ = ทุกชุดขาออก)
 ORDER BY created_at;
 ```
 

@@ -17,7 +17,7 @@
 
 ## ภาพรวม
 
-- **20 ตาราง** ใน Target Schema เดียว (1 schema ใช้ร่วมกัน) — 34 ตารางเดิม **ตัดออก 10 ตารางที่ระบบ SBP ปัจจุบันมีอยู่แล้ว** เมื่อ 2026-08-06 (workflow engine · store/zone/employee master · email template · config — ดูหัวข้อ "ตารางที่ตัดออกรอบ 2" ท้ายไฟล์) แล้ว **ตัดอีก 2 ตาราง** (`job_configs` · `job_run_histories`) เมื่อ 2026-08-06 เพราะตัด 2 tab ควบคุมของหน้า Batch Job (ดูหมายเหตุในโซน C) และ **ตัด `audit_logs`** เมื่อ 2026-08-07 เพราะยกเลิกระบบ audit ของ master
+- **21 ตาราง** ใน Target Schema เดียว (1 schema ใช้ร่วมกัน) — 34 ตารางเดิม **ตัดออก 10 ตารางที่ระบบ SBP ปัจจุบันมีอยู่แล้ว** เมื่อ 2026-08-06 (workflow engine · store/zone/employee master · email template · config — ดูหัวข้อ "ตารางที่ตัดออกรอบ 2" ท้ายไฟล์) แล้ว **ตัดอีก 2 ตาราง** (`job_configs` · `job_run_histories`) เมื่อ 2026-08-06 เพราะตัด 2 tab ควบคุมของหน้า Batch Job (ดูหมายเหตุในโซน C) และ **ตัด `audit_logs`** เมื่อ 2026-08-07 เพราะยกเลิกระบบ audit ของ master · แล้ว **มติ 2026-09-13** เพิ่ม `sgi_fgi_new_store_compensations` — ค่าชดเชยฝั่ง**ร้านเปิดใหม่ รายงวด** (ORA `FGI_NEW_STORE_COMPENSATE` 23,628 แถวจริง) · `sgi_fgi_impact_stores` เป็น 1 แถวต่อคู่ร้าน **ไม่มีมิติงวด** จึงเก็บแทนไม่ได้ — งวดใหม่จะทับงวดเก่า
 - **3 Data Zones**: A = FGI/FCS Impact Pipeline · B = K2 เอกสาร & Workflow · C = Master/Config ใช้ร่วม
 - **4 Core IDs** ใช้ trace งาน (Data Spine)
 - มาตรฐานชื่อ: อังกฤษ `lower_snake_case` ทั้ง schema · ป้ายที่มา (FGI/FCS), (K2), (ใหม่) ต้องคงไว้เสมอ
@@ -59,12 +59,12 @@
 | ตาราง | ที่มา | ตารางต้นทาง (Migration) | PK | FK / ความสัมพันธ์หลัก | บทบาท |
 |---|---|---|---|---|---|
 | `sgi_fgi_impact_compensations` ★ | FGI/FCS | **ORA** `FGI_IMPACT_STORE_COMPENSATE` (PK `COMPENSATE_I_ID`) | id | `impact_process_id` → sgi_fgi_impact_processes · `impacted_store_code` | **(รับเข้าโครง 2026-08-21 · gap F1)** ยอดชดเชย**รายงวด**ที่เกิดก่อนมีเอกสาร · แยก `forecast_amount` (ระบบคำนวณ) กับ `adjust_amount` (คนปรับ) · UK `(impact_process_id, compensate_month)` · **จำเป็นเพื่อนับ "ยอด 0 ติดกันกี่เดือน"** ตามกติกาเดือน 1–3 / เดือนที่ 4 |
-| `sgi_fgi_impact_stores` | FGI/FCS | **ORA** `FGI_IMPACT_STORE` (PK `IMPACT_STORE_ID` · business key `STORECODE_I`+`MONTH`+`YEAR`) | id | `impact_process_id` → sgi_fgi_impact_processes · `impacted_store_code` → sgi_impacted_stores | คู่ร้านกระทบ–เปิดใหม่ · **`verify_status` (W/P/N — ผลกฎ DENY/ON_PROCESS ของ Job 2)** แยกจาก **`sales_request_status` (W/P/Y/E — รอบขอยอดขาย IAS ของ Job 4/5)** · `created_by`/`updated_by` (ALM/STA/USER) · ข้อมูล %/ยอดชดเชยต่อคู่ร้าน <br><small>เพิ่ม verify_status + created_by/updated_by/created_at เมื่อ 2026-09-02 (ปิดช่องว่าง G1/G2 ของ LLDD Job 2)</small> |
+| `sgi_fgi_impact_stores` | FGI/FCS | **ORA** `FGI_IMPACT_STORE` (PK `IMPACT_STORE_ID` · business key `STORECODE_I`+`MONTH`+`YEAR`) | id | `impact_process_id` → sgi_fgi_impact_processes · `impacted_store_code` → sgi_impacted_stores | คู่ร้านกระทบ–เปิดใหม่ · **`verify_status` (W/P/N — ผลกฎ DENY/ON_PROCESS ของ Job 2)** แยกจาก **`sales_request_status` (W/P/Y/E — *การขอ* ยอดขาย IAS ของ Job 4/5) · ผลทางธุรกิจอยู่ที่ `sgi_fgi_impact_sales_summaries.sales_status` (W/P/Y/N/E)** · `created_by`/`updated_by` (ALM/STA/USER) · ข้อมูล %/ยอดชดเชยต่อคู่ร้าน <br><small>เพิ่ม verify_status + created_by/updated_by/created_at เมื่อ 2026-09-02 (ปิดช่องว่าง G1/G2 ของ LLDD Job 2)</small> |
 | `sgi_fgi_impact_processes` ★ | FGI/FCS | **ORA** `FGI_IMPACT_STORE_ON_PROCESS` (PK `IMPACT_PROCESS_ID` — seq `SEQ_FGI_IMPACT_PROCESS`) | id | `impacted_store_code` · แม่ของตารางรายรอบทั้งหมด | **hub รอบชดเชย** · `action_status` (Y/W/N) · `last_compensation_amount` · source of truth ของ `workflow_generation_status` (W/Y/N) |
 | `sgi_fgi_impact_sales_summaries` | FGI/FCS | **ORA** `FGI_IMPACT_STORE_SALES` (key `STORECODE_I`+`MONTH`+`YEAR`) | id | `impact_process_id` → sgi_fgi_impact_processes · → sgi_sales_transactions (1:N) | หัวยอดขาย · `growth_rate_diff` · `total_working_days` (เกณฑ์ 60 วัน) |
 | `sgi_sales_transactions` | FGI/FCS | **ORA** `FGI_IMPACT_STORE_SALES_TRN` (key เดียวกับหัว + `SEQ`) | id | `sales_summary_id` → sgi_fgi_impact_sales_summaries | ยอดขายรายวันจาก IAS · 4 หน้าต่าง × 15 วัน · sales_diff/outlier ≥ 50 แบบจับคู่ |
-| `sgi_fgi_impact_competitors` | FGI/FCS | **ORA** `FGI_IMPACT_COMPETITOR` (PK `IMPACT_COMPETITOR_ID`) | id | `impact_process_id` → sgi_fgi_impact_processes · → sgi_document_competitors (นำเข้า) | คู่แข่งจาก ALLMAP (data_source=ALM) · งวดล่าสุดต่อร้าน |
-| `fcs_qssi_score` | FGI/FCS | **ORA** `FCS_QSSI_SCORE` (`STORE_ID`+`CATEGORY`+`MONTH`+`YEAR`) — ⚠ **ไม่ต้อง migrate ใหม่ ของเดิมมีข้อมูลครบแล้ว · อ่านอย่างเดียว (READ-ONLY)** — ระบบ SBP เดิมเป็นคนนำเข้าผ่าน `POST /performance/import-qssi` · **SGI ตัด Job 1 ImportQSSI ออกจากขอบเขตแล้ว (2026-08-24)** จึงไม่มีการเขียนตารางนี้จากฝั่งเรา (ปิด DP-4) | id | UK: store_id + category_code + งวด (**ยังไม่มีจริงในของเดิม** — ดู DP-4) | คะแนน QSSI 6 หมวด (8,9,12,1,10,16) — **มีอยู่จริงใน `sps_store.fcs_qssi_score` (ชื่อ *เอกพจน์*) 23,958,780 แถว · 7 คอลัมน์** (`SBP/db-schema-sps_store.md`) และมี **import pipeline ที่ทำงานอยู่แล้ว**: `POST /performance/import-qssi` + staging `fcs_tmp_qssi_score` + `performance.service.ts` → **ห้ามสร้างตาราง/entity ใหม่ ให้ reuse ของเดิม** · ชื่อพหูพจน์ `fcs_qssi_scores` **ผิด ห้ามใช้** · ข้อจำกัดที่ต้องปิด: 4 คอลัมน์คีย์ (`store_id`/`category`/`month`/`year`) เป็น **nullable** · index มีแค่ `fcs_qssi_score_pkey` บน `id` → **✅ DP-4 ปิดแล้ว 2026-08-24 — อ่านอย่างเดียว ไม่แก้ constraint/index ของตารางเดิม จึงไม่ต้อง sign-off เจ้าของ `performance.service.ts`** · `fcs_qssi_score_bak_20260710` (18,577,924 แถว) เป็น snapshot **ห้ามอ่าน/ห้าม join** |
+| `sgi_fgi_impact_competitors` | FGI/FCS | **ORA** `FGI_IMPACT_COMPETITOR` (มีคอลัมน์ `IMPACT_COMPETITOR_ID` จาก sequence แต่ **DDL ไม่ได้ประกาศ PRIMARY KEY หรือ UNIQUE เลย** · มีแต่ index ธรรมดา `IDX_FGI_IMPACT_COMPETITOR(STORECODE_I, MONTH, YEAR)`) | id | `impact_process_id` → sgi_fgi_impact_processes · → sgi_document_competitors (นำเข้า) | คู่แข่งจาก ALLMAP (data_source=ALM) · งวดล่าสุดต่อร้าน |
+| `fcs_qssi_score` | FGI/FCS | **ORA** `FCS_QSSI_SCORE` (`STORE_ID`+`CATEGORY`+`MONTH`+`YEAR`) — ⚠ **ไม่ต้อง migrate ใหม่ ของเดิมมีข้อมูลครบแล้ว · อ่านอย่างเดียว (READ-ONLY)** — ระบบ SBP เดิมเป็นคนนำเข้าผ่าน `POST /performance/import-qssi` · **SGI ตัด Job 1 ImportQSSI ออกจากขอบเขตแล้ว (2026-08-24)** จึงไม่มีการเขียนตารางนี้จากฝั่งเรา (ปิด DP-4) | id | UK: store_id + category_code + งวด (**ยังไม่มีจริงในของเดิม** — ดู DP-4) | คะแนน QSSI 6 หมวด (8,9,12,1,10,16) — **มีอยู่จริงใน `sps_store.fcs_qssi_score` (ชื่อ *เอกพจน์*) 24,284,545 แถว · 7 คอลัมน์** (`SBP/db-schema-sps_store.md`) และมี **import pipeline ที่ทำงานอยู่แล้ว**: `POST /performance/import-qssi` + staging `fcs_tmp_qssi_score` + `performance.service.ts` → **ห้ามสร้างตาราง/entity ใหม่ ให้ reuse ของเดิม** · ชื่อพหูพจน์ `fcs_qssi_scores` **ผิด ห้ามใช้** · ข้อจำกัดที่ต้องปิด: 4 คอลัมน์คีย์ (`store_id`/`category`/`month`/`year`) เป็น **nullable** · index มีแค่ `fcs_qssi_score_pkey` บน `id` → **✅ DP-4 ปิดแล้ว 2026-08-24 — อ่านอย่างเดียว ไม่แก้ constraint/index ของตารางเดิม จึงไม่ต้อง sign-off เจ้าของ `performance.service.ts`** · `fcs_qssi_score_bak_20260710` (18,577,924 แถว) เป็น snapshot **ห้ามอ่าน/ห้าม join** |
 | `sgi_interface_transactions` | ใหม่ | **ORA** `FGI_CONFIRM_RECEIVE_DATA` — ⚠ `TRANSACTION_PK` เป็น polymorphic ต้องแตกตาม `DATA_NAME` เป็น typed FK ตอน migrate | id | typed FK: `impact_process_id` / `sales_summary_id` / `doc_no` | แทน FGI_CONFIRM_RECEIVE_DATA — เลิก polymorphic PK + purge ทำงานจริง · **คอลัมน์ `last_ack_notified_on` (DATE · ใหม่ 2026-08-07)** — marker กันงาน watchdog ส่งอีเมลเตือนซ้ำในวันเดียวกัน (ย้ายมาจาก `audit_logs` ที่ถูกยกเลิก) (แก้ E20) · **ยังไม่ตัดสิน (DP-6)** ว่าจะออกแบบใหม่ หรือลอกแพตเทิร์น `statement_summary` ของระบบเดิม — [`SBP/SBPGI-vs-existing-system.md`](SBP/SBPGI-vs-existing-system.md) §4 |
 
 ### Zone B · K2 — เอกสารประกันรายได้และ Workflow ภายใน
@@ -133,8 +133,8 @@ SGI **ไม่สร้างตารางใหม่** สำหรับ 3
 
 | ชุด | ตารางปลายทาง (`sps_store`) | ผู้รับผิดชอบ | ขอบเขตที่อนุญาต |
 |---|---|---|---|
-| **Email template 8 ฉบับ** (EM-01…EM-08) | `email_template` (เดิม 85 แถว) | **Butsaba \<But\> Podamrong** | `INSERT` แถวใหม่ + `active_flag='Y'` เท่านั้น · ห้าม `UPDATE`/`DELETE` 85 แถวเดิม · ต้องใช้ชื่อคอลัมน์จริง (`email_template_name` · `subject_format` · `body_format` · `sender` · `email_from`) |
-| **Workflow version เริ่มต้น 1 ชุด** | **10 ตารางนิยาม** ของ engine (จาก 13 ตาราง — อีก 3 ตัว `workflow_transaction`/`workflow_history`/`workflow_approver` เป็น runtime ที่ lib เขียนเอง ห้ามแตะ): (`workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_part` · `workflow_part_display`) | **Aphiwit \<Bank\> Khammoon** | `INSERT` **version ใหม่หมายเลขเดียว** ของ SGI · 🔴 ห้ามแตะ version ของระบบอื่นเด็ดขาด (`workflow_transaction` 19,283 แถวใช้ร่วมกันทั้งองค์กร) · `workflow_route.email_id` ผูกเลข template จากชุดบน |
+| **Email template 8 ฉบับ** (EM-01…EM-08) | `email_template` (ของทีมอื่น 126 แถว) | **Butsaba \<But\> Podamrong** | `INSERT` แถวใหม่ + `active_flag='Y'` เท่านั้น · ห้าม `UPDATE`/`DELETE` แถวของทีมอื่น · ต้องใช้ชื่อคอลัมน์จริง (`email_template_name` · `subject_format` · `body_format` · `sender` · `email_from`) · **ตัวแปรในข้อความเป็น `${ชื่อ}` ไม่ใช่ `{ชื่อ}`** · `sender` = อีเมลผู้ส่ง · `email_from` = ชื่อที่แสดง (สลับกับที่ชื่อคอลัมน์ชวนให้เข้าใจ) · ชุดประกันรายได้เดิม (id 1501010–1501044) ใช้ `noreply@cpall.co.th` / `SBP Mall System` ทั้ง 33 แถว |
+| **Workflow version เริ่มต้น 1 ชุด** | **10 ตารางนิยาม** ของ engine (จาก 13 ตาราง — อีก 3 ตัว `workflow_transaction`/`workflow_history`/`workflow_approver` เป็น runtime ที่ lib เขียนเอง ห้ามแตะ): (`workflow` · `workflow_version` · `workflow_state` · `workflow_status` · `workflow_event` · `workflow_route` · `workflow_group` · `workflow_group_map` · `workflow_part` · `workflow_part_display`) | **Aphiwit \<Bank\> Khammoon** | `INSERT` **version ใหม่หมายเลขเดียว** ของ SGI · 🔴 ห้ามแตะ version ของระบบอื่นเด็ดขาด (`workflow_transaction` 19,327 แถวใช้ร่วมกันทั้งองค์กร) · `workflow_route.email_id` ผูกเลข template จากชุดบน |
 | **`SGI_APPROVE_LIMIT` + `SGI_DECISION`** | `common_code` (+ `common_code_type`) | **Aphiwit \<Bank\> Khammoon** | `INSERT` เฉพาะ `code_type` ที่ขึ้นต้นด้วย `SGI_` · ห้ามแตะ code_type ของโมดูลอื่น |
 | **`SGI_ALLOW_PENDING_DOWNLOAD`** (เพิ่ม 2026-09-07) | `mas_param` | **ทีม security/infra เป็นผู้ตัดสินค่า** | สวิตช์เดียวที่คุมว่าไฟล์แนบสถานะ `PENDING` ดาวน์โหลดได้หรือไม่ (`Y`/`N`) — จำเป็นเพราะ**ยังไม่มีตัวสแกนไวรัสในระบบใดเลย** ถ้าบังคับ `CLEAN` อย่างเดียววันนี้ ไฟล์แนบทั้งระบบจะดาวน์โหลดไม่ได้ · `BLOCKED`/`FAILED` ปิดตายเสมอไม่ขึ้นกับสวิตช์นี้ · ต้องเปลี่ยนเป็น `N` ในรอบ deploy เดียวกับที่ตัวสแกนขึ้น production · 🔴 รอ sign-off (ดู `DECISIONS-รอตัดสินใจ.md` ข้อ 2.10) |
 
@@ -301,14 +301,14 @@ SDD GI สไลด์ 17 ระบุว่าข้อมูลร้านท
 
 | ตารางที่ตัด (10) | ของระบบ SBP ที่ใช้แทน | หมายเหตุการต่อยอด |
 |---|---|---|
-| `workflow_instances` · `workflow_tasks` | **`@srm/glb-workflow`** ใน schema **`sps_store`** — `workflow_transaction` (instance · 19,283 แถว) · `workflow_approver` (prepared approvers · 96,542 แถว) · `workflow_history` (timeline · 38,010 แถว) | SGI ขอ **workflow version ใหม่** 1 ตัว แล้วเรียก `initializeWorkflow` → `addPreApprover` → `eventWorkflow` · **✅ ชื่อ function ยืนยันแล้ว 2026-08-14** (API 8 ตัวตามชีต `Detail` ของ LLDD ฝั่ง lib) · **✅ DP-1 ปิดแล้ว 2026-08-17** — `referenceId` = `sgi_compensation_documents.id` (surrogate · ส่งเป็น string) |
+| `workflow_instances` · `workflow_tasks` | **`@srm/glb-workflow`** ใน schema **`sps_store`** — `workflow_transaction` (instance · 19,327 แถว) · `workflow_approver` (prepared approvers · 99,198 แถว) · `workflow_history` (timeline · 38,136 แถว) | SGI ขอ **workflow version ใหม่** 1 ตัว แล้วเรียก `initializeWorkflow` → `addPreApprover` → `eventWorkflow` · **✅ ชื่อ function ยืนยันแล้ว 2026-08-14** (API 8 ตัวตามชีต `Detail` ของ LLDD ฝั่ง lib) · **✅ DP-1 ปิดแล้ว 2026-08-17** — `referenceId` = `sgi_compensation_documents.id` (surrogate · ส่งเป็น string) |
 | `workflow_sections` · `document_statuses` | **`workflow_state` / `workflow_route` / `workflow_status`** ของ engine ใน **`sps_store`** (definition เก็บใน DB ไม่ใช่โค้ด · ของจริงมี state 18 · route 43 · status 22 แถว) | 5 ขั้น 06/08/01/02/03 = state · การส่งต่อ/ตีกลับ = route · สถานะ 6 ค่า = status · **วงเงินอนุมัติ (เกณฑ์เดียว 100,000) เก็บใน `common_code`** (`code_type = SGI_APPROVE_LIMIT`) หรือ `workflow_route.condition_json` — ยังคงเป็น data ตาม SDD GI |
 | `stores` | **`store` / `mas_store` / `sevenshop`** + `fr_store` · `franchisee` · `juristic` | มี API พร้อมใช้: `GET /store/search`, `/store/list`, `/store/detail`, `/store/opt-name` |
 | `zones` | **`mas_zone`** (`zone_id` · `zone_cd` · `zone_name` · `sub_area_flag/name`) | มี API พร้อมใช้: `GET /store/all-regions`, `/store/regions-by-email`, `/store/province-by-region` — ตอบโจทย์ SDD GI ที่ให้ภาคเพิ่มเองโดยไม่แก้หน้าจอ |
 | `branch_types` | **`common_code`** (`code_type` + `seq_no` → `code_value`/`code_name`) | มี API พร้อมใช้: `GET /common/common-code`, `/master/common` · ชื่อ FMS/FGI ที่ต่างกันเก็บเป็นคนละ `code_type` |
 | `employees` | **`business_user`** + `business_user_group` + `business_group` (auth-backend) | ต่อจากการตัดสินใจ 2026-08-05 · ผู้อนุมัติ resolve ด้วย (store_type, store_area) + `position_level` แบบเดียวกับ view `V_FGI_SBP_APPROVER` |
 | `email_templates` | **`email_template`** (`email_template_id` · `subject_format` · `body_format`) + **`email_sent`** (log ทุกฉบับ) + lib `@gosoft-sbp/email-lib` (`emailId`) | 8 template EM-01–08 = **8 แถวใน `email_template` เดิม** · **ลบหน้าจอ `email-template.html` และ endpoint `/email-templates/*` ทั้งกลุ่ม 2026-08-06** — SGI แค่**อ่าน**ไปประกอบอีเมลแล้วส่งผ่าน lib การแก้ template ทำที่ระบบ SBP เดิม · ไม่ต้องทำ mail sender เอง |
-| `system_configs` | **`sps_store.mas_param`** (`param_name` · `param_value` · `ref_name` · `description` · `is_config` · `active_flag`) — **ตาราง config กลางของ store-backend** 93,752 แถว · ⚠️ **ไม่มี PK/unique** (btree `(param_name, param_value)` เท่านั้น) จึงต้อง `WHERE active_flag='Y'` + `LIMIT 1` เสมอ · ⚠️ **มีเฉพาะ schema `sps_store` — `sps_auth` ไม่มีตารางนี้** | ถ้าต้องการ `category`/`value_type`/`is_editable` ให้**เพิ่มคอลัมน์ใน `mas_param`** ไม่สร้างตารางใหม่ · **ลบหน้าจอ `system-config.html` และ endpoint `/configs*` ทั้งกลุ่ม 2026-08-06** — SGI แค่**อ่าน**ค่าไปใช้ การแก้ค่าทำที่ระบบ SBP เดิม |
+| `system_configs` | **`sps_store.mas_param`** (`param_name` · `param_value` · `ref_name` · `description` · `is_config` · `active_flag`) — **ตาราง config กลางของ store-backend** 93,763 แถว · ⚠️ **ไม่มี PK/unique** (btree `(param_name, param_value)` เท่านั้น) จึงต้อง `WHERE active_flag='Y'` + `LIMIT 1` เสมอ · ⚠️ **มีเฉพาะ schema `sps_store` — `sps_auth` ไม่มีตารางนี้** | ถ้าต้องการ `category`/`value_type`/`is_editable` ให้**เพิ่มคอลัมน์ใน `mas_param`** ไม่สร้างตารางใหม่ · **ลบหน้าจอ `system-config.html` และ endpoint `/configs*` ทั้งกลุ่ม 2026-08-06** — SGI แค่**อ่าน**ค่าไปใช้ การแก้ค่าทำที่ระบบ SBP เดิม |
 
 ### มติจากการเทียบฐานข้อมูลจริง (ตัดสินใจ 2026-08-10 · DP-1 · DP-3 · DP-9)
 
@@ -331,10 +331,10 @@ SDD GI สไลด์ 17 ระบุว่าข้อมูลร้านท
 
 > 🔴 **ค่าของ SGI ใน `common_code` / `mas_param` ยังไม่มีอยู่จริง — ต้อง seed เอง (ระบุชัด 2026-08-25):** `SGI_APPROVE_LIMIT` · `SGI_DECISION` · `SGI_DATASOURCE` และค่าใน `mas_param` (`SGI_IMPACT_RADIUS_*` · `SGI_SALES_DAYS_MIN` · `SGI_GROWTH_RATE_MAX`) เป็นแถวที่ **การออกแบบวางแผนจะเพิ่ม** ไม่ใช่ของเดิมที่ reuse ได้ทันที — งาน seed อยู่ใน `LLDD-BE-Data-Migration-Cutover` และมี SQL ตัวอย่างใน `LLDD-BE-Integration-SBP-Platform` 5.5.2
 >
-> 🔴 **กับดัก schema:** `mas_param` มี**เฉพาะ `sps_store`** (`sps_auth` ไม่มีตารางนี้เลย) · `common_code` มี**ทั้งสอง schema แต่คนละตาราง** — `sps_store` 14 คอลัมน์ 2,609 แถว vs `sps_auth` **13 คอลัมน์ 2,594 แถว** (ชุดเก่าของ auth-backend) · **SGI ใช้ `sps_store` เท่านั้น** และต้องเขียน schema นำหน้าใน SQL ทุกครั้ง (กับดักเดียวกับตาราง `workflow_*`)
+> 🔴 **กับดัก schema:** `mas_param` มี**เฉพาะ `sps_store`** (`sps_auth` ไม่มีตารางนี้เลย) · `common_code` มี**ทั้งสอง schema แต่คนละตาราง** — `sps_store` 14 คอลัมน์ 2,641 แถว vs `sps_auth` **13 คอลัมน์ 2,594 แถว** (ชุดเก่าของ auth-backend) · **SGI ใช้ `sps_store` เท่านั้น** และต้องเขียน schema นำหน้าใน SQL ทุกครั้ง (กับดักเดียวกับตาราง `workflow_*`)
 
-> ⚠️ **ข้อควรระวังที่ต้องรับทราบ:** `common_code` **ไม่มี PK และไม่มี unique constraint** — มีแค่ index ธรรมดา `btree (code_type, code_value, code_name)` แปลว่า**ฐานข้อมูลไม่กันรหัสซ้ำให้** ต้องกันที่ระดับแอปพลิเคชัน หรือขอเพิ่ม partial unique index (`WHERE code_type='SGI_DECISION'`) ซึ่งต้อง sign-off จากทีมเจ้าของตาราง เพราะเป็นตารางที่ทุกโมดูลอ่าน (2,609 แถว)
-> และต้องลงทะเบียน `code_type` ที่ `common_code_type` (376 แถว) ก่อนใช้งาน
+> ⚠️ **ข้อควรระวังที่ต้องรับทราบ:** `common_code` **ไม่มี PK และไม่มี unique constraint** — มีแค่ index ธรรมดา `btree (code_type, code_value, code_name)` แปลว่า**ฐานข้อมูลไม่กันรหัสซ้ำให้** ต้องกันที่ระดับแอปพลิเคชัน หรือขอเพิ่ม partial unique index (`WHERE code_type='SGI_DECISION'`) ซึ่งต้อง sign-off จากทีมเจ้าของตาราง เพราะเป็นตารางที่ทุกโมดูลอ่าน (2,641 แถว)
+> และต้องลงทะเบียน `code_type` ที่ `common_code_type` (378 แถว) ก่อนใช้งาน
 
 ### ตารางที่ "คล้ายแต่ไม่ใช่" — ตรวจแล้วต้องเก็บของเราไว้
 
@@ -366,9 +366,9 @@ SDD GI สไลด์ 17 ระบุว่าข้อมูลร้านท
 
 | ตาราง | `sps_store` (ตัวจริง) | `sps_auth` (ของ auth-backend คนละชุด) |
 |---|---:|---:|
-| `workflow_transaction` | **19,283** | 55 |
-| `workflow_history` | **38,010** | — |
-| `workflow_approver` | **96,542** | — |
+| `workflow_transaction` | **19,327** | 55 |
+| `workflow_history` | **38,136** | — |
+| `workflow_approver` | **99,198** | — |
 | `workflow_route` | 43 | 41 |
 | `workflow_state` | 18 (**4 คอลัมน์**) | 10 (**3 คอลัมน์**) |
 | `workflow_status` | 22 | 10 |
@@ -377,7 +377,7 @@ SDD GI สไลด์ 17 ระบุว่าข้อมูลร้านท
 
 ### 3. ⚠ ความเสี่ยง — `sps_store.workflow_transaction` ไม่มี PK และไม่มี index เลย
 
-ตารางนี้มี **19,283 แถว** แต่ใน schema dump **ไม่มี PRIMARY KEY และไม่มี index ใด ๆ** (ตัวเดียวกันใน `sps_auth` มี PK `transaction_id` ปกติ) · `workflow_state` · `workflow_event` · `workflow_part_display` ใน `sps_store` ก็ไม่มี PK/index เช่นกัน
+ตารางนี้มี **19,327 แถว** แต่ใน schema dump **ไม่มี PRIMARY KEY และไม่มี index ใด ๆ** (ตัวเดียวกันใน `sps_auth` มี PK `transaction_id` ปกติ) · `workflow_state` · `workflow_event` · `workflow_part_display` ใน `sps_store` ก็ไม่มี PK/index เช่นกัน
 
 | หัวข้อ | รายละเอียด |
 |---|---|
@@ -385,7 +385,7 @@ SDD GI สไลด์ 17 ระบุว่าข้อมูลร้านท
 | **สถานะ** | **ยังไม่ตัดสิน** — ตารางนี้เป็นของ library กลาง `@srm/glb-workflow` ที่ทีมอื่นเป็นเจ้าของ · **ห้าม "เพิ่ม index เอง"** ต้องขอ sign-off จากทีมเจ้าของ library ก่อน |
 | **อ้างอิง** | `SBP/SBPGI-vs-existing-system.md` §4 **DP-2** |
 
-### 4. `fcs_qssi_score` — มีอยู่จริง 23,958,780 แถว ห้ามสร้างใหม่
+### 4. `fcs_qssi_score` — มีอยู่จริง 24,284,545 แถว ห้ามสร้างใหม่
 
 ดูรายละเอียดในแถว `fcs_qssi_score` ของ Data Dictionary โซน A ด้านบน · สรุป: ชื่อ **เอกพจน์** · reuse ของเดิม · มี `POST /performance/import-qssi` + staging `fcs_tmp_qssi_score` ทำงานอยู่แล้ว · **✅ DP-4 ปิดแล้ว 2026-08-24 — ไม่แก้ตารางเดิม (NOT NULL / UNIQUE / index) เพราะ SGI อ่านอย่างเดียว**
 
@@ -403,12 +403,12 @@ SDD GI สไลด์ 17 ระบุว่าข้อมูลร้านท
 
 | ตารางของระบบเดิม (`sps_store`) | แถว | ใช้แทนอะไรในโครงเรา |
 |---|---:|---|
-| `mas_param` | 93,752 | `system_configs` |
-| `common_code` | 2,609 | `branch_types` · **`decisions`** (มติ DP-9 2026-08-10 · `code_type = SGI_DECISION`) · วงเงินอนุมัติ `SGI_APPROVE_LIMIT` — **`sgi_external_factors`/`sgi_competitors` ไม่ย้ายมา** |
+| `mas_param` | 93,763 | `system_configs` |
+| `common_code` | 2,641 | `branch_types` · **`decisions`** (มติ DP-9 2026-08-10 · `code_type = SGI_DECISION`) · วงเงินอนุมัติ `SGI_APPROVE_LIMIT` — **`sgi_external_factors`/`sgi_competitors` ไม่ย้ายมา** |
 | `common_code_type` | 376 | นิยาม `code_type` ของข้างบน |
 | `email_template` | 85 | `email_templates` |
-| `email_sent` | 5,214 | log อีเมลทุกฉบับ |
-| `business_user` | 12,752 | `employees` |
+| `email_sent` | 5,392 | log อีเมลทุกฉบับ |
+| `business_user` | 12,759 | `employees` |
 | `mas_store` | 19,647 | `stores` |
 | `store` | 19,402 | `stores` |
 
@@ -581,7 +581,7 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 ## ข้อปรับปรุงจากระบบเดิม (P0 × 3 · P1 × 4)
 
 1. **เลิก polymorphic FK** — `transaction_key` ของ tracking เดิมชี้คนละตารางตาม data_name (P1) → `sgi_interface_transactions` ใช้ typed FK แยกคอลัมน์
-2. **บังคับ status domain ด้วย enum / check constraint** — `verify_status` W/P/N · `sales_request_status` W/P/Y/E · `compensate_status` I/C/A/N/S/Z (**`C` = ร้านปิด/สัญญายกเลิก · ส่ง STA เป็น `S` เหมือน `Z`** · ปิด DP-14 2026-09-02) · action_status (Y/W/N) · workflow_generation_status (W/Y/N)
+2. **บังคับ status domain ด้วย enum / check constraint** — `verify_status` W/P/N · `sales_request_status` W/P/Y/E · `sales_status` W/P/Y/N/E · `compensate_status` I/C/A/N/S/Z (**`C` = ร้านปิด/สัญญายกเลิก · ส่ง STA เป็น `S` เหมือน `Z`** · ปิด DP-14 2026-09-02) · action_status (Y/W/N) · workflow_generation_status (W/Y/N)
 3. **ครอบ Job 4 ด้วย transaction (outbox pattern)** — เดิม commit W→P ก่อนเขียนไฟล์ rollback ไม่ได้ (**P0 อันดับหนึ่ง**)
 4. **แก้บั๊ก purge tracking (E20)** — SQL เดิมต่อ data_name สองค่าเป็น string เดียวทำให้ไม่เคยลบ — ต้องทำพร้อม data migration และ test
 5. **ทบทวน NULL → auto-accept ของ Job 5** (P1) — ระบบใหม่ตั้งสถานะ "รอตรวจสอบ" แทน accept อัตโนมัติ · **ต้องขอ business sign-off ก่อนเปลี่ยน**
@@ -591,7 +591,7 @@ DDL, SQL ใน API และ SQL ของ Job ต้องใช้ชื่�
 
 ## เอกสารที่เกี่ยวข้อง
 
-- **SQL ติดตั้งจริง:** [`output/sql/sgi_schema.sql`](output/sql/sgi_schema.sql) (สร้าง 19 ตาราง + 23 index ลง schema `sps_store` ของระบบ SBP เดิม) และ [`output/sql/sgi_seed_data.sql`](output/sql/sgi_seed_data.sql) (ข้อมูลตั้งต้น incl. `common_code` / `mas_param` / `email_template` ของระบบเดิม — **INSERT อย่างเดียว**) · สร้างด้วย `python3 tools/build_sgi_schema_sql.py` จาก DDL ชุดเดียวกับเอกสาร **ห้ามแก้ .sql ด้วยมือ**
+- **SQL ติดตั้งจริง:** [`output/sql/sgi_schema.sql`](output/sql/sgi_schema.sql) (สร้าง **20 ตารางใหม่ + 24 index** ลง schema `sps_store` ของระบบ SBP เดิม · รวม `fcs_qssi_score` ที่ reuse = **21 ตารางในขอบเขต**) และ [`output/sql/sgi_seed_data.sql`](output/sql/sgi_seed_data.sql) (ข้อมูลตั้งต้น incl. `common_code` / `mas_param` / `email_template` ของระบบเดิม — **INSERT อย่างเดียว**) · สร้างด้วย `python3 tools/build_sgi_schema_sql.py` จาก DDL ชุดเดียวกับเอกสาร **ห้ามแก้ .sql ด้วยมือ**
 - Flow ที่ใช้ตารางเหล่านี้: [workflow.md](workflow.md) · `plan-flow.html`
 - API ที่อ่าน/เขียนตาราง: [api.md](api.md) · `plan-api.html` (**28 เส้น 6 กลุ่ม** — Lookup 2 · Master Data 8 · เอกสาร 11 · รายงาน 2 · Workflow 3 · Interface 2 · กลุ่ม Auth/RBAC · System Config · Email Template · Batch Job Admin ถูกตัดไปใช้ระบบเดิม)
 - **คำอธิบายรายตาราง/รายคอลัมน์ (แต่ละคอลัมน์เก็บอะไร ใช้ทำอะไร ทำไมต้องมี):** [`LLDD/pdf/LLDD-Database-Dictionary.pdf`](LLDD/pdf/LLDD-Database-Dictionary.pdf) — **ส่งมอบเป็น PDF อย่างเดียว** (19 ตารางใหม่ · 223 คอลัมน์) · ไฟล์นี้ตอบว่า *ตารางมาจากไหน* ส่วนฉบับนั้นตอบว่า *แต่ละคอลัมน์ทำอะไร* · เนื้อหาสร้างจาก `tools/lldd_db_dictionary.py`

@@ -92,7 +92,7 @@ SGI ไม่ได้แยก backend/พอร์ทัลใหม่ (ม�
 
 **Batch job ไม่มีกลุ่ม path ของตัวเอง** — Jobs 2, 3, 4, 5, 6, 7, 8, 8b, 9, 10, 11, 12 (รวม 12 job) รันด้วย AWS Batch/CLI ไม่ได้เปิด endpoint (กลุ่ม Batch Job Admin 6 เส้นถูกตัดทิ้ง 2026-08-06) · หน้าต่างที่มองเห็นผลของ job คือ **`/sgi/interface/*`** (tracking + ACK ของ `sgi_interface_transactions`) กับ application log เท่านั้น
 
-**repo ปลายทางของ batch job ทุกตัวคือ `SBP/srm-sps-spsap-sop-sgi-batch`** — วิธีลงทะเบียน job, รูปแบบ `INPUT`, publisher ของ RabbitMQ, `S3Service` และ `integration_log` อ่านได้ที่ **`SBP/srm-sps-spsap-sop-sgi-batch.md`** · ห้ามออกแบบ batch ของ SGI โดยไม่อ่านไฟล์นั้นก่อน · ส่วน job ที่ถูก **สั่งจากข้อความ** (Job 5 · Job 11 · มติ 2026-09-08) ตัวรับข้อความคือ **`SBP/srm-sps-spsap-store-consumer`** — ดู `SBP/srm-sps-spsap-store-consumer.md`
+**repo ปลายทางของ batch job ทุกตัวคือ `SBP/srm-sps-spsap-sop-sgi-batch`** — วิธีลงทะเบียน job, รูปแบบ `INPUT`, publisher ของ RabbitMQ, `S3Service` และ `integration_log` อ่านได้ที่ **`SBP/srm-sps-spsap-sop-sgi-batch.md`** · ห้ามออกแบบ batch ของ SGI โดยไม่อ่านไฟล์นั้นก่อน · ส่วน job ที่ถูก **สั่งจากข้อความ** (Job 5 · Job 11 · มติ 2026-09-08) ตัวรับข้อความคือ **`SBP/srm-sps-spsap-sop-sgi-batch`** — ดู `SBP/srm-sps-spsap-sop-sgi-batch.md` (job consume คิวเอง · มติ 2026-09-12)
 
 #### ทำไมต้องมี prefix (ไม่ใช่แค่ความสวยงาม)
 
@@ -254,7 +254,7 @@ Document action contract ตัวอย่างเมื่อ currentSection=
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
-| result | string | Yes | UTF-8; use value domain described by endpoint purpose |
+| result | string | Yes | ช่อง **ผลการพิจารณา** (มีเฉพาะหน้า *ที่เกี่ยวข้อง*) — `APPROVE` / `REJECT` / `CANCELLED` / `NONE` · ดูจากผลพิจารณา **ล่าสุด** ของเอกสารใน `sgi_consideration_logs` ไม่ได้อยู่ที่หัวเอกสาร |
 | comment | string | Yes | trimmed UTF-8 Thai text; required by operation/business rule |
 
 #### Response

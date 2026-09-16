@@ -68,7 +68,7 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 | Field / UI | Format | Validation | Behavior |
 | --- | --- | --- | --- |
 | docNo | YYYY/xxxxx | optional search | ถ้าคลิก row ส่งไป detail |
-| year | ค.ศ. YYYY | required สำหรับ /sgi/document | default current year (ค.ศ.) |
+| year | ค.ศ. YYYY | required สำหรับ /sgi/document และ /sgi/report/status-summary | **ไม่มีช่องบนหน้าจอทั้งสองหน้า — FE เป็นผู้ใส่ให้**: หน้ารายการใช้ปีปัจจุบัน (ค.ศ.) · หน้ารายงานใช้ปีของ `periodStatementFrom` ถ้าผู้ใช้ระบุ ไม่งั้นใช้ปีปัจจุบัน |
 | status | status code/string | optional single select | **เงื่อนไขต่อบทบาท (มติ 2026-09-01 · ทำในโปรโตไทป์แล้ว):** หน้า **รอดำเนินการ** แสดงตัวกรองนี้ **เฉพาะบทบาท 06** เพราะ inbox ของ 08/01/02/03 มีสถานะเดียว (`รอ<บทบาท>ดำเนินการ`) ตัวกรองจึงไม่มีประโยชน์ — ซ่อนไปเลย · ของบทบาท 06 ใส่ **เฉพาะ 3 ตัวเลือกที่บทบาทนี้เห็นจริง** เท่านั้น: `รอฝ่าย SBP DSA ดำเนินการ` · `เสร็จสิ้นดำเนินการ + หยุดชดเชย (เปิดพิจารณาใหม่ได้)` · `เสร็จสิ้นดำเนินการ + ไม่ชดเชย` — **ห้ามยกสถานะของบทบาทอื่นมาให้เลือกลอย ๆ** · หน้า **ที่เกี่ยวข้อง** ไม่ถูกกระทบ ยังแสดงตัวกรองครบทุกค่า · สลับบทบาทแล้วต้อง rebuild ตัวเลือกใหม่และคงค่าที่เลือกไว้ถ้ายังมีอยู่ ไม่งั้น reset เป็น 'ทุกสถานะ' |
 | table.roundNo | integer | column 1 | ครั้งที่ (รอบชดเชยของร้าน) |
 | table.docNo | YYYY/xxxxx | column 2 | เลขที่เอกสารและลิงก์เปิด detail |
@@ -142,10 +142,20 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 
 ```json
 {
-  "page": 1,
-  "size": 20,
   "status": "06",
-  "sectionCode": "06"
+  "keyword": "โลตัส",
+  "regionCode": "BE",
+  "storeType": "A",
+  "createdFrom": "2026-06-01",
+  "createdTo": "2026-06-30",
+  "salesDeclineMin": 10,
+  "salesDeclineMax": 80,
+  "compensationMin": 0,
+  "compensationMax": 500000,
+  "daysPendingMin": 0,
+  "daysPendingMax": 30,
+  "page": 1,
+  "size": 20
 }
 ```
 
@@ -153,10 +163,20 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
+| status | string | No | UTF-8; use value domain described by endpoint purpose |
+| keyword | string | No | ช่อง **ค้นหา** — ค้นแบบ contains ใน เลขที่เอกสาร / ชื่อร้าน / รหัสร้าน (ไม่สนตัวพิมพ์) |
+| regionCode | string | No | ช่อง **ภาค** — รหัสภาคของร้าน (`store.zone_cd`) · ค่าเดียวกับ `items[].regionCode` ใน response |
+| storeType | string | No | ช่อง **ประเภทร้าน** — 7 ค่า `A B C D E PTT บริษัท` (`store.store_type`) ชุดเดียวกับตัวกรองในรายงาน |
+| createdFrom | string | No | ช่อง **วันที่สร้าง (ตั้งแต่)** — ISO ค.ศ. · รวมวันที่ระบุ |
+| createdTo | string | No | ช่อง **วันที่สร้าง (ถึง)** — ISO ค.ศ. · **รวมทั้งวัน** (SQL ใช้ `< :createdTo + 1`) |
+| salesDeclineMin | integer | No | ช่อง **ยอดขายที่ลดลง (ต่ำสุด)** — % เทียบกับ `items[].salesDeclinePercent` |
+| salesDeclineMax | integer | No | ช่อง **ยอดขายที่ลดลง (สูงสุด)** — % เทียบกับ `items[].salesDeclinePercent` |
+| compensationMin | integer | No | ช่อง **เงินชดเชย (ต่ำสุด)** — บาท เทียบกับ `items[].totalCompensationAmount` |
+| compensationMax | integer | No | ช่อง **เงินชดเชย (สูงสุด)** — บาท เทียบกับ `items[].totalCompensationAmount` |
+| daysPendingMin | integer | No | ช่อง **รอ (วัน) ต่ำสุด** — เทียบกับ `items[].daysPending` · มีเฉพาะกล่องงาน `/tasks` |
+| daysPendingMax | integer | No | ช่อง **รอ (วัน) สูงสุด** — เทียบกับ `items[].daysPending` · มีเฉพาะกล่องงาน `/tasks` |
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
-| status | string | No | UTF-8; use value domain described by endpoint purpose |
-| sectionCode | string | No | canonical code; do not replace with display label |
 
 #### Response
 
@@ -174,6 +194,7 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
       "regionCode": "BE",
       "salesDeclinePercent": 12.5,
       "statusCode": "06",
+      "currentOwner": "somchai.k",
       "statusName": "รอฝ่าย SBP DSA ดำเนินการ",
       "totalCompensationAmount": 48200.0,
       "daysPending": 3,
@@ -198,6 +219,7 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 | items[].regionCode | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].salesDeclinePercent | number | Yes | number 0..100 with 2 decimals |
 | items[].statusCode | string | Yes | canonical code; do not replace with display label |
+| items[].currentOwner | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].statusName | string | Yes | UTF-8; use value domain described by endpoint purpose |
 | items[].totalCompensationAmount | number | Yes | number >= 0 with 2 decimals |
 | items[].daysPending | integer | Yes | UTF-8; use value domain described by endpoint purpose |
@@ -212,8 +234,18 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 ```json
 {
   "year": 2026,
-  "storeCode": "00788",
+  "impactedStoreCode": "00788",
   "status": "06",
+  "result": "APPROVE",
+  "keyword": "โลตัส",
+  "regionCode": "BE",
+  "storeType": "A",
+  "createdFrom": "2026-06-01",
+  "createdTo": "2026-06-30",
+  "salesDeclineMin": 10,
+  "salesDeclineMax": 80,
+  "compensationMin": 0,
+  "compensationMax": 500000,
   "page": 1,
   "size": 20
 }
@@ -224,8 +256,18 @@ _รูปที่ 5: Sequence diagram: LLDD FE - Document Lists_
 | Field | Type | Required | Constraint / Meaning |
 | --- | --- | --- | --- |
 | year | integer | Yes | UTF-8; use value domain described by endpoint purpose |
-| storeCode | string | No | exactly 5 digits; preserve leading zero |
+| impactedStoreCode | string | No | exactly 5 digits; preserve leading zero |
 | status | string | No | UTF-8; use value domain described by endpoint purpose |
+| result | string | No | ช่อง **ผลการพิจารณา** (มีเฉพาะหน้า *ที่เกี่ยวข้อง*) — `APPROVE` / `REJECT` / `CANCELLED` / `NONE` · ดูจากผลพิจารณา **ล่าสุด** ของเอกสารใน `sgi_consideration_logs` ไม่ได้อยู่ที่หัวเอกสาร |
+| keyword | string | No | ช่อง **ค้นหา** — ค้นแบบ contains ใน เลขที่เอกสาร / ชื่อร้าน / รหัสร้าน (ไม่สนตัวพิมพ์) |
+| regionCode | string | No | ช่อง **ภาค** — รหัสภาคของร้าน (`store.zone_cd`) · ค่าเดียวกับ `items[].regionCode` ใน response |
+| storeType | string | No | ช่อง **ประเภทร้าน** — 7 ค่า `A B C D E PTT บริษัท` (`store.store_type`) ชุดเดียวกับตัวกรองในรายงาน |
+| createdFrom | string | No | ช่อง **วันที่สร้าง (ตั้งแต่)** — ISO ค.ศ. · รวมวันที่ระบุ |
+| createdTo | string | No | ช่อง **วันที่สร้าง (ถึง)** — ISO ค.ศ. · **รวมทั้งวัน** (SQL ใช้ `< :createdTo + 1`) |
+| salesDeclineMin | integer | No | ช่อง **ยอดขายที่ลดลง (ต่ำสุด)** — % เทียบกับ `items[].salesDeclinePercent` |
+| salesDeclineMax | integer | No | ช่อง **ยอดขายที่ลดลง (สูงสุด)** — % เทียบกับ `items[].salesDeclinePercent` |
+| compensationMin | integer | No | ช่อง **เงินชดเชย (ต่ำสุด)** — บาท เทียบกับ `items[].totalCompensationAmount` |
+| compensationMax | integer | No | ช่อง **เงินชดเชย (สูงสุด)** — บาท เทียบกับ `items[].totalCompensationAmount` |
 | page | integer | No | >= 1; default 1 |
 | size | integer | No | 1..100; default 20 |
 
@@ -349,9 +391,9 @@ export default function DocumentWaitingPage() {
         <Column field="regionCode" header="ภาค" sortable />
         <Column field="salesDeclinePercent" header="ยอดขายที่ลดลง (%)" sortable align="right" />
         <Column field="statusCode" header="สถานะ" sortable />
+        <Column field="currentOwner" header="currentOwner" sortable />
         <Column field="statusName" header="statusName" sortable />
         <Column field="totalCompensationAmount" header="จำนวนเงินที่ชดเชย" sortable align="right" />
-        <Column field="daysPending" header="รอ (วัน)" sortable align="right" />
       </Table>
       {isError && <p className="text-red-600">{apiErrorMessage(error)}</p>}
     </div>
@@ -405,10 +447,20 @@ import type { PageResponse } from '@/types/sgi/common';
 
 /** GET /api/v1/sgi/document/tasks — request */
 export interface SgiDocumentTasksParams {
+  status?: string;
+  keyword?: string;
+  regionCode?: string;
+  storeType?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  salesDeclineMin?: number;
+  salesDeclineMax?: number;
+  compensationMin?: number;
+  compensationMax?: number;
+  daysPendingMin?: number;
+  daysPendingMax?: number;
   page?: number;
   size?: number;
-  status?: string;
-  sectionCode?: string;
 }
 
 /** GET /api/v1/sgi/document/tasks — 1 แถวในตาราง */
@@ -420,6 +472,7 @@ export interface SgiDocumentTasksItem {
   regionCode: string;
   salesDeclinePercent: number;
   statusCode: string;
+  currentOwner: string;
   statusName: string;
   totalCompensationAmount: number;
   daysPending: number;
@@ -430,10 +483,20 @@ export type SgiDocumentTasksListResponse = PageResponse<SgiDocumentTasksItem>;
 /** GET /api/v1/sgi/document — request */
 export interface SgiDocumentParams {
   year?: number;
-  storeCode?: string;
+  impactedStoreCode?: string;
   status?: string;
+  result?: string;
+  keyword?: string;
+  regionCode?: string;
+  storeType?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  salesDeclineMin?: number;
+  salesDeclineMax?: number;
+  compensationMin?: number;
+  compensationMax?: number;
   page?: number;
-  size?: number;
+  // TODO: field ที่เหลือดูจากตาราง API ในเอกสารนี้
 }
 
 /** GET /api/v1/sgi/document — 1 แถวในตาราง */
@@ -512,7 +575,7 @@ export interface DocumentListsFormValue {
 // TODO: แทนข้อความ validation ด้วยข้อความ verbatim จาก SRS ก่อน UAT
 const schema = yup.object({
   docNo: yup.string().matches(/^\d{4}\/\d{5}$/, 'เลขที่เอกสารต้องเป็น YYYY/xxxxx (ค.ศ.)'), // ถ้าคลิก row ส่งไป detail
-  year: yup.string().required('กรุณาระบุ year'), // default current year (ค.ศ.)
+  year: yup.string().required('กรุณาระบุ year'), // **ไม่มีช่องบนหน้าจอทั้งสองหน้า — FE เป็นผู้ใส่ให้**: หน้ารายการใช้ปีปั
   status: yup.string(), // **เงื่อนไขต่อบทบาท (มติ 2026-09-01 · ทำในโปรโตไทป์แล้ว):** หน้า **รอดำ
 });
 
@@ -587,7 +650,7 @@ export default function DocumentListsForm({ defaultValues, onSubmit }: {
 
 | สิ่งที่ทดสอบ | ประเภท | เกณฑ์ผ่าน |
 | --- | --- | --- |
-| `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required สำหรับ /sgi/document · รูปแบบ: ค.ศ. YYYY |
+| `year` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: required สำหรับ /sgi/document และ /sgi/report/status-summary · รูปแบบ: ค.ศ. YYYY |
 | `table.totalCompensationAmount` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: column 7; >=0 · รูปแบบ: decimal |
 | `table.daysPending` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: column 9; >=0 · รูปแบบ: integer |
 | `table.salesDataDays` | validation | ผ่านเมื่อถูกกฎ / โยน error เมื่อผิด — กฎ: internal (ไม่ใช่คอลัมน์แสดง) · รูปแบบ: integer |
