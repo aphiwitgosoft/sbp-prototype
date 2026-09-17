@@ -24,7 +24,7 @@ flowchart TD
   P[Preflight: schema, extension, existing sgi table] --> C[สร้าง Zone C]
   C --> A[สร้าง Zone A ตาม FK]
   A --> B[สร้าง Zone B ตาม FK]
-  B --> I[สร้าง 24 indexes และ constraints]
+  B --> I[สร้าง 27 indexes และ constraints]
   I --> S[Seed SGI + common_code + mas_param + email_template]
   S --> M[Migrate legacy และ map domain]
   M --> V[Validate counts, FK, duplicate, money, status]
@@ -64,7 +64,15 @@ flowchart TD
 
 ## BLOCKED ก่อน Ready
 
-- ยังไม่รันกับฐาน dev จริงของโครงการ และยังไม่รับรอง domain/duplicate cleanup ทั้งหมด
+- ✅ **ติดตั้ง schema + seed ลงฐาน dev จริงแล้ว 2026-09-16** (PostgreSQL 17.7 · schema `sps_store`)
+  และ **migration ข้อมูลรอบแรกลงแล้ว 2026-09-17** — 12 ตาราง · 186,635 แถว
+- 🔴 **แต่ยังไม่ครบ และยังใช้ทำ cutover ไม่ได้** — แยกสองเรื่องนี้ออกจากกันให้ชัด:
+  - เอกสาร **7,441 จาก 18,004 ฉบับยังย้ายไม่ได้** — Oracle ที่เข้าถึงได้เป็นฐาน **QA** (`sescsdbqa14`)
+    ไม่มีข้อมูลปี 2024–2026 (2019–2023 ครบ 100% · 2025 ขาด 92% · 2026 ขาด 100%)
+  - ไฟล์แนบ **7,766 รายการยังไม่มีไฟล์จริง** — เนื้อไฟล์ฝัง base64 ในฐาน K2 แต่ dump ถูกตัดที่ 65,535 ตัวอักษร
+  - ตารางลูก 3 ตัวยังไม่ย้าย (`sales_summaries` · `sales_transactions` · `fgi_impact_competitors`)
+  - ยังไม่รับรอง domain/duplicate cleanup ทั้งหมด · workflow definition ยังติดตั้งไม่ได้ (`GROUP_MAP` ว่าง)
+- รายละเอียดผลรันจริงทุกรอบ: `docs/K2-migration-ผลโหลดข้อมูลจริง.md`
 - D-002 parameter key/seed ownership, D-007 process status และ decision migration ที่เปิดอยู่
 - ต้องได้ DBA sign-off เรื่อง extension/advisory lock, privilege, index/lock impact, backup/restore และ retention
 

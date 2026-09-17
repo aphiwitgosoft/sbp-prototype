@@ -15,6 +15,7 @@
 """
 from __future__ import annotations
 
+import collections
 import io
 import json
 import os
@@ -1856,6 +1857,38 @@ for _f in DOC_FILES:
                     f"ไฟล์ที่ลบแบบ soft delete จะยังถูกอ่าน/ดาวน์โหลดได้")
 check("query บนตารางที่มี soft delete ไม่ได้กรองคอลัมน์นั้น", sorted(set(_soft_bad)))
 
+# ---------------------------------------- #81 จำนวน index / CHECK ที่เอกสารอ้าง ต้องตรง DDL จริง
+# เจอจริง 2026-09-17 (รีวิวภายนอกจับได้): เพิ่ม index รองรับ FK 3 เส้น + CHECK account_month
+# ลง DDL แล้ว **แต่ไม่ได้ไล่แก้ที่อื่นที่อ้างตัวเลขไว้** → CLAUDE.md · database.md · llddv2
+# ยังเขียน "24 index" กับ "26 CHECK" ค้างอยู่ 5 จุด ทำให้ checklist ติดตั้ง/ตรวจรับคลาดเคลื่อน
+# กติกา: ตัวเลขที่เขียนติดคำว่า index/CHECK ในเอกสารหลัก ต้องตรงกับที่นับได้จาก sgi_schema.sql
+#        เว้นแต่กำกับว่าเป็นยอดของรอบก่อน (คำว่า "ยอดตอนนั้น" / "เป็นของรอบนั้น")
+_cnt_bad = []
+_schema_p = "output/sql/sgi_schema.sql"
+if os.path.exists(_schema_p):
+    _sch = read(_schema_p)
+    _live_idx = len(re.findall(r"^CREATE INDEX ", _sch, re.M))
+    _live_chk = len(re.findall(r"CHECK \(", _sch))
+    for _f in ["CLAUDE.md", "database.md", "LLDD/md/LLDD-Database.md"] + \
+              sorted(glob.glob("llddv2/**/*.md", recursive=True)):
+        if not os.path.exists(_f):
+            continue
+        for _ln_no, _ln in enumerate(read(_f).split("\n"), 1):
+            if "ยอดตอนนั้น" in _ln or "เป็นของรอบนั้น" in _ln or "ยอดจริงคำนวณสด" in _ln:
+                continue
+            # บรรทัด DDL ไม่ใช่การอ้างจำนวน — `DEFAULT 0 CHECK (x >= 0)` เคยถูกอ่านว่า "0 CHECK"
+            if "CHECK (" in _ln or "CREATE INDEX" in _ln:
+                continue
+            for _m in re.finditer(r"(\d+)\s*(?:\*\*)?\s*(index|indexes)\b", _ln):
+                if int(_m.group(1)) != _live_idx:
+                    _cnt_bad.append(f"{_f}:{_ln_no} เขียน {_m.group(1)} index "
+                                    f"แต่ sgi_schema.sql มี {_live_idx}")
+            for _m in re.finditer(r"(\d+)\s*(?:\*\*)?\s*CHECK\b", _ln):
+                if int(_m.group(1)) != _live_chk:
+                    _cnt_bad.append(f"{_f}:{_ln_no} เขียน {_m.group(1)} CHECK "
+                                    f"แต่ sgi_schema.sql มี {_live_chk}")
+check("จำนวน index / CHECK ที่เอกสารอ้าง ไม่ตรงกับ DDL จริง", sorted(set(_cnt_bad)))
+
 # ---------------------------------------- #80 ตาราง owner/ชั่วโมง ต้องตรงกับ owner_workload()
 # เจอจริง 2026-09-08: DECISIONS-รอตัดสินใจ.md มีตาราง 2 ชุดในหัวข้อเดียวกัน — ชุดใหม่ถูก
 # (Bank 211 · Vava 145 · Pete 139) แต่ชุดเก่ายุค 800 ชม. (Bank 280 · Vava 102 · Pete 84)
@@ -2215,6 +2248,7 @@ try:
         _sql_bad.append(f"{_sql_seed} :: ยังไม่ถูกสร้าง — รัน tools/build_sgi_schema_sql.py")
     else:
         _ss = read(_sql_seed)
+        _sql_rb = os.path.join("output", "sql", "sgi_schema_rollback.sql")
         # seed แตะตารางระบบเดิมได้ แต่ต้อง INSERT อย่างเดียวและรันซ้ำได้
         for _kw in ("UPDATE ", "DELETE FROM", "TRUNCATE", "DROP "):
             for _ln in _ss.split("\n"):
@@ -2247,6 +2281,84 @@ try:
             if "".join(_buf).strip():
                 _out.append("".join(_buf))
             return _out
+
+        # ---- นิยาม workflow ต้องตรงกับ workflow_status_document.md และกับ SGI_DOC_STATUS ----
+        # เพิ่ม 2026-09-16 พร้อมกับ tools/build_sgi_workflow_sql.py
+        _wf_f = os.path.join("output", "sql", "sgi_workflow_definition.sql")
+        _wsd = "workflow_status_document.md"
+        if os.path.exists(_wf_f) and os.path.exists(_wsd):
+            _wf = read(_wf_f)
+            _routes = len(re.findall(r"^INSERT INTO workflow_route", _wf, re.M))
+            _trans = [l for l in read(_wsd).split("\n")
+                      if l.startswith("|") and not l.startswith("|---")
+                      and "State No" not in l and not l.startswith("| - |")]
+            if _routes != len(_trans):
+                _sql_bad.append(f"{_wf_f} :: มี {_routes} route แต่ {_wsd} มี {len(_trans)} transition")
+            _wf_status = set(re.findall(r"INSERT INTO workflow_status[^;]*?SELECT \d+, '([^']+)'", _wf, re.S))
+            _seed_status = set(re.findall(r"'SGI_DOC_STATUS', \d+, '\d+', '([^']+)'", _ss))
+            for _n in sorted(_wf_status ^ _seed_status):
+                _sql_bad.append(f"ชื่อสถานะ \"{_n}\" ไม่ตรงกันระหว่าง workflow_status กับ common_code SGI_DOC_STATUS")
+            for _kw in ("UPDATE ", "DELETE FROM", "DROP ", "TRUNCATE", "ALTER ", "CREATE TABLE"):
+                for _ln in _wf.split("\n"):
+                    if _kw in _ln and not _ln.strip().startswith("--"):
+                        _sql_bad.append(f"{_wf_f} :: มี {_kw.strip()} ที่ไม่ใช่คอมเมนต์ — "
+                                        "ตาราง workflow_* เป็นของ engine ต้อง INSERT อย่างเดียว")
+
+        # ---- DO block ท้าย seed ต้องตรวจทุกกลุ่มที่ seed ลง ----
+        # เจอจริง 2026-09-16: seed ลง 8 กลุ่มแต่ DO ตรวจแค่ 6 — `common_code_type` และ
+        # `SGI_APPROVE_LIMIT` ไม่ถูกตรวจเลย = ติดตั้งไม่ครบแล้วยัง COMMIT ผ่าน
+        # (ต้นเหตุเดียวกับคำสั่งล้างที่ตกสองตัวนี้ไป — เพิ่มทีหลังแล้วลืมอัปเดตหลายที่พร้อมกัน)
+        _do = re.search(r"-- ตรวจผลก่อน COMMIT.*?END \$\$;", _ss, re.S)
+        if not _do:
+            _sql_bad.append(f"{_sql_seed} :: ไม่มี DO block ตรวจผลก่อน COMMIT")
+        else:
+            _dob = _do.group(0)
+            for _grp, _pat in (("sgi_competitors", r"FROM sgi_competitors"),
+                               ("sgi_external_factors", r"FROM sgi_external_factors"),
+                               ("common_code_type", r"FROM common_code_type"),
+                               ("SGI_DECISION", r"code_type = 'SGI_DECISION'"),
+                               ("SGI_DOC_STATUS", r"code_type = 'SGI_DOC_STATUS'"),
+                               ("SGI_APPROVE_LIMIT", r"code_type = 'SGI_APPROVE_LIMIT'"),
+                               ("mas_param", r"FROM mas_param"),
+                               ("email_template", r"FROM email_template")):
+                if not re.search(_pat, _dob):
+                    _sql_bad.append(f"{_sql_seed} :: DO block ตรวจผลไม่ได้นับ `{_grp}` ที่ seed ลงไว้ — "
+                                    "ติดตั้งไม่ครบแล้วจะ COMMIT ผ่าน")
+        # ---- ตัวเลขที่หัวไฟล์ประกาศ ต้องตรงกับจำนวน INSERT จริง ----
+        _cnt = collections.Counter(re.findall(r"^INSERT INTO (\w+)", _ss, re.M))
+        _head_seed = _ss[:_ss.index("BEGIN;")] if "BEGIN;" in _ss else ""
+        for _lbl, _pat2, _tbl in (("common_code", r"common_code (\d+) แถว", "common_code"),
+                                  ("common_code_type", r"common_code_type (\d+) แถว", "common_code_type"),
+                                  ("mas_param", r"mas_param (\d+) แถว", "mas_param"),
+                                  ("email_template", r"email_template (\d+) แถว", "email_template")):
+            _m2 = re.search(_pat2, _head_seed)
+            if _m2 and int(_m2.group(1)) != _cnt[_tbl]:
+                _sql_bad.append(f"{_sql_seed} :: หัวไฟล์บอก {_lbl} {_m2.group(1)} แถว "
+                                f"แต่ในไฟล์ INSERT จริง {_cnt[_tbl]} แถว")
+
+        # ---- คำสั่งล้าง seed ต้องครอบคลุมทุกตารางระบบเดิมที่ seed แตะ ----
+        # เจอจริง 2026-09-16: หัวไฟล์ seed สั่งลบแค่ 3 ตาราง (ไม่มี `common_code_type`) และ
+        # `common_code` กรองแค่ 2 code_type ทั้งที่ seed ลง 3 ตัว → ลบตามแล้วเหลือขยะ 4 แถวบนฐาน dev จริง
+        # แล้วติดตั้งใหม่จะได้ค่าเก่าค้างเงียบ ๆ เพราะ INSERT ... WHERE NOT EXISTS ข้ามให้
+        _seed_ins = {m.group(1) for m in re.finditer(r"^INSERT INTO (\w+)", _ss, re.M)}
+        _legacy_ins = {t for t in _seed_ins if not t.startswith("sgi_")}
+        _seed_del = set(re.findall(r"^--\s+DELETE FROM (?:sps_store\.)?(\w+)", _ss, re.M))
+        for _t in sorted(_legacy_ins - _seed_del):
+            _sql_bad.append(f"{_sql_seed} :: seed INSERT ลง `{_t}` แต่คำสั่งล้างในหัวไฟล์ไม่มีตารางนี้ — "
+                            "ถอนแล้วจะเหลือขยะ")
+        if os.path.exists(_sql_rb):
+            _rb_del = set(re.findall(r"^--\s+DELETE FROM (?:sps_store\.)?(\w+)", read(_sql_rb), re.M))
+            for _t in sorted(_seed_del ^ _rb_del):
+                _sql_bad.append(f"คำสั่งล้างใน seed กับใน rollback ไม่ตรงกันที่ตาราง `{_t}` — "
+                                "สองไฟล์ต้องถอนของชุดเดียวกัน")
+        # ทุก code_type ที่ seed ลง ต้องถูกคำสั่งล้างครอบคลุม
+        _types = set(re.findall(r"INSERT INTO common_code_type[^;]*?SELECT '(\w+)'", _ss, re.S))
+        for _ln in re.findall(r"^--\s+DELETE FROM common_code\s.*$", _ss, re.M):
+            _in_list = re.search(r"code_type IN \(([^)]*)\)", _ln)
+            if _in_list:
+                _covered = set(re.findall(r"'(\w+)'", _in_list.group(1)))
+                for _t in sorted(_types - _covered):
+                    _sql_bad.append(f"{_sql_seed} :: คำสั่งล้าง common_code ไม่ครอบคลุม code_type `{_t}` ที่ seed ลงไว้")
 
         # ---- email_template ต้องตรงรูปแบบของ "ของเดิม" ไม่ใช่รูปแบบที่เราคิดเอง ----
         # เจอจริง 2026-09-16: seed เขียน subject เป็น `{docNo}` แต่ทั้งตาราง (193 จุด) ใช้ `${docNo}`

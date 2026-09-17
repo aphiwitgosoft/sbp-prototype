@@ -53,6 +53,9 @@ ALLOWED = {
     "mas_param": ("create_by", "param_name LIKE 'SGI!_%' ESCAPE '!'", None),
     "common_code": ("create_user", "code_type LIKE 'SGI!_%' ESCAPE '!'", None),
     "common_code_type": ("create_user", "code_type LIKE 'SGI!_%' ESCAPE '!'", None),
+    # ตารางของ SGI เอง — ไม่ใช่ของระบบเดิม จึงไม่มีคอลัมน์เจ้าของแถว ลบได้ทั้งตาราง
+    "sgi_external_factors": (None, "1=1", None),
+    "sgi_competitors": (None, "1=1", None),
 }
 
 
@@ -103,7 +106,7 @@ def main() -> int:
         deletes = []
         for t in args:
             owner_col, scope, id_col = ALLOWED[t]
-            where = f"{owner_col} = '{SEED_OWNER}' AND {scope}"
+            where = f"{owner_col} = '{SEED_OWNER}' AND {scope}" if owner_col else scope
             n = con.run(f"SELECT count(*) FROM {t} WHERE {where}")[0][0]
             print(f"  {t}: จะลบ {n} แถว  ({where})")
             if id_col and n:

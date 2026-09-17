@@ -845,7 +845,12 @@ FOR UPDATE OF fis SKIP LOCKED;""",
         ],
         "domains": [
             ["รูปแบบชื่อไฟล์", "`AMS06001I_YYYYMMDDHHMM.txt`", "regex ใน `ImportController.importImpactSaleFromIAS`"],
-            ["encoding ของไฟล์", "WINDOWS-874 (วันที่ในไฟล์เป็น **พ.ศ.**)", "แปลงเป็น ค.ศ. ตอนอ่าน ห้ามให้ พ.ศ. หลุดเข้า DB/API"],
+            ["encoding ของไฟล์",
+             "ประกาศเป็น WINDOWS-874 แต่ไฟล์จริง **เป็น ASCII ล้วน ไม่มีไบต์ภาษาไทยเลย** · "
+             "วันที่ในไฟล์เป็น **ค.ศ.** (`20260824`) **ไม่ใช่ พ.ศ.**",
+             "🔴 แก้ 2026-09-16 จากไฟล์ตัวอย่างจริง `docs/file_IAS_STA/` — เอกสารเดิมเขียนว่าเป็น พ.ศ. ซึ่งผิด · "
+             "ที่เป็น พ.ศ. + windows-874 จริงคือ `FRBC0001` ของ STA (Job 6) เท่านั้น · "
+             "รายละเอียด `docs/IAS-STA-interface-files.md`"],
             ["จำนวนวันทำการขั้นต่ำ", "60 วัน", "`FgiConstant.TOTAL_INTERVAL_DAY = 60`"],
             ["`sales_status`",
              "`W` = รอ · `P` = ส่งคำขอแล้วรอผล (Job 4 ตั้ง) · `Y` = เข้าเกณฑ์ชดเชย · `N` = ไม่เข้าเกณฑ์ · `E` = ผิดพลาด",
@@ -887,7 +892,13 @@ FOR UPDATE OF fis SKIP LOCKED;""",
         ],
         "domains": [
             ["`dateStartInitToSTA`", "`7`", "`ApplicationResources.properties` ของระบบเดิม"],
-            ["`categoryQssi`", "`8,9,12,1,10,16` (6 หมวด)", "`ApplicationResources.properties`"],
+            ["`categoryQssi`",
+             "`8,9,12,1,10,16` (6 หมวด) → **8 = Result · 9 = Process · 12 = สินค้าขาด · "
+             "1 = บริการ · 10 = Follow up · 16 = สินค้าหมดอายุ** (ลำดับนี้คือลำดับฟิลด์ 9–14 ของ `FRBC0001`)",
+             "`ApplicationResources.properties` · **ชื่อหมวดถอดได้ 2026-09-16** จากรายงาน `RT040035` ของ STA "
+             "เทียบกับไฟล์ `FRBC0001` จริงร้านเดียวกันงวดเดียวกัน (ตรงทุกค่า ยืนยัน 3 ร้าน) — "
+             "ดู `docs/IAS-STA-interface-files.md` · ⚠️ **เปอร์เซ็นต์หักคำนวณที่ STA ไม่ใช่ที่ SGI** "
+             "SGI ส่งแค่คะแนนดิบ · หมวด Follow up **ติดลบได้**"],
             ["`numWaitPay`", "`3` งวด", "`ApplicationResources.properties`"],
             ["`compensate_status` ที่ STA รับได้", "`I` · `A` · `N` · `S` · `R`", "`STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md` §2.2"],
             ["ค่าที่มีใน DB แต่ไม่ส่งดิบ ๆ", "`Z` และ **`C`** → แปลงเป็น **`S`** เฉพาะใน payload (ใน DB คงค่าเดิม)", "ขั้นที่ 4 ของ Job 6 · `ExportJdbc` จัด `C`/`S`/`Z` เป็นกลุ่มเดียวกันในทุก filter ปลายน้ำ (บรรทัด 366 · 1440)"],
@@ -2620,6 +2631,7 @@ _PDF_GLYPH_FALLBACK = {
     "\u23ED": "»",         # ⏭ ข้าม/ยังไม่ทำ (เพิ่ม 2026-09-16)
     "\U0001F7E2": "○",     # 🟢 dry-run / ปลอดภัย (เพิ่ม 2026-09-16)
     "\U0001F7E1": "◐",     # 🟡 trial / กึ่งกลาง (เพิ่ม 2026-09-16)
+    "\U0001F6D1": "✗",     # 🛑 หยุด/ROLLBACK (เพิ่ม 2026-09-17)
     "\u26D4": "✗",         # ⛔ ห้าม
     "\u23F3": "⌛",         # ⏳ ยังค้าง
     "\u23F1": "⌛",         # ⏱
@@ -8495,9 +8507,15 @@ CREATE TABLE sgi_compensation_documents (
     current_section_code VARCHAR(2),   -- ค่าจาก sps_store.workflow_state ของ engine
     total_compensation_amount NUMERIC(14,2) NOT NULL DEFAULT 0,
     allmap_url VARCHAR(500),                   -- CompUrlMap — ปุ่ม Link To ALLMAP
-    statement_id VARCHAR(50),                  -- CompStatementID — โยงกลับ SBP Statement ต้นทาง
+    statement_id VARCHAR(500),                 -- CompStatementID — โยงกลับ SBP Statement ต้นทาง
+    --   🔴 ขยายจาก VARCHAR(50) เป็น 500 เมื่อ 2026-09-17 — ของเดิม**เก็บ URL เต็ม** ไม่ใช่รหัส
+    --   วัดจากข้อมูลจริง 18,007 เอกสาร: ยาวสุด 97 ตัวอักษร · **18,006 แถวเกิน 50**
+    --   (`https://franchisemall.cpall.co.th/franchise/frFMLWeb/…`) · ขนาดเดียวกับ allmap_url
     statement_date DATE,                       -- Period Statement (ค.ศ.) — ตัวกรอง/คอลัมน์ของรายงาน SDD สไลด์ 60
-    account_year INTEGER, account_month INTEGER,   -- งวดบัญชี
+    account_year INTEGER,                      -- งวดบัญชี
+    -- CHECK เพิ่ม 2026-09-17 — ต้นทาง K2 เก็บเป็นข้อความ '01'–'12' (+ ว่าง 6,484 แถว)
+    --   ถ้าแปลงพลาดเป็น 0 หรือ 13 จะหลุดเข้าฐานเงียบ ๆ แล้วรายงานงวดบัญชีเพี้ยน
+    account_month INTEGER CHECK (account_month BETWEEN 1 AND 12),
     approver_snapshot JSONB,                   -- FC/Section/Manager/GM/AVP + ชื่อ/อีเมล ณ เวลาเปิดเอกสาร
     version_no INTEGER NOT NULL DEFAULT 1,
     created_by VARCHAR(30) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -8673,6 +8691,13 @@ CREATE INDEX idx_impact_competitor_store ON sgi_fgi_impact_competitors(competito
 CREATE INDEX idx_impact_competitor_brand ON sgi_fgi_impact_competitors(brand_code);             -- สรุปรายงานรายแบรนด์
 CREATE INDEX idx_document_competitor_code ON sgi_document_competitors(brand_code);   -- สรุปรายงานรายแบรนด์
 CREATE INDEX idx_document_factor_code ON sgi_document_external_factors(factor_code);
+
+-- FK 3 เส้นที่ยังขาด leading index (เพิ่ม 2026-09-17 หลัง review ชุด migration)
+--   ไม่มี index ฝั่งลูก = ทุก DELETE/UPDATE ฝั่งแม่ต้อง seq scan ตารางลูกทั้งตาราง
+--   ORA FGI_NEW_STORE_COMPENSATE ของจริง 23,628 แถว · ลบรอบชดเชยทีเดียวจะกินเวลาผิดปกติ
+CREATE INDEX idx_new_store_compensate_impact_store ON sgi_fgi_new_store_compensations(impact_store_id);
+CREATE INDEX idx_document_new_store_source_row ON sgi_document_new_stores(source_row_id);
+CREATE INDEX idx_document_competitor_source_row ON sgi_document_competitors(source_row_id);
 
 -- index ที่หัวข้อ 6 (Index & Constraint) ระบุไว้ — เดิมมีแต่ในตารางสรุป ยังไม่ถูกสร้างจริง (เพิ่ม 2026-08-25)
 CREATE INDEX idx_attachment_scan_status ON sgi_document_attachments(scan_status);

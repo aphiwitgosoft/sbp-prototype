@@ -37,24 +37,26 @@ python3 tools/build_worklist.py                              # worklist.html —
 python3 tools/build_planner_tasks.py                          # output/planner-tasks.csv|.txt — ข้อมูลการ์ด Microsoft Planner (label · checklist · ลิงก์ LLDD บน SharePoint) จากชุดข้อมูลเดียวกับ LLDD
 python3 tools/build_tobe_csv.py                               # output/tobe-work.csv + **tobe-work.xlsx** (Numbers/Excel เปิดแล้วแก้ได้ — .csv เปิดใน Numbers เป็นอ่านอย่างเดียวเสมอ) — 1 แถว = 1 ข้อที่ SDD สั่ง (สไลด์ · ข้อ · ทำอะไร · ใครทำกี่ชั่วโมง · รวม) · เฉพาะงานใหม่ของ To-Be · เฉพาะสาย FE/BE · ชั่วโมงรายข้อกระจายจากชั่วโมงของเอกสาร LLDD ตาม `BULLET_DOCS` (แบ่งเท่า) ผลรวมรายข้อ = ยอดจริงของ TB เสมอ
 python3 tools/build_sgi_schema_sql.py                        # output/sql/ — SQL ที่รันได้จริงลงฐาน SBP เดิม (schema `sps_store`)
-#   sgi_schema.sql          สร้าง 20 ตารางใหม่ 3 โซน + 24 index (เรียงตาม dependency · ทั้งไฟล์อยู่ใน transaction เดียว · preflight หยุดถ้ามีตาราง sgi_ อยู่แล้ว)
-#   sgi_seed_data.sql       ข้อมูลตั้งต้น — คู่แข่ง 11 · ปัจจัยภายนอก 4 · ตัวนับเลขเอกสาร 1
+#   sgi_schema.sql          สร้าง 20 ตารางใหม่ 3 โซน + 27 index (เรียงตาม dependency · ทั้งไฟล์อยู่ใน transaction เดียว · preflight หยุดถ้ามีตาราง sgi_ อยู่แล้ว)
+#   sgi_seed_data.sql       ข้อมูลตั้งต้น — คู่แข่ง 11 · ปัจจัยภายนอก 7 · ตัวนับเลขเอกสาร 1
 #                           + ตารางของระบบเดิม (INSERT อย่างเดียว): common_code 13 (SGI_DECISION 7 + SGI_DOC_STATUS 6) ·
 #                           mas_param 12 · email_template 8 · ⚠️ ยอดจริงคำนวณสดในหัวไฟล์ ให้ยึดหัวไฟล์เสมอ
 #   sgi_schema_rollback.sql DROP ทั้งหมด (dev/uat เท่านั้น)
 #   ⚠️ generate จาก DDL ชุดเดียวกับเอกสาร LLDD-Database — **ห้ามแก้ .sql ด้วยมือ** · check_docs.py กฎ #91 ดักไว้
-#   ✅ รันกับ PostgreSQL 16 จริงแล้ว 2026-09-12 (docker `postgres:16-alpine`) — schema 20 ตาราง + 24 index · **รันซ้ำ 2026-09-13 หลังเพิ่ม `seq` และตารางที่ 20**
+#   ✅ รันกับ PostgreSQL 16 จริงแล้ว 2026-09-12 (docker `postgres:16-alpine`) — schema 20 ตาราง + 24 index (ยอดตอนนั้น) · **รันซ้ำ 2026-09-13 หลังเพิ่ม `seq` และตารางที่ 20**
 #      และ sgi_seed_data.sql ติดตั้งผ่านทั้งคู่ · ต้องสร้าง stub ของตารางระบบเดิมที่ preflight ตรวจก่อน
 #      (`mas_store` `fr_store` `juristic` `mas_zone` `common_code` `mas_param` `email_template`)
 #      รอบนั้นเจอบั๊กจริง 1 จุด: index `idx_impact_competitor_code` อ้างคอลัมน์ที่ถูกแยกไปแล้ว → check_docs.py กฎ #109
 #   ✅ **ติดตั้ง `sgi_schema.sql` ลงฐาน dev จริงของโครงการแล้ว 2026-09-16**
-#      (PostgreSQL 17.7 · schema `sps_store` · 20 ตาราง + 24 index + 20 PK + 28 FK + 26 CHECK)
+#      (PostgreSQL 17.7 · schema `sps_store` · 20 ตาราง + **27 index** + 20 PK + 28 FK + **27 CHECK**)
+#      ⚠️ index 24 → 27 และ CHECK 26 → 27 เมื่อ 2026-09-17 (เพิ่ม index รองรับ FK 3 เส้น + CHECK account_month)
 #      ตารางของระบบเดิมยังคง 205 ตารางเท่าเดิม ไม่ถูกแตะ
 #      ยิงด้วย `tools/apply_sgi_sql.py` ที่มี guard 4 ข้อก่อนยิงทุกครั้ง
 #      (ไม่ใส่อะไร = dry-run · `--trial` = รันจริงแล้ว ROLLBACK เสมอ · `--confirm` = ยิงจริง)
 #      ถอนได้ด้วย `output/sql/sgi_schema_rollback.sql`
 #   ✅ **ติดตั้ง `sgi_seed_data.sql` ลงฐาน dev จริงแล้ว 2026-09-16** — ตรงกับที่ทำนายไว้ทุกตัว
-#      common_code_type 3 · common_code 14 · mas_param 11 · email_template 8 · คู่แข่ง 11 · ปัจจัย 4 · running number 1
+#      common_code_type 3 · common_code 14 · mas_param 11 · email_template 8 · คู่แข่ง 11 · ปัจจัย 7 · running number 1
+#      (ปัจจัยภายนอกแก้จาก 4 รายการที่เราคิดเอง → **7 รายการจริงของ K2** เมื่อ 2026-09-16 · ดู docs/K2-master-data.md)
 #      (ฐาน dev มีแถว SGI ที่ทีมอื่น seed ไว้ตั้งแต่ 2026-08-27 อยู่ก่อน — `WHERE NOT EXISTS` ข้ามให้เอง)
 #   🔴 **บทเรียน `email_template`: ห้ามพึ่ง sequence ของตารางระบบเดิม** — บน dev จริง
 #      `email_template_email_template_id_seq.last_value` = 1201012 แต่ `max(email_template_id)` = 1501044
@@ -97,6 +99,21 @@ PGHOST=... PGUSER=... PGPASSWORD=... python3 tools/apply_sgi_sql.py output/sql/s
 #   guard ก่อนยิงทุกครั้ง 4 ข้อ: ไฟล์ตรงกับ generator · CREATE/ALTER แตะเฉพาะ sgi_ ·
 #   ไม่มีคำสั่งทำลายนอกขอบเขต · อยู่ในทรานแซกชันเดียว · แล้วรายงานสภาพฐานก่อน–หลัง
 #   ⚠️ credential จาก env เท่านั้น ห้ามใส่ลงไฟล์
+PGPASSWORD=... python3 tools/backup_sgi_dev.py [--confirm] [--full-staging]
+#   **สำรองฝั่ง SGI ของฐาน dev ก่อนทำ migration** → `backup/sgi-dev-<ปี เดือน วัน-เวลา>/`
+#   🔴 เครื่องนี้**ไม่มี `pg_dump` / `pg_dumpall` / `psql`** — เครื่องมือนี้จึงใช้ `COPY … TO STDOUT`
+#      ผ่าน pg8000 แทน (อ่านล้วน) ได้ CSV ที่ `COPY … FROM` กลับเข้าไปได้ตรง ๆ
+#   ขอบเขต: ตาราง `sgi_*` **ทุกตัว** (ทั้งตารางจริงและตารางพัก `sgi_mig_*`)
+#      + **เฉพาะแถวของ SGI** ในตารางระบบเดิม 4 ตัว (`common_code_type` `common_code` `mas_param` `email_template`)
+#      → ไม่คัดลอกข้อมูลของทีมอื่นออกมาแม้แต่แถวเดียว
+#   ตารางพัก `sgi_mig_*` **ข้าม dump ข้อมูลโดยตั้งใจ** (ต้นทางคือ CSV ใน `docs/data_bk_all/` ที่ยังอยู่)
+#      เก็บไว้แค่จำนวนแถวเพื่อตรวจว่ากู้คืนครบ · บังคับ dump ได้ด้วย `--full-staging`
+#   ได้ออกมา 4 อย่าง: `data/<ตาราง>.csv` · `manifest.json` (จำนวนแถว+ขนาด) · `schema.sql` (snapshot โครง)
+#      · `RESTORE.md` (ลำดับกู้คืนเรียงตาม FK + ตารางจำนวนแถวที่ควรได้)
+#   **ไม่ใส่ --confirm = dry-run** (แสดงแผน+จำนวนแถว ไม่เขียนไฟล์)
+#   host/user/database ของฐาน dev เป็นค่าตั้งต้นในไฟล์ (ไม่ใช่ความลับ · มีอยู่แล้วใน SBP/db-schema-sps_store.md)
+#      override ได้ด้วย PGHOST/PGUSER/PGDATABASE · ปฏิเสธทันทีถ้า host ไม่มี `-dev-`
+#   ⚠️ **รหัสผ่านจาก env เท่านั้น ไม่มีค่าตั้งต้น ห้ามใส่ลงไฟล์** · ผลลัพธ์อยู่ใน `.gitignore` (`backup/`)
 PGHOST=... PGUSER=... PGPASSWORD=... python3 tools/introspect_dev_sgi.py
 #   output/legacy-sgi/ — สกัดโครงสร้าง+ข้อมูลจริงจากฐาน **PostgreSQL dev ของระบบ SBP (ปลายทาง)** 3 ไฟล์
 #     schema.sql  DDL ของ 24 ตารางที่ SGI แตะ (13 ตารางที่ stub จำลอง + workflow engine 11 ตัว)
@@ -106,6 +123,91 @@ PGHOST=... PGUSER=... PGPASSWORD=... python3 tools/introspect_dev_sgi.py
 #   ⚠️ ผลลัพธ์อยู่ใน .gitignore (มีข้อมูลธุรกิจจริง) · คู่กับ introspect_legacy_oracle.py ที่สกัดฝั่ง As-Is
 #   ✅ รันกับฐาน dev จริงแล้ว 2026-09-16 — **dev เป็น PostgreSQL 17.7 ไม่ใช่ 16 ที่เราทดสอบ**
 #      และพบว่ามีคน seed ค่า SGI ลงไปแล้ว 6 แถวเมื่อ 2026-08-27 (เจ้าของ SGI-SETUP)
+python3 tools/build_k2_migration_sql.py       # output/sql/k2_migration_1_stage.sql · _2_master.sql
+#   ย้ายข้อมูลจากฐาน K2 เข้า SGI dev จาก dump จริงใน `docs/data_bk_all/` (24 ไฟล์ · 302,683 แถว · .gitignore)
+#   ขั้น 1 พักข้อมูลใน `sgi_mig_k2_*` 24 ตาราง **ทุกคอลัมน์ TEXT** (K2 ไม่มี FK/CHECK → แปลงชนิดตอนโหลดจะล้มทั้ง batch)
+#   ขั้น 2 ย้าย master ที่ไม่ติด dependency — ตัวนับเลขเอกสาร 10 ปี
+#   🔴 ขั้น 3 (ย้ายตัวเอกสาร) **ยังทำไม่ได้** — `sgi_compensation_documents` บังคับ FK 3 เส้นไปโซน A
+#      ซึ่งมาจาก Oracle FCS_FRN ไม่ใช่ K2 · ต้อง migrate โซน A ก่อน
+#   ⚠️ NULL ในไฟล์ CSV เขียนเป็น **ข้อความ 'NULL'** (402,672 ช่อง) แยกจากช่องว่างจริง (6,947 ช่อง)
+#      → ต้องใช้ WITH (NULL 'NULL') · ไฟล์เป็น UTF-8 with BOM + CRLF (อ่านด้วย utf-8-sig)
+#   ⚠️ ครอบ identifier ทุกตัวด้วย double quote — `CommonConfig` มีคอลัมน์ชื่อ `Group` = คำสงวน
+#   ✅ โหลดจริงลง dev แล้ว 2026-09-16 · ครบ 302,683 แถว ตรงไฟล์ต้นทางทุกตาราง
+#      ผลและข้อค้างทั้งหมดอยู่ใน `docs/K2-migration-ผลโหลดข้อมูลจริง.md`
+#   ⚠️ ขั้น 1/1b ปิดท้ายด้วย **ANALYZE ทุกตาราง — ห้ามข้าม** · COPY ไม่อัปเดตสถิติ planner
+#      (วัดจริง: หลังโหลด 302,683 แถว n_live_tup ยังเป็น 0 ทั้ง 24 ตาราง → ขั้นแปลงจะเลือกแผนผิด)
+#   ขั้น 1b `k2_migration_1b_stage_oracle.sql` — ตารางพักฝั่ง Oracle 10 ตาราง (โครงจาก output/legacy-oracle/schema.sql)
+#      🔴 `output/legacy-oracle/` มีแค่ **schema + สถิติ ไม่มีแถวจริง** — ต้องขอ dump แถวจาก Oracle
+#      ⚠️ ต้องโหลดทั้ง live และ `*_BK_20250515` (ประวัติอยู่ในตัว backup · เช่น FGI_IMPACT_STORE live 728 / backup 26,264)
+#   ขั้น 3 `k2_migration_3_documents.sql` — แปลงเข้าตารางจริง เรียงตาม FK
+#      impacted_stores → impact_processes → impact_compensations → compensation_documents
+#      🔴 join สองฐานด้วย (รหัสร้าน + ปี + เดือน) เพราะ K2 ไม่มี impact_compensation_id
+#      ✅ ทดสอบแล้วด้วยโซน A จำลอง 200 ร้าน → ย้ายเอกสารได้ 380 ฉบับ (ROLLBACK)
+#   🔴 บั๊ก DDL ที่ข้อมูลจริงจับได้: `sgi_compensation_documents.statement_id VARCHAR(50)` เล็กเกิน
+#      ของจริงเป็น **URL ยาวสุด 97 ตัวอักษร · 18,006 จาก 18,007 แถวเกิน** → ขยายเป็น VARCHAR(500) แล้ว
+#   🔴 **รอบแก้ 2026-09-17 หลัง review — 6 บั๊กที่ทำข้อมูลหาย/ระบบใช้ต่อไม่ได้**
+#      1. **เงื่อนไข migration ตัดเอกสารทิ้งเงียบ 11,525 จาก 18,007 ฉบับ** — เดิมบังคับ
+#         `comp_section_code IN ('01','02','03','06','08')` ควบคู่กับสถานะ แต่เอกสารที่ **จบแล้ว**
+#         (status `09`) ส่วนใหญ่จบที่ section `05` (บัญชีปฏิบัติการภาค) ซึ่ง SDD v7.5 ตัดขั้นทิ้งไปแล้ว
+#         → ตัดสิน terminal **จากสถานะอย่างเดียว** · วัดผลจริง **6,479 → 18,003 ฉบับ**
+#      2. **เอกสาร terminal 5,866 ฉบับได้ status 99 แต่ยังค้าง section** ขัด contract ของ DDL
+#         → `status 09 → 99` พร้อมตั้ง `current_section_code = NULL` + post-check บังคับ
+#      3. **ไม่มี `setval()` หลังใส่ id เอง** — `sgi_fgi_impact_processes` /
+#         `sgi_fgi_impact_compensations` เป็น BIGSERIAL แต่ migration ใส่ id มาเอง
+#         พิสูจน์บน dev แล้วว่า sequence ค้างที่ **1** → application insert ถัดไปชน PK ทันที
+#         → เพิ่มบล็อกดัน sequence (ทำได้เพราะเป็น sequence ของตาราง `sgi_*` ที่เราเป็นเจ้าของ
+#            **ต่างจาก `email_template` ของทีมอื่นที่ห้ามแตะ**) + เตือนให้หยุด writer ตอน cutover
+#      4. **map หัวเอกสารผิด/ขาด** — `round_no` เดิมรับ `CompLoopNo` ที่ถูกต้องคือ `CompMainLoopNo`
+#         (DDL เขียนกำกับไว้แล้วว่า round=Main · loop=Loop · ของจริง main/loop ต่างกันจริง)
+#         และยังไม่ได้ย้าย `running_no` · `account_month` · `approver_snapshot`
+#         ⚠️ ไม่เติม `running_no` = `uq_comp_year_running` **ไม่ทำงาน** (NULL ไม่ชนกัน)
+#         วัดแล้วเลข 5 หลักท้าย doc_no ไม่ซ้ำสักปี 2019–2026 · FC/Section ว่างทั้ง 18,007 แถว
+#      5. **ขั้น 1b โหลด Oracle ไม่ได้เลย** — `\copy` ทุกบรรทัดเป็น comment · และ
+#         `src TEXT NOT NULL DEFAULT 'LIVE'` ชนกับ `UPDATE … WHERE src IS NULL` ที่ตามมา
+#         (DEFAULT เติมให้ก่อน WHERE จึงไม่มีวัน match) · ไม่มีคำสั่งโหลดฝั่ง `*_BK_20250515`
+#         → ตัด DEFAULT · โหลด LIVE แล้ว BK แยกรอบพร้อมติดป้าย src · TRUNCATE ก่อนโหลด ·
+#            ตรวจจำนวนแถว**แยกตาม src**เทียบสถิติต้นทาง · `\if :{?dump}` หยุดถ้าไม่ระบุโฟลเดอร์
+#      6. **workflow definition** — เกณฑ์ 100,000 เคย hardcode ใน `condition_json` ทั้งที่แหล่ง
+#         ความจริงคือ `common_code` → อ่านสดตอนติดตั้ง · เพิ่ม advisory lock ·
+#         fail-fast เมื่อ id ชนของทีมอื่น (เดิมแค่ NOTICE แล้วปล่อย `WHERE NOT EXISTS` ข้ามเงียบ) ·
+#         post-check นับ `workflow_group_map` (ไม่มี map = เอกสารค้างหาผู้อนุมัติไม่เจอ)
+#      ✅ ทดสอบทั้งหมดกับฐาน dev จริงแล้ว ROLLBACK ทุกรอบ — ขั้น 3 ได้ 18,003 ฉบับ contract ผ่านหมด
+#         · workflow ได้ state 6 · status 6 · route 15 · group 5 · group_map 5
+#      🔴 **ยังใช้ทำ cutover จริงไม่ได้** — ขั้น 3 ย้าย**เฉพาะหัวเอกสาร** ตารางลูกอีก 10 ตัวยังไม่เขียน
+#         (ต้องรอข้อมูลแถวจริงฝั่ง Oracle ก่อน · เขียนแล้วทดสอบไม่ได้ = เดาเปล่า)
+#      🔴 ข้อค้างใหม่ 2 ข้อใน DECISIONS: **2.42** รูปแบบ `condition_json` (เอกสาร lib ว่า object+ตัวเลข
+#         แต่ฐานจริงเป็น array 16/18 แถว + value เป็น string ทุกแถว) · **2.43** เอกสาร 3 ฉบับ
+#         ที่ไม่มีปลายทาง (status `04` ขั้นบัญชีที่ถูกตัด · `10` ยกเลิก · 1 แถวขยะ)
+python3 tools/build_k2_migration_request.py   # docs/K2-migration-รายการตารางที่ต้องขอ.md
+#   รายการตารางที่ต้องขอจากทีม K2 เพื่อทำ migration — **ครบทั้ง 47 ตาราง ไม่ตกสักตัว**
+#   อ่านรายชื่อจาก DDL จริงแล้วบังคับว่าทุกตารางต้องถูกจัดกลุ่ม (A ขอทุกแถว 11 · B ขอจำนวนก่อน 9 ·
+#   C master ที่ได้แล้ว 7 · D ไม่ใช้ 20) — ถ้าตกตัวไหน สคริปต์ error ไม่ยอมสร้างไฟล์
+python3 tools/build_sgi_workflow_sql.py       # output/sql/sgi_workflow_definition.sql
+#   นิยาม workflow ของ SGI ลงตารางของ `@srm/glb-workflow` — workflow_id 10 · version_id 10
+#   6 state/status · **15 route** · 5 group · อ่าน transition สดจาก `workflow_status_document.md`
+#   ⚠️ ตาราง workflow_* เป็นของ engine → **INSERT อย่างเดียว · ระบุ id เองไม่พึ่ง nextval**
+#      (sequence บน dev ตามหลังข้อมูล: workflow_workflow_id_seq = 1 แต่ max(workflow_id) = 6)
+#   🔴 **ยังรันจริงไม่ได้** — `GROUP_MAP` (รหัส business_user.group_id ของแต่ละขั้น) ยังว่าง
+#      preflight ใน SQL จะ RAISE ให้เอง · เติมใน generator แล้ว generate ใหม่
+#   ✅ ทดสอบรันจริงบนฐาน dev แล้ว ROLLBACK — เพิ่ม state 6 · status 6 · route 15 · group 5 ถูกต้อง
+#   check_docs.py ดัก: จำนวน route ต้องตรง workflow_status_document.md · ชื่อสถานะต้องตรง SGI_DOC_STATUS ·
+#   ห้ามมี UPDATE/DELETE/DDL ในไฟล์
+python3 tools/build_k2_migration_profile_sql.py  # output/sql/k2_migration_profile.sql
+#   สคริปต์ **T-SQL อ่านอย่างเดียว** ให้ทีมเจ้าของฐาน K2 รันแล้วส่งผลกลับ ก่อนเขียน migration จริง
+#   7 ส่วน: จำนวนแถว · ตารางที่รอตัดสิน · **โดเมนค่าจริง 19 คอลัมน์ที่ปลายทางมี CHECK** ·
+#   ความยาวจริงของ nvarchar(max) · คีย์/ลูกกำพร้า/%รวม 100% · ช่วงเวลา+เอกสารต่อปี · ไฟล์แนบ
+#   ⚠️ ฐาน K2 ไม่มี FK และไม่มี CHECK สักตัว — ข้อมูลจริงจึงละเมิดกติกาของ DDL ใหม่ได้ทุกข้อ ต้องวัดก่อน
+#   รายการตารางที่ต้องขอทั้งหมดอยู่ใน `docs/K2-migration-ข้อมูลที่ต้องขอ.md`
+python3 tools/check_docs_vs_k2_master.py      # ตรวจ seed + เอกสาร กับ **master data จริงของ K2 เดิม**
+#   อ่าน `docs/ข้อมูล Master K2.xlsx` — 5 ข้อ: ปัจจัยภายนอกตรง `FactorProfile` · วงเงินตรง `SectionProfile` ·
+#   จำนวน role ตรง `ApplicationRoles` · สถานะที่ seed ใช้สืบถึง `StatusProfile` ได้ · ชื่อประเภทร้านฝั่ง FGI ที่ซ้ำกัน
+#   ⚠️ xlsx อยู่ใน .gitignore (มีชื่อ-อีเมลพนักงาน) — ไม่มีไฟล์ = ข้ามทุกข้อแล้ว exit 0
+python3 tools/check_docs_vs_ias_sta.py        # ตรวจข้ออ้างในเอกสาร (md · html · LLDD) กับ **ไฟล์ interface จริง** ของ IAS/STA
+#   ความจริงมาจากไบต์ในไฟล์ ไม่ใช่จากสเปก — 6 ข้อ: จำนวนฟิลด์ต่อไฟล์ · ปฏิทินของไฟล์ IAS (ค.ศ.) ·
+#   รูปแบบวันที่ FRBC0001 ฟิลด์ 3 · ลำดับหมวด QSSI 8,9,12,1,10,16 · คีย์สัญญา sgi_impact_store ·
+#   โครงหน้าต่าง 4×15=60 วัน (ไม่รวมวันร้านใหม่เปิด)
+#   ⚠️ อ่านจาก `docs/file_IAS_STA/` ที่อยู่ใน .gitignore — ถ้าไม่มีโฟลเดอร์จะข้ามทุกข้อแล้ว exit 0
+#   ปัญหาในเอกสารต้นฉบับของทีมอื่น (`STA/`) รายงานเป็น **คำเตือน** ไม่ทำให้ fail (บันทึกเป็นข้อ 2.39 ใน DECISIONS)
 python3 tools/audit_legacy_claims_java.py     # ตรวจข้ออ้างในเอกสารที่ชี้ไปโค้ด Java เดิม (ไฟล์/บรรทัด/คลาส) — ไม่ต้องต่อฐาน
 ORA_USER=... ORA_PASSWORD=... ORA_DSN=... python3 tools/audit_legacy_claims_db.py
 #   ตรวจตัวเลขที่เอกสารอ้างว่ามาจากฐาน Oracle เดิม ว่ายังตรงกับของจริง (23 ข้ออ้าง · SELECT ล้วน)
@@ -217,6 +319,13 @@ Flow pages live in sidebar group `Flow`: `flow-fgi.html` = FGI/FCS batch pipelin
 
 Core architectural premise recorded there: the new system merges **EAI and K2 into SGI** — FGI/FCS batch jobs and the K2 document/workflow run in one system on one database. The internal `BPM06001O_/2O_/3O_` file exports through EAI (Jobs 7/8/9) and the K2 REST StartInstance call (Job 8b) are removed, replaced by direct DB writes (Document Service) and an internal Workflow Engine. External interfaces stay other teams' systems, but the channels changed (2026-08-24): **QSSI is out of scope** (Job 1 cut — SGI reads `fcs_qssi_score` that the existing SBP system already imports) · ALLMAP unchanged (SQL Server views) · **IAS/MIS moved from SFTP to EAI S3** (Job 4 uploads `AMS06001O`, Job 5 pulls `AMS06001I`) · **STA moved from the `FRBC0001` file + SFTP to a RabbitMQ message** `sta.compensation.result` (Job 6, transactional outbox) · SMTP goes through the shared email-lib. No SFTP remains in the target system.
 
+**Legacy data & interface knowledge — three docs built from REAL artifacts, not from the specs:**
+- `docs/K2-interface-files.md` — the 3 files SGI used to export to K2 (`BPM06001O_`/`2O_`/`3O_`, sample set 2017-06-09). Those files are cut in the target system; the doc exists to prove the direct DB writes carry every field K2 used to receive.
+- `docs/IAS-STA-interface-files.md` — the files exchanged with **IAS** (`AMS06001O_`/`AMS06001I_`) and **STA** (`FRBC0001_`) plus the two PDF reports STA returns (`RT040035` = การคำนวณชดเชย · `RT040078` = ที่มาของเป้ามาตรฐาน), from the 2026-09-10/13/15 sample set in `docs/file_IAS_STA/`. **It corrects three things the legacy spec and this file had wrong** (IAS files are ค.ศ. not พ.ศ. · `FRBC0001` field 3 is `dd/MM/yyyy` not `ddMMyyyy` · IAS files carry no Thai bytes), proves the 4×15-day window layout byte-by-byte, and **names the 6 QSSI categories** (8=Result · 9=Process · 12=สินค้าขาด · 1=บริการ · 10=Follow up · 16=สินค้าหมดอายุ) which no existing document had — recovered by matching `FRBC0001` fields 9–14 against the STA report for the same store and period. ⚠️ the sample files hold real business data, so **`docs/file_IAS_STA/` is gitignored** — a fresh clone has the knowledge doc but not the samples.
+- `docs/K2-database-CPA_FRN_FGI.md` — the **As-Is K2 database** (SQL Server `CPA_FRN_FGI`, script dated 22/07/2026): 47 tables · 575 columns · 4 triggers, and **431 Thai column descriptions the original team wrote into the database**, which document business rules found in no SRS/SDD — every `CompFlagStatus` / `CompType` / `CompDecisionCode` value, the `_N`↔`_Nc` "system-calculated vs human-adjusted" column pairs, and the archive→purge retention cycle. The K2 DB has **zero foreign keys, zero CHECK constraints and zero non-PK indexes**, so migration must profile the data rather than trust the documented domains. Its source `.sql` is gitignored by the repo-wide `*.sql` rule.
+- `docs/SBP-email-lib-LLDD.md` — the **`@gosoft-sbp/email-lib` contract** (from `SBP/TSM-SRM-LLDD SBP EMAIL1.0.xlsx`, v1.0): `sendMail` inputs, what the lib writes into `email_sent` on both success and failure, and the sequence diagram. **It records five places the lib's own LLDD disagrees with production**, the important one being 🔴 the placeholder delimiter — the LLDD documents `{{name}}` while 126 of 134 real templates use `${name}` and every template ever actually sent uses `${}`. SGI's EM-01…EM-08 currently use `${}`, so if the lib only substitutes `{{}}` our mail goes out with raw placeholders (open item 2.40).
+- `docs/K2-master-data.md` — the **actual master-data rows** of that K2 database (8 sheets exported 08/10/2026): 10 statuses · 10 sections · 14 decisions · 8 roles · 13 zones · 8 branch types · **7 external factors**. It caught that the prototype's 4 external factors were invented (now replaced with the real 7), supplies the missing answer to the 67-day question (status `10` = auto-cancel, decision `14` = `CancelBySystem`), confirms the single 100,000 limit sits only on section `2` (GM), and gives `ZoneProfile` as the likely numeric↔letter zone translation the Job 8b/12 recipient join is missing. ⚠️ its `.xlsx` holds employee names and e-mails, so it is gitignored.
+
 ## Implementation specs and the React port
 
 FE target = โมดูลใน Next.js portal เดิม (`SBP/srm-sps-spsap-web-frontend`, portal `sbpm`) · BE target = NestJS + TypeORM ตาม `SBP/srm-sps-spsap-store-backend` (ตัดสินใจ 2026-08-05) · **Batch target = `SBP/srm-sps-spsap-sop-sgi-batch` (มติ 2026-09-02)** — batch runner ของ SBP ที่มีอยู่จริงและรันอยู่แล้ว 42 job (NestJS 11 · AWS Batch · `--job=<name>` dispatch · RabbitMQ publisher + envelope `dataType/dataName/dataMessage/sender/sentAt` · S3 · iconv-lite win874 · email-lib · `integration_log`) และมี `import-qssi` อยู่แล้วจริง (ยืนยันมติตัด Job 1) · **batch job ทั้ง 12 ตัว (Jobs 2–12 + 8b)** ลงทะเบียนเป็น job ชื่อ **`sgi-<kebab>`** ใน `src/main.ts` วางโค้ดใต้ **`src/modules/sgi/`** และรับ argument เป็น **JSON ผ่าน `INPUT`** (local: env `JOB_NAME`/`INPUT` · AWS Batch: `argv[3]`/`argv[2]`) — ทุกฉบับมีหัวข้อ **5.95 การลงทะเบียน job และ Arguments** และ **5.96 เงื่อนไขตัดสิน (Decision Rules)** · **ตารางเวลาเป็น AWS Batch scheduled event ไม่ใช่ `@Cron`** (repo ไม่มี `@Cron` เลย) · รายละเอียด repo เต็มใน `SBP/srm-sps-spsap-sop-sgi-batch.md`. ชุด spec เดิม (`plan-fe.md` `plan-be.md` `checklist-fe.md` `checklist-be.md` `REACT-TODO-CHECKLIST.md`) **ถูกลบทิ้งเมื่อ 2026-08-11** เพราะตกยุคจนขัดกับการตัดสินใจปัจจุบัน ~250 จุด · แหล่งความจริงสำหรับสร้างระบบตอนนี้คือ:
@@ -234,7 +343,7 @@ FE target = โมดูลใน Next.js portal เดิม (`SBP/srm-sps-spsa
 ## Domain rules encoded in the prototype
 
 - 5-step approval workflow by section_code (SDD v7.5 cut accounting steps 04/05): 06 (ฝ่าย SBP DSA) → 08 (เจ้าหน้าที่ SBP DSA) → 01 (หน่วยงานส่งเสริมธุรกิจฯ — renamed from หน่วยงานส่งเสริมธุรกิจ and widened to senior officers per SDD GI) → 02 (GM) → 03 (AVP). **Approval limit — single 100,000 threshold (meeting decision 2026-08-18, overrides SDD GI slide 55): amount < 100,000 ends at GM (02); amount ≥ 100,000 routes to AVP (03) then ends. This reverts the short-lived 50,000/300,000 two-tier rule back to the original single threshold, and removes the old "> 300,000 unspecified" open item.** "เห็นควรไม่ชดเชย" at sections 01/02 — **and, since 2026-09-02, at section 03 (AVP) as well** — now ends the flow immediately (no bounce-back); an AVP who wants 06 to rework the document uses the existing "ส่งกลับฝ่าย SBP DSA" button instead. Reopening is allowed: a store+month whose document ended in หยุด/ไม่เห็นควรชดเชย can get a new document without an SR; ไม่เห็นควร (06) auto-queues next month to the same assignee; **zero-compensation months 1–3 now forward to 08 instead of 01 (decision 2026-09-01) — both continuation cases (amount > 0 and amount = 0 within 3 months) enter at 08 and carry no on-screen tag**, month 4 = หยุดชดเชย. **2026-09-01 also changed two send targets: section 08 has a single button (“คำนวณเงินชดเชยเรียบร้อย”) that returns the document to 06 instead of forwarding to 01 — positive path is `06→08→06→01→02→03→99`; and every send-back button in the system now returns to 06 (GM was 01, AVP was 02). The `result` enum grew to 7 values with “คำนวณเงินชดเชยเรียบร้อย”.** Document statuses: 6 values (count unchanged, but the section-01 status name follows the rename — "รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ"). Accounting verifies via the SBP Mall report (ค้นหาข้อมูล + Export Excel) outside the workflow; that report screen was aligned to **SDD slide 60** on 2026-08-06 — 7 filters (สถานะ is the only required one) and 14 result columns.
-- Document numbers: `YYYY/xxxxx` with **Christian-era (ค.ศ.) year** — e.g. `2026/00123`. Dates and document numbers are ค.ศ. system-wide (decided 2026-08-06, see `api.md`); the only exception is the STA/IAS interface files (`FRBC0001_*`, `AMS06001I_*`) which stay พ.ศ. + windows-874, converted only at file read/write.
+- Document numbers: `YYYY/xxxxx` with **Christian-era (ค.ศ.) year** — e.g. `2026/00123`. Dates and document numbers are ค.ศ. system-wide (decided 2026-08-06, see `api.md`); the only exception is the **STA** file `FRBC0001_*`, which stays พ.ศ. + windows-874, converted only at file read/write. ⚠️ **corrected 2026-09-16 from real sample files** (`docs/file_IAS_STA/`): the IAS pair `AMS06001O_*`/`AMS06001I_*` is **ค.ศ., not พ.ศ.** (`20260824`) and carries no Thai bytes at all — only `FRBC0001` is พ.ศ. (`24/08/2569`, `yyMM`=`6908`) and genuinely windows-874. `FRBC0001` field 3 is also `dd/MM/yyyy` **with slashes**, not the `ddMMyyyy` the legacy spec claims. Full breakdown: `docs/IAS-STA-interface-files.md`.
 - Stores with < 60 days of sales data show as red `tr.flag-red` rows ("ผิดปกติ").
 - %ชดเชย allocations across new stores must total exactly 100%.
 - `k2-competitors.html` (**added 2026-08-06**, sidebar entry right after กำหนดปัจจัยภายนอก) is the competitor **brand master** (11 rows, codes 01–11, Thai + English names) copied verbatim from the legacy K2 screen; it feeds the "ร้านคู่แข่ง (Master)" dropdown in the document page. Do not confuse it with `sgi_document_competitors`, which holds per-branch competitor rows imported from ALLMAP with their own alphanumeric ids.

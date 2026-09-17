@@ -396,7 +396,9 @@ def read_factors() -> list[tuple[str, str, str]]:
     for tr in re.findall(r"<tr>(.*?)</tr>", text, re.S):
         tds = [re.sub(r"<[^>]+>", "", c).strip()
                for c in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)]
-        if len(tds) >= 4 and re.match(r"^F\d{3}$", tds[1]):
+        # รหัสเป็นเลขของ K2 เดิม (1–6, 99) — เปลี่ยนจาก `F\d{3}` ที่เราตั้งเองเมื่อ 2026-09-16
+        # หลังพบ master จริงใน `docs/ข้อมูล Master K2.xlsx` (ดู `docs/K2-master-data.md`)
+        if len(tds) >= 4 and re.match(r"^\d{1,2}$", tds[1]):
             out.append((tds[1], tds[2], tds[3]))
     return out
 
@@ -432,7 +434,10 @@ SGI_DOC_STATUSES = [
 SGI_CODE_TYPES = [
     ("SGI_DECISION",     "ผลการพิจารณาเอกสารประกันรายได้"),
     ("SGI_DOC_STATUS",   "สถานะเอกสารประกันรายได้"),
-    ("SGI_APPROVE_LIMIT", "วงเงินอนุมัติของระบบประกันรายได้"),
+    # 🔴 ยึดชื่อที่ติดตั้งในฐาน dev อยู่แล้ว (แถวนี้ทีมอื่น seed ไว้ตั้งแต่ 2026-08-27 ก่อนเรา)
+    #    `WHERE NOT EXISTS` ข้ามให้ ชื่อในฐานจึงไม่ถูกทับ — ถ้า generator เขียนคนละชื่อ
+    #    เอกสารกับของจริงจะไม่ตรงกันตลอดไป · แก้ให้ตรงของจริงเมื่อ 2026-09-17
+    ("SGI_APPROVE_LIMIT", "วงเงินอนุมัติ ประกันรายได้"),
 ]
 
 # วงเงินอนุมัติ
@@ -602,9 +607,14 @@ def build_seed() -> Path:
     # 🔴 แก้ 2026-09-15 — เดิมนับเฉพาะ SGI_DECISIONS ทำให้หัวไฟล์บอก "7 แถว"
     #    ทั้งที่ลง common_code จริง 13 แถว (ตก SGI_DOC_STATUSES ไป 6 แถว)
     #    คนอ่านหัวไฟล์เพื่อรู้ว่าจะมีอะไรเข้าตารางของระบบเดิมบ้าง — นับผิดคือบอกผิด
+    # 🔴 แก้ 2026-09-16 — เดิมนับ common_code แค่ 2 code_type (ตก SGI_APPROVE_LIMIT) และไม่พูดถึง
+    #    common_code_type เลย · ทั้งสองตัวเพิ่มเข้ามาทีหลังแล้วลืมอัปเดต 3 ที่พร้อมกัน
+    #    (หัวไฟล์นี้ · DO block ตรวจผล · คำสั่งล้าง) — ตอนนี้ทุกที่คำนวณจากลิสต์เดียวกันหมด
     a(f"--    ส่วนที่ 2 — ตารางของระบบ SBP เดิม  "
-      f"(common_code {len(SGI_DECISIONS) + len(SGI_DOC_STATUSES)} แถว "
-      f"= SGI_DECISION {len(SGI_DECISIONS)} + SGI_DOC_STATUS {len(SGI_DOC_STATUSES)} · "
+      f"(common_code_type {len(SGI_CODE_TYPES)} แถว · "
+      f"common_code {len(SGI_DECISIONS) + len(SGI_DOC_STATUSES) + len(SGI_APPROVE_LIMITS)} แถว "
+      f"= SGI_DECISION {len(SGI_DECISIONS)} + SGI_DOC_STATUS {len(SGI_DOC_STATUSES)}"
+      f" + SGI_APPROVE_LIMIT {len(SGI_APPROVE_LIMITS)} · "
       f"mas_param {len(MAS_PARAMS)} แถว · email_template {len(EMAIL_TEMPLATES)} แถว)")
     a("--")
     a("--  ความปลอดภัยของส่วนที่ 2")
@@ -765,7 +775,7 @@ def build_seed() -> Path:
     a("-- ตรวจผลก่อน COMMIT")
     a("-- ---------------------------------------------------------------------")
     a("DO $$")
-    a("DECLARE c integer; f integer; d integer; s integer; p integer; e integer;")
+    a("DECLARE c integer; f integer; d integer; s integer; p integer; e integer; t integer; l integer;")
     a("BEGIN")
     a("    SELECT count(*) INTO c FROM sgi_competitors;")
     a("    SELECT count(*) INTO f FROM sgi_external_factors;")
@@ -773,11 +783,16 @@ def build_seed() -> Path:
     a("    SELECT count(*) INTO s FROM common_code   WHERE code_type = 'SGI_DOC_STATUS';")
     a("    SELECT count(*) INTO p FROM mas_param     WHERE param_name LIKE 'SGI\\_%';")
     a("    SELECT count(*) INTO e FROM email_template WHERE email_template_name LIKE 'EM-0%';")
+    # 🔴 เพิ่ม 2026-09-16 — เดิมตรวจ 6 กลุ่มจาก 8 กลุ่มที่ seed ลง · common_code_type กับ
+    #    SGI_APPROVE_LIMIT ไม่ถูกตรวจเลย = ติดตั้งไม่ครบแล้วยัง COMMIT ผ่านได้
+    a("    SELECT count(*) INTO t FROM common_code_type WHERE code_type LIKE 'SGI\\_%';")
+    a("    SELECT count(*) INTO l FROM common_code      WHERE code_type = 'SGI_APPROVE_LIMIT';")
     a(f"    IF c < {len(comps)} OR f < {len(factors)} OR d < {len(SGI_DECISIONS)}"
-      f" OR s < {len(SGI_DOC_STATUSES)} OR p < {len(MAS_PARAMS)} OR e < {len(EMAIL_TEMPLATES)} THEN")
-    a("        RAISE EXCEPTION 'seed ไม่ครบ: competitors=% factors=% decisions=% docStatuses=% params=% templates=%', c, f, d, s, p, e;")
+      f" OR s < {len(SGI_DOC_STATUSES)} OR p < {len(MAS_PARAMS)} OR e < {len(EMAIL_TEMPLATES)}"
+      f" OR t < {len(SGI_CODE_TYPES)} OR l < {len(SGI_APPROVE_LIMITS)} THEN")
+    a("        RAISE EXCEPTION 'seed ไม่ครบ: competitors=% factors=% decisions=% docStatuses=% params=% templates=% codeTypes=% approveLimits=%', c, f, d, s, p, e, t, l;")
     a("    END IF;")
-    a("    RAISE NOTICE 'OK: competitors=% factors=% decisions=% docStatuses=% params=% templates=%', c, f, d, s, p, e;")
+    a("    RAISE NOTICE 'OK: competitors=% factors=% decisions=% docStatuses=% params=% templates=% codeTypes=% approveLimits=%', c, f, d, s, p, e, t, l;")
     a("END $$;")
     a("")
     a("COMMIT;")
@@ -785,12 +800,20 @@ def build_seed() -> Path:
     a("-- ---------------------------------------------------------------------")
     a("-- ถอน seed เฉพาะส่วนที่ 2 (ตารางระบบเดิม) — ใช้เมื่อต้องการยกเลิกการติดตั้ง")
     a(f"--   ลบได้ปลอดภัยเพราะทุกแถวประทับ '{SEED_OWNER}' ไว้")
-    a("--   DELETE FROM common_code    WHERE code_type IN ('SGI_DECISION','SGI_DOC_STATUS')   "
+    # 🔴 แก้ 2026-09-16 — รายการเดิมผิด 2 จุด: ไม่มี `common_code_type` เลย และ `common_code`
+    #    กรองแค่ 2 code_type ทั้งที่ seed ลง 3 ตัว (ตก SGI_APPROVE_LIMIT) → ลบตามแล้วเหลือขยะ 4 แถว
+    #    แล้วรันติดตั้งใหม่จะได้ค่าเก่าค้างเงียบ ๆ เพราะ WHERE NOT EXISTS ข้ามให้
+    #    ตอนนี้สร้างจาก SGI_CODE_TYPES ชุดเดียวกับที่ใช้ INSERT จึงตกไม่ได้อีก
+    a("--   -- ลำดับสำคัญ: ลบ common_code ก่อน common_code_type เสมอ")
+    a("--   DELETE FROM common_code      WHERE code_type LIKE 'SGI\\_%' ESCAPE '\\'  "
       f"AND create_user = {_sq(SEED_OWNER)};")
-    a("--   DELETE FROM mas_param      WHERE param_name LIKE 'SGI\\_%'     "
+    a("--   DELETE FROM common_code_type WHERE code_type LIKE 'SGI\\_%' ESCAPE '\\'  "
+      f"AND create_user = {_sq(SEED_OWNER)};")
+    a("--   DELETE FROM mas_param        WHERE param_name LIKE 'SGI\\_%' ESCAPE '\\'  "
       f"AND create_by   = {_sq(SEED_OWNER)};")
-    a("--   DELETE FROM email_template WHERE email_template_name LIKE 'EM-0%' "
+    a("--   DELETE FROM email_template   WHERE email_template_name LIKE 'EM-0%' "
       f"AND create_by   = {_sq(SEED_OWNER)};")
+    a(f"--   -- code_type ที่ seed ลงจริงตอนนี้: {', '.join(t for t, _ in SGI_CODE_TYPES)}")
     a("-- ---------------------------------------------------------------------")
 
     path = OUT_DIR / "sgi_seed_data.sql"

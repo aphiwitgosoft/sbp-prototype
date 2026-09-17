@@ -41,7 +41,7 @@
 
 ## Common parameters
 
-- list: `page`, `pageSize`, canonical sort; default/maximum ต้องประกาศใน DTO และ OpenAPI
+- list: `page`, `size`, canonical sort; default/maximum ต้องประกาศใน DTO และ OpenAPI
 - document search: บังคับ `year`; optional `status`, `region[]`, `storeType[]`, date/money/wait/result filters
 - report: บังคับ `status`; status `99` บังคับ statement period; impacted/new store เป็นคู่
 - mutation: body whitelist, audit actor จาก trusted context, `versionNo` สำหรับ document update/action
@@ -64,7 +64,7 @@ Document action:
 Paged response:
 
 ```json
-{"success":true,"data":{"items":[],"page":1,"pageSize":20,"total":0}}
+{"success":true,"data":{"items":[],"page":1,"size":20,"total":0}}
 ```
 
 รายละเอียด field/error/DB ต่อ use case อยู่ใน Feature ที่คอลัมน์ Feature ชี้ไป ห้ามเพิ่ม endpoint โดยแก้ catalog นี้อย่างเดียว: ต้องแก้ `plan-api.html`, owner feature, tests และ count rule พร้อมกัน

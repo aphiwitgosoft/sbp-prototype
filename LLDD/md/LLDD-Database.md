@@ -530,9 +530,15 @@ CREATE TABLE sgi_compensation_documents (
     current_section_code VARCHAR(2),   -- ค่าจาก sps_store.workflow_state ของ engine
     total_compensation_amount NUMERIC(14,2) NOT NULL DEFAULT 0,
     allmap_url VARCHAR(500),                   -- CompUrlMap — ปุ่ม Link To ALLMAP
-    statement_id VARCHAR(50),                  -- CompStatementID — โยงกลับ SBP Statement ต้นทาง
+    statement_id VARCHAR(500),                 -- CompStatementID — โยงกลับ SBP Statement ต้นทาง
+    --   🔴 ขยายจาก VARCHAR(50) เป็น 500 เมื่อ 2026-09-17 — ของเดิม**เก็บ URL เต็ม** ไม่ใช่รหัส
+    --   วัดจากข้อมูลจริง 18,007 เอกสาร: ยาวสุด 97 ตัวอักษร · **18,006 แถวเกิน 50**
+    --   (`https://franchisemall.cpall.co.th/franchise/frFMLWeb/…`) · ขนาดเดียวกับ allmap_url
     statement_date DATE,                       -- Period Statement (ค.ศ.) — ตัวกรอง/คอลัมน์ของรายงาน SDD สไลด์ 60
-    account_year INTEGER, account_month INTEGER,   -- งวดบัญชี
+    account_year INTEGER,                      -- งวดบัญชี
+    -- CHECK เพิ่ม 2026-09-17 — ต้นทาง K2 เก็บเป็นข้อความ '01'–'12' (+ ว่าง 6,484 แถว)
+    --   ถ้าแปลงพลาดเป็น 0 หรือ 13 จะหลุดเข้าฐานเงียบ ๆ แล้วรายงานงวดบัญชีเพี้ยน
+    account_month INTEGER CHECK (account_month BETWEEN 1 AND 12),
     approver_snapshot JSONB,                   -- FC/Section/Manager/GM/AVP + ชื่อ/อีเมล ณ เวลาเปิดเอกสาร
     version_no INTEGER NOT NULL DEFAULT 1,
     created_by VARCHAR(30) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -714,6 +720,13 @@ CREATE INDEX idx_impact_competitor_store ON sgi_fgi_impact_competitors(competito
 CREATE INDEX idx_impact_competitor_brand ON sgi_fgi_impact_competitors(brand_code);             -- สรุปรายงานรายแบรนด์
 CREATE INDEX idx_document_competitor_code ON sgi_document_competitors(brand_code);   -- สรุปรายงานรายแบรนด์
 CREATE INDEX idx_document_factor_code ON sgi_document_external_factors(factor_code);
+
+-- FK 3 เส้นที่ยังขาด leading index (เพิ่ม 2026-09-17 หลัง review ชุด migration)
+--   ไม่มี index ฝั่งลูก = ทุก DELETE/UPDATE ฝั่งแม่ต้อง seq scan ตารางลูกทั้งตาราง
+--   ORA FGI_NEW_STORE_COMPENSATE ของจริง 23,628 แถว · ลบรอบชดเชยทีเดียวจะกินเวลาผิดปกติ
+CREATE INDEX idx_new_store_compensate_impact_store ON sgi_fgi_new_store_compensations(impact_store_id);
+CREATE INDEX idx_document_new_store_source_row ON sgi_document_new_stores(source_row_id);
+CREATE INDEX idx_document_competitor_source_row ON sgi_document_competitors(source_row_id);
 
 -- index ที่หัวข้อ 6 (Index & Constraint) ระบุไว้ — เดิมมีแต่ในตารางสรุป ยังไม่ถูกสร้างจริง (เพิ่ม 2026-08-25)
 CREATE INDEX idx_attachment_scan_status ON sgi_document_attachments(scan_status);

@@ -58,7 +58,7 @@ sequenceDiagram
 
 ## 8. FE contract
 
-Route `/sgi/reports/status-summary`; filters status required, impacted/new store pair, statement from/to required when status 99, storeType[] from existing master 7 values, region[] dynamic, result radio State filter/result/page/export Buttons search/clear/export Validation exact message API 22/23 + lookup
+Route `/sgi/report/status-summary`; filters status required, impacted/new store pair, statement from/to required when status 99, storeType[] from existing master 7 values, region[] dynamic, result radio State filter/result/page/export Buttons search/clear/export Validation exact message API 22/23 + lookup
 
 ## 9. BFF contract
 
@@ -90,7 +90,7 @@ API-22/23, each conditional/array filter, result latest, status 99 date, pair ru
 
 ## 16. Code path ที่ต้องสร้าง
 
-FE `src/app/(main)/sgi/reports/status-summary`; BFF/BE `src/modules/sgi/report`; export helper/tests
+FE `src/app/(main)/sgi/report/status-summary`; BFF/BE `src/modules/sgi/report`; export helper/tests
 
 ## 17. เอกสารและ Decision ID ที่เกี่ยวข้อง
 

@@ -714,7 +714,7 @@ export class CompensationDocument {
   @Column({ name: 'allmap_url', type: 'varchar', length: 500, nullable: true })
   allmapUrl?: string;
 
-  @Column({ name: 'statement_id', type: 'varchar', length: 50, nullable: true })
+  @Column({ name: 'statement_id', type: 'varchar', length: 500, nullable: true })
   statementId?: string;
 
   @Column({ name: 'statement_date', type: 'date', nullable: true })

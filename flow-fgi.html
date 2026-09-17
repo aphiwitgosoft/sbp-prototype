@@ -176,7 +176,7 @@
             <thead><tr><th>Interface</th><th>ทิศทาง</th><th>Encoding</th><th>ฟิลด์</th><th>เนื้อหา</th></tr></thead>
             <tbody>
               <tr><td class="mono">mrs1/2/3/5tmf_yyyyMM</td><td>QSSI → ระบบ SBP เดิม</td><td class="mono">WINDOWS-874</td><td class="num">แปรผัน</td><td>คะแนน QSSI รายหมวด</td></tr>
-              <tr><td class="mono">AMS06001O_yyyyMMddHHmm.txt</td><td>Job 4 → <b>EAI S3</b> → IAS/MIS</td><td class="mono">UTF-8</td><td class="num">1 record</td><td>คำขอยอดขาย (รหัสร้านถูกกระทบ | วันเปิดร้านใหม่)</td></tr>
+              <tr><td class="mono">AMS06001O_yyyyMMddHHmm.txt</td><td>Job 4 → <b>EAI S3</b> → IAS/MIS</td><td class="mono">UTF-8</td><td class="num">2</td><td>คำขอยอดขาย (รหัสร้านถูกกระทบ | วันเปิดร้านใหม่ <code>yyyyMMdd</code> <b>ค.ศ.</b>) · ไฟล์จริงไม่ปิดท้ายด้วย newline</td></tr>
               <tr><td class="mono">AMS06001I_yyyyMMddHHmm.txt</td><td>IAS/MIS → <b>EAI S3</b> → Job 5</td><td class="mono">WINDOWS-874</td><td class="num">4</td><td>ยอดขายรายวันตอบกลับ</td></tr>
               <tr><td class="mono">sta.compensation.result</td><td>Job 6 → <b>RabbitMQ</b> → STA</td><td class="mono">JSON UTF-8 (วันที่ พ.ศ.)</td><td class="num">14</td><td>ค่าชดเชย + QSSI (สถานะ Z → S เฉพาะใน payload) · เดิมเป็นไฟล์ <code>FRBC0001</code> ผ่าน SFTP — เปลี่ยน 2026-08-24</td></tr>
               <tr><td class="mono">—</td><td>Job 8 → <b>sgi_compensation_documents</b></td><td class="mono">DB</td><td class="num">–</td><td>สร้างเอกสารในฐานข้อมูลเดียวกัน (ไม่มีไฟล์/SFTP)</td></tr>

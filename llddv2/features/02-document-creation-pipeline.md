@@ -55,7 +55,7 @@ sequenceDiagram
 
 ## 8. FE contract
 
-Route proposed `/sgi/create` เป็น read-only process explanation/status; no editable create button State optional tracking reference; link to documents; API only GET workflow summary/status if permission
+Route `/sgi/create` — **main card เป็น iframe ของหน้าสร้างเอกสารระบบ FS** (มติ 2026-08-06) ไม่ใช่หน้าอ่านอย่างเดียว: SBP **ไม่มีฟอร์มของตัวเอง** แต่ **ต้องคงกรอบ iframe ไว้** เพราะเป็นช่องทางเดียวที่ผู้ใช้สร้างเอกสารได้ · ใต้ iframe เป็นหมายเหตุ 4 ขั้นตอน (ลอกจากหน้าจอ K2 เดิม) · ไม่มีปุ่มสร้างฝั่ง SBP · `POST /sgi/document` เรียกโดย pipeline/service token เท่านั้น State optional tracking reference; link to documents; API only GET workflow summary/status if permission · ⚠️ **ห้ามตัด iframe ทิ้ง** — ตัดแล้วจะไม่เหลือทางสร้างเอกสารเลย (ยึดตาม `LLDD/md/FE/LLDD-FE-Create-Document.md` และ `k2-create.html`)
 
 ## 9. BFF contract
 

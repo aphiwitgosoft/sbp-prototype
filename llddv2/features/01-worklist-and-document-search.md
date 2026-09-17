@@ -57,7 +57,7 @@ sequenceDiagram
 
 ## 8. FE contract
 
-Routes proposed `/sgi/tasks`, `/sgi/documents`; components `SgiSearchFilters`, `SgiDocumentTable`, `Pagination`, bulk action bar State: lookup/loading/filter/page/sort/selected/error Buttons: ค้นหา, ล้างค่า, เปิดเอกสาร, selected action Validation: document search requires `year`; report-specific rulesไม่ใช้ที่นี่; FE ไม่รวมสิทธิ์เอง API: 01,02,12,13 + existing store/common lookups
+Routes proposed `/sgi/document/tasks`, `/sgi/document`; components `SgiSearchFilters`, `SgiDocumentTable`, `Pagination`, bulk action bar State: lookup/loading/filter/page/sort/selected/error Buttons: ค้นหา, ล้างค่า, เปิดเอกสาร, selected action Validation: document search requires `year`; report-specific rulesไม่ใช้ที่นี่; FE ไม่รวมสิทธิ์เอง API: 01,02,12,13 + existing store/common lookups
 
 ## 9. BFF contract
 
@@ -72,7 +72,7 @@ Controllers `SgiDocumentController`; DTO `ListTasksQueryDto`, `SearchDocumentsQu
 `GET /api/v1/sgi/document/tasks`, `/document`, `/lookup/document-statuses`, `/lookup/workflow-sections`
 
 ```json
-{"success":true,"data":{"items":[{"docNo":"2026/00001","impactedStoreCode":"01234","statusCode":"06","currentSection":"06","versionNo":3}],"page":1,"pageSize":20,"total":1}}
+{"success":true,"data":{"items":[{"docNo":"2026/00001","impactedStoreCode":"01234","statusCode":"06","currentSection":"06","versionNo":3}],"page":1,"size":20,"total":1}}
 ```
 
 400 invalid/missing year, 401/403, 422 invalid range; full trace [API Catalog](../references/API-CATALOG.md)

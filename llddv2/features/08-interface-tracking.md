@@ -54,7 +54,7 @@ sequenceDiagram
 
 ## 8. FE contract
 
-Route `/sgi/interfaces`; tabs all/pending confirm; state filters/page/sort/error; columns id/dataName/direction/businessKey/status/outboxStatus/retry/created/confirmed/error summary Buttons search/clear/view redacted metadata; no raw payload/no direct retry API API 27/28
+Route `/sgi/interface`; tabs all/pending confirm; state filters/page/sort/error; columns id/dataName/direction/businessKey/status/outboxStatus/retry/created/confirmed/error summary Buttons search/clear/view redacted metadata; no raw payload/no direct retry API API 27/28
 
 ## 9. BFF contract
 
@@ -66,7 +66,7 @@ Internal/operations permission, exact query/status; strip no security fields bec
 
 ## 11. API contract
 
-GET 27 filters `dataName,direction,status,outboxStatus,from,to,businessKey,page,pageSize`; GET 28 forces `direction=OUT` and `outbox_status!=CONFIRMED` older threshold Response paged rows; 401/403/422
+GET 27 filters `dataName,direction,status,outboxStatus,from,to,businessKey,page,size`; GET 28 forces `direction=OUT` and `outbox_status IS DISTINCT FROM 'CONFIRMED'` (**NULL-safe — `!=` จะตกแถวที่ยังเป็น NULL**) older threshold Response paged rows; 401/403/422
 
 ## 12. Database mapping
 
@@ -86,7 +86,7 @@ API-27/28, each direction/status/filter/date/page, OUT pending threshold boundar
 
 ## 16. Code path ที่ต้องสร้าง
 
-FE `src/app/(main)/sgi/interfaces`; BFF/BE `src/modules/sgi/interface`; reuse entity/schema mapping only after comparing generated DDL
+FE `src/app/(main)/sgi/interface`; BFF/BE `src/modules/sgi/interface`; reuse entity/schema mapping only after comparing generated DDL
 
 ## 17. เอกสารและ Decision ID ที่เกี่ยวข้อง
 

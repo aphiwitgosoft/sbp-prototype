@@ -248,7 +248,7 @@ Job 6 มี **2 สวิตช์ที่เปลี่ยนผลลัพ
 | ค่า | โดเมน / ค่าที่ระบบเดิมใช้ | ที่มา |
 | --- | --- | --- |
 | `dateStartInitToSTA` | `7` | `ApplicationResources.properties` ของระบบเดิม |
-| `categoryQssi` | `8,9,12,1,10,16` (6 หมวด) | `ApplicationResources.properties` |
+| `categoryQssi` | `8,9,12,1,10,16` (6 หมวด) → **8 = Result · 9 = Process · 12 = สินค้าขาด · 1 = บริการ · 10 = Follow up · 16 = สินค้าหมดอายุ** (ลำดับนี้คือลำดับฟิลด์ 9–14 ของ `FRBC0001`) | `ApplicationResources.properties` · **ชื่อหมวดถอดได้ 2026-09-16** จากรายงาน `RT040035` ของ STA เทียบกับไฟล์ `FRBC0001` จริงร้านเดียวกันงวดเดียวกัน (ตรงทุกค่า ยืนยัน 3 ร้าน) — ดู `docs/IAS-STA-interface-files.md` · ⚠️ **เปอร์เซ็นต์หักคำนวณที่ STA ไม่ใช่ที่ SGI** SGI ส่งแค่คะแนนดิบ · หมวด Follow up **ติดลบได้** |
 | `numWaitPay` | `3` งวด | `ApplicationResources.properties` |
 | `compensate_status` ที่ STA รับได้ | `I` · `A` · `N` · `S` · `R` | `STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md` §2.2 |
 | ค่าที่มีใน DB แต่ไม่ส่งดิบ ๆ | `Z` และ **`C`** → แปลงเป็น **`S`** เฉพาะใน payload (ใน DB คงค่าเดิม) | ขั้นที่ 4 ของ Job 6 · `ExportJdbc` จัด `C`/`S`/`Z` เป็นกลุ่มเดียวกันในทุก filter ปลายน้ำ (บรรทัด 366 · 1440) |

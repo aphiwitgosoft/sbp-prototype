@@ -58,7 +58,7 @@ sequenceDiagram
 
 ## 8. FE contract
 
-Route `/sgi/documents/[docNo]`; state aggregate/draft/modal/dirty/submitting/error Components 12 section cards, new-store allocation table, competitor/factor modals Buttons save/add/edit/deleteตาม permission Validation required master code/date, dateTo≥dateFrom, percent total 100 before submitแต่ BE authoritative Messagesจาก Error Catalog API 03/05 plus master lookups
+Route `/sgi/document/[docNo]`; state aggregate/draft/modal/dirty/submitting/error Components 12 section cards, new-store allocation table, competitor/factor modals Buttons save/add/edit/deleteตาม permission Validation required master code/date, dateTo≥dateFrom, percent total 100 before submitแต่ BE authoritative Messagesจาก Error Catalog API 03/05 plus master lookups
 
 ## 9. BFF contract
 
@@ -96,7 +96,7 @@ API-03/05; each role read/edit matrix, 0/99.99/100 totals, rounding residual, du
 
 ## 16. Code path ที่ต้องสร้าง
 
-FE `src/app/(main)/sgi/documents/[docNo]`; BFF `src/modules/sgi/document`; BE `src/modules/sgi/document/{dto,services,repositories,entities}`
+FE `src/app/(main)/sgi/document/[docNo]`; BFF `src/modules/sgi/document`; BE `src/modules/sgi/document/{dto,services,repositories,entities}`
 
 ## 17. เอกสารและ Decision ID ที่เกี่ยวข้อง
 

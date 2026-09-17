@@ -24,3 +24,25 @@ output/legacy-oracle/
 # ข้อมูลที่สกัดจากฐาน PostgreSQL dev ของระบบ SBP (tools/introspect_dev_sgi.py)
 # มีโครงสร้างตารางและข้อมูลธุรกิจจริงของระบบเดิม — ห้าม commit ขึ้น repo
 output/legacy-sgi/
+
+# ไฟล์ interface จริงที่รับส่งกับทีม IAS และ STA (AMS06001O/I · FRBC0001 · รายงาน RT040035/RT040078)
+# มีรหัสร้าน ยอดขายรายวัน ยอดชดเชย และชื่อสาขาจริง — ห้าม commit ขึ้น repo
+# (องค์ความรู้ที่ถอดจากไฟล์ชุดนี้อยู่ที่ docs/IAS-STA-interface-files.md ซึ่ง commit ได้ตามปกติ)
+docs/file_IAS_STA/
+
+# master data จริงของระบบ K2 เดิม — ชีต "รายชื่อสิทธิ์ตาม Role ของ K2" มีชื่อ-นามสกุลและอีเมล
+# ของพนักงาน 36 คน (ข้อมูลส่วนบุคคล) — ห้าม commit ขึ้น repo
+# (องค์ความรู้ที่ถอดจากไฟล์นี้อยู่ที่ docs/K2-master-data.md ซึ่งยกมาเฉพาะจำนวนคนต่อ role)
+docs/ข้อมูล Master K2.xlsx
+
+# ข้อมูลจริงจากฐาน K2 ที่ dump มาทำ migration (24 ไฟล์ · 330 MB)
+# มีชื่อร้าน ชื่อเจ้าของร้าน อีเมล ยอดเงิน — ห้าม commit ขึ้น repo
+docs/data_bk_all/
+
+# สำเนาสำรองฐาน dev ก่อนทำ migration (tools/backup_sgi_dev.py)
+# เป็นข้อมูลธุรกิจจริงที่ดึงออกมาทั้งก้อน — ห้าม commit ขึ้น repo
+backup/
+
+# ไฟล์แนบจริงที่แกะออกมาจากฐาน K2 (tools/extract_k2_attachments.py)
+# เป็นไฟล์ Excel ของจริง มีชื่อร้าน ยอดเงิน และข้อมูลผู้ประกอบการ — ห้าม commit ขึ้น repo
+output/legacy-k2-attachments/

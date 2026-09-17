@@ -11,7 +11,7 @@ FE เรียก BFF ด้วย session cookie เดิม; BFF ยืน�
 Success:
 
 ```json
-{"success":true,"data":{"items":[],"page":1,"pageSize":20,"total":0},"requestId":"req-123"}
+{"success":true,"data":{"items":[],"page":1,"size":20,"total":0},"requestId":"req-123"}
 ```
 
 Failure:
@@ -20,7 +20,7 @@ Failure:
 {"success":false,"error":{"code":"STALE_VERSION","message":"ข้อมูลถูกแก้ไขโดยผู้ใช้อื่น กรุณาโหลดข้อมูลล่าสุดแล้วลองอีกครั้ง"},"requestId":"req-123"}
 ```
 
-- list ใช้ `page` เริ่ม 1, `pageSize` มีเพดาน, `total` เป็นจำนวนก่อนแบ่งหน้า และ sort ต้อง deterministic
+- list ใช้ `page` เริ่ม 1, `size` มีเพดาน, `total` เป็นจำนวนก่อนแบ่งหน้า และ sort ต้อง deterministic
 - date ใช้ ISO `YYYY-MM-DD`; timestamp ใช้ ISO-8601 พร้อม offset; เงินเป็น JSON number สองตำแหน่งตาม response contract
 - unknown query/body field ต้อง reject ใน mutation และ internal API; ห้ามกลืน typo
 - HTTP status/error code ใช้ [Error Catalog](../references/ERROR-CATALOG.md)
