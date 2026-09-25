@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API · SBP Management System</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  .ref{display:inline-flex; align-items:center; font-size:10.5px; font-weight:700; border-radius:12px; padding:2px 9px;
+    font-family:"Sarabun",sans-serif; white-space:nowrap; letter-spacing:.2px; vertical-align:1px;}
+  .ref.fgi{background:#e8f0fe; color:#1d4ed8;} .ref.k2{background:#f1ecfe; color:#6d28d9;}
+  .ref.new{background:#e7f7ee; color:#15803d;} .ref.mix{background:#fff4d6; color:#92670b;}
+  .mth{display:inline-flex; justify-content:center; min-width:52px; font-size:11px; font-weight:800; border-radius:7px;
+    padding:3px 8px; font-family:"Sarabun",sans-serif; letter-spacing:.4px;}
+  .mth.get{background:#e8f0fe; color:#1d4ed8;} .mth.post{background:#e7f7ee; color:#15803d;}
+  .mth.put{background:#fff4d6; color:#92670b;} .mth.del{background:#fdecec; color:#c0392b;}
+  .ep-path{font-family:ui-monospace,Menlo,monospace; font-size:12.5px; color:#37414e; font-weight:600;}
+  .api-group h3{font-size:14.5px; color:#2b3440; margin:22px 2px 10px; display:flex; align-items:center; gap:10px;}
+  .api-group h3 .gnum{width:26px; height:26px; border-radius:8px; background:var(--primary); color:#fff; display:inline-flex;
+    align-items:center; justify-content:center; font-size:13px; font-weight:700; flex:0 0 auto;}
+  #tblApi tbody tr, .api-group tbody tr{cursor:pointer;}
+  .api-group tbody tr.sel td{background:#eef4ff;}
+  .code{background:#0f172a; color:#d7e3f4; border-radius:12px; padding:14px 16px; font-family:ui-monospace,Menlo,monospace;
+    font-size:12px; line-height:1.65; overflow-x:auto; margin:0; white-space:pre;}
+  .code .cl{color:#7dd3a7;}
+  .rr-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;}
+  .rr-grid h4, .ep-sec h4{font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;}
+  .ep-sec{margin-top:22px;}
+  .ep-flow{margin:0; padding-left:22px; color:#45525f; font-size:13.5px; line-height:1.95;}
+  @media (max-width:900px){ .rr-grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body data-page="plan-api" data-nav="modules" data-module="plan-api" data-crumb="API">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <div class="page-head">
+        <div><h1 class="page-title">API Specification</h1>
+          <p class="page-sub">REST API ทั้งหมด 26 เส้น 5 กลุ่มเป็น reference contract สำหรับ Frontend SPA และงานภายใน · กลุ่ม Auth/สิทธิ์เมนู และเส้นผู้ปฏิบัติงาน (18 เส้น) ตัดออกเมื่อ 2026-08-05 · ตัดอีก 3 เส้น (stores/search · zones · branch-types) เมื่อ 2026-08-06 เพราะระบบ SBP ปัจจุบันมี API พร้อมใช้แล้ว · <b>ลบกลุ่ม System Config (Global) และ Email Template รวม 10 เส้น พร้อมหน้าจอทั้งสอง เมื่อ 2026-08-06 — บริหารจัดการที่ระบบ SBP เดิม (mas_param / email_template) · ลบกลุ่ม Batch Job Admin อีก 6 เส้น เมื่อ 2026-08-06 — หน้า Batch Job ย้ายไปกลุ่ม Flow และเหลือแค่ Flowchart + Database ที่ใช้ batch job ยังรันปกติแต่กำหนดพารามิเตอร์/ตารางเวลาใน backend config</b></p></div>
+        <div class="page-actions">
+          <button class="btn btn-ghost" data-ack="ดาวน์โหลด OpenAPI 3.0 (ตัวอย่าง)">Export OpenAPI</button>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="si bg-blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v4c0 1.5-2 3-2 3s2 1.5 2 3v4a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v4c0 1.5 2 3 2 3s-2 1.5-2 3v4a2 2 0 0 1-2 2h-1"/></svg></div>
+          <div><div class="sv num">29</div><div class="sl">เส้น API ทั้งหมด</div></div></div>
+        <div class="stat"><div class="si bg-teal"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 10h18M9 5v14"/></svg></div>
+          <div><div class="sv num">6</div><div class="sl">กลุ่มตามโดเมน</div></div></div>
+        <div class="stat"><div class="si bg-amber"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></div>
+          <div><div class="sv num">BFF</div><div class="sl">ตัวตนจาก header ระบบ SBP เดิม</div></div></div>
+        <div class="stat"><div class="si bg-rose"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6H9ZM14 3v6h6"/></svg></div>
+          <div><div class="sv num">JSON</div><div class="sl">UTF-8 ทุกเส้น (เลิก TIS-620)</div></div></div>
+      </div>
+
+      <!-- conventions -->
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="font-size:13px;color:#45525f;line-height:2;">
+          <b style="color:#2b3440;">มาตรฐานกลาง (ทุกเส้น):</b>
+          Base URL <code class="ep-path">/api/v1</code> · Auth: ผ่าน BFF ระบบ SBP เดิม — SGI ตรวจ <code class="ep-path">x-api-key</code> + user context header (<code class="ep-path">x-user-id</code>/<code class="ep-path">x-user-group-id</code>/<code class="ep-path">x-user-permissions</code>) · เส้น callback ภายนอกใช้ API key/service token ·
+          กลุ่ม Auth/สิทธิ์เมนู และเส้นผู้ปฏิบัติงาน <b>ตัดออก — ใช้ระบบ SBP เดิม</b> (Cognito + BFF + auth-backend · ตัดสินใจ 2026-08-05; sidebar/สิทธิ์ใช้ BFF <code class="ep-path">/menus</code> + <code class="ep-path">/groups/current-user/permissions</code>) ·
+          แบ่งหน้า <code class="ep-path">?page=1&amp;size=20</code> ตอบ <code class="ep-path">{"page","size","total","items":[]}</code> ·
+          <b>เรียงลำดับ</b> <code class="ep-path">?sort=&lt;field&gt;&amp;order=asc|desc</code> (เพิ่ม 2026-09-24) ใช้กับ 3 เส้นที่เป็นตารางรายการ
+          (<code class="ep-path">GET /sgi/document</code> · <code class="ep-path">GET /sgi/document/tasks</code> · <code class="ep-path">GET /sgi/report/status-summary</code>) —
+          <code>sort</code> เป็นชื่อฟิลด์ใน response ที่ต้องอยู่ใน<b>ทะเบียนของ BE</b> เท่านั้น (ค่านอกทะเบียน = ลำดับตั้งต้น ไม่ใช่ 400) ·
+          tie-breaker <code>docNo</code> เสมอ และ <code>NULLS LAST</code> ทั้งสองทิศ ·
+          Error ตอบรูปแบบเดียวกันทุกเส้น: <code class="ep-path">{"code":"DOC_409","message":"ข้อความภาษาไทยตรงตาม SRS"}</code> — ข้อความ popup ต้องตรงตัวตามเอกสาร ·
+          วันที่และเลขเอกสารเป็น <b>ค.ศ. ทั้งหมด</b> (payload ISO-8601 ค.ศ. · <code>docNo</code> = <code>YYYY/xxxxx</code> ค.ศ.) ตามระบบ K2 เดิมและระบบ SBP ปัจจุบัน ·
+          code namespace แยกกันชัดเจน: <code class="ep-path">roleCode</code> = RBAC role, <code class="ep-path">sectionCode</code> = workflow section, <code class="ep-path">statusCode</code> = document status lookup ·
+          ref ที่มา: <span class="ref fgi">FGI/FCS</span> เอกสาร Batch v4.0 · <span class="ref k2">K2</span> SRS v3.1 · <span class="ref new">ใหม่</span> เพิ่มในระบบใหม่ · <span class="ref mix">ผสม</span>
+          — ดูภาพรวมที่ <a href="plan-flow.html" style="color:#2f6fed;font-weight:600;">Flow FGI/FCS + K2</a> · ตารางที่ <a href="plan-database.html" style="color:#2f6fed;font-weight:600;">DB รวม</a>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid #b45309;">
+        <div style="font-size:13px;color:#45525f;line-height:1.9;">
+          <b style="color:#2b3440;">Batch Job — ตัด API ทั้งกลุ่ม (2026-08-06):</b>
+          กลุ่ม <b>Batch Job Admin</b> ทั้ง 6 เส้น (<code>/jobs*</code>) และตาราง <code>job_configs</code> / <code>job_run_histories</code>
+          <b>ถูกลบออกจากแบบ</b> · หน้า <code>job-batch.html</code> <b>ย้ายไปกลุ่มเมนู Flow (“Flow Batch Job”) และเหลือเฉพาะแท็บ Flowchart การทำงาน + Database ที่ใช้</b> เป็นเอกสารอ้างอิงสำหรับผู้พัฒนา.
+          <b>Batch job ของ SGI ยังทำงานตามปกติ</b> — แต่พารามิเตอร์และตารางเวลากำหนดใน <b>backend config</b> (config file/env ของฝั่ง BE)
+          และการบันทึกผลการรันใช้ application log / <code>sgi_interface_transactions</code> แทน ไม่มีหน้าจอและไม่มี API ให้แก้ค่า;
+          ถ้าจะทำ 2 tab ควบคุม (แบบฟอร์มพารามิเตอร์ / ประวัติการรัน) ใน phase ถัดไป ให้กลับมาเปิดกลุ่มนี้พร้อมกับตาราง 2 ตัวข้างต้น
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid #b45309;">
+        <div class="card-head"><h2>Workflow engine ของระบบเดิม — ข้อเท็จจริงจากฐานข้อมูลจริง</h2><span class="pill wait">ตรวจ 2026-08-10 · แก้ตัวเลขที่เคยเขียนผิด</span></div>
+        <div style="font-size:13px;color:#45525f;line-height:1.9;">
+          ที่มาของตัวเลขทุกตัวในการ์ดนี้: <code>SBP/db-schema-sps_store.md</code> · <code>SBP/db-schema-sps_auth.md</code> (dump schema จริง)
+          <ul style="margin:10px 0 0;padding-left:20px;">
+            <li><b>engine มี 13 ตาราง ไม่ใช่ 10</b> (เอกสารเดิมของเราเขียนผิด):
+              <code>workflow</code> · <code>workflow_version</code> · <code>workflow_state</code> · <code>workflow_status</code> ·
+              <code>workflow_event</code> · <code>workflow_route</code> · <code>workflow_group</code> · <code>workflow_group_map</code> ·
+              <code>workflow_transaction</code> · <code>workflow_history</code> · <code>workflow_approver</code> ·
+              <code>workflow_part</code> · <code>workflow_part_display</code></li>
+            <li><b>engine ตัวจริงที่ SGI ต้องต่ออยู่ schema <code>sps_store</code> ไม่ใช่ <code>sps_auth</code></b> —
+              ทั้งสอง schema มี 13 ตารางชื่อเดียวกันครบ แต่เป็นคนละชุดข้อมูลและ<b>คนละเวอร์ชัน</b>
+              (<code>workflow_state</code> ของ <code>sps_auth</code> 3 คอลัมน์ / ของ <code>sps_store</code> 4 คอลัมน์):
+              <br><code>sps_store</code> = <code>workflow_transaction</code> <b>19,327 แถว</b> · <code>workflow_history</code> <b>38,010</b> · <code>workflow_approver</code> <b>96,542</b> (ของใช้งานจริง)
+              <br><code>sps_auth</code> = <code>workflow_transaction</code> 55 · route 41 · state 10 (ชุดของ auth-backend คนละเรื่อง)
+              <br>→ ทุกที่ที่หน้านี้อ้างตาราง engine ให้อ่านว่า <b><code>sps_store.&lt;table&gt;</code></b></li>
+            <li><b style="color:#b45309;">⚠️ ความเสี่ยงที่ต้องคุยกับทีมเจ้าของ library:</b>
+              <code>sps_store.workflow_transaction</code> <b>ไม่มี PK และไม่มี index เลย</b> ทั้งที่มี 19,327 แถว
+              (ตารางชื่อเดียวกันใน <code>sps_auth</code> มี PK ปกติ) — กระทบ performance ของ <code>GET /sgi/document/tasks</code> และ
+              <code>POST /sgi/document/{docNo}/actions</code> ที่ query ตารางนี้ทุกครั้ง ·
+              เป็นข้อเท็จจริงที่ตรวจพบ · <b>ห้ามแก้ schema ของ library</b> — SGI ต้องกันซ้ำที่ระดับ application และจำกัดเงื่อนไข query ด้วย <code>version_id</code> + <code>reference_id</code> เสมอ</li>
+            <li><b>ข้อสังเกต (SGI ไม่ใช้):</b> <code>workflow_part</code> + <code>workflow_part_display</code> ของ engine
+              คุมการแสดงผล<b>รายส่วนของหน้าจอ</b> (READ/WRITE ต่อ state) ซึ่ง<b>ทับซ้อน</b>กับกลไก
+              <code>data-editrole</code> / <code>.edit-only</code> ที่ prototype ทำเอง และกับธง <code>editableSections</code>
+              ที่ <code>GET /sgi/document/{docNo}</code> คืน — ต้องเลือกว่าจะให้ engine เป็นเจ้าของสิทธิ์แก้รายส่วนหรือให้ SGI คำนวณเอง
+              (ดู <code>SBP/SBPGI-vs-existing-system.md</code> หัวข้อ 4)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid #15803d;">
+        <div class="card-head"><h2>✅ API ของ workflow engine — 8 function (ยึด LLDD ของ lib)</h2><span class="pill ok">ปิดข้อค้าง 2026-08-14</span></div>
+        <p style="margin:0 0 10px;font-size:13px;color:#45525f;line-height:1.9;">
+          แหล่งความจริงคือชีต <b>Detail</b> ของ <code>SBP/TSM-SRM-LLDD SBP workflow 1.2.xlsx</code> ซึ่งเป็น <b>เอกสารของ lib เอง</b> ·
+          ชื่อที่เคยขัดกันไม่ใช่ชื่อ API: <i>Trigger Event</i> เป็น<b>ชื่อหัวข้อของขั้นตอนภายใน</b> <code>eventWorkflow</code> ในชีต “2”
+          ส่วน <code>TriggerEventUseCase</code>/<code>AddPreparedApproverUseCase</code>/<code>GetPendingFlowUseCase</code> เป็น
+          <b>UseCase class ที่ store-backend ห่อไว้ใช้เอง</b> ไม่ใช่ API ของ lib
+        </p>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th style="width:46px;">#</th><th>function</th><th>พารามิเตอร์</th><th>SGI ใช้ที่ไหน</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td><code>initializeWorkflow</code></td><td>version, userId, referenceId</td><td>เปิด flow ให้เอกสารใหม่ (Job 8b · <code>POST /sgi/workflow/instances</code>)</td></tr>
+              <tr><td>2</td><td><code>eventWorkflow</code></td><td>version, referenceId, event, eventParam, remark, userId <br><small>+ userData · userFullname · nextApproverId (ส่วนขยาย 29/04 · 20/05 · 16/06/2026)</small></td><td><code>POST /sgi/document/{docNo}/actions</code></td></tr>
+              <tr><td>3</td><td><code>getPermissionEvents</code></td><td>version, referenceId, userData</td><td>ปุ่ม/ผลพิจารณาที่ user กดได้ในหน้าเอกสาร</td></tr>
+              <tr><td>4</td><td><code>getHistory</code></td><td>version, referenceId</td><td><code>GET /sgi/document/{docNo}/timeline</code></td></tr>
+              <tr><td>5</td><td><code>getTransaction</code></td><td>version, referenceId</td><td>สถานะ + ผู้ถืองานปัจจุบันของเอกสาร</td></tr>
+              <tr><td>6</td><td><code>getPendingFlowByUser</code></td><td>userData</td><td><b>หน้า เอกสาร → รอดำเนินการ</b> + reminder รายสัปดาห์</td></tr>
+              <tr><td>7</td><td><code>getWorkflowsByUser</code></td><td>userData</td><td><b>หน้า เอกสาร → ที่เกี่ยวข้อง</b> (รวมที่ยังไม่ถึงคิวและที่อนุมัติไปแล้ว)</td></tr>
+              <tr><td>8</td><td><code>addPreApprover</code></td><td>version, userId, referenceId, state_id, approver, seq</td><td>ตั้งผู้อนุมัติล่วงหน้าของขั้นถัดไป</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin:10px 0 0;font-size:13px;color:#45525f;line-height:1.9;">
+          🎯 function 6 และ 7 ตรงกับหน้าจอฝาแฝด <b>รอดำเนินการ / ที่เกี่ยวข้อง</b> พอดี — ไม่ต้องเขียน query งานค้างเอง ·
+          รายละเอียดเดียวกันอยู่ใน <code>api.md</code> หัวข้อ Workflow Engine
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>สัญญากลาง API/FE</h2><span class="pill info">ทุก endpoint และทุก FE hook ต้องอ้างชุดนี้</span></div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>หมวด</th><th>Contract กลาง</th><th>ใช้โดย</th></tr></thead>
+            <tbody>
+              <tr><td>Transport</td><td>Base URL <code>/api/v1</code> · JSON <code>application/json; charset=utf-8</code> · multipart เฉพาะ attachments</td><td>BE controller · FE API client</td></tr>
+              <tr><td>Auth</td><td>ผู้ใช้ login ผ่าน BFF ระบบเดิม (Cognito · cookie httpOnly) — SGI ตรวจ <code>x-api-key</code> + อ่าน user context จาก header ที่ BFF แนบมา (<code>x-user-id</code> / <code>x-user-group-id</code> / <code>x-user-permissions</code>); internal workflow/batch callback ใช้ service token</td><td>ระบบเดิม (BFF + auth-backend) · BE validate header · FE ไม่แตะ token</td></tr>
+              <tr><td>Error</td><td>ทุก error คืน <code>{"code","message"}</code> เท่านั้น · <code>message</code> เป็นไทย verbatim ตาม SRS ถ้ามีข้อความกำหนด</td><td>BE error handler · FE แสดงตรง ๆ</td></tr>
+              <tr><td>HTTP status</td><td>400 validation · 401 auth · 403 forbidden/RBAC · 404 not found · 409 duplicate/current-task conflict · 422 business rule · 413/415 attachment</td><td>BE AppError · FE error state</td></tr>
+              <tr><td>Pagination</td><td>GET list รับ <code>page,size</code> และคืน <code>{"page","size","total","items"}</code></td><td>BE query · FE DataTable/Pager</td></tr>
+              <tr><td>Sorting</td><td>3 เส้นตารางรายการรับ <code>sort</code> + <code>order</code> · คีย์ต้องอยู่ในทะเบียนของ BE (ห้ามต่อสตริงจาก query ลง <code>ORDER BY</code>) · tie-breaker <code>docNo</code> · <code>NULLS LAST</code></td><td>BE สร้าง ORDER BY จากทะเบียน · FE ส่งจาก <code>onSort</code> (ต้องตั้ง <code>sortMode="single"</code>)</td></tr>
+              <tr><td>Format</td><td><code>docNo</code> = <b>ค.ศ.</b> <code>YYYY/xxxxx</code> · <code>storeCode/newStoreCode</code> string 5 หลัก · date/month payload เป็น ISO ค.ศ. · amount/percent เป็น number 2 decimals</td><td>BE validate/serialize · FE format display</td></tr>
+              <tr><td>Transition</td><td><code>POST /sgi/document/{docNo}/actions</code> รับ <code>{result, comment}</code> และคืน <code>{nextSection, statusCode, message}</code>; positive path คือ <code>06→08→06→01→02→03→99</code> (<b>มติ 2026-09-01</b> — Section 08 คำนวณเสร็จคืนงานให้ 06), โดย <code>99</code> = เสร็จสิ้นและ <code>nextSection=null</code>; Section 02 ยอด < 100,000 จบเป็น 99 · ≥ 100,000 → 03 (SDD GI 24/02/2026); <code>result="ส่งกลับ"</code> คืน <code>nextSection="06"</code> เสมอทุก Section</td><td>BE Workflow Action · FE DecisionPanel</td></tr>
+              <tr><td>Code namespace</td><td><code>roleCode</code> ใช้กับ RBAC role 00/01/02/03/04/05/06/10 · <code>sectionCode</code> ใช้กับ workflow section 06/08/01/02/03 · <code>statusCode</code> ใช้กับ document status lookup เท่านั้น</td><td>BE DTO/schema · FE constants</td></tr>
+              <tr><td>RBAC/Menu</td><td>sidebar/route guard ใช้ของระบบเดิม: BFF <code>GET /menus</code> + <code>GET /groups/current-user/permissions</code> (canView/canManage/canExport/canOther ต่อ URL) · detail API ยังคืน <code>editableSections</code> และ <code>permissions.canAction</code> (ธงเชิง workflow ที่ SGI คำนวณเอง)</td><td>ระบบเดิมคุมเมนู/สิทธิ์เข้าหน้า · BE task-owner guard · FE UI gating</td></tr>
+              <tr><td>Audit/Reason</td><td><b>ไม่มี audit กลางของ master แล้ว</b> (ยกเลิก <code>audit_logs</code> 2026-08-07 · mutation master ไม่ต้องส่ง <code>reason</code>); workflow ลง <code>sgi_consideration_logs</code>; batch เขียน application log / <code>sgi_interface_transactions</code></td><td>BE ไม่ต้องมี audit service · FE ไม่มีช่องเหตุผล</td></tr>
+              <tr><td>ระบบเดิม (SBP)</td><td><b>ยึด API/DB ของระบบ SBP ปัจจุบันก่อนเสมอ</b> (ตัดสินใจ 2026-08-06) — ค้นหาร้าน <code>GET /store/search</code> · ภาค <code>GET /store/all-regions</code> · lookup <code>GET /common/common-code</code> · งานค้างรวม <code>GET /api/workflow/pending</code> · อัปโหลด/ดาวน์โหลดไฟล์ <code>POST /statement/upload-file-aws</code> · <code>download-file-aws</code> · workflow ทั้งหมดผ่าน <b>@srm/glb-workflow</b> (initialize → add-prepared-approver → trigger-event · <b>[✅ DP-1 ปิดแล้ว 2026-08-17 — referenceId = <code>sgi_compensation_documents.id</code> (surrogate · ส่งเป็น string เพราะ <code>reference_id</code> เป็น varchar(255))]</b> หลักฐานจากระบบเดิม cooperation-request · inform-evaluate ใช้ surrogate id ทุกจุด) · อีเมลผ่านตาราง <code>email_template</code> + lib <code>@gosoft-sbp/email-lib</code> (log ลง <code>email_sent</code>)</td><td>BE reuse ไม่เขียนซ้ำ · FE เรียกผ่าน BFF ตัวเดิม</td></tr>
+              <tr><td>Envelope</td><td>ต้องตรงกับ store-backend: สำเร็จ <code>{"success": true, "data": …}</code> · ผิดพลาด <code>{"success": false, "data": null, "error": {"code","message"}}</code> (ResponseInterceptor + HttpExceptionFilter)</td><td>BE interceptor/filter · FE API client เดิม</td></tr>
+              <tr><td>LLDD กลาง</td><td><code>LLDD-BE-API-Common-Contracts</code> + <code>LLDD-FE-Integration-Contracts</code></td><td>ทุก LLDD รายหน้า/ราย endpoint</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- catalog -->
+      <div class="card">
+        <div class="card-head"><h2>รายการ API ทั้งหมด</h2><span class="pill info">คลิกเส้นที่ต้องการเพื่อดูรายละเอียด</span></div>
+        <div id="apiCatalog"></div>
+      </div>
+
+
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <p style="margin:0; font-size:13px; color:#5d6b7a;">
+          ข้อแนะนำเพิ่มเติม: ทำ <b>OpenAPI 3.0 spec</b> เป็น contract กลางระหว่างทีม FE/BE ตั้งแต่วันแรก ·
+          เส้นภายใน (Workflow / Batch trigger) ใช้ <b>service token</b> แยกจาก JWT ผู้ใช้ ·
+          ทุกเส้นที่แก้เอกสารต้องบันทึกผู้ทำและผลพิจารณาลง <code>sgi_consideration_logs</code> · <b>ไม่มีตาราง audit กลางของ master แล้ว</b> (ยกเลิก <code>audit_logs</code> 2026-08-07) ·
+          ข้อความ error ภาษาไทยต้องตรงตาม SRS ตรงตัว เช่น กรณียังไม่เลือกผลการพิจารณา
+        </p>
+      </div>
+
+    </main>
+  </div>
+  <div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+  <script>
+(function () {
+  "use strict";
+
+  /* ===== API catalog: 26 เส้น 5 กลุ่ม (🔴 กลุ่ม Interface 2 เส้นถูกตัดทั้งกลุ่ม 2026-09-22 (28 เส้น 6 กลุ่ม → 26 เส้น 5 กลุ่ม) · กลุ่ม Auth + เส้นผู้ปฏิบัติงาน/สิทธิ์เมนู 18 เส้นตัดออก — ใช้ระบบ SBP เดิม · กลุ่มข้อมูลผิดปกติ 2 เส้น และกลุ่ม System Config + Email Template 10 เส้น ลบทิ้งพร้อมหน้าจอ 2026-08-06) ===== */
+  var GROUPS = [
+    /* ตัดออกถาวร 2026-08-05 — Auth & สิทธิ์ผู้ใช้ทั้งกลุ่ม ใช้ระบบ SBP เดิม (Cognito + BFF + auth-backend/ABS):
+       login = redirect {bffUrl}/auth/login (cookie httpOnly) · refresh = BFF /auth/refresh · ข้อมูลผู้ใช้ = /auth/profile + /users/current
+       sidebar/สิทธิ์ต่อ URL = /menus + /groups/current-user/permissions · SGI รับ user context จาก header (x-user-id / x-user-group-id / x-user-permissions)
+    { name:'Auth & สิทธิ์ผู้ใช้ (platform reference)', refT:'K2 · SRS 3.1.1', eps:[
+      { m:'POST', p:'/api/v1/auth/login', ref:'k2', refT:'K2 · 3.1.1', roles:'ทุกคน (public)',
+        sum:'เข้าสู่ระบบด้วยบัญชีพนักงาน แลก JWT พร้อม role และ section สำหรับใช้ทุกเส้นถัดไป',
+        flow:['ตรวจ username/password กับ AD/LDAP ขององค์กร','โหลด user_accounts + role (00–10) และ section_code ของผู้ใช้','ออก accessToken (30 นาที) + refreshToken (8 ชั่วโมง)'],
+        db:[['user_accounts','R','บัญชีผู้ใช้ + role (ตารางใหม่)'],['roles','R','ชื่อ role 00–10 (K2 3.1.1)']],
+        req:'{\n  "username": "phatcharida.p",\n  "password": "********"\n}',
+        res:'{\n  "accessToken": "eyJhbGciOiJIUzI1NiIs...",\n  "refreshToken": "d2f8a1...",\n  "user": {\n    "empId": "57123",\n    "name": "ภัชริดา ประเสริฐ",\n    "roles": ["03"],\n    "sectionCode": "06"\n  }\n}',
+        err:['401 — ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง','423 — บัญชีถูกล็อกจากการลองผิดเกินกำหนด'] },
+      { m:'POST', p:'/api/v1/auth/refresh', ref:'new', refT:'ใหม่', roles:'ผู้ถือ refreshToken',
+        sum:'ต่ออายุ accessToken โดยไม่ต้อง login ใหม่',
+        flow:['ตรวจ refreshToken ยังไม่หมดอายุ/ไม่ถูกเพิกถอน','ออก accessToken ใหม่'],
+        db:[['user_accounts','R','ตรวจสถานะบัญชียัง active']],
+        req:'{\n  "refreshToken": "d2f8a1..."\n}',
+        res:'{\n  "accessToken": "eyJhbGciOiJIUzI1NiIs..."\n}',
+        err:['401 — token หมดอายุหรือถูกเพิกถอน ให้ login ใหม่'] },
+      { m:'GET', p:'/api/v1/auth/me', ref:'k2', refT:'K2', roles:'ทุก role',
+        sum:'ข้อมูลผู้ใช้ปัจจุบันจาก JWT — FE ใช้แสดงชื่อ/role มุมขวาบน',
+        flow:['ถอด JWT → คืนข้อมูลผู้ใช้และ section ปัจจุบัน'],
+        db:[['user_accounts','R','ข้อมูลผู้ใช้ล่าสุด']],
+        req:'(ไม่มี body — ใช้ JWT ใน header)',
+        res:'{\n  "empId": "57123",\n  "name": "ภัชริดา ประเสริฐ",\n  "roles": ["03"],\n  "sectionCode": "06",\n  "zone": "RS"\n}',
+        err:['401 — token หมดอายุ'] },
+      { m:'GET', p:'/api/v1/me/menus', ref:'k2', refT:'K2 · 3.1.1', roles:'ทุก role',
+        sum:'เมนูที่ role ของผู้ใช้เข้าถึงได้ — FE ใช้สร้าง sidebar (แทนตารางสิทธิ์ 8 role ในหน้าจอ 3.1.1)',
+        flow:['อ่าน role จาก JWT','join menu_permissions × menus เอาเฉพาะ can_access = true','คืนรายการเมนูเรียงตามกลุ่ม'],
+        db:[['menu_permissions','R','สิทธิ์ต่อ role (composite PK)'],['menus','R','ชื่อ/กลุ่มเมนู']],
+        req:'(ไม่มี body)',
+        res:'{\n  "menus": [\n    { "code": "M02", "name": "เอกสาร · รอดำเนินการ", "group": "ระบบประกันรายได้" },\n    { "code": "M08", "name": "Batch Job", "group": "ระบบประกันรายได้" }\n  ]\n}',
+        err:['401'] }
+    ]},
+    */
+
+    { name:'งาน & เอกสารประกันรายได้', refT:'K2 · SRS 3.1.2 / 3.1.3 / 3.1.6', eps:[
+      { m:'GET', p:'/api/v1/sgi/document/tasks', ref:'k2', refT:'K2 · 3.1.2', roles:'role ที่มีสิทธิ์เมนูเอกสาร',
+        sum:'งานรอท่านดำเนินการ — เอกสารที่ค้างอยู่ที่ section ของผู้ใช้ (หน้า k2-list-waiting.html)',
+        flow:['อ่านตัวตนผู้ใช้จาก header ที่ BFF แนบมา (x-user-id / x-user-group-id) — ไม่ต้องรู้ว่าอยู่ section ไหน','อ่านงานค้างจาก engine เดิม (schema sps_store): getPendingFlowByUser({userData}) ของ @srm/glb-workflow  — ไม่มีตาราง workflow_tasks ของ SGI แล้ว','🔴 มติผู้ใช้ 2026-09-22 — **ตัดการ union เอกสารที่จบด้วย "หยุดชดเชยประกันรายได้" เข้ากล่องงานของ section 06 ออก** กล่องงานคืนเฉพาะงานที่ engine บอกว่ารอผู้ใช้คนนี้ · ต้องการเปิดพิจารณาใหม่ให้ค้นจากหน้าเอกสารที่เกี่ยวข้อง','join sgi_compensation_documents + stores + sgi_fgi_impact_sales_summaries คืน 9 คอลัมน์ตามหน้าจอและ salesDataDays สำหรับ red flag'],
+        db:[['sps_store.workflow_transaction / workflow_approver','R','งานค้างจาก @srm/glb-workflow (engine 13 ตาราง · schema sps_store · workflow_transaction 19,327 แถว ไม่มี PK/index — ดูการ์ดด้านบน)'],['sgi_compensation_documents','R','ข้อมูลเอกสาร'],['store (SBP เดิม)','R','ชื่อและภาคของร้าน — ตาราง stores ของ SGI ถูกตัด 2026-08-06 · คีย์ store_id · ภาค `zone` (ไม่ใช่ `zone_cd` ซึ่งว่างทั้งตาราง — วัด 2026-09-22)'],['sgi_fgi_impact_sales_summaries','R','อัตรายอดขายลดลงและจำนวนวันข้อมูลยอดขาย'],['sgi_consideration_logs','R','ผลการพิจารณาสุดท้าย — คัดเอกสารที่จบด้วย "หยุดชดเชยประกันรายได้" เข้าคิวของ section 06 (SDD สไลด์ 46 ข้อ 1.9)']],
+        req:'Query: ?page=1&size=20&q=00788\n(q = เลขที่เอกสาร / รหัสร้าน / ชื่อร้าน)',
+        res:'{\n  "page": 1, "total": 24,\n  "items": [{\n    "roundNo": 1,\n    "docNo": "2026/00123",\n    "impactedStoreCode": "00788",\n    "impactedStoreName": "รัตนอุทิศ ซ.13",\n    "regionCode": "BE",\n    "salesDeclinePercent": 12.5,\n    "totalCompensationAmount": 48200.00,\n    "statusCode": "06",\n    "currentSection": "06",\n    "daysPending": 3,\n    "salesDataDays": 58,\n    "stoppedReopenable": false\n  }, {\n    "docNo": "2026/00036",\n    "statusCode": "99",\n    "currentSection": null,\n    "stoppedReopenable": true\n  }]\n}\n// stoppedReopenable=true คืนเฉพาะผู้เรียกใน section 06 — เอกสารจบด้วย "หยุดชดเชยประกันรายได้" ที่เปิดพิจารณาใหม่ได้ (SDD สไลด์ 46 ข้อ 1.9)',
+        err:['401'] },
+      { m:'GET', p:'/api/v1/sgi/document', ref:'k2', refT:'K2 · 3.1.3 / 3.1.7', roles:'ตามสิทธิ์เมนู',
+        sum:'ค้นหาเอกสารที่เกี่ยวข้อง — บังคับระบุปี และคืนเฉพาะเอกสารที่มีเลขที่แล้ว (กติกา SRS)',
+        flow:['validate: ต้องระบุ year เสมอ ไม่งั้นตอบ 400','ค้น sgi_compensation_documents ตามเงื่อนไข (เลขที่ / ร้าน / สถานะ / เดือน)','คืนแบบแบ่งหน้า'],
+        db:[['sgi_compensation_documents','R','เอกสารตามเงื่อนไข'],['sgi_impacted_stores','R','ข้อมูลร้าน'],['sgi_fgi_impact_sales_summaries','R','total_working_days → salesDataDays สำหรับ flag แถวแดง < 60 วัน']],
+        req:'Query: ?year=2026&impactedStoreCode=00788&status=06&result=APPROVE&page=1&size=20&keyword=&regionCode=&storeType=&createdFrom=&createdTo=&salesDeclineMin=&salesDeclineMax=&compensationMin=&compensationMax=\n(status = section ที่รออยู่ 06/08/01/02/03 หรือ END)\n(result = APPROVE | REJECT | CANCELLED | NONE — ประกันรายได้ / ไม่ประกันรายได้ / ยกเลิกโดยระบบ / ยังไม่มีผล · CANCELLED เพิ่ม 2026-08-10 ตาม master DecisionProfile)',
+        res:'{\n  "page": 1, "total": 6,\n  "items": [{ "docNo": "2026/00123", "statusCode": "06", ... }]\n}',
+        resNote:'items[] ใช้ field ชุดเดียวกับ §6.2.1 GET /api/v1/sgi/document/tasks สำหรับ list response ของ SCR-03/04',
+        err:['400 — กรุณาระบุปีที่ต้องการค้นหา (กติกา SRS)','401'] },
+      { m:'GET', p:'/api/v1/sgi/document/{docNo}', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
+        sum:'เอกสารฉบับเต็ม 12 ส่วนย่อย (k2-document.html) พร้อมธงสิทธิ์แก้ไขต่อส่วนตาม role/section ปัจจุบัน',
+        flow:['โหลดเอกสาร + ร้านใหม่ + คู่แข่ง + ปัจจัย + ไฟล์แนบ + สรุปชดเชย ในคำขอเดียว','คำนวณ compensationAmount ต่อร้านเปิดใหม่ = ยอดชดเชยร้านถูกกระทบ × %ชดเชย (ปัดเศษที่ BE · ผลรวมต้องเท่ากับยอดชดเชยพอดี)','คำนวณ permissions: ส่วนไหนแก้ได้ตาม role + current_section_code (data-editrole เดิม)','FE ใช้ธงนี้แสดงป้าย "อ่านอย่างเดียว" ต่อส่วน + ซ่อนคอลัมน์ checkbox/Action ของตารางที่แก้ไม่ได้'],
+        db:[['sgi_compensation_documents','R','หัวเอกสาร'],['sgi_document_new_stores / sgi_document_competitors / sgi_document_external_factors','R','ส่วนย่อย'],['sgi_document_attachments / sgi_consideration_logs','R','ไฟล์แนบ + ประวัติ']],
+        req:'(ไม่มี body)',
+        res:'{\n  "docNo": "2026/00123",\n  "statusCode": "06",\n  "currentSection": "06",\n  "impactedStore": { "storeCode": "00788", ... },\n  // newStores[] = แหล่งข้อมูลของตารางร้านเปิดใหม่ (กราฟสัดส่วนเงินชดเชยถอดออกแล้ว 2026-08-06)\n  // compensationAmount คำนวณที่ BE (= compensation.amount x compensatePercent) — FE ไม่คูณเอง\n  "newStores": [\n    { "newStoreCode": "00990", "storeName": "สาขารัตนาธิเบศร์ 2", "distanceKm": 0.85,\n      "compensatePercent": 60.0, "compensationAmount": 28920.00 },\n    { "newStoreCode": "01180", "storeName": "สาขาซอยวัดกู้", "distanceKm": 1.40,\n      "compensatePercent": 40.0, "compensationAmount": 19280.00 }\n  ],\n  "competitors": [ ... ],\n  "factors": [ ... ],\n  "compensation": { "amount": 48200.00, "salesDropPercent": 12.45 },\n  "permissions": { "editableSections": ["competitor","factor"], "canAction": true }\n}',
+        err:['404 — ไม่พบเอกสาร','401'] },
+      { m:'POST', p:'/api/v1/sgi/document', ref:'k2', refT:'K2 · 3.1.6', roles:'02 HQ, 03 User Admin',
+        sum:'สร้างเอกสารจากข้อมูลที่ FS/SBP Statement ส่งกลับ — ตัดสินใจ 2026-08-06: ไม่มีฟอร์มสร้างเอกสารใน FE แล้ว (k2-create.html เหลือเป็นหน้าอธิบายกระบวนการ) เส้นนี้เรียกโดย pipeline/service token',
+        flow:['ตรวจซ้ำ: ร้าน + เดือนที่ถูกกระทบ ต้องยังไม่มีเอกสาร','ออกเลขที่ YYYY/xxxxx (running ต่อปี เริ่ม 00001 — กติกา SRS)','insert sgi_compensation_documents สถานะเริ่มต้น + เรียก initializeWorkflow({versionId, referenceId, userId}) [referenceId = sgi_compensation_documents.id (surrogate · ส่งเป็น string) — DP-1 ปิดแล้ว 2026-08-17] ของ @srm/glb-workflow แล้ว addPreApprover ขั้น 06','SGI เรียก sendEmail() แจ้งเปิดเรื่อง ด้วยเลข template จาก workflow_route.email_id (นอก transaction)'],
+        db:[['sgi_compensation_documents','W','เอกสารใหม่'],['sps_store.workflow_transaction / workflow_approver','W (โดย lib)','เปิด instance + ผู้รับผิดชอบขั้นแรกผ่าน initializeWorkflow() + addPreApprover() ของ @srm/glb-workflow (schema sps_store) — ห้ามเขียนตรง'],['email_template (SBP เดิม)','R','template — อ่านอย่างเดียว'],['email_sent (SBP เดิม)','W (โดย email-lib)','SGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง']],
+        req:'{\n  "impactedStoreCode": "00788",\n  "impactMonth": "2026-06",\n  "source": "MANUAL"   // MANUAL | FS\n}',
+        res:'201 Created\n{\n  "docNo": "2026/00124"\n}',
+        err:['409 — ร้านนี้ในเดือนนี้มีเอกสารที่ยังดำเนินการอยู่ (active) — เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้ · SDD GI','422 — ข้อมูลบังคับไม่ครบ'] },
+      { m:'PUT', p:'/api/v1/sgi/document/{docNo}', ref:'k2', refT:'K2 · 3.1.6', roles:'ตาม section ปัจจุบัน',
+        sum:'บันทึกแก้ไขส่วนย่อยของเอกสาร (ร้านใหม่ / คู่แข่ง / ปัจจัย) ตามสิทธิ์ของขั้นที่ถืออยู่',
+        flow:['ตรวจว่า role + section ปัจจุบันมีสิทธิ์แก้ส่วนที่ส่งมา (เช่น Section 01 แก้คู่แข่ง/ปัจจัยได้)','validate %ชดเชยของร้านใหม่รวมกันต้องเท่ากับ 100% แล้วคำนวณ compensationAmount ใหม่ทุกแถว','⚠️ ระบบเดิมไม่เคยบังคับกติกานี้จริง — วัดจากฐาน Oracle 2026-09-21: 355 จาก 21,092 กลุ่มรวมไม่ได้ 100 · เอกสารที่ migrate มาติดมา 59 ฉบับ → ต้องเคาะ DECISIONS 2.49 ก่อนเปิด validation ไม่งั้นเอกสารเก่าจะแก้ไม่ได้เลย','validate require field ของแถวที่ผู้ใช้เพิ่มเอง: คู่แข่ง = รหัสแบรนด์จาก master /sgi/master/competitors (01–11) + วันที่เปิดกระทบ · ปัจจัย = รหัสจาก master /sgi/master/factors + วันที่เริ่มต้น (วันที่สิ้นสุดถ้ามีต้อง ≥ วันที่เริ่มต้น)','ส่งอาร์เรย์มา = ชุดข้อมูลเต็มของส่วนนั้น — รายการที่หายไปจากอาร์เรย์ถือว่าถูกลบ (รองรับปุ่ม "ลบที่เลือก") · ฝั่ง FE เรียกเส้นนี้ทันทีเมื่อกดบันทึกใน modal หรือยืนยันลบ ไม่มีปุ่มบันทึกระดับการ์ดแล้ว','บันทึกและคืนเอกสารล่าสุด'],
+        db:[['sgi_compensation_documents','R/W','หัวเอกสาร — อัปเดตความเห็น/ยอดรวม/ผู้แก้ไข (SQL ของเส้นนี้ UPDATE ตารางนี้)'],['sgi_document_new_stores','R/W','%ชดเชย · ระยะห่าง · เงินชดเชยต่อร้าน'],['sgi_document_competitors','R/W/D','คู่แข่ง — ลบรายการที่ไม่ได้ส่งมา'],['sgi_document_external_factors','R/W/D','ปัจจัยภายนอก — ลบรายการที่ไม่ได้ส่งมา']],
+        req:'{\n  "newStores": [ { "newStoreCode": "00990", "compensatePercent": 60.0 },\n                 { "newStoreCode": "01180", "compensatePercent": 40.0 } ],\n  // ส่งเฉพาะส่วนที่แก้ · อาร์เรย์ที่ส่งมาคือชุดเต็มของส่วนนั้น\n  "competitors": [ { "id": 12, "impactDate": "2023-10-10" } ]   // id 13 หายไป = ลบ\n}',
+        res:'200 OK — เอกสารฉบับล่าสุด (โครงเดียวกับ GET)',
+        err:['403 — ไม่มีสิทธิ์แก้ส่วนนี้ในขั้นปัจจุบัน','422 — "%ชดเชย ... รวมกันแล้วไม่เท่ากับ 100%" (ข้อความตรงตาม SRS)','400 — "กรุณาเลือกร้านคู่แข่งที่ท่านต้องการ" (verbatim จาก SRS §10)','400 — "กรุณาเลือกปัจจัยอื่นๆ ที่ท่านต้องการ" (ไม่ได้อยู่ใน SRS — เราตั้งเองให้ล้อกับข้อความคู่แข่ง · รอ BA ยืนยัน)','400 — "วันที่สิ้นสุดต้องมีค่าเท่ากับหรือมากกว่าวันที่เริ่มต้น" (SRS §11 ระบุกฎ แต่ไม่ได้ให้ข้อความ · รอ BA ยืนยัน)'] },
+      { m:'POST', p:'/api/v1/sgi/document/{docNo}/actions', ref:'k2', refT:'K2 · 3.1.4', roles:'เจ้าของ task ปัจจุบัน',
+        sum:'ส่งผลพิจารณาตามตัวเลือกของขั้นปัจจุบัน — หัวใจ workflow 5 ขั้น · วงเงิน เกณฑ์เดียว 100,000 (SDD GI 24/02/2026)',
+        flow:['ตรวจว่าผู้ใช้เป็น approver ของ state ปัจจุบันใน @srm/glb-workflow schema sps_store (getTransaction / getPermissionEvents )','validate เลือกผลแล้ว — ไม่งั้น 422 ข้อความ SRS ตรงตัว','คำนวณขั้นถัดไปตามตารางเส้นทาง (workflow.md · SDD GI): 06 ไม่ชดเชย/หยุดชดเชย → เสร็จสิ้น · 01/02/03 เห็นควรไม่ชดเชย → เสร็จสิ้นทันที (ไม่อนุมัติในเดือนนั้น · ขั้น 03 ตามมติ 2026-09-02) · 02 ชดเชย < 100,000 → เสร็จสิ้น (จบที่ GM) · ≥ 100,000 → 03 → จบ  · ตัดขั้นบัญชี 04/05 (SDD v7.5) · ทุกขั้นมีเส้นส่งกลับ','insert sgi_consideration_logs + ปิด task เดิม เปิด task ใหม่','auto-assign เจ้าของงานคนเดิม (SDD สไลด์ 46 · 48): กรณี 06 เห็นควรไม่ชดเชย → ปิดเอกสารและไม่แสดงในหน้ารอดำเนินการของ 06 ในเดือนนั้น แล้วตั้งงานรอบเดือนถัดไปให้ผู้ดำเนินการคนเดิม · เคสต่อเนื่อง → ส่งงานให้เจ้าหน้าที่ SBP DSA คนเดิมอัตโนมัติ · resolve จาก sgi_consideration_logs ของเอกสารรอบก่อนของร้านเดียวกัน (section_code เดียวกัน) แล้วผูกด้วย addPreApprover() — ไม่มีคอลัมน์ assignee ในตารางของ SGI · fallback เป็น group ของ auth-backend เมื่อรอบก่อนไม่เคยผ่านขั้นนั้นหรือพนักงานลาออก','SGI เรียก sendEmail() แจ้งผู้อนุมัติถัดไป ด้วยเลข template จาก workflow_route.email_id (นอก transaction)'],
+        db:[['sps_store.workflow_transaction / workflow_history / workflow_approver','R (เขียนผ่าน lib)','🔴 ห้าม INSERT/UPDATE ตรง — eventWorkflow() + addPreApprover() ของ engine เดิม (schema sps_store) — เดิน state + บันทึก history + ตั้ง approver ขั้นถัดไป · API 8 ตัวตามชีต Detail ของ LLDD lib (ปิด 2026-08-14)'],['sgi_compensation_documents','W','อัปเดต Status + CurSection'],['sgi_consideration_logs','W/R','บันทึกผลพิจารณา · และอ่านย้อนของเอกสารรอบก่อนเพื่อ resolve เจ้าของงานคนเดิม (auto-assign · SDD สไลด์ 46 · 48)'],['email_template (SBP เดิม)','R','template — อ่านอย่างเดียว ไม่แก้ของระบบเดิม'],['email_sent (SBP เดิม)','W (โดย email-lib)','ปิด DP-5 · 2026-08-14 — SGI เรียก sendEmail() ด้วยเลข template จาก workflow_route.email_id แล้ว lib เขียนแถวให้เอง (คอลัมน์ผู้ส่ง = send_by)']],
+        req:'{\n  "result": "เห็นควรชดเชย",\n  // 7-enum verbatim: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้\n  // / ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI — เดิม "ส่งฝ่ายส่งเสริมธุรกิจ SBP") / ส่งเจ้าหน้าที่ SBP DSA\n  // / คำนวณเงินชดเชยเรียบร้อย (ปุ่มเดียวของ Section 08 · เพิ่ม 2026-09-01 · nextSection = 06)\n  // / ส่งกลับ (= ส่งกลับฝ่าย SBP DSA · nextSection = 06 เสมอทุก Section)\n  "comment": "เห็นควรชดเชยตามหลักเกณฑ์"\n}',
+        res:'{\n  "nextSection": "02",\n  "statusCode": "02",\n  "message": "ส่งดำเนินการสำเร็จ"\n}',
+        err:['422 — "ท่านยังไม่เลือกผลการพิจารณา กรุณาเลือกข้อมูลก่อนกดส่งดำเนินการ"','403 — ไม่ใช่เจ้าของงานขั้นนี้','409 — งานถูกดำเนินการไปแล้วโดยผู้อื่น'] },
+      { m:'GET', p:'/api/v1/sgi/document/{docNo}/timeline', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
+        sum:'ประวัติการพิจารณาทุกขั้นของเอกสาร (timeline ในหน้าเอกสาร)',
+        flow:['อ่าน sgi_consideration_logs เรียงตามเวลา','✅ DP-7 ปิดแล้ว 2026-08-24: sgi_consideration_logs เป็น timeline เต็มของ SGI (ตารางของเราเอง ผูก transaction_id ของ engine) — ไม่ต่อยอดบน sps_store.workflow_history (engine เก็บ state transition แต่ไม่มี decision code / ไฟล์แนบ / ความเห็น) — กระทบทั้ง DDL และรูปแบบ response ของเส้นนี้ · ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4'],
+        db:[['sgi_consideration_logs','R','ประวัติครบทุกขั้น — ✅ DP-7 ปิดแล้ว 2026-08-24 (ตารางของ SGI เอง)'],['sps_store.workflow_history','R','timeline การเดิน state ของ engine (อ้างอิงเสริม ไม่ใช่แหล่งหลักของ timeline) — คีย์ที่ใช้ค้น = sgi_compensation_documents.id (DP-1 ปิดแล้ว)']],
+        req:'(ไม่มี body)',
+        res:'{\n  "items": [{\n    "section": "06",\n    "considerName": "สมชาย ใจดี",\n    "result": "ชดเชย",\n    "detail": "ตรวจสอบแล้วเข้าเกณฑ์",\n    "actionDateTime": "2026-06-18T10:42:00"\n  }]\n}',
+        err:['404'] },
+      { m:'POST', p:'/api/v1/sgi/document/{docNo}/attachments', ref:'k2', refT:'K2 · 3.1.6', roles:'ตาม section ปัจจุบัน',
+        sum:'แนบไฟล์เข้าเอกสาร — จำกัด 5MB ต่อไฟล์ตาม SRS',
+        flow:['รับ multipart/form-data (file + sectionCode)','ตรวจขนาด ≤ 5MB และชนิดไฟล์ที่อนุญาต','sanitize filename + คำนวณ sha256','run AV scan','เก็บ binary ใน object storage และบันทึก metadata sgi_document_attachments'],
+        db:[['sgi_document_attachments','W','เมทาดาต้าไฟล์ + bucket/object_key/sha256/scan_status']],
+        req:'multipart/form-data\n  file: (binary ≤ 5MB)\n  sectionCode: "06"',
+        res:'201 Created\n{ "attachId": 771, "fileName": "หนังสือแจ้งผล.pdf", "scanStatus": "PENDING" }',
+        err:['413 FILE_TOO_LARGE — ไฟล์เกิน 5MB','415 FILE_TYPE_UNSUPPORTED — ชนิดไฟล์ไม่อยู่ใน allowlist','422 ATTACHMENT_FILE_REQUIRED — กดแนบเอกสารโดยยังไม่เลือกไฟล์','422 FILE_SCAN_BLOCKED — scan_status เป็น BLOCKED/FAILED'] },
+      { m:'GET', p:'/api/v1/sgi/document/{docNo}/attachments/{attachId}/download', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์อ่านเอกสาร',
+        sum:'ดาวน์โหลดไฟล์แนบผ่าน BE stream — ตรวจสิทธิ์เอกสาร แล้วตัดสินตามนโยบายเดียว: CLEAN ได้เสมอ · BLOCKED/FAILED คืน 422 FILE_SCAN_BLOCKED · PENDING ขึ้นกับสวิตช์ SGI_ALLOW_PENDING_DOWNLOAD ใน mas_param (ยังไม่มีตัวสแกนในระบบ — รอ security sign-off)',
+        flow:['ตรวจสิทธิ์อ่านเอกสารและ attachment ต้องผูกกับ docNo','ตัดสินตามนโยบายเดียว — CLEAN ผ่าน · BLOCKED/FAILED คืน 422 · PENDING ขึ้นกับ SGI_ALLOW_PENDING_DOWNLOAD','อ่าน object storage ผ่าน bucket/object_key','stream ผ่าน BE พร้อม Content-Disposition; ไม่ expose permanent bucket URL'],
+        db:[['sgi_document_attachments','R','metadata + object key + scan status'],['(object storage S3 — ไม่ใช่ตาราง)','R','binary file ผ่าน service ของระบบ SBP เดิม']],
+        req:'(ไม่มี body)',
+        res:'200 binary stream\nContent-Disposition: attachment; filename="หนังสือแจ้งผล.pdf"',
+        err:['403 — ไม่มีสิทธิ์อ่านเอกสาร','404 — ไม่พบไฟล์แนบ','409 — ไฟล์ยังไม่พร้อมให้ดาวน์โหลด','422 — ไฟล์ไม่ผ่านการตรวจสอบความปลอดภัย'] },
+      { m:'GET', p:'/api/v1/sgi/document/{docNo}/attachments/download-all', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์อ่านเอกสาร',
+        sum:'ดาวน์โหลดไฟล์แนบทั้งหมดของเอกสารเป็นไฟล์ .zip — ปุ่ม "ดาวน์โหลดทั้งหมด" ระดับการ์ด (เทียบเท่าปุ่ม Download ของ K2 เดิม)',
+        flow:['ตรวจสิทธิ์อ่านเอกสารเหมือนเส้นดาวน์โหลดรายไฟล์','รวมเฉพาะไฟล์ที่ผ่าน AV clean guard','stream .zip ชื่อ {docNo}-attachments.zip'],
+        db:[['sgi_document_attachments','R','รายการไฟล์แนบของเอกสาร']],
+        req:'(ไม่มี body)',
+        res:'200 OK · application/zip (Content-Disposition: attachment; filename="2026-00123-attachments.zip")',
+        err:['404 — ไม่มีไฟล์แนบในเอกสารนี้','403'] },
+      { m:'GET', p:'/api/v1/sgi/document/{docNo}/sales', ref:'k2', refT:'K2 · 3.1.6', roles:'ตามสิทธิ์เมนู',
+        sum:'ข้อมูลยอดขายเพิ่มเติมของเอกสาร (4 หน้าต่าง × 15 วัน) — ปุ่ม "ข้อมูลยอดขายเพิ่มเติม" ในหน้าเอกสาร k2-document.html',
+        flow:['หา impact_process_id ของเอกสารจาก sgi_compensation_documents','อ่าน sgi_fgi_impact_sales_summaries (หัว) + sgi_sales_transactions (รายวัน) ของงวดนั้น (โซน A)','คืน growth_rate_diff · total_working_days + แถวยอดขายรายวันแยก 4 หน้าต่าง'],
+        db:[['sgi_compensation_documents','R','หา impact_process_id ของเอกสาร'],['sgi_fgi_impact_sales_summaries','R','หัวยอดขาย · growth_rate_diff · total_working_days'],['sgi_sales_transactions','R','ยอดขายรายวัน 4 หน้าต่าง × 15 วัน']],
+        req:'(ไม่มี body)',
+        res:'{\n  "growthRateDiff": -12.45,\n  "totalWorkingDays": 60,\n  "windows": [\n    { "label": "ก่อนเปิด 15 วัน",\n      "rows": [ { "date": "2026-05-01", "amount": 42500.00 } ] }\n  ]\n}',
+        err:['404 — ไม่พบเอกสารหรือยอดขายของงวดนี้','401'] }
+    ]},
+
+    { name:'ข้อมูลอ้างอิง (Lookup / Reference)', refT:'K2 + FGI/FCS · master สำหรับ dropdown',
+      note:'<b>✅ มติ DP-9 (2026-08-10) — แยกตัดสิน:</b> <code>decisions</code> <b>ย้ายไปใช้ <code>common_code</code> ของระบบเดิม</b> (<code>code_type = SGI_DECISION</code>) จึง<b>ตัดเส้น <code>GET /decisions</code> ออก</b> — FE เรียก <code>GET /common/common-code?codeType=SGI_DECISION</code> ของระบบเดิมแทน · ส่วน <code>sgi_external_factors</code> และ <code>sgi_competitors</code> <b>ยังเป็นตารางของ SGI</b> เพราะมีหน้าจอ CRUD ของตัวเอง (การเขียนลง lookup กลางไม่คุ้มความเสี่ยง) · ⚠ <code>common_code</code> ไม่มี unique constraint ต้องกันรหัสซ้ำที่ระดับแอป และลงทะเบียน <code>code_type</code> ที่ <code>common_code_type</code> ก่อน',
+      eps:[
+      { m:'GET', p:'/api/v1/sgi/lookup/document-statuses', ref:'k2', refT:'K2 · 3.1.3 / 3.1.7', roles:'ทุก role',
+        sum:'รายการสถานะเอกสารทั้งหมด — เติม dropdown ตัวกรองสถานะในหน้าค้นหาเอกสาร (k2-list-related) และรายงาน (k2-report)',
+        flow:['อ่าน common_code ของระบบเดิม (code_type = &#39;SGI_DOC_STATUS&#39;) 6 แถว เรียงตาม seq_no — **ไม่ใช่ sps_store.workflow_status** เพราะตารางนั้นมีแค่ status_id (integer surrogate) กับ status_name **ไม่มีคอลัมน์รหัส 2 ตัวอักษร** (มติ 2026-09-13 · DECISIONS 2.31) · ตาราง document_statuses ของ SGI ถูกตัดไปแล้ว 2026-08-06'],
+        db:[['common_code (ระบบเดิม · SGI_DOC_STATUS)','R','สถานะเอกสาร 6 ค่า (06/08/01/02/03/99; 99=เสร็จสิ้น) — รหัสเป็นของ SGI · sps_store.workflow_status เก็บแค่ชื่อไทยผูกกับ status_id ของ engine']],
+        req:'(ไม่มี body)',
+        res:'{\n  "items": [{ "statusCode": "06", "statusName": "รอฝ่าย SBP DSA ดำเนินการ" }]\n}',
+        err:['401'] },
+      { m:'GET', p:'/api/v1/sgi/lookup/workflow-sections', ref:'k2', refT:'K2 · master section', roles:'ทุก role',
+        sum:'รายการ Section 5 ขั้น + วงเงินอนุมัติต่อขั้น — dropdown ตำแหน่ง/ตัวกรอง · FE แสดงวงเงินจากข้อมูล ไม่ hardcode',
+        flow:['อ่าน common_code ของระบบเดิม (code_type = &#39;SGI_DOC_STATUS&#39;) ตัด 99 ออก เหลือ 5 ขั้น เรียงตาม seq_no — **ไม่ใช่ sps_store.workflow_state** เพราะ state_id เป็น integer surrogate ต่างกันตาม environment','วงเงินอ่านจาก common_code (code_type = &#39;SGI_APPROVE_LIMIT&#39; · code_value = &#39;THRESHOLD&#39;) ที่ **code_name** — เป็นค่าเดียวทั้งระบบตามมติ 2026-08-18 ไม่ใช่ค่าแยกรายขั้น','BE ต้อง fail-fast เมื่อ threshold หาย/ซ้ำ/แปลงเป็นตัวเลขไม่ได้'],
+        db:[['common_code (ระบบเดิม · SGI_DOC_STATUS)','R','รหัสขั้น 5 ค่า (06/08/01/02/03) + ชื่อไทย เรียงตาม seq_no'],['common_code (ระบบเดิม · SGI_APPROVE_LIMIT)','R','วงเงินอนุมัติที่ code_name — เกณฑ์เดียว 100,000']],
+        req:'(ไม่มี body)',
+        res:'{\n  "items": [\n    { "sectionCode": "06", "sectionName": "ฝ่าย SBP DSA", "approveLimitAmount": null },\n    { "sectionCode": "02", "sectionName": "GM ส่งเสริมธุรกิจ SBP", "approveLimitAmount": 100000.00 },\n    { "sectionCode": "03", "sectionName": "ผู้บริหารสำนักบริหาร SBP", "approveLimitAmount": null }\n  ]\n}',
+        err:['401'] },
+]},
+
+    /* กลุ่ม "ข้อมูลผิดปกติ / แจกงาน" (GET /abnormal-stores · POST /abnormal-stores/assign) ถูกยกเลิกและลบทิ้งแล้ว 2026-08-06
+       พร้อมหน้าจอ k2-list-abnormal.html — ทดแทนด้วย salesDataDays ใน GET /sgi/document/tasks และ GET /sgi/document (FE ทำแถวแดง +
+       แถวแดง "ยอดขายไม่ครบ 60 วัน") · ถอด stat cards + GET /dashboard/summary ออกแล้ว 2026-08-06 · จ่ายงานด้วย auto-assign ของ SDD GI */
+
+    { name:'Master Data', refT:'K2 · SRS 3.1.9',
+      note:'<b>✅ มติ DP-9 (2026-08-10):</b> ทั้ง 8 เส้นของกลุ่มนี้ผูกกับ <code>sgi_external_factors</code> และ <code>sgi_competitors</code> ซึ่ง<b>ยังเป็นตารางของ SGI ตามเดิม</b> ไม่ย้ายไป <code>common_code</code> — เหตุผล: ช่อง remark ของ <code>common_code</code> จำกัด 50 ตัวอักษร (<code>other_value</code>) และต้องแก้ตารางที่ทุกโมดูลใช้ร่วม 2,628 แถว ไม่คุ้มความเสี่ยง · เฉพาะ <code>decisions</code> เท่านั้นที่ย้ายไป <code>common_code</code>',
+      eps:[
+    /* ตัดออกถาวร 2026-08-05 — ผู้ปฏิบัติงาน (SRS 3.1.8) ใช้ระบบ SBP เดิม: group+scope ของ auth-backend
+       (จัดการผ่านหน้า /setting/manage-user-rights) + prepared approvers ของ @srm/glb-workflow · หน้า k2-operators.html ถอดจาก sidebar แล้ว
+      { m:'GET', p:'/api/v1/operators', ref:'k2', refT:'K2 · 3.1.8', roles:'03 User Admin',
+        sum:'รายชื่อผู้ปฏิบัติงาน (operator_assignments) พร้อมค้นหา/แบ่งหน้า',
+        flow:['query ตามเงื่อนไข (ชื่อ / section / zone)'],
+        db:[['operator_assignments','R','master ผู้ปฏิบัติงาน (เทียบจาก SRS)']],
+        req:'Query: ?q=สมชาย&sectionCode=06&page=1',
+        res:'{\n  "items": [{\n    "operatorAssignmentId": 12,\n    "empName": "สมชาย ใจดี",\n    "empMail": "somchai@cpall.co.th",\n    "sectionCode": "06",\n    "zoneCode": "RS"\n  }]\n}',
+        err:['401','403'] },
+      { m:'POST', p:'/api/v1/operators', ref:'k2', refT:'K2 · 3.1.8', roles:'03 User Admin',
+        sum:'เพิ่มผู้ปฏิบัติงานใหม่ (จากหน้าค้นหาพนักงานด้วยแว่นขยาย)',
+        flow:['validate พนักงานมีจริง (จากเส้น employees/search)','insert + บันทึก audit_logs (ADD)'],
+        db:[['operator_assignments','W','แถวใหม่'],['audit_logs','W','audit การเพิ่ม']],
+        req:'{\n  "empId": "57123",\n  "empName": "สมชาย ใจดี",\n  "empMail": "somchai@cpall.co.th",\n  "sectionCode": "06",\n  "zoneCode": "RS"\n}',
+        res:'201 Created — { "operatorAssignmentId": 31 }',
+        err:['409 — พนักงานคนนี้อยู่ใน section นี้แล้ว'] },
+      { m:'PUT', p:'/api/v1/operators/{id}', ref:'k2', refT:'K2 · 3.1.8', roles:'03 User Admin',
+        sum:'แก้ไขข้อมูลผู้ปฏิบัติงาน',
+        flow:['validate: ต้องระบุ reason เสมอ (กติกา SRS)','update + บันทึก audit_logs (EDIT · old_value → new_value · เหตุผล)'],
+        db:[['operator_assignments','W','แก้ไข'],['audit_logs','W','audit']],
+        req:'{\n  "empMail": "somchai.j@cpall.co.th",\n  "zoneCode": "RN",\n  "reason": "ปรับพื้นที่รับผิดชอบตามโครงสร้างใหม่"   // บังคับ (SRS)\n}',
+        res:'200 OK',
+        err:['422 — กรุณาระบุเหตุผลการแก้ไขข้อมูล','404'] },
+      { m:'DELETE', p:'/api/v1/operators/{id}', ref:'k2', refT:'K2 · 3.1.8', roles:'03 User Admin',
+        sum:'ลบผู้ปฏิบัติงาน พร้อมบันทึกเหตุผล',
+        flow:['ตรวจว่าไม่ถืองานค้างใน workflow_tasks','ลบ + บันทึก audit_logs (DELETE + เหตุผล)'],
+        db:[['operator_assignments','W','ลบแถว'],['audit_logs','W','audit + เหตุผล'],['workflow_tasks','R','ตรวจงานค้าง']],
+        req:'{ "reason": "ย้ายหน่วยงาน" }',
+        res:'204 No Content',
+        err:['409 — ยังถืองานค้างอยู่ ต้องแจกงานใหม่ก่อน'] },
+    */
+      { m:'GET', p:'/api/v1/sgi/master/competitors', ref:'k2', refT:'K2 · master คู่แข่ง', roles:'ตาม section ปัจจุบัน',
+        sum:'master แบรนด์ร้านคู่แข่ง (ตั้งต้น 11 รายการ รหัส 01–11 · เพิ่มได้จากหน้าจอ · ชื่อไทย+อังกฤษ) — dropdown ตอนกดปุ่ม "เพิ่ม" ตารางร้านคู่แข่งเปิดกระทบ (k2-document.html) · จัดการที่หน้า k2-competitors.html',
+        flow:['query sgi_competitors ทั้งหมด / ตามคำค้น','คืนรหัส + ชื่อคู่แข่งสำหรับเลือกใส่ sgi_document_competitors'],
+        db:[['sgi_competitors','R','master แบรนด์คู่แข่ง 11 ราย (Lotus Express, Mini Big C, Tops Daily, Family Mart, Jiffy, CJ Express, Max Valu, Super Cheap, Lawson 108, Joy, Other)']],
+        req:'Query: ?q=lotus',
+        res:'{\n  "page": 1, "size": 20, "total": 12,\n  "items": [{ "code": "09", "nameTh": "ลอว์สัน 108", "nameEn": "Lawson 108", "remark": null }]\n}',
+        err:['401'] },
+      { m:'POST', p:'/api/v1/sgi/master/competitors', ref:'k2', refT:'K2 · master', roles:'Admin / ผู้ดูแล master',
+        sum:'เพิ่มแบรนด์ร้านคู่แข่งใน master (หน้า k2-competitors.html) — เพิ่ม 2026-08-06 ตามหน้าจอ K2 เดิม',
+        flow:['validate code / nameTh / nameEn ครบทั้งสามช่อง','ตรวจรหัสซ้ำ → 409','insert sgi_competitors'],
+        db:[['sgi_competitors','W','แถวใหม่ (code · name_th · name_en · remark)']],
+        req:'{\n  "code": "12",\n  "nameTh": "ร้านคู่แข่งรายใหม่",\n  "nameEn": "New Competitor",\n  "remark": ""\n}',
+        res:'201 Created',
+        err:['409 — รหัสคู่แข่งซ้ำ','422 — ข้อมูลบังคับไม่ครบ'] },
+      { m:'PUT', p:'/api/v1/sgi/master/competitors/{code}', ref:'k2', refT:'K2 · master', roles:'Admin / ผู้ดูแล master',
+        sum:'แก้ไขชื่อไทย/อังกฤษ/รายละเอียดของแบรนด์คู่แข่ง — แก้รหัสไม่ได้',
+        flow:['แก้ได้เฉพาะ nameTh / nameEn / remark','ห้ามแก้ competitor_code — ถูกอ้างเป็น brand_code จาก sgi_document_competitors และ sgi_fgi_impact_competitors แก้แล้วแถวเดิมจะหา master ไม่เจอ'],
+        db:[['sgi_competitors','W','ค่าใหม่']],
+        req:'{\n  "nameEn": "Lawson 108"\n}',
+        res:'200 OK',
+        err:['404 — ไม่พบรหัส','422 — ข้อมูลบังคับไม่ครบ'] },
+      { m:'DELETE', p:'/api/v1/sgi/master/competitors/{code}', ref:'k2', refT:'K2 · master', roles:'Admin / ผู้ดูแล master',
+        sum:'ลบแบรนด์คู่แข่งออกจาก master — ห้ามลบถ้ายังถูกอ้างอยู่',
+        flow:['ตรวจว่าไม่มีแถวใดอ้างรหัสนี้ด้วยคอลัมน์ brand_code ทั้ง 2 ตาราง (sgi_document_competitors · sgi_fgi_impact_competitors) → พบแถวใด 409 MASTER_IN_USE','⚠️ ห้ามเช็คด้วยคอลัมน์ competitor_code — ไม่มีอยู่ในตารางลูกแล้ว (แยกเป็น competitor_store_code = รหัสสาขาจาก ALLMAP ไม่มี FK + brand_code = รหัสแบรนด์ 01-11 มี FK เมื่อ 2026-09-09)','เช็คตารางเดียวจะปล่อยแถวฝั่ง pipeline หลุดไปตายที่ FK → ผู้ใช้ได้ 500 แทน 409','ลบแถว'],
+        db:[['sgi_competitors','W','ลบแถว'],['sgi_document_competitors','R','ตรวจการอ้างอิงที่ brand_code'],['sgi_fgi_impact_competitors','R','ตรวจการอ้างอิงที่ brand_code']],
+        req:'(ไม่มี body)',
+        res:'204 No Content',
+        err:['409 MASTER_IN_USE — ยังถูกอ้างอยู่ (เอกสาร หรือ pipeline)','404'] },
+      { m:'GET', p:'/api/v1/sgi/master/factors', ref:'k2', refT:'K2 · 3.1.9', roles:'03 User Admin',
+        sum:'รายการปัจจัยภายนอก (sgi_external_factors)',
+        flow:['query ทั้งหมด / ตามคำค้น'],
+        db:[['sgi_external_factors','R','master ปัจจัย (เทียบจาก SRS)']],
+        req:'Query: ?q=ถนน',
+        res:'{\n  "items": [{ "factorCode": "F001", "factorName": "ปิดถนน/ซ่อมถนน", "factorRemark": "..." }]\n}',
+        err:['401'] },
+      { m:'POST', p:'/api/v1/sgi/master/factors', ref:'k2', refT:'K2 · 3.1.9', roles:'03 User Admin',
+        sum:'เพิ่มปัจจัยภายนอก — รหัสห้ามซ้ำ (กติกา SRS)',
+        flow:['ตรวจ factor_code ไม่ซ้ำ','insert sgi_external_factors'],
+        db:[['sgi_external_factors','W','แถวใหม่']],
+        req:'{ "factorCode": "F009", "factorName": "คู่แข่งจัดโปรโมชัน", "factorRemark": "" }',
+        res:'201 Created',
+        err:['409 — รหัสปัจจัยนี้มีอยู่แล้ว'] },
+      { m:'PUT', p:'/api/v1/sgi/master/factors/{code}', ref:'k2', refT:'K2 · 3.1.9', roles:'03 User Admin',
+        sum:'แก้ไขปัจจัยภายนอก',
+        flow:['แก้ได้เฉพาะชื่อปัจจัยและรายละเอียด','update sgi_external_factors'],
+        db:[['sgi_external_factors','W','แก้ไข']],
+        req:'{\n  "factorName": "คู่แข่งจัดโปรโมชันใหญ่"\n}',
+        res:'200 OK',
+        err:['404 — ไม่พบรหัสปัจจัย'] },
+      { m:'DELETE', p:'/api/v1/sgi/master/factors/{code}', ref:'k2', refT:'K2 · 3.1.9', roles:'03 User Admin',
+        sum:'ลบปัจจัยภายนอก (ต้องไม่ถูกใช้ในเอกสารใด)',
+        flow:['ตรวจไม่ถูกอ้างใน sgi_document_external_factors','ลบแถว'],
+        db:[['sgi_external_factors','W','ลบแถว'],['sgi_document_external_factors','R','ตรวจการใช้งาน']],
+        req:'(ไม่มี body)',
+        res:'204 No Content',
+        err:['409 — ปัจจัยถูกใช้ในเอกสารอยู่ ลบไม่ได้'] },
+    /* ตัดออกถาวร 2026-08-05 — สิทธิ์การเข้าถึงเมนู (SRS 3.1.1) + ค้นหาพนักงาน ใช้ระบบ SBP เดิม:
+       auth-backend (/groups · /groups/{id}/permissions · /groups/permissions/template · /menus) + employee backend · หน้า k2-permissions.html ถอดจาก sidebar แล้ว
+      { m:'GET', p:'/api/v1/employees/search', ref:'mix', refT:'K2 3.1.8 + master FGI/FCS', roles:'03 User Admin',
+        sum:'ค้นหาพนักงานจากระบบ HR (popup แว่นขยายในหน้า 3.1.8)',
+        flow:['ค้นจาก employees (ตาราง master ที่ฝั่ง batch ใช้ join อยู่แล้ว)','คืนรายการสั้นสำหรับ popup เลือก'],
+        db:[['employees','R','master พนักงาน (โซน master เดิมของ FGI/FCS)']],
+        req:'Query: ?q=สมชาย (ชื่อ / รหัสพนักงาน)',
+        res:'{\n  "items": [{ "empId": "57123", "name": "สมชาย ใจดี", "mail": "somchai@cpall.co.th", "dept": "SBP DSA" }]\n}',
+        err:['401'] },
+      { m:'GET', p:'/api/v1/menu-permissions', ref:'k2', refT:'K2 · 3.1.1', roles:'01 Admin, 02 HQ',
+        sum:'ตาราง matrix สิทธิ์เมนูทั้งหมด (8 role × เมนู) — หน้าจอสิทธิ์การเข้าถึงเมนู',
+        flow:['อ่าน menu_permissions ทั้งหมด join menus + roles','คืนเป็น matrix ต่อเมนู'],
+        db:[['menu_permissions','R','สิทธิ์ต่อ role (composite PK)'],['menus / roles','R','ชื่อเมนูและ role 00–10']],
+        req:'(ไม่มี body)',
+        res:'{\n  "menus": [{\n    "menuCode": "M07",\n    "menuName": "รายงานสรุปสถานะ",\n    "access": { "00": false, "01": true, "02": false, "03": false, "04": true, "05": false, "06": true, "10": false }\n  }]\n}',
+        err:['401','403'] },
+      { m:'PUT', p:'/api/v1/menu-permissions/{menuCode}', ref:'k2', refT:'K2 · 3.1.1', roles:'01 Admin, 02 HQ',
+        sum:'แก้สิทธิ์การเข้าถึงเมนูหนึ่งรายการต่อทุก role — บันทึก audit เสมอ',
+        flow:['validate role code อยู่ในเซ็ต 00–10','update menu_permissions ของเมนูนั้น','บันทึก audit_logs (ผู้แก้ + ค่าเดิม/ใหม่)'],
+        db:[['menu_permissions','W','สิทธิ์ใหม่ต่อ role'],['audit_logs','W','audit การแก้สิทธิ์']],
+        req:'{\n  "access": { "04": true, "06": true }\n}',
+        res:'200 OK',
+        err:['404 — ไม่พบเมนู','403'] },
+      { m:'GET', p:'/api/v1/roles', ref:'k2', refT:'K2 · 3.1.1', roles:'01 Admin, 02 HQ',
+        sum:'รายการ Role ทั้งหมด (ตารางกลุ่มผู้ใช้งานในหน้าจอ 3.1.1 และ dropdown ที่อื่น)',
+        flow:['อ่าน roles ทั้งหมดเรียงตาม role_code'],
+        db:[['roles','R','role_code · role_name · role_desc · is_system']],
+        req:'(ไม่มี body)',
+        res:'{\n  "items": [{ "roleCode": "01", "roleName": "Admin", "roleDesc": "ผู้ดูแลระบบ BPM ...", "isSystem": true }]\n}',
+        err:['401','403'] },
+      { m:'POST', p:'/api/v1/roles', ref:'new', refT:'ใหม่ · หน้าจอ 3.1.1', roles:'01 Admin, 02 HQ',
+        sum:'เพิ่ม Role ใหม่ — ระบบสร้างสิทธิ์เมนูเริ่มต้นเป็น "ไม่มีสิทธิ์" ทุกเมนู',
+        flow:['validate role_code ไม่ซ้ำ','insert roles (is_system = false)','insert menu_permissions ทุกเมนู can_access = false','บันทึก audit_logs'],
+        db:[['roles','W','role ใหม่'],['menu_permissions','W','สิทธิ์เริ่มต้น false ทุกเมนู'],['audit_logs','W','audit การเพิ่ม']],
+        req:'{\n  "roleCode": "11",\n  "roleName": "Zone Viewer",\n  "roleDesc": "ดูเอกสารเฉพาะภาคของตน"\n}',
+        res:'201 Created',
+        err:['409 — รหัส Role ซ้ำกับที่มีอยู่','403'] },
+      { m:'PUT', p:'/api/v1/roles/{roleCode}', ref:'new', refT:'ใหม่ · หน้าจอ 3.1.1', roles:'01 Admin, 02 HQ',
+        sum:'แก้ชื่อ/คำอธิบาย Role — ต้องระบุเหตุผล บันทึก audit เสมอ',
+        flow:['ตรวจ role มีอยู่','update roles (role_code ของ role ระบบแก้ไม่ได้)','บันทึก audit_logs (ค่าเดิม/ใหม่ + เหตุผล)'],
+        db:[['roles','W','ชื่อ/คำอธิบายใหม่'],['audit_logs','W','audit การแก้ไข']],
+        req:'{\n  "roleName": "Report Admin",\n  "roleDesc": "สำหรับดูเมนูรายงานทุกภาค",\n  "reason": "ขยายขอบเขตการดูรายงาน"\n}',
+        res:'200 OK',
+        err:['404 — ไม่พบ Role','403'] },
+      { m:'DELETE', p:'/api/v1/roles/{roleCode}', ref:'new', refT:'ใหม่ · หน้าจอ 3.1.1', roles:'01 Admin, 02 HQ',
+        sum:'ลบ Role — ลบไม่ได้ถ้าเป็น Role ระบบ (is_system) หรือยังมีผู้ใช้อ้างอยู่',
+        flow:['ตรวจ is_system = false และไม่มี user_accounts อ้างถึง','ลบ menu_permissions ของ role ทั้งหมด แล้วลบ roles','บันทึก audit_logs พร้อมเหตุผล'],
+        db:[['roles','W','ลบ role'],['menu_permissions','W','ลบสิทธิ์ของ role (cascade)'],['audit_logs','W','audit การลบ']],
+        req:'{ "reason": "ยุบรวมกับ Role 04" }',
+        res:'204 No Content',
+        err:['409 — Role หลักของระบบ (00–10) ลบไม่ได้','409 — ยังมีผู้ใช้อยู่ใน Role นี้ ลบไม่ได้','403'] },
+      { m:'POST', p:'/api/v1/menus', ref:'new', refT:'ใหม่ · หน้าจอ 3.1.1', roles:'01 Admin, 02 HQ',
+        sum:'เพิ่มเมนูใหม่เข้าระบบ — สิทธิ์เริ่มต้นเป็น "ไม่มีสิทธิ์" ทุก Role',
+        flow:['validate ชื่อเมนูไม่ว่าง / menu_group อยู่ในเซ็ต MAIN, MASTER','insert menus (running menu_code + sort_order ท้ายกลุ่ม)','insert menu_permissions ทุก role can_access = false','บันทึก audit_logs'],
+        db:[['menus','W','เมนูใหม่ (menu_group + sort_order)'],['menu_permissions','W','สิทธิ์เริ่มต้น false ทุก role'],['audit_logs','W','audit การเพิ่ม']],
+        req:'{\n  "menuName": "รายงานผลชดเชยรายเดือน",\n  "menuGroup": "MAIN"\n}',
+        res:'201 Created\n{ "menuCode": "M07" }',
+        err:['422 — กรุณาระบุชื่อเมนู','403'] },
+      { m:'PUT', p:'/api/v1/menus/{menuCode}', ref:'new', refT:'ใหม่ · หน้าจอ 3.1.1', roles:'01 Admin, 02 HQ',
+        sum:'แก้ชื่อ/กลุ่ม/ลำดับเมนู — ต้องระบุเหตุผล บันทึก audit เสมอ',
+        flow:['ตรวจเมนูมีอยู่','update menus','บันทึก audit_logs (ค่าเดิม/ใหม่ + เหตุผล)'],
+        db:[['menus','W','ชื่อ/กลุ่ม/ลำดับใหม่'],['audit_logs','W','audit การแก้ไข']],
+        req:'{\n  "menuName": "รายงานสรุปสถานะ (ใหม่)",\n  "sortOrder": 5,\n  "reason": "ปรับชื่อให้ตรงรายงานฉบับปรับปรุง"\n}',
+        res:'200 OK',
+        err:['404 — ไม่พบเมนู','403'] },
+      { m:'DELETE', p:'/api/v1/menus/{menuCode}', ref:'new', refT:'ใหม่ · หน้าจอ 3.1.1', roles:'01 Admin, 02 HQ',
+        sum:'ลบเมนูพร้อมสิทธิ์ทุก Role ของเมนูนั้น (cascade) — เมนูระบบลบไม่ได้',
+        flow:['ตรวจ is_system = false','ลบ menu_permissions ของเมนู แล้วลบ menus','บันทึก audit_logs พร้อมเหตุผล'],
+        db:[['menus','W','ลบเมนู'],['menu_permissions','W','ลบสิทธิ์ทุก role ของเมนู (cascade)'],['audit_logs','W','audit การลบ']],
+        req:'{ "reason": "ยุบรวมกับเมนูรายงานสรุปสถานะ" }',
+        res:'204 No Content',
+        err:['409 — เมนูหลักของระบบลบไม่ได้','403'] },
+    */
+]},
+
+    { name:'รายงาน', refT:'K2 · SRS 3.1.7', eps:[
+      { m:'GET', p:'/api/v1/sgi/report/status-summary', ref:'k2', refT:'K2 · 3.1.7 + SDD v7.5', roles:'บัญชี / 06 Report Admin',
+        sum:'รายงานตรวจสอบประกันรายได้ (SBP Mall) — ค้นหาข้อมูล · filter 7 ตัวและผลลัพธ์ 14 คอลัมน์ ตาม SDD สไลด์ 60 · บังคับระบุปี และเอาเฉพาะเอกสารที่มีเลขที่ (กติกา SRS)',
+        flow:['validate ปี (ไม่ระบุ → 400) — FE คำนวณจากปีของ periodStatementFrom เพราะหน้าจอไม่มีช่องปี','🔴 มติ 2026-09-22 — periodStatementFrom/To (ค.ศ. YYYY-MM-DD) บังคับทั้งคู่เสมอ ไม่ระบุ → 400 REPORT_PERIOD_REQUIRED','🔴 มติ 2026-09-22 — ช่วง Period Statement กว้างได้ไม่เกิน 1 ปี (เทียบแบบวันเดียวกันของปีถัดไป) เกิน → 400 REPORT_PERIOD_TOO_WIDE','🔴 มติ 2026-09-22 — status ไม่บังคับแล้ว ไม่เลือก = ไม่กรองสถานะ (ยกเลิก Required Field เดิมของ SDD)','validate คู่รหัสร้าน: ระบุ impactedStoreCode แล้วต้องระบุ newStoreCode ด้วย (และกลับกัน) ไม่งั้น 400','query sgi_compensation_documents + sgi_compensation_histories ตามเงื่อนไข (status 6 ค่า · region 13 รหัส + ภาคใหม่อัตโนมัติ · storeType 7 ค่า `A B C D E PTT บริษัท` (BranchTypeProfile.BranchTypeFGIName · ห้าม hardcode) · รหัสถูกกระทบ/เปิดกระทบ · ช่วง Period Statement)','กรอง result จากผลพิจารณาล่าสุดใน sgi_consideration_logs — 🔴 มติ 2026-09-22 หน้าจอเสนอ Radio 2 ค่า ประกันรายได้ (APPROVE) / ไม่ประกันรายได้ (REJECT) เท่านั้น (ไม่บังคับ) · โดเมนของ API ยังเป็น 4 ค่า (เพิ่ม CANCELLED/PENDING) ห้ามลดตามหน้าจอ','คืน 14 คอลัมน์ตาม SDD แบบแบ่งหน้า (ร้านถูกกระทบ 4 · เดือน/ปีที่ถูกกระทบ · Period Statement · ร้านเปิดกระทบ 4 · ยอดเงินชดเชย · ครั้งที่ · วันที่สร้าง · เลขที่เอกสาร)'],
+        db:[['sgi_compensation_documents','R','สถานะเอกสาร'],['sgi_compensation_histories','R','ยอด/งวดชดเชย'],['sgi_impacted_stores','R','ข้อมูลร้าน'],['sgi_consideration_logs','R','ผลพิจารณาล่าสุด (กรองประกัน/ไม่ประกัน)'],['sgi_document_new_stores','R','รหัส/ชื่อ/ภาค/ประเภทร้านเปิดกระทบ — 4 ใน 14 คอลัมน์ผลลัพธ์'],['sgi_fgi_impact_processes','R','เดือน/ปีที่ถูกกระทบ (impact_month · impact_year)']],
+        req:'Query: ?year=2026&periodStatementFrom=2026-06-01&periodStatementTo=2026-06-30\n       &status=เสร็จสิ้นดำเนินการ&storeTypes=A&storeTypes=B&regions=RSU&regions=BW&impactedStoreCode=00788&newStoreCode=00990&result=APPROVE&page=1\n(periodStatementFrom/To บังคับทั้งคู่ · ช่วงไม่เกิน 1 ปี · status ไม่บังคับ · result = APPROVE | REJECT ไม่บังคับ)\n⚠️ regions/storeTypes เป็นพหูพจน์ — ส่งชื่อเอกพจน์จะได้ 400 ทั้งคำขอ (forbidNonWhitelisted)',
+        res:'{\n  "page": 1, "total": 212,\n  "items": [{\n    "impactedStoreCode": "00788", "impactedStoreName": "รัตนอุทิศ ซ.13", "impactedRegion": "RSU", "impactedStoreType": "B",\n    "impactMonth": "2026-05", "periodStatement": "2026-06-07",\n    "newStoreCode": "00990", "newStoreName": "เซเว่นฯ รัตนาธิเบศร์ 12", "newRegion": "RSU", "newStoreType": "A",\n    "compensationAmount": 48200.00, "roundNo": 1, "createdDate": "2026-06-12", "docNo": "2026/00123"\n  }]\n}',
+        err:['400 — กรุณาระบุปีที่ต้องการค้นหา','400 REPORT_PERIOD_REQUIRED — กรุณาระบุ Period Statement From / Period Statement To','400 REPORT_PERIOD_TOO_WIDE — ช่วง Period Statement เลือกได้ครั้งละไม่เกิน 1 ปี','400 — กรณีระบุรหัสร้านถูกกระทบ ต้องระบุรหัสร้านเปิดกระทบด้วย'] },
+      { m:'GET', p:'/api/v1/sgi/report/status-summary/export', ref:'k2', refT:'K2 · 3.1.7', roles:'04 / 06 Report Admin',
+        sum:'Export Excel — ส่งออกผลการค้นหาให้ทีมบัญชีนำไปกระทบ SAP · 19 คอลัมน์ตามไฟล์ตัวอย่างของหน้ารายงาน (14 คอลัมน์บนจอ + วันที่โอนเป็นร้าน SP · สถานะ · ชื่อผู้ดำเนินการ · ผลการพิจารณา · รอดำเนินการ(วัน)) · เงื่อนไขเดียวกับเส้นค้นหา แต่ไม่แบ่งหน้า',
+        flow:['เงื่อนไขเดียวกับ status-summary (รวม Period Statement บังคับ · ช่วงไม่เกิน 1 ปี · คู่รหัสร้าน)','ดึงทุกแถวที่เข้าเงื่อนไข ไม่แบ่งหน้า','คืน JSON 19 ช่องต่อแถว — FE ประกอบเป็นไฟล์ .xlsx เองที่เบราว์เซอร์'],
+        db:[['sgi_compensation_documents / sgi_compensation_histories','R','ข้อมูลชุดเดียวกับรายงาน'],['sgi_impacted_stores','R','วันที่โอนเป็นร้าน SP'],['sgi_consideration_logs','R','ผลพิจารณาล่าสุด + ผู้ดำเนินการ'],['common_code / business_user (SBP)','R','ชื่อสถานะ · ชื่อผลพิจารณา · ชื่อ-นามสกุลผู้ดำเนินการ']],
+        req:'Query: ?year=2026&status=เสร็จสิ้นดำเนินการ&region=RSU&storeType=A&result=APPROVE\n(เงื่อนไขชุดเดียวกับเส้นค้นหา รวม result ประกันรายได้/ไม่ประกันรายได้)',
+        res:'200 OK\n{\n  "success": true,\n  "data": {\n    "fileName": "insurance-verification-2026.xlsx",\n    "items": [ { …19 ช่อง… } ]\n  }\n}\n\n🔴 คืน JSON ไม่ใช่ไฟล์ — FE ประกอบ .xlsx เองด้วย exceljs\n   เพื่อคุมสไตล์ให้ตรงไฟล์ตัวอย่าง (หัวตารางพื้น #87AFC6 · Text format กัน leading zero หาย)',
+        err:['400 — ไม่ระบุปี'] }
+    ]},
+
+    { name:'Workflow ภายใน', refT:'K2 3.1.4 + FGI/FCS Job 8b', eps:[
+      { m:'POST', p:'/api/v1/sgi/workflow/instances', ref:'mix', refT:'แทน K2 StartInstance (Job 8b)', roles:'service token (ภายใน)',
+        sum:'เปิด workflow ให้รายการที่ผ่าน Gen Flow Gate — เส้นภายในที่ Batch Scheduler เรียกแทนการยิง K2 REST เดิม',
+        flow:['ตรวจ service token (Authorization: Bearer — ไม่ใช่ JWT ผู้ใช้ · ไม่ได้ตั้ง token = ปฏิเสธทุกคำขอ)','lock sgi_fgi_impact_processes (FOR UPDATE) · เป็น Y อยู่แล้ว → คืนผลเดิม alreadyStarted=true ไม่เรียก engine ซ้ำ','ตรวจ Gen Flow Gate: workflow_generation_status=W · branch type ∈ {FAM,FB1,FC1,FB2,FVB,FVC} · juristic สองฝั่งต่างกัน · opt_dv_user_id ไม่ว่าง · มีเอกสารจาก Job 8 · sales_status ∈ {Y,N} · growth_rate_diff ≤ เกณฑ์จาก mas_param.SGI_GROWTH_RATE_THRESHOLD','fail ถาวร: branch type นอกชุด, นิติบุคคลเดียวกัน หรือ growth เกินเกณฑ์ → ตั้ง N แล้วคืน 200 พร้อม skipReason (Job 8b นับเป็น skip ไม่ใช่ error)','ข้อมูลยังไม่พร้อม: DV ว่าง, ยังไม่มีเอกสาร, growth NULL หรือ sales_status ไม่ใช่ Y/N → คง W ไม่เขียนอะไรลงฐาน แล้วคืน 422 WORKFLOW_NOT_READY','ผ่าน: initializeWorkflow + addPreApprover ขั้น 06 ผ่าน @srm/glb-workflow (entryStateCode=08 เดิน route 06→08 ต่อทันที เพราะ engine เปิดที่ initial_state_id เสมอ) แล้วตั้ง workflow_generation_status=Y ในทรานแซกชันเดียว','ยืนยันด้วย getTransaction ก่อนคืน 201 · การแจ้งผู้จัดการเขตเป็นงานของ Job 8b อยู่นอกทรานแซกชัน'],
+        db:[['sgi_fgi_impact_processes','R/W','source of truth ของ workflow_generation_status W→Y/N'],['sgi_fgi_impact_compensations','R','คัดงวดล่าสุดของรอบ เพื่อหาเอกสารที่ผูกกับงวดนั้น (LATERAL + LIMIT 1)'],['sgi_impacted_stores','R','opt_dv_user_id — ผู้จัดการเขตที่จะรับเรื่องและเป็น pre-approver ขั้น 06'],['sgi_fgi_impact_sales_summaries','R','growth_rate_diff + sales_status ของ gate'],['mas_store','R','status_type = ประเภทร้าน (ระบบเดิม · อ่านอย่างเดียว)'],['fr_store','R','juristic_id ของสัญญาที่ active (ระบบเดิม · อ่านอย่างเดียว)'],['juristic','R','juristic_name สองฝั่ง (ระบบเดิม · อ่านอย่างเดียว)'],['mas_param','R','เกณฑ์ SGI_GROWTH_RATE_THRESHOLD (ระบบเดิม · อ่านอย่างเดียว)'],['sgi_compensation_documents','R/W','เอกสารอัตโนมัติจาก Job 8 — เดินเข้าขั้นแรกด้วย optimistic lock'],['sgi_consideration_logs','R','เจ้าของงานคนเดิมของขั้นที่จะมอบหมาย (auto-assign)'],['workflow_transaction / workflow_approver','W','เปิด instance + ผู้รับผิดชอบขั้นแรก — **ผ่าน @srm/glb-workflow เท่านั้น ห้าม INSERT เอง**']],
+        req:'{\n  "impactProcessId": 88123,\n  "sourceJobNo": "8b",\n  "requestId": "job8b:88123:2026/00124",\n  "entryStateCode": "06"\n}',
+        res:'201 Created\n{\n  "docNo": "2026/00124",\n  "instanceId": "4242",\n  "workflowGenerationStatus": "Y",\n  "firstSection": "06",\n  "statusCode": "06",\n  "status": "รอฝ่าย SBP DSA ดำเนินการ",\n  "alreadyStarted": false\n}',
+        err:['200 — ไม่ผ่านเกณฑ์ถาวร: ตั้ง N แล้วคืน skipReason (ไม่ใช่ error)','422 WORKFLOW_NOT_READY — ข้อมูลยังไม่พร้อม คง W ไม่เขียนฐาน','401 — service token ไม่ถูกต้องหรือไม่ได้ตั้งค่า','503 WORKFLOW_NOT_CONFIGURED — ไม่ได้ตั้ง SGI_WORKFLOW_VERSION_ID'] },
+      { m:'GET', p:'/api/v1/sgi/workflow/instances/{id}', ref:'new', refT:'ใหม่', roles:'01 Admin / เจ้าของงาน',
+        sum:'สถานะ instance และขั้นปัจจุบัน (ใช้ debug/ติดตาม) — {id} รับได้ทั้ง instanceId (workflow_transaction.transaction_id) และเลขที่เอกสาร YYYY/xxxxx',
+        flow:['อ่าน sps_store.workflow_transaction (instance ปัจจุบัน) + workflow_approver (ผู้รับผิดชอบขั้นปัจจุบัน) ของ @srm/glb-workflow แล้ว join เอกสารของ SGI','คีย์ที่ใช้ค้น = sgi_compensation_documents.id (DP-1 ปิดแล้ว) · DP-2 ตารางนี้ไม่มี PK/index (19,327 แถว) จึงเป็น seq-scan — จำกัดเงื่อนไขด้วย version_id + reference_id เสมอ · ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4'],
+        db:[['sps_store.workflow_transaction','R','สถานะ instance ปัจจุบัน (@srm/glb-workflow) — ⚠️ ไม่มี PK/index · DP-2 จึงต้องจำกัดด้วย version_id + reference_id เสมอ'],['sps_store.workflow_status','R','ชื่อสถานะของ engine (ใช้เป็น fallback — ชื่อที่แสดงยึดหัวเอกสารของ SGI ก่อน)'],['sgi_compensation_documents','R','เอกสารที่ผูกกับ instance · join ด้วย id::text = reference_id (DP-1)']],
+        req:'(ไม่มี body)',
+        res:'{\n  "instanceId": "4242",\n  "docNo": "2026/00124",\n  "status": "รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ",\n  "currentSection": "02"\n}',
+        err:['404'] },
+      { m:'GET', p:'/api/v1/sgi/workflow/summary', ref:'fgi', refT:'FGI/FCS · Monitoring 7.4', roles:'01 Admin',
+        sum:'ตัวเลขเฝ้าระวัง: นับ workflow_generation_status W/Y/N และงานค้างต่อขั้น · period (YYYY-MM ค.ศ.) ไม่ส่ง = ทุกงวด',
+        flow:['นับ W/Y/N จาก sgi_fgi_impact_processes กรองด้วย impact_month','นับงานค้างต่อขั้นจาก sgi_compensation_documents.current_section_code (ไม่นับเอกสารที่จบแล้ว = NULL) กรองด้วย account_month','🔴 ไม่ aggregate จาก sps_store.workflow_* เลย — ตารางนั้นไม่มี PK/index (DP-2) และหัวเอกสารของ SGI เป็นแหล่งเดียวกันที่มี index อยู่แล้ว','เติม W/Y/N ให้ครบสามค่าเสมอ — สถานะที่ไม่มีแถวต้องแสดง 0 ไม่ใช่หายไป'],
+        db:[['sgi_fgi_impact_processes','R','นับ W/Y/N ต่องวด (impact_month)'],['sgi_compensation_documents','R','งานค้างต่อขั้นจาก current_section_code ต่องวด (account_month)']],
+        req:'(ไม่มี body)',
+        res:'{\n  "workflowGeneration": { "W": 12, "Y": 58, "N": 4 },\n  "openTasksBySection": [\n    { "sectionCode": "06", "count": 24 },\n    { "sectionCode": "02", "count": 7 }\n  ]\n}',
+        err:['401'] }
+    ]},
+
+    // ❌ กลุ่ม Interface (tracking) ถูกตัดออกทั้งกลุ่ม 2026-09-22 (มติผู้ใช้)
+    //    GET /api/v1/sgi/interface/tracking · GET /api/v1/sgi/interface/pending-ack
+    //    ไม่มีหน้าจอนี้ทั้งในระบบ K2 เดิม (ทะเบียนเมนูไม่มีฟอร์มดู log) และใน SRS/SDD
+    //    (SDD GI มีแค่ bullet "Any Data for Monitor & Tracking" ที่ยังไม่ได้เขียนเนื้อหา)
+    //    และไม่มีผู้เรียกสักราย — batch อ่าน/เขียน sgi_interface_transactions ตรงด้วย SQL
+    //    ⚠️ ตารางและ Job 10 ยังอยู่เหมือนเดิม ที่ตัดคือ REST endpoint + หน้าจอเท่านั้น
+  ];
+
+  /* ===== helpers ===== */
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  var FLAT = [];
+  GROUPS.forEach(function(g){ g.eps.forEach(function(e){ e._g = g.name; FLAT.push(e); }); });
+
+  function mthCls(m){ return m === 'GET' ? 'get' : m === 'POST' ? 'post' : m === 'PUT' ? 'put' : 'del'; }
+  function isBatchJobReference(e){ return e._g === 'Batch Job Admin'; }
+
+  /* ===== ตัวอย่าง SQL ต่อ endpoint (key = 'METHOD path') — ใช้ในแท็บ Database; ยกเว้นกลุ่ม Batch Job Admin ที่เป็น reference only ===== */
+  var SQL_BY_PATH = {
+    /* ตัดออกถาวร 2026-08-05 — SQL ของกลุ่ม Auth (login/refresh/me/menus) ถูกลบพร้อม endpoint · ใช้ BFF + auth-backend ของระบบ SBP เดิม */
+    'GET /api/v1/sgi/document/tasks':
+      '-- 🔴 แก้ 2026-09-22 (วัดจากฐาน dev จริง) — คอลัมน์ภาคของร้านคือ `store.zone` ไม่ใช่ `store.zone_cd`\n--    `store.zone_cd` เป็น NULL ทั้ง 19,539 แถว ส่วน `store.zone` มีค่าจริง 15 ค่า (BE BG BN BS BW NEL NEU RC RE REL REU RN RS RSL RSU)\n--    ของเดิมทำให้คอลัมน์ \"ภาค\" ว่างทุกแถว และตัวกรองภาคไม่เคยเจออะไรเลย\n--    `/store/all-regions` ของระบบเดิมก็อ่าน `store.zone` เช่นกัน และ LLDD-BE-API-Document-Detail-Aggregate\n--    บันทึกไว้ตั้งแต่ 2026-09-21 ว่า store.zone ตรงโดเมนเดิม 13/13 — เส้นนี้กับรายงานยังไม่ได้แก้ตาม\n-- ⚠️ ไม่มีตาราง workflow_tasks ของ SGI แล้ว — กล่องงานอ่านจาก engine กลาง (schema sps_store)\n--    getPendingFlowByUser({userData}) \n-- ✅ DP-1 ปิดแล้ว: reference_id = sgi_compensation_documents.id (surrogate · varchar(255)) · ⚠️ DP-2 workflow_transaction ไม่มี PK/index (19,327 แถว → seq-scan) ห้ามแก้ schema ของ library\n--    ห้ามแก้ schema ของ library — กันซ้ำที่ระดับ application ของ SGI\nWITH wh AS (\n  -- workflow_transaction ไม่มี created_date — ใช้เวลา event แรกจาก workflow_history แทน\n  SELECT transaction_id, MIN(create_date) AS first_event_date\n  FROM sps_store.workflow_history GROUP BY transaction_id\n)\nSELECT d.round_no AS "roundNo",\n       d.doc_no AS "docNo",\n       d.impacted_store_code AS "impactedStoreCode",\n       s.store_name AS "impactedStoreName",\n       s.zone AS "regionCode",\n       GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) AS "salesDeclinePercent",\n       d.total_compensation_amount AS "totalCompensationAmount",\n       d.status_code AS "statusCode",\n       d.current_section_code AS "currentSection",\n       w.current_approver AS "currentOwner",   -- คอลัมน์ "ผู้ดำเนินการ (เจ้าของงาน)" บนหน้าจอ · เจ้าของงานอยู่ที่ engine ไม่ใช่ตารางของ SGI\n       GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) AS "daysPending",\n       ss.total_working_days AS "salesDataDays"\nFROM sps_store.workflow_approver a\nJOIN sps_store.workflow_transaction w ON w.transaction_id = a.transaction_id\n-- 🔴 แก้ 2026-09-22 — เดิมประกาศ CTE `wh` ไว้แต่ไม่ได้ join ทำให้คิวรีพังด้วย\n--    missing FROM-clause entry for table \"wh\" (เจอตอนรันจริงกับฐาน dev)\nLEFT JOIN wh ON wh.transaction_id = w.transaction_id\nJOIN sgi_compensation_documents d ON d.id::text = w.reference_id   -- DP-1 = surrogate id   -- DP-1\nJOIN store s ON s.store_id = d.impacted_store_code\nLEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id\n-- ⚠️ ตัวกรองบนหน้าจอต้องส่งขึ้นมาที่นี่ด้วย ไม่ใช่กรองฝั่ง client (มี LIMIT/OFFSET · เพิ่ม 2026-09-09)\n-- แก้ชื่อ bind 2026-09-22 (เจอตอนยิงจริง) :sectionFromJwt ชวนให้ส่ง section_code ดิบ (06/08)\n--    แต่ a.state_id เป็น **integer ของ engine** (06 -> 1000001) ต้องแปลงก่อนเสมอ\n--    ของเดิมส่ง section_code ดิบ + object ผู้ใช้ทั้งก้อน -> invalid input syntax for type integer\n--    ตารางแปลงอยู่ที่ src/modules/sgi/constants/workflow-sections.ts (sgiStateIdOf)\nWHERE a.state_id = :stateIdOfSection AND a.state_id = w.current_state_id AND w.version_id = :sgiVersionId\n  AND (:status           IS NULL OR d.status_code = :status)\n  AND (:keyword          IS NULL OR d.doc_no ILIKE \'%\' || :keyword || \'%\'\n                                 OR s.store_name ILIKE \'%\' || :keyword || \'%\'\n                                 OR d.impacted_store_code ILIKE \'%\' || :keyword || \'%\')\n  AND (:regionCode       IS NULL OR s.zone = :regionCode)\n  AND (:storeType        IS NULL OR s.store_type = :storeType)\n  AND (:createdFrom      IS NULL OR d.created_at >= :createdFrom::date)\n  AND (:createdTo        IS NULL OR d.created_at <  :createdTo::date + 1)\n  AND (:compensationMin  IS NULL OR d.total_compensation_amount >= :compensationMin)\n  AND (:compensationMax  IS NULL OR d.total_compensation_amount <= :compensationMax)\n  AND (:salesDeclineMin  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) >= :salesDeclineMin)\n  AND (:salesDeclineMax  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) <= :salesDeclineMax)\n  AND (:daysPendingMin   IS NULL OR GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) >= :daysPendingMin)\n  AND (:daysPendingMax   IS NULL OR GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) <= :daysPendingMax)\nORDER BY w.update_date\nLIMIT :size OFFSET :offset;',
+    'GET /api/v1/sgi/document':
+      '-- 🔴 แก้ 2026-09-22 (วัดจากฐาน dev จริง) — คอลัมน์ภาคของร้านคือ `store.zone` ไม่ใช่ `store.zone_cd`\n--    `store.zone_cd` เป็น NULL ทั้ง 19,539 แถว ส่วน `store.zone` มีค่าจริง 15 ค่า (BE BG BN BS BW NEL NEU RC RE REL REU RN RS RSL RSU)\n--    ของเดิมทำให้คอลัมน์ \"ภาค\" ว่างทุกแถว และตัวกรองภาคไม่เคยเจออะไรเลย\n--    `/store/all-regions` ของระบบเดิมก็อ่าน `store.zone` เช่นกัน และ LLDD-BE-API-Document-Detail-Aggregate\n--    บันทึกไว้ตั้งแต่ 2026-09-21 ว่า store.zone ตรงโดเมนเดิม 13/13 — เส้นนี้กับรายงานยังไม่ได้แก้ตาม\n-- ต้องระบุ :year เสมอ ไม่งั้นตอบ 400 (กติกา SRS)\nSELECT d.round_no AS "roundNo",\n       d.doc_no AS "docNo",\n       d.impacted_store_code AS "impactedStoreCode",\n       s.store_name AS "impactedStoreName",\n       s.zone AS "regionCode",\n       GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) AS "salesDeclinePercent",\n       d.total_compensation_amount AS "totalCompensationAmount",\n       d.status_code AS "statusCode",\n       d.current_section_code AS "currentSection",\n       w.current_approver AS "currentOwner",   -- คอลัมน์ "ผู้ดำเนินการ (เจ้าของงาน)" บนหน้าจอ\n       -- workflow_transaction ไม่มี created_date (มีแค่ update_date) — วันที่เริ่มงานเอาจาก workflow_history\n       CASE WHEN w.current_status_id <> :statusDone THEN GREATEST(CURRENT_DATE - wh.first_event_date::date, 0) ELSE 0 END AS "daysPending",\n       ss.total_working_days AS "salesDataDays"\nFROM sgi_compensation_documents d\nJOIN store s ON s.store_id = d.impacted_store_code\nLEFT JOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id\nLEFT JOIN sps_store.workflow_transaction w ON w.reference_id = d.id::text   -- DP-1 = surrogate id (reference_id เป็น varchar(255)) AND w.version_id = :sgiVersionId   -- DP-1 · DP-2 (ไม่มี index → seq-scan)\n-- ⚠️ ตัวกรองทุกตัวบนหน้าจอต้องมาที่นี่ ไม่ใช่กรองฝั่ง client — เพราะมี LIMIT/OFFSET\n--    ถ้ากรองฝั่ง client ตัวกรองจะทำงานแค่แถวในหน้านั้น (เพิ่มครบ 2026-09-09)\nWHERE d.year = :year\n  AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)\n  AND (:status            IS NULL OR d.status_code = :status)\n  -- result ไม่ได้อยู่ที่หัวเอกสาร — ต้องดูผลพิจารณา *ล่าสุด* ของเอกสารจาก sgi_consideration_logs\n  AND (:result            IS NULL OR EXISTS (\n        SELECT 1 FROM sgi_consideration_logs cl\n         WHERE cl.doc_no = d.doc_no AND cl.result_category = :result\n           AND cl.action_datetime = (SELECT MAX(action_datetime) FROM sgi_consideration_logs\n                                      WHERE doc_no = d.doc_no)))\n  AND (:keyword          IS NULL OR d.doc_no ILIKE \'%\' || :keyword || \'%\'\n                                 OR s.store_name ILIKE \'%\' || :keyword || \'%\'\n                                 OR d.impacted_store_code ILIKE \'%\' || :keyword || \'%\')\n  AND (:regionCode       IS NULL OR s.zone = :regionCode)\n  AND (:storeType        IS NULL OR s.store_type = :storeType)   -- 🔴 โดเมนจริงของ store.store_type บนฐาน dev = FC1 B FB2 FB1 FAM FVC FVB (7 ค่า · วัด 2026-09-22 จากร้านที่มีเอกสารจริง) ไม่ใช่ A B C D E PTT บริษัท\n  AND (:createdFrom      IS NULL OR d.created_at >= :createdFrom::date)\n  AND (:createdTo        IS NULL OR d.created_at <  :createdTo::date + 1)\n  AND (:compensationMin  IS NULL OR d.total_compensation_amount >= :compensationMin)\n  AND (:compensationMax  IS NULL OR d.total_compensation_amount <= :compensationMax)\n  AND (:salesDeclineMin  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) >= :salesDeclineMin)\n  AND (:salesDeclineMax  IS NULL OR GREATEST(COALESCE(-ss.growth_rate_diff, 0), 0) <= :salesDeclineMax)\nORDER BY d.doc_no DESC\nLIMIT :size OFFSET :offset;',
+    'GET /api/v1/sgi/document/{docNo}':
+      '-- โหลดเอกสารฉบับเต็มในคำขอเดียว — 1 result set ต่อ 1 การ์ดบนหน้าจอ (k2-document.html)\n-- ⚠️ เพิ่ม 2 ชุดท้ายเมื่อ 2026-09-09: การ์ด \'ประวัติการชดเชย\' และ \'คำนวณเงินชดเชย\'\n--    เดิม SQL ไม่ได้อ่าน 2 ตารางนี้เลย ทั้งที่หน้าจอมีการ์ดทั้งคู่\n-- 🔴 เลิกใช้ SELECT * ทุกชุด 2026-09-23 — คิวรีที่ไม่บอกว่าคืนอะไร ทำให้ mapper\n--    อ่านคอลัมน์ที่ไม่มีอยู่จริงได้โดยไม่มี error แล้วหน้าจอขึ้นค่าว่าง (เจอจริง 4 จุด)\nSELECT id, impacted_store_code, status_code, current_section_code, version_no, allmap_url\n  FROM sgi_compensation_documents WHERE doc_no = :docNo;\n-- ⚠️ 2026-09-21: newStores join master ตอนอ่าน (ไม่เก็บ snapshot)\n--    ใช้ `store` ไม่ใช่ `mas_store` (branch_type มีค่าเดียว SE · zone_cd คนละชุด)\n--    `fr_store` ต้อง LATERAL LIMIT 1 — 1,233 ร้านมีหลายสัญญา ไม่ดักจะ fan-out\n--    ชื่อเจ้าของอยู่ `franchisee` (fr_store.cur_owner_first_name ว่างทั้งตาราง)\nSELECT d.*, s.store_name, s.zone, s.store_type, s.store_open_date, s.store_close_date,\n       btrim(coalesce(fr.first_name,\'\') || \' \' || coalesce(fr.last_name,\'\')) AS owner_name,\n       j.juristic_name\n  FROM sgi_document_new_stores d\n  LEFT JOIN store s ON lpad(btrim(s.store_id), 5, \'0\') = d.new_store_code\n  LEFT JOIN LATERAL (SELECT f.* FROM fr_store f\n                      WHERE lpad(btrim(f.store_id), 5, \'0\') = d.new_store_code\n                      ORDER BY f.contract_start_date DESC NULLS LAST, f.contract_no DESC\n                      LIMIT 1) f ON TRUE\n  LEFT JOIN franchisee fr ON fr.franchisee_id = f.cur_owner_id\n  LEFT JOIN juristic   j  ON j.juristic_id   = f.juristic_id\n WHERE doc_no = :docNo;\n-- คู่แข่ง: คอลัมน์ FK ชื่อ brand_code (competitor_code เป็น PK ของ *ตาราง master*)\n--   join master เติมชื่อแบรนด์ให้แถวที่ผู้ใช้คีย์เอง ซึ่งมีแต่รหัส ไม่มี name_th\nSELECT c.id, c.brand_code AS competitor_code,\n       COALESCE(NULLIF(btrim(c.name_th), \'\'), m.name_th) AS name_th,\n       c.branch_th, c.opened_date, c.impact_date, c.detail, c.source_system\n  FROM sgi_document_competitors c\n  LEFT JOIN sgi_competitors m ON m.competitor_code = c.brand_code\n WHERE c.doc_no = :docNo ORDER BY c.id;\n-- ปัจจัยภายนอก: ตารางเอกสารเก็บแค่รหัส ชื่ออยู่ใน master ถ้าไม่ join factorName จะว่างเสมอ\n-- ⚠️ ใช้ alias ef ไม่ใช่ f — ในบล็อกนี้ f ถูกใช้กับ fr_store ของระบบเดิมไปแล้ว\nSELECT ef.id, ef.factor_code, m.factor_name, ef.date_from, ef.date_to, ef.detail\n  FROM sgi_document_external_factors ef\n  LEFT JOIN sgi_external_factors m ON m.factor_code = ef.factor_code\n WHERE ef.doc_no = :docNo ORDER BY ef.id;\nSELECT attach_id, file_name, file_size, mime_type, section_code, scan_status, uploaded_by, uploaded_at\n  FROM sgi_document_attachments WHERE doc_no = :docNo AND deleted_flag = \'N\'\n ORDER BY uploaded_at, attach_id;\n-- ผลการพิจารณา: consider_by เก็บค่าปนชนิดกัน — แถวที่ migrate จาก K2 เป็น *ชื่อคน*\n--   ส่วนแถวใหม่เป็น *user id* จึง LEFT JOIN business_user แล้ว COALESCE\n--   ⚠️ ต้อง cast ฝั่งที่เป็นตัวเลขแน่นอน (bu.user_id::text) ห้าม cast consider_by::bigint\n--      planner จัดลำดับเงื่อนไขเองได้ cast จะพังทั้งคิวรีเมื่อเจอแถวที่เป็นชื่อคน\nSELECT c.section_code, c.result, c.result_category, c.detail, c.consider_by,\n       COALESCE(NULLIF(btrim(coalesce(bu.first_name,\'\') || \' \' || coalesce(bu.last_name,\'\')), \'\'),\n                NULLIF(btrim(bu.user_name), \'\'), c.consider_by) AS consider_by_name,\n       c.action_datetime\n  FROM sgi_consideration_logs c\n  LEFT JOIN business_user bu ON bu.user_id::text = btrim(c.consider_by)\n WHERE c.doc_no = :docNo ORDER BY c.action_datetime;\n-- ประวัติการชดเชย: คอลัมน์ ครั้ง/เดือนกระทบ/สถานะ/ผลพิจารณา *ไม่มีในตารางนี้*\n--   ต้อง LEFT JOIN เอกสารที่ ref_doc_no ชี้ไป (nullable โดยตั้งใจ — ประวัติที่ย้ายมา\n--   จากระบบเดิมบางแถวไม่มีเอกสารคู่กัน ใช้ INNER จะหายเงียบ)\n--   \'ครั้ง\' = ลำดับการชดเชยของร้าน เรียงตาม *เดือนที่กระทบ* ไม่ใช่งวดบัญชี\n--   (หลายงวดกระทบถูกส่งเบิกเดือนเดียวกันได้ เรียงด้วยงวดบัญชีแล้วเลขจะไม่สื่อ)\nSELECT ROW_NUMBER() OVER (ORDER BY COALESCE(d.impact_month, h.submit_account_month),\n                                   h.submit_account_month, h.id) AS seq_no,\n       h.submit_account_month, h.compensate_amount, h.ref_doc_no, h.accounting_status,\n       d.round_no, d.impact_month, d.status_code, cc.code_name AS status_name,\n       last_decision.result AS decision_result\n  FROM sgi_compensation_histories h\n  LEFT JOIN sgi_compensation_documents d ON d.doc_no = h.ref_doc_no\n  LEFT JOIN common_code cc ON cc.code_type = \'SGI_DOC_STATUS\' AND cc.code_value = d.status_code\n  LEFT JOIN LATERAL (SELECT cl.result FROM sgi_consideration_logs cl\n                      WHERE cl.doc_no = d.doc_no\n                      ORDER BY cl.action_datetime DESC, cl.id DESC LIMIT 1) last_decision ON TRUE\n WHERE h.store_code = (SELECT impacted_store_code FROM sgi_compensation_documents WHERE doc_no = :docNo)\n ORDER BY COALESCE(d.impact_month, h.submit_account_month), h.submit_account_month, h.id;\'ประวัติการชดเชย\' (รายร้าน ข้ามเอกสาร)\nSELECT new_store_code, cost_year, cost_month, cost_target_n, cost_amount_n, cost_target_nc, cost_amount_nc\n  FROM sgi_document_cost_details WHERE doc_no = :docNo\n ORDER BY cost_year, cost_month, new_store_code;   -- การ์ด \'คำนวณเงินชดเชย\'',
+    'POST /api/v1/sgi/document':
+      '-- กันซ้ำเฉพาะเอกสาร active (SDD GI): เอกสารเดิมที่จบด้วยหยุดชดเชย/เห็นควรไม่ชดเชย เปิดเรื่องใหม่ได้\n-- 🔴 business key ที่ใช้จริงคือ 5 ช่องนี้ (ไม่ใช่ impact_process_id) เพราะผู้เรียกยังไม่มี id นั้นในมือ\nSELECT 1 FROM sgi_compensation_documents\nWHERE source = :source AND impacted_store_code = :storeCode AND impact_month = :month\n  AND new_store_code = :newStoreCode AND round_no = :roundNo\n  AND NOT (status_code = ANY(:terminalStatuses));\n\n-- 🔴 หา \"รอบชดเชยตั้งต้น\" ก่อน INSERT — impact_process_id + impact_compensation_id เป็น NOT NULL ทั้งคู่\n--    (เพิ่ม 2026-09-23 · ของเดิมไม่เคยส่งสองค่านี้ → 23502 ทุกคำขอ ไม่เคยสร้างเอกสารได้เลย)\n--    คีย์อ้างอิงจาก Job 8: compensate_seq = roundNo · compensate_seq_no = loopNo\nSELECT c.id AS impact_compensation_id, c.impact_process_id, c.compensate_seq_no\nFROM sgi_fgi_impact_compensations c\nWHERE c.impacted_store_code = :storeCode AND c.compensate_month = :month AND c.compensate_seq = :roundNo\nORDER BY c.compensate_seq_no;\n--   ไม่เจอแถว  → 400 VALIDATION พร้อมระบุร้าน/งวด/ครั้งที่\n--   เจอ > 1 แถว → 409 CONFLICT **ห้ามเดา** — impact_compensation_id เป็น UNIQUE บนเอกสาร เลือกผิดคือผูกกับรอบผิด\n\n-- ออกเลขที่ YYYY/xxxxx (running ต่อปี) แล้วสร้างเอกสาร + เปิด workflow งานแรก (Section 06)\nINSERT INTO sgi_compensation_documents (doc_no, year, running_no, impacted_store_code, impact_month, new_store_code,\n                                        round_no, source, status_code, current_section_code, created_by,\n                                        impact_process_id, impact_compensation_id)\nVALUES (:docNo, :year, :runningNo, :storeCode, :month, :newStoreCode,\n        :roundNo, :source, :statusInit, :section06, :empId,\n        :impactProcessId, :impactCompensationId);\n-- ⚠️ duplicateGuard รัน **นอก transaction** (TOCTOU) — backstop จริงคือ UNIQUE ของ impact_compensation_id\n--    ชนแล้วได้ 23505 ซึ่งต้องแปลงเป็น DUPLICATE_DOCUMENT ไม่ใช่ \"กรุณาลองอีกครั้ง\"\n-- ⚠️ ไม่ INSERT ตาราง workflow เอง — เรียก @srm/glb-workflow (schema sps_store) ให้ library เขียนให้\n--    initialize(versionId=:sgiVersionId, referenceId=:referenceId, userId=:empId)\n--    addPreApprover(versionId, referenceId, stateId=:section06, approver, seq=1)\n--    library เขียน sps_store.workflow_transaction / workflow_approver / workflow_history ให้เอง\n-- referenceId = sgi_compensation_documents.id (surrogate · DP-1 ปิดแล้ว 2026-08-17)\n-- ⚠️ sps_store.workflow_transaction ไม่มี PK/index → กันซ้ำต้องทำที่ application (DP-2)\n--    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4',
+    'PUT /api/v1/sgi/document/{docNo}':
+      '-- ตรวจสิทธิ์ตาม role + current_section ก่อน · %ชดเชยร้านใหม่รวมกันต้อง = 100% (ไม่งั้น 422)\n-- optimistic concurrency: mutation ทุกชุดต้องส่ง versionNo ล่าสุด; ไม่ตรงคืน 409 STALE_VERSION\nUPDATE sgi_compensation_documents SET version_no = version_no + 1, updated_at = :now, updated_by = :empId\nWHERE doc_no = :docNo AND version_no = :versionNo;\nUPDATE sgi_document_new_stores       SET compensate_percent = :pct, compensation_amount = :amount\nWHERE new_store_code = :newStoreCode AND doc_no = :docNo;\nUPDATE sgi_document_competitors      SET impact_date = :date         WHERE id = :competitorId AND doc_no = :docNo;\nUPDATE sgi_document_external_factors SET date_from = :from, date_to = :to WHERE id = :factorId AND doc_no = :docNo;\n\n-- แถวที่ผู้ใช้ "เพิ่มเอง" (element ที่ไม่มี id) ต้อง INSERT ไม่ใช่ UPDATE — ของเดิมมีแต่ UPDATE/DELETE\n--   brandCode ต้องมีอยู่ใน master sgi_competitors จริง (ไม่ใช่ free text)\n--   🔴 ตรวจด้วย SELECT จากตาราง master — **ห้าม hardcode ช่วง 01-11** (แก้ 2026-09-23)\n--      หน้าจอ master เพิ่มแบรนด์ใหม่ได้ รหัสที่ 12 ขึ้นไปเคยถูกปฏิเสธทั้งที่ถูกต้อง\n--   competitorStoreCode คือรหัสสาขา (ว่างได้) · source_system = USER\nINSERT INTO sgi_document_competitors (doc_no, competitor_store_code, brand_code, impact_date, source_system)\nVALUES (:docNo, :competitorStoreCode, :brandCode, :impactDate, \'USER\')\nON CONFLICT ON CONSTRAINT uq_doc_competitor DO UPDATE SET impact_date = EXCLUDED.impact_date;\n\nINSERT INTO sgi_document_external_factors (doc_no, factor_code, date_from, date_to)\nVALUES (:docNo, :factorCode, :dateFrom, :dateTo)\nON CONFLICT ON CONSTRAINT uq_doc_factor DO UPDATE SET date_to = EXCLUDED.date_to;\n\n-- ลบรายการที่ผู้ใช้เอาออก (ปุ่ม \"ลบที่เลือก\" ส่งอาร์เรย์ชุดใหม่มาแทนทั้งชุด)\nDELETE FROM sgi_document_competitors      WHERE doc_no = :docNo AND id NOT IN (:keepCompetitorIds);\nDELETE FROM sgi_document_external_factors WHERE doc_no = :docNo AND id NOT IN (:keepFactorIds);',
+    'POST /api/v1/sgi/document/{docNo}/actions':
+      '-- ตรวจเป็นเจ้าของงานขั้นปัจจุบัน + ต้องเลือก result แล้ว (ไม่งั้น 422)\n-- result รับ 7-enum verbatim เท่านั้น: เห็นควรชดเชย / เห็นควรไม่ชดเชย / หยุดชดเชยประกันรายได้ / ส่งหน่วยงานส่งเสริมธุรกิจ SBP (SDD GI) / ส่งเจ้าหน้าที่ SBP DSA / คำนวณเงินชดเชยเรียบร้อย (Section 08 · เพิ่ม 2026-09-01) / ส่งกลับ\n-- มติ 2026-09-01: Section 08 คืน nextSection = 06 (เดิม 01) · ส่งกลับทุก Section คืน 06 (เดิม 02→01 · 03→02)\n-- ⚠️ ไม่ UPDATE ตาราง workflow เอง — เดิน state ผ่าน @srm/glb-workflow (schema sps_store)\n--    eventWorkflow({versionId, referenceId, event, eventParam:{amount}, remark, userId})\n--    library ปิดงานขั้นเดิม เขียน sps_store.workflow_history และเปิด approver ขั้นถัดไปให้เอง\n-- referenceId = sgi_compensation_documents.id (surrogate · DP-1 ปิดแล้ว 2026-08-17)\n\nINSERT INTO sgi_consideration_logs (doc_no, section_code, consider_by, result, detail, action_datetime)\nVALUES (:docNo, :curSection, :empId, :result, :comment, :now);\n\n-- คำนวณขั้นถัดไป (วงเงิน เกณฑ์เดียว 100,000 · SDD GI) → เปิดงานใหม่ + อัปเดตสถานะเอกสารแบบ optimistic lock\nUPDATE sgi_compensation_documents SET status_code = :nextStatus, current_section_code = :nextSection, version_no = version_no + 1, updated_at = :now, updated_by = :empId\nWHERE doc_no = :docNo AND version_no = :versionNo;\n-- งานขั้นถัดไปเปิดโดย engine (addPreApprover) ไม่ใช่ INSERT ของ SGI\n\n-- ✅ ปิด DP-5 (แก้มติ 2026-08-14): workflow ให้ \"เลข template\" · SGI เรียก lib ส่งเอง (ไม่มีตาราง status_email_rules)\n-- 1) เอาเลข template ของ route ที่เพิ่งเดิน (ถ้า NULL = ไม่ต้องส่งเมล)\n-- ⚠️ ต้องระบุ to_state_id ด้วย! state 02 มี 2 route ตามวงเงิน (< 100,000 จบ · ≥ 100,000 ไป 03)\n--    ถ้าใช้แค่ (from_state_id, event) แล้ว ORDER BY seq LIMIT 1 จะได้ template ผิดเสมอเมื่อเข้าเงื่อนไขที่สอง\n--    :prevStateId เก็บจาก getTransaction() \"ก่อน\" เรียก eventWorkflow · :nextStateId อ่านจาก getTransaction() \"หลัง\" สำเร็จ\nSELECT r.email_id\nFROM sps_store.workflow_route r\nWHERE r.version_id = :versionId\n  AND r.from_state_id = :prevStateId\n  AND r.event = :event\n  AND r.to_state_id = :nextStateId;\n\n-- 2) หาอีเมลผู้อนุมัติลำดับถัดไปที่ engine resolve ให้แล้ว\nSELECT string_agg(DISTINCT u.email, \',\') AS mail_to\nFROM sps_store.workflow_approver a\nJOIN sps_store.business_user u ON u.user_id = a.current_approver\nWHERE a.transaction_id = :transactionId AND a.state_id = :nextStateId AND u.email IS NOT NULL;\n\n-- 2b) ผู้รับ CC — ระบบเดิมมีกลไกอยู่แล้ว (fml_email_account.template_id)\nSELECT string_agg(email, \',\') AS mail_cc\nFROM fml_email_account\nWHERE template_id = :emailId;\n\n-- 3) เรียก lib \"นอก transaction\" (อีเมลล้มต้องไม่ rollback การอนุมัติ · lib ไม่ retry ให้)\n--    emailService.sendEmail({ emailId, mailTo, mailCc, param:{docNo, storeName, amount}, userId })\n--    lib อ่าน email_template แล้ว INSERT email_sent (is_sent \'Y\'/\'N\' + error) ให้เอง — return แค่ Success/Fail\n\n-- 4) รายงานตามเก็บเมลที่ส่งไม่สำเร็จ (⚠️ คอลัมน์จริงคือ send_by ไม่ใช่ sent_by)\nSELECT email_sent_id, email_id, mail_to, mail_cc, is_sent, error, sent_date, send_by\nFROM email_sent\nWHERE is_sent = \'N\' AND sent_date >= :since\nORDER BY sent_date DESC;',
+    'GET /api/v1/sgi/document/{docNo}/timeline':
+      '-- ✅ DP-7 ปิดแล้ว 2026-08-24: sgi_consideration_logs เป็น timeline เต็มของ SGI (ตารางของเราเอง)\n--    engine เก็บ timeline แต่ไม่มีรหัสผลพิจารณา/ไฟล์แนบ จึงไม่ join getHistory() (DP-1 กำหนดคีย์ที่ใช้ค้น)\n--    ดู SBP/SBPGI-vs-existing-system.md หัวข้อ 4\nSELECT section_code, consider_by, result, detail, action_datetime\nFROM sgi_consideration_logs\nWHERE doc_no = :docNo\nORDER BY action_datetime;',
+    'POST /api/v1/sgi/document/{docNo}/attachments':
+      '-- ตรวจขนาด ≤ 5MB, sanitize filename, sha256 ก่อน commit metadata\n-- ⚠️ scan_status เริ่มที่ \'PENDING\' เสมอ — ระบบยังไม่มีตัวสแกน ให้ตัวสแกนอัปเดตเป็น CLEAN/BLOCKED ทีหลัง\n--    (เขียน CLEAN ตอน insert = ประกาศว่าสแกนผ่านทั้งที่ไม่เคยสแกน)\nINSERT INTO sgi_document_attachments (doc_no, section_code, file_name, mime_type, file_size, storage_provider, bucket, object_key, sha256, scan_status, uploaded_by, uploaded_at)\nVALUES (:docNo, :sectionCode, :fileName, :mimeType, :fileSize, :storageProvider, :bucket, :objectKey, :sha256, :scanClean, :empId, :now);',
+    'GET /api/v1/sgi/document/{docNo}/sales':
+      '-- หา impact_process_id ของเอกสาร แล้วอ่านยอดขาย 4 หน้าต่าง × 15 วัน\nSELECT ss.id AS sales_summary_id, ss.growth_rate_diff, ss.total_working_days\nFROM sgi_compensation_documents d\nJOIN sgi_fgi_impact_sales_summaries ss ON ss.impact_process_id = d.impact_process_id\nWHERE d.doc_no = :docNo;\n\nSELECT window_no, txn_date, sales_amount, sales_diff, is_outlier\nFROM sgi_sales_transactions\nWHERE sales_summary_id = :salesSummaryId\nORDER BY window_no, txn_date;',
+    'GET /api/v1/sgi/lookup/document-statuses':
+      '-- 🔴 แก้ 2026-09-16 — ของเดิมรันไม่ได้: sps_store.workflow_status **ไม่มีคอลัมน์ seq**\n--    (ตารางจริงมีแค่ status_id · status_name · create_date · version_id)\n--    และ status_id เป็น integer surrogate ต่างกันตาม environment ใช้เป็น statusCode ไม่ได้\n--    รหัส 2 ตัวอักษร (06/08/01/02/03/99) เป็นของ SGI อยู่ที่ common_code · seed แล้ว\nSELECT code_value AS status_code, code_name AS status_name, seq_no AS sort_order\nFROM sps_store.common_code\nWHERE code_type = \'SGI_DOC_STATUS\' AND active_flag = \'Y\'\nORDER BY seq_no;',
+    'GET /api/v1/sgi/lookup/workflow-sections':
+      '-- 🔴 แก้ 2026-09-16 — ของเดิมรันไม่ได้ 2 จุด:\n--    (1) c.code_value = s.state_id เทียบ varchar กับ integer · seed ใส่ code_value = \'100000\' ไม่ใช่รหัสขั้น\n--    (2) อ่านยอดจาก other_value ซึ่งไม่ได้ seed — contract อยู่ที่ code_name\n-- วงเงินเป็นค่าเดียวทั้งระบบ (เกณฑ์เดียว 100,000 · มติ 2026-08-18) ไม่ใช่ค่าแยกรายขั้น\n-- ⚠️ BE ต้อง fail-fast เมื่อ threshold หาย/ซ้ำ/แปลงเป็นตัวเลขไม่ได้ — SQL อย่างเดียวทำแทนไม่ได้\nSELECT c.code_value AS section_code, c.code_name AS section_name, c.seq_no AS sort_order,\n       (SELECT CAST(l.code_name AS NUMERIC)\n          FROM sps_store.common_code l\n         WHERE l.code_type = \'SGI_APPROVE_LIMIT\'\n           AND l.code_value = \'100000\' AND l.active_flag = \'Y\') AS approve_limit_amount\nFROM sps_store.common_code c\nWHERE c.code_type = \'SGI_DOC_STATUS\' AND c.active_flag = \'Y\'\n  AND c.code_value <> \'99\'          -- 99 = เสร็จสิ้น ไม่ใช่ขั้นที่รอคนทำ\nORDER BY c.seq_no;',
+    /* ตัดออกถาวร 2026-08-05 — SQL ของ /operators* ถูกลบพร้อม endpoint · ใช้ group+scope ของ auth-backend */
+    'GET /api/v1/sgi/master/competitors':
+      '-- master แบรนด์คู่แข่ง (ตั้งต้น 11 รายการ รหัส 01-11 · เพิ่มได้จากหน้าจอ)\n-- ❌ ไม่ SELECT is_active (มติ 2026-09-23) — หน้าจอคู่แข่งไม่มีคอลัมน์สถานะ\n--    คอลัมน์ยังอยู่ในฐานแต่ไม่มีใครอ่านหรือเขียน\n-- ⚠️ WHERE ต่อแบบ dynamic ที่ service — ส่ง :q มาจึงจะมีบรรทัด ILIKE (ไม่ส่ง = ไม่มี WHERE เลย)\nSELECT competitor_code, name_th, name_en, remark\nFROM sgi_competitors\n-- 🔴 ค้นครอบ **รหัส + ชื่อไทย + ชื่ออังกฤษ + รายละเอียด** (แก้ 2026-09-25)\n--    เหตุผลเดียวกับปัจจัยภายนอก — ช่องบนหน้าจอเขียนว่า \"ค้นหารหัส / ชื่อคู่แข่ง (ไทย-อังกฤษ)\"\nWHERE (competitor_code ILIKE :q OR name_th ILIKE :q OR name_en ILIKE :q OR remark ILIKE :q)\nORDER BY competitor_code\nLIMIT :size OFFSET :off;',
+    'POST /api/v1/sgi/master/competitors':
+      '-- competitor_code ห้ามซ้ำ (ไม่งั้น 409) · ชื่อไทยและอังกฤษบังคับทั้งคู่\n-- is_active ใช้ค่า DEFAULT TRUE ของคอลัมน์ — ไม่มีฟีเจอร์เปิด/ปิดใช้งาน (มติ 2026-09-23)\nINSERT INTO sgi_competitors (competitor_code, name_th, name_en, remark)\nVALUES (:code, :nameTh, :nameEn, :remark);',
+    'PUT /api/v1/sgi/master/competitors/{code}':
+      '-- ห้ามแก้ competitor_code (เป็น PK และถูกอ้างเป็น brand_code จาก sgi_document_competitors\n--    และ sgi_fgi_impact_competitors — แก้แล้วแถวเดิมจะหา master ไม่เจอ)\nUPDATE sgi_competitors\n   SET name_th = :nameTh, name_en = :nameEn, remark = :remark,\n       updated_at = CURRENT_TIMESTAMP   -- ไม่มีสถานะเปิด/ปิด (มติ 2026-09-23)\n WHERE competitor_code = :code;',
+    'DELETE /api/v1/sgi/master/competitors/{code}':
+      '-- ตรวจไม่ถูกอ้างก่อนลบ (ไม่งั้น 409)\n-- ⚠️ ต้องเช็ค **2 ตาราง** — master แบรนด์ถูกอ้างด้วยคอลัมน์ brand_code ทั้งคู่\n--    คอลัมน์ competitor_code ใน sgi_document_competitors **ไม่มีแล้ว** — ถูกแยกเมื่อ 2026-09-09\n--    เป็น competitor_store_code (รหัสสาขาจาก ALLMAP ไม่มี FK) + brand_code (รหัสแบรนด์ 01-11 มี FK)\n--    เช็คแต่ฝั่งเอกสารจะปล่อยแถวฝั่ง pipeline หลุดไปตายที่ FK -> ผู้ใช้ได้ 500 แทน 409\nSELECT 1 FROM sgi_document_competitors   WHERE brand_code = :code\nUNION ALL\nSELECT 1 FROM sgi_fgi_impact_competitors WHERE brand_code = :code\nLIMIT 1;\n\nDELETE FROM sgi_competitors WHERE competitor_code = :code;',
+    'GET /api/v1/sgi/document/{docNo}/attachments/{attachId}/download':
+      '-- ตรวจสิทธิ์อ่านเอกสาร + attachment ต้องเป็นของ docNo แล้วตัดสิน scan_status ตามนโยบายเดียว\n--    สวิตช์ SGI_ALLOW_PENDING_DOWNLOAD ใน mas_param (Y/N) ส่งเข้ามาเป็นพารามิเตอร์ boolean\n--    CLEAN ได้เสมอ · BLOCKED/FAILED ไม่ได้เสมอ (422 FILE_SCAN_BLOCKED) · PENDING ขึ้นกับสวิตช์\n--    รายละเอียดเต็ม: LLDD-BE-Integration-SBP-Platform หัวข้อ 5\nSELECT attach_id, bucket, object_key, file_name, mime_type, scan_status\nFROM sgi_document_attachments\nWHERE doc_no = :docNo AND attach_id = :attachId\n  AND deleted_flag = \'N\';   -- ไฟล์ที่ถูกลบแบบ soft delete ห้ามดาวน์โหลด',
+    'GET /api/v1/sgi/document/{docNo}/attachments/download-all':
+      '-- รวมไฟล์แนบทั้งหมดเป็น .zip — ตรวจสิทธิ์อ่านเอกสารก่อน แล้วรวมเฉพาะไฟล์ที่ scan ผ่าน\n-- ⚠️ นโยบาย AV เคาะแล้ว 2026-09-07 (ดู LLDD-BE-Integration-SBP-Platform หัวข้อ 5) — ยังไม่มีตัวสแกนในระบบ จึงใช้สวิตช์ SGI_ALLOW_PENDING_DOWNLOAD คุมว่าจะให้ PENDING ดาวน์โหลดได้หรือไม่\n-- ไม่มีไฟล์ที่ดาวน์โหลดได้เลย -> 404 (ไม่คืน zip เปล่า)\nSELECT attach_id, bucket, object_key, file_name, mime_type, file_size\nFROM sgi_document_attachments\nWHERE doc_no = :docNo\n  AND deleted_flag = \'N\'                                    -- ไฟล์ที่ถูกลบแบบ soft delete ห้ามรวมลง zip\n  AND (scan_status = \'CLEAN\'\n       OR (scan_status = \'PENDING\' AND :allowPendingDownload))   -- สวิตช์ SGI_ALLOW_PENDING_DOWNLOAD\n  AND scan_status NOT IN (\'BLOCKED\', \'FAILED\')                    -- ปิดตายเสมอ ไม่ขึ้นกับสวิตช์\nORDER BY section_code, attach_id;',
+    'GET /api/v1/sgi/master/factors':
+      '-- ❌ ไม่ SELECT is_active (มติ 2026-09-22) — ฟีเจอร์เปิด/ปิดใช้งานไม่มีใน SRS ข้อ 17\n--    ไม่มีในระบบ K2 เดิม (FactorProfile) และไม่มีบนหน้าจอ\n-- ⚠️ WHERE ต่อแบบ dynamic ที่ service — ส่ง :q มาจึงจะมีบรรทัด ILIKE (ไม่ส่ง = ไม่มี WHERE เลย)\n-- 🔴 ค้นครอบ **รหัส + ชื่อ + รายละเอียด** (แก้ 2026-09-25) — ของเดิมค้นแต่ factor_name\n--    ช่องบนหน้าจอเขียนว่า \"ค้นหารหัส / ชื่อปัจจัยภายนอก\" และเดิมหน้าจอกรองฝั่ง client ครบทุกคอลัมน์\n--    พอย้ายมาค้นที่ API (จำเป็น — UAT มี 6,013 แถว) ถ้าไม่ขยาย ผู้ใช้จะค้นด้วยรหัสไม่เจอ\nSELECT factor_code, factor_name, factor_remark\nFROM sgi_external_factors\nWHERE (factor_code ILIKE :q OR factor_name ILIKE :q OR factor_remark ILIKE :q)\nORDER BY factor_code\nLIMIT :size OFFSET :off;',
+    'POST /api/v1/sgi/master/factors':
+      '-- factor_code ห้ามซ้ำ (ไม่งั้น 409)\nINSERT INTO sgi_external_factors (factor_code, factor_name, factor_remark)\nVALUES (:factorCode, :factorName, :factorRemark);',
+    'PUT /api/v1/sgi/master/factors/{code}':
+      '-- ไม่มี audit/เหตุผลแล้ว (ยกเลิก audit_logs 2026-08-07)\nUPDATE sgi_external_factors SET factor_name = :factorName, factor_remark = :factorRemark\nWHERE factor_code = :code;',
+    'DELETE /api/v1/sgi/master/factors/{code}':
+      '-- ตรวจไม่ถูกอ้างในเอกสารก่อนลบ (ไม่งั้น 409)\nSELECT 1 FROM sgi_document_external_factors WHERE factor_code = :code;\n\nDELETE FROM sgi_external_factors WHERE factor_code = :code;',
+    /* ตัดออกถาวร 2026-08-05 — SQL ของ /employees/search · /menu-permissions* · /roles* · /menus* ถูกลบพร้อม endpoint · ใช้ auth-backend + employee backend ของระบบ SBP เดิม */
+    'GET /api/v1/sgi/report/status-summary':
+      '-- 14 คอลัมน์ตาม SDD สไลด์ 60 ; ต้องระบุ :year และ :periodStatementFrom/:periodStatementTo เสมอ ; :status ไม่บังคับ ; เอาเฉพาะเอกสารที่มีเลขที่แล้ว\n-- ⚠️ ตาราง stores ของ SGI ถูกตัด 2026-08-06 — ใช้ store ของระบบ SBP เดิม (sps_store 19,402 แถว): คีย์ store_id · ภาค `zone` (ไม่ใช่ `zone_cd` ซึ่งว่างทั้งตาราง — วัด 2026-09-22)\nSELECT si.store_id   AS impacted_store_code, si.store_name   AS impacted_store_name,\n       si.zone  AS impacted_region,     si.store_type   AS impacted_store_type,\n       pr.impact_month, pr.impact_year, d.statement_date,   -- statement_date = ค.ศ. (คอลัมน์ใหม่คู่กับ statement_id)\n       ns.store_id   AS new_store_code,      ns.store_name  AS new_store_name,\n       ns.zone  AS new_region,          ns.store_type  AS new_store_type,\n       h.compensate_amount, d.loop_no AS round_no, d.created_at AS created_date, d.doc_no\nFROM sgi_compensation_documents d\nJOIN sgi_fgi_impact_processes pr ON pr.id = d.impact_process_id\nJOIN store si                ON si.store_id = d.impacted_store_code\nLEFT JOIN sgi_compensation_histories h ON h.ref_doc_no = d.doc_no\nLEFT JOIN sgi_document_new_stores dns  ON dns.doc_no = d.doc_no\nLEFT JOIN store ns                 ON ns.store_id = dns.new_store_code\nLEFT JOIN LATERAL (\n  SELECT result_category FROM sgi_consideration_logs\n  WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1\n) cl ON TRUE\nWHERE d.year = :year\n  AND (:status IS NULL OR d.status_code = :status)              -- 🔴 ไม่บังคับแล้ว (มติ 2026-09-22) ไม่ส่ง = ไม่กรองสถานะ\n  AND (:impactedStoreCode IS NULL OR d.impacted_store_code = :impactedStoreCode)\n  AND (:newStoreCode      IS NULL OR dns.new_store_code    = :newStoreCode)\n  AND d.statement_date BETWEEN :periodStatementFrom AND :periodStatementTo  -- 🔴 ค.ศ. ; บังคับทั้งคู่เสมอ + ช่วงไม่เกิน 1 ปี (มติ 2026-09-22)\n  AND (:storeTypes IS NULL OR si.store_type  = ANY(:storeTypes))       -- 🔴 โดเมนจริง 7 ค่า FC1 B FB2 FB1 FAM FVC FVB (store.store_type · วัด 2026-09-22) ไม่ใช่ A B C D E PTT บริษัท ที่เคยเขียนไว้\n  AND (:regions    IS NULL OR si.zone = ANY(:regions))          -- 13 ภาค + ภาคใหม่อัตโนมัติ\n  AND (:result     IS NULL OR cl.result_category = :result)            -- APPROVE / REJECT (ไม่บังคับ)\nORDER BY d.doc_no\nLIMIT :size OFFSET :offset;',
+    'GET /api/v1/sgi/report/status-summary/export':
+      '-- เงื่อนไขเดียวกับ status-summary ทุกตัว แต่ **ไม่ตัดหน้า** (ไม่มี LIMIT/OFFSET ท้ายคำสั่ง)\n-- ⚠️ เป็นคนละ SELECT กับเส้นค้นหา — กว้างกว่า 5 ช่องตามไฟล์ตัวอย่าง:\n--    transfer_sbp_date (วันที่โอนเป็นร้าน SP) · ชื่อสถานะ · ชื่อผู้ดำเนินการ · ชื่อผลพิจารณา · รอดำเนินการ(วัน)\n-- 🔴 consider_by เก็บค่าปนชนิด (migrate มาเป็นชื่อคน · ของใหม่เป็น user id) → เทียบด้วย ::text ห้าม cast ::bigint\nSELECT … , ist.transfer_sbp_date, sc.code_name AS status, rc.code_name AS result,\n       CASE WHEN d.status_code = \'99\' THEN 0 ELSE GREATEST(CURRENT_DATE - d.updated_at::date, 0) END AS days_pending\n  FROM sgi_compensation_documents d\n  LEFT JOIN sgi_impacted_stores ist ON ist.store_code = d.impacted_store_code\n  LEFT JOIN LATERAL (SELECT result_category, consider_by FROM sgi_consideration_logs\n                      WHERE doc_no = d.doc_no ORDER BY action_datetime DESC LIMIT 1) last_decision ON TRUE\n  LEFT JOIN business_user bu ON bu.user_id::text = btrim(last_decision.consider_by)\n ORDER BY d.doc_no',
+    'POST /api/v1/sgi/workflow/instances':
+      '-- Gen Flow Gate — ข้อมูลทุกช่องที่ gate ต้องใช้ ของ impact process หนึ่งรอบ\n-- โครง join ยกมาจากคิวรีของ Job 8b ตรง ๆ เพื่อให้สองฝั่งเห็นข้อมูลชุดเดียวกัน\n--   · ประเภทร้านอยู่ที่ mas_store.status_type ไม่ใช่คอลัมน์ใน sgi_*\n--   · นิติบุคคลผูกกับ **สัญญา** (fr_store.juristic_id) ไม่ใช่กับสาขา — mas_store ไม่มีคอลัมน์นี้\n--   · ทุก join ที่อาจคืนหลายแถวครอบด้วย LATERAL + LIMIT 1 กันแถวคูณ\n--   · ระยะทางไม่ใช่เงื่อนไขของ gate นี้ — กรองตามรัศมีไปแล้วตั้งแต่ Job 2\nSELECT p.id, p.impacted_store_code, p.workflow_generation_status, p.flag_action,\n       d.id AS document_id, d.doc_no, d.status_code, d.current_section_code, d.version_no,\n       msi.status_type AS branch_type_code, ist.opt_dv_user_id,\n       ji.juristic_name AS juristic_impacted, jn.juristic_name AS juristic_new,\n       s.growth_rate_diff, s.sales_status\nFROM sgi_fgi_impact_processes p\nLEFT JOIN LATERAL (SELECT c.id FROM sgi_fgi_impact_compensations c\n                    WHERE c.impact_process_id = p.id\n                    ORDER BY c.compensate_year DESC, c.compensate_month DESC, c.id DESC\n                    LIMIT 1) lc ON TRUE\nLEFT JOIN sgi_compensation_documents d ON d.impact_compensation_id = lc.id\nLEFT JOIN sgi_impacted_stores ist ON ist.store_code = p.impacted_store_code\nLEFT JOIN sgi_fgi_impact_sales_summaries s ON s.impact_process_id = p.id\nLEFT JOIN mas_store msi ON msi.branch_id = p.impacted_store_code\nLEFT JOIN LATERAL (SELECT fs.juristic_id FROM fr_store fs\n                    WHERE fs.store_id = p.impacted_store_code AND COALESCE(fs.status,\'-\') <> \'D\'\n                    ORDER BY fs.start_date DESC, fs.cancel_type, fs.order_id DESC LIMIT 1) ci ON TRUE\nLEFT JOIN juristic ji ON ji.juristic_id = ci.juristic_id\nLEFT JOIN LATERAL (SELECT fs.juristic_id FROM fr_store fs\n                    WHERE fs.store_id = d.new_store_code AND COALESCE(fs.status,\'-\') <> \'D\'\n                    ORDER BY fs.start_date DESC, fs.cancel_type, fs.order_id DESC LIMIT 1) cn ON TRUE\nLEFT JOIN juristic jn ON jn.juristic_id = cn.juristic_id\nWHERE p.id = :impactProcessId\nFOR UPDATE OF p;\n\n-- เกณฑ์ growth อ่านสดจาก mas_param **ห้าม hardcode -10** (คีย์คือ param_name ไม่ใช่ param_code)\nSELECT param_value FROM mas_param WHERE param_name = \'SGI_GROWTH_RATE_THRESHOLD\' AND active_flag = \'Y\' LIMIT 1;\n\n-- ไม่ผ่านถาวร (branch type นอกชุด · นิติบุคคลเดียวกัน · growth เกินเกณฑ์) → N แล้วคืน 200 + skipReason\nUPDATE sgi_fgi_impact_processes SET workflow_generation_status = \'N\', updated_by = :actor, updated_at = CURRENT_TIMESTAMP\nWHERE id = :impactProcessId AND workflow_generation_status = \'W\';\n\n-- ข้อมูลยังไม่พร้อม (DV ว่าง · ไม่มีเอกสาร · sales_status ไม่ใช่ Y/N · growth NULL)\n--   → คง W **ไม่รัน UPDATE ใด ๆ** แล้ว rollback ทั้ง transaction ก่อนคืน 422 WORKFLOW_NOT_READY\n\n-- ผ่าน gate → เปิด instance ผ่าน @srm/glb-workflow (ห้าม INSERT sps_store.workflow_* เอง)\n--   initializeWorkflow(versionId, referenceId = sgi_compensation_documents.id, userId = opt_dv_user_id)\n--   addPreApprover(versionId, referenceId, stateId = 1000001 (ขั้น 06), approver = opt_dv_user_id, seq = 1)\n--   entryStateCode = \'08\' → eventWorkflow(event=\'submit\', eventParam={ result: \'ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ\' }) ต่อทันที\n--     เพราะ initializeWorkflow เปิดที่ workflow_version.initial_state_id เสมอ รับ state เป็นพารามิเตอร์ไม่ได้\n--   getTransaction(versionId, referenceId) ยืนยันว่าเปิดสำเร็จจริงก่อนคืน 201\nUPDATE sgi_compensation_documents\n   SET status_code = :firstSection, current_section_code = :firstSection,\n       version_no = version_no + 1, updated_by = :actor, updated_at = CURRENT_TIMESTAMP\nWHERE doc_no = :docNo AND version_no = :versionNo;   -- optimistic lock\n\nUPDATE sgi_fgi_impact_processes SET workflow_generation_status = \'Y\', updated_by = :actor, updated_at = CURRENT_TIMESTAMP\nWHERE id = :impactProcessId AND workflow_generation_status = \'W\';',
+    'GET /api/v1/sgi/workflow/instances/{id}':
+      '-- {id} รับได้ทั้ง transaction_id และเลขที่เอกสาร YYYY/xxxxx → คิวรีคนละตัว\n-- ✅ DP-1: reference_id = sgi_compensation_documents.id (surrogate) เก็บเป็น varchar จึง join ด้วย id::text\n-- ⚠️ DP-2: sps_store.workflow_transaction ไม่มี PK/index (19,327 แถว) → จำกัดด้วย version_id เสมอ\nSELECT t.transaction_id AS instance_id, t.reference_id,\n       d.doc_no, d.status_code, d.current_section_code, st.status_name\nFROM sps_store.workflow_transaction t\nLEFT JOIN sps_store.workflow_status st ON st.status_id = t.current_status_id\nLEFT JOIN sgi_compensation_documents d ON d.id::text = t.reference_id\nWHERE t.version_id = :sgiVersionId AND t.transaction_id = :id;\n\n-- ถามด้วยเลขที่เอกสาร — เริ่มจากฝั่งเอกสารเพื่อให้ใช้ index ของ doc_no\nSELECT t.transaction_id AS instance_id, t.reference_id,\n       d.doc_no, d.status_code, d.current_section_code, st.status_name\nFROM sgi_compensation_documents d\nLEFT JOIN sps_store.workflow_transaction t ON t.reference_id = d.id::text AND t.version_id = :sgiVersionId\nLEFT JOIN sps_store.workflow_status st ON st.status_id = t.current_status_id\nWHERE d.doc_no = :id;   -- {id} ที่ส่งมาเป็นเลขที่เอกสาร',
+    'GET /api/v1/sgi/workflow/summary':
+      '-- นับ W/Y/N ต่องวด — เติมให้ครบสามค่าเสมอในชั้น service (สถานะที่ไม่มีแถวต้องเป็น 0 ไม่ใช่หายไป)\nSELECT p.workflow_generation_status AS status, COUNT(*)::int AS count\nFROM sgi_fgi_impact_processes p\nWHERE (:period::text IS NULL OR p.impact_month = :period::text)   -- YYYY-MM (ค.ศ.) · ไม่ระบุ = ทุกงวด\nGROUP BY p.workflow_generation_status;\n\n-- งานค้างต่อขั้น — นับจากหัวเอกสารของ SGI **ไม่ aggregate จาก sps_store.workflow_***\n-- เอกสารที่จบแล้วตั้ง current_section_code = NULL ตาม contract ของ DDL จึงไม่ถูกนับเอง\n-- 🔴 เลือกทางนี้เพราะ workflow_transaction ไม่มี PK/index (DP-2) ส่วนหัวเอกสารมี index อยู่แล้ว\nSELECT d.current_section_code AS section_code, COUNT(*)::int AS count\nFROM sgi_compensation_documents d\nWHERE d.current_section_code IS NOT NULL\n  -- 🔴 แก้ 2026-09-22 (เจอตอนยิงจริง) — ห้ามใช้ account_month กรองงวด\n  --    คอลัมน์นั้นเป็น **INTEGER 1-12** ไม่ใช่ YYYY-MM → operator does not exist: integer = text\n  --    และ postgres type-check ทั้งนิพจน์ตอน parse การ short-circuit :period IS NULL ไม่ช่วย\n  --    ใช้ impact_month (CHAR(7)) ซึ่งเป็นมิติงวดเดียวกับ generationSummary ด้านบน\n  AND (:period::text IS NULL OR d.impact_month = :period::text)\nGROUP BY d.current_section_code\nORDER BY d.current_section_code;',
+    /* ❌ ตัดออก 2026-09-22 — SQL ของ GET /sgi/interface/tracking และ /pending-ack ถูกลบพร้อม endpoint
+       (ไม่มีหน้าจอนี้ทั้งใน K2 เดิมและใน SRS/SDD · ไม่มีผู้เรียก — batch อ่านตารางตรงด้วย SQL) */
+    /* ตัดออกถาวร 2026-08-06 — SQL ของ GET /dashboard/summary ถูกลบพร้อม endpoint (ถอด stat cards ออกจากหน้ารายการแล้ว) */
+  };
+
+  /* ===== Flowchart (inline SVG · เฉพาะ endpoint ที่ซับซ้อน) ===== */
+  function fcW(n){ return n.w || (n.type === 'dec' ? 240 : (n.type === 'proc' ? 280 : (n.type === 'err' ? 220 : 240))); }
+  function fcH(n){ return n.h || (n.type === 'dec' ? 68 : (n.type === 'proc' ? 52 : 40)); }
+  function fcText(n, x, y){
+    var lines = String(n.text).split('\n'), fs = n.fs || 11, lh = fs + 3;
+    var startY = y - ((lines.length - 1) * lh) / 2 + fs / 3;
+    var col = (n.type === 'err') ? '#c0392b' : (n.type === 'termOk' ? '#15803d' : '#2b3440');
+    var t = '';
+    for (var i = 0; i < lines.length; i++)
+      t += '<text x="' + x + '" y="' + (startY + i * lh) + '" text-anchor="middle" font-size="' + fs + '" fill="' + col + '" font-family="Prompt,Sarabun,sans-serif">' + esc(lines[i]) + '</text>';
+    return t;
+  }
+  function fcNode(n){
+    var x = n.x, y = n.y, w = fcW(n), h = fcH(n), half = w / 2, hh = h / 2;
+    if (n.type === 'dec'){
+      var pts = x + ',' + (y - hh) + ' ' + (x + half) + ',' + y + ' ' + x + ',' + (y + hh) + ' ' + (x - half) + ',' + y;
+      return '<polygon points="' + pts + '" fill="#fff4d6" stroke="#d9a441" stroke-width="1.5"/>' + fcText(n, x, y);
+    }
+    var fill = '#fff', stroke = '#96b4f0';
+    if (n.type === 'term'){ fill = '#eef4ff'; stroke = '#2f6fed'; }
+    else if (n.type === 'termOk'){ fill = '#e7f7ee'; stroke = '#15803d'; }
+    else if (n.type === 'err'){ fill = '#fdecec'; stroke = '#d98a8a'; }
+    var rx = (n.type === 'proc') ? 9 : h / 2;
+    return '<rect x="' + (x - half) + '" y="' + (y - hh) + '" width="' + w + '" height="' + h + '" rx="' + rx + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>' + fcText(n, x, y);
+  }
+  function fcEdge(e, byId){
+    var a = byId[e.from], b = byId[e.to], x1, y1, x2, y2, lx, ly, anchor = '';
+    if (e.dir === 'right'){
+      x1 = a.x + fcW(a) / 2; y1 = a.y; x2 = b.x - fcW(b) / 2; y2 = b.y;
+      lx = (x1 + x2) / 2; ly = y1 - 5; anchor = ' text-anchor="middle"';
+    } else {
+      x1 = a.x; y1 = a.y + fcH(a) / 2; x2 = b.x; y2 = b.y - fcH(b) / 2;
+      lx = x1 + 8; ly = (y1 + y2) / 2;
+    }
+    var line = '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#8493a5" stroke-width="1.6" marker-end="url(#fcArrow)"/>';
+    var lbl = e.label ? '<text x="' + lx + '" y="' + ly + '" font-size="10" fill="#5d6b7a" font-family="Prompt,Sarabun,sans-serif"' + anchor + '>' + esc(e.label) + '</text>' : '';
+    return line + lbl;
+  }
+  function renderFlow(spec){
+    var byId = {}; spec.nodes.forEach(function(n){ byId[n.id] = n; });
+    var svg = '<svg viewBox="0 0 ' + spec.w + ' ' + spec.h + '" width="100%" style="min-width:' + Math.min(spec.w, 560) + 'px; max-width:' + spec.w + 'px; display:block; margin:0 auto;" font-family="Prompt,Sarabun,sans-serif" role="img" aria-label="flowchart">';
+    svg += '<defs><marker id="fcArrow" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L6.5,3 L0,6 Z" fill="#8493a5"/></marker></defs>';
+    spec.edges.forEach(function(e){ svg += fcEdge(e, byId); });
+    spec.nodes.forEach(function(n){ svg += fcNode(n); });
+    return svg + '</svg>';
+  }
+
+  var FLOWCHART_BY_PATH = {
+    'POST /api/v1/sgi/document/{docNo}/actions': { w:720, h:724, nodes:[
+      { id:'t1', type:'term', x:240, y:22, w:320, text:'POST · ส่งผลพิจารณา (เจ้าของงานปัจจุบัน)' },
+      { id:'d1', type:'dec', x:240, y:112, text:'เป็นเจ้าของงานขั้นนี้?' },
+      { id:'e403', type:'err', x:540, y:112, w:240, text:'403 · ไม่ใช่เจ้าของงานขั้นนี้' },
+      { id:'d2', type:'dec', x:240, y:212, text:'เลือกผลการพิจารณาแล้ว?' },
+      { id:'e422', type:'err', x:560, y:212, w:290, text:'422 · “ท่านยังไม่เลือกผลการพิจารณา…”' },
+      { id:'p1', type:'proc', x:240, y:300, w:340, text:'ปิด task เดิม + INSERT sgi_consideration_logs' },
+      { id:'d3', type:'dec', x:240, y:404, w:300, h:78, text:'section = 06\nและผล = ไม่ชดเชย/หยุดชดเชย?' },
+      { id:'endE', type:'termOk', x:560, y:404, w:240, text:'เสร็จสิ้นดำเนินการ (END)' },
+      { id:'p2', type:'proc', x:240, y:514, w:400, h:66, text:'< 100,000 → จบที่ GM (02)\n≥ 100,000 → AVP สำนัก SBPM (03) → จบ\nตัดขั้นบัญชี 04/05 · วงเงินตาม SDD GI 24/02/2026' },
+      { id:'p3', type:'proc', x:240, y:612, w:400, h:58, text:'engine เปิดงานขั้นถัดไป (sps_store.workflow_approver)\n+ UPDATE สถานะเอกสาร\nแล้ว SGI เรียก sendEmail() นอก transaction' },
+      { id:'end2', type:'termOk', x:240, y:694, w:320, text:'200 · nextSection / statusCode' }
+    ], edges:[
+      { from:'t1', to:'d1' },
+      { from:'d1', to:'e403', dir:'right', label:'ไม่' },
+      { from:'d1', to:'d2', label:'ใช่' },
+      { from:'d2', to:'e422', dir:'right', label:'ไม่' },
+      { from:'d2', to:'p1', label:'ใช่' },
+      { from:'p1', to:'d3' },
+      { from:'d3', to:'endE', dir:'right', label:'ใช่' },
+      { from:'d3', to:'p2', label:'ไม่' },
+      { from:'p2', to:'p3' },
+      { from:'p3', to:'end2' }
+    ]},
+
+    'POST /api/v1/sgi/workflow/instances': { w:720, h:734, nodes:[
+      { id:'t1', type:'term', x:250, y:22, w:340, text:'Batch Scheduler เรียก (service token)' },
+      { id:'d1', type:'dec', x:250, y:110, text:'service token ถูกต้อง?' },
+      { id:'e401', type:'err', x:560, y:110, w:220, text:'401 · service token ไม่ถูกต้อง' },
+      { id:'d2', type:'dec', x:250, y:214, w:340, h:98, text:'ผ่านเงื่อนไขถาวร?\nbranch allowed · distance ไม่เกินเกณฑ์เมื่อมีค่า · DV ไม่ว่าง\njuristic ไม่เท่ากันเมื่อมีค่า · growth ≤ -10 เมื่อมีค่า' },
+      { id:'pN', type:'proc', x:560, y:214, w:260, h:56, text:'set workflow_generation_status = N\n→ ไม่สร้าง flow' },
+      { id:'d3', type:'dec', x:250, y:336, w:340, h:98, text:'ข้อมูล Gate พร้อม?\ndistance/juristic/growth ไม่เป็น NULL\nsales_status ∈ {Y,N}' },
+      { id:'pW', type:'proc', x:590, y:336, w:240, h:56, text:'คง workflow_generation_status = W\n→ 422 (รอบถัดไปลองใหม่)' },
+      { id:'p1', type:'proc', x:250, y:474, w:400, h:66, text:'สร้าง sgi_compensation_documents (ถ้ายังไม่มี)\n+ initialize workflow ที่ engine (sps_store) state 06' },
+      { id:'p2', type:'proc', x:250, y:578, w:400, h:56, text:'set workflow_generation_status = Y\n+ ส่งอีเมลสรุปราย DV' },
+      { id:'end', type:'termOk', x:250, y:672, w:380, text:'201 · instanceId / docNo / workflowGenerationStatus = Y' }
+    ], edges:[
+      { from:'t1', to:'d1' },
+      { from:'d1', to:'e401', dir:'right', label:'ไม่' },
+      { from:'d1', to:'d2', label:'ใช่' },
+      { from:'d2', to:'pN', dir:'right', label:'ไม่' },
+      { from:'d2', to:'d3', label:'ใช่' },
+      { from:'d3', to:'pW', dir:'right', label:'ไม่' },
+      { from:'d3', to:'p1', label:'ใช่' },
+      { from:'p1', to:'p2' },
+      { from:'p2', to:'end' }
+    ]},
+
+    'POST /api/v1/sgi/document': { w:680, h:604, nodes:[
+      { id:'t1', type:'term', x:230, y:22, w:320, text:'รับคำขอสร้างเอกสาร (MANUAL / FS)' },
+      { id:'d1', type:'dec', x:230, y:112, w:300, h:74, text:'ร้าน + เดือนที่กระทบ\nมีเอกสารอยู่แล้ว?' },
+      { id:'e409', type:'err', x:520, y:112, w:250, text:'409 · ร้าน/เดือนนี้มีเอกสารแล้ว' },
+      { id:'d2', type:'dec', x:230, y:226, text:'ข้อมูลบังคับครบ?' },
+      { id:'e422', type:'err', x:500, y:226, w:210, text:'422 · ข้อมูลบังคับไม่ครบ' },
+      { id:'p1', type:'proc', x:230, y:318, w:360, text:'ออกเลขที่ YYYY/xxxxx (running ต่อปี เริ่ม 00001)' },
+      { id:'p2', type:'proc', x:230, y:404, w:380, h:58, text:'INSERT sgi_compensation_documents\n+ initialize workflow ที่ engine (sps_store) state 06' },
+      { id:'p3', type:'proc', x:230, y:498, w:340, text:'SGI เรียก sendEmail() ด้วยเลข template\nจาก workflow_route.email_id' },
+      { id:'end', type:'termOk', x:230, y:568, w:220, text:'201 · docNo' }
+    ], edges:[
+      { from:'t1', to:'d1' },
+      { from:'d1', to:'e409', dir:'right', label:'ใช่' },
+      { from:'d1', to:'d2', label:'ไม่' },
+      { from:'d2', to:'e422', dir:'right', label:'ไม่' },
+      { from:'d2', to:'p1', label:'ใช่' },
+      { from:'p1', to:'p2' },
+      { from:'p2', to:'p3' },
+      { from:'p3', to:'end' }
+    ]}
+  };
+
+  /* ===== catalog ===== */
+  (function renderCatalog(){
+    var html = '';
+    GROUPS.forEach(function(g, gi){
+      html += '<div class="api-group"><h3><span class="gnum">' + (gi + 1) + '</span>' + esc(g.name) +
+        ' <span style="font-weight:400;color:#93a1b0;font-size:12px;">· ' + g.eps.length + ' เส้น · ' + esc(g.refT) + '</span></h3>' +
+        (g.note ? '<div style="margin:0 0 10px;padding:9px 12px;border-left:4px solid #b45309;background:#fff8ed;border-radius:0 6px 6px 0;font-size:12.5px;color:#5b4708;line-height:1.85;">' + g.note + '</div>' : '') +
+        '<div class="table-wrap"><table class="data"><thead><tr><th style="width:70px;">Method</th><th>Path</th><th>ทำอะไร</th><th>ที่มา</th></tr></thead><tbody>';
+      g.eps.forEach(function(e){
+        var idx = FLAT.indexOf(e);
+        html += '<tr data-ep="' + idx + '"><td><span class="mth ' + mthCls(e.m) + '">' + e.m + '</span></td>' +
+          '<td class="ep-path">' + esc(e.p) + '</td>' +
+          '<td style="font-size:12.5px;">' + esc(e.sum) + '</td>' +
+          '<td><span class="ref ' + e.ref + '">' + esc(e.refT) + '</span></td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    });
+    document.getElementById('apiCatalog').innerHTML = html;
+  })();
+
+  /* ===== detail ===== */
+  function selectEp(idx){
+    var e = FLAT[idx];
+    if (!e) return;
+    
+    var titleHtml = '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+      '<span class="mth ' + mthCls(e.m) + '" style="font-size:13px;">' + e.m + '</span>' +
+      '<code class="ep-path" style="font-size:15px; color:#1d4ed8;">' + esc(e.p) + '</code></div>';
+      
+    var chips = '<span class="ref ' + e.ref + '">' + esc(e.refT) + '</span>' +
+      '<span class="chip time">สิทธิ์: ' + esc(e.roles) + '</span>' +
+      '<span class="chip job">' + esc(e._g) + '</span>';
+      
+    var isBatchRef = isBatchJobReference(e);
+    var flow = (e.flow || []).map(function(f){ return '<li>' + esc(f) + '</li>'; }).join('');
+    
+    var db = e.db.map(function(d){
+      var cls = d[1] === 'R' ? 'info' : (d[1] === 'W' ? 'ok' : 'violet');
+      return '<tr><td class="ep-path">' + esc(d[0]) + '</td><td><span class="pill ' + cls + '">' + d[1] + '</span></td><td>' + esc(d[2]) + '</td></tr>';
+    }).join('');
+    
+    var reqTitle = e.m === 'GET' ? 'Request (Query / Header)' : 'Request Body';
+    var errs = e.err.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('');
+    var sqlCode = SQL_BY_PATH[e.m + ' ' + e.p] || '-- (ตัวอย่าง SQL อยู่ระหว่างจัดทำ)';
+
+    var chart = isBatchRef ? null : FLOWCHART_BY_PATH[e.m + ' ' + e.p];
+    var tabsHtml =
+      '<div class="tabs" id="apiTabs">' +
+        '<button type="button" class="tab active" data-tab="t-req">1. Request / Response</button>' +
+        (isBatchRef ? '' : '<button type="button" class="tab" data-tab="t-db">2. Database + SQL</button>') +
+        (chart ? '<button type="button" class="tab" data-tab="t-chart">3. Flowchart</button>' : '') +
+      '</div>';
+
+    var tabReqRes = 
+      '<div data-tabpane="t-req">' +
+        '<div class="rr-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;">' +
+          '<div><h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">' + reqTitle + '</h4><pre class="code" style="background:#0f172a; color:#d7e3f4; border-radius:12px; padding:14px 16px; font-family:ui-monospace,Menlo,monospace; font-size:12px; line-height:1.65; overflow-x:auto; margin:0; white-space:pre;">' + esc(e.req) + '</pre></div>' +
+          '<div><h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">Response</h4><pre class="code" style="background:#0f172a; color:#d7e3f4; border-radius:12px; padding:14px 16px; font-family:ui-monospace,Menlo,monospace; font-size:12px; line-height:1.65; overflow-x:auto; margin:0; white-space:pre;">' + esc(e.res) + '</pre></div>' +
+        '</div>' +
+        '<div class="ep-sec" style="margin-top:22px;">' +
+          '<h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">Error ที่ต้องรองรับ</h4>' +
+          '<ul class="ep-flow" style="margin:0; padding-left:22px; color:#45525f; font-size:13.5px; line-height:1.95; list-style:disc;">' + errs + '</ul>' +
+        '</div>' +
+      '</div>';
+
+    var tabDb = isBatchRef ? '' :
+      '<div data-tabpane="t-db" hidden>' +
+        '<div class="ep-sec" style="margin-top:0;">' +
+          '<h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">Database ที่เกี่ยวข้อง</h4>' +
+          '<div class="table-wrap"><table class="data"><thead><tr><th>ตาราง</th><th>สิทธิ์</th><th>บทบาทในเส้นนี้</th></tr></thead>' +
+          '<tbody>' + db + '</tbody></table></div>' +
+        '</div>' +
+        '<div class="ep-sec" style="margin-top:22px;">' +
+          '<h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">ตัวอย่าง SQL (illustrative — bind params ขึ้นต้นด้วย :)</h4>' +
+          '<pre class="code" style="background:#0f172a; color:#d7e3f4; border-radius:12px; padding:14px 16px; font-family:ui-monospace,Menlo,monospace; font-size:12px; line-height:1.65; overflow-x:auto; margin:0; white-space:pre;">' + esc(sqlCode) + '</pre>' +
+        '</div>' +
+      '</div>';
+
+    // Flow อธิบายนอกแท็บ (ไม่อยู่ใน tab อีกต่อไป)
+    var flowSection = isBatchRef ?
+      '<div class="ep-sec" style="margin:4px 0 20px; padding:12px 14px; border-left:4px solid #16a34a; background:#f6fbf7; color:#45525f; font-size:13.5px; line-height:1.75;">' +
+        '<b style="color:#2b3440;">Batch Job scope note:</b> กลุ่มนี้เป็น endpoint reference สำหรับ 2 tab ของ FE Batch Monitor เท่านั้น — แบบฟอร์มพารามิเตอร์ และประวัติการรัน. รายละเอียด flowchart การทำงานและ database ที่ใช้ให้ดูเอกสาร BE/Runbook/Database reference แยก ไม่ใช่ tab หรือ deliverable ที่ต้องทำในหน้านี้' +
+      '</div>' :
+      '<div class="ep-sec" style="margin:4px 0 20px;">' +
+        '<h4 style="font-size:13px; color:#5d6b7a; margin:0 0 8px; font-weight:600;">ลำดับการทำงานของ API เส้นนี้ (Flow)' +
+          (chart ? ' <span class="pill info" style="font-size:10.5px;">มี Flowchart ในแท็บ 3</span>' : '') +
+        '</h4>' +
+        '<ol class="ep-flow" style="margin:0; padding-left:22px; color:#45525f; font-size:13.5px; line-height:1.95;">' + flow + '</ol>' +
+      '</div>';
+
+    var tabChart = chart ?
+      '<div data-tabpane="t-chart" hidden>' +
+        '<div class="ep-sec" style="margin-top:0;">' +
+          '<h4 style="font-size:13px; color:#5d6b7a; margin:0 0 10px; font-weight:600;">แผนภาพลำดับการทำงาน (Flowchart)</h4>' +
+          '<div style="overflow-x:auto; background:#fbfcfe; border:1px solid #e8eef6; border-radius:12px; padding:14px;">' + renderFlow(chart) + '</div>' +
+          '<div class="flow-legend" style="margin-top:12px; display:flex; flex-wrap:wrap; gap:14px; font-size:11.5px; color:#5d6b7a;">' +
+            '<span><span style="display:inline-block;width:13px;height:13px;border-radius:4px;background:#eef4ff;border:1.5px solid #2f6fed;vertical-align:-2px;"></span> เริ่ม</span>' +
+            '<span><span style="display:inline-block;width:13px;height:13px;border-radius:4px;background:#fff;border:1.5px solid #96b4f0;vertical-align:-2px;"></span> ประมวลผล</span>' +
+            '<span><span style="display:inline-block;width:13px;height:13px;background:#fff4d6;border:1.5px solid #d9a441;transform:rotate(45deg);vertical-align:-2px;"></span> ตัดสินใจ</span>' +
+            '<span><span style="display:inline-block;width:13px;height:13px;border-radius:4px;background:#fdecec;border:1.5px solid #d98a8a;vertical-align:-2px;"></span> จบด้วย error</span>' +
+            '<span><span style="display:inline-block;width:13px;height:13px;border-radius:4px;background:#e7f7ee;border:1.5px solid #15803d;vertical-align:-2px;"></span> จบสำเร็จ</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' : '';
+
+    var bodyHtml =
+      '<div style="margin-top:4px;">' +
+        '<div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;">' + chips + '</div>' +
+        flowSection +
+        tabsHtml +
+        tabReqRes +
+        tabDb +
+        tabChart +
+      '</div>';
+
+    var bNode = document.createElement('div');
+    bNode.innerHTML = bodyHtml;
+    
+    bNode.addEventListener('click', function(ev) {
+      var t = ev.target.closest('.tab');
+      if (!t) return;
+      bNode.querySelectorAll('.tab').forEach(function(x) { x.classList.remove('active'); });
+      t.classList.add('active');
+      var key = t.getAttribute('data-tab');
+      bNode.querySelectorAll('[data-tabpane]').forEach(function(p) {
+        p.hidden = p.getAttribute('data-tabpane') !== key;
+      });
+    });
+
+    if (window.SBP && window.SBP.openModal) {
+      window.SBP.openModal({
+        title: e.m + ' ' + e.p,
+        sub: e.sum,
+        lg: true,
+        body: bNode
+      });
+    }
+  }
+
+  document.getElementById('apiCatalog').addEventListener('click', function(e){
+    var tr = e.target.closest('tr[data-ep]');
+    if (!tr) return;
+    selectEp(parseInt(tr.getAttribute('data-ep'), 10));
+  });
+})();
+  </script>
+</body>
+</html>

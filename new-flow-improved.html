@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow ระบบใหม่ (Sequence) · SBP Management System</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  /* กรอบแผนภาพ — ภาพสูงมาก จึงให้เลื่อนในกรอบของตัวเองแทนการดันหน้าให้ยาว */
+  .seq-wrap{overflow:auto;max-height:78vh;border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px;}
+  .seq-wrap img{display:block;transform-origin:0 0;image-rendering:auto;}
+  .zoombar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;}
+  .zoombar button{font:inherit;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;}
+  .zoombar button.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .zoombar .zhint{color:var(--muted);font-size:12.5px;}
+  .phase-legend{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px;}
+  .phase-legend .ph{font-size:12.5px;color:#45525f;background:var(--c);border:1px solid rgba(0,0,0,.08);
+    border-radius:999px;padding:5px 12px;white-space:nowrap;}
+  .msg-card{border-left:4px solid var(--primary);}
+  .msg-card.reflow{border-left-color:#e03e3e;}
+</style>
+</head>
+<body data-page="new-flow-improved" data-nav="modules" data-module="new-flow-improved" data-crumb="Flow ระบบใหม่ (Sequence)">
+<div class="layout">
+  <aside id="sidebar"></aside>
+  <main class="content">
+
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Flow ระบบใหม่ — Sequence Diagram</h1>
+        <p class="page-sub">ลำดับการแลกข้อมูลระหว่าง ALLMAP · SGI · EAI S3 · IAS/MIS · RabbitMQ · STA · SAP</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-ghost" href="new-flow-improved.png" target="_blank" rel="noopener">เปิดไฟล์ PNG</a>
+        <a class="btn btn-ghost" href="new-flow-improved.svg" target="_blank" rel="noopener">เปิดไฟล์ SVG</a>
+      </div>
+    </div>
+
+    <div class="card reveal">
+      <div class="card-head">
+        <h2>สิ่งที่เปลี่ยนจากระบบเดิม</h2>
+        <span class="pill info" style="margin-left:auto;">มติ 2026-08-24 · 2026-09-01</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>ปลายทาง</th><th>ระบบเดิม</th><th>ระบบใหม่</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>IAS / MIS</b> (ยอดขาย)</td>
+              <td>วางไฟล์ผ่าน <b>SFTP</b></td>
+              <td>แลกไฟล์ผ่าน <b>EAI S3</b> — Job 4 อัปโหลด <code>AMS06001O_</code> (16:00 วันที่ 7–16) · Job 5 ดึง <code>AMS06001I_</code> (16:30)</td>
+            </tr>
+            <tr>
+              <td><b>STA</b> (Statement)</td>
+              <td>ไฟล์ <code>FRBC0001_</code> + SFTP</td>
+              <td><b>RabbitMQ</b> exchange <code>sgi.interface</code> (topic · durable) — publish/consume 3 ชุดข้อความ (ดูตารางถัดไป)</td>
+            </tr>
+            <tr class="flag-red">
+              <td><b>เปิดพิจารณาใหม่</b></td>
+              <td>ไม่มีการแจ้ง STA</td>
+              <td><b>ต้อง publish <code>sgi_reflow</code></b> ให้ STA ตั้ง flow ของงวดนั้นใหม่ (มติ 2026-09-01)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card reveal">
+      <div class="card-head">
+        <h2>แผนภาพลำดับ (Sequence Diagram)</h2>
+        <span class="pill violet" style="margin-left:auto;">สร้างจาก new-flow-improved.mmd</span>
+      </div>
+      <div class="phase-legend">
+        <span class="ph" style="--c:#dbe7f6">ระยะที่ 1 · รับข้อมูลผลกระทบและยอดขาย (Job 2–5)</span>
+        <span class="ph" style="--c:#cfead9">ระยะที่ 2 · ส่งผลให้ STA และบันทึกบัญชี (Job 6)</span>
+        <span class="ph" style="--c:#ded7f3">ระยะที่ 3 · เข้าเอกสารและเปิด workflow (Job 8 / 8b)</span>
+        <span class="ph" style="--c:#f6cfcf">ระยะที่ 4 · เปิดพิจารณาใหม่ (Reflow)</span>
+      </div>
+      <div class="zoombar">
+        <button type="button" data-z="0.75">−</button>
+        <button type="button" data-z="1">100%</button>
+        <button type="button" data-z="1.5">+</button>
+        <button type="button" data-z="fit">พอดีความกว้าง</button>
+        <span class="zhint">เลื่อนดูในกรอบด้านล่าง · ปุ่มด้านบนขวาเปิดไฟล์เต็มในแท็บใหม่</span>
+      </div>
+      <div class="seq-wrap" id="seqWrap">
+        <img id="seqImg" src="new-flow-improved.svg" alt="Sequence diagram ของระบบใหม่: ALLMAP · SGI · EAI S3 · IAS/MIS · RabbitMQ · STA · SAP">
+      </div>
+      <p class="note" style="margin-top:12px;">
+        ต้นฉบับเป็น Mermaid ที่ <code>new-flow-improved.mmd</code> — แก้ไฟล์นั้นแล้ว render ใหม่ ทั้ง
+        <code>new-flow-improved.svg</code> / <code>new-flow-improved.png</code> / <code>new-flow.png</code> จะตรงกันเสมอ ·
+        เอกสารประกอบ: <a href="plan-flow.html">Flow FGI/FCS + K2</a> · <a href="k2-flow.html">Flow K2</a> · <a href="job-batch.html">Flow Batch Job</a>
+      </p>
+    </div>
+
+    <div class="card reveal">
+      <div class="card-head">
+        <h2>ชุดข้อความบน RabbitMQ</h2>
+        <span class="pill ok" style="margin-left:auto;">exchange <code>sgi.interface</code></span>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th><code>dataName</code></th><th>ทิศทาง</th><th>จังหวะการส่ง</th><th>ใช้ทำอะไร</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>sgi_impact_store</code></td>
+              <td>SGI → STA</td>
+              <td>ทุกวัน 17:00 (Job 6 · transactional outbox)</td>
+              <td>ร้านที่ได้รับผลกระทบ + ผลพิจารณาของงวด · <code>compensate_status</code> = <b>I</b> ตั้งต้น / <b>A</b> อนุมัติ / <b>N</b> ไม่ชดเชย / <b>S</b> หยุดชดเชย</td>
+            </tr>
+            <tr>
+              <td><code>sta_update_compensate</code></td>
+              <td>STA → SGI</td>
+              <td>Real Time</td>
+              <td>ยอดเงินประกันรายได้ (<code>forecast</code> / <code>adjust</code>) กลับเข้าเอกสาร · <code>impactStatus</code> = <b>Z</b> ยอดศูนย์ / <b>W</b> ยอดไม่เป็นศูนย์</td>
+            </tr>
+            <tr>
+              <td><code>sgi_reflow</code></td>
+              <td>SGI → STA</td>
+              <td>เมื่อกดพิจารณาใหม่</td>
+              <td>แจ้งว่าเอกสารที่จบไปแล้วถูก reflow · <code>compensate_status = R</code> · <b>1 รายการต่อ 1 งวด</b> · <code>stmt_year_month</code> ว่างเสมอ</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin-top:12px;">
+        สัญญาข้อความเต็มพร้อมตัวอย่าง JSON ทุกกรณีอยู่ที่ <code>STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md</code> ·
+        ชื่อ exchange อ่านจาก backend config (<code>SGI_MQ_EXCHANGE</code>) ไม่ hardcode ·
+        <b>ฟิลด์วันที่ของ message ยังเป็น พ.ศ.</b> ตามสัญญาเดิมของ STA แปลงเฉพาะตอนประกอบ/อ่าน payload ห้ามให้ปนเข้า DB/API ของ SGI
+      </p>
+    </div>
+
+    <div class="card reveal msg-card reflow">
+      <div class="card-head">
+        <h2>กรณีเปิดพิจารณาใหม่ (Reflow)</h2>
+        <span class="pill fail" style="margin-left:auto;">ใหม่ 2026-09-01</span>
+      </div>
+      <p style="font-size:13.5px;line-height:1.9;color:#45525f;margin:0 0 10px;">
+        เมื่อ <b>ฝ่าย SBP DSA (section 06)</b> กดพิจารณาใหม่จากเอกสารที่<b>จบไปแล้ว</b>ด้วยผล
+        <b>“เห็นควรไม่ชดเชย”</b> หรือ <b>“หยุดชดเชยประกันรายได้”</b> ระบบต้อง publish <code>sgi_reflow</code> ให้ STA
+        เพื่อให้ STA ตั้ง flow ของงวดที่เกี่ยวข้องใหม่ที่หน้าจอ <code>FSG003001</code> —
+        <b>ถ้าไม่แจ้ง STA จะปิดงวดนั้นค้างไว้ และยอดชดเชยรอบใหม่จะไม่ถูกคำนวณ</b>
+      </p>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>รายการ</th><th>ข้อกำหนดที่ต้องทำตาม</th></tr></thead>
+          <tbody>
+            <tr><td>ค่าที่บังคับ</td><td><code>compensate_status = "R"</code> ทุกรายการ · <code>stmt_year_month</code> ว่างเสมอ (ยังไม่ทราบงวด statement ใหม่)</td></tr>
+            <tr><td>จำนวนรายการ</td><td><b>1 รายการต่อ 1 งวด</b> (<code>compensate_year_month</code>) — ส่งครบทุกงวดที่เอกสารเดิมครอบคลุม</td></tr>
+            <tr><td>โครงสร้างฟิลด์</td><td>ชุดเดียวกับ <code>sgi_impact_store</code> ต่างที่ <code>dataName</code> และค่า <code>compensate_status</code></td></tr>
+            <tr><td>Transaction boundary</td><td>insert outbox <code>sgi_interface_transactions</code> (OUT · READY) <b>ใน transaction เดียวกับการเปิดรอบพิจารณาใหม่</b> แล้ว publish นอก transaction · publish สำเร็จตั้ง status = SENT + outbox_status = PUBLISHED · <b>ได้ publisher confirm จึงตั้ง outbox_status = CONFIRMED + status = COMPLETED</b></td></tr>
+            <tr><td>Idempotency</td><td><code>message_id</code> = <code>sgi_interface_transactions.id</code> · กดซ้ำบนเอกสารเดิมต้องไม่เกิดแถว outbox ที่สอง</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+  </main>
+</div>
+<div id="toast-stack"></div>
+<script src="assets/sbp.js"></script>
+<script>
+/* ซูมแผนภาพในกรอบ — ใช้ transform:scale บน <img> แล้วชดเชยขนาดกรอบให้ scrollbar ยังถูกต้อง */
+(function () {
+  var img = document.getElementById('seqImg');
+  var wrap = document.getElementById('seqWrap');
+  var btns = Array.prototype.slice.call(document.querySelectorAll('.zoombar button'));
+  var natural = 0;
+
+  function applyZoom(z) {
+    if (!natural) return;
+    img.style.transform = 'scale(' + z + ')';
+    img.style.width = natural + 'px';
+    /* ให้ container สูง/กว้างตามภาพที่ถูกสเกลแล้ว ไม่งั้นเลื่อนไม่ครบ */
+    img.style.marginRight = (natural * (z - 1)) + 'px';
+    img.style.marginBottom = (img.naturalHeight * (z - 1)) + 'px';
+  }
+
+  function setActive(btn) {
+    btns.forEach(function (b) { b.classList.toggle('on', b === btn); });
+  }
+
+  btns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      var v = b.getAttribute('data-z');
+      var z = v === 'fit' ? (wrap.clientWidth - 24) / natural : parseFloat(v);
+      applyZoom(z);
+      setActive(b);
+    });
+  });
+
+  function init() {
+    natural = img.naturalWidth || 2604;   // fallback = viewBox width ของ mermaid
+    /* ค่าเริ่มต้น = พอดีความกว้าง — แผนภาพกว้าง ~2,600px ถ้าเปิดที่ 100% จะเห็นแค่ฝั่งซ้าย */
+    var fitBtn = btns.filter(function (b) { return b.getAttribute('data-z') === 'fit'; })[0];
+    applyZoom((wrap.clientWidth - 24) / natural);
+    setActive(fitBtn);
+  }
+  if (img.complete && img.naturalWidth) init(); else img.addEventListener('load', init);
+})();
+</script>
+</body>
+</html>

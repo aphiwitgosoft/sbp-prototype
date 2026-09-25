@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เอกสารรอดำเนินการ · SBP Management System</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/sbp.css">
+<style>
+  /* stat 8 ใบ + คลิกเป็น filter */
+  .stat-grid.eight{grid-template-columns:repeat(4,1fr);}
+  .stat[data-fstatus]{cursor:pointer; transition:border-color .15s, box-shadow .15s, transform .15s; border:1px solid #e8eef6;}
+  .stat[data-fstatus]:hover{border-color:#c7d7f5; transform:translateY(-1px);}
+  .stat[data-fstatus].active{border-color:var(--primary); box-shadow:0 0 0 3px rgba(47,111,237,.14);}
+  .stat .sl{white-space:nowrap;}
+  /* โหมด "ที่เกี่ยวข้อง": กราฟวงกลมสรุปสัดส่วนสถานะ + การ์ดพิเศษ (แทนการ์ดสถานะ 6 ใบ) */
+  .rel-stats{display:flex; gap:16px; flex-wrap:wrap; align-items:stretch; margin-bottom:16px;}
+  .rel-donut{display:flex; align-items:center; gap:20px; padding:16px 22px; background:#fff; border:1px solid #e8eef6; border-radius:14px; flex:2 1 460px;}
+  .rel-donut .legend-row{flex:1; min-width:220px;}
+  .rel-donut .lg{cursor:pointer; padding:4px 8px; border-radius:8px; transition:background .15s, color .15s;}
+  .rel-donut .lg:hover{background:#f2f6fd;}
+  .rel-donut .lg.active{background:#eaf1fe; color:var(--primary);}
+  .rel-donut .lg.active b{color:var(--primary);}
+  .rel-specials{display:flex; flex-direction:column; gap:12px; flex:1 1 260px;}
+  .rel-specials .stat{flex:1; margin:0;}
+  @media (max-width:720px){ .rel-donut{flex-direction:column; align-items:flex-start;} }
+  .bg-slate{background:linear-gradient(135deg,#94a3b8,#64748b);}
+  .bg-orange{background:linear-gradient(135deg,#fb923c,#ea580c);}
+  .pill.orange{background:#ffedd5; color:#c2410c;}
+  .pill.teal{background:#dcf5f1; color:#0f766e;}
+  .pill.navy{background:#e3e6fb; color:#3730a3;}
+  /* ผลจบแบบปฏิเสธ 2 แบบ — ใช้สีคนละโทนกับ .wait (อำพัน) ที่เป็นสถานะ "รอฝ่าย SBP DSA ดำเนินการ"
+     หยุดชดเชย = แดง (.fail จาก sbp.css) · ไม่ชดเชย = เทาสเลต */
+  .pill.reject{background:#eef1f5; color:#475569;}
+  .bg-navy{background:linear-gradient(135deg,#818cf8,#4f46e5);}
+  /* แถวคลิกได้ */
+  #tblK2 tbody tr[data-href], #tblRelated tbody tr[data-href]{cursor:pointer;}
+  #tblK2 tbody tr[data-href]:hover td, #tblRelated tbody tr[data-href]:hover td{background:#f3f7ff;}
+  #tblK2 tbody tr.flag-red[data-href]:hover td, #tblRelated tbody tr.flag-red[data-href]:hover td{background:#fdeaea;}
+  @media (max-width:1100px){.stat-grid.eight{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:640px){.stat-grid.eight{grid-template-columns:1fr;}}
+  /* แถบ "ขั้นตอน Workflow ตามบทบาท" — sticky ใต้ header เมื่อเลื่อนลง */
+  #roleBar{position:sticky; top:var(--header-h); z-index:30; transition:box-shadow .18s, padding .18s;}
+  #roleBar.stuck{box-shadow:0 12px 28px rgba(31,72,104,.18); padding-top:12px; padding-bottom:12px;}
+  #roleBar.stuck .rb-hint{display:none;}
+  /* ปุ่มปิดแถบ (มุมขวาบน) + ชิปเรียกกลับเมื่อปิดแล้ว */
+  #roleBar > div:first-child{padding-right:42px;}
+  .rb-close{position:absolute; top:12px; right:14px; width:30px; height:30px; padding:0; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; color:#8493a5;
+    background:#fff; border:1px solid var(--line); border-radius:8px;
+    transition:background .15s, color .15s, border-color .15s;}
+  .rb-close:hover{background:#f3f6fb; color:#2b3440; border-color:#c9d3df;}
+  /* แถบ Selected Filter + Quick Search (ตามหน้าจอ K2 เดิม) */
+  .quickbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 12px;padding:9px 14px;background:#f7f9fc;border:1px solid #e6edf6;border-radius:10px;}
+  .quickbar .qb-l{font-size:12.5px;color:#6b7888;white-space:nowrap;}
+  .quickbar .qb-sel{height:34px;min-width:132px;padding:0 10px;font-size:13px;color:#37414e;background:#fff;border:1px solid #d9e2ee;border-radius:8px;}
+  .quickbar .qb-input{height:34px;min-width:230px;flex:1;padding:0 12px;font-size:13px;background:#fff;border:1px solid #d9e2ee;border-radius:8px;}
+  .quickbar .qb-input:focus,.quickbar .qb-sel:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(47,111,237,.12);}
+  .quickbar .qb-div{width:1px;height:22px;background:#dde5ef;margin:0 3px;}
+  .quickbar .qb-hit{font-size:12px;color:var(--primary);font-weight:600;white-space:nowrap;}
+
+  /* ── ชิปที่มาของงาน: ต่อเนื่อง = ม่วง (ระบบทำให้อัตโนมัติ · โทนเดียวกับเส้น auto ในผัง flow)
+     ผลการพิจารณาที่จบแล้วย้ายไปเป็นสีของ .pill แทน (ดู .pill.fail / .pill.reject ด้านบน) */
+
+</style>
+</head>
+<body data-page="k2-list-waiting" data-nav="modules" data-module="k2-list-waiting" data-crumb="เอกสาร · รอดำเนินการ">
+  <div class="layout">
+    <aside id="sidebar"></aside>
+    <main class="content">
+
+      <!-- ตัวสลับบทบาท / ขั้นตอน Workflow (จำลองมุมมองตามผู้ดำเนินการ — เหมือนหน้าเอกสารร้านถูกกระทบ) -->
+      <div class="card" id="roleBar" style="border-left:5px solid var(--primary);">
+        <button class="rb-close" id="rbClose" type="button" title="ปิดแถบขั้นตอน Workflow" aria-label="ปิดแถบขั้นตอน Workflow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+        <div style="display:flex;gap:14px 18px;align-items:center;flex-wrap:wrap;">
+          <div style="display:flex;gap:10px;align-items:center;color:#2b3440;font-weight:600;font-size:14px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM19 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4ZM5 8v4a3 3 0 0 0 3 3h6a3 3 0 0 0 3 3M9 4h8a2 2 0 0 1 2 2v6"/></svg>
+            ขั้นตอน Workflow ตามบทบาท
+          </div>
+          <select id="roleSwitch" aria-label="สลับบทบาทเพื่อดูมุมมองของแต่ละขั้น workflow" style="min-width:min(360px,100%);padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:#fff;"></select>
+          <span class="rb-hint" style="color:var(--muted);font-size:12.5px;flex:1;min-width:220px;">งานรอดำเนินการและการ์ดสถานะด้านล่างจะแสดงเฉพาะที่อยู่ในสิทธิ์ของบทบาทนี้</span>
+        </div>
+        <div class="wf-steps" id="wfSteps"></div>
+        <p id="stoppedHint" hidden style="font-size:12.5px;line-height:1.75;color:#334155;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:9px 12px;margin:12px 0 0;">
+          🔴 <b>มติผู้ใช้ 2026-09-22</b> — หน้ารอดำเนินการของ<b>ทุกบทบาทรวมทั้ง 06</b> แสดงเฉพาะคิวของตัวเอง ซึ่งมี<b>สถานะเดียว</b>
+          <br>ยกเลิกกติกาเดิมที่ให้ 06 เห็น 3 สถานะในหน้าเดียว · เอกสารที่จบด้วย <b>หยุดชดเชยประกันรายได้</b> หรือ <b>เห็นควรไม่ชดเชยรายได้</b>
+          ไม่อยู่ในหน้ารอดำเนินการของใคร — เปิดพิจารณาใหม่ได้โดยค้นจากหน้า <b>เอกสารที่เกี่ยวข้อง</b>
+          <br>ผลพลอยได้: หน้านี้<b>ไม่มีตัวกรองสถานะ</b> ทุกบทบาทใช้ชุดตัวกรองเดียวกัน
+        </p>
+      </div>
+
+      <div class="page-head">
+        <div><h1 class="page-title" id="pageTitle">เอกสารประกันรายได้ — รอดำเนินการ</h1>
+          <p class="page-sub" id="pageSub">ระบบประกันรายได้ · คลิกรายการเพื่อเปิดเอกสารร้านถูกกระทบ</p></div>
+      </div>
+
+      <div class="card">
+        <!-- แยกหน้าตามเมนู sidebar: ?tab=waiting | ?tab=related (สคริปต์ท้ายหน้าเลือก pane) -->
+
+        <!-- pane: waiting -->
+        <div data-tabpane="waiting">
+          <div class="fpanel">
+            <div class="fgrid">
+              <div class="ffield wide">
+                <span class="flabel">ค้นหา</span>
+                <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input id="fSearch" placeholder="ค้นหาเลขที่เอกสาร / รหัสร้าน / ชื่อร้าน"></div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">สถานะ</span>
+                <select id="fStatus" aria-label="กรองตามสถานะ">
+                  <option value="">ทุกสถานะ</option>
+                  <option>รอฝ่าย SBP DSA ดำเนินการ</option>
+                  <option>รอเจ้าหน้าที่ SBP DSA ดำเนินการ</option>
+                  <option>รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</option>
+                  <option>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</option>
+                  <option>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</option>
+                  <option>เสร็จสิ้นดำเนินการ</option>
+                  <!-- มติผู้ใช้ 2026-09-22 — ตัดตัวเลือก "เสร็จสิ้นดำเนินการ หยุดชดเชย/ไม่ชดเชย" ออก · สถานะมีเพียง 6 ค่าตามชุดจริง -->
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ภาค</span>
+                <select id="fRegion" aria-label="กรองตามภาค">
+                  <option value="">ทุกภาค</option>
+                  <option>BE</option><option>BS</option><option>NEU</option><option>REU</option><option>RSU</option><option>BG</option><option>BW</option>
+                  <option>RC</option><option>RN</option><option>BN</option><option>NEL</option><option>REL</option><option>RSL</option>
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ประเภทร้าน</span>
+                <select id="fType" aria-label="กรองตามประเภทร้าน">
+                  <option value="">ทุกประเภท</option>
+                  <!-- ค่าจาก BranchTypeProfile.BranchTypeFGIName ของ CPA_FRN_FGI (ข้อมูล Master K2.xlsx) — 7 ค่า
+                       คำเรียก 2026-08-20: D = Type D (เดิม BGC) · C ครอบ Type V(C) + Type V(B) (เดิม C r)
+                       ห้าม hardcode ในระบบจริง: โหลดจาก GET /common/common-code ของระบบ SBP เดิม -->
+                  <!-- value = ชื่อที่แสดงในคอลัมน์ "ประเภทร้าน" ของตาราง · label = รหัสจาก master
+                       เดิมไม่มี value ทำให้เทียบกับ data-type ไม่ตรงสักค่า → กรองแล้วได้ 0 แถวเสมอ (แก้ 2026-08-24) -->
+                  <option value="SBP Type A">A (A-Mo)</option>
+                  <option value="SBP Type B">B (B(1))</option>
+                  <option value="SBP Type C">C</option>
+                  <option value="SBP Type V(C)">V(C) — เดิมอยู่ใน C r</option>
+                  <option value="SBP Type V(B)">V(B) — เดิมอยู่ใน C r</option>
+                  <option value="SBP Type D">D (เดิม BGC)</option>
+                  <option value="SBP Type E">E (B(2))</option>
+                  <option value="SBP Type PTT">PTT</option>
+                  <option value="SBP Type พนักงาน">พนักงาน</option>
+                  <option value="บริษัท">บริษัท (Corporate)</option>
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">วันที่สร้าง</span>
+                <div class="frange">
+                  <input type="date" id="fDateFrom" min="2026-01-01" max="2026-06-30" aria-label="วันที่สร้าง ตั้งแต่">
+                  <span class="dash">–</span>
+                  <input type="date" id="fDateTo" min="2026-01-01" max="2026-06-30" aria-label="วันที่สร้าง ถึง">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ยอดขายที่ลดลง (%)</span>
+                <div class="frange">
+                  <input type="number" id="fDropMin" placeholder="ต่ำสุด" step="0.01" min="0" aria-label="ยอดขายที่ลดลง ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fDropMax" placeholder="สูงสุด" step="0.01" min="0" aria-label="ยอดขายที่ลดลง สูงสุด">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">เงินชดเชย (บาท)</span>
+                <div class="frange">
+                  <input type="number" id="fCompMin" placeholder="ต่ำสุด" min="0" aria-label="เงินชดเชย ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fCompMax" placeholder="สูงสุด" min="0" aria-label="เงินชดเชย สูงสุด">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">รอ (วัน)</span>
+                <div class="frange">
+                  <input type="number" id="fDayMin" placeholder="ต่ำสุด" min="0" aria-label="รอ (วัน) ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fDayMax" placeholder="สูงสุด" min="0" aria-label="รอ (วัน) สูงสุด">
+                </div>
+              </div>
+            </div>
+            <div class="ffoot">
+              <button class="btn btn-ghost" id="fClear" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg> ล้างตัวกรอง</button>
+            </div>
+          </div>
+          <!-- Selected Filter (ชุดตัวกรองที่บันทึกได้) + Quick Search — เทียบเท่าแถบเดียวกันของ K2 เดิม -->
+          <div class="quickbar">
+            <span class="qb-l">Selected Filter:</span>
+            <select id="fPreset" class="qb-sel" title="ชุดตัวกรองที่บันทึกไว้"><option value="">Default</option></select>
+            <input id="fPresetName" class="qb-input" style="min-width:160px;flex:none;" placeholder="ตั้งชื่อชุดตัวกรอง แล้วกด Enter" hidden><button class="icon-btn" id="fPresetSave" title="บันทึกตัวกรองที่ตั้งอยู่ตอนนี้เป็นชุดใหม่"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0 5 5l-9.4 9.4a2.1 2.1 0 0 1-3-3Z"/></svg></button>
+            <button class="icon-btn icon-del" id="fPresetDel" title="ลบชุดตัวกรองที่เลือก" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+            <span class="qb-div"></span>
+            <span class="qb-l">Quick Search:</span>
+            <select id="qsField" class="qb-sel" title="เลือกคอลัมน์ที่ต้องการค้น"><option value="-1">All fields</option></select>
+            <input id="qsText" class="qb-input" placeholder="พิมพ์คำค้น แล้วกรองทันที…" aria-label="Quick Search">
+            <button class="icon-btn" id="qsClear" title="ล้างคำค้น Quick Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+            <span class="qb-hit" id="qsHit"></span>
+          </div>
+          <div class="table-wrap"><table class="data" id="tblK2">
+            <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">ผู้ดำเนินการ (เจ้าของงาน)</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
+            <tbody><!-- 200 แถว mock ถูก generate ด้วยสคริปต์ท้ายหน้า --></tbody>
+          </table></div>
+          <div class="pager" id="pgK2"></div>
+        </div>
+
+        <!-- pane: related -->
+        <div data-tabpane="related" hidden>
+          <div class="fpanel">
+            <div class="fgrid">
+              <div class="ffield wide">
+                <span class="flabel">ค้นหา</span>
+                <div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"/></svg><input id="fSearchR" placeholder="ค้นหาเลขที่เอกสาร / รหัสร้าน / ชื่อร้าน"></div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">สถานะ</span>
+                <select id="fStatusR" aria-label="กรองตามสถานะ">
+                  <option value="">ทุกสถานะ</option>
+                  <option>รอฝ่าย SBP DSA ดำเนินการ</option>
+                  <option>รอเจ้าหน้าที่ SBP DSA ดำเนินการ</option>
+                  <option>รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ</option>
+                  <option>รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ</option>
+                  <option>รอผู้บริหารสำนักบริหาร SBP ดำเนินการ</option>
+                  <option>เสร็จสิ้นดำเนินการ</option>
+                  <!-- มติผู้ใช้ 2026-09-22 — ตัดตัวเลือก "เสร็จสิ้นดำเนินการ หยุดชดเชย/ไม่ชดเชย" ออก · สถานะมีเพียง 6 ค่าตามชุดจริง -->
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ภาค</span>
+                <select id="fRegionR" aria-label="กรองตามภาค">
+                  <option value="">ทุกภาค</option>
+                  <option>BE</option><option>BS</option><option>NEU</option><option>REU</option><option>RSU</option><option>BG</option><option>BW</option>
+                  <option>RC</option><option>RN</option><option>BN</option><option>NEL</option><option>REL</option><option>RSL</option>
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ประเภทร้าน</span>
+                <select id="fTypeR" aria-label="กรองตามประเภทร้าน">
+                  <option value="">ทุกประเภท</option>
+                  <!-- ค่าจาก BranchTypeProfile.BranchTypeFGIName ของ CPA_FRN_FGI (ข้อมูล Master K2.xlsx) — 7 ค่า
+                       คำเรียก 2026-08-20: D = Type D (เดิม BGC) · C ครอบ Type V(C) + Type V(B) (เดิม C r)
+                       ห้าม hardcode ในระบบจริง: โหลดจาก GET /common/common-code ของระบบ SBP เดิม -->
+                  <!-- value = ชื่อที่แสดงในคอลัมน์ "ประเภทร้าน" ของตาราง · label = รหัสจาก master
+                       เดิมไม่มี value ทำให้เทียบกับ data-type ไม่ตรงสักค่า → กรองแล้วได้ 0 แถวเสมอ (แก้ 2026-08-24) -->
+                  <option value="SBP Type A">A (A-Mo)</option>
+                  <option value="SBP Type B">B (B(1))</option>
+                  <option value="SBP Type C">C</option>
+                  <option value="SBP Type V(C)">V(C) — เดิมอยู่ใน C r</option>
+                  <option value="SBP Type V(B)">V(B) — เดิมอยู่ใน C r</option>
+                  <option value="SBP Type D">D (เดิม BGC)</option>
+                  <option value="SBP Type E">E (B(2))</option>
+                  <option value="SBP Type PTT">PTT</option>
+                  <option value="SBP Type พนักงาน">พนักงาน</option>
+                  <option value="บริษัท">บริษัท (Corporate)</option>
+                </select>
+              </div>
+              <div class="ffield">
+                <span class="flabel">วันที่สร้าง</span>
+                <div class="frange">
+                  <input type="date" id="fDateFromR" min="2025-07-01" max="2025-12-31" aria-label="วันที่สร้าง ตั้งแต่">
+                  <span class="dash">–</span>
+                  <input type="date" id="fDateToR" min="2025-07-01" max="2025-12-31" aria-label="วันที่สร้าง ถึง">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ยอดขายที่ลดลง (%)</span>
+                <div class="frange">
+                  <input type="number" id="fDropMinR" placeholder="ต่ำสุด" step="0.01" min="0" aria-label="ยอดขายที่ลดลง ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fDropMaxR" placeholder="สูงสุด" step="0.01" min="0" aria-label="ยอดขายที่ลดลง สูงสุด">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">เงินชดเชย (บาท)</span>
+                <div class="frange">
+                  <input type="number" id="fCompMinR" placeholder="ต่ำสุด" min="0" aria-label="เงินชดเชย ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fCompMaxR" placeholder="สูงสุด" min="0" aria-label="เงินชดเชย สูงสุด">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">รอ (วัน)</span>
+                <div class="frange">
+                  <input type="number" id="fDayMinR" placeholder="ต่ำสุด" min="0" aria-label="รอ (วัน) ต่ำสุด">
+                  <span class="dash">–</span>
+                  <input type="number" id="fDayMaxR" placeholder="สูงสุด" min="0" aria-label="รอ (วัน) สูงสุด">
+                </div>
+              </div>
+              <div class="ffield">
+                <span class="flabel">ผลการพิจารณา</span>
+                <select id="fResultR" aria-label="กรองตามผลการพิจารณา">
+                  <option value="">ทุกผลการพิจารณา</option>
+                  <option>ประกันรายได้</option>
+                  <option>ไม่ประกันรายได้</option>
+                  <option value="__none">ยังไม่มีผล (อยู่ระหว่างดำเนินการ)</option>
+                </select>
+              </div>
+            </div>
+            <div class="ffoot">
+              <button class="btn btn-ghost" id="fClearR" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg> ล้างตัวกรอง</button>
+            </div>
+          </div>
+          <!-- Selected Filter (ชุดตัวกรองที่บันทึกได้) + Quick Search — เทียบเท่าแถบเดียวกันของ K2 เดิม -->
+          <div class="quickbar">
+            <span class="qb-l">Selected Filter:</span>
+            <select id="fPresetR" class="qb-sel" title="ชุดตัวกรองที่บันทึกไว้"><option value="">Default</option></select>
+            <input id="fPresetNameR" class="qb-input" style="min-width:160px;flex:none;" placeholder="ตั้งชื่อชุดตัวกรอง แล้วกด Enter" hidden><button class="icon-btn" id="fPresetSaveR" title="บันทึกตัวกรองที่ตั้งอยู่ตอนนี้เป็นชุดใหม่"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0 5 5l-9.4 9.4a2.1 2.1 0 0 1-3-3Z"/></svg></button>
+            <button class="icon-btn icon-del" id="fPresetDelR" title="ลบชุดตัวกรองที่เลือก" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+            <span class="qb-div"></span>
+            <span class="qb-l">Quick Search:</span>
+            <select id="qsFieldR" class="qb-sel" title="เลือกคอลัมน์ที่ต้องการค้น"><option value="-1">All fields</option></select>
+            <input id="qsTextR" class="qb-input" placeholder="พิมพ์คำค้น แล้วกรองทันที…" aria-label="Quick Search">
+            <button class="icon-btn" id="qsClearR" title="ล้างคำค้น Quick Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+            <span class="qb-hit" id="qsHitR"></span>
+          </div>
+          <div class="table-wrap"><table class="data" id="tblRelated">
+            <thead><tr><th data-stype="num">ครั้งที่</th><th data-stype="text">เลขที่เอกสาร</th><th data-stype="num">รหัสร้าน</th><th data-stype="text">ชื่อร้านถูกกระทบ</th><th data-stype="text">ภาค</th><th data-stype="drop">ยอดขายที่ลดลง</th><th data-stype="comp">จำนวนเงินที่ชดเชย</th><th data-stype="text">ผู้ดำเนินการ (เจ้าของงาน)</th><th data-stype="text">สถานะ</th><th data-stype="num">รอ (วัน)</th></tr></thead>
+            <tbody><!-- 120 แถว mock ถูก generate ด้วยสคริปต์ท้ายหน้า --></tbody>
+          </table></div>
+          <div class="pager" id="pgRelated"></div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--primary);">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px;"><path d="M12 16v-4M12 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+          <div style="font-size:13.5px;color:#45525f;line-height:1.7;">
+            <b style="color:#2b3440;">หมายเหตุการทำงาน:</b> <span class="pill fail" style="font-weight:600;vertical-align:1px;">แดง = ยอดขายไม่ครบ 60 วัน</span> · ระบบรับข้อมูลจากทีม Store Chain Unit เป็น text file รอบ <b>17:00 ของทุกวัน</b> ผ่าน Batch job · คลิกรายการในตารางเพื่อเปิดหน้า<b>เอกสารร้านที่ถูกกระทบ</b> (ดูรายละเอียด ผลการพิจารณา และสถานะเอกสาร) · เมื่อเอกสารเสร็จสิ้น ทีมบัญชีตรวจผ่านรายงาน SBP Mall และ Export Excel เพื่อกระทบ SAP นอก workflow
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <!-- popup ยืนยันดำเนินการหลายเอกสาร (SDD GI สไลด์ 48) -->
+<div id="toast-stack"></div>
+  <script src="assets/sbp.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    /* ---- โหมดหน้า: เมนู sidebar แยก "รอดำเนินการ" / "ที่เกี่ยวข้อง" มาที่หน้าเดียวกันด้วย ?tab= ---- */
+    var MODE = 'waiting'; // หน้านี้คือมุมมองรอดำเนินการ (แยกไฟล์จากเดิม k2.html?tab=waiting)
+    document.querySelector('[data-tabpane="waiting"]').hidden = MODE !== 'waiting';
+    document.querySelector('[data-tabpane="related"]').hidden = MODE !== 'related';
+    if (MODE === 'related') {
+      /* เดิมซ่อนแถบบทบาททั้งแถบในโหมดนี้ ทำให้ currentRole ค้างที่ 06 และตารางไม่กรองบทบาทเลย
+         → ทุกบทบาทเห็นเอกสารที่จบด้วยผลปฏิเสธ ซึ่งขัด SDD สไลด์ 46 ข้อ 1.9 · คงแถบไว้แล้วปรับคำอธิบายแทน */
+      document.querySelector('#roleBar .rb-hint').textContent =
+        'หน้านี้แสดงเอกสารที่ท่านเคยเกี่ยวข้องทุกสถานะ · เอกสารที่จบด้วยผลปฏิเสธจะแสดงเฉพาะบทบาท ฝ่าย SBP DSA (06)';
+      // เอา filter สถานะออกจากแผงกรอง — ใช้การ์ด stat ด้านบนกรองสถานะแทน (element ยังอยู่แบบซ่อนให้การ์ดใช้)
+      /* เดิมซ่อนช่องสถานะเพราะกรองผ่านกราฟวงกลม — ถอด stat card/กราฟออกแล้ว (2026-08-06)
+         จึงต้องเปิดช่องสถานะให้กรองได้ตามปกติ */
+      document.getElementById('pageTitle').textContent = 'เอกสารประกันรายได้ — ที่เกี่ยวข้องกับท่าน';
+      document.getElementById('pageSub').textContent = 'ระบบประกันรายได้ · เอกสารที่ท่านเคยดำเนินการหรือมีส่วนเกี่ยวข้อง';
+      document.body.setAttribute('data-crumb', 'เอกสาร · ที่เกี่ยวข้อง');
+      document.title = 'เอกสารที่เกี่ยวข้อง · SBP Management System';
+    } else {
+      document.body.setAttribute('data-crumb', 'เอกสาร · รอดำเนินการ');
+      document.title = 'เอกสารรอดำเนินการ · SBP Management System';
+    }
+
+    /* ---- ตัวกรองสถานะของหน้า "รอดำเนินการ" (มติผู้ใช้ 2026-09-22) ----
+       ทุกบทบาทเห็นเฉพาะคิวของตัวเอง ซึ่งมีสถานะเดียวเสมอ ตัวกรองจึงไม่มีประโยชน์ — ซ่อนทุกบทบาท
+       ยกเลิกกติกาเดิม 2026-09-01 ที่เปิดตัวกรองให้บทบาท 06 พร้อม 3 ตัวเลือกเฉพาะ
+       หน้า "ที่เกี่ยวข้อง" ไม่ถูกกระทบ — ยังแสดงตัวกรองสถานะครบทุกค่าตามเดิม */
+    var syncStatusFilter = function () {
+      var sel = document.getElementById('fStatus');
+      if (!sel) return;
+      var field = sel.closest('.ffield');
+      if (MODE !== 'waiting') { if (field) field.style.display = ''; return; }
+      if (field) field.style.display = 'none';
+      sel.value = '';
+    };
+
+    /* ---- สถานะเอกสาร 6 ค่า (ตัดบัญชี 04/05 ตาม SDD v7.5) ตาม SRS 3.1.6 / workflow_status_document.md (ดู workflow.md) ---- */
+    var STATUSES = [
+      { label: 'รอฝ่าย SBP DSA ดำเนินการ', pill: 'wait' },            // 06
+      { label: 'รอเจ้าหน้าที่ SBP DSA ดำเนินการ', pill: 'violet' },     // 08
+      { label: 'รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'info' },    // 01
+      { label: 'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ', pill: 'orange' },  // 02
+      { label: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ', pill: 'navy' },  // 03 (เฉพาะยอด ≥ 100,000 · SDD GI)
+      { label: 'เสร็จสิ้นดำเนินการ', pill: 'ok' }                       // End
+    ];
+    var DONE = 'เสร็จสิ้นดำเนินการ';
+    var ROLE08_WAIT = 'รอเจ้าหน้าที่ SBP DSA ดำเนินการ';   // ปลายทางของเคสต่อเนื่อง (ข้ามขั้น 06)
+    // ลำดับถ่วงน้ำหนัก 20 ตำแหน่ง (6 สถานะ · ตัดบัญชี 04/05 ตาม SDD v7.5) — 06:50 · 08:30 · 01:40 · 02:30 · 03:20 · เสร็จสิ้น:30 (ต่อ 200 แถว)
+    var PATTERN = [0, 2, 5, 1, 3, 0, 2, 4, 0, 1, 5, 2, 3, 0, 1, 4, 2, 0, 3, 5];
+    // ภาค 13 รหัส (SDD v7.5 — ชุดใหม่แทน 8 รหัสเดิมของ SRS 3.1.7) · ภาคใหม่เพิ่มอัตโนมัติจาก master `mas_zone` ของระบบ SBP เดิม (GET /store/all-regions · ตัดสินใจ 2026-08-06)
+    // เจ้าของงาน (เจ้าหน้าที่ SBP DSA) — เคสต่อเนื่อง/เห็นควรไม่ชดเชย ระบบ auto-assign คนเดิม (SDD GI สไลด์ 48)
+    var OWNERS = ['Somchai Jaidee', 'Nattapong Wongsa', 'Kanjana Preechan', 'Wichai Thongdee', 'Pimchanok Sae-lim'];
+    var REGIONS = ['BE', 'BS', 'NEU', 'REU', 'RSU', 'BG', 'BW', 'RC', 'RN', 'BN', 'NEL', 'REL', 'RSL'];
+    /* ประเภทร้าน — คำเรียก FR → SBP (2026-08-20) · C r แตกเป็น Type V(C) + Type V(B)
+       ครบทุกค่าที่ตัวกรองมี = 9 ชนิดตาม database.md + `SBP Type E`
+       ⚠️ `E` (= B(2)) มีจริงใน master BranchTypeFGIName (7 ค่า A B C D E PTT บริษัท) แต่ยัง*ไม่อยู่*ในรายการชื่อแสดงผล 9 ชนิดของ database.md
+       → ต้องเคาะว่ารายการชื่อแสดงผลเป็น 10 ชนิด หรือ E ใช้ชื่อแสดงผลอื่น (ดู DP-13) */
+    var TYPES = ['SBP Type A', 'SBP Type B', 'SBP Type C', 'SBP Type V(C)', 'SBP Type V(B)',
+      'SBP Type D', 'SBP Type E', 'SBP Type PTT', 'บริษัท', 'SBP Type พนักงาน'];
+    var PLACES = ['รัตนอุทิศ', 'บางบัวทอง', 'ปากเกร็ด', 'แคราย', 'ติวานนท์', 'งามวงศ์วาน', 'ท่าอิฐ', 'สามัคคี', 'ประชาชื่น', 'ลาดปลาดุก',
+      'พิบูลสงคราม', 'บางกรวย', 'สนามบินน้ำ', 'บางพลัด', 'เตาปูน', 'พระราม 5', 'ไทรม้า', 'บางศรีเมือง', 'คลองประปา', 'เลี่ยงเมืองนนท์'];
+    var SUFFIX = ['ซ.13', 'ตลาดใหม่', 'สถานี', 'พลาซ่า', 'ก.ม.8', 'ริเวอร์ไซด์', 'ท่าน้ำ', 'ซ.58', 'วัดชลอ', 'อินเตอร์เชนจ์'];
+
+    var ICO = {
+      doc: 'M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6H9ZM14 3v6h6',
+      clock: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+      shield: 'M9 12l2 2 4-4M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3Z',
+      check: 'M22 11.1V12a10 10 0 1 1-5.93-9.14M22 4 12 14l-3-3',
+      user: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+      warn: 'M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z',
+      archive: 'M21 8v13H3V8M1 3h22v5H1zM10 12h4',
+      money: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'
+    };
+    var STATUS_META = {
+      'รอฝ่าย SBP DSA ดำเนินการ': { bg: 'bg-amber', icon: ICO.clock, color: '#f59e0b' },
+      'รอเจ้าหน้าที่ SBP DSA ดำเนินการ': { bg: 'bg-violet', icon: ICO.shield, color: '#7c3aed' },
+      'รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ': { bg: 'bg-blue', icon: ICO.user, color: '#2563eb' },
+      'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ': { bg: 'bg-orange', icon: ICO.user, color: '#ea580c' },
+      'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ': { bg: 'bg-navy', icon: ICO.user, color: '#4f46e5' },
+      'เสร็จสิ้นดำเนินการ': { bg: 'bg-green', icon: ICO.check, color: '#16a34a' }
+    };
+
+    /* ---- บทบาท workflow 5 ขั้น (ตัดบัญชี 04/05 ตาม SDD v7.5) — inbox ของแต่ละบทบาท = สถานะ "รอ<role>ดำเนินการ" ค่าเดียว ---- */
+    var ROLES = [
+      { code: '06', short: 'ฝ่าย SBP DSA', name: 'ฝ่าย SBP DSA (Manager Franchise · section_code 06)', wait: 'รอฝ่าย SBP DSA ดำเนินการ' },
+      { code: '08', short: 'จนท. SBP DSA', name: 'เจ้าหน้าที่ SBP DSA (Officer Franchise · section_code 08)', wait: 'รอเจ้าหน้าที่ SBP DSA ดำเนินการ' },
+      { code: '01', short: 'หน่วยงานส่งเสริมธุรกิจฯ', name: 'หน่วยงานส่งเสริมธุรกิจฯ (Manager OPT · section_code 01)', wait: 'รอหน่วยงานส่งเสริมธุรกิจ SBP ดำเนินการ' },
+      { code: '02', short: 'GM OPT', name: 'GM ส่งเสริมธุรกิจฯ (GM OPT · section_code 02)', wait: 'รอ GM ส่งเสริมธุรกิจ SBP ดำเนินการ' },
+      { code: '03', short: 'AVP OPT', name: 'ผู้บริหารสำนักบริหาร SBP (AVP OPT · section_code 03)', wait: 'รอผู้บริหารสำนักบริหาร SBP ดำเนินการ' }
+    ];
+    var currentRole = ROLES[0];
+
+    function pad(n, w) { n = String(n); while (n.length < w) n = '0' + n; return n; }
+    function money(n) { return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+    function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function pillText(tr) { var p = tr.querySelector('.pill'); return p ? p.textContent.trim() : ''; }
+    function roleMatch(tr) {
+      if (pillText(tr) === currentRole.wait) return true;
+      /* ฝ่าย SBP DSA (06) เห็น 3 สถานะ (มติผู้ใช้ 2026-08-24) — บทบาทอื่น (08/01/02/03) เห็นเฉพาะ inbox ของตัวเอง
+           1. รอฝ่าย SBP DSA ดำเนินการ                          — inbox ปกติ
+           2. เสร็จสิ้นดำเนินการ + ↺ หยุดชดเชยฯ                  — SDD สไลด์ 46 ข้อ 1.9 เปิดพิจารณาใหม่ได้เอง ไม่ต้องเปิด SR
+           3. เสร็จสิ้นดำเนินการ + ⊘ เห็นควรไม่ชดเชยฯ            — ให้ 06 ตามงานที่ตัวเองปฏิเสธไว้ได้ในหน้าเดียว
+         หมายเหตุที่มา: ข้อ 3 กว้างกว่าตัวอักษรของ SDD — สไลด์ 46/64 เขียนว่าเอกสารที่ "เห็นควรไม่ชดเชยรายได้"
+         จะไม่แสดงในเดือนที่กด และระบบจะดึงร้านเข้าหน้าจองานค้างของ เจ้าหน้าที่ SBP DSA ใน*เดือนถัดไป* (เป็นเอกสารใบใหม่ ไม่ใช่ใบเดิม)
+         มติให้คงแถวไว้ในลิสต์ของ 06 ด้วย เพื่อให้เห็นครบทั้ง 3 ปลายทางในหน้าเดียว */
+      /* มติผู้ใช้ 2026-09-22 — ยกเลิกกติกา "06 เห็น 3 กลุ่ม" · กล่องงานคืนเฉพาะคิวของบทบาทนั้น */
+      void tr;
+      return false;
+    }
+    /* หน้า "ที่เกี่ยวข้อง" ไม่ใช่ inbox — ผู้ใช้เห็นเอกสารที่ตัวเองเคยเกี่ยวข้องได้ทุกสถานะ
+       ยกเว้นแถวที่จบด้วยผลปฏิเสธ (↺ หยุดชดเชยฯ / ⊘ เห็นควรไม่ชดเชยฯ) ที่ SDD สไลด์ 46 ข้อ 1.9
+       ให้เห็นเฉพาะ ฝ่าย SBP DSA (06) — บทบาทอื่นต้องไม่เห็น */
+    function relatedMatch(tr) {
+      /* มติผู้ใช้ 2026-09-22 — หน้า "ที่เกี่ยวข้อง" แสดงได้ทุกสถานะกับทุกบทบาท */
+      void tr;
+      return true;
+    }
+
+    // เลขหน้าแบบสากล: หน้าแรก/สุดท้ายคงที่ + หน้าต่างรอบหน้าปัจจุบัน + … คั่นช่วงที่ข้าม
+    function pageItems(cur, total) {
+      var items = [], i;
+      if (total <= 7) { for (i = 1; i <= total; i++) items.push(i); return items; }
+      var lo = Math.max(2, cur - 1), hi = Math.min(total - 1, cur + 1);
+      if (cur <= 3) { lo = 2; hi = 4; }
+      if (cur >= total - 2) { lo = total - 3; hi = total - 1; }
+      items.push(1);
+      if (lo > 2) items.push('gap');
+      for (i = lo; i <= hi; i++) items.push(i);
+      if (hi < total - 1) items.push('gap');
+      items.push(total);
+      return items;
+    }
+
+    // ไฮไลต์การ์ด stat: โหมดรอดำเนินการเทียบกับ special filter ที่เลือก · โหมดที่เกี่ยวข้องเทียบกับ dropdown สถานะ
+    var specialKey = '', relatedKey = '';
+    /* syncStatActive — no-op ตั้งแต่ถอด stat card ออกจากหน้า (2026-08-06)
+       เดิมไฮไลต์การ์ดใน #statGrid ตาม filter ที่เลือก · element นั้นไม่มีแล้ว
+       คงชื่อฟังก์ชันและจุดเรียก onApply ไว้เป็น hook เผื่อ stat card กลับมา (แบบเดียวกับ
+       renderWaitingStats / renderRelatedStats ด้านล่าง) — ห้ามใส่โค้ดที่ query #statGrid อีก */
+    function syncStatActive() { /* no-op */ }
+
+    /*
+     * สร้างตารางแบบครบวงจร: mock rows (deterministic — ไม่สุ่ม) + filter + sort + pagination
+     * cfg: { tableId, pagerId, suffix, total, docPrefix, docStart, dateYear, dateMonth, dateSpan, iOffset,
+     *        extraMatch (กรองระดับสิทธิ์ เช่น role), onApply }
+     * คืน setSpecial(fn) สำหรับ filter พิเศษจากการ์ด stat (flag 60 วัน / รอเกิน 3 วัน / วงเงิน)
+     */
+    /* มติผู้ใช้ 2026-09-22 — ตัด popup ยืนยัน "ดำเนินการที่เลือก" ออก พร้อมกับการเลือกหลายเอกสาร */
+
+    function initTable(cfg) {
+      var tbody = document.getElementById(cfg.tableId).querySelector('tbody');
+
+      function docDate(i) {
+        var d = new Date(cfg.dateYear, cfg.dateMonth, 1 + (i * 91) % cfg.dateSpan);
+        return {
+          iso: d.getFullYear() + '-' + pad(d.getMonth() + 1, 2) + '-' + pad(d.getDate(), 2),
+          th: pad(d.getDate(), 2) + '/' + pad(d.getMonth() + 1, 2) + '/' + (d.getFullYear() + 543)
+        };
+      }
+
+      var html = '';
+      for (var i = 0; i < cfg.total; i++) {
+        var j = i + cfg.iOffset;
+        var st = STATUSES[PATTERN[j % PATTERN.length]];
+        var done = st.label === DONE;
+        var drop = 5 + ((j * 53) % 1200) / 100;
+        // เอกสารที่รอ AVP ต้องมียอด ≥ 100,000 ตามวงเงิน SDD GI 24/02/2026
+        var comp = st.pill === 'navy'
+          ? 100000 + ((j * 977) % 250000)
+          : drop * (3000 + (j % 8) * 1000);
+        // "ยอดขายไม่ครบ 60 วัน" เป็น flag ของข้อมูล (แถวแดง) ไม่ใช่สถานะ workflow
+        var flag60 = !done && (j % 13 === 0);
+        var roundNo = (j % 3) + 1;                      // ครั้งที่ของรอบชดเชย
+        var storeCode = pad(((j * 37) % 1450) + 120, 5); // รหัสร้าน — ใช้ผูกเจ้าของงานให้คงที่ต่อร้าน
+        /* แถวรอบที่ 2 ขึ้นไป มาจาก 2 ต้นเหตุที่ต่างกัน แต่ได้ "เจ้าของงานคนเดิม" เหมือนกัน (SDD GI สไลด์ 46 · 48 · 64)
+             · เคสชดเชยต่อเนื่อง        — ระบบ Auto Approve แล้วส่งเข้า เจ้าหน้าที่ SBP DSA (08) โดยข้ามขั้น 06
+             · กลับจากเห็นควรไม่ชดเชย  — รอบก่อนหน้า 06 กด "เห็นควรไม่ชดเชยรายได้" ระบบดึงร้านกลับเข้ามารอบเดือนถัดไป */
+        /* เคสต่อเนื่อง = ระบบ Auto Approve แล้วส่งเข้า เจ้าหน้าที่ SBP DSA (08) โดย*ข้ามขั้น 06*
+           ชิปนี้จึงติดได้เฉพาะแถวที่รอ 08 เท่านั้น — ถ้าไปโผล่ในคิวของ 06 แปลว่าผิดกติกาจุดเข้า flow */
+        /* เคสต่อเนื่อง = ระบบส่งเข้า เจ้าหน้าที่ SBP DSA (08) อัตโนมัติโดย *ข้ามขั้น 06*
+           จึงเกิดได้เฉพาะแถวที่รอ 08 เท่านั้น — ถ้าไปโผล่ในคิวของ 06 แปลว่าผิดกติกาจุดเข้า flow
+           มติ 2026-09-01: เคสต่อเนื่องยอด > 0 และยอด 0 (<= 3 เดือน) เข้า 08 เหมือนกัน
+           และ **ไม่มีป้าย/ชิปกำกับบนหน้าจอ** เพราะทำงานเหมือนกันทุกอย่าง */
+        var contCase = !done && roundNo > 1 && st.label === ROLE08_WAIT;
+        if (contCase && (j % 2 === 1)) comp = 0;   // ส่วนหนึ่งของเคสต่อเนื่องคือรอบที่ยอดชดเชยเป็น 0
+        /* ฝ่าย SBP DSA (06) มีปุ่มปฏิเสธ 2 ปุ่ม ที่ "จบเอกสาร" เหมือนกัน แต่ผลต่อหน้ารายการ*ตรงข้ามกัน*
+           (SDD GI สไลด์ 46 ข้อ 1.9 · สไลด์ 50 รายการปุ่ม · สไลด์ 64 สรุป)
+             · หยุดชดเชยประกันรายได้ → จบ + กลับเข้าคิวของ 06 ทันทีในเดือนเดียวกัน (เปิดพิจารณาใหม่ได้เอง ไม่ต้องเปิด SR)
+             · เห็นควรไม่ชดเชยรายได้ → จบ + ไม่แสดงในเดือนที่กด ระบบดึงร้านเข้ามาใหม่รอบเดือนถัดไป พร้อมเจ้าของงานคนเดิม
+           ทั้งคู่สถานะเอกสารยังเป็น "เสร็จสิ้นดำเนินการ" ตามชุดสถานะ 6 ค่า — ที่ต่างคือผลการพิจารณาสุดท้าย */
+        var stopped = done && (i % 3 === 0);   // จบด้วย "หยุดชดเชยประกันรายได้"  → 06 เห็น
+        var notComp = done && (i % 3 === 1);   // จบด้วย "เห็นควรไม่ชดเชยรายได้"  → 06 ไม่เห็นในเดือนนี้
+        // ผลการพิจารณาระดับรายงาน (SDD v7.5 · สไลด์ 60) — ปุ่มปฏิเสธทั้งสองรวบเป็น "ไม่ประกันรายได้"
+        var result = done ? ((stopped || notComp) ? 'ไม่ประกันรายได้' : 'ประกันรายได้') : '';
+        /* ป้ายสถานะที่แสดงจริง — เอกสารที่จบแยกเป็น 3 ปลายทาง คนละสี ให้กวาดตาแยกออกได้ในตารางเดียว
+           สถานะจริงในฐานข้อมูลยังเป็น "เสร็จสิ้นดำเนินการ" ค่าเดียวตามชุดสถานะ 6 ค่า
+           ส่วนที่ต่อท้าย (หยุดชดเชย / ไม่ชดเชย) คือ *ผลการพิจารณาสุดท้าย* จาก sgi_consideration_logs */
+        var pillLabel = stopped ? DONE + ' หยุดชดเชย' : notComp ? DONE + ' ไม่ชดเชย' : st.label;
+        var pillClass = stopped ? 'fail' : notComp ? 'reject' : st.pill;
+        // เจ้าของงานผูกกับรหัสร้าน → ร้านเดิมได้เจ้าหน้าที่คนเดิมทุกครั้งที่ (จำลอง auto-assign)
+        var owner = OWNERS[parseInt(storeCode, 10) % OWNERS.length];
+        var dt = docDate(i);
+        html += '<tr' + (flag60 ? ' class="flag-red"' : '') + ' data-href="k2-document.html' + (stopped ? '?stopped=1' : '') + '"'
+          + ' data-date="' + dt.iso + '" data-type="' + TYPES[(j * 7) % TYPES.length] + '"'
+          + ' data-flag60="' + (flag60 ? 1 : 0) + '" data-stopped="' + (stopped ? 1 : 0) + '"'
+          + ' data-notcomp="' + (notComp ? 1 : 0) + '"'
+          + ' data-end="' + (stopped ? 'stop' : notComp ? 'notcomp' : done ? 'approve' : '') + '"'
+          + ' data-drop="' + drop.toFixed(2) + '" data-comp="' + comp.toFixed(2) + '" data-result="' + result + '">'
+          + '<td class="num">' + roundNo + '</td>'
+          + '<td class="num">' + cfg.docPrefix + pad(cfg.docStart + i, 5) + '</td>'
+          + '<td class="num">' + storeCode + '</td>'
+          + '<td>' + PLACES[j % PLACES.length] + ' ' + SUFFIX[Math.floor(j / PLACES.length) % SUFFIX.length] + '</td>'
+          + '<td>' + REGIONS[(j * 3) % REGIONS.length] + '</td>'
+          + '<td class="num">' + drop.toFixed(2) + '%</td>'
+          + '<td class="num">' + money(comp) + '</td>'
+          + '<td>' + owner
+          + '</td>'
+          + '<td><span class="pill ' + pillClass + '"'
+          + (stopped ? ' title="จบด้วยผลการพิจารณา &quot;หยุดชดเชยประกันรายได้&quot; — ฝ่าย SBP DSA (06) เปิดพิจารณาใหม่ได้เอง ไม่ต้องเปิด SR (SDD สไลด์ 46 ข้อ 1.9)"' : '')
+          + (notComp ? ' title="จบด้วยผลการพิจารณา &quot;เห็นควรไม่ชดเชยรายได้&quot; — เอกสารจบในเดือนที่กด ระบบจะดึงร้านเข้ามาเป็นงานใบใหม่ในรอบเดือนถัดไป พร้อมเจ้าของงานคนเดิม (SDD สไลด์ 46 ข้อ 1.9 · สไลด์ 64)"' : '')
+          + '>' + esc(pillLabel) + '</span></td>'
+          + '<td class="num">' + (done ? 0 : (j % 9) + 1) + '</td></tr>';
+      }
+      tbody.innerHTML = html;
+      var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+
+      var emptyRow = document.createElement('tr');
+      emptyRow.innerHTML = '<td colspan="11" style="text-align:center;color:#8493a5;padding:28px 12px;">ไม่พบรายการตามเงื่อนไขที่กรอง</td>';
+      emptyRow.hidden = true;
+      tbody.appendChild(emptyRow);
+
+      function el(id) { return document.getElementById(id + cfg.suffix); }
+      var fSearch = el('fSearch'), fStatus = el('fStatus'), fRegion = el('fRegion'), fType = el('fType');
+      var fDateFrom = el('fDateFrom'), fDateTo = el('fDateTo');
+      var fDropMin = el('fDropMin'), fDropMax = el('fDropMax');
+      var fCompMin = el('fCompMin'), fCompMax = el('fCompMax');
+      var fDayMin = el('fDayMin'), fDayMax = el('fDayMax');
+      var fResult = el('fResult');   /* มีเฉพาะหน้า "ที่เกี่ยวข้อง" */
+      var pager = document.getElementById(cfg.pagerId);
+      var page = 1, perPage = 10, special = null;
+
+      function rowType(tr) { return tr.getAttribute('data-type') || ''; }
+      /* index +1 ทุกตัวหลังเพิ่มคอลัมน์ checkbox เป็นคอลัมน์แรก (SDD สไลด์ 48) */
+      function rowRegion(tr) { return tr.cells[5] ? tr.cells[5].textContent.trim() : ''; }
+      function rowText(tr) {
+        return (tr.cells[2].textContent + ' ' + tr.cells[3].textContent + ' ' + tr.cells[4].textContent).toLowerCase();
+      }
+      function numVal(elm) { var v = parseFloat(elm.value); return isNaN(v) ? null : v; }
+      function baseRows() { return cfg.extraMatch ? rows.filter(cfg.extraMatch) : rows; }
+
+      function matched() {
+        var q = fSearch.value.trim().toLowerCase(), st = fStatus.value, rg = fRegion.value, tp = fType.value;
+        var rs = fResult ? fResult.value : '';
+        var df = fDateFrom.value, dto = fDateTo.value;
+        var dmin = numVal(fDropMin), dmax = numVal(fDropMax);
+        var cmin = numVal(fCompMin), cmax = numVal(fCompMax);
+        var ymin = numVal(fDayMin), ymax = numVal(fDayMax);
+        return baseRows().filter(function (tr) {
+          if (special && !special(tr)) return false;
+          if (!quickMatch(tr)) return false;
+          if (q && rowText(tr).indexOf(q) === -1) return false;
+          if (st && pillText(tr) !== st) return false;
+          if (rg && rowRegion(tr) !== rg) return false;
+          if (tp && rowType(tr) !== tp) return false;
+          if (rs) {
+            var rv = tr.getAttribute('data-result') || '';
+            if (rs === '__none' ? rv !== '' : rv !== rs) return false;
+          }
+          var iso = tr.getAttribute('data-date');
+          if (df && iso < df) return false;
+          if (dto && iso > dto) return false;
+          var drop = parseFloat(tr.getAttribute('data-drop'));
+          if (dmin !== null && drop < dmin) return false;
+          if (dmax !== null && drop > dmax) return false;
+          var comp = parseFloat(tr.getAttribute('data-comp'));
+          if (cmin !== null && comp < cmin) return false;
+          if (cmax !== null && comp > cmax) return false;
+          var days = parseFloat(tr.cells[9].textContent);
+          if (ymin !== null && days < ymin) return false;
+          if (ymax !== null && days > ymax) return false;
+          return true;
+        });
+      }
+
+      /* ---- sort หัวตาราง: คลิกสลับ น้อย→มาก / มาก→น้อย ---- */
+      var ths = Array.prototype.slice.call(document.querySelectorAll('#' + cfg.tableId + ' thead th[data-stype]'));
+      var sortTh = null, sortDir = 1;
+      function sortVal(tr, col, type) {
+        if (type === 'drop') return parseFloat(tr.getAttribute('data-drop'));
+        if (type === 'comp') return parseFloat(tr.getAttribute('data-comp'));
+        var t = tr.cells[col].textContent.trim();
+        if (type === 'num') return parseFloat(t.replace(/[,%]/g, '')) || 0;
+        return t;
+      }
+      ths.forEach(function (th) {
+        th.addEventListener('click', function () {
+          if (sortTh === th) sortDir = -sortDir; else { sortTh = th; sortDir = 1; }
+          ths.forEach(function (h) { h.classList.remove('sort-asc', 'sort-desc'); });
+          th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+          var col = th.cellIndex, type = th.getAttribute('data-stype');
+          rows.sort(function (a, b) {
+            var va = sortVal(a, col, type), vb = sortVal(b, col, type);
+            if (va < vb) return -sortDir;
+            if (va > vb) return sortDir;
+            return 0;
+          });
+          rows.forEach(function (tr) { tbody.appendChild(tr); });
+          tbody.appendChild(emptyRow);
+          page = 1;
+          apply();
+        });
+      });
+
+      function pgBtn(label, target, opts) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.innerHTML = label;
+        if (opts && opts.cls) b.className = opts.cls;
+        if (opts && opts.disabled) b.disabled = true;
+        else if (target) b.addEventListener('click', function () { page = target; apply(); });
+        return b;
+      }
+
+      function apply() {
+        var base = baseRows();
+        var list = matched();
+        var pages = Math.max(1, Math.ceil(list.length / perPage));
+        if (page > pages) page = pages;
+        if (page < 1) page = 1;
+        var from = (page - 1) * perPage, to = from + perPage;
+        rows.forEach(function (tr) { tr.hidden = true; });
+        list.slice(from, to).forEach(function (tr) { tr.hidden = false; });
+        emptyRow.hidden = list.length > 0;
+
+        pager.innerHTML = '';
+
+        var pp = document.createElement('select');
+        pp.setAttribute('aria-label', 'จำนวนรายการต่อหน้า');
+        [10, 20, 50, 100].forEach(function (n) {
+          var op = document.createElement('option');
+          op.value = n; op.textContent = n + ' / หน้า';
+          if (n === perPage) op.selected = true;
+          pp.appendChild(op);
+        });
+        pp.addEventListener('change', function () { perPage = +pp.value; page = 1; apply(); });
+        pager.appendChild(pp);
+
+        var info = document.createElement('span');
+        info.className = 'pg-info';
+        info.textContent = list.length
+          ? 'แสดง ' + (from + 1) + '–' + Math.min(to, list.length) + ' จาก ' + list.length + ' รายการ'
+            + (list.length < base.length ? ' (กรองจาก ' + base.length + ')' : '')
+          : 'พบ 0 รายการ (กรองจาก ' + base.length + ')';
+        pager.appendChild(info);
+
+        var nav = document.createElement('div');
+        nav.className = 'pg-group';
+        nav.appendChild(pgBtn('‹', page - 1, { disabled: page === 1 }));
+        pageItems(page, pages).forEach(function (it) {
+          if (it === 'gap') nav.appendChild(pgBtn('…', 0, { cls: 'gap', disabled: true }));
+          else nav.appendChild(pgBtn(String(it), it, it === page ? { cls: 'on' } : null));
+        });
+        nav.appendChild(pgBtn('›', page + 1, { disabled: page === pages }));
+        pager.appendChild(nav);
+
+        var lbl = document.createElement('span');
+        lbl.className = 'pg-label'; lbl.textContent = 'ไปหน้า';
+        pager.appendChild(lbl);
+        var go = document.createElement('input');
+        go.type = 'number'; go.className = 'pg-goto';
+        go.min = 1; go.max = pages; go.placeholder = page + '/' + pages;
+        function jump() {
+          var v = parseInt(go.value, 10);
+          if (!v) return;
+          page = Math.min(pages, Math.max(1, v));
+          apply();
+        }
+        go.addEventListener('keydown', function (e) { if (e.key === 'Enter') jump(); });
+        go.addEventListener('blur', function () { if (go.value) jump(); });
+        pager.appendChild(go);
+
+        if (cfg.onApply) cfg.onApply();
+      }
+
+
+      /* ===== Selected Filter (preset) + Quick Search — เทียบเท่าแถบของ K2 เดิม ===== */
+      var qsField = el('qsField'), qsText = el('qsText'), fPreset = el('fPreset');
+      var quick = { col: -1, q: '' };
+      var PRESET_KEY = 'sbp.filterPresets.' + cfg.tableId;
+
+      /* เติมรายชื่อคอลัมน์ให้ dropdown Quick Search จากหัวตารางจริง */
+      Array.prototype.slice.call(document.querySelectorAll('#' + cfg.tableId + ' thead th')).forEach(function (th, i) {
+        var o = document.createElement('option'); o.value = String(i); o.textContent = th.textContent.trim();
+        qsField.appendChild(o);
+      });
+
+      function quickMatch(tr) {
+        if (!quick.q) return true;
+        var hay = quick.col < 0
+          ? tr.textContent
+          : (tr.cells[quick.col] ? tr.cells[quick.col].textContent : '');
+        return hay.toLowerCase().indexOf(quick.q) !== -1;
+      }
+      function onQuick() {
+        quick.q = qsText.value.trim().toLowerCase();
+        quick.col = parseInt(qsField.value, 10);
+        el('qsHit').textContent = quick.q ? 'Quick Search ทำงาน' : '';
+        page = 1; apply();
+      }
+      qsText.addEventListener('input', onQuick);
+      qsField.addEventListener('change', onQuick);
+      el('qsClear').addEventListener('click', function () { qsText.value = ''; qsField.value = '-1'; onQuick(); });
+
+      /* preset: เก็บค่าฟิลเตอร์ทั้งชุดไว้ใน localStorage */
+      var FIELDS = [fSearch, fStatus, fRegion, fType, fDateFrom, fDateTo, fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax].concat(fResult ? [fResult] : []);
+      function readPresets() { try { return JSON.parse(localStorage.getItem(PRESET_KEY)) || {}; } catch (e) { return {}; } }
+      function writePresets(p) { try { localStorage.setItem(PRESET_KEY, JSON.stringify(p)); } catch (e) {} }
+      function renderPresets(sel) {
+        var p = readPresets();
+        fPreset.innerHTML = '<option value="">Default</option>';
+        Object.keys(p).forEach(function (name) {
+          var o = document.createElement('option'); o.value = name; o.textContent = name; fPreset.appendChild(o);
+        });
+        fPreset.value = sel || '';
+        el('fPresetDel').hidden = !fPreset.value;
+      }
+      /* ตั้งชื่อ preset ด้วย input ในแถบเอง — ไม่ใช้ prompt() ของเบราว์เซอร์ (บล็อกหน้าจอ) */
+      var nameBox = el('fPresetName');
+      function savePreset() {
+        var name = nameBox.value.trim();
+        if (!name) { nameBox.focus(); return; }
+        var p = readPresets();
+        p[name] = { f: FIELDS.map(function (c) { return c.value; }), qc: qsField.value, qt: qsText.value };
+        writePresets(p); renderPresets(name);
+        nameBox.value = ''; nameBox.hidden = true;
+        toast('บันทึกชุดตัวกรอง "' + name + '" แล้ว', 'ok');
+      }
+      el('fPresetSave').addEventListener('click', function () {
+        if (nameBox.hidden) { nameBox.hidden = false; nameBox.focus(); return; }
+        savePreset();
+      });
+      nameBox.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); savePreset(); }
+        if (e.key === 'Escape') { nameBox.value = ''; nameBox.hidden = true; }
+      });
+      el('fPresetDel').addEventListener('click', function () {
+        var name = fPreset.value; if (!name) return;
+        var p = readPresets(); delete p[name]; writePresets(p); renderPresets('');
+        toast('ลบชุดตัวกรอง "' + name + '" แล้ว', 'del');
+      });
+      fPreset.addEventListener('change', function () {
+        var name = fPreset.value;
+        el('fPresetDel').hidden = !name;
+        if (!name) { FIELDS.forEach(function (c) { c.value = ''; }); qsField.value = '-1'; qsText.value = ''; }
+        else {
+          var d = readPresets()[name]; if (!d) return;
+          FIELDS.forEach(function (c, i) { c.value = d.f[i] || ''; });
+          qsField.value = d.qc || '-1'; qsText.value = d.qt || '';
+        }
+        onQuick();
+      });
+      renderPresets('');
+
+      function onFilter() { page = 1; apply(); }
+      fSearch.addEventListener('input', onFilter);
+      [fStatus, fRegion, fType, fDateFrom, fDateTo].concat(fResult ? [fResult] : []).forEach(function (c) { c.addEventListener('change', onFilter); });
+      [fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax].forEach(function (c) { c.addEventListener('input', onFilter); });
+      el('fClear').addEventListener('click', function () {
+        [fSearch, fStatus, fRegion, fType, fDateFrom, fDateTo, fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax]
+          .concat(fResult ? [fResult] : []).forEach(function (c) { c.value = ''; });
+        qsText.value = ''; qsField.value = '-1'; quick = { col: -1, q: '' }; el('qsHit').textContent = '';
+        fPreset.value = ''; el('fPresetDel').hidden = true;
+        special = null; specialKey = ''; relatedKey = '';
+        page = 1; apply();
+      });
+
+      /* มติผู้ใช้ 2026-09-22 — ตัดการเลือกหลายเอกสาร (checkbox + "ดำเนินการที่เลือก") ออกทั้งหมด */
+
+      apply();
+      return {
+        rows: rows,
+        statusSelect: fStatus,
+        searchInput: fSearch,
+        regionSelect: fRegion,
+        typeSelect: fType,
+        setSpecial: function (fn) { special = fn; page = 1; apply(); },
+        clearFilters: function () {
+          [fSearch, fStatus, fRegion, fType, fDateFrom, fDateTo, fDropMin, fDropMax, fCompMin, fCompMax, fDayMin, fDayMax]
+            .forEach(function (c) { c.value = ''; });
+        },
+        reset: function () { page = 1; apply(); }
+      };
+    }
+
+    // หน้า "รอดำเนินการ" — เอกสารปีปัจจุบัน 2026 (ค.ศ.) · เห็นเฉพาะสถานะ "รอ<บทบาท>ดำเนินการ" ของตน
+    var waiting = initTable({
+      tableId: 'tblK2', pagerId: 'pgK2', suffix: '',
+      total: 200, docPrefix: '2026/', docStart: 6,
+      dateYear: 2026, dateMonth: 0, dateSpan: 181, iOffset: 0,
+      extraMatch: roleMatch,
+      onApply: syncStatActive
+    });
+
+    // หน้า "ที่เกี่ยวข้อง" — เอกสารปีก่อน 2025 (ค.ศ. · ก.ค.–ธ.ค.) · เห็นทุกสถานะ
+    var related = initTable({
+      tableId: 'tblRelated', pagerId: 'pgRelated', suffix: 'R',
+      total: 120, docPrefix: '2025/', docStart: 450,
+      dateYear: 2025, dateMonth: 6, dateSpan: 184, iOffset: 11,
+      extraMatch: relatedMatch,
+      onApply: syncStatActive
+    });
+
+    /* ---- การ์ด stat ---- */
+    function statCard(c) {
+      var d = document.createElement('div');
+      d.className = 'stat';
+      d.setAttribute('data-fstatus', c.key);
+      if (c.title) d.title = c.title;
+      d.innerHTML = '<div class="si ' + c.bg + '"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="' + c.icon + '"/></svg></div>'
+        + '<div><div class="sv num">' + c.value + '</div><div class="sl">' + esc(c.label) + '</div></div>';
+      return d;
+    }
+
+    // โหมดรอดำเนินการ: การ์ดต่อบทบาท = งานทั้งหมดของบทบาท + มุมมองย่อยที่มีผลจริงกับงาน (คลิกเพื่อกรอง)
+    var SPECIALS = {
+      flag60: function (tr) { return tr.getAttribute('data-flag60') === '1'; },
+      over3: function (tr) { return parseFloat(tr.cells[9].textContent) > 3; },
+      over100k: function (tr) { return parseFloat(tr.getAttribute('data-comp')) >= 100000; }  // เข้าเส้น AVP · เกณฑ์เดียว 100,000 (มติ 2026-08-18)
+    };
+    /* renderWaitingStats — ถอด stat card ออกจากหน้า (2026-08-06) */
+    function renderWaitingStats() { /* no-op */ }
+
+    // โหมดที่เกี่ยวข้อง: กราฟวงกลมสรุปสัดส่วนสถานะ (คลิก legend เพื่อกรอง) + การ์ดพิเศษ 3 ใบ
+    /* renderRelatedStats — ถอด stat card ออกจากหน้า (2026-08-06) */
+    function renderRelatedStats() { /* no-op */ }
+
+    // สร้าง SVG กราฟวงกลม (โครงเดียวกับ donut() ใน sbp.js — ใช้ class เดิมให้สไตล์/อนิเมชันตรงกัน)
+    function donutSVG(vals, cols, total, center) {
+      var r = 52, c = 2 * Math.PI * r, cx = 70, cy = 70, acc = 0, segs = '';
+      vals.forEach(function (v, i) {
+        var len = v / total * c, rot = acc / total * 360 - 90;
+        segs += '<circle class="donutSeg" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + cols[i % cols.length] + '" stroke-width="15" stroke-dasharray="' + len.toFixed(2) + ' ' + (c - len).toFixed(2) + '" stroke-dashoffset="' + len.toFixed(2) + '" transform="rotate(' + rot.toFixed(2) + ' ' + cx + ' ' + cy + ')" style="transition-delay:' + (i * 120) + 'ms"/>';
+        acc += v;
+      });
+      return '<svg viewBox="0 0 140 140" width="150" height="150">' + segs +
+        '<text x="70" y="65" text-anchor="middle" class="donutBig">' + total.toLocaleString() + '</text>' +
+        '<text x="70" y="85" text-anchor="middle" class="donutSub">' + center + '</text></svg>';
+    }
+
+    /* ---- ตัวสลับบทบาท + stepper 5 ขั้น (ใช้ทั้งสองโหมด) ---- */
+    var activeTbl = MODE === 'waiting' ? waiting : related;
+    {
+      var roleSel = document.getElementById('roleSwitch');
+      ROLES.forEach(function (r, i) {
+        var o = document.createElement('option');
+        o.value = i; o.textContent = r.code + ' · ' + r.name;
+        roleSel.appendChild(o);
+      });
+
+      var renderSteps = function () {
+        var wrap = document.getElementById('wfSteps');
+        wrap.innerHTML = '';
+        ROLES.forEach(function (r, i) {
+          if (i) { var a = document.createElement('span'); a.className = 'wf-arrow'; a.textContent = '›'; wrap.appendChild(a); }
+          var c = document.createElement('span');
+          c.className = 'wf-step' + (r === currentRole ? ' on' : '');
+          c.innerHTML = '<b>' + r.code + '</b> ' + esc(r.short);
+          c.addEventListener('click', function () { setRole(i); });
+          wrap.appendChild(c);
+        });
+      };
+
+      var setRole = function (i) {
+        currentRole = ROLES[i];
+        roleSel.value = i;
+        /* SDD สไลด์ 46 ข้อ 1.9 — คำอธิบายเอกสารหยุดชดเชยฯ แสดงเฉพาะบทบาท 06 ฝ่าย SBP DSA */
+        var sh = document.getElementById('stoppedHint');
+        if (sh) sh.hidden = currentRole.code !== '06';
+        specialKey = ''; relatedKey = '';
+        syncStatusFilter();          // สร้างตัวเลือกสถานะให้ตรงบทบาทก่อน แล้วค่อยล้างค่า
+        activeTbl.clearFilters();
+        renderSteps();
+        activeTbl.setSpecial(null);
+      };
+
+      roleSel.addEventListener('change', function () { setRole(+roleSel.value); });
+      setRole(0);
+    }
+  })();
+  </script>
+  <script>
+  /* sticky แถบบทบาท: เพิ่มเงา + ย่อเมื่อถูกตรึงใต้ header */
+  (function () {
+    /* ปุ่มปิดแถบขั้นตอน Workflow — กดแล้วซ่อนหายไปเลย (ไม่มีชิปเรียกกลับ · โหลดหน้าใหม่จะแสดงอีกครั้ง) */
+    (function () {
+      var bar = document.getElementById('roleBar'), btn = document.getElementById('rbClose');
+      if (!bar || !btn || bar.style.display === 'none') return;   // โหมดที่เกี่ยวข้อง: ซ่อนแถบอยู่แล้ว
+      btn.addEventListener('click', function () { bar.style.display = 'none'; });
+    })();
+
+    var rb = document.getElementById('roleBar');
+    if (!rb || rb.style.display === 'none') return;
+    window.addEventListener('scroll', function () {
+      rb.classList.toggle('stuck', rb.getBoundingClientRect().top <= 65 && window.scrollY > 10);
+    }, { passive: true });
+  })();
+  </script>
+</body>
+</html>
