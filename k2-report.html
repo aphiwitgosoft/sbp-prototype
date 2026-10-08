@@ -59,7 +59,6 @@
           </div>
           <div class="field"><label>รหัสร้านเปิดกระทบ</label>
             <input class="num" inputmode="numeric" id="fNewStore" placeholder="XXXXXX (ตัวเลข)">
-            <small style="color:var(--muted);">ระบุรหัสร้านถูกกระทบแล้ว ต้องระบุรหัสร้านเปิดกระทบด้วย</small>
           </div>
           <div class="field"><label>ประเภทร้าน (เลือกได้มากกว่า 1)</label>
             <div class="ckgrid" style="grid-template-columns:repeat(4,minmax(0,1fr));">
@@ -174,7 +173,8 @@
     }
     btn.addEventListener('click', function (e) {
       fillPair();
-      var pairBad = (!!imp.value.trim()) !== (!!nw.value.trim());
+      // ถอดกติกา 'ต้องกรอกรหัสร้านถูกกระทบ/เปิดกระทบคู่กัน' ออก 2026-10-05 (มติผู้ใช้) — สองช่องเป็นตัวกรองอิสระ
+      var pairBad = false;
       var psMissing = !from.value || !to.value;
       var psReversed = !psMissing && from.value > to.value;
       var psWide = !psMissing && !psReversed && overOneYear();
@@ -185,8 +185,7 @@
         window.SBP.toast(
           psMissing ? 'กรุณาระบุ Period Statement From / Period Statement To'
           : psReversed ? 'Period Statement From ต้องไม่มากกว่า To'
-          : psWide ? 'ช่วง Period Statement เลือกได้ครั้งละไม่เกิน 1 ปี'
-          : 'กรณีระบุรหัสร้านถูกกระทบ ต้องระบุรหัสร้านเปิดกระทบด้วย', 'del');
+          : 'ช่วง Period Statement เลือกได้ครั้งละไม่เกิน 1 ปี', 'del');
       }
     }, true);
     [from, to].forEach(function (el) { el.addEventListener('change', function () { mark(el, false); }); });

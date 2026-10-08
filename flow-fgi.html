@@ -54,7 +54,7 @@
 
           <rect x="30" y="150" width="180" height="58" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.5"/>
           <text x="120" y="174" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2b3440">ALLMAP</text>
-          <text x="120" y="192" text-anchor="middle" font-size="10" fill="#8493a5">SQL Server GSMALLMAP</text>
+          <text x="120" y="192" text-anchor="middle" font-size="10" fill="#8493a5">ไฟล์บน EAI S3 (interface/in/ALM/)</text>
 
           <rect x="30" y="286" width="180" height="58" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.5"/>
           <text x="120" y="310" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2b3440">IAS / MIS</text>
@@ -66,13 +66,13 @@
           <text x="318" y="92" font-size="11" fill="#45525f">fcs_qssi_score — ระบบ SBP เดิมนำเข้าให้ (SGI อ่านอย่างเดียว)</text>
           <text x="318" y="110" font-size="11" fill="#45525f">Job 2 ImportImpactStore → sgi_fgi_impact_stores (กฎ DENY / ON_PROCESS)</text>
           <text x="318" y="128" font-size="11" fill="#45525f">Job 3 ImportImpactCompetitor → sgi_fgi_impact_competitors (กันซ้ำระดับงวด)</text>
-          <text x="318" y="148" font-size="9.5" fill="#8493a5">รายเดือน · และทุกวันที่ 7 เวลา 07:00</text>
+          <text x="318" y="148" font-size="9.5" fill="#8493a5">รายเดือน · Job 2/3 ทำงานเมื่อไฟล์ ALLMAP มาถึง S3 (ไม่มี cron)</text>
 
           <!-- phase B -->
           <rect x="300" y="178" width="400" height="96" rx="12" fill="#f0faf8" stroke="#15b6a6" stroke-width="1.6"/>
           <text x="318" y="202" font-size="12.5" font-weight="700" fill="#0f766e">เฟส B · แลกเปลี่ยนยอดขาย</text>
           <text x="318" y="224" font-size="11" fill="#45525f">Job 4 Prepare → ไฟล์ AMS06001O (16:00) · พลิกธง W→P (ไม่มี transaction!)</text>
-          <text x="318" y="242" font-size="11" fill="#45525f">Job 5 Import ← AMS06001I (16:30) · คำนวณ sales_diff 4×15 วัน → sales_status Y/N</text>
+          <text x="318" y="242" font-size="11" fill="#45525f">Job 5 Import ← AMS06001I (เมื่อไฟล์มาถึง S3) · คำนวณ sales_diff 4×15 วัน → sales_status Y/N</text>
           <text x="318" y="262" font-size="9.5" fill="#8493a5">ทุกวันที่ 7–16 ของเดือน</text>
 
           <!-- phase C -->
@@ -93,7 +93,7 @@
           <rect x="300" y="526" width="400" height="78" rx="12" fill="#fdf2f2" stroke="#ef4444" stroke-width="1.6"/>
           <text x="318" y="550" font-size="12.5" font-weight="700" fill="#c0392b">เฟส E · เฝ้าระวัง ACK (Watchdog)</text>
           <text x="318" y="572" font-size="11" fill="#45525f">Job 10 — ขาออกยังไม่ confirm ≥ 1 วัน (COMPENSATE_INIT_I / APPROVE_I) → เมลเตือน</text>
-          <text x="318" y="590" font-size="9.5" fill="#8493a5">ทุกวัน 07:00 · อ่านอย่างเดียว รันซ้ำปลอดภัย</text>
+          <text x="318" y="590" font-size="9.5" fill="#8493a5">ทุกวัน 08:00 · อ่านอย่างเดียว รันซ้ำปลอดภัย</text>
 
           <!-- targets -->
           <rect x="780" y="294" width="180" height="58" rx="10" fill="#fff" stroke="#b9c3cf" stroke-width="1.5"/>
@@ -116,7 +116,7 @@
           <line x1="210" y1="81" x2="298" y2="86" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
           <text x="216" y="72" font-size="9.5" fill="#5d6b7a">mrs1–5tmf (WIN-874)</text>
           <line x1="210" y1="179" x2="298" y2="130" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
-          <text x="216" y="170" font-size="9.5" fill="#5d6b7a">SEVEN_IMPACT_VIEW ฯลฯ</text>
+          <text x="216" y="170" font-size="9.5" fill="#5d6b7a">Impact_Store_Predict / Impact_Competitor (S3)</text>
           <line x1="298" y1="230" x2="210" y2="300" stroke="#8493a5" stroke-width="1.5" marker-end="url(#pa)"/>
           <text x="214" y="252" font-size="9.5" fill="#5d6b7a">AMS06001O (UTF-8)</text>
           <line x1="210" y1="322" x2="298" y2="250" stroke="#8493a5" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#pa)"/>
@@ -156,13 +156,13 @@
             <thead><tr><th>เวลา</th><th>Cron</th><th>Job</th><th>งาน</th></tr></thead>
             <tbody>
               <tr><td>ต้นเดือน (รายเดือน)</td><td class="mono">Monthly</td><td class="mono">— (ระบบ SBP เดิม)</td><td>นำเข้าคะแนน QSSI 4 ไฟล์ · <b>ตัดออกจากขอบเขต SGI 2026-08-24</b> — ระบบเดิมทำให้แล้ว (temp table ใช้ร่วม)</td></tr>
-              <tr><td>วันที่ 7 · 07:00</td><td class="mono">0 07 7 * *</td><td class="mono">Jobs 2, 3</td><td>นำเข้าคู่ร้านกระทบ + คู่แข่งจาก ALLMAP</td></tr>
+              <tr><td>เมื่อไฟล์ ALLMAP มาถึง</td><td class="mono">S3 event</td><td class="mono">Jobs 2, 3</td><td>นำเข้าคู่ร้านกระทบ (<code>Impact_Store_Predict_*</code> → Job 2) + คู่แข่ง (<code>Impact_Competitor_*</code> → Job 3) จาก <code>interface/in/ALM/</code> · เลิก cron ตามมติ 2026-10-01</td></tr>
               <tr><td>วันที่ 7–16 · 16:00</td><td class="mono">0 16 7-16 * *</td><td class="mono">Job 4</td><td>วางไฟล์คำขอยอดขาย AMS06001O บน EAI S3 ให้ IAS/MIS</td></tr>
-              <tr><td>วันที่ 7–16 · 16:30</td><td class="mono">30 16 7-16 * *</td><td class="mono">Job 5</td><td>ดึงไฟล์ตอบกลับจาก EAI S3 + คำนวณ Growth (30 นาทีหลัง Job 4)</td></tr>
+              <tr><td>เมื่อไฟล์ตอบกลับของ IAS มาถึง</td><td class="mono">S3 event</td><td class="mono">Job 5</td><td>อ่านไฟล์ <code>AMS06001I_*</code> จาก <code>interface/out/AMS/</code> + คำนวณ Growth · เลิก cron ตามมติ 2026-10-01</td></tr>
               <tr><td>ทุกวัน · 17:00</td><td class="mono">0 17 * * *</td><td class="mono">Job 6</td><td>ซิงก์สถานะ 10 ขั้น + publish message ไป STA</td></tr>
               <tr><td>วันที่ 7–31 · 17:30</td><td class="mono">30 17 7-31 * *</td><td class="mono">Jobs 8, 7, 9</td><td>สร้างเอกสาร + บันทึกคู่แข่ง/ร้านเปิดใหม่เข้าเอกสาร (เขียนฐานข้อมูลตรง)</td></tr>
               <tr><td>ต่อจาก Job 8</td><td class="mono">after-job-8</td><td class="mono">Job 8b</td><td>เปิด Workflow ภายใน (Gen Flow Gate + ตัดสินจุดเข้า flow ตามประเภทเคส) — ตั้งใจแยกจาก Job 8</td></tr>
-              <tr><td>ทุกวัน · 07:00</td><td class="mono">0 07 * * *</td><td class="mono">Job 10</td><td>Watchdog ตรวจข้อความขาออกที่ยังไม่ได้ publisher confirm ≥ 1 วัน แล้วส่งเมลเตือน</td></tr>
+              <tr><td>ทุกวัน · 08:00</td><td class="mono">0 8 * * *</td><td class="mono">Job 10</td><td>Watchdog ตรวจข้อความขาออกที่ยังไม่ได้ publisher confirm ≥ 1 วัน แล้วส่งเมลเตือน</td></tr>
             </tbody>
           </table>
         </div>

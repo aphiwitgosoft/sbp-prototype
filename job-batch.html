@@ -191,21 +191,22 @@
       phase:'A',
       cls:'fgi.main.ImportImpactStore',
       script:'FGI_ImportImpactStore.sh',
-      cron:'0 07 7 * *',
-      cronTh:'ทุกวันที่ 7 เวลา 07:00',
+      cron:'S3 event',
+      cronTh:'ไฟล์ Impact_Store_Predict_*.txt มาถึง interface/in/ALM/ → EventBridge → SubmitJob พร้อม s3Key (มติ 2026-10-01 · เลิก cron 0 07 7 * *)',
       out:'sgi_fgi_impact_stores',
-      desc:'นำคู่ร้านถูกกระทบ–ร้านเปิดใหม่จากวิว ALLMAP เข้า sgi_fgi_impact_stores เติมข้อมูลจากตาราง master แล้วใช้กฎ DENY และ ON_PROCESS ตั้งค่า verify_status จาก W เป็น P หรือ N',
+      desc:'นำคู่ร้านถูกกระทบ–ร้านเปิดใหม่จาก **ไฟล์ Impact_Store_Predict_YYYYMMDD.txt บน EAI S3** (interface/in/ALM/ · เปลี่ยนจากวิว SQL Server เมื่อ 2026-09-29) เข้า sgi_fgi_impact_stores เติมข้อมูลจากตาราง master แล้วใช้กฎ DENY และ ON_PROCESS ตั้งค่า verify_status จาก W เป็น P หรือ N',
       params:[
-        ['กำหนดการรัน (Cron)', '0 07 7 * *', 'text', 1, 'ทุกวันที่ 7 ของเดือน เวลา 07:00'],
-        ['Argument (ขอบเขต|งวด)', 'ALL|2569|06', 'text', 1, 'รูปแบบ ZONES|YYYY|MM หรือ ALL|YYYY|MM — ไม่ระบุจะใช้งวดตาม modifyDateToString · ⚠️ ปีในตัวอย่างเป็น พ.ศ. (2569) ตามค่าที่ระบบเดิมใช้กับวิว ALLMAP ซึ่งขัดกับกติกา ค.ศ. ทั้งระบบ (มติ 2026-08-06) — ค่าที่ส่งเข้าวิว ALLMAP คงรูปแบบเดิมของวิว ส่วนค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง'],
-        ['Source View', 'allmapssa.SEVEN_IMPACT_VIEW (SQL Server GSMALLMAP)', 'text', 0, 'dedup ด้วย ROW_NUMBER'],
+        ['ตัวกระตุ้น (Trigger)', 'S3 Object Created → EventBridge rule → AWS Batch SubmitJob', 'text', 1, 'มติ 2026-10-01 · rule กรองถึง prefix ชื่อไฟล์ interface/in/ALM/Impact_Store_Predict_ · ชุดตั้งค่าอยู่ใน output/aws/sgi-s3-triggers/ (สร้างด้วย tools/build_sgi_s3_triggers.py)'],
+        ['INPUT (JSON)', '{"s3Key":"interface/in/ALM/Impact_Store_Predict_20260929.txt"}', 'text', 1, 'event ส่ง s3Key มาเอง → ทำไฟล์นั้นไฟล์เดียว · ไม่ส่ง s3Key = หยิบไฟล์ล่าสุด (รันมือ/rerun) · ฟิลด์ที่รับ: year · month · zones · dryRun · limit · s3Key · ปีเป็น ค.ศ.'],
+        ['ไฟล์ต้นทาง (EAI S3)', 'interface/in/ALM/Impact_Store_Predict_YYYYMMDD.txt', 'text', 0, '🔴 เปลี่ยนต้นทาง 2026-09-29 จากวิว allmapssa.SEVEN_IMPACT_VIEW (SQL Server) · pipe-delimited · UTF-8 · LF · มีหัวตาราง 21 คอลัมน์ · กรองงวด + เลือกแถวแรกต่อคู่ร้าน (DISTANCE ASC, STORECODE_N ASC) ทำในโค้ด'],
+        ['ย้ายไฟล์เข้า backup', 'SGI_ALM_MOVE_TO_BACKUP (ตั้งต้น true · มติ 2026-10-05)', 'text', 1, 'ย้ายไป interface/backup-in/ALM/ เฉพาะรอบที่ไม่ล้มเหลวและไม่ใช่ dryRun'],
         ['Branch Type ที่เข้าเกณฑ์', 'B, FAM, FB1, FB2, FC1, FVB, FVC, FPT1', 'text', 0, 'FPT1 เข้าเกณฑ์เฉพาะเมื่อ SBP_CANCEL_TYPE_I = 06'],
         ['กฎ DENY (ตรวจก่อน ON_PROCESS)', 'สาขา N=F / juristic เดียวกัน / สัญญาไม่คลุมงวด / เก่ากว่า 12 เดือน', 'text', 0, ''],
         ['PK Sequence', 'BIGSERIAL ของ sgi_fgi_impact_stores (PostgreSQL — ไม่ใช้ named sequence แบบ Oracle)', 'text', 0, '']
       ],
       flow:[
         { k:'start', t:'เริ่ม' },
-        { k:'io', t:'อ่าน SEVEN_IMPACT_VIEW จาก ALLMAP (ROW_NUMBER dedup)', d:'เชื่อม SQL Server GSMALLMAP ด้วย user allmapssa' },
+        { k:'io', t:'อ่านไฟล์ Impact_Store_Predict จาก EAI S3 (กรองงวด/โซน + เลือกแถวแรกต่อคู่ร้านในโค้ด)', d:'interface/in/ALM/ · อ่านไฟล์ตาม s3Key ที่ event ส่งมา (ไม่ส่ง = หยิบไฟล์ล่าสุดตามชื่อที่ลงท้าย YYYYMMDD) · ขาดคอลัมน์ที่ต้องใช้ = ล้มก่อนนำเข้า' },
         { k:'d', t:'มีข้อมูลต้นทาง?', no:'จบการทำงาน', noKind:'end', d:'' },
         { k:'d', t:'เป็นคู่ร้านใหม่ (ยังไม่มีใน Oracle)?', no:'ข้ามรายการ — ของเดิมไม่ถูกอัปเดต (updateList เป็น dead code)', noKind:'mark', d:'Errata E4: รันซ้ำจะไม่อัปเดตคู่เดิม' },
         { k:'p', t:'insert คู่ใหม่ verify_status = W (ค่า DEFAULT)', d:'created_by = ALM (คอลัมน์ของ sgi_fgi_impact_stores เอง) · ช่องทางต้นทางระดับรอบชดเชยอยู่ที่ sgi_fgi_impact_processes.datasource' },
@@ -238,20 +239,20 @@
       phase:'A',
       cls:'th.co.gosoft.fgi.main.ImportImpactCompetitor',
       script:'/appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh',
-      cron:'30 07 7 * *',
-      cronTh:'ทุกวันที่ 7 เวลา 07:30 — **เหลื่อมหลัง Job 2 (07:00) เพราะต้องรอแถวแม่** · ⚠️ เวลาเหลื่อมไม่ใช่การรับประกัน ต้องตั้ง dependency ที่ AWS Batch',
+      cron:'S3 event',
+      cronTh:'ไฟล์ Impact_Competitor_*.txt มาถึง interface/in/ALM/ → EventBridge → SubmitJob พร้อม s3Key (มติ 2026-10-01 · เลิก cron 30 07 7 * *) · ⚠️ ต้องรอแถวแม่จาก Job 2 — ไฟล์มาถึงก่อน Job 2 นำเข้าเสร็จ แถวที่ไม่มีแม่จะไม่ถูกนำเข้า',
       out:'sgi_fgi_impact_competitors',
-      desc:'นำข้อมูลร้านคู่แข่งรายงวดจากวิว COMPETITOR_IMPACT_VIEW **ของ ALLMAP (SQL Server GSMALLMAP — ระบบภายนอก คงกลไกเดิม)** เข้า sgi_fgi_impact_competitors ทีละ 10,000 แถว กันซ้ำระดับงวด (ถ้างวดมีข้อมูลแล้วจะข้ามทั้งงวด ไม่มี upsert)',
+      desc:'นำข้อมูลร้านคู่แข่งรายงวดจาก **ไฟล์ Impact_Competitor_YYYYMMDD.txt บน EAI S3** (interface/in/ALM/ · โฟลเดอร์เดียวกับไฟล์ของ Job 2 · เปลี่ยนจากวิว COMPETITOR_IMPACT_VIEW ของ SQL Server เมื่อ 2026-09-30) เข้า sgi_fgi_impact_competitors ทีละ 10,000 แถว กันซ้ำระดับงวด (ถ้างวดมีข้อมูลแล้วจะข้ามทั้งงวด ไม่มี upsert)',
       params:[
-        ['กำหนดการรัน (Cron)', '30 07 7 * *', 'text', 1, 'เหลื่อมหลัง Job 2 (07:00) เพราะ Job 3 ต้องรอแถวแม่ · **เวลาเหลื่อมไม่ใช่การรับประกันลำดับ — ต้องตั้ง dependency ที่ AWS Batch** · ใช้สคริปต์ /appstore/SPS/FGI/schedule/FGI_ImportCompetitor.sh'],
-        ['Argument (งวด)', '2569|06', 'text', 1, 'รูปแบบ YYYY|MM · ⚠️ ปีเป็น พ.ศ. ตามวิว ALLMAP — ค่าที่เขียนลงตารางของ SGI ต้องแปลงเป็น ค.ศ. ทุกครั้ง'],
+        ['ตัวกระตุ้น (Trigger)', 'S3 Object Created → EventBridge rule → AWS Batch SubmitJob', 'text', 1, 'มติ 2026-10-01 · rule แยกจากของ Job 2 ตามชื่อไฟล์ (prefix interface/in/ALM/Impact_Competitor_) · ไฟล์คู่แข่งเป็นต้นทางของ Job 3 ไม่ใช่ Job 2'],
+        ['INPUT (JSON)', '{"s3Key":"interface/in/ALM/Impact_Competitor_20260929.txt"}', 'text', 1, 'ฟิลด์ที่รับ: year · month · dryRun · limit · s3Key · ไม่ส่ง s3Key = หยิบไฟล์ล่าสุด · year/month ต้องส่งคู่กัน · ปีเป็น ค.ศ.'],
         ['Chunk Size', '10000', 'number', 1, 'จำนวนแถวต่อรอบ insert'],
-        ['Source View', 'COMPETITOR_IMPACT_VIEW', 'text', 0, 'SELECT DISTINCT / map คอลัมน์ NAMT -> NAME_TH, BRANCHT -> BRANCH_TH']
+        ['ไฟล์ต้นทาง (EAI S3)', 'interface/in/ALM/Impact_Competitor_YYYYMMDD.txt', 'text', 0, '🔴 เปลี่ยนต้นทาง 2026-09-30 · 16 คอลัมน์ · PERIOD_MONTH เป็นเลขเดือน (8) ต่างจากไฟล์ของ Job 2 ที่เป็นวันที่เต็ม · DISTINCT 11 คอลัมน์ทำในโค้ด · map NAMT -> NAME_TH, BRANCHT -> BRANCH_TH']
       ],
       flow:[
         { k:'start', t:'เริ่ม' },
         { k:'d', t:'เป็นงวดใหม่ (ยังไม่เคยนำเข้า)?', no:'ข้ามทั้งงวดแล้วจบด้วยสถานะ SKIPPED — ไม่ query ไม่ insert', noKind:'end', d:'กันซ้ำระดับงวด (Errata E15) · บันทึก existingRowCount + skippedPeriod=true · alert เมื่อ existingRowCount ไม่สมเหตุสมผล' },
-        { k:'io', t:'SELECT DISTINCT จาก COMPETITOR_IMPACT_VIEW', d:'' },
+        { k:'io', t:'อ่านไฟล์ Impact_Competitor จาก EAI S3 แล้ว DISTINCT 11 คอลัมน์ในโค้ด', d:'interface/in/ALM/ · คัดด้วย prefix ชื่อไฟล์ จึงไม่หยิบไฟล์ของ Job 2' },
         { k:'d', t:'พบข้อมูลต้นทาง?', no:'จบการทำงาน', noKind:'end', d:'' },
         { k:'p', t:'insert ทีละ 10,000 แถว (ผูก impact_process_id)', d:'map COMPET_ID → competitor_store_code (ว่าง → NULL) · map ชื่อแบรนด์ → brand_code (map ไม่ได้ = NULL + นับ unmapped) · NAMT → name_th · BRANCHT → branch_th (NAMT/BRANCHT เป็นชื่อคอลัมน์จริงของวิว ALLMAP)' },
         { k:'d', t:'reconcile: inserted + rejected + deduplicated = จำนวนต้นทาง?', no:'throw ภายใน transaction เพื่อให้ rollback ทั้งงวด', noKind:'err', d:'⚠️ ต้องตรวจ **ภายใน** transaction ก่อน commit — ถ้าตรวจหลัง commit ข้อความ Rollback จะไม่เป็นความจริง' },
@@ -284,7 +285,7 @@
       desc:'สร้างไฟล์คำขอยอดขาย IAS/MIS แบบ durable ก่อนเปลี่ยนสถานะ W→P แล้วบันทึก transactional outbox เพื่อส่งซ้ำได้โดยไม่สร้างรายการซ้ำ · **วางไฟล์บน EAI S3** (มติ 2026-08-24 — แทน SFTP ตรงไป IAS)',
       params:[
         ['กำหนดการรัน (Cron)', '0 16 7-16 * *', 'text', 1, 'รันวันที่ 7-16 เวลา 16:00'],
-        ['EAI S3 bucket + prefix (ขาออก)', 'eai-sgi/outbound/ias/', 'text', 0, 'endpoint/region resolve จาก environment; สิทธิ์ใช้ IAM role ของ pod หรือ secretRef และจำกัดเฉพาะ prefix ขาออกของ IAS'],
+        ['EAI S3 bucket + prefix (ขาออก)', 'interface/out/AMS/', 'text', 0, 'endpoint/region resolve จาก environment; สิทธิ์ใช้ IAM role ของ pod หรือ secretRef และจำกัดเฉพาะ prefix ขาออกของ IAS'],
         ['Credential reference (IAM role / secret)', 'secret/sgi/interfaces/eai-s3', 'text', 0, 'ห้ามเก็บ password/private key ใน config/env ของ job'],
         ['Local staging path (ก่อนอัปโหลด)', '/data/sgi/outbox/ias', 'text', 1, 'ต้องรองรับ temp file, fsync และ atomic rename']
       ],
@@ -322,21 +323,22 @@
       phase:'B',
       cls:'fgi.main.ImportImpactSaleFromIAS',
       script:'FGI_ImportImpactStoreSale.sh',
-      cron:'30 16 7-16 * *',
-      cronTh:'วันที่ 7–16 เวลา 16:30 — **เป็นตารางของโหมด safety-net เท่านั้น** (ทางปกติคือ consumer SubmitJob เมื่อ EAI แจ้งว่าไฟล์พร้อม · มติ 2026-09-08)',
+      cron:'S3 event',
+      cronTh:'ไฟล์ AMS06001I_*.txt มาถึง interface/out/AMS/ → EventBridge → SubmitJob พร้อม s3Key (มติ 2026-10-01 · เลิก cron 30 16 7-16 * * และเลิกแนวทาง consume RabbitMQ)',
       out:'AMS06001I (รับเข้า)',
-      desc:'**consume คิวของ EAI เองใน `srm-sps-spsap-sop-sgi-batch`** (มติ 2026-09-12 — ตัด repo `store-consumer` ออกจากขอบเขต) — EAI ส่งข้อความเข้า RabbitMQ ว่าไฟล์ตอบกลับ AMS06001I พร้อมแล้ว · job อ่าน `dataType`/`urls` จาก envelope แล้ว **ดาวน์โหลดไฟล์จาก S3 URI เอง** · ⚠️ repo ปลายทางมีแต่ `publishMessage` **ยังไม่มี consumer** ต้องสร้างใหม่ · cron เป็น safety net · แทนการรับผ่าน SFTP ตามมติ 2026-08-24 บันทึกยอดขายรายวันลง sgi_sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff',
+      desc:'**ทำงานเมื่อไฟล์ตอบกลับ AMS06001I มาถึง EAI S3** (`interface/out/AMS/` · มติ 2026-10-01) — EventBridge ส่ง key ของไฟล์มาเป็น `s3Key` แล้ว job อ่านไฟล์นั้นไฟล์เดียว · โฟลเดอร์นี้เป็นสองทาง (ไฟล์ขาออก AMS06001O ของ Job 4 อยู่ที่เดียวกัน) rule จึงกรองถึง prefix `AMS06001I_` และโค้ดตรวจ key ซ้ำด้วย `validateS3TriggerKey` · แทนการรับผ่าน SFTP ตามมติ 2026-08-24 บันทึกยอดขายรายวันลง sgi_sales_transactions คำนวณ sales_diff และ outlier ในหน้าต่าง 4 ช่วง × 15 วันรอบวันเปิดร้านใหม่ แล้วกำหนด sales_status = Y / N จาก growth_rate_diff',
       params:[
-        ['ตัวกระตุ้น (Trigger)', 'ข้อความจาก EAI ผ่าน RabbitMQ (job consume เอง)', 'text', 1, 'มติ 2026-09-12 — job bind คิวเองใน sop-sgi-batch (ตัด repo store-consumer ออก) · cron เดิม 30 16 7-16 * * เก็บไว้เป็น **safety net** เผื่อข้อความหาย (รันแล้วไม่เจอไฟล์ใหม่ = จบทันที ไม่ error)'],
-        ['Input File', 'AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์)', 'text', 0, 'impacted_store_code | วันเปิดร้านใหม่ | วันที่ขาย | ยอดขาย (4 ฟิลด์ตามสัญญาไฟล์ของ IAS)'],
+        ['ตัวกระตุ้น (Trigger)', 'S3 Object Created → EventBridge rule → AWS Batch SubmitJob', 'text', 1, 'มติ 2026-10-01 · rule กรอง interface/out/AMS/AMS06001I_ (ไม่ใช่แค่โฟลเดอร์ ไม่งั้นไฟล์ขาออกของ Job 4 จะปลุก Job 5) · INPUT: {"s3Key":"…"} → แปลงเป็น fileKey + fromS3Event · ฟิลด์อื่นที่รับ: fileKey · bucket · dataName · sender · sentAt · dryRun'],
+        ['ไฟล์ขาเข้า (EAI S3)', 'interface/out/AMS/AMS06001I_yyyyMMddHHmm.txt (WINDOWS-874, 4 ฟิลด์)', 'text', 0, 'impacted_store_code | วันเปิดร้านใหม่ | วันที่ขาย | ยอดขาย (4 ฟิลด์ตามสัญญาไฟล์ของ IAS)'],
         ['หน้าต่างคำนวณ', '4 ช่วง × 15 วัน รอบวันเปิดร้านใหม่ (ไม่รวมวันเปิด) — วันเปิดร้านอ่านจาก master ของระบบ SBP เดิม', 'text', 0, ''],
         ['เกณฑ์ Outlier', '|sales_diff| ≥ 50', 'number', 0, 'literal ในโค้ด — เปลี่ยนต้องอนุมัติธุรกิจ (8.2)'],
         ['วันทำการคาดหวัง', '60', 'number', 0, 'ถ้าไม่เท่า 60 → pre-accept เป็น Y ทันที'],
-        ['กฎ Pre-accept', 'อายุร้าน < 12 เดือน 15 วัน หรือวันทำการ < 60 → Y', 'text', 0, '']
+        ['กฎ Pre-accept', 'อายุร้าน < 12 เดือน 15 วัน หรือวันทำการ < 60 → Y', 'text', 0, ''],
+        ['ย้ายไฟล์เข้า backup', 'SGI_JOB5_MOVE_TO_BACKUP (ตั้งต้น true)', 'text', 1, '🔴 เพิ่ม 2026-09-30 · ปิดได้เมื่อต้องอ่านไฟล์เดิมซ้ำ · ปลายทาง interface/backup-out/AMS/ · ไม่ยกเลิก canArchiveFile() ที่ตัดสินว่าผลการนำเข้าสะอาดพอจะย้ายได้ไหม']
       ],
       flow:[
         { k:'start', t:'เริ่ม' },
-        { k:'io', t:'consume ข้อความจากคิว → ได้ S3 URI → ดาวน์โหลดไฟล์เอง แล้วอ่าน WINDOWS-874 จัดกลุ่มตามร้าน + วันเปิดร้านใหม่', d:'job bind คิวเอง (มติ 2026-09-12) · ข้อความบอกแค่ที่อยู่ไฟล์' },
+        { k:'io', t:'รับ s3Key จาก S3 event → ตรวจ key → อ่านไฟล์จาก EAI S3 (WINDOWS-874) จัดกลุ่มตามร้าน + วันเปิดร้านใหม่', d:'EventBridge ส่ง key ของไฟล์ที่เพิ่งมาถึง (มติ 2026-10-01) · key ไม่ตรงรูป AMS06001I_ = ล้มเสียงดัง' },
         { k:'d', t:'เป็นงวดที่ยังไม่นำเข้า?', no:'จบ (idempotency guard กันนำเข้าซ้ำ)', noKind:'end', d:'' },
         { k:'p', t:'เปิด transaction ต่อไฟล์ แล้ว insert sgi_sales_transactions แถวดิบ', d:'ระวัง: catch ใน DAO บางจุดอาจทำให้ rollback ไม่ทำงาน' },
         { k:'p', t:'insert sgi_interface_transactions: data_name = IMPACT_STORE_SALES · direction = IN · status = COMPLETED', d:'บันทึก*การรับไฟล์* — ทำทันทีที่อ่านไฟล์สำเร็จ ไม่ผูกกับผล Y/N เพราะไฟล์มาถึงแล้วไม่ว่าผลจะเป็นอะไร (ถ้าผูกกับสาขา Y งวดที่ผลเป็น N จะไม่มีบันทึก แล้ว Job 10 จะเข้าใจว่า IAS ไม่ตอบกลับ) · เป็นขารับกลับของรอบที่ Job 4 ส่งออก จึงใช้ data_name เดิม — UNIQUE (data_name, direction, business_key, period_key) แยกขา OUT/IN ให้อยู่แล้ว · typed FK = sales_summary_id · acked_at = now' },
@@ -345,7 +347,7 @@
         { k:'p', t:'คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (|sales_diff| ≥ 50)', d:'4 หน้าต่าง × 15 วัน ไม่รวมวันเปิดร้านใหม่ / ธงรวมอดีต-ปัจจุบันต้องตรงกัน' },
         { k:'d', t:'COALESCE(growth_rate_diff, −1) < 0 ?', no:'sales_status = N (ไม่เข้าเกณฑ์ชดเชย)', d:'NULL ถูกแทนด้วย −1 = accept อัตโนมัติ (ความเสี่ยง P1)' },
         { k:'p', t:'sales_status = Y (เข้าเกณฑ์ชดเชย)', d:'ผลทางธุรกิจอย่างเดียว — การรับไฟล์บันทึกไปแล้วตั้งแต่ต้น ไม่ขึ้นกับผล Y/N' },
-        { k:'io', t:'ย้ายอ็อบเจกต์ไป prefix backup บน EAI S3', d:'' },
+        { k:'io', t:'ย้ายอ็อบเจกต์ไป interface/backup-out/AMS/ (ถ้า SGI_JOB5_MOVE_TO_BACKUP = true)', d:'🔴 แก้ path 2026-09-30 · สวิตช์ env ตั้งต้น true (พฤติกรรมเดิม) · ยังต้องผ่าน canArchiveFile() ก่อนเสมอ' },
         { k:'end', t:'จบ' }
       ],
       tables:[
@@ -605,12 +607,12 @@
       phase:'E',
       cls:'fgi.main.NotifyNoReceiveData',
       script:'FGI_NotifyNoReceiveData.sh',
-      cron:'0 07 * * *',
-      cronTh:'ทุกวัน 07:00',
-      out:'อีเมลเตือน UTF-8 + หน้ารายการค้างส่ง (pending-ack)',
+      cron:'0 8 * * *',
+      cronTh:'ทุกวัน 08:00 (ค่าตั้งต้นของ SGI_JOB10_CRON · ระบบเดิม 07:00)',
+      out:'อีเมลเตือน UTF-8 (EM-08)',
       desc:'งาน safety net ตรวจ sgi_interface_transactions หาข้อความขาออกที่ยังไม่ได้ publisher confirm จาก RabbitMQ เกิน 1 วัน; ส่งอีเมล UTF-8 ผ่าน email-lib กลาง (sendEmail) — มติ 2026-09-08 (ข้อ 2.13) เปลี่ยนเกณฑ์จาก ACK ระดับธุรกิจเป็น publisher confirm เพราะสเปก STA ไม่มี ACK แบบ HTTP (เส้น POST /sgi/interface/sta/ack ถูกตัด)',
       params:[
-        ['กำหนดการรัน (Cron)', '0 07 * * *', 'text', 1, 'ทุกวัน 07:00; เป็น safety net ของ outbox publisher'],
+        ['กำหนดการรัน (Cron)', '0 8 * * *', 'text', 1, 'ทุกวัน 08:00 (ค่าตั้งต้นใน config · override ด้วย SGI_JOB10_CRON); เป็น safety net ของ outbox publisher'],
         ['Pending threshold', '>= 1 วัน', 'number', 1, 'เตือนเมื่อ outbox_status ยังไม่เป็น CONFIRMED หลังครบ threshold'],
         ['ขอบเขตที่เฝ้าดู', 'direction = OUT · data_name = COMPENSATE_INIT_I, COMPENSATE_APPROVE_I', 'text', 0, 'เฉพาะฝั่ง STA - ไม่เฝ้า dataset ของ BPM'],
         ['Encoding', 'UTF-8', 'text', 0, 'แทน TIS-620 เดิมตาม email-lib กลาง (sendEmail)']
@@ -632,7 +634,7 @@
       rels:['sgi_interface_transactions คือตาราง tracking กลางของทุก interface — outbox_status != CONFIRMED หมายถึง broker ยังไม่ตอบรับข้อความนั้น', 'แถวที่เฝ้าดูถูกสร้างโดย Job 6 (COMPENSATE_INIT / APPROVE) และรอ publisher confirm จาก RabbitMQ — สเปก STA ไม่มี ACK กลับมา จึงไม่รอ ACK ระดับธุรกิจ'],
       meta:{ trans:'read-only; Job 6 เป็นผู้เขียน outbox_status = CONFIRMED เมื่อได้ publisher confirm', rerun:'รันซ้ำได้; ต้องไม่ส่งอีเมลซ้ำถ้ามี sent marker ในรอบเดียวกัน', mail:'email-lib (sendEmail · UTF-8)', risk:'ห้ามกลับไปใช้ TIS-620/hardcoded recipient; ห้ามตีความว่ารอ ACK จาก STA — สเปก STA ไม่มี ACK' },
       hist:[
-        ['02/07/2026 07:00', '-', '-', 'อีเมลเตือน UTF-8 + หน้ารายการค้างส่ง', 'ok', 'target design - DB/internal workflow']
+        ['02/07/2026 07:00', '-', '-', 'อีเมลเตือน UTF-8', 'ok', 'target design - DB/internal workflow']
       ],
       run:['02/07/2026 07:00', 'fail', '03/07/2026 07:00']
     },

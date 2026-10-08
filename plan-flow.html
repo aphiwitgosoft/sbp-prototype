@@ -62,8 +62,8 @@
       <div class="db-stat-grid">
         <div class="db-stat"><b>11</b><span>Batch Entry Points</span></div>
         <div class="db-stat"><b>5</b><span>Approval Sections</span></div>
-        <div class="db-stat"><b>21</b><span>Tables ใน Schema รวม</span></div>
-        <div class="db-stat"><b>26</b><span>REST API Endpoints (5 กลุ่ม)</span></div>
+        <div class="db-stat"><b>22</b><span>Tables ใน Schema รวม</span></div>
+        <div class="db-stat"><b>29</b><span>REST API Endpoints (5 กลุ่ม)</span></div>
       </div>
 
       <div class="card">
@@ -229,7 +229,7 @@
 
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">2. นำเข้าคู่ร้านถูกกระทบ + ร้านคู่แข่ง <span class="ref fgi">FGI/FCS · Jobs 2–3</span></div>
-            <div class="tl-meta">ทุกวันที่ 7 เวลา 07:00 จาก ALLMAP (SQL Server) → sgi_fgi_impact_stores (กฎ DENY/ON_PROCESS → W/N/P) และ sgi_fgi_impact_competitors</div></div>
+            <div class="tl-meta">ทำงานเมื่อไฟล์มาถึง S3 (EventBridge ส่ง s3Key · ไม่มี cron · มติ 2026-10-01) จาก <b>ไฟล์ ALLMAP บน EAI S3</b> (interface/in/ALM/ · เปลี่ยนจากวิว SQL Server 2026-09-29/30) → sgi_fgi_impact_stores (กฎ DENY/ON_PROCESS → W/N/P) และ sgi_fgi_impact_competitors</div></div>
 
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">3. ขอยอดขายรายวันจาก IAS <span class="ref fgi">FGI/FCS · Job 4</span></div>
@@ -237,7 +237,7 @@
 
           <div class="tl-item done"><span class="tl-dot"></span>
             <div class="tl-t">4. รับยอดขาย + คำนวณ Growth Rate <span class="ref fgi">FGI/FCS · Job 5</span></div>
-            <div class="tl-meta">16:30 รับ AMS06001I → sgi_sales_transactions → คำนวณ sales_diff 4 หน้าต่าง × 15 วัน (outlier |sales_diff| ≥ 50) → sales_status Y/N · ระบบใหม่เพิ่ม review case ที่ growth_rate_diff เป็น NULL (แก้ P1 auto-accept)</div></div>
+            <div class="tl-meta">เมื่อไฟล์ AMS06001I มาถึง interface/out/AMS/ (S3 event · ไม่มี cron) รับ AMS06001I → sgi_sales_transactions → คำนวณ sales_diff 4 หน้าต่าง × 15 วัน (outlier |sales_diff| ≥ 50) → sales_status Y/N · ระบบใหม่เพิ่ม review case ที่ growth_rate_diff เป็น NULL (แก้ P1 auto-accept)</div></div>
 
           <div class="flow-stage"><span>B</span> เชื่อม FGI/FCS เข้าสู่ระบบเอกสารและ Workflow</div>
           <div class="tl-item done"><span class="tl-dot"></span>
@@ -251,11 +251,11 @@
           <div class="flow-stage"><span>C</span> ผู้ใช้ตรวจสอบและอนุมัติ · Section 06–03</div>
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">6b. จุดเข้า flow ตามประเภทเคส (ระบบตัดสินอัตโนมัติ) <span class="ref new">To-Be 12/02/2026</span></div>
-            <div class="tl-meta">ระบบตัดสิน <b>2 ชั้น</b> — <b>ชั้นที่ 1 ประเภทเคส</b> มีแค่ 2 ทาง: ① <b>เปิดเรื่องใหม่</b> (<code>last_compensate_seq_no</code> = 1) เริ่มที่ <b>06</b> ตาม flow เดิม · ② <b>ต่อเนื่อง</b> (<code>last_compensate_seq_no</code> &gt; 1 และ <code>flag_action</code> = Y) เข้า <b>ชั้นที่ 2</b> ที่ตัดสินด้วยยอดชดเชย: <b>ยอด &gt; 0 หรือ ยอด 0 ติดกัน ≤ 3 เดือน</b> → ระบบ <b>Auto Approve</b> การเปิดเรื่องแล้วส่งตรงเข้า <b>08</b> ข้ามขั้น 06 (<b>มติ 2026-09-01</b> — เดิมเคสยอด 0 ส่งไป 01) · <b style="color:#c0392b;">ยอด 0 ติดกัน &gt; 3 เดือน (เดือนที่ 4)</b> → <b style="color:#c0392b;">หยุดชดเชยประกันรายได้อัตโนมัติ</b> ปิดเอกสารทันที ไม่เข้า flow พิจารณา · ทุกเส้นทางอัตโนมัติบันทึก sgi_consideration_logs ด้วยผู้ดำเนินการ SYSTEM · ⚠️ ต้องเติมคอลัมน์ gap F8 (sgi_fgi_impact_processes) + ตาราง gap F1 (sgi_fgi_impact_compensations) ก่อนจึงทำได้จริง</div></div>
+            <div class="tl-meta">ระบบตัดสิน <b>2 ชั้น</b> — <b>ชั้นที่ 1 ประเภทเคส</b> มีแค่ 2 ทาง: ① <b>เปิดเรื่องใหม่</b> (<code>last_compensate_seq_no</code> = 1) เริ่มที่ <b>06</b> ตาม flow เดิม · ② <b>ต่อเนื่อง</b> (<code>last_compensate_seq_no</code> &gt; 1 และ <code>flag_action</code> = Y) เข้า <b>ชั้นที่ 2</b> ที่ตัดสินด้วยยอดชดเชย: <b>ยอด &gt; 0 หรือ ยอด 0 ติดกัน ≤ 3 เดือน</b> → ระบบ <b>Auto Approve</b> การเปิดเรื่องแล้วส่งตรงเข้า <b>08</b> ข้ามขั้น 06 (<b>มติ 2026-09-01</b> — เดิมเคสยอด 0 ส่งไป 01) · <b style="color:#c0392b;">ยอด 0 ติดกัน &gt; 3 เดือน (เดือนที่ 4)</b> → <b style="color:#c0392b;">หยุดชดเชยประกันรายได้อัตโนมัติ</b> ปิดเอกสารทันที ไม่เข้า flow พิจารณา · ทุกเส้นทางอัตโนมัติบันทึก sgi_consideration_logs ด้วยผู้ดำเนินการ SYSTEM (✅ ส่งเข้า 08 ทำแล้ว 2026-10-08 — POST /sgi/workflow/instances เขียน 1 แถว ขั้น 06 · ผล “ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ” · ชื่อ “ระบบ (อัตโนมัติ)” · เปิดเรื่องใหม่เข้า 06 ไม่เขียน) · ⚠️ ต้องเติมคอลัมน์ gap F8 (sgi_fgi_impact_processes) + ตาราง gap F1 (sgi_fgi_impact_compensations) ก่อนจึงทำได้จริง</div></div>
 
           <div class="tl-item active"><span class="tl-dot"></span>
             <div class="tl-t">7. ขั้น 1–2: ฝ่าย SBP DSA ตรวจสอบ + คำนวณเงินชดเชย <span class="ref k2">K2 · Section 06 → 08 → 06</span></div>
-            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · ส่งพิจารณาด้วย POST /sgi/document/{docNo}/actions payload เดียว {result, comment}; result เป็น 7-enum verbatim (เพิ่ม “คำนวณเงินชดเชยเรียบร้อย” ของขั้น 08 เมื่อ 2026-09-01 · ขั้น 08 มีปุ่มเดียวและคืนงานให้ 06) · บันทึก sgi_consideration_logs + SGI เรียก sendEmail() ของ email-lib เอง โดยใช้เลข template จาก sps_store.workflow_route.email_id (ปิด DP-5 · 2026-08-14 · ไม่มีตาราง status_email_rules) · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
+            <div class="tl-meta">ผู้ใช้ทำงานบน FE (หน้างานรอดำเนินการ / เอกสารร้านถูกกระทบ) · ส่งพิจารณาด้วย POST /sgi/document/{docNo}/actions payload {result, comment} (+ versionNo · nextApproverId ไม่บังคับ); result เป็น 8 ค่า verbatim ตามโค้ด BE (เพิ่ม “คำนวณเงินชดเชยเรียบร้อย” ของขั้น 08 เมื่อ 2026-09-01 · ขั้น 08 มีปุ่มเดียวและคืนงานให้ 06 · การส่งกลับมีสองถ้อยคำ: ขั้น 01 “ฝ่าย SBP DSA ดำเนินการ (ส่งกลับ)” · ขั้น 02/03 “ส่งกลับฝ่าย SBP DSA”) · ขั้น 06 ที่ส่งเจ้าหน้าที่ SBP DSA เลือกเจ้าหน้าที่ 08 เองได้จาก assigneeChoices (2026-10-08) · บันทึก sgi_consideration_logs + SGI เรียก sendEmail() ของ email-lib เอง โดยใช้เลข template จาก sps_store.workflow_route.email_id (ปิด DP-5 · 2026-08-14 · ไม่มีตาราง status_email_rules) · ช่วงทดสอบ UAT แทนผู้รับ/เพิ่ม CC รายขั้นด้วย env SGI_ACTION_MAIL_TO_BY_SECTION / SGI_ACTION_MAIL_CC_BY_SECTION เพราะ SES ของ UAT เป็น sandbox (production ห้ามตั้ง · env SGI_ACTION_MAIL_CC เดิมถอดแล้ว 2026-10-08) · ทุกขั้นของ Section 06–03 มีอีเมลเตือนงานค้างทุกวันจันทร์ 10:00 และ escalation เมื่อค้าง 30/45/60 วัน (ดูตารางข้อ 4)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">8. ขั้น 3: หน่วยงานส่งเสริมธุรกิจฯ ปรับข้อมูล <span class="ref k2">K2 · Section 01</span></div>
@@ -263,7 +263,7 @@
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">9. ขั้น 4–5: GM → AVP ตามวงเงิน <span class="ref k2">K2 · Section 02 → 03</span></div>
-            <div class="tl-meta">กฎวงเงิน (SDD GI 24/02/2026): ยอดชดเชย < 100,000 บาท จบที่ GM · ≥ 100,000 ต้องผ่านผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) แล้วจบงาน  · เห็นควรไม่ชดเชยที่ขั้น 01/02/<b>03</b> จบทันที (ขั้น 03 ตามมติ 2026-09-02) · ไม่มีขั้นบัญชี (ตัด 04/05 ตาม SDD v7.5)</div></div>
+            <div class="tl-meta">กฎวงเงิน (SDD GI 24/02/2026): ยอดชดเชย < 100,000 บาท จบที่ GM · ≥ 100,000 ต้องผ่านผู้บริหารสำนักบริหาร SBP (AVP สำนัก SBPM) แล้วจบงาน  · เห็นควรไม่ชดเชยที่ขั้น 01/02/03 <b>ส่งกลับ 06</b> สถานะ “รอฝ่าย SBP DSA ดำเนินการ” โดยประวัติบันทึกผล <b>เห็นควรไม่ชดเชย</b> · <b>ผู้ปิดเอกสารด้วยผลไม่ชดเชย/หยุดชดเชยมีแค่ 06</b> (มติ 2026-10-09) · ไม่มีขั้นบัญชี (ตัด 04/05 ตาม SDD v7.5)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">10. บัญชี: ตรวจสอบยอด + จัดเก็บสร้างรายการบันทึกบัญชี <span class="ref new">SDD v7.5</span></div>
@@ -280,7 +280,7 @@
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">12. เฝ้าระวังข้อความขาออกที่ค้างส่ง <span class="ref fgi">FGI/FCS · Job 10</span> <span class="ref new">publisher confirm</span></div>
-            <div class="tl-meta">watchdog อ่าน sgi_interface_transactions ทุก 07:00 แล้วส่งเมลเมื่อ direction = OUT และ outbox_status ยังไม่เป็น CONFIRMED เกิน ≥ 1 วัน · มติ 2026-09-08 (ข้อ 2.13): เกณฑ์คือ publisher confirm ของ RabbitMQ ไม่ใช่ ACK ระดับธุรกิจ — สเปก STA มีแค่ 3 ข้อความ ไม่มี ACK กลับมา จึงตัดเส้น POST /sgi/interface/sta/ack ทิ้ง</div></div>
+            <div class="tl-meta">watchdog อ่าน sgi_interface_transactions ทุก 08:00 แล้วส่งเมลเมื่อ direction = OUT และ outbox_status ยังไม่เป็น CONFIRMED เกิน ≥ 1 วัน · มติ 2026-09-08 (ข้อ 2.13): เกณฑ์คือ publisher confirm ของ RabbitMQ ไม่ใช่ ACK ระดับธุรกิจ — สเปก STA มีแค่ 3 ข้อความ ไม่มี ACK กลับมา จึงตัดเส้น POST /sgi/interface/sta/ack ทิ้ง</div></div>
 
         </div>
       </div>
@@ -326,6 +326,11 @@
         <div class="rules">
           <div class="rule"><b>เคสต่อเนื่อง</b>ระบบส่งงานให้ <b>เจ้าหน้าที่ SBP DSA คนเดิม</b> อัตโนมัติ ไม่ต้องแจกงานด้วยมือ — resolve จาก <code>sgi_consideration_logs.consider_by</code> ของเอกสารรอบก่อน แล้วผูกด้วย <code>addPreApprover()</code></div>
           <div class="rule"><b>เห็นควรไม่ชดเชยรายได้</b>เอกสารจบในเดือนนั้น · เดือนถัดไประบบดึงร้านเข้ามาเป็น<b>งานใบใหม่</b>พร้อมเจ้าของงานคนเดิม (SDD สไลด์ 46 · 48 · 64)</div>
+          <div class="rule"><b>%ชดเชยแสดงอย่างเดียว</b>หน่วยงานส่งเสริม (01) แก้ %ชดเชยของร้านเปิดใหม่ไม่ได้ · บันทึกได้เฉพาะร้านคู่แข่งและปัจจัยภายนอก (2026-10-08)</div>
+          <div class="rule"><b>พิจารณาแทนกันได้</b>คนในขั้นเดียวกันกดพิจารณา/บันทึก/แนบไฟล์แทนกันได้ ไม่สนภาคหรือประเภทร้าน · ประวัติบันทึกคนที่กดจริง (2026-10-08)</div>
+          <div class="rule"><b>CC อีเมลตอนส่งเจ้าหน้าที่</b>06 ใส่ CC เพิ่มได้ในช่อง CC อีเมล รูปแบบ email1,email2,email3 · รวมกับ CC ของเทมเพลต (2026-10-08)</div>
+          <div class="rule"><b>06 เลือกเจ้าหน้าที่</b>เลือก “ส่งเจ้าหน้าที่ SBP DSA ดำเนินการ” แล้วเลือกเจ้าหน้าที่ 08 ได้เอง · ค่าเริ่มต้นคือเจ้าของงานคนเดิม · ร้านเปิดใหม่หรือคนเดิมย้ายออก ใช้ภาค+ประเภทร้าน แล้วงานรอดำเนินการน้อยสุด (2026-10-08)</div>
+          <div class="rule"><b>เฉลี่ยงาน</b>ถ้าหาเจ้าของงานคนเดิมไม่เจอ ระบบเลือกผู้รับจากทะเบียนผู้รับผิดชอบระดับที่เจาะจงที่สุด (ภาค+ประเภทร้าน › ภาค › ประเภทร้าน › ทุกภาค) แล้วให้คนที่งานค้างในขั้นนั้นน้อยที่สุด (2026-10-07)</div>
           <div class="rule"><b>ร้านอื่นเปิดกระทบเพิ่ม</b>เข้าเอกสารได้ 2 ทาง — ระบบ default ให้อัตโนมัติจาก ALLMAP (<code>source_system = ALLMAP</code>) หรือเจ้าหน้าที่คีย์เอง (<code>USER</code>) · เพิ่มร้านเมื่อไรต้อง<b>เกลี่ย %ชดเชยใหม่ให้รวมเป็น 100%</b> ทั้งเอกสาร</div>
           <div class="rule"><b>พนักงานลาออก</b>ยังต้องเปิด SR เพื่อแก้ชื่อผู้ดำเนินการ (SDD สไลด์ 48)</div>
         </div>

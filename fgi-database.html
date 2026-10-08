@@ -194,7 +194,7 @@
               <tr><td>id</td><td>bigint</td><td><span class="db-key">PK</span></td></tr>
               <tr><td>impact_process_id</td><td>bigint</td><td><span class="db-key fk">FK</span></td></tr>
               <tr><td>competitor_store_code</td><td>varchar(50)</td><td>รหัส<b>สาขา</b>ของคู่แข่งตามที่ ALLMAP ส่งมา (<code>4832</code> · <code>TD58_08</code>) — <b>ไม่มี FK</b> · ว่างได้</td></tr>
-              <tr><td>brand_code</td><td>varchar(30)</td><td><span class="db-key fk">FK</span> รหัส<b>แบรนด์</b> 01–11 → sgi_competitors · map ไม่ได้ให้เก็บแถวไว้แล้วรายงาน unmapped</td></tr>
+              <tr><td>brand_code</td><td>varchar(30)</td><td><span class="db-key fk">FK</span> รหัส<b>แบรนด์</b> 01–12 → sgi_competitors · map ไม่ได้ให้เก็บแถวไว้แล้วรายงาน unmapped</td></tr>
               <tr><td>zone_code · subzone_code</td><td>varchar(10)</td><td>ฟิลด์ 6–7 ของ BPM06003O</td></tr>
               <tr><td>competitor_key</td><td>varchar(300)</td><td>generated — business key กันซ้ำ (รหัสสาขา ถ้าไม่มีใช้ brand/zone/subzone/ชื่อสาขา)</td></tr>
               <tr><td>name_th · branch_th</td><td>varchar(200)</td><td>ชื่อ/สาขา จาก ALLMAP (คอลัมน์ NAMT · BRANCHT)</td></tr>
