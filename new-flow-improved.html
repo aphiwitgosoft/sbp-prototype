@@ -29,7 +29,7 @@
     <div class="page-head">
       <div>
         <h1 class="page-title">Flow ระบบใหม่ — Sequence Diagram</h1>
-        <p class="page-sub">ลำดับการแลกข้อมูลระหว่าง ALLMAP · SGI · EAI S3 · IAS/MIS · RabbitMQ · STA · SAP</p>
+        <p class="page-sub">ลำดับการแลกข้อมูลระหว่าง ALLMAP · EAI S3 · IAS/MIS · SGI (batch + backend) · RabbitMQ · STA · SAP — ปรับตาม job ที่ลงทะเบียนจริง 2026-10-09</p>
       </div>
       <div class="page-actions">
         <a class="btn btn-ghost" href="new-flow-improved.png" target="_blank" rel="noopener">เปิดไฟล์ PNG</a>
@@ -40,26 +40,36 @@
     <div class="card reveal">
       <div class="card-head">
         <h2>สิ่งที่เปลี่ยนจากระบบเดิม</h2>
-        <span class="pill info" style="margin-left:auto;">มติ 2026-08-24 · 2026-09-01</span>
+        <span class="pill info" style="margin-left:auto;">มติ 2026-08-24 · 2026-09-01 · 2026-10-01</span>
       </div>
       <div class="table-wrap">
         <table class="data">
           <thead><tr><th>ปลายทาง</th><th>ระบบเดิม</th><th>ระบบใหม่</th></tr></thead>
           <tbody>
             <tr>
+              <td><b>ALLMAP</b> (ร้านถูกกระทบ / คู่แข่ง)</td>
+              <td>อ่าน view บน SQL Server ตามเวลา</td>
+              <td>อ่านไฟล์บน <b>EAI S3</b> <code>interface/in/ALM/</code> — <b>Job 2 · 3 ทำงานเมื่อไฟล์มาถึง</b> (S3 event → EventBridge → AWS Batch · ไม่ตั้งเวลา) · นำเข้าครบแล้วย้ายไป <code>backup-in/ALM/</code></td>
+            </tr>
+            <tr>
               <td><b>IAS / MIS</b> (ยอดขาย)</td>
               <td>วางไฟล์ผ่าน <b>SFTP</b></td>
-              <td>แลกไฟล์ผ่าน <b>EAI S3</b> — Job 4 อัปโหลด <code>AMS06001O_</code> (16:00 วันที่ 7–16) · Job 5 ดึง <code>AMS06001I_</code> (16:30)</td>
+              <td>แลกไฟล์ผ่าน <b>EAI S3</b> โฟลเดอร์สองทาง <code>interface/out/AMS/</code> — Job 4 อัปโหลด <code>AMS06001O_</code> (16:00 วันที่ 7–16) · <b>Job 5 ทำงานเมื่อไฟล์ <code>AMS06001I_</code> มาถึง</b> (S3 event)</td>
             </tr>
             <tr>
               <td><b>STA</b> (Statement)</td>
               <td>ไฟล์ <code>FRBC0001_</code> + SFTP</td>
-              <td><b>RabbitMQ</b> exchange <code>sgi.interface</code> (topic · durable) — publish/consume 3 ชุดข้อความ (ดูตารางถัดไป)</td>
+              <td><b>RabbitMQ</b> exchange <code>sgi.interface</code> routing key <code>sta.compensation.result</code> — Job 6 ส่งขาออกอย่างเดียว · <b>ขากลับยังไม่มีตัวรับ</b> (ตัด Job 11 · ดูตารางถัดไป)</td>
+            </tr>
+            <tr>
+              <td><b>K2</b> (เอกสาร / workflow)</td>
+              <td>ไฟล์ <code>BPM0600xO_</code> ผ่าน EAI + REST StartInstance</td>
+              <td>Job 7 · 8 · 9 เขียนเอกสารลงฐานตรง · Job 8b เรียก <code>POST /api/v1/sgi/workflow/instances</code> ให้ backend เปิด workflow (batch ไม่เรียก engine เอง)</td>
             </tr>
             <tr class="flag-red">
               <td><b>เปิดพิจารณาใหม่</b></td>
               <td>ไม่มีการแจ้ง STA</td>
-              <td><b>ต้อง publish <code>sgi_reflow</code></b> ให้ STA ตั้ง flow ของงวดนั้นใหม่ (มติ 2026-09-01)</td>
+              <td>ตามแบบต้อง publish <code>sgi_reflow</code> ให้ STA (มติ 2026-09-01) · <b>⏸ ยังไม่ทำใน phase นี้</b> — store-backend ยังไม่ publish</td>
             </tr>
           </tbody>
         </table>
@@ -72,10 +82,12 @@
         <span class="pill violet" style="margin-left:auto;">สร้างจาก new-flow-improved.mmd</span>
       </div>
       <div class="phase-legend">
-        <span class="ph" style="--c:#dbe7f6">ระยะที่ 1 · รับข้อมูลผลกระทบและยอดขาย (Job 2–5)</span>
-        <span class="ph" style="--c:#cfead9">ระยะที่ 2 · ส่งผลให้ STA และบันทึกบัญชี (Job 6)</span>
-        <span class="ph" style="--c:#ded7f3">ระยะที่ 3 · เข้าเอกสารและเปิด workflow (Job 8 / 8b)</span>
-        <span class="ph" style="--c:#f6cfcf">ระยะที่ 4 · เปิดพิจารณาใหม่ (Reflow)</span>
+        <span class="ph" style="--c:#dbe7f6">ระยะที่ 1 · รับข้อมูลจาก ALLMAP (Job 2 · 3)</span>
+        <span class="ph" style="--c:#dbeafe">ระยะที่ 2 · ขอยอดขายจาก IAS/MIS (Job 4 · 5)</span>
+        <span class="ph" style="--c:#cfead9">ระยะที่ 3 · ส่งผลให้ STA (Job 6)</span>
+        <span class="ph" style="--c:#ded7f3">ระยะที่ 4 · สร้างเอกสารและเปิด workflow (Job 8 · 7 · 9 · 8b)</span>
+        <span class="ph" style="--c:#f3f0d7">ระยะที่ 5 · เฝ้างานค้าง (Job 10 · 12)</span>
+        <span class="ph" style="--c:#f6cfcf">ระยะที่ 6 · Reflow (ยังไม่ทำ)</span>
       </div>
       <div class="zoombar">
         <button type="button" data-z="0.75">−</button>
@@ -96,6 +108,36 @@
 
     <div class="card reveal">
       <div class="card-head">
+        <h2>Batch job ที่อยู่ในแผนภาพ (11 job)</h2>
+        <span class="pill ok" style="margin-left:auto;">ลงทะเบียนใน <code>src/main.ts</code></span>
+      </div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Job</th><th>ชื่อ job (argv[3])</th><th>ตัวกระตุ้น</th><th>ทำอะไร</th></tr></thead>
+          <tbody>
+            <tr><td class="num">2</td><td><code>sgi-import-impact-store</code></td><td>S3 event · <code>Impact_Store_Predict_*</code></td><td>คู่ร้านถูกกระทบ → <code>sgi_fgi_impact_stores</code></td></tr>
+            <tr><td class="num">3</td><td><code>sgi-import-impact-competitor</code></td><td>S3 event · <code>Impact_Competitor_*</code></td><td>ร้านคู่แข่งรายงวด → <code>sgi_fgi_impact_competitors</code></td></tr>
+            <tr><td class="num">4</td><td><code>sgi-prepare-impact-store-to-ias</code></td><td>16:00 วันที่ 7–16</td><td>อัปโหลด <code>AMS06001O_</code> ขอยอดขาย</td></tr>
+            <tr><td class="num">5</td><td><code>sgi-import-impact-sale-from-ias</code></td><td>S3 event · <code>AMS06001I_*</code></td><td>ยอดขายรายวัน → <code>sgi_sales_transactions</code> + อัตราโต</td></tr>
+            <tr><td class="num">6</td><td><code>sgi-export-impact-store-to-sta</code></td><td>ทุกวัน 17:00</td><td>ส่ง <code>sgi_impact_store</code> ให้ STA ผ่าน RabbitMQ (outbox)</td></tr>
+            <tr><td class="num">8</td><td><code>sgi-create-compensation-document</code></td><td>17:00 วันที่ 7–31</td><td>สร้างเอกสาร → <code>sgi_compensation_documents</code></td></tr>
+            <tr><td class="num">7</td><td><code>sgi-sync-competitor-to-document</code></td><td>17:30 วันที่ 7–31</td><td>ยกคู่แข่งขึ้นเอกสาร → <code>sgi_document_competitors</code></td></tr>
+            <tr><td class="num">9</td><td><code>sgi-sync-new-store-to-document</code></td><td>17:45 วันที่ 7–31</td><td>ยกร้านเปิดใหม่ + %ชดเชย → <code>sgi_document_new_stores</code></td></tr>
+            <tr><td class="num">8b</td><td><code>sgi-start-internal-workflow</code></td><td>ต่อจาก Job 8 (AWS Batch dependency)</td><td>เรียก <code>POST /api/v1/sgi/workflow/instances</code> เปิด workflow</td></tr>
+            <tr><td class="num">10</td><td><code>sgi-notify-no-receive-data</code></td><td>ทุกวัน 08:00</td><td>outbox ค้างยังไม่ยืนยัน → อีเมล EM-08</td></tr>
+            <tr><td class="num">12</td><td><code>sgi-notify-pending-work</code></td><td>จันทร์ 10:00</td><td>งานค้าง 30-36 / 45-51 / 60-66 วัน → อีเมล EM-04 / EM-05</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin-top:12px;">
+        สั่งรันบน AWS Batch ด้วย command <code>["node","dist/main.js","&lt;INPUT JSON&gt;","&lt;ชื่อ job&gt;"]</code> ·
+        job ที่ทำงานจาก S3 event ได้ <code>{"s3Key":"&lt;key&gt;"}</code> แล้วทำเฉพาะไฟล์นั้น · รันมือส่ง <code>{}</code> = หยิบไฟล์ที่ยังไม่นำเข้าเอง ·
+        ตัด Job 1 (ImportQSSI · ระบบ SBP เดิมนำเข้าแล้ว) และ Job 11 (ConsumeStaCompensate · ไม่มีโค้ดเดิมใน Java)
+      </p>
+    </div>
+
+    <div class="card reveal">
+      <div class="card-head">
         <h2>ชุดข้อความบน RabbitMQ</h2>
         <span class="pill ok" style="margin-left:auto;">exchange <code>sgi.interface</code></span>
       </div>
@@ -106,19 +148,19 @@
             <tr>
               <td><code>sgi_impact_store</code></td>
               <td>SGI → STA</td>
-              <td>ทุกวัน 17:00 (Job 6 · transactional outbox)</td>
-              <td>ร้านที่ได้รับผลกระทบ + ผลพิจารณาของงวด · <code>compensate_status</code> = <b>I</b> ตั้งต้น / <b>A</b> อนุมัติ / <b>N</b> ไม่ชดเชย / <b>S</b> หยุดชดเชย</td>
+              <td>ทุกวัน 17:00 (Job 6 · transactional outbox · routing key <code>sta.compensation.result</code>)</td>
+              <td>ร้านที่ได้รับผลกระทบ + ผลพิจารณาของงวด · <code>compensate_status</code> = <b>I</b> ตั้งต้น / <b>A</b> อนุมัติ / <b>N</b> ไม่ชดเชย / <b>S</b> หยุดชดเชย (<b>Z</b> ยอดศูนย์ส่งเป็น S)</td>
             </tr>
-            <tr>
+            <tr class="flag-red">
               <td><code>sta_update_compensate</code></td>
               <td>STA → SGI</td>
-              <td>Real Time</td>
+              <td>Real Time · <b>🔴 ยังไม่มีตัวรับ</b> (ตัด Job 11 ออก 2026-09-23 · DECISIONS 2.80)</td>
               <td>ยอดเงินประกันรายได้ (<code>forecast</code> / <code>adjust</code>) กลับเข้าเอกสาร · <code>impactStatus</code> = <b>Z</b> ยอดศูนย์ / <b>W</b> ยอดไม่เป็นศูนย์</td>
             </tr>
             <tr>
               <td><code>sgi_reflow</code></td>
               <td>SGI → STA</td>
-              <td>เมื่อกดพิจารณาใหม่</td>
+              <td>เมื่อกดพิจารณาใหม่ · <b>⏸ ยังไม่ทำใน phase นี้</b></td>
               <td>แจ้งว่าเอกสารที่จบไปแล้วถูก reflow · <code>compensate_status = R</code> · <b>1 รายการต่อ 1 งวด</b> · <code>stmt_year_month</code> ว่างเสมอ</td>
             </tr>
           </tbody>
@@ -134,7 +176,7 @@
     <div class="card reveal msg-card reflow">
       <div class="card-head">
         <h2>กรณีเปิดพิจารณาใหม่ (Reflow)</h2>
-        <span class="pill fail" style="margin-left:auto;">ใหม่ 2026-09-01</span>
+        <span class="pill fail" style="margin-left:auto;">ตามแบบ 2026-09-01 · ⏸ ยังไม่ทำ</span>
       </div>
       <p style="font-size:13.5px;line-height:1.9;color:#45525f;margin:0 0 10px;">
         เมื่อ <b>ฝ่าย SBP DSA (section 06)</b> กดพิจารณาใหม่จากเอกสารที่<b>จบไปแล้ว</b>ด้วยผล
@@ -142,6 +184,7 @@
         เพื่อให้ STA ตั้ง flow ของงวดที่เกี่ยวข้องใหม่ที่หน้าจอ <code>FSG003001</code> —
         <b>ถ้าไม่แจ้ง STA จะปิดงวดนั้นค้างไว้ และยอดชดเชยรอบใหม่จะไม่ถูกคำนวณ</b>
       </p>
+      <p class="note" style="margin:0 0 10px;">⏸ <b>สถานะจริง:</b> store-backend ยังไม่ publish <code>sgi_reflow</code> (เลื่อนออกไปจาก phase นี้) — ข้อกำหนดด้านล่างคือสิ่งที่ต้องทำเมื่อเปิดงานนี้</p>
       <div class="table-wrap">
         <table class="data">
           <thead><tr><th>รายการ</th><th>ข้อกำหนดที่ต้องทำตาม</th></tr></thead>
@@ -192,8 +235,8 @@
   });
 
   function init() {
-    natural = img.naturalWidth || 2604;   // fallback = viewBox width ของ mermaid
-    /* ค่าเริ่มต้น = พอดีความกว้าง — แผนภาพกว้าง ~2,600px ถ้าเปิดที่ 100% จะเห็นแค่ฝั่งซ้าย */
+    natural = img.naturalWidth || 3199;   // fallback = viewBox width ของ mermaid
+    /* ค่าเริ่มต้น = พอดีความกว้าง — แผนภาพกว้าง ~3,200px ถ้าเปิดที่ 100% จะเห็นแค่ฝั่งซ้าย */
     var fitBtn = btns.filter(function (b) { return b.getAttribute('data-z') === 'fit'; })[0];
     applyZoom((wrap.clientWidth - 24) / natural);
     setActive(fitBtn);
