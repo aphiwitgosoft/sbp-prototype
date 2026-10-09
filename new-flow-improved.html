@@ -59,7 +59,7 @@
             <tr>
               <td><b>STA</b> (Statement)</td>
               <td>ไฟล์ <code>FRBC0001_</code> + SFTP</td>
-              <td><b>RabbitMQ</b> exchange <code>sgi.interface</code> routing key <code>sta.compensation.result</code> — Job 6 ส่งขาออกอย่างเดียว · <b>ขากลับยังไม่มีตัวรับ</b> (ตัด Job 11 · ดูตารางถัดไป)</td>
+              <td><b>RabbitMQ</b> exchange <code>sgi.interface</code> routing key <code>sta.compensation.result</code> — Job 6 ส่งขาออก · <b>Job 11 รับยอดกลับ</b> (<code>sta_update_compensate</code> ผ่าน EAI consumer)</td>
             </tr>
             <tr>
               <td><b>K2</b> (เอกสาร / workflow)</td>
@@ -84,7 +84,7 @@
       <div class="phase-legend">
         <span class="ph" style="--c:#dbe7f6">ระยะที่ 1 · รับข้อมูลจาก ALLMAP (Job 2 · 3)</span>
         <span class="ph" style="--c:#dbeafe">ระยะที่ 2 · ขอยอดขายจาก IAS/MIS (Job 4 · 5)</span>
-        <span class="ph" style="--c:#cfead9">ระยะที่ 3 · ส่งผลให้ STA (Job 6)</span>
+        <span class="ph" style="--c:#cfead9">ระยะที่ 3 · ส่งผลให้ STA และรับยอดกลับ (Job 6 · 11)</span>
         <span class="ph" style="--c:#ded7f3">ระยะที่ 4 · สร้างเอกสารและเปิด workflow (Job 8 · 7 · 9 · 8b)</span>
         <span class="ph" style="--c:#f3f0d7">ระยะที่ 5 · เฝ้างานค้าง (Job 10 · 12)</span>
         <span class="ph" style="--c:#f6cfcf">ระยะที่ 6 · Reflow (ยังไม่ทำ)</span>
@@ -108,7 +108,7 @@
 
     <div class="card reveal">
       <div class="card-head">
-        <h2>Batch job ที่อยู่ในแผนภาพ (11 job)</h2>
+        <h2>Batch job ที่อยู่ในแผนภาพ (12 job)</h2>
         <span class="pill ok" style="margin-left:auto;">ลงทะเบียนใน <code>src/main.ts</code></span>
       </div>
       <div class="table-wrap">
@@ -120,6 +120,7 @@
             <tr><td class="num">4</td><td><code>sgi-prepare-impact-store-to-ias</code></td><td>16:00 วันที่ 7–16</td><td>อัปโหลด <code>AMS06001O_</code> ขอยอดขาย</td></tr>
             <tr><td class="num">5</td><td><code>sgi-import-impact-sale-from-ias</code></td><td>S3 event · <code>AMS06001I_*</code></td><td>ยอดขายรายวัน → <code>sgi_sales_transactions</code> + อัตราโต</td></tr>
             <tr><td class="num">6</td><td><code>sgi-export-impact-store-to-sta</code></td><td>ทุกวัน 17:00</td><td>ส่ง <code>sgi_impact_store</code> ให้ STA ผ่าน RabbitMQ (outbox)</td></tr>
+            <tr><td class="num">11</td><td><code>sgi-update-compensate-from-sta</code></td><td>ข้อความ <code>sta_update_compensate</code> (EAI consumer)</td><td>รับยอดจาก STA → <code>sgi_fgi_impact_compensations</code> + ยอดรายร้านเปิดใหม่</td></tr>
             <tr><td class="num">8</td><td><code>sgi-create-compensation-document</code></td><td>17:00 วันที่ 7–31</td><td>สร้างเอกสาร → <code>sgi_compensation_documents</code></td></tr>
             <tr><td class="num">7</td><td><code>sgi-sync-competitor-to-document</code></td><td>17:30 วันที่ 7–31</td><td>ยกคู่แข่งขึ้นเอกสาร → <code>sgi_document_competitors</code></td></tr>
             <tr><td class="num">9</td><td><code>sgi-sync-new-store-to-document</code></td><td>17:45 วันที่ 7–31</td><td>ยกร้านเปิดใหม่ + %ชดเชย → <code>sgi_document_new_stores</code></td></tr>
@@ -132,7 +133,7 @@
       <p class="note" style="margin-top:12px;">
         สั่งรันบน AWS Batch ด้วย command <code>["node","dist/main.js","&lt;INPUT JSON&gt;","&lt;ชื่อ job&gt;"]</code> ·
         job ที่ทำงานจาก S3 event ได้ <code>{"s3Key":"&lt;key&gt;"}</code> แล้วทำเฉพาะไฟล์นั้น · รันมือส่ง <code>{}</code> = หยิบไฟล์ที่ยังไม่นำเข้าเอง ·
-        ตัด Job 1 (ImportQSSI · ระบบ SBP เดิมนำเข้าแล้ว) และ Job 11 (ConsumeStaCompensate · ไม่มีโค้ดเดิมใน Java)
+        ตัด Job 1 (ImportQSSI · ระบบ SBP เดิมนำเข้าแล้ว) · Job 11 เคยตัดออก 2026-09-23 แล้วนำกลับมา 2026-10-09 เพื่อรับยอดจาก STA
       </p>
     </div>
 
@@ -151,10 +152,10 @@
               <td>ทุกวัน 17:00 (Job 6 · transactional outbox · routing key <code>sta.compensation.result</code>)</td>
               <td>ร้านที่ได้รับผลกระทบ + ผลพิจารณาของงวด · <code>compensate_status</code> = <b>I</b> ตั้งต้น / <b>A</b> อนุมัติ / <b>N</b> ไม่ชดเชย / <b>S</b> หยุดชดเชย (<b>Z</b> ยอดศูนย์ส่งเป็น S)</td>
             </tr>
-            <tr class="flag-red">
+            <tr>
               <td><code>sta_update_compensate</code></td>
               <td>STA → SGI</td>
-              <td>Real Time · <b>🔴 ยังไม่มีตัวรับ</b> (ตัด Job 11 ออก 2026-09-23 · DECISIONS 2.80)</td>
+              <td>Real Time · รับด้วย <b>Job 11</b> <code>sgi-update-compensate-from-sta</code> ผ่าน EAI consumer (เพิ่มกลับ 2026-10-09 · ⏳ รอตั้ง consumer)</td>
               <td>ยอดเงินประกันรายได้ (<code>forecast</code> / <code>adjust</code>) กลับเข้าเอกสาร · <code>impactStatus</code> = <b>Z</b> ยอดศูนย์ / <b>W</b> ยอดไม่เป็นศูนย์</td>
             </tr>
             <tr>
