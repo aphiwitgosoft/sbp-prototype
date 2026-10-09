@@ -174,6 +174,106 @@
       </p>
     </div>
 
+    <div class="card reveal msg-card">
+      <div class="card-head">
+        <h2>การแลกข้อมูลกับ STA — ขาส่งและขารับ</h2>
+        <span class="pill info" style="margin-left:auto;">Job 6 · Job 11</span>
+      </div>
+
+      <h3 style="font-size:14px;margin:4px 0 8px;">1. ลำดับในหนึ่งรอบชดเชย</h3>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>#</th><th>ใคร</th><th>ทำอะไร</th><th>ผลที่เกิด</th></tr></thead>
+          <tbody>
+            <tr><td class="num">1</td><td>SGI · Job 6 (ทุกวัน 17:00)</td><td>ตรวจ QSSI ครบ 6 หมวด · สร้างแถวงวด · publish <code>sgi_impact_store</code> สถานะ <b>I</b></td><td><code>sgi_fgi_impact_compensations</code> สถานะ I/C · ยอดยังว่าง</td></tr>
+            <tr><td class="num">2</td><td>STA</td><td>ตั้ง Flow ของร้าน · คำนวณยอดชดเชย (คนปรับยอดได้ที่หน้าจอ <code>FSG003001</code>)</td><td>—</td></tr>
+            <tr><td class="num">3</td><td>STA → SGI · Job 11</td><td>publish <code>sta_update_compensate</code> → EAI consumer สั่ง AWS Batch</td><td>เติม <code>forecast_amount</code> / <code>adjust_amount</code> · สถานะ W→I หรือ Z</td></tr>
+            <tr><td class="num">4</td><td>SGI · Job 8 · 7 · 9 · 8b</td><td>สร้างเอกสารจากงวดที่มียอดแล้ว · ยกคู่แข่ง/ร้านเปิดใหม่ · เปิด workflow</td><td><b>ไม่มียอดจาก STA = Job 8 ไม่สร้างเอกสาร</b></td></tr>
+            <tr><td class="num">5</td><td>ผู้ใช้ SGI</td><td>พิจารณาเอกสารตาม workflow 06 → 08 → 06 → 01 → 02 → 03</td><td>ผลพิจารณาของงวด</td></tr>
+            <tr><td class="num">6</td><td>SGI · Job 6 รอบถัดไป</td><td>publish <code>sgi_impact_store</code> พร้อมผล <b>A / N / S</b></td><td>STA บันทึกบัญชีที่ SAP เมื่อเป็น A</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="font-size:14px;margin:16px 0 8px;">2. ขาส่ง <code>sgi_impact_store</code> (SGI → STA · Job 6)</h3>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>ฟิลด์ใน message</th><th>มาจาก</th><th>รูปแบบ</th></tr></thead>
+          <tbody>
+            <tr><td><code>storecode_i</code> / <code>storecode_n</code></td><td>ร้านถูกกระทบ / ร้านเปิดใหม่ของคู่ร้าน</td><td>รหัส 5 หลัก</td></tr>
+            <tr><td><code>opendate_n</code></td><td>วันเปิดร้านเปิดใหม่</td><td><code>dd/MM/yyyy</code> <b>พ.ศ.</b></td></tr>
+            <tr><td><code>count_storecode_n</code></td><td>จำนวนร้านเปิดใหม่ของงวดนั้น</td><td>ตัวเลขเป็นสตริง</td></tr>
+            <tr><td><code>compensate_year_month</code></td><td><code>sgi_fgi_impact_compensations.compensate_month</code></td><td><code>yyMM</code> <b>พ.ศ.</b></td></tr>
+            <tr><td><code>stmt_year_month</code></td><td>งวด statement (<code>stmt_month</code>/<code>stmt_year</code>)</td><td><code>yyMM</code> พ.ศ. หรือว่าง</td></tr>
+            <tr><td><code>compensate_comment</code></td><td><code>compensate_comment</code></td><td>ข้อความ</td></tr>
+            <tr><td><code>compensate_status</code></td><td><code>compensate_status</code> (แปลงตามตารางข้อ 3)</td><td>1 ตัวอักษร</td></tr>
+            <tr><td><code>qssi1_score</code> … <code>qssi6_score</code></td><td><code>fcs_qssi_score</code> หมวด 8 · 9 · 12 · 1 · 10 · 16 ตามลำดับ</td><td>ตัวเลขเป็นสตริง</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="font-size:14px;margin:16px 0 8px;">3. สถานะงวด: ใน SGI กับที่ส่งให้ STA</h3>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>ใน DB ของ SGI</th><th>ความหมาย</th><th>ส่งให้ STA เป็น</th></tr></thead>
+          <tbody>
+            <tr><td><b>I</b></td><td>ข้อมูลตั้งต้นของงวด</td><td>I</td></tr>
+            <tr><td><b>A</b></td><td>อนุมัติชดเชย</td><td>A</td></tr>
+            <tr><td><b>N</b></td><td>เห็นควรไม่ชดเชย</td><td>N</td></tr>
+            <tr><td><b>S</b></td><td>หยุดชดเชย</td><td>S</td></tr>
+            <tr><td><b>Z</b></td><td>ยอดเป็นศูนย์ (สถานะภายในของ SGI)</td><td><b>S</b> — แปลงเฉพาะใน message</td></tr>
+            <tr class="flag-red"><td><b>C</b></td><td>ร้านปิดแล้ว / สัญญา SBP ถูกยกเลิก</td><td><b>C</b> ⚠️ โค้ดส่งตรง แต่สเปก STA ไม่มีค่านี้ · คอมเมนต์ใน DDL บอกว่าต้องเป็น S — รอยืนยัน</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="font-size:14px;margin:16px 0 8px;">4. ขารับ <code>sta_update_compensate</code> (STA → SGI · Job 11)</h3>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>ฟิลด์ใน message</th><th>เขียนลง</th><th>หมายเหตุ</th></tr></thead>
+          <tbody>
+            <tr><td><code>storeCodeI</code> + <code>periodImpact</code></td><td>หาแถว <code>sgi_fgi_impact_compensations</code> ของรอบที่ active (<code>flag_action</code> Y/W)</td><td><code>periodImpact</code> = <code>yyMM</code> พ.ศ. แปลงเป็น <code>YYYY-MM</code> ค.ศ. · ไม่พบ = รายการนั้นไม่สำเร็จ ไม่สร้างแถวเอง (แถวงวดเป็นของ Job 6)</td></tr>
+            <tr><td><code>forecast</code> / <code>adjust</code></td><td><code>forecast_amount</code> / <code>adjust_amount</code></td><td>ยอดที่ใช้จริง = <code>COALESCE(adjust, forecast)</code> · สตริงว่าง = ไม่มีค่า</td></tr>
+            <tr><td><code>impactStatus</code></td><td><code>compensate_status</code></td><td><b>W</b>: สถานะว่างหรือ Z → I อื่นคงเดิม · <b>Z</b>: ตั้งเป็น Z (กติกาเดิมของระบบ Java)</td></tr>
+            <tr><td><code>compensate[]</code> (<code>storeCodeN</code> · <code>forecastN</code> · <code>forecastPercentN</code> · <code>adjustN</code> · <code>adjustPercentN</code>)</td><td><code>sgi_fgi_new_store_compensations</code></td><td>ไม่มีแถวแต่มีคู่ร้านในรอบ = สร้างให้ · ไม่มีคู่ร้าน = รายการนั้นบันทึกยอดรวมได้แต่นับเป็นไม่สำเร็จ (interface เป็น FAILED)</td></tr>
+            <tr><td>ทั้งรายการ</td><td><code>sgi_interface_transactions</code> (<code>IN</code> · <code>STA_UPDATE_COMPENSATE</code>)</td><td>คีย์ ร้าน + งวด · ข้อความส่งซ้ำ = อัปเดตแถวเดิมและนับ <code>retry_count</code> ยอดไม่ซ้ำ</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="font-size:14px;margin:16px 0 8px;">5. ระบบเดิมกับระบบใหม่ (เฉพาะเรื่อง STA)</h3>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>เรื่อง</th><th>ระบบเดิม (Java)</th><th>ระบบใหม่ (SGI)</th></tr></thead>
+          <tbody>
+            <tr><td>ส่งร้านถูกกระทบ + ผลพิจารณา</td><td><code>ExportImpactStoreToFS</code> สร้างไฟล์ <code>FRBC0001_*.txt</code> (windows-874 · พ.ศ.) แล้ว SFTP ไปเครื่อง STA</td><td>Job 6 publish <code>sgi_impact_store</code> ผ่าน RabbitMQ แบบ outbox</td></tr>
+            <tr><td>รับยอดชดเชยกลับ</td><td>STA เรียก web service <code>/fgiService/updateCompensateFromFS</code> (ซอร์สไม่อยู่ใน <code>fcsJar</code>)</td><td>Job 11 รับ <code>sta_update_compensate</code> ผ่าน EAI consumer</td></tr>
+            <tr><td>แจ้งเปิดพิจารณาใหม่</td><td>ไม่มี</td><td><code>sgi_reflow</code> ตามแบบ · ⏸ ยังไม่ทำ</td></tr>
+            <tr><td>เฝ้าข้อความค้าง</td><td>อีเมลสรุปประจำวัน</td><td>Job 10 เฝ้าขาออกที่ยังไม่ได้ยืนยันจาก broker → อีเมล EM-08</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="font-size:14px;margin:16px 0 8px;">6. เรื่องที่ยังค้างกับ STA</h3>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>เรื่อง</th><th>ต้องได้อะไร</th><th>จาก</th></tr></thead>
+          <tbody>
+            <tr><td>EAI consumer ของ <code>sta_update_compensate</code></td><td>คิว + binding กับ exchange <code>sgi.interface</code> · สั่ง AWS Batch Job 11 โดยส่งข้อความเป็น INPUT</td><td>ทีม EAI / STA</td></tr>
+            <tr><td>routing key ขาส่ง</td><td>ยืนยัน <code>sta.compensation.result</code> กับคิวที่ STA bind</td><td>ทีม STA</td></tr>
+            <tr><td>สถานะ <b>C</b> ในขาส่ง</td><td>ให้ STA ตอบว่ารับ C ได้ไหม หรือให้ SGI แปลงเป็น S</td><td>ทีม STA</td></tr>
+            <tr><td><code>impactStatus = Z</code> กับงวดที่จ่ายแล้ว</td><td>ยืนยันว่า STA จะไม่ส่ง Z ให้งวดที่สถานะ A/N/S (กติกาเดิมเขียนทับได้)</td><td>ทีม STA</td></tr>
+            <tr><td>ขนาดข้อความ</td><td>ข้อความต่อครั้งควรเป็นรายร้าน — command ของ AWS Batch มีเพดานขนาด</td><td>ทีม STA / EAI</td></tr>
+            <tr><td><code>sgi_reflow</code></td><td>ตัดสินว่าจะทำใน phase ไหน</td><td>เจ้าของระบบ</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin-top:12px;">
+        ฟิลด์วันที่และงวดใน message ของ STA เป็น <b>พ.ศ.</b> ตามสัญญาเดิม · แปลงเฉพาะตอนประกอบหรืออ่าน message ห้ามปนเข้า DB/API ของ SGI ·
+        สัญญาข้อความเต็มอยู่ที่ <code>STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md</code>
+      </p>
+    </div>
+
     <div class="card reveal msg-card reflow">
       <div class="card-head">
         <h2>กรณีเปิดพิจารณาใหม่ (Reflow)</h2>
