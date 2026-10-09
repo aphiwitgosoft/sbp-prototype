@@ -40,7 +40,7 @@
 
       <div class="page-head">
         <div><h1 class="page-title">Flow FGI/FCS + K2 — ระบบใหม่</h1>
-          <p class="page-sub">รวมงานเบื้องหลัง FGI/FCS (11 jobs) เข้ากับ Workflow อนุมัติ 5 ขั้นของ K2 เป็นระบบเดียว (ตัดขั้นบัญชี 04/05 ตาม SDD v7.5) · สถาปัตยกรรมใหม่แยก Frontend / Backend</p></div>
+          <p class="page-sub">รวมงานเบื้องหลัง FGI/FCS (12 jobs) เข้ากับ Workflow อนุมัติ 5 ขั้นของ K2 เป็นระบบเดียว (ตัดขั้นบัญชี 04/05 ตาม SDD v7.5) · สถาปัตยกรรมใหม่แยก Frontend / Backend</p></div>
         <div class="page-actions">
           <span class="pill info" style="align-self:center;">Target Architecture</span>
         </div>
@@ -49,7 +49,7 @@
       <div class="card" style="border-left:5px solid var(--primary);">
         <div style="font-size:13px;color:#45525f;line-height:1.9;">
           <b style="color:#2b3440;">วิธีอ่าน ref ที่มา:</b>
-          <span class="ref fgi">FGI/FCS</span> = มาจากเอกสาร Batch Job Technical Document v4.0 (Jobs 2–10 + 8b · ตัด Job 1 ImportQSSI 2026-08-24) + <b>Job 12 NotifyPendingWork</b> — พอร์ตจาก <code>SendMailReport.java</code> เดิม <b>ไม่ใช่งานใหม่</b> เพียงแต่ไม่ได้เขียนไว้ใน v4.0 (แยกเอกสาร 2026-09-02) · <b>ตัด Job 11 ConsumeStaCompensate ออก 2026-09-23</b> (ไม่มีโค้ดเดิมใน Java ให้พอร์ต) ·
+          <span class="ref fgi">FGI/FCS</span> = มาจากเอกสาร Batch Job Technical Document v4.0 (Jobs 2–10 + 8b · ตัด Job 1 ImportQSSI 2026-08-24) + <b>Job 12 NotifyPendingWork</b> — พอร์ตจาก <code>SendMailReport.java</code> เดิม <b>ไม่ใช่งานใหม่</b> เพียงแต่ไม่ได้เขียนไว้ใน v4.0 (แยกเอกสาร 2026-09-02) · <b>Job 11 UpdateCompensateFromSTA</b> รับยอดจาก STA ผ่าน RabbitMQ (เพิ่มกลับ 2026-10-09 · เคยตัด 2026-09-23) ·
           <span class="ref k2">K2</span> = มาจาก SRS ประกันรายได้-K2 v3.1 (หน้าจอ / workflow 5 ขั้น) ·
           <span class="ref new">ใหม่</span> = ส่วนที่ออกแบบเพิ่มสำหรับระบบใหม่ ·
           <span class="ref mix">ทั้งสอง</span> = พฤติกรรมรวมจากสองระบบ<br>
@@ -60,7 +60,7 @@
       </div>
 
       <div class="db-stat-grid">
-        <div class="db-stat"><b>11</b><span>Batch Entry Points</span></div>
+        <div class="db-stat"><b>12</b><span>Batch Entry Points</span></div>
         <div class="db-stat"><b>5</b><span>Approval Sections</span></div>
         <div class="db-stat"><b>22</b><span>Tables ใน Schema รวม</span></div>
         <div class="db-stat"><b>29</b><span>REST API Endpoints (5 กลุ่ม)</span></div>
@@ -97,7 +97,7 @@
         </div>
         <div class="rule-grid">
           <div class="rule"><b>ตัดการส่งไฟล์ภายใน</b>FGI/FCS → Document/Workflow ใช้ DB และ service call โดยตรง</div>
-          <div class="rule"><b>คง interface ภายนอก</b>ยังแลกข้อมูลกับ QSSI, IAS และ STA เหมือนเดิม เพราะเป็นขอบเขตระบบอื่น — แต่ช่องทางเปลี่ยน: IAS/MIS ผ่าน <b>EAI S3</b> · STA ผ่าน <b>RabbitMQ</b> exchange <code>sgi.interface</code> (มติ 2026-08-24) · 3 ชุดข้อความ <code>sgi_impact_store</code> · <code>sta_update_compensate</code> (⚠️ SGI ไม่มีตัว consume — ตัด Job 11 ออก 2026-09-23) · <b><code>sgi_reflow</code> (แจ้ง STA เมื่อเปิดพิจารณาใหม่ · มติ 2026-09-01)</b></div>
+          <div class="rule"><b>คง interface ภายนอก</b>ยังแลกข้อมูลกับ QSSI, IAS และ STA เหมือนเดิม เพราะเป็นขอบเขตระบบอื่น — แต่ช่องทางเปลี่ยน: IAS/MIS ผ่าน <b>EAI S3</b> · STA ผ่าน <b>RabbitMQ</b> exchange <code>sgi.interface</code> (มติ 2026-08-24) · 3 ชุดข้อความ <code>sgi_impact_store</code> · <code>sta_update_compensate</code> (STA → SGI · รับด้วย Job 11 ผ่าน EAI consumer) · <b><code>sgi_reflow</code> (แจ้ง STA เมื่อเปิดพิจารณาใหม่ · มติ 2026-09-01)</b></div>
           <div class="rule"><b>กติกาธุรกิจหลักคงเดิม</b>60 วัน, growth ≤ −10, %ชดเชย 100% · วงเงินอนุมัติปรับใหม่เป็น เกณฑ์เดียว 100,000 (SDD GI 24/02/2026)</div>
         </div>
       </div>
@@ -150,7 +150,7 @@
 
           <!-- row 2 -->
           <rect x="64" y="336" width="284" height="84" rx="10" fill="#fbfcfe" stroke="#96b4f0" stroke-width="1.5"/>
-          <text x="78" y="358" font-size="12.5" font-weight="600" fill="#2b3440">Batch Scheduler (11 jobs)</text>
+          <text x="78" y="358" font-size="12.5" font-weight="600" fill="#2b3440">Batch Scheduler (12 jobs)</text>
           <rect x="78" y="366" width="60" height="17" rx="8" fill="#e8f0fe"/><text x="108" y="378.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">FGI/FCS</text>
           <text x="78" y="402" font-size="10.5" fill="#5d6b7a">คง cron เดิม · พารามิเตอร์แก้ได้จากหน้าจอ · กันรันซ้อน</text>
 

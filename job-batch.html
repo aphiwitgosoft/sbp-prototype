@@ -49,7 +49,7 @@
 
     <!-- ===== ภาพรวมระบบใหม่ ===== -->
     <div class="card" style="border-left:5px solid #7c3aed;background:#faf8ff;">
-      <div class="card-head"><h2>Batch Job ของระบบประกันรายได้ (SGI)</h2><span class="pill violet" style="margin-left:auto;">11 entry point</span></div>
+      <div class="card-head"><h2>Batch Job ของระบบประกันรายได้ (SGI)</h2><span class="pill violet" style="margin-left:auto;">12 entry point</span></div>
       <p style="font-size:13px;color:#45525f;line-height:1.9;margin:0 0 12px;">
         ระบบเป็น <b>ระบบเดียว ฐานข้อมูลเดียว</b> — งานที่เคยแลกไฟล์ผ่าน EAI ระหว่าง FGI/FCS กับ K2 กลายเป็นการ<b>เขียนฐานข้อมูลตรง</b> และการเปิด workflow ทำโดย
         <b>Workflow Engine ภายใน</b> · สิ่งที่ยังเป็นไฟล์คือการคุยกับ<b>ระบบภายนอก</b>เท่านั้น
@@ -57,10 +57,11 @@
       <div class="table-wrap"><table class="data">
         <thead><tr><th>กลุ่มงาน</th><th>Job</th><th>ทำอะไร</th></tr></thead>
         <tbody>
-          <tr><td><b>นำเข้าจากภายนอก</b></td><td class="mono">2 · 3</td><td>ดึงคู่ร้านกระทบและร้านคู่แข่งจาก <b>ALLMAP</b> (SQL Server) เข้า <code>sgi_fgi_impact_stores</code> · <code>sgi_fgi_impact_competitors</code></td></tr>
+          <tr><td><b>นำเข้าจากภายนอก</b></td><td class="mono">2 · 3</td><td>ดึงคู่ร้านกระทบและร้านคู่แข่งจาก <b>ALLMAP</b> (ไฟล์บน EAI S3 · ทำงานเมื่อไฟล์มาถึง) เข้า <code>sgi_fgi_impact_stores</code> · <code>sgi_fgi_impact_competitors</code></td></tr>
           <tr><td><b>แลกยอดขาย</b></td><td class="mono">4 · 5</td><td>ส่งรายการไป <b>IAS/MIS</b> เป็นไฟล์ <code>AMS06001O</code> แล้วรับยอดขายกลับเป็น <code>AMS06001I</code> → <code>sgi_sales_transactions</code> + คำนวณ growth</td></tr>
           <tr><td><b>สร้างเอกสาร</b></td><td class="mono">8 · 7 · 9</td><td><b>เขียนฐานข้อมูลตรง</b> — สร้าง <code>sgi_compensation_documents</code> แล้วเติม <code>sgi_document_competitors</code> · <code>sgi_document_new_stores</code> ผ่าน Document Service</td></tr>
           <tr><td><b>เปิด workflow</b></td><td class="mono">8b</td><td>ตัดสินจุดเข้า flow จากประเภทเคส แล้วเรียก <code>POST /api/v1/sgi/workflow/instances</code> ของ <b>Workflow Engine ภายใน</b></td></tr>
+          <tr><td><b>รับยอดจาก STA</b></td><td class="mono">11</td><td>รับ <b>RabbitMQ message</b> <code>sta_update_compensate</code> ผ่าน EAI consumer (ไม่มี cron) → เติม <code>forecast_amount</code> / <code>adjust_amount</code> / สถานะงวดลง <code>sgi_fgi_impact_compensations</code> + ยอดรายร้านเปิดใหม่ — ยอดนี้คือสิ่งที่ Job 8 ใช้สร้างเอกสาร (เพิ่ม 2026-10-09)</td></tr>
           <tr><td><b>ส่งผล + เฝ้าระวัง</b></td><td class="mono">6 · 10 · 12</td><td>ส่งค่าชดเชยไป <b>STA</b> ด้วย <b>RabbitMQ message</b> (<code>sta.compensation.result</code>) และเฝ้าระวังข้อความที่ broker ยังไม่ publisher confirm เกิน 1 วันแล้วส่งอีเมลเตือน · และเตือนงานที่ค้างรอคนกดใน workflow (Job 12 · ช่วง 30-36 / 45-51 / 60-66 วัน)</td></tr>
         </tbody>
       </table></div>
@@ -78,7 +79,7 @@
 
     <!-- ===== job list ===== -->
     <div class="card">
-      <div class="card-head"><h2>รายการ Batch Job</h2><span class="pill muted">11 entry point · คลิกแถวเพื่อดู Flowchart และตารางที่ใช้</span></div>
+      <div class="card-head"><h2>รายการ Batch Job</h2><span class="pill muted">12 entry point · คลิกแถวเพื่อดู Flowchart และตารางที่ใช้</span></div>
       <div class="table-wrap">
         <table class="data" id="tblJobs">
           <thead><tr>
@@ -170,14 +171,14 @@
 (function () {
   "use strict";
 
-  /* ============ data: 11 entry points (Jobs 2–10 + 8b จาก Batch v4.0 · + Job 12 ที่แยกเอกสาร 2026-09-02 — พอร์ตจาก SendMailReport.java ไม่ใช่งานใหม่)
-     🔴 Job 11 ConsumeStaCompensate ถูกตัดออก 2026-09-23 (มติผู้ใช้) — เป็น job เดียวที่ไม่มีโค้ดเดิมใน fcsJar ให้พอร์ต
-     อีก 11 job อ้างคลาส Java จริงครบทุกตัว ============ */
+  /* ============ data: 12 entry points (Jobs 2–10 + 8b จาก Batch v4.0 · Job 12 ที่แยกเอกสาร 2026-09-02 — พอร์ตจาก SendMailReport.java ไม่ใช่งานใหม่)
+     🟢 Job 11 UpdateCompensateFromSTA เพิ่มกลับ 2026-10-09 — รับ sta_update_compensate จาก RabbitMQ แทน web service
+        /fgiService/updateCompensateFromFS ของระบบเดิม (เคยตัดออก 2026-09-23 เพราะไม่มีโค้ดใน fcsJar) ============ */
   var PHASES = [
-    { k:'A', t:'นำเข้า Master', s:'ALLMAP (SQL Server)', c:'', jobs:['2','3'] },
+    { k:'A', t:'นำเข้า Master', s:'ALLMAP (ไฟล์บน EAI S3)', c:'', jobs:['2','3'] },
     { k:'B', t:'แลกเปลี่ยนยอดขาย', s:'IAS / MIS', c:'c-teal', jobs:['4','5'] },
     { k:'C', t:'บันทึกเข้าเอกสาร', s:'เขียนฐานข้อมูลตรง', c:'c-amber', jobs:['8','7','9'] },
-    { k:'D', t:'เปิด workflow + ส่ง STA', s:'Workflow Engine ภายใน · Statement', c:'c-violet', jobs:['8b','6'] },
+    { k:'D', t:'เปิด workflow + แลกข้อมูล STA', s:'Workflow Engine ภายใน · Statement (RabbitMQ)', c:'c-violet', jobs:['8b','6','11'] },
     { k:'E', t:'เฝ้าระวัง + เตือนงานค้าง', s:'Watchdog', c:'c-rose', jobs:['10','12'] }
   ];
 
@@ -637,6 +638,50 @@
         ['02/07/2026 07:00', '-', '-', 'อีเมลเตือน UTF-8', 'ok', 'target design - DB/internal workflow']
       ],
       run:['02/07/2026 07:00', 'fail', '03/07/2026 07:00']
+    },
+    {
+      no:'11',
+      name:'UpdateCompensateFromSTA',
+      th:'รับยอดเงินประกันรายได้จาก STA',
+      tag:'MQ CONSUME',
+      tagCls:'imp',
+      phase:'D',
+      cls:'(web service /fgiService/updateCompensateFromFS — ซอร์สไม่อยู่ใน fcsJar)',
+      script:'sgi-update-compensate-from-sta',
+      cron:'RabbitMQ message',
+      cronTh:'ไม่มี cron · STA publish sta_update_compensate → EAI consumer รับจากคิวแล้วสั่ง AWS Batch โดยส่งข้อความทั้งก้อนเป็น INPUT (เพิ่ม 2026-10-09)',
+      out:'sgi_fgi_impact_compensations + sgi_fgi_new_store_compensations',
+      desc:'รับยอดเงินประกันรายได้ที่ STA คำนวณกลับมา (message **sta_update_compensate**) แล้วเติม forecast_amount / adjust_amount และสถานะงวดลงแถวที่ Job 6 สร้างไว้ พร้อมยอดรายร้านเปิดใหม่ · แทน web service /fgiService/updateCompensateFromFS ของระบบเดิม (พอร์ตจาก ExportJdbc.updateFgiImpactStoreCompensate / insertFgiNewStoreCompensate) · ยอดนี้คือสิ่งที่ Job 8 ต้องใช้สร้างเอกสาร',
+      params:[
+        ['ตัวกระตุ้น (Trigger)', 'RabbitMQ exchange sgi.interface → EAI consumer → AWS Batch SubmitJob', 'text', 1, 'AWS Batch ฟังคิวเองไม่ได้ · EAI consumer bind คิว กรอง dataName = sta_update_compensate · ⏳ รอตั้งกับทีม EAI/STA'],
+        ['INPUT (JSON)', '{ "dataType":"message", "dataName":"sta_update_compensate", "dataMessage":[ … ], "sender":"STA", "sentAt":"…" }', 'text', 1, 'ซองข้อความตรง ๆ · รันมือใช้ { "message": <ซอง>, "dryRun": true } · dataName ไม่ตรง = ล้มทั้งข้อความ'],
+        ['งวด periodImpact', 'yyMM พ.ศ. → YYYY-MM ค.ศ.', 'text', 0, 'เช่น 6906 → 2026-06 · แปลงตอนอ่านข้อความ ห้ามให้ พ.ศ. เข้าตาราง sgi_*'],
+        ['เพดานรายการ', 'SGI_JOB11_MAX_ITEMS = 500', 'number', 0, 'ข้อความควรเป็นรายร้าน — command ของ AWS Batch มีเพดานขนาด']
+      ],
+      flow:[
+        { k:'start', t:'เริ่ม (EAI consumer สั่งรันพร้อมข้อความ)' },
+        { k:'d', t:'ข้อความถูกต้อง? (dataName = sta_update_compensate · ฟิลด์ครบ)', no:'ล้มทั้งข้อความ + อีเมล EM-07', noKind:'end', d:'รายการที่ผิดรูปบางรายการถูกแยกออก ไม่ลากรายการอื่น' },
+        { k:'p', t:'วนทีละรายการ — 1 transaction + advisory lock ตาม ร้าน + งวด', d:'ส่งซ้ำพร้อมกันไม่เขียนทับกันกลางทาง' },
+        { k:'d', t:'พบแถวงวดของรอบที่ active (flag_action Y/W)?', no:'รายการนั้นไม่สำเร็จ (ไม่สร้างแถวเอง)', noKind:'end', d:'แถวงวดเป็นของ Job 6' },
+        { k:'io', t:'อัปเดต forecast_amount · adjust_amount · compensate_status', d:'impactStatus W: สถานะว่าง/Z → I อื่นคงเดิม · Z → Z (กติกาเดิม)' },
+        { k:'io', t:'อัปเดต/สร้างยอดรายร้านเปิดใหม่', d:'ไม่มีแถวแต่มีคู่ร้านในรอบ = สร้าง · ไม่มีคู่ร้าน = รายการนั้นนับเป็นไม่สำเร็จ' },
+        { k:'io', t:'บันทึกผลลง sgi_interface_transactions (IN · STA_UPDATE_COMPENSATE)', d:'ส่งซ้ำ = อัปเดตแถวเดิม + retry_count · ยอดไม่ซ้ำ' },
+        { k:'end', t:'จบ — ครบทุกรายการ = SUCCESS · บางส่วน = PARTIAL_FAILED · ไม่สำเร็จเลย = FAILED (exit 1 + อีเมล)' }
+      ],
+      tables:[
+        ['sgi_fgi_impact_compensations', 'R/W', 'หาแถวงวดตามร้าน + งวด แล้วเขียนยอดและสถานะ'],
+        ['sgi_fgi_impact_processes', 'R', 'กรองเฉพาะรอบที่ active (flag_action Y/W)'],
+        ['sgi_fgi_new_store_compensations', 'R/W', 'ยอดรายร้านเปิดใหม่ (forecastN · adjustN · %)'],
+        ['sgi_fgi_impact_stores', 'R', 'หาคู่ร้านเมื่อยังไม่มีแถวยอดรายร้านเปิดใหม่'],
+        ['sgi_interface_transactions', 'W', 'ผลรายการขาเข้า (IN · STA_UPDATE_COMPENSATE)'],
+        ['email_template / email_sent (ระบบ SBP เดิม)', 'R / W (โดย email-lib)', 'อีเมลแจ้งเตือน EM-07 เมื่อบันทึกไม่ครบ']
+      ],
+      rels:['แถวงวดที่ Job 6 สร้าง (สถานะ I/C ยอดว่าง) ได้ยอดจาก job นี้ — Job 8 กรองงวดที่มี forecast_amount จึงสร้างเอกสารได้', 'คีย์ของข้อความคือ storeCodeI + periodImpact — ข้อความไม่มี compensate_i_id'],
+      meta:{ trans:'1 รายการ = 1 transaction + pg_advisory_xact_lock(ร้าน, งวด)', rerun:'ส่งข้อความเดิมซ้ำได้ — UPDATE ทับค่าเดิม · INSERT เมื่อยังไม่มี', mail:'email-lib (EM-07) เมื่อข้อความอ่านไม่ได้หรือบันทึกไม่ครบ', risk:'impactStatus = Z เขียนทับสถานะ A/N/S ได้ตามกติกาเดิม — ต้องยืนยันกับ STA · ยังต้องตั้ง EAI consumer + queue binding' },
+      hist:[
+        ['09/10/2026 09:17', '-', '-', 'dryRun กับ dev', 'ok', 'ร้าน 11365 งวด 2026-02 พบแถว · ร้าน 99999 ไม่พบ → PARTIAL_FAILED ตามออกแบบ']
+      ],
+      run:['09/10/2026 09:17', 'ok', 'เมื่อมีข้อความจาก STA']
     },
     {
       no:'12',

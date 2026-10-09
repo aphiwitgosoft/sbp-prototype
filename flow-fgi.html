@@ -22,7 +22,7 @@
 
       <div class="page-head">
         <div><h1 class="page-title">Flow FGI/FCS (Batch Pipeline)</h1>
-          <p class="page-sub">งานเบื้องหลังของระบบทั้ง <b>11 job</b> — Jobs 2–10 + 8b จากเอกสาร FGI &amp; FCS Batch Job Technical Document v4.0 (ตัด Job 1 ImportQSSI 2026-08-24) + <b>Job 12 NotifyPendingWork</b> ที่แยกเอกสารเมื่อ 2026-09-02 (พอร์ตจาก <code>SendMailReport.java</code> เดิม ไม่ใช่งานใหม่) (ตัด Job 11 ConsumeStaCompensate ออก 2026-09-23 — ไม่มีโค้ดเดิมใน Java) · ใช้ชื่อตาราง/ไฟล์ตามระบบจริง</p></div>
+          <p class="page-sub">งานเบื้องหลังของระบบทั้ง <b>12 job</b> — Jobs 2–10 + 8b จากเอกสาร FGI &amp; FCS Batch Job Technical Document v4.0 (ตัด Job 1 ImportQSSI 2026-08-24) + <b>Job 12 NotifyPendingWork</b> ที่แยกเอกสารเมื่อ 2026-09-02 (พอร์ตจาก <code>SendMailReport.java</code> เดิม ไม่ใช่งานใหม่) + <b>Job 11 UpdateCompensateFromSTA</b> รับ <code>sta_update_compensate</code> จาก STA ผ่าน RabbitMQ (เพิ่มกลับ 2026-10-09 แทน web service <code>updateCompensateFromFS</code> เดิม) · ใช้ชื่อตาราง/ไฟล์ตามระบบจริง</p></div>
         <div class="page-actions"><span class="pill info" style="align-self:center;"><span style="font-weight:600;">ระบบปัจจุบัน (As-Is)</span></span></div>
       </div>
 
@@ -84,10 +84,10 @@
 
           <!-- phase D -->
           <rect x="300" y="410" width="400" height="96" rx="12" fill="#faf7ff" stroke="#7c3aed" stroke-width="1.6"/>
-          <text x="318" y="434" font-size="12.5" font-weight="700" fill="#6d28d9">เฟส D · เปิด Workflow / Statement</text>
+          <text x="318" y="434" font-size="12.5" font-weight="700" fill="#6d28d9">เฟส D · เปิด Workflow / แลกข้อมูล STA</text>
           <text x="318" y="456" font-size="11" fill="#45525f">Job 8b StartInternalWorkflow — Gen Flow Gate → POST /sgi/workflow/instances (W→Y/N)</text>
           <text x="318" y="474" font-size="11" fill="#45525f">Job 6 → 10 mutations + เช็ค QSSI 6 หมวด → publish RabbitMQ ไป STA</text>
-          <text x="318" y="494" font-size="9.5" fill="#8493a5">Job 6 ทุกวัน 17:00 · Job 8b trigger หลัง Job 8 สร้างเอกสารสำเร็จ</text>
+          <text x="318" y="494" font-size="9.5" fill="#8493a5">Job 11 ← STA: sta_update_compensate (EAI consumer → AWS Batch) เติมยอดลงงวด · Job 6 ทุกวัน 17:00</text>
 
           <!-- phase E -->
           <rect x="300" y="526" width="400" height="78" rx="12" fill="#fdf2f2" stroke="#ef4444" stroke-width="1.6"/>
@@ -162,6 +162,7 @@
               <tr><td>ทุกวัน · 17:00</td><td class="mono">0 17 * * *</td><td class="mono">Job 6</td><td>ซิงก์สถานะ 10 ขั้น + publish message ไป STA</td></tr>
               <tr><td>วันที่ 7–31 · 17:30</td><td class="mono">30 17 7-31 * *</td><td class="mono">Jobs 8, 7, 9</td><td>สร้างเอกสาร + บันทึกคู่แข่ง/ร้านเปิดใหม่เข้าเอกสาร (เขียนฐานข้อมูลตรง)</td></tr>
               <tr><td>ต่อจาก Job 8</td><td class="mono">after-job-8</td><td class="mono">Job 8b</td><td>เปิด Workflow ภายใน (Gen Flow Gate + ตัดสินจุดเข้า flow ตามประเภทเคส) — ตั้งใจแยกจาก Job 8</td></tr>
+              <tr><td>เมื่อ STA ส่งข้อความ</td><td class="mono">RabbitMQ</td><td class="mono">Job 11</td><td>รับ <code>sta_update_compensate</code> ผ่าน EAI consumer → เติม <code>forecast_amount</code> / <code>adjust_amount</code> / สถานะงวด + ยอดรายร้านเปิดใหม่ (เพิ่ม 2026-10-09)</td></tr>
               <tr><td>ทุกวัน · 08:00</td><td class="mono">0 8 * * *</td><td class="mono">Job 10</td><td>Watchdog ตรวจข้อความขาออกที่ยังไม่ได้ publisher confirm ≥ 1 วัน แล้วส่งเมลเตือน</td></tr>
             </tbody>
           </table>
@@ -170,7 +171,7 @@
 
       <!-- ===== interface catalog ===== -->
       <div class="card">
-        <div class="card-head"><h2>Interface ทั้งหมด (จาก Section 8 ของเอกสาร)</h2><span class="pill info">8 interfaces + อีเมล</span></div>
+        <div class="card-head"><h2>Interface ทั้งหมด (จาก Section 8 ของเอกสาร)</h2><span class="pill info">9 interfaces + อีเมล</span></div>
         <div class="table-wrap">
           <table class="data">
             <thead><tr><th>Interface</th><th>ทิศทาง</th><th>Encoding</th><th>ฟิลด์</th><th>เนื้อหา</th></tr></thead>
@@ -179,6 +180,7 @@
               <tr><td class="mono">AMS06001O_yyyyMMddHHmm.txt</td><td>Job 4 → <b>EAI S3</b> → IAS/MIS</td><td class="mono">UTF-8</td><td class="num">2</td><td>คำขอยอดขาย (รหัสร้านถูกกระทบ | วันเปิดร้านใหม่ <code>yyyyMMdd</code> <b>ค.ศ.</b>) · ไฟล์จริงไม่ปิดท้ายด้วย newline</td></tr>
               <tr><td class="mono">AMS06001I_yyyyMMddHHmm.txt</td><td>IAS/MIS → <b>EAI S3</b> → Job 5</td><td class="mono">WINDOWS-874</td><td class="num">4</td><td>ยอดขายรายวันตอบกลับ</td></tr>
               <tr><td class="mono">sta.compensation.result</td><td>Job 6 → <b>RabbitMQ</b> → STA</td><td class="mono">JSON UTF-8 (วันที่ พ.ศ.)</td><td class="num">14</td><td>ค่าชดเชย + QSSI (สถานะ Z → S เฉพาะใน payload) · เดิมเป็นไฟล์ <code>FRBC0001</code> ผ่าน SFTP — เปลี่ยน 2026-08-24</td></tr>
+              <tr><td class="mono">sta_update_compensate</td><td>STA → <b>RabbitMQ</b> → EAI consumer → Job 11</td><td class="mono">JSON UTF-8 (งวด yyMM พ.ศ.)</td><td class="num">7</td><td>ยอดเงินประกันรายได้ forecast / adjust + ยอดรายร้านเปิดใหม่ · <code>impactStatus</code> W/Z · แทน web service <code>updateCompensateFromFS</code> เดิม (เพิ่ม 2026-10-09)</td></tr>
               <tr><td class="mono">—</td><td>Job 8 → <b>sgi_compensation_documents</b></td><td class="mono">DB</td><td class="num">–</td><td>สร้างเอกสารในฐานข้อมูลเดียวกัน (ไม่มีไฟล์/SFTP)</td></tr>
               <tr><td class="mono">—</td><td>Job 7 → <b>sgi_document_competitors</b></td><td class="mono">DB</td><td class="num">–</td><td>คู่แข่งในเอกสาร · source_system = ALLMAP</td></tr>
               <tr><td class="mono">—</td><td>Job 9 → <b>sgi_document_new_stores</b></td><td class="mono">DB</td><td class="num">–</td><td>ร้านเปิดใหม่ในเอกสาร · %ชดเชยรวม 100%</td></tr>
