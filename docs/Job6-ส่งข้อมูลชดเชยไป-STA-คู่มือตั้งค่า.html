@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>คู่มือ Job 6 ส่งข้อมูลชดเชยไป STA</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: เอกสารสัญญา API คอลัมน์เดียว อ่านจากบนลงล่าง — ภาพรวม → คำขอ → ฟิลด์ → คำตอบ → ข้อควรรู้ */
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --fg:#1d2430; --muted:#5b6474; --line:#dde1e8;
+  --accent:#1f5fae; --accent-soft:#e7eef8; --code-bg:#f0f2f6;
+  --ok:#1d7a4f; --warn:#a05a00; --bad:#b3261e;
+  --font-body:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --surface:#1a2029; --fg:#e4e8ef; --muted:#9aa4b4; --line:#2c3441;
+  --accent:#7fb0f0; --accent-soft:#1f2c40; --code-bg:#151a22;
+  --ok:#5cc790; --warn:#e2a54f; --bad:#f08a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --surface:#1a2029; --fg:#e4e8ef; --muted:#9aa4b4; --line:#2c3441;
+  --accent:#7fb0f0; --accent-soft:#1f2c40; --code-bg:#151a22;
+  --ok:#5cc790; --warn:#e2a54f; --bad:#f08a80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.7;padding-inline:16px;padding-block:32px 64px}
+main{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:1.75rem;line-height:1.3;margin:0;text-wrap:balance;font-weight:700}
+h2{font-size:1.15rem;margin:0 0 10px;font-weight:600;text-wrap:balance}
+h3{font-size:1rem;margin:18px 0 8px;font-weight:600}
+p{margin:0 0 10px;max-width:68ch}
+.lede{color:var(--muted)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px;min-width:0}
+code{font-family:var(--font-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--font-mono);font-size:.84rem;line-height:1.55;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto;margin:8px 0 12px}
+pre code{background:none;padding:0}
+.endpoint{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-family:var(--font-mono);font-size:1rem;background:var(--accent-soft);border-radius:8px;padding:12px 14px}
+.method{background:var(--accent);color:var(--surface);font-weight:600;border-radius:5px;padding:2px 9px;font-size:.85rem;letter-spacing:.04em}
+.path{word-break:break-all;min-width:0}
+.tbl{overflow-x:auto;margin:6px 0 10px}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:.8rem;letter-spacing:.03em;white-space:nowrap}
+td:first-child{white-space:nowrap}
+.req{color:var(--bad);font-weight:600;font-size:.8rem}
+.opt{color:var(--muted);font-size:.8rem}
+.pill{display:inline-block;font-family:var(--font-mono);font-size:.8rem;font-weight:500;border-radius:999px;padding:1px 9px;border:1px solid currentColor}
+.ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+ul{margin:0 0 10px;padding-left:1.2em} li{margin:3px 0;max-width:68ch}
+.note{border-left:3px solid var(--warn);padding:2px 0 2px 12px;color:var(--fg)}
+.meta{font-size:.85rem;color:var(--muted)}
+</style>
+<style>
+main h1{margin-bottom:6px}
+main h2{margin-top:28px;padding-top:16px;border-top:1px solid var(--line)}
+main h2:first-of-type{border-top:none}
+blockquote{margin:10px 0;padding:6px 14px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0}
+blockquote p{margin:4px 0}
+main{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px 26px;gap:0}
+ol{margin:0 0 10px;padding-left:1.4em} ol li{margin:3px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>Job 6 · ส่งข้อมูลชดเชยไประบบ Statement (STA) — คู่มือตั้งค่าและใช้งาน</h1>
+<blockquote>
+<p>อัปเดต 2026-10-14 · โค้ดอยู่ที่ <code>SBP/srm-sps-spsap-sop-sgi-batch/src/modules/sgi/</code>
+(<code>job-6-export-impact-store-to-sta.service.ts</code> · <code>sgi-sta.publisher.ts</code> · <code>job-6-sta-payload.ts</code> · <code>dto/job-6-export-impact-store-to-sta-input.dto.ts</code>)
+· ค่า config อยู่ที่ <code>src/config/config.ts</code> (<code>sgiJob6Config</code>)</p>
+</blockquote>
+<h2>1. job นี้ทำอะไร</h2>
+<p>ซิงก์สถานะรอบชดเชยประกันรายได้ในฐาน แล้วส่งผลไปให้ STA ผ่าน RabbitMQ
+(แทนไฟล์ <code>FRBC0001_*.txt</code> + SFTP ของระบบเดิม) — <strong>เป็น job ที่ทำให้เงินออกจริง</strong>
+ถ้าฐานกับสิ่งที่ STA ได้รับไม่ตรงกัน แปลว่าจ่ายซ้ำหรือไม่จ่าย</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ชื่อ job</td>
+<td><code>sgi-export-impact-store-to-sta</code></td>
+</tr>
+<tr>
+<td>โค้ดเดิม</td>
+<td><code>fgi.main.ExportImpactStoreToFS</code> · <code>ExportService.manageDBToFs</code> · <code>ExportJdbc</code></td>
+</tr>
+<tr>
+<td>รอบการรัน</td>
+<td><strong>ทุกวัน</strong> <code>0 17 * * *</code> (UTC) = เที่ยงคืนเวลาไทย</td>
+</tr>
+<tr>
+<td>ปลายทาง</td>
+<td>RabbitMQ exchange <code>master.store</code> → queue ของ STA</td>
+</tr>
+</tbody>
+</table></div>
+<p>ลำดับการทำงาน</p>
+<ol>
+<li>อ่าน INPUT และแตกเป็นวันที่รัน · งวดซิงก์ · งวด QSSI</li>
+<li>ตรวจว่าตั้ง env ของ RabbitMQ ครบ 3 ตัว (ข้อ 3) — ไม่ครบ = ล้ม <code>JOB6_MQ_CONFIG_MISSING</code> <strong>ก่อนแตะฐาน</strong> (ยกเว้น <code>dryRun</code>)</li>
+<li>อ่านค่าคงที่จาก <code>mas_param</code></li>
+<li>ตรวจ 2 ประตู
+   - <strong>Gate 1</strong> วันของเดือน ≥ <code>SGI_STA_INIT_START_DAY</code> (7)
+   - <strong>Gate 2</strong> คะแนน QSSI ของเดือนก่อนหน้ามีครบ 6 หมวด — <strong>ตรวจเฉพาะเมื่อผ่าน Gate 1</strong> (วันที่ 1–6 ไม่อ่าน <code>fcs_qssi_score</code>) · คิวรีนี้ใช้ timeout ของตัวเอง <code>SGI_JOB6_QSSI_TIMEOUT_MS</code></li>
+<li><strong>ใน transaction เดียว</strong> — แก้ข้อมูล 9 ขั้น + บันทึกข้อความที่จะส่งลง <code>sgi_interface_transactions</code> (outbox สถานะ <code>READY</code>)
+   - ข้อความของงวดเดือนที่รัน (สายเปิดรอบและสายผลอนุมัติ)
+   - <strong>ผลอนุมัติของงวดก่อนหน้าที่ยังไม่เคยส่ง</strong> (ข้อ 7.1)</li>
+<li><strong>หลัง commit</strong> — ส่งเข้า RabbitMQ รอ broker ยืนยันทีละข้อความ แล้วอัปเดต outbox · พร้อมส่งซ้ำข้อความที่ค้างจากรอบก่อน (backlog)</li>
+</ol>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>ขั้น</th>
+<th>ทำอะไร</th>
+<th>เงื่อนไข</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>①</td>
+<td>ปิดรอบที่ STA ตอบกลับครบแล้ว</td>
+<td>ทุกวัน</td>
+</tr>
+<tr>
+<td>②</td>
+<td>รอบที่ส่งแล้วแต่ยังไม่ถึงกำหนดจ่าย <code>Y</code> → <code>W</code></td>
+<td>ทุกวัน</td>
+</tr>
+<tr>
+<td>③</td>
+<td>เลื่อนงวดของรอบที่ชดเชยต่อเนื่อง</td>
+<td>ผ่านทั้ง 2 ประตู</td>
+</tr>
+<tr>
+<td>④</td>
+<td>เปิดรอบชดเชยใหม่</td>
+<td>ผ่านทั้ง 2 ประตู</td>
+</tr>
+<tr>
+<td>⑤ ⑥</td>
+<td>สร้างแถวค่าชดเชยฝั่งร้านถูกกระทบ (I) และร้านเปิดใหม่ (N)</td>
+<td>ผ่านทั้ง 2 ประตู</td>
+</tr>
+<tr>
+<td>⑦ ⑧</td>
+<td>snapshot ข้อมูลร้านถูกกระทบ / ร้านเปิดใหม่ ณ งวดนั้น</td>
+<td>ผ่านทั้ง 2 ประตู</td>
+</tr>
+<tr>
+<td>⑨</td>
+<td>ตัดคู่ร้านที่ยอดขายไม่ตกออกจากกระบวนการ</td>
+<td>ผ่านทั้ง 2 ประตู</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>ไม่ผ่านประตู <strong>ไม่ได้หยุดทั้ง job</strong> — ขั้น ①② ทำทุกวัน และข้อความสายอนุมัติ (<code>A N S Z</code>) ยังถูกส่งตามปกติ
+QSSI จำเป็นเฉพาะตอนเปิดรอบใหม่</p>
+<p>รอบที่ฝ่าย SBP DSA (06) ปิดเอกสารด้วย "เห็นควรไม่ชดเชย" หรือ "หยุดชดเชยประกันรายได้" <strong>ถูก BE ปิดรอบให้แล้ว</strong>
+(<code>flag_action = N</code> · <code>process_status = CLOSED</code> · งวดสิ้นสุด = งวดของเอกสาร) ขั้น ③④⑤ จึงไม่สร้างงวดใหม่ให้รอบนั้น
+แต่ผล <code>N</code>/<code>S</code> ของงวดนั้นยังถูกส่งไป STA ตามปกติ</p>
+</blockquote>
+<h2>2. ข้อมูล RabbitMQ ที่ใช้</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>รายการ</th>
+<th>ค่า</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Exchange</td>
+<td><code>master.store</code> (ชนิด <code>topic</code> · durable)</td>
+</tr>
+<tr>
+<td>Routing key</td>
+<td><code>master.store.compensate-status</code></td>
+</tr>
+<tr>
+<td>Queue (ฝั่ง STA)</td>
+<td><code>sta.sta.ss.frbc0001.queue</code></td>
+</tr>
+<tr>
+<td>dataName ในซอง</td>
+<td><code>sta_compensate_status</code></td>
+</tr>
+<tr>
+<td>sender ในซอง</td>
+<td><code>SGI</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3>สิ่งที่ต้องเตรียมฝั่ง broker (ทีม STA / ผู้ดูแล RabbitMQ)</h3>
+<ol>
+<li><strong>ผูก queue <code>sta.sta.ss.frbc0001.queue</code> เข้ากับ exchange <code>master.store</code> ด้วย routing key <code>master.store.compensate-status</code></strong>
+   job <strong>ไม่สร้างและไม่ผูก queue เอง</strong> (เหมือน job อื่นทุกตัวใน repo — ไม่มี <code>assertQueue</code>/<code>bindQueue</code> ในโค้ดเลย)
+   ยังไม่ผูก = ข้อความถูกตีกลับ (<code>mandatory</code>) แถว outbox เป็น <code>FAILED</code> + <code>UNROUTABLE</code> แล้วส่งใหม่รอบถัดไป</li>
+<li><strong>exchange <code>master.store</code> ต้องเป็นชนิด <code>topic</code> และ durable</strong> — job เรียก
+   <code>assertExchange('master.store', 'topic', { durable: true })</code> ทุกครั้ง
+   ถ้ามีอยู่แล้วเป็นชนิดอื่น จะได้ <code>PRECONDITION_FAILED</code> และส่งไม่ออกทั้งชุด</li>
+<li><strong>user ใน <code>RABBITMQ_URL</code> ต้องมีสิทธิ์ configure + write</strong> บน exchange นี้</li>
+</ol>
+<h2>3. ตัวแปรสภาพแวดล้อม</h2>
+<h3>ต้องตั้ง</h3>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>ตัวแปร</th>
+<th>ค่าที่ต้องตั้ง</th>
+<th>ค่าตั้งต้นในโค้ด</th>
+<th>หมายเหตุ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RABBITMQ_URL</code></td>
+<td><code>amqps://&lt;user&gt;:&lt;pass&gt;@&lt;host&gt;:5671/&lt;vhost&gt;</code></td>
+<td>—</td>
+<td>🔴 ความลับ · เก็บใน Secrets Manager · ไม่ตั้ง = ล้ม <code>JOB6_NO_MQ_URL</code> · ตัวเดียวกับ job อื่นที่ส่ง MQ</td>
+</tr>
+<tr>
+<td><code>SGI_MQ_EXCHANGE</code></td>
+<td><code>master.store</code></td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_ROUTING_KEY</code></td>
+<td><code>master.store.compensate-status</code></td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_DATA_NAME</code></td>
+<td><code>sta_compensate_status</code></td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_APPROVE_SINCE</code></td>
+<td>วันเริ่มใช้ระบบ เช่น <code>2026-11-01</code> (production)</td>
+<td>(ว่าง = ไม่จำกัด)</td>
+<td>กันส่งผลอนุมัติของข้อมูลที่ย้ายมาจากระบบเดิมซ้ำ</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>2026-10-14 — สาม env แรก <strong>ไม่มีค่าตั้งต้นในโค้ดแล้ว</strong> ไม่ตั้งครบ = job ล้ม <code>JOB6_MQ_CONFIG_MISSING</code> ก่อนแตะฐาน (ยกเว้น <code>dryRun</code>)</p>
+</blockquote>
+<h3>ตั้งได้ (มีค่าตั้งต้นแล้ว)</h3>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>ตัวแปร</th>
+<th>ค่าตั้งต้น</th>
+<th>ความหมาย</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SGI_JOB6_ENABLED</code></td>
+<td><code>true</code></td>
+<td><code>false</code> = ข้ามการทำงาน (SKIPPED)</td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_SENDER</code></td>
+<td><code>SGI</code></td>
+<td>ฟิลด์ <code>sender</code> ในซอง</td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_MAIL_TO</code></td>
+<td>(ว่าง)</td>
+<td>ผู้รับอีเมลแจ้งเตือน</td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_RESEND_BACKLOG</code></td>
+<td><code>true</code></td>
+<td>หยิบข้อความที่ค้างจากงวดก่อนมาส่งซ้ำ</td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_MAX_BACKLOG</code></td>
+<td><code>500</code></td>
+<td>เพดานข้อความค้างที่ส่งซ้ำต่อรอบ</td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_MAX_RESEND_RETRY</code></td>
+<td><code>10</code></td>
+<td>ลองซ้ำเกินนี้แล้วเลิกหยิบเอง (Job 10 เฝ้าต่อ)</td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_CHUNK_SIZE</code></td>
+<td><code>500</code></td>
+<td>จำนวนแถวต่อ batch insert</td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_APPROVE_LOOKBACK_MONTHS</code></td>
+<td><code>3</code></td>
+<td>ส่งผลอนุมัติ (A/N/S/Z) ของงวดก่อนหน้าที่ยังไม่เคยส่ง ย้อนหลังได้กี่เดือน — ผลอนุมัติออกหลังสิ้นเดือนของงวดได้</td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_QSSI_TIMEOUT_MS</code></td>
+<td><code>60000</code></td>
+<td>timeout เฉพาะคิวรีตรวจ QSSI · ไม่ต้องเพิ่ม <code>DB_STATEMENT_TIMEOUT</code> ของทั้ง job แล้ว</td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_QSSI_ALERT_RUNS</code></td>
+<td><code>3</code></td>
+<td>เตือนเมื่อ Gate 2 ไม่ผ่านติดกันกี่รอบหลังถึงวันเปิดรอบ</td>
+</tr>
+<tr>
+<td><code>SGI_JOB6_INIT_START_DAY</code> · <code>SGI_JOB6_NUM_WAIT_PAY</code> · <code>SGI_JOB6_QSSI_CATEGORIES</code></td>
+<td><code>7</code> · <code>3</code> · <code>8,9,12,1,10,16</code></td>
+<td><strong>fallback เท่านั้น</strong> ใช้เมื่อ <code>mas_param</code> ไม่มีแถว (ขึ้น log warn)</td>
+</tr>
+<tr>
+<td><code>DB_STATEMENT_TIMEOUT</code></td>
+<td><code>5000</code> (ms)</td>
+<td>ใช้ร่วมทุก job · คิวรี QSSI ไม่ขึ้นกับค่านี้แล้ว (ใช้ <code>SGI_JOB6_QSSI_TIMEOUT_MS</code>)</td>
+</tr>
+<tr>
+<td><code>SGI_JOB_FAIL_EMAIL_TEMPLATE_ID</code></td>
+<td>—</td>
+<td>id ของ EM-07 (อีเมลแจ้ง job ล้ม) · <strong>ใช้ id ของฐานนั้น</strong> (dev <code>1501051</code> · UAT <code>1201020</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<h2>4. ข้อมูลในฐานที่ต้องมี</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>ตาราง</th>
+<th>ต้องมีอะไร</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mas_param</code></td>
+<td><code>SGI_STA_INIT_START_DAY</code> = 7 · <code>SGI_STA_NUM_WAIT_PAY</code> = 3 · <code>SGI_QSSI_CATEGORIES</code> = <code>8,9,12,1,10,16</code> (seed แล้วทั้ง dev/UAT)</td>
+</tr>
+<tr>
+<td><code>fcs_qssi_score</code></td>
+<td>คะแนน QSSI ของเดือนก่อนหน้า ครบ 6 หมวด (ระบบ SBP เดิมนำเข้าให้)</td>
+</tr>
+<tr>
+<td><code>sgi_fgi_impact_stores</code></td>
+<td>คู่ร้านที่ผ่านการตรวจ (<code>verify_status = 'P'</code>) จาก Job 2</td>
+</tr>
+<tr>
+<td><code>sgi_fgi_impact_processes</code> · <code>sgi_fgi_impact_compensations</code> · <code>sgi_fgi_new_store_compensations</code></td>
+<td>รอบชดเชยและแถวค่าชดเชยที่ job สร้าง/อัปเดต</td>
+</tr>
+<tr>
+<td><code>mas_store</code></td>
+<td>วันเปิดร้านใหม่ (<code>open_date</code>) — ไม่มีค่า = ประกอบฟิลด์ <code>opendate_n</code> ไม่ได้</td>
+</tr>
+<tr>
+<td><code>sgi_interface_transactions</code></td>
+<td>outbox ของข้อความที่ส่ง (job เขียนเอง)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>ผู้เขียนสถานะสายผลอนุมัติ (อัปเดต 2026-10-14)</strong> — Job 6 ไม่ได้ตัดสินเอง ส่งตามค่าใน <code>sgi_fgi_impact_compensations.compensate_status</code></p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>สถานะ</th>
+<th>ผู้เขียน</th>
+<th>เมื่อไร</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>I</code> / <code>C</code></td>
+<td>Job 6</td>
+<td>เปิดงวดใหม่</td>
+</tr>
+<tr>
+<td><code>I</code> / <code>Z</code> + ยอดเงิน</td>
+<td>store backend <code>POST /sgi/workflow/sta-update-compensate</code> (แทน Job 11 · 2026-10-14)</td>
+<td>STA เรียก API ส่งยอดกลับ</td>
+</tr>
+<tr>
+<td><code>A</code></td>
+<td>BE (<code>POST …/actions</code>)</td>
+<td>GM หรือ AVP อนุมัติจบ flow (ไม่ทับงวด <code>Z</code>/<code>C</code>)</td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td>BE</td>
+<td>06 กด "เห็นควรไม่ชดเชย"</td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td>BE</td>
+<td>06 กด "หยุดชดเชยประกันรายได้"</td>
+</tr>
+</tbody>
+</table></div>
+<p>BE เติม <code>approve_date</code> = วันที่อนุมัติ และ <code>stmt_year/stmt_month</code> = เดือนของวันนั้นพร้อมกัน · หยุดอัตโนมัติเดือนที่ 4 ของ Job 8b คงงวดเป็น <code>Z</code> (Job 6 ปิดรอบด้วยกติกา Z ติดกัน และส่ง Z เป็น S ใน payload)</p>
+<p>สถานะ <code>Z</code> จาก STA ทำตามระบบเดิม — <code>Z</code> ตั้งงวดเป็นยอดศูนย์เสมอ · <code>W</code> เปลี่ยนเป็น <code>I</code> เฉพาะงวดที่ยังว่างหรือเป็น <code>Z</code> งวดที่มีผลอนุมัติแล้วคงเดิม</p>
+<p><strong>ขากลับจาก STA</strong> — STA ส่งยอดเงินกลับด้วย API <code>POST {BFF}/sgi/workflow/sta-update-compensate</code> (Bearer token) ไม่ผ่าน RabbitMQ แล้ว · สัญญาเต็มอยู่ที่ <code>docs/STA-API-รับยอดชดเชย.md</code></p>
+<h2>5. สิ่งที่ต้องตั้งใน AWS</h2>
+<ol>
+<li><strong>Batch job definition</strong> ของ <code>sgi-export-impact-store-to-sta</code>
+   - env ตามข้อ 3
+   - <code>RABBITMQ_URL</code> ดึงจาก Secrets Manager → execution role ต้องมี <code>secretsmanager:GetSecretValue</code> ของ secret นั้น
+   - <code>argv[3]</code> = ชื่อ job · <code>argv[2]</code> = INPUT (JSON)</li>
+<li><strong>Network</strong> — security group/subnet ของ compute environment ต้องต่อถึง broker
+   (AMQPS 5671 · AMQP 5672) · ถ้าเป็น Amazon MQ ต้องเปิด inbound ฝั่ง broker ให้ SG ของ Batch</li>
+<li><strong>EventBridge scheduled rule</strong> — <code>cron(0 17 * * ? *)</code> ทุกวัน · ส่ง INPUT ว่างหรือ <code>{}</code></li>
+<li><strong>Timeout ของ job</strong> — publisher ของ Job 6 ยังไม่มี timeout ตอนต่อ broker/รอ confirm
+   ถ้า broker ค้าง job จะรอจนถึง timeout ของ AWS Batch จึงควรตั้ง <code>attemptDurationSeconds</code> ไว้</li>
+<li><strong>ไม่ต้องเพิ่ม <code>DB_STATEMENT_TIMEOUT</code></strong> ของ job definition เพื่อคิวรี QSSI อีกแล้ว — คิวรีนั้นใช้ <code>SGI_JOB6_QSSI_TIMEOUT_MS</code> ของตัวเอง</li>
+</ol>
+<h2>6. INPUT และวิธีรัน</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>ฟิลด์</th>
+<th>รูปแบบ</th>
+<th>ไม่ส่ง =</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>runDate</code></td>
+<td><code>YYYY-MM-DD</code></td>
+<td>วันนี้ตามปฏิทินไทย (ไม่ขึ้นกับ TZ ของ container)</td>
+</tr>
+<tr>
+<td><code>syncPeriod</code></td>
+<td><code>YYYY-MM</code></td>
+<td>เดือนของ <code>runDate</code></td>
+</tr>
+<tr>
+<td><code>qssiPeriod</code></td>
+<td><code>YYYY-MM</code></td>
+<td>เดือนก่อนหน้า <code>runDate</code></td>
+</tr>
+<tr>
+<td><code>forceCreateData</code></td>
+<td><code>true</code>/<code>false</code></td>
+<td>ตัดสิน Gate 1 จากวันของเดือน · 🔴 ส่ง <code>true</code> ช่วงวันที่ 1–6 = เปิดรอบก่อนข้อมูลงวดที่แล้วครบ ใช้เฉพาะรันซ่อม</td>
+</tr>
+<tr>
+<td><code>dryRun</code></td>
+<td><code>true</code></td>
+<td>ส่งจริง · <code>true</code> = คำนวณและรายงานอย่างเดียว ไม่เขียนฐาน ไม่ส่ง MQ</td>
+</tr>
+</tbody>
+</table></div>
+<p>รับรูปแบบเดิมของ runbook ได้ด้วย (<code>20260615</code> หรือ <code>2026-06-15</code> = <code>runDate</code>) · ฟิลด์ที่ไม่รู้จัก = ล้ม <code>JOB6_BAD_INPUT</code></p>
+<pre><code class="language-sh">JOB_NAME=sgi-export-impact-store-to-sta npm run start                                     # วันนี้
+JOB_NAME=sgi-export-impact-store-to-sta INPUT='{&quot;dryRun&quot;:true}' npm run start             # ตรวจอย่างเดียว
+JOB_NAME=sgi-export-impact-store-to-sta INPUT='20260615' npm run start                    # รูปแบบเดิม
+JOB_NAME=sgi-export-impact-store-to-sta \
+  INPUT='{&quot;runDate&quot;:&quot;2026-09-13&quot;,&quot;syncPeriod&quot;:&quot;2026-07&quot;,&quot;qssiPeriod&quot;:&quot;2026-06&quot;}' npm run start   # รันซ่อมแยกคุมทีละเรื่อง
+</code></pre>
+<h2>7. รูปแบบข้อความที่ส่ง</h2>
+<p>ซอง (body · JSON UTF-8)</p>
+<pre><code class="language-json">{
+  &quot;dataType&quot;: &quot;message&quot;,
+  &quot;dataName&quot;: &quot;sta_compensate_status&quot;,
+  &quot;dataMessage&quot;: [
+    {
+      &quot;storecode_i&quot;: &quot;10221&quot;,
+      &quot;storecode_n&quot;: &quot;16543&quot;,
+      &quot;opendate_n&quot;: &quot;01/09/2567&quot;,
+      &quot;count_storecode_n&quot;: &quot;1&quot;,
+      &quot;compensate_year_month&quot;: &quot;6710&quot;,
+      &quot;stmt_year_month&quot;: &quot;&quot;,
+      &quot;compensate_comment&quot;: &quot;&quot;,
+      &quot;compensate_status&quot;: &quot;I&quot;,
+      &quot;qssi1_score&quot;: &quot;94.13&quot;, &quot;qssi2_score&quot;: &quot;90&quot;, &quot;qssi3_score&quot;: &quot;&quot;,
+      &quot;qssi4_score&quot;: &quot;88.5&quot;, &quot;qssi5_score&quot;: &quot;100&quot;, &quot;qssi6_score&quot;: &quot;97&quot;
+    }
+  ],
+  &quot;sender&quot;: &quot;SGI&quot;,
+  &quot;sentAt&quot;: &quot;2026-10-09T17:00:05.123Z&quot;
+}
+</code></pre>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>ฟิลด์</th>
+<th>รูปแบบ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ทุกค่า</td>
+<td><strong>สตริง</strong> · คะแนนที่ไม่มี = <code>""</code></td>
+</tr>
+<tr>
+<td><code>opendate_n</code></td>
+<td><code>dd/MM/yyyy</code> <strong>พ.ศ.</strong></td>
+</tr>
+<tr>
+<td><code>compensate_year_month</code> · <code>stmt_year_month</code></td>
+<td><code>yyMM</code> <strong>พ.ศ.</strong> · <code>stmt_year_month</code> ว่างได้</td>
+</tr>
+<tr>
+<td><code>compensate_status</code></td>
+<td><code>I C A N S</code> — <code>Z</code> ในฐานถูกส่งเป็น <code>S</code></td>
+</tr>
+<tr>
+<td><code>qssi1_score</code>…<code>qssi6_score</code></td>
+<td>ตามลำดับหมวด 8 · 9 · 12 · 1 · 10 · 16</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>พ.ศ. มีเฉพาะในข้อความนี้ — ในฐานและ API เป็น ค.ศ. ทั้งหมด</p>
+</blockquote>
+<p>properties ของ message</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>property</th>
+<th>ค่า</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>messageId</code></td>
+<td><code>sgi_interface_transactions.id</code> — ให้ STA ใช้กันรับซ้ำ</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td><code>COMPENSATE_INIT_I</code> · <code>COMPENSATE_INIT_N</code> · <code>COMPENSATE_APPROVE_I</code> · <code>COMPENSATE_APPROVE_N</code> (ชื่อภายในของ SGI)</td>
+</tr>
+<tr>
+<td><code>persistent</code> · <code>mandatory</code></td>
+<td><code>true</code> · <code>true</code></td>
+</tr>
+<tr>
+<td><code>contentType</code></td>
+<td><code>application/json</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>แต่ละรอบชดเชยส่งเป็นคู่ — ฝั่ง I (ร้านถูกกระทบ · 1 ข้อความต่องวด) และฝั่ง N (1 ข้อความต่อร้านเปิดใหม่)
+สถานะ <code>I</code>/<code>C</code> = สายเปิดรอบ (INIT) · <code>A</code>/<code>N</code>/<code>S</code>/<code>Z</code> = สายผลอนุมัติ (APPROVE)</p>
+<h3>7.1 ผลอนุมัติของงวดก่อนหน้า (เพิ่ม 2026-10-14)</h3>
+<p>ผลอนุมัติออกตอนเอกสารจบ flow ซึ่งเดินหลายขั้น (06 → 08 → 06 → 01 → 02 → 03) จึงข้ามเดือนของงวดได้
+เช่น งวด 2026-09 อนุมัติจบวันที่ 5 ต.ค. — เดิม Job 6 เลือกส่งเฉพาะงวดของเดือนที่รัน ผลของงวด 2026-09 จึงไม่เคยถูกส่ง</p>
+<p>ตอนนี้ทุกรอบจะส่งเพิ่มเฉพาะงวดก่อนหน้าที่ครบทุกข้อ</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>เงื่อนไข</th>
+<th>ค่า</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>สถานะงวด</td>
+<td><code>A</code> · <code>N</code> · <code>S</code> · <code>Z</code></td>
+</tr>
+<tr>
+<td>อยู่ในกรอบย้อนหลัง</td>
+<td><code>SGI_JOB6_APPROVE_LOOKBACK_MONTHS</code> เดือน (ค่าตั้งต้น 3)</td>
+</tr>
+<tr>
+<td>วันที่อนุมัติ</td>
+<td>≥ <code>SGI_JOB6_APPROVE_SINCE</code> เมื่อตั้งไว้ (งวดที่ไม่มีวันอนุมัติ เช่น <code>Z</code> ใช้วันที่แก้ไขล่าสุดแทน)</td>
+</tr>
+<tr>
+<td>ยังไม่เคยมีข้อความผลอนุมัติฝั่ง I ของงวดนั้น</td>
+<td>ไม่ว่าจะยืนยันแล้วหรือยังค้าง — ที่ค้างอยู่ backlog ส่งซ้ำให้เอง จึงไม่สร้างซ้ำ</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>ข้อความบันทึก outbox ด้วย <code>period_key</code> = <strong>งวดนั้นเอง</strong> (ไม่ใช่เดือนที่รัน) จึงไม่ชนกับข้อความของงวดปัจจุบันในรอบเดียวกัน</li>
+<li><code>compensate_year_month</code> ในข้อความเป็นงวดนั้น · คะแนน QSSI ใช้ของเดือนก่อนงวดนั้น เหมือนตอนส่งในเดือนของมันเอง</li>
+<li>🔴 <strong>ขึ้น production ต้องตั้ง <code>SGI_JOB6_APPROVE_SINCE</code> = วันเริ่มใช้ระบบ</strong> — ไม่ตั้ง = งวดที่ย้ายมาจากระบบเดิมในกรอบ 3 เดือนจะถูกส่งซ้ำ (ระบบเดิมส่งให้ STA ไปแล้ว)</li>
+<li>วัดบน dev และ UAT วันที่ 2026-10-14: งวดที่เข้าเงื่อนไขย้อนหลัง <strong>0 งวด</strong> — รันครั้งแรกไม่มีข้อความทะลัก</li>
+<li>⚠️ ข้อจำกัด: ข้อความผลอนุมัติของงวดหนึ่งที่ broker ยืนยันไปแล้ว ถ้าสถานะเปลี่ยนภายหลัง (เช่น ได้ <code>Z</code> จาก STA ก่อน แล้ว 06 ปิดด้วย <code>N</code>) สถานะใหม่จะไม่ถูกส่งซ้ำ — เป็นพฤติกรรมเดิมของ outbox</li>
+</ul>
+<h2>8. ตรวจผลหลังรัน</h2>
+<p>log ที่ควรดู</p>
+<ul>
+<li><code>ส่งข้อความไป STA x/y ข้อความได้รับ confirm</code> — x น้อยกว่า y แปลว่ามีข้อความที่ยังไม่ถึง</li>
+<li><code>ส่งผลอนุมัติของงวดก่อนหน้าที่ยังไม่เคยส่ง n งวด</code> — จำนวนงวดย้อนหลังในรอบนี้ (ค่า <code>approveBackfillCount</code> ในผลการรัน)</li>
+<li><code>ไม่เปิดรอบชดเชยใหม่รอบนี้ (Gate1=… Gate2=…)</code> — Gate2 เป็น <code>false</code> เสมอในวันที่ 1–6 เพราะไม่ได้ตรวจ</li>
+</ul>
+<pre><code class="language-sql">SELECT data_name, outbox_status, status, retry_count, return_message, count(*)
+  FROM sps_store.sgi_interface_transactions
+ WHERE direction = 'OUT'
+ GROUP BY 1, 2, 3, 4, 5
+ ORDER BY 1, 2;
+</code></pre>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th><code>outbox_status</code></th>
+<th>ความหมาย</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>READY</code></td>
+<td>บันทึกแล้ว ยังไม่เคยส่ง</td>
+</tr>
+<tr>
+<td><code>CONFIRMED</code> (+ <code>status = COMPLETED</code>)</td>
+<td>broker ยืนยันรับแล้ว</td>
+</tr>
+<tr>
+<td><code>FAILED</code></td>
+<td>ส่งไม่สำเร็จ · รอบถัดไปส่งซ้ำ (จนกว่า <code>retry_count</code> จะถึงเพดาน)</td>
+</tr>
+</tbody>
+</table></div>
+<p>ตรวจว่าผลอนุมัติของงวดใดถูกส่งแล้วหรือยัง</p>
+<pre><code class="language-sql">SELECT c.impacted_store_code, c.compensate_month, c.compensate_status, c.approve_date,
+       t.outbox_status, t.status, t.created_at
+  FROM sps_store.sgi_fgi_impact_compensations c
+  JOIN sps_store.sgi_fgi_impact_processes p ON p.id = c.impact_process_id
+  LEFT JOIN sps_store.sgi_interface_transactions t
+         ON t.direction = 'OUT' AND t.data_name = 'COMPENSATE_APPROVE_I'
+        AND t.business_key = c.impacted_store_code || '|' || p.impact_month
+        AND t.period_key = c.compensate_month
+ WHERE c.compensate_status IN ('A', 'N', 'S', 'Z')
+ ORDER BY c.approve_date DESC NULLS LAST
+ LIMIT 50;
+</code></pre>
+<h3>อาการ → สาเหตุ</h3>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>อาการ</th>
+<th>สาเหตุ / ทางแก้</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ล้ม <code>JOB6_MQ_CONFIG_MISSING</code></td>
+<td>ยังไม่ได้ตั้ง <code>SGI_MQ_EXCHANGE</code> / <code>SGI_JOB6_ROUTING_KEY</code> / <code>SGI_JOB6_DATA_NAME</code> (ข้อความบอกชื่อตัวที่ขาด) หรือ <code>SGI_JOB6_APPROVE_SINCE</code> ไม่ใช่ <code>YYYY-MM-DD</code> · ล้มก่อนแตะฐาน ไม่มีอะไรเปลี่ยน</td>
+</tr>
+<tr>
+<td>ล้ม <code>JOB6_NO_MQ_URL</code></td>
+<td>ไม่ได้ตั้ง <code>RABBITMQ_URL</code> · outbox commit แล้ว ตั้งค่าแล้วรอบถัดไปส่งให้เอง</td>
+</tr>
+<tr>
+<td><code>return_message</code> = <code>UNROUTABLE</code></td>
+<td>ยังไม่ได้ผูก queue กับ routing key (ข้อ 2.1) หรือสะกด exchange/routing key ผิด</td>
+</tr>
+<tr>
+<td><code>PRECONDITION_FAILED</code> ใน log</td>
+<td>exchange มีอยู่แล้วแต่ไม่ใช่ <code>topic</code> หรือไม่ durable (ข้อ 2.2)</td>
+</tr>
+<tr>
+<td><code>ACCESS_REFUSED</code></td>
+<td>user ไม่มีสิทธิ์บน vhost/exchange (ข้อ 2.3)</td>
+</tr>
+<tr>
+<td>ต่อ broker ไม่ได้ / timeout</td>
+<td>network หรือ security group (ข้อ 5.2)</td>
+</tr>
+<tr>
+<td><code>Gate2=false</code> ทุกวันหลังวันที่ 7</td>
+<td>QSSI ของเดือนก่อนหน้ายังไม่ครบ 6 หมวด · เตือนเมื่อติดกันถึง <code>SGI_JOB6_QSSI_ALERT_RUNS</code></td>
+</tr>
+<tr>
+<td>ล้ม statement timeout ที่คิวรี QSSI</td>
+<td><code>fcs_qssi_score</code> มี ~24 ล้านแถว (UAT 8.3 วินาที) · ตั้งแต่ 2026-10-14 คิวรีนี้ใช้ timeout ของตัวเอง <code>SGI_JOB6_QSSI_TIMEOUT_MS</code> (60 วินาที) และไม่ยิงก่อนวันเปิดรอบ · ยังเกินอีก = เพิ่มค่านี้ หรือขอ index <code>(year, month)</code> จาก DBA (ข้อค้าง 2.78)</td>
+</tr>
+<tr>
+<td><code>SKIPPED_LOCKED</code></td>
+<td>มีรอบอื่นของ Job 6 กำลังรันอยู่</td>
+</tr>
+<tr>
+<td>เอกสารอนุมัติแล้วแต่ STA ไม่ได้รับผล</td>
+<td>ตรวจด้วยคิวรีข้างบน · ไม่มีแถว outbox = งวดเก่ากว่ากรอบ <code>SGI_JOB6_APPROVE_LOOKBACK_MONTHS</code> หรืออนุมัติก่อน <code>SGI_JOB6_APPROVE_SINCE</code> · ถ้า <code>compensate_status</code> ยังเป็น <code>I</code> = BE ที่ deploy ยังเป็นรุ่นก่อนเขียน A/N/S</td>
+</tr>
+<tr>
+<td>ไม่มีข้อความออกเลยแม้ต่อ MQ ได้</td>
+<td>ยังไม่มีข้อมูลให้ส่ง — ยอดคาดการณ์ (<code>forecast_amount</code>) มาจาก API <code>POST /sgi/workflow/sta-update-compensate</code> ที่ STA เรียกส่งยอดกลับ · สถานะ <code>A/N/S</code> มาจาก BE ตอนเอกสารจบ flow (ข้อ 4)</td>
+</tr>
+</tbody>
+</table></div>
+<h2>9. ลำดับทดสอบบน UAT</h2>
+<ol start="0">
+<li>deploy store-backend รุ่นที่เขียน A/N/S และปิดรอบชดเชยตอนจบ flow (ไม่งั้นสายผลอนุมัติไม่มีอะไรให้ส่ง) และ BFF รุ่นที่มีเส้นรับยอดจาก STA</li>
+<li>ยืนยันข้อ 2 กับทีม STA (binding · ชนิด exchange · สิทธิ์ user)</li>
+<li>ตั้ง env + secret + network ตามข้อ 3 และ 5 (บน UAT ไม่ต้องตั้ง <code>SGI_JOB6_APPROVE_SINCE</code>)</li>
+<li>รัน <code>INPUT={"dryRun":true}</code> — ตรวจว่าผ่านด่าน QSSI และนับจำนวนที่จะส่งได้ (ไม่เขียนฐาน ไม่ส่ง MQ)</li>
+<li>รันจริง แล้วดู log + คิวรีในข้อ 8</li>
+<li>ให้ทีม STA ยืนยันว่ามีข้อความเข้า <code>sta.sta.ss.frbc0001.queue</code> และอ่านได้ครบ 14 ฟิลด์</li>
+<li>ทดสอบขาไปกลับครบวง: STA เรียก API ส่งยอดกลับ → ผ่าน flow เอกสารจนอนุมัติ → รอบถัดไปของ Job 6 ส่งผล <code>A</code> ไป STA</li>
+<li>สร้าง EventBridge rule ให้รันทุกวัน</li>
+<li>production: ตั้ง <code>SGI_JOB6_APPROVE_SINCE</code> = วันเริ่มใช้ระบบ ก่อนรันครั้งแรก</li>
+</ol>
+</main>
+</body>
+</html>
