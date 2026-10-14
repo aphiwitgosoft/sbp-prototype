@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SGI รับยอดชดเชยจาก STA</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: เอกสารสัญญา API คอลัมน์เดียว อ่านจากบนลงล่าง — ภาพรวม → คำขอ → ฟิลด์ → คำตอบ → ข้อควรรู้ */
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --fg:#1d2430; --muted:#5b6474; --line:#dde1e8;
+  --accent:#1f5fae; --accent-soft:#e7eef8; --code-bg:#f0f2f6;
+  --ok:#1d7a4f; --warn:#a05a00; --bad:#b3261e;
+  --font-body:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --surface:#1a2029; --fg:#e4e8ef; --muted:#9aa4b4; --line:#2c3441;
+  --accent:#7fb0f0; --accent-soft:#1f2c40; --code-bg:#151a22;
+  --ok:#5cc790; --warn:#e2a54f; --bad:#f08a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --surface:#1a2029; --fg:#e4e8ef; --muted:#9aa4b4; --line:#2c3441;
+  --accent:#7fb0f0; --accent-soft:#1f2c40; --code-bg:#151a22;
+  --ok:#5cc790; --warn:#e2a54f; --bad:#f08a80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.7;padding-inline:16px;padding-block:32px 64px}
+main{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:1.75rem;line-height:1.3;margin:0;text-wrap:balance;font-weight:700}
+h2{font-size:1.15rem;margin:0 0 10px;font-weight:600;text-wrap:balance}
+h3{font-size:1rem;margin:18px 0 8px;font-weight:600}
+p{margin:0 0 10px;max-width:68ch}
+.lede{color:var(--muted)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px;min-width:0}
+code{font-family:var(--font-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--font-mono);font-size:.84rem;line-height:1.55;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto;margin:8px 0 12px}
+pre code{background:none;padding:0}
+.endpoint{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-family:var(--font-mono);font-size:1rem;background:var(--accent-soft);border-radius:8px;padding:12px 14px}
+.method{background:var(--accent);color:var(--surface);font-weight:600;border-radius:5px;padding:2px 9px;font-size:.85rem;letter-spacing:.04em}
+.path{word-break:break-all;min-width:0}
+.tbl{overflow-x:auto;margin:6px 0 10px}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:.8rem;letter-spacing:.03em;white-space:nowrap}
+td:first-child{white-space:nowrap}
+.req{color:var(--bad);font-weight:600;font-size:.8rem}
+.opt{color:var(--muted);font-size:.8rem}
+.pill{display:inline-block;font-family:var(--font-mono);font-size:.8rem;font-weight:500;border-radius:999px;padding:1px 9px;border:1px solid currentColor}
+.ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+ul{margin:0 0 10px;padding-left:1.2em} li{margin:3px 0;max-width:68ch}
+.note{border-left:3px solid var(--warn);padding:2px 0 2px 12px;color:var(--fg)}
+.meta{font-size:.85rem;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <h1>SGI รับยอดเงินชดเชยประกันรายได้จาก STA</h1>
+    <p class="lede">สัญญา API สำหรับทีม STA — ใช้แทนการส่งข้อความ <code>sta_update_compensate</code> เข้า RabbitMQ เดิม เนื้อข้อความ (ซอง + รายการ) เหมือนเดิมทุกฟิลด์ ต่างกันแค่ช่องทางเปลี่ยนเป็น HTTP</p>
+    <p class="meta">ฉบับ 2026-10-14 · ผู้ให้บริการ: ระบบประกันรายได้ (SGI) บนพอร์ทัล SBPM</p>
+  </header>
+
+  <section>
+    <h2>Endpoint</h2>
+    <div class="endpoint"><span class="method">POST</span><span class="path">{BFF base URL}/sgi/workflow/sta-update-compensate</span></div>
+    <p style="margin-top:12px">{BFF base URL} ของแต่ละสภาพแวดล้อม (UAT · Production) ทีม SGI จะส่งให้แยก</p>
+    <div class="tbl"><table>
+      <tr><th>Header</th><th></th><th>ค่า</th></tr>
+      <tr><td><code>Authorization</code></td><td><span class="req">บังคับ</span></td><td><code>Bearer &lt;token&gt;</code> — token ที่ทีม SGI ส่งให้ทางช่องทางปลอดภัย</td></tr>
+      <tr><td><code>Content-Type</code></td><td><span class="req">บังคับ</span></td><td><code>application/json</code> (UTF-8)</td></tr>
+      <tr><td><code>X-Request-Id</code></td><td><span class="opt">ไม่บังคับ</span></td><td>รหัสอ้างอิงคำขอของฝั่ง STA — SGI เก็บไว้ในบันทึก interface ใช้ไล่ปัญหาร่วมกัน</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>เนื้อคำขอ (ซองข้อความ)</h2>
+    <div class="tbl"><table>
+      <tr><th>ฟิลด์</th><th></th><th>ความหมาย</th></tr>
+      <tr><td><code>dataName</code></td><td><span class="req">บังคับ</span></td><td>ต้องเป็น <code>sta_update_compensate</code></td></tr>
+      <tr><td><code>dataMessage</code></td><td><span class="req">บังคับ</span></td><td>array ของรายการยอดชดเชย อย่างน้อย 1 รายการ ไม่เกิน 500 รายการต่อคำขอ</td></tr>
+      <tr><td><code>dataType</code></td><td><span class="opt">ไม่บังคับ</span></td><td>เช่น <code>message</code></td></tr>
+      <tr><td><code>sender</code></td><td><span class="opt">ไม่บังคับ</span></td><td>เช่น <code>STA</code></td></tr>
+      <tr><td><code>sentAt</code></td><td><span class="opt">ไม่บังคับ</span></td><td>เวลาที่ส่ง (ISO 8601)</td></tr>
+      <tr><td><code>dryRun</code></td><td><span class="opt">ไม่บังคับ</span></td><td><code>true</code> = ตรวจข้อมูลและตอบผลอย่างเดียว ไม่บันทึก (ใช้ทดสอบ)</td></tr>
+    </table></div>
+    <p class="note">ห้ามส่งฟิลด์อื่นนอกจากที่ระบุ ทั้งระดับซองและระดับรายการ ฟิลด์ที่ไม่รู้จักระดับซอง = ปฏิเสธทั้งคำขอ (400) · ระดับรายการ = รายการนั้นเป็น <code>INVALID</code></p>
+
+    <h3>รายการใน <code>dataMessage</code> — 1 รายการ = ร้านถูกกระทบ 1 ร้าน × 1 งวด</h3>
+    <div class="tbl"><table>
+      <tr><th>ฟิลด์</th><th></th><th>รูปแบบ / ความหมาย</th></tr>
+      <tr><td><code>storeCodeI</code></td><td><span class="req">บังคับ</span></td><td>รหัสร้านถูกกระทบ ตัวเลขไม่เกิน 5 หลัก (เช่น <code>10221</code> หรือ <code>221</code> — SGI เติมศูนย์หน้าให้)</td></tr>
+      <tr><td><code>periodImpact</code></td><td><span class="req">บังคับ</span></td><td>งวด <strong>พ.ศ.</strong> รูป <code>yyMM</code> เช่น <code>6906</code> = มิ.ย. 2569 · รับ <code>yyyyMM</code> พ.ศ. (<code>256906</code>) ได้ด้วย</td></tr>
+      <tr><td><code>impactStatus</code></td><td><span class="req">บังคับ</span></td><td><code>W</code> = ยอดชดเชยไม่เป็นศูนย์ · <code>Z</code> = ยอดชดเชยเป็นศูนย์</td></tr>
+      <tr><td><code>forecast</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ยอดชดเชยที่ STA คำนวณ (บาท)</td></tr>
+      <tr><td><code>adjust</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ยอดชดเชยหลังปรับ (บาท)</td></tr>
+      <tr><td><code>totalStoreCodeN</code></td><td><span class="opt">ไม่บังคับ</span></td><td>จำนวนร้านเปิดใหม่ในงวดนี้</td></tr>
+      <tr><td><code>compensate</code></td><td><span class="opt">ไม่บังคับ</span></td><td>array ยอดแยกรายร้านเปิดใหม่ (ตารางถัดไป) · ห้ามมีร้านซ้ำในรายการเดียวกัน</td></tr>
+    </table></div>
+
+    <h3>รายการใน <code>compensate</code> — ร้านเปิดใหม่ 1 ร้าน</h3>
+    <div class="tbl"><table>
+      <tr><th>ฟิลด์</th><th></th><th>รูปแบบ / ความหมาย</th></tr>
+      <tr><td><code>storeCodeN</code></td><td><span class="req">บังคับ</span></td><td>รหัสร้านเปิดใหม่ ตัวเลขไม่เกิน 5 หลัก</td></tr>
+      <tr><td><code>forecastN</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ยอดที่ร้านเปิดใหม่ต้องรับผิดชอบ ตามที่คำนวณ (บาท)</td></tr>
+      <tr><td><code>forecastPercentN</code></td><td><span class="opt">ไม่บังคับ</span></td><td>สัดส่วน % ตามที่คำนวณ</td></tr>
+      <tr><td><code>adjustN</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ยอดหลังปรับ (บาท)</td></tr>
+      <tr><td><code>adjustPercentN</code></td><td><span class="opt">ไม่บังคับ</span></td><td>สัดส่วน % หลังปรับ</td></tr>
+      <tr><td><code>updateBy</code> · <code>createBy</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ผู้บันทึกฝั่ง STA — SGI เก็บ <code>updateBy</code> (ไม่มีจึงใช้ <code>createBy</code>)</td></tr>
+      <tr><td><code>openDateN</code> · <code>createDate</code> · <code>updateDate</code></td><td><span class="opt">ไม่บังคับ</span></td><td>รับได้ แต่ SGI ไม่ได้ใช้</td></tr>
+    </table></div>
+    <p>ตัวเลขส่งเป็น number หรือข้อความตัวเลขก็ได้ (คั่นหลักพันด้วย <code>,</code> ได้) · ค่าว่างหรือ <code>null</code> = ไม่มีค่า</p>
+
+    <h3>ตัวอย่างคำขอ</h3>
+<pre><code>POST {BFF base URL}/sgi/workflow/sta-update-compensate
+Authorization: Bearer &lt;token&gt;
+Content-Type: application/json
+X-Request-Id: sta-20261014-000123
+
+{
+  "dataType": "message",
+  "dataName": "sta_update_compensate",
+  "sender": "STA",
+  "sentAt": "2026-10-14T09:30:00+07:00",
+  "dataMessage": [
+    {
+      "storeCodeI": "10221",
+      "periodImpact": "6909",
+      "impactStatus": "W",
+      "forecast": "37660.58",
+      "adjust": "37660.58",
+      "totalStoreCodeN": "1",
+      "compensate": [
+        {
+          "storeCodeN": "16543",
+          "forecastN": "37660.58",
+          "forecastPercentN": "100",
+          "adjustN": "37660.58",
+          "adjustPercentN": "100",
+          "updateBy": "sta.user01"
+        }
+      ]
+    }
+  ]
+}</code></pre>
+  </section>
+
+  <section>
+    <h2>คำตอบ</h2>
+    <p><strong>HTTP 200</strong> เมื่อรับคำขอได้ — แม้บางรายการบันทึกไม่ได้ ให้ดูผลที่ <code>data.status</code> และ <code>data.results</code> ทุกครั้ง</p>
+<pre><code>{
+  "success": true,
+  "data": {
+    "status": "PARTIAL_FAILED",
+    "dryRun": false,
+    "total": 2,
+    "updatedCount": 1,
+    "newStoreNotFoundCount": 0,
+    "notFoundCount": 1,
+    "invalidCount": 0,
+    "results": [
+      { "index": 1, "storeCodeI": "10221", "period": "2026-09", "outcome": "UPDATED",
+        "compensationRows": 1, "newStoreUpdated": 1, "newStoreInserted": 0, "newStoreNotFound": [] },
+      { "index": 2, "storeCodeI": "00512", "period": "2026-09", "outcome": "NOT_FOUND",
+        "compensationRows": 0, "newStoreUpdated": 0, "newStoreInserted": 0, "newStoreNotFound": [],
+        "reason": "ไม่พบงวดค่าชดเชยของร้านและงวดนี้" }
+    ]
+  }
+}</code></pre>
+    <p class="meta"><code>period</code> ในคำตอบเป็น ค.ศ. รูป <code>YYYY-MM</code> · <code>index</code> คือลำดับรายการในคำขอ เริ่มที่ 1 · ข้อความใน <code>reason</code> เป็นตัวอย่าง</p>
+
+    <h3><code>data.status</code></h3>
+    <div class="tbl"><table>
+      <tr><th>ค่า</th><th>ความหมาย</th></tr>
+      <tr><td><span class="pill ok">SUCCESS</span></td><td>ทุกรายการบันทึกสำเร็จ</td></tr>
+      <tr><td><span class="pill warn">PARTIAL_FAILED</span></td><td>บางรายการบันทึกไม่ได้</td></tr>
+      <tr><td><span class="pill bad">FAILED</span></td><td>ไม่มีรายการไหนบันทึกสำเร็จ</td></tr>
+    </table></div>
+
+    <h3><code>results[].outcome</code></h3>
+    <div class="tbl"><table>
+      <tr><th>ค่า</th><th>ความหมาย</th><th>ต้องทำอะไร</th></tr>
+      <tr><td><span class="pill ok">UPDATED</span></td><td>บันทึกยอดของรายการนี้แล้ว</td><td>—</td></tr>
+      <tr><td><span class="pill warn">NEW_STORE_NOT_FOUND</span></td><td>บันทึกยอดร้านถูกกระทบแล้ว แต่ร้านเปิดใหม่บางร้านไม่ได้จับคู่กับร้านนี้ในระบบ SGI (รายชื่ออยู่ใน <code>newStoreNotFound</code>)</td><td>ตรวจรหัสร้านเปิดใหม่ แล้วส่งรายการนั้นซ้ำ</td></tr>
+      <tr><td><span class="pill bad">NOT_FOUND</span></td><td>SGI ยังไม่มีงวดค่าชดเชยของร้านและงวดนี้ (หรือรอบชดเชยปิดไปแล้ว)</td><td>ตรวจว่าเคยได้รับข้อความงวดนี้จาก SGI แล้วหรือยัง</td></tr>
+      <tr><td><span class="pill bad">INVALID</span></td><td>ข้อมูลของรายการนี้ผิดรูปแบบ (เหตุอยู่ใน <code>reason</code>)</td><td>แก้ข้อมูลแล้วส่งรายการนั้นซ้ำ</td></tr>
+    </table></div>
+
+    <h3>เมื่อปฏิเสธทั้งคำขอ</h3>
+<pre><code>{ "success": false, "data": null, "error": { "code": "VALIDATION", "message": "…" } }</code></pre>
+    <div class="tbl"><table>
+      <tr><th>HTTP</th><th>เมื่อไร</th></tr>
+      <tr><td>401</td><td>ไม่มี <code>Authorization: Bearer</code> หรือ token ไม่ถูกต้อง</td></tr>
+      <tr><td>400</td><td>ซองผิดรูปแบบ · <code>dataName</code> ไม่ใช่ <code>sta_update_compensate</code> · <code>dataMessage</code> ว่าง · เกิน 500 รายการ · มีฟิลด์ระดับซองที่ไม่รู้จัก</td></tr>
+      <tr><td>5xx · timeout</td><td>ระบบขัดข้องชั่วคราว — ส่งซ้ำทั้งคำขอได้</td></tr>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>ข้อควรรู้</h2>
+    <ul>
+      <li><strong>ลำดับ:</strong> SGI ส่งข้อมูลงวดให้ STA ก่อน (ข้อความ <code>sta_compensate_status</code> ทาง RabbitMQ) STA จึงคำนวณและส่งยอดกลับด้วย API นี้ · ส่งยอดของงวดที่ SGI ยังไม่ได้ส่งมา จะได้ <code>NOT_FOUND</code></li>
+      <li><strong>ส่งซ้ำได้:</strong> ส่งรายการเดิมซ้ำจะบันทึกทับด้วยค่าเดิม ไม่เกิดข้อมูลซ้ำ จึงลองใหม่ได้เมื่อ timeout หรือได้ 5xx</li>
+      <li><strong>รายการแยกกัน:</strong> แต่ละรายการบันทึกแยกกัน รายการที่ผิดไม่ทำให้รายการอื่นไม่ถูกบันทึก</li>
+      <li><strong>สถานะงวด:</strong> เหมือนระบบเดิม — <code>Z</code> ตั้งงวดเป็นยอดศูนย์เสมอ · <code>W</code> ตั้งงวดเป็นอยู่ระหว่างชดเชยเฉพาะงวดที่ยังว่างหรือเป็นยอดศูนย์ งวดที่มีผลอนุมัติแล้วคงเดิม</li>
+      <li><strong>ปี:</strong> <code>periodImpact</code> ในคำขอเป็น พ.ศ. ส่วน <code>period</code> ในคำตอบเป็น ค.ศ.</li>
+      <li><strong>ทดสอบ:</strong> ส่ง <code>"dryRun": true</code> เพื่อตรวจรูปแบบและดูผลรายรายการโดยไม่บันทึก</li>
+      <li><strong>ช่องทางเดิม:</strong> หลังเปลี่ยนมาใช้ API นี้ ไม่ต้องส่ง <code>sta_update_compensate</code> เข้า RabbitMQ อีก</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>เรื่องที่ขอให้ทีม STA ยืนยัน</h2>
+    <ul>
+      <li>รูปแบบ <code>periodImpact</code> ที่ส่งจริงเป็น <code>yyMM</code> พ.ศ. ใช่หรือไม่</li>
+      <li>IP หรือเครือข่ายต้นทางที่จะเรียก API — เพื่อเปิดทางเข้าฝั่ง SBPM</li>
+      <li>ผู้รับ token และช่องทางรับ token</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
