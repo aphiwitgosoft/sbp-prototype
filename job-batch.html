@@ -200,7 +200,7 @@
         ['ตัวกระตุ้น (Trigger)', 'S3 Object Created → EventBridge rule → AWS Batch SubmitJob', 'text', 1, 'มติ 2026-10-01 · rule กรองถึง prefix ชื่อไฟล์ interface/in/ALM/Impact_Store_Predict_ · ชุดตั้งค่าอยู่ใน output/aws/sgi-s3-triggers/ (สร้างด้วย tools/build_sgi_s3_triggers.py)'],
         ['INPUT (JSON)', '{"s3Key":"interface/in/ALM/Impact_Store_Predict_20260929.txt"}', 'text', 1, 'event ส่ง s3Key มาเอง → ทำไฟล์นั้นไฟล์เดียว · ไม่ส่ง s3Key = หยิบไฟล์ล่าสุด (รันมือ/rerun) · ฟิลด์ที่รับ: year · month · zones · dryRun · limit · s3Key · ปีเป็น ค.ศ.'],
         ['ไฟล์ต้นทาง (EAI S3)', 'interface/in/ALM/Impact_Store_Predict_YYYYMMDD.txt', 'text', 0, '🔴 เปลี่ยนต้นทาง 2026-09-29 จากวิว allmapssa.SEVEN_IMPACT_VIEW (SQL Server) · pipe-delimited · UTF-8 · LF · มีหัวตาราง 21 คอลัมน์ · กรองงวด + เลือกแถวแรกต่อคู่ร้าน (DISTANCE ASC, STORECODE_N ASC) ทำในโค้ด'],
-        ['ย้ายไฟล์เข้า backup', 'SGI_ALM_MOVE_TO_BACKUP (ตั้งต้น true · มติ 2026-10-05)', 'text', 1, 'ย้ายไป interface/backup-in/ALM/ เฉพาะรอบที่ไม่ล้มเหลวและไม่ใช่ dryRun'],
+        ['ย้ายไฟล์เข้า backup', 'ย้ายเสมอ (ไม่มีสวิตช์ env · มติ 2026-10-15)', 'text', 1, 'ย้ายไป interface/backup-in/ALM/ เฉพาะรอบที่ไม่ล้มเหลวและไม่ใช่ dryRun'],
         ['Branch Type ที่เข้าเกณฑ์', 'B, FAM, FB1, FB2, FC1, FVB, FVC, FPT1', 'text', 0, 'FPT1 เข้าเกณฑ์เฉพาะเมื่อ SBP_CANCEL_TYPE_I = 06'],
         ['กฎ DENY (ตรวจก่อน ON_PROCESS)', 'สาขา N=F / juristic เดียวกัน / สัญญาไม่คลุมงวด / เก่ากว่า 12 เดือน', 'text', 0, ''],
         ['PK Sequence', 'BIGSERIAL ของ sgi_fgi_impact_stores (PostgreSQL — ไม่ใช้ named sequence แบบ Oracle)', 'text', 0, '']
@@ -335,7 +335,7 @@
         ['เกณฑ์ Outlier', '|sales_diff| ≥ 50', 'number', 0, 'literal ในโค้ด — เปลี่ยนต้องอนุมัติธุรกิจ (8.2)'],
         ['วันทำการคาดหวัง', '60', 'number', 0, 'ถ้าไม่เท่า 60 → pre-accept เป็น Y ทันที'],
         ['กฎ Pre-accept', 'อายุร้าน < 12 เดือน 15 วัน หรือวันทำการ < 60 → Y', 'text', 0, ''],
-        ['ย้ายไฟล์เข้า backup', 'SGI_JOB5_MOVE_TO_BACKUP (ตั้งต้น true)', 'text', 1, '🔴 เพิ่ม 2026-09-30 · ปิดได้เมื่อต้องอ่านไฟล์เดิมซ้ำ · ปลายทาง interface/backup-out/AMS/ · ไม่ยกเลิก canArchiveFile() ที่ตัดสินว่าผลการนำเข้าสะอาดพอจะย้ายได้ไหม']
+        ['ย้ายไฟล์เข้า backup', 'ย้ายเสมอ (ไม่มีสวิตช์ env · มติ 2026-10-15)', 'text', 1, 'ปลายทาง interface/backup-out/AMS/ · ไม่ยกเลิก canArchiveFile() ที่ตัดสินว่าผลการนำเข้าสะอาดพอจะย้ายได้ไหม']
       ],
       flow:[
         { k:'start', t:'เริ่ม' },
@@ -348,7 +348,7 @@
         { k:'p', t:'คำนวณ sales_diff รายวัน + outlier แบบจับคู่ (|sales_diff| ≥ 50)', d:'4 หน้าต่าง × 15 วัน ไม่รวมวันเปิดร้านใหม่ / ธงรวมอดีต-ปัจจุบันต้องตรงกัน' },
         { k:'d', t:'COALESCE(growth_rate_diff, −1) < 0 ?', no:'sales_status = N (ไม่เข้าเกณฑ์ชดเชย)', d:'NULL ถูกแทนด้วย −1 = accept อัตโนมัติ (ความเสี่ยง P1)' },
         { k:'p', t:'sales_status = Y (เข้าเกณฑ์ชดเชย)', d:'ผลทางธุรกิจอย่างเดียว — การรับไฟล์บันทึกไปแล้วตั้งแต่ต้น ไม่ขึ้นกับผล Y/N' },
-        { k:'io', t:'ย้ายอ็อบเจกต์ไป interface/backup-out/AMS/ (ถ้า SGI_JOB5_MOVE_TO_BACKUP = true)', d:'🔴 แก้ path 2026-09-30 · สวิตช์ env ตั้งต้น true (พฤติกรรมเดิม) · ยังต้องผ่าน canArchiveFile() ก่อนเสมอ' },
+        { k:'io', t:'ย้ายอ็อบเจกต์ไป interface/backup-out/AMS/', d:'ย้ายเสมอเมื่อนำเข้าสำเร็จ (มติ 2026-10-15 · ไม่มีสวิตช์ env) · ยังต้องผ่าน canArchiveFile() ก่อนเสมอ' },
         { k:'end', t:'จบ' }
       ],
       tables:[
