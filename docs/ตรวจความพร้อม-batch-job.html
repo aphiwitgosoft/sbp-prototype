@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ความพร้อม Batch Job SGI</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: รายงานคอลัมน์เดียว อ่านจากบนลงล่าง — สรุป → สถานะราย job → บั๊ก → env → การตั้งค่า → ลำดับงาน */
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --fg:#1d2430; --muted:#5b6474; --line:#dde1e8;
+  --accent:#1f5fae; --accent-soft:#e7eef8; --code-bg:#f0f2f6;
+  --ok:#1d7a4f; --warn:#a05a00; --bad:#b3261e;
+  --font-body:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161d; --surface:#1a2029; --fg:#e4e8ef; --muted:#9aa4b4; --line:#2c3441;
+  --accent:#7fb0f0; --accent-soft:#1f2c40; --code-bg:#151a22;
+  --ok:#5cc790; --warn:#e2a54f; --bad:#f08a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161d; --surface:#1a2029; --fg:#e4e8ef; --muted:#9aa4b4; --line:#2c3441;
+  --accent:#7fb0f0; --accent-soft:#1f2c40; --code-bg:#151a22;
+  --ok:#5cc790; --warn:#e2a54f; --bad:#f08a80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.7;padding-inline:16px;padding-block:32px 64px}
+main{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:1.75rem;line-height:1.3;margin:0;text-wrap:balance;font-weight:700}
+h2{font-size:1.15rem;margin:0 0 10px;font-weight:600;text-wrap:balance}
+h3{font-size:1rem;margin:18px 0 8px;font-weight:600}
+p{margin:0 0 10px;max-width:68ch}
+.lede{color:var(--muted)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px;min-width:0}
+code{font-family:var(--font-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--font-mono);font-size:.84rem;line-height:1.55;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto;margin:8px 0 12px}
+pre code{background:none;padding:0}
+.endpoint{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-family:var(--font-mono);font-size:1rem;background:var(--accent-soft);border-radius:8px;padding:12px 14px}
+.method{background:var(--accent);color:var(--surface);font-weight:600;border-radius:5px;padding:2px 9px;font-size:.85rem;letter-spacing:.04em}
+.path{word-break:break-all;min-width:0}
+.tbl{overflow-x:auto;margin:6px 0 10px}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:.8rem;letter-spacing:.03em;white-space:nowrap}
+td:first-child{white-space:nowrap}
+.req{color:var(--bad);font-weight:600;font-size:.8rem}
+.opt{color:var(--muted);font-size:.8rem}
+.pill{display:inline-block;font-family:var(--font-mono);font-size:.8rem;font-weight:500;border-radius:999px;padding:1px 9px;border:1px solid currentColor}
+.ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+ul{margin:0 0 10px;padding-left:1.2em} li{margin:3px 0;max-width:68ch}
+.note{border-left:3px solid var(--warn);padding:2px 0 2px 12px;color:var(--fg)}
+.meta{font-size:.85rem;color:var(--muted)}
+</style>
+<style>
+main h1{margin-bottom:6px}
+main h2{margin-top:28px;padding-top:16px;border-top:1px solid var(--line)}
+main h2:first-of-type{border-top:none}
+blockquote{margin:10px 0;padding:6px 14px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0}
+blockquote p{margin:4px 0}
+main{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px 26px;gap:0}
+ol{margin:0 0 10px;padding-left:1.4em} ol li{margin:3px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>ตรวจความพร้อมรันจริงของ batch job ระบบประกันรายได้ (SGI)</h1>
+<blockquote>
+<p>ตรวจ 2026-10-14 · อัปเดต 2026-10-15 หลังแก้บั๊ก 4.1 · 4.3 · 4.4 · 4.6 · 4.7
+repo <code>SBP/srm-sps-spsap-sop-sgi-batch</code> branch <code>feature/sgi-batch-jobs</code> · ตัวสร้าง S3 trigger อยู่ใน repo prototype (<code>tools/build_sgi_s3_triggers.py</code>)
+วิธีตรวจ: อ่านโค้ด + รันเทสของแต่ละ job + วัดฐาน dev และ UAT แบบอ่านอย่างเดียว · ไม่ได้เขียนฐาน
+2026-10-15 เพิ่ม: Job 3 รอ Job 2 เองเมื่อถูกปลุกด้วย S3 event (ข้อ 2 แถว Job 3)
+2026-10-15 เปลี่ยน: ถอดสวิตช์ <code>SGI_ALM_MOVE_TO_BACKUP</code> / <code>SGI_JOB5_MOVE_TO_BACKUP</code> — ไฟล์ที่นำเข้าสำเร็จย้ายเข้า backup เสมอ
+2026-10-15 เพิ่ม: Job 2/3 จาก S3 event ไม่ข้ามเงียบเมื่อมีรอบอื่นรันอยู่ (รอแล้วลองใหม่) · event ซ้ำของไฟล์ที่นำเข้าแล้วจบเป็น SKIPPED ไม่ส่งอีเมล
+ขอบเขต: 11 job — Job 2 · 3 · 4 · 5 · 6 · 7 · 8 · 8b · 9 · 10 · 12 (Job 11 ย้ายไปเป็น API ของ store-backend แล้ว)</p>
+</blockquote>
+<h2>1. สรุป</h2>
+<ul>
+<li><strong>โค้ดที่เราแก้เองได้เสร็จหมดแล้ว</strong> — บั๊ก 5 ข้อที่ไม่ต้องรอมติแก้ครบ (4.1 · 4.3 · 4.4 · 4.6 · 4.7) · เทสทั้ง repo ผ่าน 1,515 ข้อ</li>
+<li><strong>ยังรันครบสายไม่ได้</strong> — เหลือ 3 กลุ่ม
+  1. <strong>รอมติ 4 ข้อ</strong> — 4.2 งวดยอดศูนย์ · 4.5/2.85 ผู้รับอีเมลของ Job 12 · 2.83 · 2.84 (ข้อ 7)
+  2. <strong>env</strong> ที่ไม่มีค่าตั้งต้น หรือค่าต่างกันตามฐาน (ข้อ 5)
+  3. <strong>การตั้งค่านอกโค้ด</strong> — S3 trigger · ลำดับการรัน · network · IAM · ทีม STA/ALLMAP/IAS (ข้อ 6)</li>
+<li>🔴 <strong>สาย 6 → 8 → 7/9 → 8b ยังไม่เคยรันครบบนฐานไหนเลย</strong> — dev และ UAT ไม่มีแถวค่าชดเชยที่ Job 6 สร้าง (<code>created_by = 'SGI-JOB6'</code>) สักแถว ต้องทดสอบครบสายบน UAT ก่อนขึ้น production</li>
+<li>ถ้า deploy และตั้ง env ครบ — ทดสอบบน UAT ได้ทุก job (Job 12 ต้องตั้ง <code>SGI_JOB12_NOTIFY_TO</code>)</li>
+</ul>
+<h2>2. สถานะราย job</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Job</th>
+<th>ชื่อ job</th>
+<th>วิธีเริ่ม</th>
+<th>พร้อมไหม</th>
+<th>ยังขาดอะไร</th>
+<th>ใครทำ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2</td>
+<td><code>sgi-import-impact-store</code></td>
+<td>S3 event (<code>in/ALM/Impact_Store_Predict_*.txt</code>)</td>
+<td>⚠️</td>
+<td>โค้ดพร้อม · event ซ้ำ = SKIPPED · ไฟล์มาใกล้กัน = รอรอบก่อน (เพดาน 120 นาที) · env <code>S3_BUCKET_ALM</code> (หรือ <code>AWS_BUCKET_NAME</code>) · ตั้ง S3 trigger + IAM · ไฟล์จาก ALLMAP</td>
+<td>DevOps · ทีม ALLMAP</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>sgi-import-impact-competitor</code></td>
+<td>S3 event (<code>in/ALM/Impact_Competitor_*.txt</code>)</td>
+<td>⚠️</td>
+<td>เหมือน Job 2 · <strong>รอ Job 2 เอง</strong> — รอ 15 นาทีแล้วตรวจ ถ้า Job 2 ยังรันหรือยังมีไฟล์ร้านของงวดเดียวกันค้าง รออีกรอบละ 5 นาที (เพดาน 120 นาที เกิน = ล้ม <code>JOB3_PARENT_NOT_READY</code>) · AWS Batch <code>attemptDurationSeconds</code> ต้องมากกว่า 120 นาที</td>
+<td>DevOps · ทีม ALLMAP</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>sgi-prepare-impact-store-to-ias</code></td>
+<td>ตั้งเวลา <code>0 16 7-16 * *</code></td>
+<td>⚠️</td>
+<td>env <code>SGI_JOB4_S3_BUCKET</code> (หรือ <code>AWS_BUCKET_NAME</code>) · scheduled event · สิทธิ์เขียน <code>out/AMS</code> และ <code>backup-out/AMS</code> · <strong>ขั้นอัปโหลด S3 ยังไม่เคยทดสอบจริง</strong> · ถามทีม IAS ว่ารับไฟล์ซ้ำได้ไหม</td>
+<td>DevOps · เรา (ทดสอบ) · ทีม IAS</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>sgi-import-impact-sale-from-ias</code></td>
+<td>S3 event (<code>out/AMS/AMS06001I_*.txt</code>)</td>
+<td>⚠️</td>
+<td>event ซ้ำ = SKIPPED · ร้านที่ไม่มีหัวสรุป หรือวันขายซ้ำยอดต่างกัน = ย้ายไฟล์ + alert ระบุร้าน · วันซ้ำยอดเท่ากัน = เก็บบรรทัดเดียว (มติ 2026-10-15) · env <code>SGI_JOB5_S3_BUCKET</code> (หรือ <code>AWS_BUCKET_NAME</code>) · ตั้ง S3 trigger · สิทธิ์อ่าน/ย้ายไฟล์ · ไฟล์จาก IAS · ข้อค้าง 2.84</td>
+<td>DevOps · ทีม IAS · ผู้ใช้ตัดสิน</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>sgi-export-impact-store-to-sta</code></td>
+<td>ตั้งเวลา <code>0 17 * * *</code> (เที่ยงคืนไทย)</td>
+<td>⚠️</td>
+<td>deploy BE รุ่นที่เขียน A/N/S · env <code>RABBITMQ_URL</code> + RabbitMQ 3 ตัว · ทีม STA ผูก queue · network · ทดสอบส่งจริง (ดู <code>docs/Job6-ส่งข้อมูลชดเชยไป-STA-คู่มือตั้งค่า.html</code>)</td>
+<td>DevOps · ทีม STA · เรา (ทดสอบ)</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>sgi-sync-competitor-to-document</code></td>
+<td>ต่อจาก Job 8</td>
+<td>✅</td>
+<td>ตั้งให้รันหลัง Job 8</td>
+<td>DevOps</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>sgi-create-compensation-document</code></td>
+<td>ต่อจาก Job 6</td>
+<td>⚠️</td>
+<td>ค่าตั้งต้นตั้งเวลา 17:00 เท่ากับ Job 6 — ควรรันต่อจาก Job 6 · บั๊ก 4.2 (รอมติ)</td>
+<td>DevOps · ผู้ใช้ตัดสิน</td>
+</tr>
+<tr>
+<td>8b</td>
+<td><code>sgi-start-internal-workflow</code></td>
+<td>ต่อจาก Job 7/9</td>
+<td>⚠️</td>
+<td>เอกสารที่มียอดแต่ Job 9 ยังไม่เติมร้านเปิดใหม่ = รอ (<code>NO_NEW_STORE</code> · 2026-10-15) · env บังคับ <code>SGI_JOB8B_NOTIFY_TEMPLATE_ID</code> (EM-06) · <code>SGI_BE_BASE_URL</code> · <code>SGI_SERVICE_TOKEN</code> · <code>SGI_WORKFLOW_VERSION_IDS=10</code> · network จาก Batch ไป BE</td>
+<td>DevOps</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>sgi-sync-new-store-to-document</code></td>
+<td>ต่อจาก Job 8</td>
+<td>⚠️</td>
+<td>โค้ดพร้อม · ข้อค้าง 2.83</td>
+<td>Business</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>sgi-notify-no-receive-data</code></td>
+<td>ตั้งเวลา 08:00 ทุกวัน</td>
+<td>✅</td>
+<td>env <code>SGI_JOB10_EMAIL_TEMPLATE_ID</code> = EM-08 ตามฐาน (ไม่ตั้ง = ส่งด้วย EM-07 ผิด template) · <code>SGI_JOB10_MAIL_TO</code></td>
+<td>DevOps</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>sgi-notify-pending-work</code></td>
+<td>ตั้งเวลา 10:00 ทุกวันจันทร์</td>
+<td>⚠️</td>
+<td>env <code>SGI_JOB12_NOTIFY_TO</code> = ผู้รับ (หลายอีเมลได้ · มติ 2026-10-15 ปิด 4.5/2.85) · env <code>SGI_WORKFLOW_VERSION_IDS</code> · template EM-04/EM-05 ตามฐาน · <code>SGI_PORTAL_BASE_URL</code></td>
+<td>Business · เรา · DevOps</td>
+</tr>
+</tbody>
+</table></div>
+<h2>3. ผลกระทบจากงานล่าสุด</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>การเปลี่ยนแปลง</th>
+<th>กระทบ job ไหน</th>
+<th>ผล</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ถอด Job 11 เป็น API <code>POST /sgi/workflow/sta-update-compensate</code></td>
+<td>Job 10 · Job 9</td>
+<td>Job 10 เฝ้าเฉพาะขาออก (<code>OUT</code>) และงานภายใน (<code>INTERNAL</code>) จึงไม่กระทบ · <strong>Job 9 กระทบ</strong> — คืนเงื่อนไขยกยอดที่ STA ปรับขึ้นเอกสารแล้ว (บั๊ก 4.4 ✅)</td>
+</tr>
+<tr>
+<td>BE เขียน A/N/S + ปิดรอบ (<code>flag_action = N</code> · <code>process_status = CLOSED</code>) เมื่อ 06 ปิดด้วย N/S</td>
+<td>Job 2 · 4 · 7 · 8 · 8b · 9</td>
+<td>สอดคล้อง — ทุก job คัดเฉพาะรอบ <code>flag_action IN ('Y','W')</code> (Job 4 ด่าน S4 คัด <code>'Y'</code>) จึงข้ามรอบที่ปิดแล้ว · Job 2 นำเข้าคู่ร้านใหม่ของร้านนั้นได้ในงวดถัดไป ตรงกับกติกาเปิดเรื่องใหม่ของ SDD GI · กรณีขอบ 4.8</td>
+</tr>
+<tr>
+<td>06 ของเรื่องใหม่จาก Job 8b ใช้ <code>opt_dv_user_id</code> เฉพาะสมาชิก 06 · ถอดด่าน <code>NO_DV_USER</code></td>
+<td>Job 8 · 8b</td>
+<td>Job 8b แจ้งผู้รับงานตามที่ BE ตอบกลับ · ขั้นเติม <code>opt_dv_user_id</code> ของ Job 8 ลดเป็นข้อมูลประกอบแล้ว (บั๊ก 4.6 ✅)</td>
+</tr>
+<tr>
+<td>ขั้น 01 จ่ายงานรายคน</td>
+<td>—</td>
+<td>เป็นเรื่องฝั่ง BE ไม่กระทบ batch</td>
+</tr>
+<tr>
+<td>หยุดชดเชยอัตโนมัติเดือนที่ 4 (Job 8b)</td>
+<td>Job 8 · 8b</td>
+<td>ตรรกะสอดคล้อง แต่แทบไม่เกิดจริงเพราะงวดยอดศูนย์ไม่ได้เอกสาร (บั๊ก 4.2)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>ฐานข้อมูล (วัดจริง dev และ UAT)</strong>
+- คอลัมน์ snapshot <code>opendate_i/_n</code> · <code>branchtype_i/_n</code> · <code>allmap_url</code> · <code>sales_request_status</code> <strong>มีครบทั้งสองฐานแล้ว</strong> — ไม่ต้อง ALTER เพิ่มก่อน deploy batch
+- เติมข้อมูลย้อนหลังเสร็จแล้ว — แถว <code>W</code> ที่ไม่มี snapshot เหลือ 0 ทั้งสองฐาน (เคยมี dev 383 · UAT 546) · แถวคู่แข่งที่ไม่มีรหัสแบรนด์เหลือ 0/4,109
+- ทะเบียนคู่แข่งบน UAT ยังมี 125 แถว (dev 17) เพราะยังไม่ได้รัน <code>purge_sgi_master_test_rows.py</code> — เรื่องความสะอาด ไม่บล็อก</p>
+<h2>4. บั๊กในงานของเรา (เรียงตามความสำคัญ)</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>ข้อ</th>
+<th>เรื่อง</th>
+<th>สถานะ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4.1</td>
+<td>ชุดตั้งค่า S3 trigger (Job 2 · 3 · 5)</td>
+<td>✅ แก้แล้ว 2026-10-15</td>
+</tr>
+<tr>
+<td>4.2</td>
+<td>งวดยอดศูนย์ไม่ได้เอกสาร (Job 8 · 8b)</td>
+<td>⏳ รอมติ</td>
+</tr>
+<tr>
+<td>4.3</td>
+<td>Job 8b แจ้งผู้รับงานด้วย template ผิด</td>
+<td>✅ แก้แล้ว 2026-10-15</td>
+</tr>
+<tr>
+<td>4.4</td>
+<td>Job 9 ไม่ยกยอดที่ STA ปรับขึ้นเอกสาร</td>
+<td>✅ แก้แล้ว 2026-10-15</td>
+</tr>
+<tr>
+<td>4.5</td>
+<td>Job 12 ไม่มีผู้รับอีเมล</td>
+<td>✅ แก้แล้ว 2026-10-15 (env <code>SGI_JOB12_NOTIFY_TO</code>)</td>
+</tr>
+<tr>
+<td>4.6</td>
+<td>Job 8 ขั้นเติม <code>opt_dv_user_id</code> และ alert ชวนเข้าใจผิด</td>
+<td>✅ แก้แล้ว 2026-10-15</td>
+</tr>
+<tr>
+<td>4.7</td>
+<td>ค่าตั้งต้น <code>S3_BUCKET_ALM</code> เป็น bucket ของ dev</td>
+<td>✅ แก้แล้ว 2026-10-15</td>
+</tr>
+<tr>
+<td>4.8</td>
+<td>Job 2 ผูกคู่ร้านเข้ารอบที่ปิดแล้ว (กรณีขอบ)</td>
+<td>⏳ ยังไม่แก้</td>
+</tr>
+</tbody>
+</table></div>
+<h3>4.1 🔴 ชุดตั้งค่า S3 trigger ใช้ไม่ได้ (Job 2 · 3 · 5)</h3>
+<blockquote>
+<p>✅ <strong>แก้แล้ว 2026-10-15</strong> — matcher เป็น <code>wildcard</code> ตัวเดียว · rule ใช้ตัวแทน <code>BUCKET_PLACEHOLDER</code> และ <code>apply.sh</code> / <code>enable-s3-eventbridge.sh</code> บังคับตั้ง env <code>BUCKET</code></p>
+</blockquote>
+<p>ที่อยู่: <code>tools/build_sgi_s3_triggers.py:168</code> → ผลผลิต <code>output/aws/sgi-s3-triggers/eventbridge-rules.json</code> และ <code>apply.sh</code></p>
+<p><strong>(ก) rule จับทุกไฟล์ <code>.txt</code> ใน bucket</strong>
+- เขียนเงื่อนไขเป็น <code>"key": [{"prefix": "&lt;prefix&gt;"}, {"suffix": ".txt"}]</code>
+- EventBridge ตีความ array ของ matcher บนฟิลด์เดียวเป็น <strong>"อย่างใดอย่างหนึ่ง" (OR) ไม่ใช่ "ต้องตรงทั้งคู่" (AND)</strong>
+- ผล: ทุกไฟล์ <code>.txt</code> ที่ขึ้น bucket ปลุกทั้ง Job 2, 3 และ 5 พร้อมกัน — รวมไฟล์ขาออกที่ Job 4 อัปโหลด สำเนาใน <code>backup-out</code> และไฟล์ที่ Job 2/3/5 ย้ายเข้า backup เอง
+- แต่ละครั้ง job ที่ไม่ใช่เจ้าของไฟล์ล้มด้วยตัวตรวจ key (<code>INPUT_INVALID</code> · exit 1 + อีเมลแจ้ง job ล้ม)
+- <strong>แก้:</strong> ใช้ matcher ตัวเดียว <code>{"wildcard": "&lt;prefix&gt;*.txt"}</code></p>
+<p><strong>(ข) ชื่อ bucket ของ dev ฝังตายตัวใน rule</strong>
+- <code>apply.sh</code> รับ env <code>BUCKET</code> แต่ใช้แค่ใน <code>enable-s3-eventbridge.sh</code> · event pattern ยังเป็น <code>srm-sps-data-s3-dev</code> เสมอ (<code>eventbridge-rules.json</code> บรรทัด 3, 20, 65, 110)
+- ผล: ตั้งบน UAT หรือ production แล้ว rule ไม่ทำงานเลย
+- <strong>แก้:</strong> แทน bucket ใน pattern ด้วยค่าจาก <code>BUCKET</code> หรือ generate แยกตาม environment</p>
+<blockquote>
+<p>ต้องแก้ทั้งสองข้อ <strong>ก่อน</strong>ให้ DevOps รัน <code>apply.sh</code></p>
+</blockquote>
+<h3>4.2 🔴 งวดยอดศูนย์ไม่ได้เอกสาร — กติกาเดือน 1–3 / เดือน 4 ไม่เคยทำงาน (Job 8 · 8b) — <strong>ต้องตัดสิน</strong></h3>
+<ul>
+<li>Job 8 สร้างเอกสารเฉพาะงวด <code>c.compensate_status = 'I'</code> (<code>src/modules/sgi/job-8-create-compensation-document.service.ts:483</code>)</li>
+<li>STA ตั้งงวดยอดศูนย์เป็น <code>Z</code> (ผ่าน API ใหม่ · ตามระบบเดิม) งวดนั้นจึงไม่มีเอกสาร</li>
+<li>Job 8b รอแบบ <code>NO_DOCUMENT</code> ตลอดไป (<code>src/modules/sgi/job-8b-gen-flow-gate.ts:85</code>) ไม่ถึงขั้นตัดสินเข้า 08 หรือหยุดชดเชยใน <code>decideEntry</code> (<code>job-8b-gen-flow-gate.ts:168–186</code>)</li>
+<li>ตอนนี้รอบลักษณะนี้ปิดได้ทางเดียวคือกติกา Z ติดกันของ Job 6 ขั้น ① — ตรงกับระบบเดิม</li>
+<li><strong>ทางเลือก</strong></li>
+<li>(ก) ให้ Job 8 สร้างเอกสารให้งวด <code>Z</code> ด้วย → กติกา SDD GI "ยอด 0 เดือน 1–3 เข้า 08 · เดือน 4 หยุดชดเชย" ทำงาน</li>
+<li>(ข) ยอมรับว่ากติกานั้นใช้กับงวดที่ STA ส่ง <code>W</code> มาพร้อมยอด 0 เท่านั้น งวด <code>Z</code> ปิดด้วยกติกาของ Job 6</li>
+</ul>
+<h3>4.3 🟠 Job 8b ส่งอีเมลแจ้งผู้รับงานด้วย template ผิด</h3>
+<blockquote>
+<p>✅ <strong>แก้แล้ว 2026-10-15</strong> — env ใหม่ <code>SGI_JOB8B_NOTIFY_TEMPLATE_ID</code> (EM-06 · dev <code>1501050</code> · UAT <code>1201019</code>) · ไม่ตั้ง = ไม่แจ้ง · ส่งตัวแปร <code>compCurrentUser</code> <code>newDocCount</code> <code>link</code></p>
+</blockquote>
+<ul>
+<li><code>notifyDvs</code> เรียก <code>notifier.notify</code> โดยไม่ระบุ templateId (<code>src/modules/sgi/job-8b-start-internal-workflow.service.ts:826</code>)</li>
+<li>จึงตกไปใช้ EM-07 "Batch job จบด้วย Error" (<code>src/modules/sgi/sgi-job-failure.notifier.ts:53</code>) · ไม่ตั้ง <code>SGI_JOB_FAIL_EMAIL_TEMPLATE_ID</code> = ไม่ส่งเลย</li>
+<li>มี EM-06 "สรุปเปิด workflow ราย DV" อยู่แล้วแต่ไม่มีโค้ดไหนใช้ และไม่มี env ให้ตั้ง</li>
+<li><strong>แก้:</strong> เพิ่ม env template ของ EM-06 แล้วใช้ใน <code>notifyDvs</code></li>
+</ul>
+<h3>4.4 🟠 Job 9 ไม่ส่งยอดของงวดที่ไม่ใช่ <code>I</code> ขึ้นเอกสาร</h3>
+<blockquote>
+<p>✅ <strong>แก้แล้ว 2026-10-15</strong> — คืนสาขา <code>updated_by = 'SGI-STA-API'</code> เฉพาะงวดที่มีเอกสารและเอกสารยังไม่จบ (≠ 99)</p>
+</blockquote>
+<ul>
+<li>เงื่อนไขส่วนนี้ถูกตัดทิ้ง (<code>staClause = ''</code> ที่ <code>src/modules/sgi/job-9-sync-new-store-to-document.service.ts:293–295</code> และ <code>:323</code>) ด้วยเหตุผลว่า "ไม่มีผู้เขียนค่านั้นลงฐานอีกแล้ว"</li>
+<li>ตอนนี้ API ใหม่ของ STA เขียนยอดและสถานะ <code>Z</code> กลับมาแล้ว เหตุผลนั้นไม่จริง</li>
+<li>ผล: ยอดที่ STA ปรับให้งวดที่ไม่ใช่ <code>I</code> ค้างอยู่ชั้นข้อมูลรอบ ไม่ขึ้นเอกสาร</li>
+<li>คอมเมนต์บรรทัด 321–322 และ 453–470 ยังอ้าง Job 11</li>
+<li><strong>แก้:</strong> คืนเงื่อนไขและแก้คอมเมนต์ให้อ้าง API ใหม่</li>
+</ul>
+<h3>4.5 🟠 Job 12 ไม่มีผู้รับอีเมล — <strong>ต้องตัดสิน</strong> (ข้อค้าง 2.85)</h3>
+<ul>
+<li>คิวรีผู้รับ (<code>src/modules/sgi/job-12-notify-pending-work.service.ts:393</code>) จับคู่ <code>business_user.zone_cd</code> กลุ่ม 38/15 ซึ่งว่างทุกคนทั้ง dev และ UAT</li>
+<li>job รายงานโซนที่ไม่มีผู้รับใน <code>zonesWithoutRecipient</code> แล้วส่ง alert แทน</li>
+<li>ต้องตัดสินว่าจะเตือนใคร (เช่น ผู้รับงานปัจจุบันของเอกสาร · หัวหน้าตามขั้น · ทะเบียน <code>sgi_section_owners</code>) แล้วจึงแก้คิวรี</li>
+</ul>
+<h3>4.6 🟡 Job 8 ขั้นเติม <code>opt_dv_user_id</code> ไม่มีผลแล้ว และ log ชวนเข้าใจผิด</h3>
+<blockquote>
+<p>✅ <strong>แก้แล้ว 2026-10-15</strong> — คงขั้นเติมไว้เป็นข้อมูลประกอบ · ถอด alert "ร้านจะค้างที่ Job 8b" · log ลดเป็น info</p>
+</blockquote>
+<ul>
+<li>join <code>business_user.zone_cd</code> กลุ่ม <code>SGI_JOB8_DV_GROUP_ID</code> (ค่าตั้งต้น <code>15</code>) (<code>src/modules/sgi/job-8-create-compensation-document.service.ts:330–390</code>) ซึ่งว่าง จึงไม่เคยเติมได้</li>
+<li>คำเตือนยังเขียนว่า "ร้านจะค้างที่ Job 8b" ทั้งที่ Job 8b ไม่ต้องใช้ <code>opt_dv_user_id</code> แล้ว (BE เลือกผู้รับงานเอง)</li>
+<li><strong>แก้:</strong> ถอดขั้นนี้ หรือคงไว้แต่ลดเป็นข้อมูลประกอบและแก้ข้อความเตือน</li>
+</ul>
+<h3>4.7 🟡 ค่าตั้งต้น <code>S3_BUCKET_ALM</code> เป็น bucket ของ dev (Job 2 · 3)</h3>
+<blockquote>
+<p>✅ <strong>แก้แล้ว 2026-10-15</strong> — ไม่มีค่าตั้งต้น (ถอยไปใช้ <code>AWS_BUCKET_NAME</code>) · ไม่ตั้งทั้งคู่ = ล้มก่อนแตะ S3</p>
+</blockquote>
+<ul>
+<li><code>src/config/config.ts:363</code> — ลืมตั้ง env บน UAT/production แล้ว Job 2/3 ไปอ่านและย้ายไฟล์ใน bucket dev แทนที่จะล้ม</li>
+<li>ต่างจาก Job 4/5 ที่ไม่มีค่าตั้งต้นจึงล้มทันที</li>
+<li><strong>แก้:</strong> เอาค่าตั้งต้นออก ให้ล้มเมื่อไม่ได้ตั้ง แบบเดียวกับ Job 4/5 และ Job 6</li>
+</ul>
+<h3>4.8 🟢 กรณีขอบ: Job 2 ผูกคู่ร้านเข้ารอบที่ปิดแล้ว</h3>
+<ul>
+<li>ถ้าไฟล์งวดเดิมเข้ามาอีก (ร้านเดิม + งวดเดิม) <code>ON CONFLICT (impacted_store_code, impact_month) DO UPDATE</code> (<code>src/modules/sgi/job-2-import-impact-store.service.ts:933–938</code>) ผูกคู่ร้านใหม่เข้ากับรอบที่ BE ปิดไปแล้ว</li>
+<li>ต้องเลือกว่าจะข้าม หรือเปิดรอบใหม่เมื่อรอบเดิมเป็น <code>CLOSED</code></li>
+</ul>
+<h2>5. env ที่ต้องตั้ง</h2>
+<h3>5.1 ทุก job</h3>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>env</th>
+<th>ค่า</th>
+<th>หมายเหตุ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SGI_JOB_FAIL_EMAIL_TEMPLATE_ID</code></td>
+<td>EM-07 · dev <code>1501051</code> · UAT <code>1201020</code></td>
+<td>ไม่ตั้ง = อีเมลแจ้ง job ล้มถูกข้ามเงียบ ๆ</td>
+</tr>
+<tr>
+<td><code>SGI_JOB&lt;n&gt;_MAIL_TO</code></td>
+<td>ผู้รับอีเมลแจ้งเตือนของแต่ละ job</td>
+<td></td>
+</tr>
+<tr>
+<td><code>DB_*</code> · <code>AWS_*</code></td>
+<td>ตามแบบ job อื่นของ repo</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>⚠️ id ของ <code>email_template</code> <strong>ต่างกันตามฐาน</strong> (ออกจาก sequence ของแต่ละฐาน) — ห้ามคัดลอกค่าของ dev ไปใช้บน UAT</p>
+</blockquote>
+<h3>5.2 ราย job</h3>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Job</th>
+<th>env บังคับ (ไม่มีค่าตั้งต้น / ไม่ตั้ง = ล้มหรือผิด)</th>
+<th>env ที่มีค่าตั้งต้นแต่ต้องตรวจ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2 · 3</td>
+<td><code>S3_BUCKET_ALM</code> หรือ <code>AWS_BUCKET_NAME</code> (ไม่ตั้ง = ล้ม)</td>
+<td><code>S3_KEY_ALM</code> · <code>S3_KEY_BACKUP_ALM</code> · <code>SGI_JOB3_REQUIRE_PARENT_ROWS</code> (true) · <code>SGI_JOB3_WAIT_INITIAL_SECONDS</code> (900) · <code>SGI_JOB3_WAIT_POLL_SECONDS</code> (300) · <code>SGI_JOB3_WAIT_MAX_MINUTES</code> (120) · <code>SGI_JOB2_LOCK_WAIT_POLL_SECONDS</code> (300) · <code>SGI_JOB2_LOCK_WAIT_MAX_MINUTES</code> (120)</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>SGI_JOB4_S3_BUCKET</code> หรือ <code>AWS_BUCKET_NAME</code> (ไม่ตั้ง = <code>CONFIG_INVALID</code>)</td>
+<td><code>SGI_JOB4_SOURCE_CREATED_BY</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>SGI_JOB5_S3_BUCKET</code> หรือ <code>AWS_BUCKET_NAME</code> (ไม่ตั้ง = <code>JOB5_NO_BUCKET</code>)</td>
+<td><code>SGI_JOB5_NULL_DIFF_STATUS</code> (Y) · <code>SGI_JOB5_PREACCEPT_NEQ</code> (true)</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>RABBITMQ_URL</code> · <code>SGI_MQ_EXCHANGE</code> · <code>SGI_JOB6_ROUTING_KEY</code> · <code>SGI_JOB6_DATA_NAME</code> · production: <code>SGI_JOB6_APPROVE_SINCE</code></td>
+<td><code>SGI_JOB6_APPROVE_LOOKBACK_MONTHS</code> (3) · <code>SGI_JOB6_QSSI_TIMEOUT_MS</code> (60000)</td>
+</tr>
+<tr>
+<td>7</td>
+<td>—</td>
+<td><code>SGI_JOB7_DATASOURCE</code> (ALM)</td>
+</tr>
+<tr>
+<td>8</td>
+<td>—</td>
+<td><code>SGI_JOB8_DV_GROUP_ID</code> (15 · ใช้ไม่ได้จริงแล้ว · 4.6)</td>
+</tr>
+<tr>
+<td>8b</td>
+<td><code>SGI_JOB8B_NOTIFY_TEMPLATE_ID</code> = EM-06 (dev <code>1501050</code> · UAT <code>1201019</code> · ไม่ตั้ง = ไม่แจ้งผู้รับงาน) · <code>SGI_BE_BASE_URL</code> (<code>JOB8B_NO_BE_URL</code>) · <code>SGI_SERVICE_TOKEN</code> (<code>JOB8B_NO_TOKEN</code> · ต้องตรงกับฝั่ง BE) · <code>SGI_WORKFLOW_VERSION_IDS=10</code> (ล้มที่ <code>assertWorkflowScope</code>)</td>
+<td></td>
+</tr>
+<tr>
+<td>9</td>
+<td>—</td>
+<td></td>
+</tr>
+<tr>
+<td>10</td>
+<td>—</td>
+<td><code>SGI_JOB10_EMAIL_TEMPLATE_ID</code> = EM-08 · dev <code>1501052</code> · UAT <code>1201021</code> (ไม่ตั้ง = ใช้ EM-07 ผิด template)</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>SGI_WORKFLOW_VERSION_IDS=10</code> · <code>SGI_JOB12_NOTIFY_TO</code> (ผู้รับ · หลายอีเมลได้) (<code>JOB_WORKFLOW_SCOPE_MISSING</code>) · <code>SGI_JOB12_WEEKLY_TEMPLATE_ID</code> = EM-04 (dev <code>1501048</code> · UAT <code>1201017</code>) · <code>SGI_JOB12_ESCALATION_TEMPLATE_ID</code> = EM-05 (dev <code>1501049</code> · UAT <code>1201018</code>)</td>
+<td><code>SGI_PORTAL_BASE_URL</code> (ไม่ตั้ง = อีเมลไม่มีลิงก์)</td>
+</tr>
+</tbody>
+</table></div>
+<p>ฝั่ง store-backend ที่ Job 8b เรียก ต้องตั้ง <code>SGI_SERVICE_TOKEN</code> ค่าเดียวกัน และ <code>SGI_WORKFLOW_VERSION_ID</code></p>
+<h2>6. ของที่ต้องตั้งนอกโค้ด</h2>
+<h3>6.1 ลำดับการรันบน AWS Batch</h3>
+<pre><code>ทุกวัน (ตั้งแต่วันที่ 7 ของเดือนเป็นต้นไปจึงมีงานเปิดรอบ)
+  Job 6 (17:00 UTC = เที่ยงคืนไทย)
+    └─&gt; Job 8
+          ├─&gt; Job 7
+          └─&gt; Job 9
+                └─&gt; Job 8b   (รอทั้ง 7 และ 9)
+
+อิสระ
+  Job 4   ตั้งเวลา 0 16 7-16 * *
+  Job 10  08:00 ทุกวัน
+  Job 12  10:00 ทุกวันจันทร์
+  Job 2 · 3 · 5   S3 event
+</code></pre>
+<ul>
+<li>ค่าตั้งต้น cron ตอนนี้: 6 = 17:00 · 8 = 17:00 · 7 = 17:30 · 9 = 17:45 · 8b = 18:30</li>
+<li>Job 8 รันพร้อม Job 6 ได้ → งานช้าไป 1 วัน · ห่างกัน 15–30 นาทีเสี่ยงซ้อนกันเมื่อข้อมูลเยอะ → <strong>ใช้ job dependency แทน cron</strong></li>
+</ul>
+<h3>6.2 S3 trigger (Job 2 · 3 · 5)</h3>
+<p>ชุดตั้งค่าอยู่ที่ <code>output/aws/sgi-s3-triggers/</code> (repo prototype · generate ด้วย <code>python3 tools/build_sgi_s3_triggers.py</code>) · ทุกสคริปต์ต้องตั้ง env <code>BUCKET</code> ก่อน</p>
+<ol>
+<li>เปิด EventBridge notification ที่ bucket (<code>enable-s3-eventbridge.sh</code>)</li>
+<li>สร้าง rule (<code>apply.sh --confirm</code>)</li>
+<li>ปิด scheduled event เดิมของ Job 2/3/5</li>
+<li>IAM ของ job: อ่าน/ย้ายไฟล์ใน <code>interface/in/ALM</code> · <code>interface/backup-in/ALM</code> · <code>interface/out/AMS</code> · <code>interface/backup-out/AMS</code></li>
+</ol>
+<h3>6.3 อื่น ๆ</h3>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>เรื่อง</th>
+<th>job</th>
+<th>ใคร</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>network จาก Batch ไป store-backend ภายใน</td>
+<td>8b</td>
+<td>DevOps</td>
+</tr>
+<tr>
+<td>network ไป RabbitMQ · ผูก queue ฝั่ง STA</td>
+<td>6</td>
+<td>DevOps · ทีม STA</td>
+</tr>
+<tr>
+<td>ไฟล์ <code>Impact_Store_Predict_*</code> · <code>Impact_Competitor_*</code></td>
+<td>2 · 3</td>
+<td>ทีม ALLMAP</td>
+</tr>
+<tr>
+<td>ไฟล์ <code>AMS06001I_*</code> · ยืนยันว่ารับไฟล์ <code>AMS06001O_*</code> ซ้ำได้ไหม</td>
+<td>4 · 5</td>
+<td>ทีม IAS</td>
+</tr>
+<tr>
+<td>index <code>(year, month)</code> บน <code>fcs_qssi_score</code> (ไม่บล็อกแล้ว)</td>
+<td>6</td>
+<td>DBA</td>
+</tr>
+</tbody>
+</table></div>
+<h2>7. ข้อค้างใน DECISIONS ที่เกี่ยวข้อง</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>ข้อ</th>
+<th>เรื่อง</th>
+<th>job</th>
+<th>ใครตัดสิน</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2.83</td>
+<td>Job 9 rollback ทั้งรอบเมื่อเอกสาร %ชดเชยไม่ครบฉบับเดียว</td>
+<td>9</td>
+<td>Business</td>
+</tr>
+<tr>
+<td>2.84</td>
+<td>รอบ pre-accept ของ Job 5 (อัตราโตเป็น NULL หรือเกิน −10) ค้างที่ด่านอัตราโตของ Job 8b ตลอด</td>
+<td>5 · 8b</td>
+<td>ผู้ใช้</td>
+</tr>
+<tr>
+<td>~~2.85~~</td>
+<td>~~ผู้รับอีเมลเตือนงานค้าง~~ ✅ ปิด 2026-10-15 (env <code>SGI_JOB12_NOTIFY_TO</code>)</td>
+<td>12</td>
+<td>—</td>
+</tr>
+<tr>
+<td>2.82</td>
+<td>อีเมลจบ flow (EM-02) ไม่ถูกส่ง</td>
+<td>ฝั่ง BE</td>
+<td>ผู้ใช้</td>
+</tr>
+<tr>
+<td>2.71</td>
+<td>คอลัมน์เวลาของ batch เป็น UTC — ยังสอดคล้องกันเอง ไม่บล็อก</td>
+<td>หลาย job</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<h2>8. ความเสี่ยงที่บันทึกไว้แต่ยังไม่แก้</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>job</th>
+<th>ความเสี่ยง</th>
+<th>ที่อยู่</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5</td>
+<td>~~วันขายซ้ำในกลุ่มเดียวกันชน unique ทุกรอบ~~ ✅ แก้แล้ว 2026-10-15</td>
+<td><code>job-5-dedupe.ts</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>รันมือไม่ตรวจ prefix ของ key (ตรวจเฉพาะเมื่อมาจาก S3 event)</td>
+<td><code>job-5-…service.ts:259</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>สูตร AVG แบบแถวแคบยังไม่ได้พิสูจน์กับข้อมูลจริงจาก Oracle</td>
+<td>—</td>
+</tr>
+<tr>
+<td>2</td>
+<td>วันตัดรอบใช้ <code>CURRENT_DATE</code> (ปฏิทิน UTC) — 00:00–07:00 ไทยของวันที่ 1 คิดเป็นเดือนก่อน</td>
+<td><code>job-2-…service.ts:684–689</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>ขั้นอัปโหลด S3 ยังไม่เคยทดสอบจริง (dryRun หยุดก่อนถึง S3)</td>
+<td><code>job-4-…service.ts:565–600</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>ข้อความผลอนุมัติที่ broker ยืนยันแล้ว ถ้าสถานะเปลี่ยนภายหลังจะไม่ถูกส่งซ้ำ</td>
+<td>outbox</td>
+</tr>
+</tbody>
+</table></div>
+<h2>9. ลำดับงานที่แนะนำ</h2>
+<ol>
+<li><strong>ตัดสินใจ</strong> ข้อ 4.2 (งวดยอดศูนย์) · 4.5 / 2.85 (ผู้รับ Job 12) · 2.83 · 2.84 แล้วเราแก้โค้ดตามมติ</li>
+<li><strong>merge</strong> <code>feature/sgi-batch-jobs</code> เข้า main (ถ้า pipeline deploy จาก main)</li>
+<li><strong>deploy</strong> ตามลำดับ — store-backend ก่อน (รุ่นที่เขียนผล A/N/S และมี API รับยอดจาก STA) → BFF → batch</li>
+<li><strong>DevOps</strong> ตั้ง env ตามข้อ 5 · ลำดับการรันตามข้อ 6.1 · S3 trigger ตามข้อ 6.2 · network ตามข้อ 6.3
+   - id ของ email template ต้องเป็นของฐานนั้น — เปิดตรวจตาราง <code>email_template</code> ด้วยชื่อ (<code>EM-0%</code>) ก่อนตั้ง</li>
+<li><strong>ทดสอบครบสายบน UAT</strong>
+   - รันทุก job ด้วย <code>{"dryRun":true}</code> ก่อน
+   - วางไฟล์ ALLMAP ทดสอบ → Job 2/3 ทำงานเองจาก event (และไม่ปลุก job อื่น)
+   - Job 4 อัปโหลดจริง → IAS ตอบ <code>AMS06001I</code> → Job 5
+   - Job 6 เปิดรอบ + ส่ง STA → STA เรียก API ส่งยอดกลับ → Job 8 สร้างเอกสาร → Job 7/9 → Job 8b เปิด workflow และส่งอีเมล EM-06
+   - เดินเอกสารจนอนุมัติ → รอบถัดไปของ Job 6 ส่งผล <code>A</code> ไป STA</li>
+<li><strong>production</strong> ตั้ง <code>SGI_JOB6_APPROVE_SINCE</code> = วันเริ่มใช้ระบบ ก่อนรัน Job 6 ครั้งแรก</li>
+</ol>
+</main>
+</body>
+</html>
