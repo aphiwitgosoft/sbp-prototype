@@ -453,21 +453,22 @@ repo <code>SBP/srm-sps-spsap-sop-sgi-batch</code> branch <code>feature/sgi-batch
 <h2>6. ของที่ต้องตั้งนอกโค้ด</h2>
 <h3>6.1 ลำดับการรันบน AWS Batch</h3>
 <pre><code>ทุกวัน (ตั้งแต่วันที่ 7 ของเดือนเป็นต้นไปจึงมีงานเปิดรอบ)
-  Job 6 (17:00 UTC = เที่ยงคืนไทย)
-    └─&gt; Job 8
-          ├─&gt; Job 7
-          └─&gt; Job 9
-                └─&gt; Job 8b   (รอทั้ง 7 และ 9)
+  00:00  Job 6 ──(dependsOn)──▶ Job 8
+  01:00  Job 7     (ตั้งเวลาของตัวเอง)
+  01:15  Job 9     (ตั้งเวลาของตัวเอง)
+  02:00  Job 8b    (ตั้งเวลาของตัวเอง)
 
 อิสระ
-  Job 4   ตั้งเวลา 0 16 7-16 * *
+  Job 4   ตั้งเวลา วันที่ 7–16
   Job 10  08:00 ทุกวัน
   Job 12  10:00 ทุกวันจันทร์
   Job 2 · 3 · 5   S3 event
 </code></pre>
 <ul>
-<li>ค่าตั้งต้น cron ตอนนี้: 6 = 17:00 · 8 = 17:00 · 7 = 17:30 · 9 = 17:45 · 8b = 18:30</li>
-<li>Job 8 รันพร้อม Job 6 ได้ → งานช้าไป 1 วัน · ห่างกัน 15–30 นาทีเสี่ยงซ้อนกันเมื่อข้อมูลเยอะ → <strong>ใช้ job dependency แทน cron</strong></li>
+<li>2026-10-15 เปลี่ยน — <strong>Job 7 / 9 / 8b ตั้งเวลาของตัวเอง ไม่ผูก dependency หลัง Job 8</strong>
+  เพราะ Job 8 / 9 จบ <code>PARTIAL_FAILED</code> เมื่อมีรอบเดียวข้อมูลไม่ครบ แล้ว dependency จะหยุดทั้งสายของทุกร้าน
+  · ทุก job รันซ้ำได้ และ Job 8b มีด่าน <code>NO_DOCUMENT</code> / <code>NO_NEW_STORE</code> กันลำดับ</li>
+<li>รายละเอียดการตั้งค่าทั้งหมดอยู่ใน <code>docs/config-batch-job.md</code></li>
 </ul>
 <h3>6.2 S3 trigger (Job 2 · 3 · 5)</h3>
 <p>ชุดตั้งค่าอยู่ที่ <code>output/aws/sgi-s3-triggers/</code> (repo prototype · generate ด้วย <code>python3 tools/build_sgi_s3_triggers.py</code>) · ทุกสคริปต์ต้องตั้ง env <code>BUCKET</code> ก่อน</p>
