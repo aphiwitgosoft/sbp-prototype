@@ -611,7 +611,7 @@ repo <code>SBP/srm-sps-spsap-sop-sgi-batch</code> branch <code>feature/sgi-batch
    - รันทุก job ด้วย <code>{"dryRun":true}</code> ก่อน
    - วางไฟล์ ALLMAP ทดสอบ → Job 2/3 ทำงานเองจาก event (และไม่ปลุก job อื่น)
    - Job 4 อัปโหลดจริง → IAS ตอบ <code>AMS06001I</code> → Job 5
-   - Job 6 เปิดรอบ + ส่ง STA → STA เรียก API ส่งยอดกลับ → Job 8 สร้างเอกสาร → Job 7/9 → Job 8b เปิด workflow และส่งอีเมล EM-06
+   - Job 6 เปิดรอบ + ส่ง STA → STA ส่งข้อความเข้า RabbitMQ → EAI consumer เรียก API ส่งยอดกลับ → Job 8 สร้างเอกสาร → Job 7/9 → Job 8b เปิด workflow และส่งอีเมล EM-06
    - เดินเอกสารจนอนุมัติ → รอบถัดไปของ Job 6 ส่งผล <code>A</code> ไป STA</li>
 <li><strong>production</strong> ตั้ง <code>SGI_JOB6_APPROVE_SINCE</code> = วันเริ่มใช้ระบบ ก่อนรัน Job 6 ครั้งแรก</li>
 </ol>

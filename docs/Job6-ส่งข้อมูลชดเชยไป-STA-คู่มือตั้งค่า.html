@@ -382,7 +382,7 @@ QSSI จำเป็นเฉพาะตอนเปิดรอบใหม่
 <tr>
 <td><code>I</code> / <code>Z</code> + ยอดเงิน</td>
 <td>store backend <code>POST /sgi/workflow/sta-update-compensate</code> (แทน Job 11 · 2026-10-14)</td>
-<td>STA เรียก API ส่งยอดกลับ</td>
+<td>STA ส่งข้อความเข้า RabbitMQ → EAI consumer เรียก API</td>
 </tr>
 <tr>
 <td><code>A</code></td>
@@ -403,7 +403,7 @@ QSSI จำเป็นเฉพาะตอนเปิดรอบใหม่
 </table></div>
 <p>BE เติม <code>approve_date</code> = วันที่อนุมัติ และ <code>stmt_year/stmt_month</code> = เดือนของวันนั้นพร้อมกัน · หยุดอัตโนมัติเดือนที่ 4 ของ Job 8b คงงวดเป็น <code>Z</code> (Job 6 ปิดรอบด้วยกติกา Z ติดกัน และส่ง Z เป็น S ใน payload)</p>
 <p>สถานะ <code>Z</code> จาก STA ทำตามระบบเดิม — <code>Z</code> ตั้งงวดเป็นยอดศูนย์เสมอ · <code>W</code> เปลี่ยนเป็น <code>I</code> เฉพาะงวดที่ยังว่างหรือเป็น <code>Z</code> งวดที่มีผลอนุมัติแล้วคงเดิม</p>
-<p><strong>ขากลับจาก STA</strong> — STA ส่งยอดเงินกลับด้วย API <code>POST {BFF}/sgi/workflow/sta-update-compensate</code> (Bearer token) ไม่ผ่าน RabbitMQ แล้ว · สัญญาเต็มอยู่ที่ <code>docs/STA-API-รับยอดชดเชย.md</code></p>
+<p><strong>ขากลับจาก STA</strong> — STA ส่งข้อความ <code>sta_update_compensate</code> เข้า RabbitMQ เหมือนเดิม · EAI consumer รับแล้วเรียก API <code>POST /sgi/workflow/sta-update-compensate</code> (Bearer <code>SGI_SERVICE_TOKEN</code>) · มติ 2026-10-16 · สัญญาเต็มอยู่ที่ <code>docs/STA-API-รับยอดชดเชย.md</code></p>
 <h2>5. สิ่งที่ต้องตั้งใน AWS</h2>
 <ol>
 <li><strong>Batch job definition</strong> ของ <code>sgi-export-impact-store-to-sta</code>
@@ -694,7 +694,7 @@ JOB_NAME=sgi-export-impact-store-to-sta \
 <li>รัน <code>INPUT={"dryRun":true}</code> — ตรวจว่าผ่านด่าน QSSI และนับจำนวนที่จะส่งได้ (ไม่เขียนฐาน ไม่ส่ง MQ)</li>
 <li>รันจริง แล้วดู log + คิวรีในข้อ 8</li>
 <li>ให้ทีม STA ยืนยันว่ามีข้อความเข้า <code>sta.sta.ss.frbc0001.queue</code> และอ่านได้ครบ 14 ฟิลด์</li>
-<li>ทดสอบขาไปกลับครบวง: STA เรียก API ส่งยอดกลับ → ผ่าน flow เอกสารจนอนุมัติ → รอบถัดไปของ Job 6 ส่งผล <code>A</code> ไป STA</li>
+<li>ทดสอบขาไปกลับครบวง: STA ส่งข้อความเข้า RabbitMQ → EAI consumer เรียก API ส่งยอดกลับ → ผ่าน flow เอกสารจนอนุมัติ → รอบถัดไปของ Job 6 ส่งผล <code>A</code> ไป STA</li>
 <li>สร้าง EventBridge rule ให้รันทุกวัน</li>
 <li>production: ตั้ง <code>SGI_JOB6_APPROVE_SINCE</code> = วันเริ่มใช้ระบบ ก่อนรันครั้งแรก</li>
 </ol>

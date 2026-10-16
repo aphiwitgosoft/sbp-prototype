@@ -56,7 +56,8 @@ ul{margin:0 0 10px;padding-left:1.2em} li{margin:3px 0;max-width:68ch}
 <main>
   <header>
     <h1>SGI รับยอดเงินชดเชยประกันรายได้จาก STA</h1>
-    <p class="lede">สัญญา API สำหรับทีม STA — ใช้แทนการส่งข้อความ <code>sta_update_compensate</code> เข้า RabbitMQ เดิม เนื้อข้อความ (ซอง + รายการ) เหมือนเดิมทุกฟิลด์ ต่างกันแค่ช่องทางเปลี่ยนเป็น HTTP</p>
+    <p class="lede">สัญญา API รับยอดชดเชย — <strong>ผู้เรียกคือ EAI consumer</strong> (<code>srm-sps-spsap-store-consumer</code>) · เนื้อข้อความเหมือนข้อความ RabbitMQ เดิมทุกฟิลด์</p>
+    <p class="lede">🔴 แก้ 2026-10-16: <strong>STA ส่งข้อความ <code>sta_update_compensate</code> เข้า RabbitMQ เหมือนเดิม ไม่ได้เรียก API เอง</strong> · EAI consumer รับจากคิวแล้วส่งข้อความทั้งก้อนเป็น body ของ API นี้ พร้อม <code>Authorization: Bearer &lt;SGI_SERVICE_TOKEN&gt;</code> · ⚠️ ซองห้ามมีฟิลด์นอกที่ระบุ ถ้า consumer เติมฟิลด์ API ตอบ 400 ทั้งคำขอ</p>
     <p class="meta">ฉบับ 2026-10-14 · ผู้ให้บริการ: ระบบประกันรายได้ (SGI) บนพอร์ทัล SBPM</p>
   </header>
 
@@ -204,7 +205,7 @@ X-Request-Id: sta-20261014-000123
       <li><strong>สถานะงวด:</strong> <code>Z</code> ตั้งงวดเป็นยอดศูนย์ · <code>W</code> ตั้งงวดเป็นอยู่ระหว่างชดเชยเฉพาะงวดที่ยังว่างหรือเป็นยอดศูนย์ · <strong>งวดที่มีผลอนุมัติแล้ว (อนุมัติ · ไม่ชดเชย · หยุดชดเชย) คงเดิมทั้ง <code>W</code> และ <code>Z</code></strong> — ยอดยังบันทึกตามที่ส่งมา</li>
       <li><strong>ปี:</strong> <code>periodImpact</code> ในคำขอเป็น พ.ศ. ส่วน <code>period</code> ในคำตอบเป็น ค.ศ.</li>
       <li><strong>ทดสอบ:</strong> ส่ง <code>"dryRun": true</code> เพื่อตรวจรูปแบบและดูผลรายรายการโดยไม่บันทึก</li>
-      <li><strong>ช่องทางเดิม:</strong> หลังเปลี่ยนมาใช้ API นี้ ไม่ต้องส่ง <code>sta_update_compensate</code> เข้า RabbitMQ อีก</li>
+      <li><strong>ช่องทาง:</strong> STA ส่งเข้า RabbitMQ ตามเดิม · EAI consumer เป็นผู้เรียก API นี้ (ผลรายรายการอยู่ในคำตอบ — consumer ควร log ไว้ เพราะ STA ไม่เห็นผลโดยตรง)</li>
     </ul>
   </section>
 
