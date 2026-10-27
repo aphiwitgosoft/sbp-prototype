@@ -49,7 +49,7 @@
       <div class="card" style="border-left:5px solid var(--primary);">
         <div style="font-size:13px;color:#45525f;line-height:1.9;">
           <b style="color:#2b3440;">วิธีอ่าน ref ที่มา:</b>
-          <span class="ref fgi">FGI/FCS</span> = มาจากเอกสาร Batch Job Technical Document v4.0 (Jobs 2–10 + 8b · ตัด Job 1 ImportQSSI 2026-08-24) + <b>Job 12 NotifyPendingWork</b> — พอร์ตจาก <code>SendMailReport.java</code> เดิม <b>ไม่ใช่งานใหม่</b> เพียงแต่ไม่ได้เขียนไว้ใน v4.0 (แยกเอกสาร 2026-09-02) · รับยอดจาก STA เป็น <b>API</b> <code>POST /sgi/workflow/sta-update-compensate</code> (แทน Job 11 · 2026-10-14) ·
+          <span class="ref fgi">FGI/FCS</span> = มาจากเอกสาร Batch Job Technical Document v4.0 (Jobs 2–10 + 8b · ตัด Job 1 ImportQSSI 2026-08-24) + <b>Job 12 NotifyPendingWork</b> — พอร์ตจาก <code>SendMailReport.java</code> เดิม <b>ไม่ใช่งานใหม่</b> เพียงแต่ไม่ได้เขียนไว้ใน v4.0 (แยกเอกสาร 2026-09-02) · รับยอดจาก STA เป็น <b>API</b> <code>POST /sgi/interface/sta-update-compensate</code> (แทน Job 11 · 2026-10-14 · STA เรียก HTTP ตรงด้วย <code>x-api-key</code> รายการเดียวต่อคำขอ · มติ 2026-10-27) ·
           <span class="ref k2">K2</span> = มาจาก SRS ประกันรายได้-K2 v3.1 (หน้าจอ / workflow 5 ขั้น) ·
           <span class="ref new">ใหม่</span> = ส่วนที่ออกแบบเพิ่มสำหรับระบบใหม่ ·
           <span class="ref mix">ทั้งสอง</span> = พฤติกรรมรวมจากสองระบบ<br>
@@ -63,7 +63,7 @@
         <div class="db-stat"><b>11</b><span>Batch Entry Points</span></div>
         <div class="db-stat"><b>5</b><span>Approval Sections</span></div>
         <div class="db-stat"><b>22</b><span>Tables ใน Schema รวม</span></div>
-        <div class="db-stat"><b>30</b><span>REST API Endpoints (5 กลุ่ม)</span></div>
+        <div class="db-stat"><b>30</b><span>REST API Endpoints (6 กลุ่ม)</span></div>
       </div>
 
       <div class="card">
@@ -97,7 +97,7 @@
         </div>
         <div class="rule-grid">
           <div class="rule"><b>ตัดการส่งไฟล์ภายใน</b>FGI/FCS → Document/Workflow ใช้ DB และ service call โดยตรง</div>
-          <div class="rule"><b>คง interface ภายนอก</b>ยังแลกข้อมูลกับ QSSI, IAS และ STA เหมือนเดิม เพราะเป็นขอบเขตระบบอื่น — แต่ช่องทางเปลี่ยน: IAS/MIS ผ่าน <b>EAI S3</b> · STA ผ่าน <b>RabbitMQ</b> exchange <code>sgi.interface</code> (มติ 2026-08-24) · 3 ชุดข้อความ <code>sgi_impact_store</code> · <code>sta_update_compensate</code> (STA → SGI · STA เรียก API <code>POST /sgi/workflow/sta-update-compensate</code> ผ่าน BFF แทน · 2026-10-14) · <b><code>sgi_reflow</code> (แจ้ง STA เมื่อเปิดพิจารณาใหม่ · มติ 2026-09-01)</b></div>
+          <div class="rule"><b>คง interface ภายนอก</b>ยังแลกข้อมูลกับ QSSI, IAS และ STA เหมือนเดิม เพราะเป็นขอบเขตระบบอื่น — แต่ช่องทางเปลี่ยน: IAS/MIS ผ่าน <b>EAI S3</b> · STA ผ่าน <b>RabbitMQ</b> exchange <code>sgi.interface</code> (มติ 2026-08-24) · 3 ชุดข้อความ <code>sgi_impact_store</code> · <code>sta_update_compensate</code> (STA → SGI · 🔴 <b>ขากลับไม่ใช้ RabbitMQ แล้ว</b> — STA เรียก HTTP <code>POST /sgi/interface/sta-update-compensate</code> ตรงเข้า store backend ด้วย <code>x-api-key</code> · ไม่ผ่าน BFF/EAI consumer · มติ 2026-10-27) · <b><code>sgi_reflow</code> (แจ้ง STA เมื่อเปิดพิจารณาใหม่ · มติ 2026-09-01)</b></div>
           <div class="rule"><b>กติกาธุรกิจหลักคงเดิม</b>60 วัน, growth ≤ −10, %ชดเชย 100% · วงเงินอนุมัติปรับใหม่เป็น เกณฑ์เดียว 100,000 (SDD GI 24/02/2026)</div>
         </div>
       </div>
@@ -274,8 +274,12 @@
             <div class="tl-t">11. ส่งผลชดเชยเข้า Statement <span class="ref fgi">FGI/FCS · Job 6</span></div>
             <div class="tl-meta">ทุกวัน 17:00 · sync สถานะ 10 ขั้น → ตรวจ QSSI ครบ 6 หมวด (8,9,12,1,10,16) → เขียน outbox (<code>sgi_interface_transactions</code> READY) ใน transaction เดียวกับ sync → publish RabbitMQ message <code>sgi_impact_store</code> (JSON UTF-8) ไป STA แล้ว update เป็น SENT · ระบบใหม่แก้บั๊ก purge tracking (E20)</div></div>
 
+          <div class="tl-item"><span class="tl-dot"></span>
+            <div class="tl-t">11b. รับยอดชดเชยกลับจาก STA <span class="ref fgi">FGI/FCS · API แทน Job 11</span> <span class="ref new">สัญญา 2026-10-27</span></div>
+            <div class="tl-meta">ไม่มี cron · <b>STA เรียก HTTP ตรง</b> <code>POST /sgi/interface/sta-update-compensate</code> เข้า store backend ด้วย <code>x-api-key</code> — ไม่ใช้ RabbitMQ กับเส้นนี้แล้ว (ไม่ผ่าน EAI consumer <code>sta_cal_sgi</code> · ไม่ผ่าน BFF) · body = <b>รายการเดียว</b> (ร้านถูกกระทบ 1 ร้าน × 1 งวด · <code>compensate[]</code> ใส่ร้านเปิดใหม่ได้หลายร้าน · <code>totalStoreCodeN</code> ต้องเท่าจำนวน) · รับรูปเดิม <code>{"input":"&lt;base64&gt;"}</code> ได้ · <code>?dryRun=true</code> → อัปเดต <code>sgi_fgi_impact_compensations</code> + ยอดรายร้านเปิดใหม่ + บันทึก <code>sgi_interface_transactions</code> (IN · STA_UPDATE_COMPENSATE) · ตอบรูประบบเดิม <code>{result, data, errorCode, errorMsg}</code> HTTP 200 ทุกกรณีทางธุรกิจ: <code>"1"</code> สำเร็จ · <code>"0"</code> + <code>IF01003</code> ไม่พบงวด/รอบปิด · <code>IF01001</code> รูปแบบผิด · <code>IF01004</code> ระบบขัดข้อง (401 เมื่อ key ผิด) · ตรรกะการบันทึกเหมือนเดิม (สร้างคู่ร้าน/รอบ/งวดเมื่อยังไม่มี · งวดที่อนุมัติแล้วไม่เขียนทับ)</div></div>
+
           <div class="tl-item"><span class="tl-dot" style="background:#e03e3e;"></span>
-            <div class="tl-t">11b. เปิดพิจารณาใหม่ → แจ้ง STA ว่าเอกสารถูก reflow <span class="ref new">ใหม่ 2026-09-01</span></div>
+            <div class="tl-t">11c. เปิดพิจารณาใหม่ → แจ้ง STA ว่าเอกสารถูก reflow <span class="ref new">ใหม่ 2026-09-01</span></div>
             <div class="tl-meta">เมื่อ <b>ฝ่าย SBP DSA (06)</b> กดพิจารณาใหม่จากเอกสารที่จบไปแล้วด้วย <b>เห็นควรไม่ชดเชย</b> หรือ <b>หยุดชดเชยประกันรายได้</b> → publish message <code>sgi_reflow</code> (<code>compensate_status = R</code> · 1 รายการต่อ 1 งวดที่ต้อง reflow · <code>stmt_year_month</code> ว่างเสมอ) ผ่าน exchange <code>sgi.interface</code> พร้อมเขียน outbox <code>sgi_interface_transactions</code> — STA ตั้ง flow ของงวดนั้นใหม่ที่หน้าจอ <code>FSG003001</code> · ถ้าไม่แจ้ง STA จะปิดงวดค้างไว้และยอดชดเชยรอบใหม่จะไม่ถูกคำนวณ · สัญญาข้อความเต็มที่ <code>STA/ประกันรายได้-ตัวอย่าง-Message-RabbitMQ.md</code></div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>

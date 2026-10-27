@@ -56,165 +56,188 @@ ul{margin:0 0 10px;padding-left:1.2em} li{margin:3px 0;max-width:68ch}
 <main>
   <header>
     <h1>SGI รับยอดเงินชดเชยประกันรายได้จาก STA</h1>
-    <p class="lede">สัญญา API รับยอดชดเชย — <strong>ผู้เรียกคือ EAI consumer</strong> (<code>srm-sps-spsap-store-consumer</code>) · เนื้อข้อความเหมือนข้อความ RabbitMQ เดิมทุกฟิลด์</p>
-    <p class="lede">🔴 แก้ 2026-10-16: <strong>STA ส่งข้อความ <code>sta_update_compensate</code> เข้า RabbitMQ เหมือนเดิม ไม่ได้เรียก API เอง</strong> · EAI consumer รับจากคิวแล้วส่งข้อความทั้งก้อนเป็น body ของ API นี้ พร้อม <code>Authorization: Bearer &lt;SGI_SERVICE_TOKEN&gt;</code> · ⚠️ ซองห้ามมีฟิลด์นอกที่ระบุ ถ้า consumer เติมฟิลด์ API ตอบ 400 ทั้งคำขอ</p>
-    <p class="meta">ฉบับ 2026-10-14 · ผู้ให้บริการ: ระบบประกันรายได้ (SGI) บนพอร์ทัล SBPM</p>
+    <p class="lede">สัญญา API รับยอดชดเชย — <strong>STA เรียก HTTP ตรง</strong> เข้า store-backend ของ SGI</p>
+    <div class="note"><p>🔴 สัญญาใหม่ 2026-10-27 (มติผู้ใช้) — <strong>เส้นนี้ไม่ใช้ RabbitMQ แล้ว</strong></p><ul><li>ผู้เรียกคือ <strong>STA</strong> ยิง HTTP ตรงพร้อม header <code>x-api-key</code> · ไม่ผ่าน EAI consumer <code>sta_cal_sgi</code> และไม่ผ่าน BFF</li><li>คำขอ 1 ครั้ง = <strong>รายการเดียว</strong> (ร้านถูกกระทบ 1 ร้าน × 1 งวด) · ไม่มีซอง <code>dataType</code>/<code>dataName</code>/<code>dataMessage</code>/<code>sender</code>/<code>sentAt</code> แล้ว</li><li>คำตอบเป็นรูปของ web service ระบบเดิม <code>{result, data, errorCode, errorMsg}</code> (แทน <code>{success, data:{status, results[]}}</code>)</li><li>รับ body รูปเดิมของ web service <code>{"input":"&lt;base64 ของ JSON รายการ&gt;"}</code> ได้ด้วย</li><li>ถอด env <code>SGI_STA_COMPENSATE_DATA_NAME</code> และ <code>SGI_STA_COMPENSATE_MAX_ITEMS</code> แล้ว</li></ul><p>แทน web service <code>/fgiService/updateCompensateFromFS</code> ของระบบเดิม (<code>ManageCompensateController.manageCompensateFromFs</code>) · ตรรกะการบันทึกไม่เปลี่ยนจากฉบับก่อน</p><p>ประวัติ: ฉบับ 2026-10-14 ให้ STA เรียกตรงด้วยซองข้อความ → 2026-10-16 เปลี่ยนเป็น STA ส่ง RabbitMQ แล้ว EAI consumer ส่งซองทั้งก้อนมาที่ API → <strong>2026-10-27 กลับมาให้ STA เรียกตรง ด้วยรูปรายการเดียวแบบระบบเดิม</strong> (config <code>sta_cal_sgi</code> ของ EAI consumer เลิกใช้)</p></div>
+    <p class="lede">ผู้ให้บริการ: ระบบประกันรายได้ (SGI) · store-backend ของ SBP</p>
   </header>
 
   <section>
     <h2>Endpoint</h2>
-    <div class="endpoint"><span class="method">POST</span><span class="path">{BFF base URL}/sgi/workflow/sta-update-compensate</span></div>
-    <p style="margin-top:12px">{BFF base URL} ของแต่ละสภาพแวดล้อม (UAT · Production) ทีม SGI จะส่งให้แยก</p>
+    <pre><code>POST {store-backend base URL}/sgi/interface/sta-update-compensate
+POST {store-backend base URL}/api/v1/sgi/interface/sta-update-compensate   (ชื่อเต็ม · ผลเหมือนกัน)</code></pre>
+    <p><code>{store-backend base URL}</code> ของแต่ละสภาพแวดล้อม (UAT · Production) ทีม SGI จะส่งให้แยก · เส้นนี้อยู่ที่ store-backend ตรง <strong>ไม่ผ่าน BFF</strong></p>
     <div class="tbl"><table>
       <tr><th>Header</th><th></th><th>ค่า</th></tr>
-      <tr><td><code>Authorization</code></td><td><span class="req">บังคับ</span></td><td><code>Bearer &lt;token&gt;</code> — token ที่ทีม SGI ส่งให้ทางช่องทางปลอดภัย</td></tr>
-      <tr><td><code>Content-Type</code></td><td><span class="req">บังคับ</span></td><td><code>application/json</code> (UTF-8)</td></tr>
-      <tr><td><code>X-Request-Id</code></td><td><span class="opt">ไม่บังคับ</span></td><td>รหัสอ้างอิงคำขอของฝั่ง STA — SGI เก็บไว้ในบันทึก interface ใช้ไล่ปัญหาร่วมกัน</td></tr>
+      <tr><td><code>x-api-key</code></td><td><span class="req">บังคับ</span></td><td>key ที่ทีม SGI ส่งให้ทางช่องทางปลอดภัย (ค่า <code>X_API_KEY</code> ของ store-backend ใน environment นั้น)</td></tr>
+      <tr><td><code>Content-Type</code></td><td><span class="req">บังคับ</span></td><td><code>application/json</code> (UTF-8) — ค่าอื่น (เช่น <code>text/plain</code>) body จะไม่ถูกอ่าน ได้ <code>IF01001</code> "body ว่างหรือไม่ใช่ JSON"</td></tr>
+      <tr><td><code>X-Request-Id</code></td><td><span class="opt">ไม่บังคับ</span></td><td>รหัสอ้างอิงคำขอของฝั่ง STA (ไม่เกิน 50 ตัวอักษร) — SGI เก็บไว้ใน <code>integration_log</code> · <code>sgi_interface_transactions</code> และใส่ในข้อความ <code>IF01004</code> ใช้ไล่ปัญหาร่วมกัน</td></tr>
+    </table></div>
+    <div class="tbl"><table>
+      <tr><th>Query</th><th></th><th>ค่า</th></tr>
+      <tr><td><code>dryRun</code></td><td><span class="opt">ไม่บังคับ</span></td><td><code>true</code> = ตรวจข้อมูลและตัดสินผลอย่างเดียว ไม่บันทึกอะไรลงฐาน รวมถึง <code>integration_log</code> (ใช้ทดสอบ)</td></tr>
     </table></div>
   </section>
-
   <section>
-    <h2>เนื้อคำขอ (ซองข้อความ)</h2>
-    <div class="tbl"><table>
-      <tr><th>ฟิลด์</th><th></th><th>ความหมาย</th></tr>
-      <tr><td><code>dataName</code></td><td><span class="req">บังคับ</span></td><td>ต้องเป็น <code>sta_update_compensate</code></td></tr>
-      <tr><td><code>dataMessage</code></td><td><span class="req">บังคับ</span></td><td>array ของรายการยอดชดเชย อย่างน้อย 1 รายการ ไม่เกิน 500 รายการต่อคำขอ</td></tr>
-      <tr><td><code>dataType</code></td><td><span class="opt">ไม่บังคับ</span></td><td>เช่น <code>message</code></td></tr>
-      <tr><td><code>sender</code></td><td><span class="opt">ไม่บังคับ</span></td><td>เช่น <code>STA</code></td></tr>
-      <tr><td><code>sentAt</code></td><td><span class="opt">ไม่บังคับ</span></td><td>เวลาที่ส่ง (ISO 8601)</td></tr>
-      <tr><td><code>dryRun</code></td><td><span class="opt">ไม่บังคับ</span></td><td><code>true</code> = ตรวจข้อมูลและตอบผลอย่างเดียว ไม่บันทึก (ใช้ทดสอบ)</td></tr>
-    </table></div>
-    <p class="note">ห้ามส่งฟิลด์อื่นนอกจากที่ระบุ ทั้งระดับซองและระดับรายการ ฟิลด์ที่ไม่รู้จักระดับซอง = ปฏิเสธทั้งคำขอ (400) · ระดับรายการ = รายการนั้นเป็น <code>INVALID</code></p>
-
-    <h3>รายการใน <code>dataMessage</code> — 1 รายการ = ร้านถูกกระทบ 1 ร้าน × 1 งวด</h3>
+    <h2>เนื้อคำขอ — รายการเดียวต่อการเรียก</h2>
+    <p>1 คำขอ = ร้านถูกกระทบ 1 ร้าน × 1 งวด · ร้านเปิดใหม่ของร้านนั้นใส่ใน <code>compensate[]</code> ได้หลายร้าน ยอดของหลายร้านถูกกระทบหรือหลายงวด <strong>ให้ยิงแยกทีละคำขอ</strong></p>
+    <h3>ระดับร้านถูกกระทบ</h3>
     <div class="tbl"><table>
       <tr><th>ฟิลด์</th><th></th><th>รูปแบบ / ความหมาย</th></tr>
-      <tr><td><code>storeCodeI</code></td><td><span class="req">บังคับ</span></td><td>รหัสร้านถูกกระทบ ตัวเลขไม่เกิน 5 หลัก (เช่น <code>10221</code> หรือ <code>221</code> — SGI เติมศูนย์หน้าให้)</td></tr>
-      <tr><td><code>periodImpact</code></td><td><span class="req">บังคับ</span></td><td>งวด <strong>พ.ศ.</strong> รูป <code>yyMM</code> เช่น <code>6906</code> = มิ.ย. 2569 · รับ <code>yyyyMM</code> พ.ศ. (<code>256906</code>) ได้ด้วย</td></tr>
-      <tr><td><code>impactStatus</code></td><td><span class="req">บังคับ</span></td><td><code>W</code> = ยอดชดเชยไม่เป็นศูนย์ · <code>Z</code> = ยอดชดเชยเป็นศูนย์</td></tr>
+      <tr><td><code>storeCodeI</code></td><td><span class="req">บังคับ</span></td><td>รหัสร้านถูกกระทบ ตัวเลขไม่เกิน 5 หลัก (เช่น <code>07281</code> หรือ <code>7281</code> — SGI เติมศูนย์หน้าให้)</td></tr>
+      <tr><td><code>totalStoreCodeN</code></td><td><span class="req">บังคับ</span></td><td>จำนวนร้านเปิดใหม่ — ต้องเท่ากับจำนวนรายการใน <code>compensate</code> (และ <code>compensate</code> ห้ามว่าง) · เป็นเลขจำนวนเต็มตรงตัว (<code>"1"</code> หรือ <code>1</code>) — ระบบเดิมเทียบเป็นสตริง <code>"1.0"</code> <code>"01"</code> <code>"1e0"</code> จึงไม่ผ่าน</td></tr>
+      <tr><td><code>periodImpact</code></td><td><span class="req">บังคับ</span></td><td>งวด <strong>พ.ศ.</strong> รูป <code>yyMM</code> เช่น <code>6908</code> = ส.ค. 2569 (2026-08) · รับ <code>yyyyMM</code> พ.ศ. (<code>256908</code>) ได้ด้วย</td></tr>
+      <tr><td><code>impactStatus</code></td><td><span class="req">บังคับ</span></td><td><code>W</code> = ยอดชดเชยไม่เป็นศูนย์ · <code>Z</code> = ยอดชดเชยเป็นศูนย์ · รับ <code>I</code> <code>C</code> <code>A</code> <code>N</code> <code>S</code> ด้วย (เขียนตรงลงสถานะงวดแบบระบบเดิม)</td></tr>
       <tr><td><code>forecast</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ยอดชดเชยที่ STA คำนวณ (บาท)</td></tr>
       <tr><td><code>adjust</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ยอดชดเชยหลังปรับ (บาท)</td></tr>
-      <tr><td><code>totalStoreCodeN</code></td><td><span class="opt">ไม่บังคับ</span></td><td>จำนวนร้านเปิดใหม่ในงวดนี้</td></tr>
-      <tr><td><code>compensate</code></td><td><span class="opt">ไม่บังคับ</span></td><td>array ยอดแยกรายร้านเปิดใหม่ (ตารางถัดไป) · ห้ามมีร้านซ้ำในรายการเดียวกัน</td></tr>
+      <tr><td><code>compensate</code></td><td><span class="req">บังคับ</span></td><td>array ยอดแยกรายร้านเปิดใหม่ อย่างน้อย 1 ร้าน · ห้ามมีร้านซ้ำ</td></tr>
     </table></div>
-
-    <h3>รายการใน <code>compensate</code> — ร้านเปิดใหม่ 1 ร้าน</h3>
+    <p>ฟิลด์ที่ระบบเดิมรับได้แต่ไม่ใช้ค่า (<code>impactStoreInfoID</code> <code>periodSeq</code> <code>periodSeqNo</code>) ส่งมาได้ ไม่ถูกปฏิเสธ · ฟิลด์อื่นนอกจากนี้ = <code>IF01001</code></p>
+    <h3>ระดับร้านเปิดใหม่ (<code>compensate[]</code>)</h3>
     <div class="tbl"><table>
       <tr><th>ฟิลด์</th><th></th><th>รูปแบบ / ความหมาย</th></tr>
       <tr><td><code>storeCodeN</code></td><td><span class="req">บังคับ</span></td><td>รหัสร้านเปิดใหม่ ตัวเลขไม่เกิน 5 หลัก</td></tr>
+      <tr><td><code>openDateN</code></td><td><span class="req">บังคับ</span></td><td>วันเปิดร้านใหม่ <code>dd/MM/yyyy</code> — ใช้ตอนสร้างคู่ร้านใหม่ · ข้อความท้ายวันที่ไม่ถูกอ่าน (ดูตารางรูปตัวเลขและวันที่)</td></tr>
       <tr><td><code>forecastN</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ยอดที่ร้านเปิดใหม่ต้องรับผิดชอบ ตามที่คำนวณ (บาท)</td></tr>
       <tr><td><code>forecastPercentN</code></td><td><span class="opt">ไม่บังคับ</span></td><td>สัดส่วน % ตามที่คำนวณ</td></tr>
       <tr><td><code>adjustN</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ยอดหลังปรับ (บาท)</td></tr>
       <tr><td><code>adjustPercentN</code></td><td><span class="opt">ไม่บังคับ</span></td><td>สัดส่วน % หลังปรับ</td></tr>
-      <tr><td><code>updateBy</code> · <code>createBy</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ผู้บันทึกฝั่ง STA — SGI เก็บ <code>updateBy</code> (ไม่มีจึงใช้ <code>createBy</code>)</td></tr>
-      <tr><td><code>openDateN</code> · <code>createDate</code> · <code>updateDate</code></td><td><span class="opt">ไม่บังคับ</span></td><td>รับได้ แต่ SGI ไม่ได้ใช้</td></tr>
+      <tr><td><code>createBy</code></td><td><span class="req">บังคับ</span></td><td>ผู้บันทึกฝั่ง STA (ห้ามว่าง)</td></tr>
+      <tr><td><code>createDate</code></td><td><span class="req">บังคับ</span></td><td><code>dd/MM/yyyy HH:mm:ss</code> · เศษวินาที/ข้อความท้ายได้</td></tr>
+      <tr><td><code>updateBy</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ผู้แก้ไขฝั่ง STA — <strong>ไม่ถูกเก็บลงคอลัมน์ของ SGI</strong> · แถวที่เส้นนี้เขียนประทับ <code>updated_by = SGI-STA-API</code> เสมอ · ค่าที่ STA ส่ง (<code>createBy</code> <code>updateBy</code> และวันที่) ดูได้จาก body ที่บันทึกใน <code>integration_log</code></td></tr>
+      <tr><td><code>updateDate</code></td><td><span class="opt">ไม่บังคับ</span></td><td>ถ้าส่งต้องเป็น <code>dd/MM/yyyy HH:mm:ss</code> (เศษวินาที/ข้อความท้ายได้ เหมือน <code>createDate</code>)</td></tr>
     </table></div>
-    <p>ตัวเลขส่งเป็น number หรือข้อความตัวเลขก็ได้ (คั่นหลักพันด้วย <code>,</code> ได้) · ค่าว่างหรือ <code>null</code> = ไม่มีค่า</p>
-
-    <h3>ตัวอย่างคำขอ</h3>
-<pre><code>POST {BFF base URL}/sgi/workflow/sta-update-compensate
-Authorization: Bearer &lt;token&gt;
+    <p>ฟิลด์ของ DTO เดิมที่รับได้แต่ไม่ใช้ค่า: <code>newStoreInfoId</code> <code>nameN</code> <code>closeDateN</code> <code>zoneN</code> <code>branchTypeN</code> <code>juristicIDN</code> <code>juristicNameN</code> <code>franchiseeNameN</code> <code>radius</code> <code>radiusUnit</code> <code>distance</code> <code>distanceUnit</code> <code>periodYear</code> <code>periodMonth</code> <code>flagAction</code></p>
+    <p>ตัวเลขส่งเป็น number หรือข้อความตัวเลขก็ได้ · ค่าว่างหรือ <code>null</code> = ไม่มีค่า</p>
+    <h3>รูปตัวเลขและวันที่ที่รับ (เท่าระบบเดิม)</h3>
+    <div class="tbl"><table>
+      <tr><th>ชนิด</th><th>รับ</th><th>ไม่รับ</th></tr>
+      <tr><td>ตัวเลข (<code>forecast</code> <code>adjust</code> <code>forecastN</code> <code>forecastPercentN</code> <code>adjustN</code> <code>adjustPercentN</code>)</td><td>รูปที่ <code>Double.parseDouble</code> / <code>Float.parseFloat</code> ของระบบเดิมรับ: <code>1500.50</code> <code>+5</code> <code>-2.5</code> <code>.5</code> <code>1.</code> <code>1e3</code> <code>5.1E4</code> <code>1.5d</code> · คั่นหลักพันด้วย <code>,</code> ได้ (<code>1,234.5</code>) · ช่องว่างหัวท้ายถูกตัด</td><td><code>NaN</code> <code>Infinity</code> · เลขฐาน 16 (<code>0x1p3</code>) · ค่าที่เกินช่วงจนเป็น infinity (<code>1e999</code>) · ข้อความอื่น</td></tr>
+      <tr><td>วันที่ <code>openDateN</code></td><td><code>dd/MM/yyyy</code> (วัน/เดือนหลักเดียวได้ · ปี 4 หลัก · ปีเกิน 2400 ถือเป็น พ.ศ.) · ข้อความท้ายไม่ถูกอ่าน เช่น <code>16/06/2026 00:00:00</code> (แบบ <code>SimpleDateFormat.parse</code> ของระบบเดิม)</td><td>วันที่ที่ไม่มีจริง (<code>31/02/2026</code>) · ปีไม่ครบ 4 หลัก · ตัวเลขต่อท้ายปี (<code>16/06/20260</code>)</td></tr>
+      <tr><td>วันเวลา <code>createDate</code> <code>updateDate</code></td><td><code>dd/MM/yyyy HH:mm:ss</code> · ชั่วโมง/นาที/วินาทีหลักเดียวได้ · ข้อความท้ายวินาทีไม่ถูกอ่าน เช่น <code>17:15:09.123</code> <code>17:15:09+07:00</code></td><td>ชั่วโมงเกิน 23 · นาที/วินาทีเกิน 59 · ไม่มีวินาที · ตัวเลขต่อท้ายวินาที</td></tr>
+    </table></div>
+    <h3>ตัวอย่างคำขอ — ร้านเปิดใหม่ 1 ร้าน</h3>
+    <pre><code>POST {store-backend base URL}/sgi/interface/sta-update-compensate
+x-api-key: &lt;X_API_KEY ของ store-backend&gt;
 Content-Type: application/json
-X-Request-Id: sta-20261014-000123
-
-{
-  "dataType": "message",
-  "dataName": "sta_update_compensate",
-  "sender": "STA",
-  "sentAt": "2026-10-14T09:30:00+07:00",
-  "dataMessage": [
+X-Request-Id: sta-20261026-000123</code></pre>
+    <pre><code>{
+  "storeCodeI": "07281",
+  "totalStoreCodeN": "1",
+  "periodImpact": "6908",
+  "impactStatus": "W",
+  "forecast": "51199.98",
+  "adjust": "",
+  "compensate": [
     {
-      "storeCodeI": "10221",
-      "periodImpact": "6909",
-      "impactStatus": "W",
-      "forecast": "37660.58",
-      "adjust": "37660.58",
-      "totalStoreCodeN": "1",
-      "compensate": [
-        {
-          "storeCodeN": "16543",
-          "forecastN": "37660.58",
-          "forecastPercentN": "100",
-          "adjustN": "37660.58",
-          "adjustPercentN": "100",
-          "updateBy": "sta.user01"
-        }
-      ]
+      "storeCodeN": "23981",
+      "openDateN": "16/06/2026",
+      "forecastN": "51199.98",
+      "forecastPercentN": "100.00",
+      "adjustN": "",
+      "adjustPercentN": "",
+      "createBy": "weblogic",
+      "createDate": "26/10/2026 14:53:53",
+      "updateBy": "weblogic",
+      "updateDate": "26/10/2026 14:53:53"
     }
   ]
 }</code></pre>
+    <h3>ตัวอย่างคำขอ — ร้านเปิดใหม่หลายร้าน</h3>
+    <p><code>totalStoreCodeN</code> ต้องเท่ากับจำนวนรายการใน <code>compensate</code> (ตัวอย่างนี้ 2) · %รวมของร้านเปิดใหม่ควรได้ 100</p>
+    <pre><code>{
+  "storeCodeI": "07281",
+  "totalStoreCodeN": "2",
+  "periodImpact": "6908",
+  "impactStatus": "W",
+  "forecast": "51199.98",
+  "adjust": "",
+  "compensate": [
+    {
+      "storeCodeN": "23981",
+      "openDateN": "16/06/2026",
+      "forecastN": "30719.99",
+      "forecastPercentN": "60.00",
+      "adjustN": "",
+      "adjustPercentN": "",
+      "createBy": "weblogic",
+      "createDate": "26/10/2026 14:53:53",
+      "updateBy": "weblogic",
+      "updateDate": "26/10/2026 14:53:53"
+    },
+    {
+      "storeCodeN": "24015",
+      "openDateN": "01/07/2026",
+      "forecastN": "20479.99",
+      "forecastPercentN": "40.00",
+      "adjustN": "",
+      "adjustPercentN": "",
+      "createBy": "weblogic",
+      "createDate": "26/10/2026 14:53:53",
+      "updateBy": "weblogic",
+      "updateDate": "26/10/2026 14:53:53"
+    }
+  ]
+}</code></pre>
+    <h3>body รูปเดิมของ web service (ยังรับได้)</h3>
+    <pre><code>{ "input": "&lt;base64 ของ JSON รายการตามข้อ 2.3&gt;" }</code></pre>
+    <p>body ที่มีคีย์ <code>input</code> คีย์เดียวและเป็นสตริง = SGI ถอด base64 แล้วอ่านเป็น JSON รายการ · ถอดไม่ได้ = <code>IF01001</code></p>
   </section>
-
   <section>
     <h2>คำตอบ</h2>
-    <p><strong>HTTP 200</strong> เมื่อรับคำขอได้ — แม้บางรายการบันทึกไม่ได้ ให้ดูผลที่ <code>data.status</code> และ <code>data.results</code> ทุกครั้ง</p>
-<pre><code>{
-  "success": true,
-  "data": {
-    "status": "PARTIAL_FAILED",
-    "dryRun": false,
-    "total": 2,
-    "updatedCount": 1,
-    "newStoreNotFoundCount": 0,
-    "notFoundCount": 1,
-    "invalidCount": 0,
-    "results": [
-      { "index": 1, "storeCodeI": "10221", "period": "2026-09", "outcome": "UPDATED",
-        "compensationRows": 1, "newStoreUpdated": 1, "newStoreInserted": 0, "newStoreNotFound": [] },
-      { "index": 2, "storeCodeI": "00512", "period": "2026-09", "outcome": "NOT_FOUND",
-        "compensationRows": 0, "newStoreUpdated": 0, "newStoreInserted": 0, "newStoreNotFound": [],
-        "reason": "ไม่พบงวดค่าชดเชยของร้านและงวดนี้" }
-    ]
-  }
-}</code></pre>
-    <p class="meta"><code>period</code> ในคำตอบเป็น ค.ศ. รูป <code>YYYY-MM</code> · <code>index</code> คือลำดับรายการในคำขอ เริ่มที่ 1 · ข้อความใน <code>reason</code> เป็นตัวอย่าง</p>
-
-    <h3><code>data.status</code></h3>
+    <p><strong>HTTP 200 ทุกกรณีทางธุรกิจ</strong> (สำเร็จ · ไม่พบงวด · รูปแบบผิด · ระบบขัดข้อง) — ตัดสินผลจาก <code>result</code> และ <code>errorCode</code> เสมอ ฟิลด์ 4 ตัวเป็น string ทุกตัว เรียงตาม <code>ResultMessageDto</code> ของระบบเดิม · <code>data</code> เป็นสตริงว่างเสมอ</p>
+    <pre><code>{ "result": "1", "data": "", "errorCode": "", "errorMsg": "" }</code></pre>
+    <h3>ตารางผล</h3>
     <div class="tbl"><table>
-      <tr><th>ค่า</th><th>ความหมาย</th></tr>
-      <tr><td><span class="pill ok">SUCCESS</span></td><td>ทุกรายการบันทึกสำเร็จ</td></tr>
-      <tr><td><span class="pill warn">PARTIAL_FAILED</span></td><td>บางรายการบันทึกไม่ได้</td></tr>
-      <tr><td><span class="pill bad">FAILED</span></td><td>ไม่มีรายการไหนบันทึกสำเร็จ</td></tr>
+      <tr><th><code>result</code></th><th><code>errorCode</code></th><th><code>errorMsg</code></th><th>เมื่อไร</th><th>ต้องทำอะไร</th></tr>
+      <tr><td><code>"1"</code></td><td><code>""</code></td><td><code>""</code></td><td>บันทึกยอดสำเร็จ — งวดมีอยู่แล้วและอัปเดตยอด หรือยังไม่มีงวดของร้าน+งวดนี้จึงสร้างคู่ร้าน รอบ และงวดใหม่ให้แบบระบบเดิม</td><td>—</td></tr>
+      <tr><td><code>"1"</code></td><td><code>""</code></td><td><code>บันทึกยอด งวด … ของร้าน … แล้ว · &lt;เรื่องที่ควรรู้&gt;</code></td><td>บันทึกยอดร้านถูกกระทบแล้ว แต่ (ก) ไม่พบคู่ร้านเปิดใหม่บางร้านในรอบ (ไม่ได้บันทึกยอดรายร้านของร้านนั้น) หรือ (ข) ไม่เขียนยอดรายร้านเปิดใหม่ลงเอกสารเพราะ %ร้านเปิดใหม่รวมไม่ผ่านเกณฑ์</td><td>ตรวจรหัสร้านเปิดใหม่ / % แล้วส่งใหม่ถ้าต้องการ</td></tr>
+      <tr><td><code>"1"</code></td><td><code>""</code></td><td><code>งวด … ของร้าน …: &lt;เหตุ&gt;</code></td><td>งวดนั้นอนุมัติหรือปิดผลแล้ว (A/N/S) — <strong>ไม่เขียนยอดทับ</strong> แต่ตอบ 1 ตามระบบเดิม ไม่ให้ส่งซ้ำวนไม่จบ</td><td>ไม่ต้องส่งซ้ำ</td></tr>
+      <tr><td><code>"0"</code></td><td><code>IF01003</code></td><td><code>No Data Updated : &lt;เหตุ&gt;</code></td><td>ไม่มีอะไรบันทึกได้ — ร้านมีรอบ active อยู่แล้วแต่ยังไม่มีงวดนี้ (รอ Job 6 สร้างงวด) · รอบปิดแล้ว · งวดอยู่ในช่วงเดือนของรอบเดิมของร้าน · แถวแม่ถูกเปิดรอบไปแล้ว</td><td>ตรวจว่า SGI ส่งงวดนี้ให้ STA แล้วหรือยัง</td></tr>
+      <tr><td><code>"0"</code></td><td><code>IF01001</code></td><td><code>Invalid Data : &lt;เหตุ&gt;</code></td><td>รูปแบบข้อมูลผิด — ฟิลด์บังคับขาด · <code>totalStoreCodeN</code> ไม่เท่าจำนวน <code>compensate</code> · วันที่ผิดรูป · ฟิลด์ที่ไม่รู้จัก · ตัวเลขเป็น <code>NaN</code>/<code>Infinity</code> · body เป็น array · body ว่างหรือ <code>Content-Type</code> ไม่ใช่ JSON · <code>input</code> ไม่ใช่ base64 ของ JSON · ส่ง <code>input</code> ปนกับฟิลด์อื่น</td><td>แก้ข้อมูลแล้วส่งใหม่</td></tr>
+      <tr><td><code>"0"</code></td><td><code>IF01004</code></td><td><code>Process Data Error : ระบบขัดข้องระหว่างบันทึก… ไม่มีการบันทึกข้อมูล กรุณาส่งใหม่ (requestId …)</code></td><td>ฐานข้อมูลล้มระหว่างบันทึก — rollback ทั้งรายการแล้ว · ไม่ส่งข้อความ exception ออกไป</td><td>ส่งใหม่ได้ · แจ้ง requestId ให้ทีม SGI ไล่ log</td></tr>
     </table></div>
-
-    <h3><code>results[].outcome</code></h3>
+    <p><code>errorMsg</code> ยาวไม่เกิน 500 ตัวอักษร · ข้อความหลัง <code> : </code> เป็นภาษาไทยและเป็นตัวอย่าง ห้ามนำไปเทียบตรงตัว</p>
+    <p>ตัวอย่าง</p>
+    <pre><code>{ "result": "0", "data": "", "errorCode": "IF01003", "errorMsg": "No Data Updated : งวด 2026-08 ของร้าน 05555: ร้านมีรอบชดเชย active (รอบ 103) ครอบงวดนี้อยู่แล้ว แต่ยังไม่มีงวดนี้ — รอ Job 6 สร้างงวด" }</code></pre>
+    <pre><code>{ "result": "0", "data": "", "errorCode": "IF01003", "errorMsg": "No Data Updated : งวด 2026-08 ของร้าน 07281: ไม่พบแถวงวดชดเชยของรอบที่ยัง active (รอบปิดแล้ว)" }</code></pre>
+    <pre><code>{ "result": "0", "data": "", "errorCode": "IF01001", "errorMsg": "Invalid Data : totalStoreCodeN=\"2\" ไม่เท่ากับจำนวนร้านเปิดใหม่ใน compensate (1 ร้าน · ระบบเดิม IF01001)" }</code></pre>
+    <pre><code>{ "result": "0", "data": "", "errorCode": "IF01001", "errorMsg": "Invalid Data : input ไม่ใช่ base64 ของ JSON" }</code></pre>
+    <pre><code>{ "result": "0", "data": "", "errorCode": "IF01001", "errorMsg": "Invalid Data : body ว่างหรือไม่ใช่ JSON (Content-Type: text/plain) — ต้องส่ง Content-Type: application/json พร้อม JSON รายการ" }</code></pre>
+    <p><strong>Content-Type ของคำตอบ</strong> เป็น <code>application/json; charset=utf-8</code> · ระบบเดิมตอบ <code>text/html</code> (เนื้อหาเป็น JSON เหมือนกัน) — ขอให้ทีม STA ยืนยันว่าฝั่งที่อ่านคำตอบไม่ได้ผูกกับ <code>text/html</code></p>
+    <h3>ไม่ใช่ HTTP 200</h3>
     <div class="tbl"><table>
-      <tr><th>ค่า</th><th>ความหมาย</th><th>ต้องทำอะไร</th></tr>
-      <tr><td><span class="pill ok">UPDATED</span></td><td>บันทึกยอดของรายการนี้แล้ว</td><td>—</td></tr>
-      <tr><td><span class="pill warn">NEW_STORE_NOT_FOUND</span></td><td>บันทึกยอดร้านถูกกระทบแล้ว แต่ร้านเปิดใหม่บางร้านไม่ได้จับคู่กับร้านนี้ในระบบ SGI (รายชื่ออยู่ใน <code>newStoreNotFound</code>)</td><td>ตรวจรหัสร้านเปิดใหม่ แล้วส่งรายการนั้นซ้ำ</td></tr>
-      <tr><td><span class="pill bad">NOT_FOUND</span></td><td>SGI ยังไม่มีงวดค่าชดเชยของร้านและงวดนี้ (หรือรอบชดเชยปิดไปแล้ว)</td><td>ตรวจว่าเคยได้รับข้อความงวดนี้จาก SGI แล้วหรือยัง</td></tr>
-      <tr><td><span class="pill bad">INVALID</span></td><td>ข้อมูลของรายการนี้ผิดรูปแบบ (เหตุอยู่ใน <code>reason</code>)</td><td>แก้ข้อมูลแล้วส่งรายการนั้นซ้ำ</td></tr>
+      <tr><th>HTTP</th><th>เมื่อไร</th><th>รูปคำตอบ</th></tr>
+      <tr><td>400</td><td>body เป็น JSON ที่อ่านไม่ได้ (เช่นวงเล็บไม่ครบ) — ถูกปฏิเสธก่อนถึงตัวประมวลผล</td><td>รูป error ของ store-backend <code>{ "success": false, "data": null, "error": { "code": "BAD_REQUEST", "message": "Unexpected end of JSON input" } }</code> · แก้ JSON แล้วส่งใหม่</td></tr>
+      <tr><td>401</td><td>ไม่ส่ง <code>x-api-key</code> หรือค่าไม่ถูกต้อง</td><td>รูป error ของ SGI <code>{ "success": false, "data": null, "error": { "code": "UNAUTHORIZED", "message": "…" } }</code></td></tr>
+      <tr><td>500</td><td>body ใหญ่เกินเพดานของ store-backend (100 MB)</td><td>รูป error ของ store-backend — คำขอปกติเล็กกว่านี้มาก</td></tr>
+      <tr><td>5xx · timeout</td><td>ระบบขัดข้องก่อนถึงตัวประมวลผล</td><td>— ส่งซ้ำได้</td></tr>
     </table></div>
-
-    <h3>เมื่อปฏิเสธทั้งคำขอ</h3>
-<pre><code>{ "success": false, "data": null, "error": { "code": "VALIDATION", "message": "…" } }</code></pre>
-    <div class="tbl"><table>
-      <tr><th>HTTP</th><th>เมื่อไร</th></tr>
-      <tr><td>401</td><td>ไม่มี <code>Authorization: Bearer</code> หรือ token ไม่ถูกต้อง</td></tr>
-      <tr><td>400</td><td>ซองผิดรูปแบบ · <code>dataName</code> ไม่ใช่ <code>sta_update_compensate</code> · <code>dataMessage</code> ว่าง · เกิน 500 รายการ · มีฟิลด์ระดับซองที่ไม่รู้จัก</td></tr>
-      <tr><td>5xx · timeout</td><td>ระบบขัดข้องชั่วคราว — ส่งซ้ำทั้งคำขอได้</td></tr>
-    </table></div>
+    <p>คำขอที่ถูกปฏิเสธก่อนถึงตัวประมวลผล (400 · 401 · 500 ของตารางนี้) ไม่มีแถวใน <code>integration_log</code></p>
   </section>
-
   <section>
     <h2>ข้อควรรู้</h2>
     <ul>
-      <li><strong>ลำดับ:</strong> SGI ส่งข้อมูลงวดให้ STA ก่อน (ข้อความ <code>sta_compensate_status</code> ทาง RabbitMQ) STA จึงคำนวณและส่งยอดกลับด้วย API นี้ · ส่งยอดของงวดที่ SGI ยังไม่ได้ส่งมา จะได้ <code>NOT_FOUND</code></li>
-      <li><strong>ส่งซ้ำได้:</strong> ส่งรายการเดิมซ้ำจะบันทึกทับด้วยค่าเดิม ไม่เกิดข้อมูลซ้ำ จึงลองใหม่ได้เมื่อ timeout หรือได้ 5xx</li>
-      <li><strong>รายการแยกกัน:</strong> แต่ละรายการบันทึกแยกกัน รายการที่ผิดไม่ทำให้รายการอื่นไม่ถูกบันทึก</li>
-      <li><strong>สถานะงวด:</strong> <code>Z</code> ตั้งงวดเป็นยอดศูนย์ · <code>W</code> ตั้งงวดเป็นอยู่ระหว่างชดเชยเฉพาะงวดที่ยังว่างหรือเป็นยอดศูนย์ · <strong>งวดที่มีผลอนุมัติแล้ว (อนุมัติ · ไม่ชดเชย · หยุดชดเชย) คงเดิมทั้ง <code>W</code> และ <code>Z</code></strong> — ยอดยังบันทึกตามที่ส่งมา</li>
-      <li><strong>ปี:</strong> <code>periodImpact</code> ในคำขอเป็น พ.ศ. ส่วน <code>period</code> ในคำตอบเป็น ค.ศ.</li>
-      <li><strong>ทดสอบ:</strong> ส่ง <code>"dryRun": true</code> เพื่อตรวจรูปแบบและดูผลรายรายการโดยไม่บันทึก</li>
-      <li><strong>ช่องทาง:</strong> STA ส่งเข้า RabbitMQ ตามเดิม · EAI consumer เป็นผู้เรียก API นี้ (ผลรายรายการอยู่ในคำตอบ — consumer ควร log ไว้ เพราะ STA ไม่เห็นผลโดยตรง)</li>
+      <li><strong>ลำดับ:</strong> SGI ส่งข้อมูลงวดให้ STA ก่อน (Job 6 · ข้อความ RabbitMQ <code>sgi_impact_store</code> — ขาไป <strong>ยังเป็น RabbitMQ เหมือนเดิม</strong>) STA คำนวณแล้วเรียก API นี้ส่งยอดกลับ · ส่งยอดของร้านและงวดที่ SGI ยังไม่มีเลย SGI จะสร้างคู่ร้าน (<code>created_by = STA</code>) รอบ และงวดให้แบบระบบเดิม</li>
+      <li><strong>ส่งซ้ำได้:</strong> ส่งรายการเดิมซ้ำจะบันทึกทับด้วยค่าเดิม ไม่เกิดข้อมูลซ้ำ จึงลองใหม่ได้เมื่อ timeout · 5xx · <code>IF01004</code> · <code>IF01004</code> rollback ทั้งรายการ จึง<strong>ไม่มีแถวใน <code>sgi_interface_transactions</code></strong> (มีแค่แถวใน <code>integration_log</code>)</li>
+      <li><strong>หนึ่งคำขอ หนึ่ง transaction:</strong> ล็อกตาม (ร้าน, งวด) · ล้ม = rollback ทั้งรายการ</li>
+      <li><strong>สถานะงวด:</strong> <code>Z</code> ตั้งงวดเป็นยอดศูนย์ · <code>W</code> ตั้งงวดเป็นอยู่ระหว่างชดเชยเฉพาะงวดที่ยังว่างหรือเป็นยอดศูนย์ · <strong>งวดที่มีผลอนุมัติแล้ว (อนุมัติ · ไม่ชดเชย · หยุดชดเชย) ไม่เขียนทับ</strong> (ตอบ <code>result</code> 1 พร้อม <code>errorMsg</code> บอก)</li>
+      <li><strong>เอกสารที่ออกแล้ว:</strong> งวดที่ออกเอกสารแล้วและเอกสารยังไม่จบ SGI รีเฟรชยอดหัวเอกสารและยอดรายร้านเปิดใหม่ให้ในทรานแซกชันเดียวกัน · รอบที่ยอดศูนย์ครบจำนวนงวด ตั้ง/ล้างเดือนสิ้นสุดให้</li>
+      <li><strong>ปี:</strong> <code>periodImpact</code> ในคำขอเป็น พ.ศ. · ข้อความใน <code>errorMsg</code> อ้างงวดเป็น ค.ศ. <code>YYYY-MM</code></li>
+      <li><strong>บันทึก:</strong> สองที่<ul>
+        <li><code>integration_log</code> ของระบบ SBP (แทน <code>FGI_WS_LOG</code> ของระบบเดิม) — <strong>1 แถวต่อคำขอทุกผล</strong> (สำเร็จ · <code>IF01001</code> · <code>IF01003</code> · <code>IF01004</code>) · <code>module = sgi</code> · <code>service = /sgi/interface/sta-update-compensate</code> · <code>payload</code> เป็น JSON: <code>wsName</code> (<code>UPDATE_STORE_COMPENSATE</code>) · <code>requestId</code> · เวลาเริ่ม/จบ · <code>result</code> <code>errorCode</code> <code>errorMsg</code> · <code>outcome</code> · เหตุภายใน · body ที่รับ (<code>dataInput</code> ตัดที่ 20,000 ตัวอักษร · ค่าของคีย์ลับไม่ถูกเก็บ) · คำตอบที่ส่ง (<code>dataOutput</code>) · เขียนนอกทรานแซกชันหลักหลังได้ผล — <code>IF01004</code> ก็มีแถว · เขียน log ล้มไม่ทำให้คำตอบเปลี่ยน · <code>dryRun</code> ไม่บันทึก</li>
+        <li><code>sgi_interface_transactions</code> (<code>direction = IN</code> · <code>data_name = STA_UPDATE_COMPENSATE</code>) — ผลละเอียดของรายการที่ผ่านรูปแบบแล้วและถึงขั้นบันทึก (outcome · ร้านที่หาไม่เจอ · เอกสารที่รีเฟรช) · 1 แถวต่อร้าน+งวด (ส่งซ้ำทับแถวเดิม) · <code>status = COMPLETED</code> เมื่อตอบ STA <code>result</code> 1 รวมกรณีหาคู่ร้านเปิดใหม่บางร้านไม่เจอ</li>
+      </ul></li>
+      <li><strong>ทดสอบ:</strong> ใส่ <code>?dryRun=true</code> เพื่อตรวจรูปแบบและดูผลโดยไม่บันทึก</li>
     </ul>
   </section>
-
   <section>
     <h2>เรื่องที่ขอให้ทีม STA ยืนยัน</h2>
     <ul>
       <li>รูปแบบ <code>periodImpact</code> ที่ส่งจริงเป็น <code>yyMM</code> พ.ศ. ใช่หรือไม่</li>
-      <li>IP หรือเครือข่ายต้นทางที่จะเรียก API — เพื่อเปิดทางเข้าฝั่ง SBPM</li>
-      <li>ผู้รับ token และช่องทางรับ token</li>
+      <li>ฝั่ง STA จะส่ง JSON รายการตรง ๆ หรือส่งรูปเดิม <code>{"input":"&lt;base64&gt;"}</code></li>
+      <li>IP หรือเครือข่ายต้นทางที่จะเรียก API — เพื่อเปิดทางเข้า store-backend</li>
+      <li>ผู้รับ <code>x-api-key</code> และช่องทางรับ key</li>
+      <li>ฝั่งที่อ่านคำตอบรับ <code>Content-Type: application/json</code> ได้ (ระบบเดิมตอบ <code>text/html</code> · เนื้อหาเป็น JSON รูปเดียวกัน)</li>
     </ul>
   </section>
 </main>

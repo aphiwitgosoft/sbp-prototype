@@ -61,7 +61,7 @@
           <tr><td><b>แลกยอดขาย</b></td><td class="mono">4 · 5</td><td>ส่งรายการไป <b>IAS/MIS</b> เป็นไฟล์ <code>AMS06001O</code> แล้วรับยอดขายกลับเป็น <code>AMS06001I</code> → <code>sgi_sales_transactions</code> + คำนวณ growth</td></tr>
           <tr><td><b>สร้างเอกสาร</b></td><td class="mono">8 · 7 · 9</td><td><b>เขียนฐานข้อมูลตรง</b> — สร้าง <code>sgi_compensation_documents</code> แล้วเติม <code>sgi_document_competitors</code> · <code>sgi_document_new_stores</code> ผ่าน Document Service</td></tr>
           <tr><td><b>เปิด workflow</b></td><td class="mono">8b</td><td>ตัดสินจุดเข้า flow จากประเภทเคส แล้วเรียก <code>POST /api/v1/sgi/workflow/instances</code> ของ <b>Workflow Engine ภายใน</b></td></tr>
-          <tr><td><b>รับยอดจาก STA</b></td><td class="mono">API</td><td><b>ไม่ใช่ batch job แล้ว</b> (ถอด Job 11 ออก 2026-10-14) — STA เรียก <code>POST /api/v1/sgi/workflow/sta-update-compensate</code> ผ่าน BFF ด้วย service token → เติม <code>forecast_amount</code> / <code>adjust_amount</code> / สถานะงวดลง <code>sgi_fgi_impact_compensations</code> + ยอดรายร้านเปิดใหม่ — ยอดนี้คือสิ่งที่ Job 8 ใช้สร้างเอกสาร</td></tr>
+          <tr><td><b>รับยอดจาก STA</b></td><td class="mono">API</td><td><b>ไม่ใช่ batch job แล้ว</b> (ถอด Job 11 ออก 2026-10-14) — STA เรียก HTTP <code>POST /api/v1/sgi/interface/sta-update-compensate</code> ตรงเข้า store backend ด้วย <code>x-api-key</code> (ไม่ผ่าน BFF · ไม่ผ่าน RabbitMQ / EAI consumer · รายการเดียวต่อคำขอ · ตอบ <code>{result, data, errorCode, errorMsg}</code> · สัญญา 2026-10-27) → เติม <code>forecast_amount</code> / <code>adjust_amount</code> / สถานะงวดลง <code>sgi_fgi_impact_compensations</code> + ยอดรายร้านเปิดใหม่ — ยอดนี้คือสิ่งที่ Job 8 ใช้สร้างเอกสาร</td></tr>
           <tr><td><b>ส่งผล + เฝ้าระวัง</b></td><td class="mono">6 · 10 · 12</td><td>ส่งค่าชดเชยไป <b>STA</b> ด้วย <b>RabbitMQ message</b> (<code>sta.compensation.result</code>) และเฝ้าระวังข้อความที่ broker ยังไม่ publisher confirm เกิน 1 วันแล้วส่งอีเมลเตือน · และเตือนงานที่ค้างรอคนกดใน workflow (Job 12 · ช่วง 30-36 / 45-51 / 60-66 วัน)</td></tr>
         </tbody>
       </table></div>
@@ -173,7 +173,7 @@
 
   /* ============ data: 11 entry points (Jobs 2–10 + 8b จาก Batch v4.0 · Job 12 ที่แยกเอกสาร 2026-09-02 — พอร์ตจาก SendMailReport.java ไม่ใช่งานใหม่)
      ❌ Job 11 UpdateCompensateFromSTA ถอดออก 2026-10-14 — รับยอดจาก STA ย้ายไปเป็น API ของ store backend
-        POST /api/v1/sgi/workflow/sta-update-compensate ที่ STA เรียกผ่าน BFF (ไม่ใช่ batch job แล้ว) ============ */
+        POST /api/v1/sgi/interface/sta-update-compensate ที่ STA เรียก HTTP ตรงด้วย x-api-key (สัญญา 2026-10-27 · ไม่ใช่ batch job แล้ว) ============ */
   var PHASES = [
     { k:'A', t:'นำเข้า Master', s:'ALLMAP (ไฟล์บน EAI S3)', c:'', jobs:['2','3'] },
     { k:'B', t:'แลกเปลี่ยนยอดขาย', s:'IAS / MIS', c:'c-teal', jobs:['4','5'] },

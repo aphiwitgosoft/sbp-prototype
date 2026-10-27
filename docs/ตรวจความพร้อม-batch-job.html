@@ -196,12 +196,12 @@ repo <code>SBP/srm-sps-spsap-sop-sgi-batch</code> branch <code>feature/sgi-batch
 </thead>
 <tbody>
 <tr>
-<td>ถอด Job 11 เป็น API <code>POST /sgi/workflow/sta-update-compensate</code></td>
+<td>ถอด Job 11 เป็น API <code>POST /sgi/interface/sta-update-compensate</code></td>
 <td>Job 10 · Job 9</td>
 <td>Job 10 เฝ้าเฉพาะขาออก (<code>OUT</code>) และงานภายใน (<code>INTERNAL</code>) จึงไม่กระทบ · <strong>Job 9 กระทบ</strong> — คืนเงื่อนไขยกยอดที่ STA ปรับขึ้นเอกสารแล้ว (บั๊ก 4.4 ✅)</td>
 </tr>
 <tr>
-<td>BE เขียน A/N/S + ปิดรอบ (<code>flag_action = N</code> · <code>process_status = CLOSED</code>) เมื่อ 06 ปิดด้วย N/S</td>
+<td>BE เขียน A/N/S + ปิดรอบ (<code>flag_action = N</code> · <code>process_status = CLOSED</code>) เมื่อ 06 ปิดด้วย S (N ไม่ปิดรอบ ยึดระบบเดิม 2026-10-26)</td>
 <td>Job 2 · 4 · 7 · 8 · 8b · 9</td>
 <td>สอดคล้อง — ทุก job คัดเฉพาะรอบ <code>flag_action IN ('Y','W')</code> (Job 4 ด่าน S4 คัด <code>'Y'</code>) จึงข้ามรอบที่ปิดแล้ว · Job 2 นำเข้าคู่ร้านใหม่ของร้านนั้นได้ในงวดถัดไป ตรงกับกติกาเปิดเรื่องใหม่ของ SDD GI · กรณีขอบ 4.8</td>
 </tr>
@@ -611,7 +611,7 @@ repo <code>SBP/srm-sps-spsap-sop-sgi-batch</code> branch <code>feature/sgi-batch
    - รันทุก job ด้วย <code>{"dryRun":true}</code> ก่อน
    - วางไฟล์ ALLMAP ทดสอบ → Job 2/3 ทำงานเองจาก event (และไม่ปลุก job อื่น)
    - Job 4 อัปโหลดจริง → IAS ตอบ <code>AMS06001I</code> → Job 5
-   - Job 6 เปิดรอบ + ส่ง STA → STA ส่งข้อความเข้า RabbitMQ → EAI consumer เรียก API ส่งยอดกลับ → Job 8 สร้างเอกสาร → Job 7/9 → Job 8b เปิด workflow และส่งอีเมล EM-06
+   - Job 6 เปิดรอบ + ส่ง STA → STA เรียก API `sta-update-compensate` ตรงส่งยอดกลับ → Job 8 สร้างเอกสาร → Job 7/9 → Job 8b เปิด workflow และส่งอีเมล EM-06
    - เดินเอกสารจนอนุมัติ → รอบถัดไปของ Job 6 ส่งผล <code>A</code> ไป STA</li>
 <li><strong>production</strong> ตั้ง <code>SGI_JOB6_APPROVE_SINCE</code> = วันเริ่มใช้ระบบ ก่อนรัน Job 6 ครั้งแรก</li>
 </ol>

@@ -381,8 +381,8 @@ QSSI จำเป็นเฉพาะตอนเปิดรอบใหม่
 </tr>
 <tr>
 <td><code>I</code> / <code>Z</code> + ยอดเงิน</td>
-<td>store backend <code>POST /sgi/workflow/sta-update-compensate</code> (แทน Job 11 · 2026-10-14)</td>
-<td>STA ส่งข้อความเข้า RabbitMQ → EAI consumer เรียก API</td>
+<td>store backend <code>POST /sgi/interface/sta-update-compensate</code> (แทน Job 11 · 2026-10-14)</td>
+<td>STA เรียก API ตรงด้วย <code>x-api-key</code> (2026-10-27)</td>
 </tr>
 <tr>
 <td><code>A</code></td>
@@ -403,7 +403,7 @@ QSSI จำเป็นเฉพาะตอนเปิดรอบใหม่
 </table></div>
 <p>BE เติม <code>approve_date</code> = วันที่อนุมัติ และ <code>stmt_year/stmt_month</code> = เดือนของวันนั้นพร้อมกัน · หยุดอัตโนมัติเดือนที่ 4 ของ Job 8b คงงวดเป็น <code>Z</code> (Job 6 ปิดรอบด้วยกติกา Z ติดกัน และส่ง Z เป็น S ใน payload)</p>
 <p>สถานะ <code>Z</code> จาก STA ทำตามระบบเดิม — <code>Z</code> ตั้งงวดเป็นยอดศูนย์เสมอ · <code>W</code> เปลี่ยนเป็น <code>I</code> เฉพาะงวดที่ยังว่างหรือเป็น <code>Z</code> งวดที่มีผลอนุมัติแล้วคงเดิม</p>
-<p><strong>ขากลับจาก STA</strong> — STA ส่งข้อความ <code>sta_update_compensate</code> เข้า RabbitMQ เหมือนเดิม · EAI consumer รับแล้วเรียก API <code>POST /sgi/workflow/sta-update-compensate</code> (Bearer <code>SGI_SERVICE_TOKEN</code>) · มติ 2026-10-16 · สัญญาเต็มอยู่ที่ <code>docs/STA-API-รับยอดชดเชย.md</code></p>
+<p><strong>ขากลับจาก STA</strong> — <strong>STA เรียก HTTP ตรง</strong> ที่ store-backend <code>POST /sgi/interface/sta-update-compensate</code> ด้วย <code>x-api-key</code> · 1 คำขอ = ร้านถูกกระทบ 1 ร้าน × 1 งวด · ตอบรูประบบเดิม <code>{result, data, errorCode, errorMsg}</code> · มติ 2026-10-27 (ไม่ใช้ RabbitMQ / EAI consumer <code>sta_cal_sgi</code> กับขากลับแล้ว · ขาไปของ Job 6 ยังเป็น RabbitMQ) · สัญญาเต็มอยู่ที่ <code>docs/STA-API-รับยอดชดเชย.md</code></p>
 <h2>5. สิ่งที่ต้องตั้งใน AWS</h2>
 <ol>
 <li><strong>Batch job definition</strong> ของ <code>sgi-export-impact-store-to-sta</code>
@@ -682,19 +682,19 @@ JOB_NAME=sgi-export-impact-store-to-sta \
 </tr>
 <tr>
 <td>ไม่มีข้อความออกเลยแม้ต่อ MQ ได้</td>
-<td>ยังไม่มีข้อมูลให้ส่ง — ยอดคาดการณ์ (<code>forecast_amount</code>) มาจาก API <code>POST /sgi/workflow/sta-update-compensate</code> ที่ STA เรียกส่งยอดกลับ · สถานะ <code>A/N/S</code> มาจาก BE ตอนเอกสารจบ flow (ข้อ 4)</td>
+<td>ยังไม่มีข้อมูลให้ส่ง — ยอดคาดการณ์ (<code>forecast_amount</code>) มาจาก API <code>POST /sgi/interface/sta-update-compensate</code> ที่ STA เรียกส่งยอดกลับ · สถานะ <code>A/N/S</code> มาจาก BE ตอนเอกสารจบ flow (ข้อ 4)</td>
 </tr>
 </tbody>
 </table></div>
 <h2>9. ลำดับทดสอบบน UAT</h2>
 <ol start="0">
-<li>deploy store-backend รุ่นที่เขียน A/N/S และปิดรอบชดเชยตอนจบ flow (ไม่งั้นสายผลอนุมัติไม่มีอะไรให้ส่ง) และ BFF รุ่นที่มีเส้นรับยอดจาก STA</li>
+<li>deploy store-backend รุ่นที่เขียน A/N/S และปิดรอบชดเชยตอนจบ flow (ไม่งั้นสายผลอนุมัติไม่มีอะไรให้ส่ง) และมีเส้นรับยอดจาก STA (<code>POST /sgi/interface/sta-update-compensate</code> รุ่นสัญญา 2026-10-27)</li>
 <li>ยืนยันข้อ 2 กับทีม STA (binding · ชนิด exchange · สิทธิ์ user)</li>
 <li>ตั้ง env + secret + network ตามข้อ 3 และ 5 (บน UAT ไม่ต้องตั้ง <code>SGI_JOB6_APPROVE_SINCE</code>)</li>
 <li>รัน <code>INPUT={"dryRun":true}</code> — ตรวจว่าผ่านด่าน QSSI และนับจำนวนที่จะส่งได้ (ไม่เขียนฐาน ไม่ส่ง MQ)</li>
 <li>รันจริง แล้วดู log + คิวรีในข้อ 8</li>
 <li>ให้ทีม STA ยืนยันว่ามีข้อความเข้า <code>sta.sta.ss.frbc0001.queue</code> และอ่านได้ครบ 14 ฟิลด์</li>
-<li>ทดสอบขาไปกลับครบวง: STA ส่งข้อความเข้า RabbitMQ → EAI consumer เรียก API ส่งยอดกลับ → ผ่าน flow เอกสารจนอนุมัติ → รอบถัดไปของ Job 6 ส่งผล <code>A</code> ไป STA</li>
+<li>ทดสอบขาไปกลับครบวง: STA เรียก API ตรงส่งยอดกลับ → ผ่าน flow เอกสารจนอนุมัติ → รอบถัดไปของ Job 6 ส่งผล <code>A</code> ไป STA</li>
 <li>สร้าง EventBridge rule ให้รันทุกวัน</li>
 <li>production: ตั้ง <code>SGI_JOB6_APPROVE_SINCE</code> = วันเริ่มใช้ระบบ ก่อนรันครั้งแรก</li>
 </ol>
