@@ -272,7 +272,7 @@
           <div class="flow-stage"><span>D</span> ส่งผลออกและเฝ้าระวัง ACK · Jobs 6 และ 10</div>
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">11. ส่งผลชดเชยเข้า Statement <span class="ref fgi">FGI/FCS · Job 6</span></div>
-            <div class="tl-meta">ทุกวัน 17:00 · sync สถานะ 10 ขั้น → ตรวจ QSSI ครบ 6 หมวด (8,9,12,1,10,16) → เขียน outbox (<code>sgi_interface_transactions</code> READY) ใน transaction เดียวกับ sync → publish RabbitMQ message <code>sgi_impact_store</code> (JSON UTF-8) ไป STA แล้ว update เป็น SENT · ขั้นลบ tracking เก่า (แก้บั๊ก E20) <b>ยังไม่ได้ทำ</b> รอตัดสินนโยบายเก็บข้อมูล (DECISIONS 2.110)</div></div>
+            <div class="tl-meta">ทุกวัน 17:00 · sync สถานะ 10 ขั้น → ตรวจ QSSI ครบ 6 หมวด (8,9,12,1,10,16) → เขียน outbox (<code>sgi_interface_transactions</code> READY) ใน transaction เดียวกับ sync → publish RabbitMQ message <code>sgi_impact_store</code> (JSON UTF-8) ไป STA แล้ว update เป็น SENT · ขั้นลบข้อมูลเก่า (แก้บั๊ก E20) = job <code>sgi-purge-old-data</code> (มติผู้ใช้ 2026-10-27) ลบข้อมูล+ไฟล์ SGI ที่จบแล้วและเก่ากว่า ปีปัจจุบัน − 5 · ปิดเป็นค่าตั้งต้น (<code>SGI_PURGE_ENABLED</code>)</div></div>
 
           <div class="tl-item"><span class="tl-dot"></span>
             <div class="tl-t">11b. รับยอดชดเชยกลับจาก STA <span class="ref fgi">FGI/FCS · API แทน Job 11</span> <span class="ref new">สัญญา 2026-10-27</span></div>
